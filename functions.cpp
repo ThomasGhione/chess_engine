@@ -41,7 +41,7 @@ namespace chess {
 
 
     std::string displayPiece(board debugboard[ML][ML], int rank, int file) {
-        switch (debugboard[rank][file].piece) {
+        switch (debugboard[rank][file].piece) { 
             case (EMPTY): return (debugboard[rank][file].isLightSquare) ? "██" : "  ";     
             case (WHITE | PAWN): return "wp";
             case (WHITE | KNIGHT): return "wN";
@@ -54,8 +54,8 @@ namespace chess {
             case (BLACK | BISHOP): return "bB";
             case (BLACK | ROOK): return "bR";
             case (BLACK | QUEEN): return "bQ";
-            case (BLACK | KING): return "bK";
-            default: throw std::invalid_argument("unexpected bitwise inclusive-OR");
+            case (BLACK | KING): return "bK"; 
+            default: throw std::invalid_argument("unexpected bitwise inclusive-OR");   
         }
     }
 

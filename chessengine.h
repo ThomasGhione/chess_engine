@@ -34,7 +34,7 @@
 #define BLACK 0x80      // 10000000 
 
 namespace chess {
-    const char ML = 8; // MAX_LINE
+    const char ML = 8; // ML = MAX_LINE
 
 /*
     const unsigned char pawn = PAWN;           
@@ -49,7 +49,7 @@ namespace chess {
 
     using board = struct square {
         bool isLightSquare;
-        bool isEmpty;
+        // bool isEmpty;
         unsigned char piece;
     };
 
@@ -60,6 +60,11 @@ namespace chess {
     std::string displayPiece(board [ML][ML], int, int);
     void debugprint(board [ML][ML]);
     //void printBoard();
+
+
+    void incTurn();
+    void inputMove(board [ML][ML], char &);
+    char gameStarts(board [ML][ML]);
 
 }
 
