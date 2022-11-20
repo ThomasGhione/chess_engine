@@ -7,8 +7,7 @@
 #include <iostream>
 #include <string.h>
 #include <stdexcept>
-
-
+#include <cctype>
 
 //define values
 #define P 1 //pawn
@@ -53,6 +52,10 @@ namespace chess {
         unsigned char piece;
     };
 
+    struct gameStatus {
+        int turns;
+        board cb[ML][ML];
+    };
 
     void createInitialBoard(board [ML][ML]);
     void startingPosition(board [ML][ML]);
@@ -63,8 +66,13 @@ namespace chess {
 
 
     void incTurn();
+    int fromCharToInt(char); 
     void inputMove(board [ML][ML], char &);
-    char gameStarts(board [ML][ML]);
+    char gameStarts();
+
+    // char player, unsigned char piece, board cb, int rank1, int file1, int rank2, int file2
+    bool isMoveValid(char, unsigned char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
+    
 
 }
 

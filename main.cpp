@@ -3,17 +3,20 @@
 int main() {
     std::ios::sync_with_stdio(false); // faster cout
 
+    chess::gameStatus gs;
+    gs.turns = 1;
     
-    chess::board chessboard[chess::ML][chess::ML];
-    int turn = 0;
+    //chess::board chessboard[chess::ML][chess::ML];
 
-    chess::createInitialBoard(chessboard);
-    chess::debugprint(chessboard);
 
-    char p = chess::gameStarts(chessboard);
+    chess::createInitialBoard(gs.cb);
+    chess::debugprint(gs.cb);
+
+
+    char p = chess::gameStarts();
     while (true) {
-        inputMove(chessboard, p);
-        ++turn;
+        inputMove(gs.cb, p);
+        ++gs.turns;
     }
 
 
