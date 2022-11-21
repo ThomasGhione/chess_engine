@@ -13,8 +13,8 @@
 # Compile
 
   W11: 
-    g++ *.cpp -o chess.exe
-    chess.exe
+    g++ *.cpp
+    a.exe
     
     try running "chcp 65001" if chessboard doesn't display
     properly. Doesn't work on Powershell but works on CMD.
