@@ -3,8 +3,8 @@
 namespace chess {
 
     //void change turn
-    void incTurn() {
-
+    unsigned int displayTurn(unsigned int turn, char player) {
+        return (player == 'B') ? ++turn : turn;
     }
 
     int fromCharToInt(char file) {
@@ -24,35 +24,42 @@ namespace chess {
 
 
     //void input move
-    void inputMove(board chessboard[ML][ML], char &player) {
+    void inputMove(gameStatus gamestatus, char &player) {
         std::cout << "\nInput your move\nFormat: FILE1 RANK1 FILE2 RANK2\nOr press Q to quit\nInput: ";
-        int iRank1, iRank2;
         char iFile1, iFile2;
+        int iRank1, iRank2;
         if (iFile1 == 'Q') throw std::invalid_argument("QUIT"); //TODO make better quit
+
+        ifWrongMove: //! if player chooses their opponent's pieces then go back to "ifWrongMove" to choose again
         std::cin >> iFile1 >> iRank1 >> iFile2 >> iRank2;
 
         //check if input is valid (u can't choose your opponent pieces)
         switch (player) {
             case 'W':
-                if (chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece > (unsigned char)(WHITE | KING))
-                    throw std::invalid_argument("u chose ur opponent piece");
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece > (unsigned char)(WHITE | KING)) {
+                    std::cout << "You chose your opponent piece";
+                    goto ifWrongMove;
+                }
                 player = 'B';
                 break;
             case 'B':
-                if (chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece < (unsigned char)BLACK)
-                    throw std::invalid_argument("u chose ur opponent piece");
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece < (unsigned char)BLACK) {
+                    std::cout << "You chose your opponent piece";
+                    goto ifWrongMove;
+                }
+                /*displayTurn(, player);*/
                 player = 'W';
                 break;
             default: throw std::logic_error("logic_error");
         }
         
         //move the piece to the selected square
-        chessboard[iRank2 - 1][fromCharToInt(iFile2)].piece = chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece;        
+        gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2)].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece;        
 
         //delete the previous square piece
-        chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece = EMPTY;
+        gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece = EMPTY;
 
-        debugprint(chessboard);
+        debugprint(gamestatus);
     }
 
     //start of the game

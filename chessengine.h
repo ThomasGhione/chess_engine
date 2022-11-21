@@ -34,7 +34,7 @@
 
 namespace chess {
     const char ML = 8; // ML = MAX_LINE
-
+    
 /*
     const unsigned char pawn = PAWN;           
     const unsigned char knight = KNIGHT;         
@@ -47,27 +47,26 @@ namespace chess {
 */
 
     using board = struct square {
-        bool isLightSquare;
-        // bool isEmpty;
-        unsigned char piece;
+        bool isLightSquare;     // true if light square, black if not
+        unsigned char piece;    // piece
     };
 
     struct gameStatus {
-        int turns;
-        board cb[ML][ML];
+        unsigned int turns;     // turns counter
+        board chessboard[ML][ML];       // cb = chessboard
     };
 
     void createInitialBoard(board [ML][ML]);
     void startingPosition(board [ML][ML]);
     
     std::string displayPiece(board [ML][ML], int, int);
-    void debugprint(board [ML][ML]);
+    void debugprint(gameStatus);
     //void printBoard();
 
 
-    void incTurn();
+    unsigned int incTurn(unsigned int);
     int fromCharToInt(char); 
-    void inputMove(board [ML][ML], char &);
+    void inputMove(gameStatus, char &);
     char gameStarts();
 
     // char player, unsigned char piece, board cb, int rank1, int file1, int rank2, int file2
