@@ -59,17 +59,17 @@ namespace chess {
         }
     }
 
-    void debugprint(board debugboard[ML][ML]) {
+    void debugprint(gameStatus gamestatus) {
         //! white: \u2588
         std::cout << "\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
-            if (debugboard[rank][0].isLightSquare) {
+            if (gamestatus.chessboard[rank][0].isLightSquare) {
                 std::cout << "     ██████      ██████      ██████      ██████      \n" << rank + 1 << "    ";
-                for (int file = 0; file < ML; file += 2) std::cout << "██" << displayPiece(debugboard, rank, file) << "██  " << displayPiece(debugboard, rank, file+1) << "  ";
+                for (int file = 0; file < ML; file += 2) std::cout << "██" << displayPiece(gamestatus.chessboard, rank, file) << "██  " << displayPiece(gamestatus.chessboard, rank, file+1) << "  ";
                 std::cout << "\n     ██████      ██████      ██████      ██████      \n";
             } else {
                 std::cout << "           ██████      ██████      ██████      ██████\n" << rank + 1 << "    ";
-                for (int file = 0; file < ML; file += 2) std::cout << "  " << displayPiece(debugboard, rank, file) << "  ██" << displayPiece(debugboard, rank, file+1) << "██";
+                for (int file = 0; file < ML; file += 2) std::cout << "  " << displayPiece(gamestatus.chessboard, rank, file) << "  ██" << displayPiece(gamestatus.chessboard, rank, file+1) << "██";
                 std::cout << "\n           ██████      ██████      ██████      ██████\n";
             }
         }
