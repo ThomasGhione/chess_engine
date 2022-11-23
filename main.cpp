@@ -12,8 +12,7 @@ int main() {
 
     char p = chess::gameStarts();
     while (true) {
-        inputMove(gamestatus, p);
-        ++gamestatus.turns;
+        inputMove(gamestatus, p); //return 0;
     }
 
     return 0;
