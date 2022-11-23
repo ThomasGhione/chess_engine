@@ -64,9 +64,9 @@ namespace chess {
     //void printBoard();
 
 
-    unsigned int incTurn(unsigned int);
+    unsigned int incTurn(unsigned int &, char &);
     int fromCharToInt(char); 
-    void inputMove(gameStatus, char &);
+    void inputMove(gameStatus &, char &);
     char gameStarts();
 
     // char player, unsigned char piece, board cb, int rank1, int file1, int rank2, int file2
