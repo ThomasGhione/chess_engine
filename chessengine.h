@@ -35,24 +35,13 @@
 namespace chess {
     const char ML = 8; // ML = MAX_LINE
     
-/*
-    const unsigned char pawn = PAWN;           
-    const unsigned char knight = KNIGHT;         
-    const unsigned char bishop = BISHOP;         
-    const unsigned char rook = ROOK;           
-    const unsigned char queen = QUEEN;          
-    const unsigned char king = KING;  
-    const unsigned char white = WHITE;          
-    const unsigned char black = BLACK;          
-*/
-
     using board = struct square {
-        bool isLightSquare;     // true if light square, black if not
-        unsigned char piece;    // piece
+        bool isLightSquare;             // true if light square, black if not
+        unsigned char piece;            // piece
     };
 
-    struct gameStatus {
-        unsigned int turns;     // turns counter
+    using gameStatus = struct gameStatus {
+        unsigned int turns;             // turns counter
         board chessboard[ML][ML];       // cb = chessboard
     };
 
@@ -69,8 +58,8 @@ namespace chess {
     void inputMove(gameStatus &, char &);
     char gameStarts();
 
-    // char player, unsigned char piece, board cb, int rank1, int file1, int rank2, int file2
-    bool isMoveValid(char, unsigned char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
+    // char player, board cb, int rank1, int file1, int rank2, int file2
+    bool isMoveValid(char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
     
 
 }

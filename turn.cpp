@@ -3,7 +3,7 @@
 namespace chess {
 
     //void change turn
-    unsigned int displayTurn(unsigned int &turn, char &player) {
+    unsigned int incTurn(unsigned int &turn, char &player) {
         return (player == 'W') ? ++turn : turn;
     }
 
@@ -31,7 +31,7 @@ namespace chess {
 
         ifWrongMove: // if player chooses their opponent's pieces then go back to "ifWrongMove" to choose again
         std::cin >> iFile1;
-        if (iFile1 == 'Q' || iFile1 == 'q') exit(0);
+        if (iFile1 == 'Q' || iFile1 == 'q') exit(0); // quit
         std::cin >> iRank1 >> iFile2 >> iRank2;
         if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece == EMPTY) {
             std::cout << "You can't choose an empty square! choose again: ";
@@ -44,7 +44,7 @@ namespace chess {
                     std::cout << "It's white's turn! choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 }
-                displayTurn(gamestatus.turns, player);
+                incTurn(gamestatus.turns, player);
                 player = 'B';
                 break;
             case 'B':
