@@ -14,8 +14,14 @@ namespace chess {
             case (PAWN):
                 // if pawn is white it goes '^' otherwise it goes 'v'
                 if (player == 'W') {
-                    if (rank2 > rank1) return true;
-                    if (file2 != file1) return false;
+                    if (file1 != file2) return false; // pawn can't move diagonally, if so then return false
+
+                    if (rank1 == 1) // if pawn is on starting position then it can move either 1 or 2 squares forward
+                        return (rank2 == 2 || rank2 == 3); 
+                    if (rank1 > 1) // else it can move only 1 square
+                        if (rank2 == 7) return true; //TODO promote pawn 
+                        return (rank2 == rank1 + 1);
+                    return false; // TODO throw exception
                 }
                 else {
                     if (rank2 < rank1) return true;
@@ -27,9 +33,9 @@ namespace chess {
             case (BISHOP):
                 return true; //! PLACEHOLDER
             case (ROOK):
-                if (rank2 == rank1) return true;
-                if (file2 == file1) return true;
-                return false;
+                return (rank2 == rank1 || file2 == file1); // if rank (or file) is the same then move is valid 
+
+
             case (QUEEN):
                 return true; //! PLACEHOLDER
             case (KING):
