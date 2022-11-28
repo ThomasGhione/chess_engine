@@ -31,22 +31,28 @@ namespace chess {
 
         ifWrongMove: // if player chooses their opponent's pieces then go back to "ifWrongMove" to choose again
         std::cin >> iFile1;
-        if (iFile1 == 'Q' || iFile1 == 'q') exit(0); // quit
+        if (iFile1 == 'Q' || iFile1 == 'q') exit(0); // quit 
         std::cin >> iRank1 >> iFile2 >> iRank2;
         if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece == EMPTY) {
-            std::cout << "You can't choose an empty square! choose again: ";
+            std::cout << "You can't choose an empty square! Choose again: ";
             goto ifWrongMove; // if square is empty then try again
         }
-
         switch (player) {
             case 'W':
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece > (unsigned char)(WHITE | KING)) { //check if input is valid (u can't choose your opponent pieces)
-                    std::cout << "It's white's turn! choose again: ";
+                    std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
+                } 
+                if (isMoveValid('W', gamestatus.chessboard, iRank1, iFile1, iRank2, iFile2)) {
+                    incTurn(gamestatus.turns, player);
+                    player = 'B';
+                    break;              
                 }
-                incTurn(gamestatus.turns, player);
-                player = 'B';
-                break;
+                std::cout << "ISMOVEVALID = FALSE" << std::endl;
+                std::cout << "Move isn't valid! choose again: ";
+                goto ifWrongMove;
+                
+
             case 'B':
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece < (unsigned char)BLACK) { //check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
@@ -56,7 +62,7 @@ namespace chess {
                 break;
             default: throw std::logic_error("logic_error"); // if player is neither white nor black then throw exception
         }
-        
+        std::cout << "debug fine switch" << std::endl;
         //move the piece to the selected square and THEN delete the previous square piece
         gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2)].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece;        
         gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece = EMPTY;
