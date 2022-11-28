@@ -1,7 +1,7 @@
 #include "chessengine.h"
 
 int main() {
-    std::ios::sync_with_stdio(false); // faster cout
+    //std::ios::sync_with_stdio(false); // faster cout
 
     chess::gameStatus gamestatus;
     gamestatus.turns = 0;
