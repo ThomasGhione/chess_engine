@@ -31,7 +31,12 @@ namespace chess {
                 }
                 throw std::invalid_argument("pawn isn't white nor black");
             case (KNIGHT):
-                return true; //! PLACEHOLDER
+                return (
+                    (rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1) ||
+                    (rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2) ||
+                    (rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1) ||
+                    (rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)                    
+                ); //! PLACEHOLDER
             case (BISHOP):
                 return true; //! PLACEHOLDER
             case (ROOK):
