@@ -4,39 +4,35 @@ namespace chess {
 
     // check if move is legit
     bool isMoveValid(char player, board chessboard[ML][ML], int rank1, int file1, int rank2, int file2) {
-        unsigned char piece1 = chessboard[rank1][file1].piece & PIECEMASK; // get the piece ID by getting the 1st 2bits = to zero   
-
-        //! check which piece i'm using and get the legal moves
-        switch (piece1) {
+        // get the piece ID by getting the 1st 2bits = 00   
+        switch (chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
             case (PAWN):
                 if (file1 != file2) return false; // pawn can't move diagonally, if so then return false
 
                 // if pawn is white it goes '^' otherwise it goes 'v'
                 if (player == 'W') {
-                    if (rank1 == 1) // if pawn is on starting position then it can move either 1 or 2 squares forward
-                        return (rank2 == 2 || rank2 == 3); 
-                    if (rank1 > 1) { // else it can move only 1 square
-                        if (rank2 == 7) return true; //TODO promote pawn 
+                    if (rank1 == 2) // if pawn is on starting position then it can move either 1 or 2 squares forward
+                        return (rank2 == 3 || rank2 == 4); 
+                    if (rank1 > 2) { // else it can move only 1 square
+                        if (rank2 == 8) return true; //TODO promote pawn 
                         return (rank2 == rank1 + 1);
                     } return false; // TODO throw exception
                 }
                 if (player == 'B') {
-                    if (rank1 == 6)
-                        return (rank2 == 5 || rank2 == 4);
-                    if (rank1 < 6) {
-                        if (rank2 == 0) return true; //TODO promote pawn
+                    if (rank1 == 7)
+                        return (rank2 == 6 || rank2 == 5);
+                    if (rank1 < 7) {
+                        if (rank2 == 1) return true; //TODO promote pawn
                         return (rank2 == rank1 - 1);
                     } return false; // TODO throw exception
                 }
                 throw std::invalid_argument("pawn isn't white nor black");
             case (KNIGHT):
-                return (
-                    (rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1) ||
-                    (rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2) ||
-                    (rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1) ||
-                    (rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)                    
-                ); //! PLACEHOLDER
+                return (((rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1)) ||
+                        ((rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2)) ||
+                        ((rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1)) ||
+                        ((rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)));
             case (BISHOP):
                 return true; //! PLACEHOLDER
             case (ROOK):

@@ -59,8 +59,7 @@ namespace chess {
         }
     }
 
-    void debugprint(gameStatus gamestatus) {
-        //! white: \u2588
+    void debugprint(gameStatus gamestatus) { //! white: \u2588
         std::cout << "\n\n       A     B     C     D     E     F     G     H\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gamestatus.chessboard[rank][0].isLightSquare) {
@@ -72,8 +71,7 @@ namespace chess {
                 for (int file = 0; file < ML; file += 2) std::cout << "  " << displayPiece(gamestatus.chessboard, rank, file) << "  ██" << displayPiece(gamestatus.chessboard, rank, file+1) << "██";
                 std::cout << "    " << rank + 1 << "\n           ██████      ██████      ██████      ██████\n";
             }
-        }
-        std::cout << "\n\n       A     B     C     D     E     F     G     H       TURN: " << gamestatus.turns << "\n\n\n";
+        } std::cout << "\n\n       A     B     C     D     E     F     G     H       TURN: " << gamestatus.turns << "\n\n";
     }
 
 }

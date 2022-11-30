@@ -8,8 +8,7 @@ namespace chess {
     }
 
     int fromCharToInt(char file) {
-        file = std::tolower(file);
-        switch (file) {
+        switch (std::tolower(file)) {
             case 'a': return 0;
             case 'b': return 1;
             case 'c': return 2;
@@ -31,8 +30,16 @@ namespace chess {
 
         ifWrongMove: // if player chooses their opponent's pieces then go back to "ifWrongMove" to choose again
         std::cin >> iFile1;
-        if (iFile1 == 'Q' || iFile1 == 'q') exit(0); // quit 
+        if (iFile1 == 'Q' || iFile1 == 'q') exit(EXIT_SUCCESS); // quit 
         std::cin >> iRank1 >> iFile2 >> iRank2;
+
+        if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 ||
+            iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 ||
+            iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
+            std::cout << "Invalid coords! Choose again: ";
+            goto ifWrongMove; // if coords have are "< a 1" || "> h 8" then they try again
+        }
+
         if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece == EMPTY) {
             std::cout << "You can't choose an empty square! Choose again: ";
             goto ifWrongMove; // if square is empty then try again
@@ -45,8 +52,8 @@ namespace chess {
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 } 
                 if (isMoveValid('W', gamestatus.chessboard,
-                                iRank1 - 1, fromCharToInt(iFile1),
-                                iRank2 - 1, fromCharToInt(iFile2))) {
+                                iRank1, fromCharToInt(iFile1)+1,
+                                iRank2, fromCharToInt(iFile2)+1)) {
                     incTurn(gamestatus.turns, player);
                     player = 'B';
                     break;              
@@ -64,7 +71,7 @@ namespace chess {
                 break;
             default: throw std::logic_error("logic_error"); // if player is neither white nor black then throw exception
         }
-        std::cout << "debug fine switch" << std::endl;
+
         //move the piece to the selected square and THEN delete the previous square piece
         gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2)].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece;        
         gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece = EMPTY;
@@ -74,17 +81,18 @@ namespace chess {
     //start of the game
     char gameStarts() {
         std::cout << "MENU:\n    W: play as white\n    B: play as black\n    S: save (to add)\n    L: load last game (to add)\n    Q: quit\nINPUT: ";
-        char player;
+        char option;
         ifWrongOption:
-        std::cin >> player;
-        switch (player) {
+        std::cin >> option;
+        switch (toupper(option)) {
             case 'W': return 'W';
             case 'B': return 'B';       //TODO WILL BE FINISHED AFTER CREATING (AT LEAST) THE ENGINE PROTOTYPE
             case 'S': return 'S';       //TODO IMPLEMENT SAVE
             case 'L': return 'L';       //TODO IMPLEMENT LOAD
-            case 'Q': exit(0);     
-            default: 
-                std::cout << "player must be either white (W) or black (B), choose again: ";
+            case 'Q': exit(EXIT_SUCCESS);     
+            default:
+                std::cout << "invalid option! Please choose again: ";
+                //std::cout << "player must be either white (W) or black (B), choose again: ";
                 goto ifWrongOption;
         }
     }
