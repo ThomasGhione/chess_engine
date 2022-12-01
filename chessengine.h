@@ -11,6 +11,7 @@
 #include <cctype>
 #include <bitset>
 
+
 //define values
 #define P 1 //pawn
 #define N 3
@@ -48,11 +49,13 @@
 
 namespace chess {
 
+    using piece_id = unsigned char;
+
     const char ML = 8; // ML = MAX_LINE
-    
+
     using board = struct square {
         bool isLightSquare;             // true if light square, black if not
-        unsigned char piece;            // piece
+        piece_id piece;                 // piece
     };
 
     using gameStatus = struct gameStatus {

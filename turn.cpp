@@ -9,14 +9,14 @@ namespace chess {
 
     int fromCharToInt(char file) {
         switch (std::tolower(file)) {
-            case 'a': return 0;
-            case 'b': return 1;
-            case 'c': return 2;
-            case 'd': return 3;
-            case 'e': return 4;
-            case 'f': return 5;
-            case 'g': return 6;
-            case 'h': return 7;
+            case 'a': return 1;
+            case 'b': return 2;
+            case 'c': return 3;
+            case 'd': return 4;
+            case 'e': return 5;
+            case 'f': return 6;
+            case 'g': return 7;
+            case 'h': return 8;
             default: throw std::invalid_argument("invalid file coord");
         }
     }
@@ -40,20 +40,20 @@ namespace chess {
             goto ifWrongMove; // if coords have are "< a 1" || "> h 8" then they try again
         }
 
-        if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece == EMPTY) {
+        if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece == EMPTY) {
             std::cout << "You can't choose an empty square! Choose again: ";
             goto ifWrongMove; // if square is empty then try again
         }
         
         switch (player) {
             case 'W':
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece > (unsigned char)(WHITE | KING)) { //check if input is valid (u can't choose your opponent pieces)
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { //check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 } 
                 if (isMoveValid('W', gamestatus.chessboard,
-                                iRank1, fromCharToInt(iFile1)+1,
-                                iRank2, fromCharToInt(iFile2)+1)) {
+                                iRank1, fromCharToInt(iFile1),
+                                iRank2, fromCharToInt(iFile2))) {
                     incTurn(gamestatus.turns, player);
                     player = 'B';
                     break;              
@@ -63,7 +63,7 @@ namespace chess {
                 
 
             case 'B':
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece < (unsigned char)BLACK) { //check if input is valid (u can't choose your opponent pieces)
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { //check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 }
@@ -73,8 +73,8 @@ namespace chess {
         }
 
         //move the piece to the selected square and THEN delete the previous square piece
-        gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2)].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece;        
-        gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1)].piece = EMPTY;
+        gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
+        gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
         debugprint(gamestatus); //print the board every time a player makes a move
     }
 

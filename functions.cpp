@@ -33,7 +33,7 @@ namespace chess {
     void createInitialBoard(board new_board[ML][ML]) {
         for (int rank = 0; rank < ML; ++rank) 
             for (int file = 0; file < ML; ++file) 
-                ((rank + file) % 2 == 0) 
+                (!((rank + file) % 2)) 
                 ? (new_board[rank][file].isLightSquare = false) 
                 : (new_board[rank][file].isLightSquare = true);
         startingPosition(new_board);
