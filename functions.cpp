@@ -24,18 +24,14 @@ namespace chess {
         }
 
         //empty squares
-        for (int rank = 2; rank < 6; ++rank) 
-            for (int file = 0; file < ML; ++file) 
-                emptyboard[rank][file].piece = EMPTY;
+        for (int rank = 2; rank < 6; ++rank) for (int file = 0; file < ML; ++file) emptyboard[rank][file].piece = EMPTY;
     } 
 
 
-    void createInitialBoard(board new_board[ML][ML]) {
-        for (int rank = 0; rank < ML; ++rank) 
+    void createInitialBoard(board new_board[ML][ML]) { // set up light squares
+        for (int rank = 0; rank < ML; ++rank)
             for (int file = 0; file < ML; ++file) 
-                (!((rank + file) % 2)) 
-                ? (new_board[rank][file].isLightSquare = false) 
-                : (new_board[rank][file].isLightSquare = true);
+                (!((rank + file) % 2)) ? (new_board[rank][file].isLightSquare = false) : (new_board[rank][file].isLightSquare = true);
         startingPosition(new_board);
     }
 
@@ -59,7 +55,7 @@ namespace chess {
         }
     }
 
-    void debugprint(gameStatus gamestatus) { //! white: \u2588
+    void debugprint(gameStatus &gamestatus) { //! white: \u2588
         std::cout << "\n\n       A     B     C     D     E     F     G     H\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gamestatus.chessboard[rank][0].isLightSquare) {

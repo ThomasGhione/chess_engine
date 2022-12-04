@@ -2,11 +2,6 @@
 
 namespace chess {
 
-    //void change turn
-    unsigned int incTurn(unsigned int &turn, char &player) {
-        return (player == 'W') ? ++turn : turn;
-    }
-
     int fromCharToInt(char file) {
         switch (std::tolower(file)) {
             case 'a': return 1;
@@ -54,7 +49,7 @@ namespace chess {
                 if (isMoveValid('W', gamestatus.chessboard,
                                 iRank1, fromCharToInt(iFile1),
                                 iRank2, fromCharToInt(iFile2))) {
-                    incTurn(gamestatus.turns, player);
+                    ++gamestatus.turns; //inc turn after checking if move is valid
                     player = 'B';
                     break;              
                 }
@@ -67,8 +62,14 @@ namespace chess {
                     std::cout << "It's black's turn! choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 }
-                player = 'W';
-                break;
+                if (isMoveValid('B', gamestatus.chessboard,
+                                iRank1, fromCharToInt(iFile1),
+                                iRank2, fromCharToInt(iFile2))) {
+                    player = 'W';
+                    break;              
+                }
+                std::cout << "Move isn't valid! choose again: ";
+                goto ifWrongMove;
             default: throw std::logic_error("logic_error"); // if player is neither white nor black then throw exception
         }
 

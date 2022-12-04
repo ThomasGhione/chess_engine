@@ -16,7 +16,7 @@ namespace chess {
                         return (rank2 == 3 || rank2 == 4); 
                     if (rank1 > 2) { // else it can move only 1 square
                         if (rank2 == 8) return true; //TODO promote pawn 
-                        return (rank2 == rank1 + 1);
+                        return (rank2 == ++rank1);
                     } return false; // TODO throw exception
                 }
                 if (player == 'B') {
@@ -24,7 +24,7 @@ namespace chess {
                         return (rank2 == 6 || rank2 == 5);
                     if (rank1 < 7) {
                         if (rank2 == 1) return true; //TODO promote pawn
-                        return (rank2 == rank1 - 1);
+                        return (rank2 == --rank1);
                     } return false; // TODO throw exception
                 }
                 throw std::invalid_argument("pawn isn't white nor black");
@@ -36,7 +36,7 @@ namespace chess {
             case (BISHOP):
                 return true; //! PLACEHOLDER
             case (ROOK):
-                return (rank2 == rank1 || file2 == file1); // if rank (or file) is the same then move is valid 
+                return ((rank2 == rank1) != (file2 == file1)); // if rank (or file) is the same then move is valid (!= means XOR)
             case (QUEEN):
                 return true; //! PLACEHOLDER
             case (KING):
