@@ -69,11 +69,10 @@ namespace chess {
     void startingPosition(board [ML][ML]);
     
     std::string displayPiece(board [ML][ML], int, int);
-    void debugprint(gameStatus);
+    void debugprint(gameStatus &);
     //void printBoard();
 
 
-    unsigned int incTurn(unsigned int &, char &);
     int fromCharToInt(char); 
     void inputMove(gameStatus &, char &);
     char gameStarts();
