@@ -77,6 +77,7 @@ namespace chess {
     void inputMove(gameStatus &, char &);
     char gameStarts();
 
+    bool promotePawn(char, board [ML][ML], int, int);
     // char player, board cb, int rank1, int file1, int rank2, int file2
     bool isMoveValid(char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
 
