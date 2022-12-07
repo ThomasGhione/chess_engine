@@ -18,7 +18,7 @@ namespace chess {
 
 
     //void input move
-    void inputMove(gameStatus &gamestatus, char &player) {
+    void inputMove(gameStatus &gamestatus, unsigned char &player) {
         std::cout << "\nInput your move\nFormat: FILE1 RANK1 FILE2 RANK2\nOr press Q/q to quit\nInput: ";
         char iFile1, iFile2;
         int iRank1, iRank2;
@@ -41,31 +41,31 @@ namespace chess {
         }
         
         switch (player) {
-            case 'W':
+            case WHITE:
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { //check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 } 
-                if (isMoveValid('W', gamestatus.chessboard,
+                if (isMoveValid(WHITE, gamestatus.chessboard,
                                 iRank1, fromCharToInt(iFile1),
                                 iRank2, fromCharToInt(iFile2))) {
                     ++gamestatus.turns; //inc turn after checking if move is valid
-                    player = 'B';
+                    player = BLACK;
                     break;              
                 }
                 std::cout << "Move isn't valid! choose again: ";
                 goto ifWrongMove;
                 
 
-            case 'B':
+            case BLACK:
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { //check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
                 }
-                if (isMoveValid('B', gamestatus.chessboard,
+                if (isMoveValid(BLACK, gamestatus.chessboard,
                                 iRank1, fromCharToInt(iFile1),
                                 iRank2, fromCharToInt(iFile2))) {
-                    player = 'W';
+                    player = WHITE;
                     break;              
                 }
                 std::cout << "Move isn't valid! choose again: ";

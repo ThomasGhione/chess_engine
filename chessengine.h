@@ -60,9 +60,9 @@ namespace chess {
 
     using gameStatus = struct gameStatus {
         unsigned int turns;             // turns counter
+        //listOfMoves moves;             // moves struct
         board chessboard[ML][ML];       // cb = chessboard
     };
-
 
 
     void createInitialBoard(board [ML][ML]);
@@ -74,12 +74,12 @@ namespace chess {
 
 
     int fromCharToInt(char); 
-    void inputMove(gameStatus &, char &);
+    void inputMove(gameStatus &, unsigned char &);
     char gameStarts();
 
-    bool promotePawn(char, board [ML][ML], int, int);
+    bool promotePawn(unsigned char, board [ML][ML], int, int);
     // char player, board cb, int rank1, int file1, int rank2, int file2
-    bool isMoveValid(char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
+    bool isMoveValid(unsigned char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
 
 }
 

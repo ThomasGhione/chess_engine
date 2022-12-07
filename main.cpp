@@ -10,7 +10,13 @@ int main() {
     chess::debugprint(gamestatus);
 
 
-    char p = chess::gameStarts();
+    unsigned char p = chess::gameStarts();
+
+    switch (p) {
+        case 'W': p = WHITE; break;
+        case 'B': p = BLACK; break;
+    }
+
     while (true) {
         inputMove(gamestatus, p); //return 0;
     }
