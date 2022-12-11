@@ -42,33 +42,23 @@ namespace chess {
         
         switch (player) {
             case WHITE:
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { //check if input is valid (u can't choose your opponent pieces)
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
-                } 
-                if (isMoveValid(WHITE, gamestatus.chessboard,
-                                iRank1, fromCharToInt(iFile1),
-                                iRank2, fromCharToInt(iFile2))) {
-                    ++gamestatus.turns; //inc turn after checking if move is valid
+                } if (isMoveValid(WHITE, gamestatus.chessboard, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) { // check if move is valid
+                    ++gamestatus.turns; // inc turn after checking if move is valid
                     player = BLACK;
                     break;              
-                }
-                std::cout << "Move isn't valid! choose again: ";
+                } std::cout << "Move isn't valid! choose again: "; // if we arrived here then the move isn't valid, try again
                 goto ifWrongMove;
-                
-
             case BLACK:
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { //check if input is valid (u can't choose your opponent pieces)
+                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
-                    goto ifWrongMove; // if selected square has opponent's pieces then try again
-                }
-                if (isMoveValid(BLACK, gamestatus.chessboard,
-                                iRank1, fromCharToInt(iFile1),
-                                iRank2, fromCharToInt(iFile2))) {
+                    goto ifWrongMove;
+                } if (isMoveValid(BLACK, gamestatus.chessboard, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
                     player = WHITE;
                     break;              
-                }
-                std::cout << "Move isn't valid! choose again: ";
+                } std::cout << "Move isn't valid! choose again: ";
                 goto ifWrongMove;
             default: throw std::logic_error("logic_error"); // if player is neither white nor black then throw exception
         }
@@ -87,9 +77,9 @@ namespace chess {
         std::cin >> option;
         switch (toupper(option)) {
             case 'W': return 'W';
-            case 'B': return 'B';       //TODO WILL BE FINISHED AFTER CREATING (AT LEAST) THE ENGINE PROTOTYPE
-            case 'S': return 'S';       //TODO IMPLEMENT SAVE
-            case 'L': return 'L';       //TODO IMPLEMENT LOAD
+            case 'B': return 'B';       //TODO - WILL BE FINISHED AFTER CREATING THE ENGINE PROTOTYPE
+            case 'S': return 'S';       //TODO - IMPLEMENT SAVE
+            case 'L': return 'L';       //TODO - IMPLEMENT LOAD
             case 'Q': exit(EXIT_SUCCESS);     
             default:
                 std::cout << "invalid option! Please choose again: ";

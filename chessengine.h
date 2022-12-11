@@ -77,7 +77,7 @@ namespace chess {
     void inputMove(gameStatus &, unsigned char &);
     char gameStarts();
 
-    bool promotePawn(unsigned char, board [ML][ML], int, int);
+    bool promotePawn(board [ML][ML], unsigned char &, int &, int &);
     bool rookMove(board [ML][ML], int &, int &, int &, int &);
     bool bishopMove(board [ML][ML], int &, int &, int &, int &);
     // char player, board cb, int rank1, int file1, int rank2, int file2
