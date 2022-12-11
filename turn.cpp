@@ -16,23 +16,23 @@ namespace chess {
         }
     }
 
-
     //void input move
     void inputMove(gameStatus &gamestatus, unsigned char &player) {
-        std::cout << "\nInput your move\nFormat: FILE1 RANK1 FILE2 RANK2\nOr press Q/q to quit\nInput: ";
+        std::cout << "\nPress M/m for more infos, or input your move: ";
         char iFile1, iFile2;
         int iRank1, iRank2;
 
-        ifWrongMove: // if player chooses their opponent's pieces then go back to "ifWrongMove" to choose again
+        ifWrongMove: // if something goes wrong while inputting the coords or the move isn't valid then it goes back here and ask for a valid move
         std::cin >> iFile1;
-        if (iFile1 == 'Q' || iFile1 == 'q') exit(EXIT_SUCCESS); // quit 
+        if (iFile1 == 'M' || iFile1 == 'm') {
+            std::cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\nInput: ";
+            goto ifWrongMove;
+        } if (iFile1 == 'Q' || iFile1 == 'q') exit(EXIT_SUCCESS); // quit 
         std::cin >> iRank1 >> iFile2 >> iRank2;
 
-        if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 ||
-            iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 ||
-            iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
+        if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 || iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 || iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
             std::cout << "Invalid coords! Choose again: ";
-            goto ifWrongMove; // if coords have are "< a 1" || "> h 8" then they try again
+            goto ifWrongMove; // if coords are "< a1" || "> h8" then try again
         }
 
         if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece == EMPTY) {

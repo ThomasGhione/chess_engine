@@ -21,7 +21,7 @@ namespace chess {
         }
     }
 
-    bool rookMove(board cb[ML][ML], int rank1, int file1, int rank2, int file2) {
+    bool rookMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) {
         if ((rank2 == rank1) != (file2 == file1)) { // rooks can move like a "+", "!=" = "XOR" (both equations can't be true at the same time)
             if (rank1 < rank2) for (int trank = rank1 + 1; trank < rank2; ++trank) if (cb[trank - 1][file2 - 1].piece) return false; // "cb[trank - 1][file2 - 1].piece" = "cb[trank - 1][file2 - 1].piece != EMPTY"
             if (rank1 > rank2) for (int trank = rank1 - 1; trank > rank2; --trank) if (cb[trank - 1][file2 - 1].piece) return false;
@@ -31,37 +31,29 @@ namespace chess {
         } return false; // if we arrived here it means both the equations are true or both are false
     }
 
-    bool bishopMove(board cb[ML][ML], int rank1, int file1, int rank2, int file2) {
+    bool bishopMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) {
         int trank, tfile;
-        bool flag;
+        bool flag = false;;
         if ((rank2 > rank1) && (file2 > file1)) {
-            flag = false;
             for (trank = rank1, tfile = file1; trank < 9 || tfile < 9; ++trank, ++tfile) if ((rank2 == trank + 1) && (file2 == tfile + 1)) flag = true;
-            if (flag) {
-                for (trank = rank1 + 1, tfile = file1 + 1; trank < rank2 || tfile < file2; ++trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-                return true;
-            }  return false;
+            if (!flag) return false;
+            for (trank = rank1 + 1, tfile = file1 + 1; trank < rank2 || tfile < file2; ++trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+            return true;
         } if ((rank2 > rank1) && (file2 < file1)) {
-            flag = false;
             for (trank = rank1, tfile = file1; trank < 9 || tfile > 0; ++trank, --tfile) if ((rank2 == trank + 1) && (file2 == tfile - 1)) flag = true;
-            if (flag) {
-                for (trank = rank1 + 1, tfile = file1 - 1; trank < rank2 || tfile > file2; ++trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-                return true;
-            } return false;
+            if (!flag) return false;
+            for (trank = rank1 + 1, tfile = file1 - 1; trank < rank2 || tfile > file2; ++trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+            return true;
         } if ((rank2 < rank1) && (file2 > file1)) {
-            flag = false;
             for (trank = rank1, tfile = file1; trank > 0 || tfile < 9; --trank, ++tfile) if ((rank2 == trank - 1) && (file2 == tfile + 1)) flag = true;
-            if (flag) {
-                for (trank = rank1 - 1, tfile = file1 + 1; trank > rank2 || tfile < file2; --trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-                return true;
-            } return false;
+            if (!flag) return false;
+            for (trank = rank1 - 1, tfile = file1 + 1; trank > rank2 || tfile < file2; --trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+            return true;
         } if ((rank2 < rank1) && (file2 < file1)) {
-            flag = false;
             for (trank = rank1, tfile = file1; trank > 0 || tfile > 0; --trank, --tfile) if ((rank2 == trank - 1) && (file2 == tfile - 1)) flag = true; 
-            if (flag) {
-                for (trank = rank1 - 1, tfile = file1 - 1; trank > rank2 || tfile > file2; --trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-                return true;
-            } return false;
+            if (!flag) return false;
+            for (trank = rank1 - 1, tfile = file1 - 1; trank > rank2 || tfile > file2; --trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+            return true;
         } return false; // if we arrived here it means none of the previous options were valied, therefore the outcome must be false
     }
 
@@ -69,8 +61,8 @@ namespace chess {
     bool isMoveValid(unsigned char player, board cb[ML][ML], int rank1, int file1, int rank2, int file2) {
 
         // you can't take your own pieces
-        if (((cb[rank2 - 1][file2 - 1].piece & PLAYERMASK) == WHITE) && (player == WHITE)) return false;
-        if (((cb[rank2 - 1][file2 - 1].piece & PLAYERMASK) == BLACK) && (player == BLACK)) return false;
+        if ((((cb[rank2 - 1][file2 - 1].piece & PLAYERMASK) == WHITE) && (player == WHITE)) || 
+            (((cb[rank2 - 1][file2 - 1].piece & PLAYERMASK) == BLACK) && (player == BLACK))) return false;
 
         switch (cb[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             

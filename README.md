@@ -4,10 +4,12 @@
 
 # Description
 
-  This is software entirely made in C++ to play chess using 
-  the terminal, it's tested on W11 and Ubuntu 20.04 so far.
-  As soon as I complete implementing every rule I'll start 
-  programming an engine to play against.
+  This is a script entirely made in C++ which lets you play chess
+  using the terminal, it's tested on W11 and Ubuntu 20.04 so far.
+  
+  TODO:
+    As soon as I complete implementing every rule I'll start 
+    programming an engine to play against.
 
 
 # Compile
@@ -22,9 +24,6 @@
   UBUNTU 20.04:
     g++ *.cpp
     ./a.out
-
-  using g++ and "-Wall -Wextra -Wpedantic" to get more 
-  informations abuot warnings & notes.
 
 
 # Contributing
