@@ -62,6 +62,7 @@ namespace chess {
         unsigned int turns;             // turns counter
         //listOfMoves moves;             // moves struct
         board chessboard[ML][ML];       // cb = chessboard
+        bool hasAlreadyMoved[6]; // king e1, rook a1, rook h1, king e8, rook a8, rook h8
     };
 
 
@@ -78,10 +79,10 @@ namespace chess {
     char gameStarts();
 
     bool promotePawn(board [ML][ML], unsigned char &, int &, int &);
-    bool rookMove(board [ML][ML], int &, int &, int &, int &);
+    bool rookMove(gameStatus &, int &, int &, int &, int &, bool);
     bool bishopMove(board [ML][ML], int &, int &, int &, int &);
     // char player, board cb, int rank1, int file1, int rank2, int file2
-    bool isMoveValid(unsigned char, board [ML][ML], int, int, int, int); // 1 = startPos // 2 = newPos 
+    bool isMoveValid(unsigned char, gameStatus &, int, int, int, int); // 1 = startPos // 2 = newPos 
 
 }
 
