@@ -5,6 +5,7 @@ int main() {
 
     chess::gameStatus gamestatus;
     gamestatus.turns = 0;
+    for (int i = 0; i < 6; ++i) gamestatus.hasAlreadyMoved[i] = false;
 
     chess::createInitialBoard(gamestatus.chessboard);
     chess::debugprint(gamestatus);
