@@ -17,7 +17,7 @@ namespace chess {
     }
 
     //void input move
-    void inputMove(gameStatus &gamestatus, unsigned char &player) {
+    void inputMove(gameStatus &gamestatus) {
         std::cout << "\nPress M/m for more infos, or input your move: ";
         char iFile1, iFile2;
         int iRank1, iRank2;
@@ -27,8 +27,10 @@ namespace chess {
         if (iFile1 == 'M' || iFile1 == 'm') {
             std::cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\nInput: ";
             goto ifWrongMove;
-        } if (iFile1 == 'Q' || iFile1 == 'q') exit(EXIT_SUCCESS); // quit 
-        std::cin >> iRank1 >> iFile2 >> iRank2;
+        }
+        
+        if (iFile1 == 'Q' || iFile1 == 'q') exit(EXIT_SUCCESS);   // if the first input is Q/q then exit the program successfully
+        std::cin >> iRank1 >> iFile2 >> iRank2;                   // otherwise keep asking the rest of the input/coords
 
         if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 || iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 || iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
             std::cout << "Invalid coords! Choose again: ";
@@ -40,20 +42,18 @@ namespace chess {
             goto ifWrongMove; // if square is empty then try again
         }
         
-        switch (player) {
+        switch (gamestatus.player) {
             case WHITE:
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
-                } if (isMoveValid(WHITE, gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) { // check if move is valid
+                } if (isMoveValid(gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) { // check if move is valid
                     ++gamestatus.turns; // inc turn after checking if move is valid
-                    player = BLACK;
-                    gamestatus.lastMoveArray[0].file1 = iFile1;
-                    gamestatus.lastMoveArray[0].rank1 = iRank1;
-                    gamestatus.lastMoveArray[0].file2 = iFile2;
-                    gamestatus.lastMoveArray[0].rank2 = iRank2;
-                    //gamestatus.lastMove[0] = gamestatus.lastMove->append(itoi(iRank1)); + iFile1 + iRank2 + iFile2;
-                    //std::cout << gamestatus.lastMove[0];
+                    gamestatus.player = BLACK;
+                    gamestatus.lastMoveArray[0].file1 = iFile1;    /* setting up the last move */
+                    gamestatus.lastMoveArray[0].rank1 = iRank1;    /*                          */
+                    gamestatus.lastMoveArray[0].file2 = iFile2;    /*                          */
+                    gamestatus.lastMoveArray[0].rank2 = iRank2;    /*                          */
                     break;              
                 } std::cout << "Move isn't valid! choose again: "; // if we arrived here then the move isn't valid, try again
                 goto ifWrongMove;
@@ -61,8 +61,8 @@ namespace chess {
                 if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
                     goto ifWrongMove;
-                } if (isMoveValid(BLACK, gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
-                    player = WHITE;
+                } if (isMoveValid(gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
+                    gamestatus.player = WHITE;
                     gamestatus.lastMoveArray[1].file1 = iFile1;
                     gamestatus.lastMoveArray[1].rank1 = iRank1;
                     gamestatus.lastMoveArray[1].file2 = iFile2;

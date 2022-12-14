@@ -64,11 +64,12 @@ namespace chess {
     };
 
     using gameStatus = struct gameStatus {
+        unsigned char player;
         unsigned int turns;             // turns counter
         //listOfMoves moves;            // moves struct
         board chessboard[ML][ML];       // cb = chessboard
         bool hasAlreadyMoved[6];        // king e1, rook a1, rook h1, king e8, rook a8, rook h8
-        lastMove lastMoveArray[2];        // lastmove[0] is for white and lastmove[1] is for black
+        lastMove lastMoveArray[2];      // lastmove[0] is for white and lastmove[1] is for black
     };
 
 
@@ -81,14 +82,14 @@ namespace chess {
 
 
     int fromCharToInt(char); 
-    void inputMove(gameStatus &, unsigned char &);
+    void inputMove(gameStatus &);
     char gameStarts();
 
     bool promotePawn(board [ML][ML], unsigned char &, int &, int &);
     bool rookMove(gameStatus &, int &, int &, int &, int &, bool);
     bool bishopMove(board [ML][ML], int &, int &, int &, int &);
     // char player, board cb, int rank1, int file1, int rank2, int file2
-    bool isMoveValid(unsigned char, gameStatus &, int, int, int, int); // 1 = startPos // 2 = newPos 
+    bool isMoveValid(gameStatus &, int, int, int, int); // 1 = startPos // 2 = newPos 
 
 }
 
