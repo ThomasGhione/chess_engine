@@ -96,15 +96,29 @@ namespace chess {
             case (ROOK): return rookMove(gs, rank1, file1, rank2, file2, false);
             case (QUEEN): return (bishopMove(gs.chessboard, rank1, file1, rank2, file2) || rookMove(gs, rank1, file1, rank2, file2, true)) ? true : false;
             case (KING): //TODO implement check/checkmate/castle
-                //! CASTLE NOT FINISHED
-                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[2]) && (rank2 == 1) && (file2 == 7) &&
-                    (gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) && (gs.chessboard[0][5].piece == EMPTY)) {
+                // castle short & long
+                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[2]) && (rank2 == 1) && (file2 == 7) && (gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) && (gs.chessboard[0][5].piece == EMPTY)) {
                     gs.chessboard[0][5].piece = gs.chessboard[0][7].piece;  // move the rook
                     gs.chessboard[0][7].piece = EMPTY;                      // delete the rook before in previous position
                     gs.hasAlreadyMoved[0] = true;                           // set the king as "already moved" so it can't castle twice
                     return true;                                            
+                } if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[1]) && (rank2 == 1) && (file2 == 3) && (gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) && (gs.chessboard[0][3].piece == EMPTY)) {
+                    gs.chessboard[0][3].piece = gs.chessboard[0][0].piece;
+                    gs.chessboard[0][0].piece = EMPTY;
+                    gs.hasAlreadyMoved[0] = true;
+                    return true;                                            
+                } if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[5]) && (rank2 == 8) && (file2 == 7) && (gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) && (gs.chessboard[7][5].piece == EMPTY)) {
+                    gs.chessboard[7][5].piece = gs.chessboard[7][7].piece;
+                    gs.chessboard[7][7].piece = EMPTY;
+                    gs.hasAlreadyMoved[3] = true;
+                    return true;                                            
+                } if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[4]) && (rank2 == 8) && (file2 == 3) && (gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) && (gs.chessboard[7][3].piece == EMPTY)) {
+                    gs.chessboard[7][3].piece = gs.chessboard[7][0].piece;
+                    gs.chessboard[7][0].piece = EMPTY;            
+                    gs.hasAlreadyMoved[3] = true;
+                    return true;                                            
                 }
-
+                // normal moves
                 if ((rank2 == rank1 + 1) || (rank2 == rank1 - 1) || (rank2 == rank1))
                     if ((file2 == file1 + 1) || (file2 == file1 - 1) || (file2 == file1)) {
                         if (player == WHITE) gs.hasAlreadyMoved[0] = true;

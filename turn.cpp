@@ -48,6 +48,12 @@ namespace chess {
                 } if (isMoveValid(WHITE, gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) { // check if move is valid
                     ++gamestatus.turns; // inc turn after checking if move is valid
                     player = BLACK;
+                    gamestatus.lastMoveArray[0].file1 = iFile1;
+                    gamestatus.lastMoveArray[0].rank1 = iRank1;
+                    gamestatus.lastMoveArray[0].file2 = iFile2;
+                    gamestatus.lastMoveArray[0].rank2 = iRank2;
+                    //gamestatus.lastMove[0] = gamestatus.lastMove->append(itoi(iRank1)); + iFile1 + iRank2 + iFile2;
+                    //std::cout << gamestatus.lastMove[0];
                     break;              
                 } std::cout << "Move isn't valid! choose again: "; // if we arrived here then the move isn't valid, try again
                 goto ifWrongMove;
@@ -57,6 +63,10 @@ namespace chess {
                     goto ifWrongMove;
                 } if (isMoveValid(BLACK, gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
                     player = WHITE;
+                    gamestatus.lastMoveArray[1].file1 = iFile1;
+                    gamestatus.lastMoveArray[1].rank1 = iRank1;
+                    gamestatus.lastMoveArray[1].file2 = iFile2;
+                    gamestatus.lastMoveArray[1].rank2 = iRank2;
                     break;              
                 } std::cout << "Move isn't valid! choose again: ";
                 goto ifWrongMove;
