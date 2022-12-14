@@ -56,7 +56,8 @@ namespace chess {
     }
 
     void debugprint(gameStatus &gamestatus) { //! white: \u2588
-        std::cout << "\n\n       A     B     C     D     E     F     G     H\n\n\n";
+        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: "; //TODO implement black last move
+        std::cout << gamestatus.lastMoveArray[0].file1 << gamestatus.lastMoveArray[0].rank1 << gamestatus.lastMoveArray[0].file2 << gamestatus.lastMoveArray[0].rank2 << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gamestatus.chessboard[rank][0].isLightSquare) {
                 std::cout << "     ██████      ██████      ██████      ██████      \n" << rank + 1 << "    ";

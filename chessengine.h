@@ -53,6 +53,11 @@ namespace chess {
 
     const char ML = 8; // ML = MAX_LINE
 
+    using lastMove = struct lastMove {
+        char file1; int rank1;          // coords of the square before moving the piece
+        char file2; int rank2;          // coords of the square after moving the piece
+    };
+
     using board = struct square {
         bool isLightSquare;             // true if light square, black if not
         piece_id piece;                 // piece
@@ -60,9 +65,10 @@ namespace chess {
 
     using gameStatus = struct gameStatus {
         unsigned int turns;             // turns counter
-        //listOfMoves moves;             // moves struct
+        //listOfMoves moves;            // moves struct
         board chessboard[ML][ML];       // cb = chessboard
-        bool hasAlreadyMoved[6]; // king e1, rook a1, rook h1, king e8, rook a8, rook h8
+        bool hasAlreadyMoved[6];        // king e1, rook a1, rook h1, king e8, rook a8, rook h8
+        lastMove lastMoveArray[2];        // lastmove[0] is for white and lastmove[1] is for black
     };
 
 
