@@ -34,13 +34,13 @@ namespace chess {
             if (rank1 > rank2) for (int trank = rank1 - 1; trank > rank2; --trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false;
             if (file1 < file2) for (int tfile = file1 + 1; tfile < file2; ++tfile) if (gs.chessboard[rank2 - 1][tfile - 1].piece) return false;
             if (file1 > file2) for (int tfile = file1 - 1; tfile > file2; --tfile) if (gs.chessboard[rank2 - 1][tfile - 1].piece) return false;
-            return true; // if we arrived here it means there's no piece blocking the way
-        } return false; // if we arrived here it means both the equations are true or both are false
+            return true;    // if we arrived here it means there's no piece blocking the way
+        } return false;     // if we arrived here it means both the equations are true or both are false
     }
 
     bool bishopMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) {
-        int trank, tfile;
-        bool flag = false;
+        int trank, tfile;   // declaring the for counters once here so I don't have to declare it 4 times
+        bool flag = false;  // if the flag is true it means the move coords2 are valid so we can check for collisions, if it's false return false
         if ((rank2 == rank1) || (file2 == file1)) return false; // if we arrive here it means the coords given don't correspond to how the bishop moves
         if ((rank2 > rank1) && (file2 > file1)) {
             for (trank = rank1, tfile = file1; trank < 9 || tfile < 9; ++trank, ++tfile) if ((rank2 == trank + 1) && (file2 == tfile + 1)) flag = true;
@@ -71,15 +71,27 @@ namespace chess {
         switch (gs.chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
             case (PAWN):
-                //TODO en passant
+
                 if (file1 != file2) { // check if file2 is different to file1 (pawns can't move diagonally but they can take pieces on the square next to the diagonal)
+                    if ((gs.player == WHITE) && (gs.lastMoveArray[1].file1 == gs.lastMoveArray[1].file2) && (gs.lastMoveArray[1].rank1 == 7) && (gs.lastMoveArray[1].rank2 == 5)) {
+                        if ((rank2 == rank1 + 1) && (file2 == fromCharToInt(gs.lastMoveArray[1].file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                            gs.chessboard[gs.lastMoveArray[1].rank2 - 1][fromCharToInt(gs.lastMoveArray[1].file2) - 1].piece = EMPTY; // piece taken with en passant
+                            return true;
+                        } 
+                    } if ((gs.player == BLACK) && (gs.lastMoveArray[0].file1 == gs.lastMoveArray[0].file2) && (gs.lastMoveArray[0].rank1 == 2) && (gs.lastMoveArray[0].rank2 == 4)) {
+                        if ((rank2 == rank1 - 1) && (file2 == fromCharToInt(gs.lastMoveArray[0].file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                            gs.chessboard[gs.lastMoveArray[0].rank2 - 1][fromCharToInt(gs.lastMoveArray[0].file2) - 1].piece = EMPTY; // piece taken with en passant
+                            return true;
+                        } 
+                    }
+                    
                     if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) return false;
                 } else if (gs.chessboard[rank2 - 1][file2 - 1].piece != EMPTY) return false; // can't move in a square already occupied if the pawn isn't taking any pieces
 
                 switch (gs.player) {
                     case (WHITE):
                         if (rank1 == 2) return (rank2 == 3 || rank2 == 4);     // if pawn is on starting position then it can move only 1 or 2 squares forward
-                        if (rank2 != rank1 + 1) return false;                  // else it can only move 1 square forward
+                        if (rank2 != rank1 + 1) return false;                  // else it can only move 1 square forward                        
                         if (rank2 != 8) return true;                           // if rank2 != 8 then return true, otherwise promote the pawn
                         break;                                                 // break so it jumps to "return promotePawn(...)"
                     case (BLACK):                                              // same goes for BLACK pawns:
@@ -87,7 +99,7 @@ namespace chess {
                         if (rank2 != rank1 - 1) return false;                  // not starting square (1 square)
                         if (rank2 != 1) return true;                           // if not on promotion square simply return true
                         break;                                                 // otherwise brak to promote
-                } return promotePawn(gs.chessboard, gs.player, rank1, file1);                // if we arrive here it means the only option left was the promotion
+                } return promotePawn(gs.chessboard, gs.player, rank1, file1);  // if we arrive here it means the only option left was the promotion
             case (KNIGHT): return (((rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2)) || ((rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)));
             case (BISHOP): return bishopMove(gs.chessboard, rank1, file1, rank2, file2);
             case (ROOK): return rookMove(gs, rank1, file1, rank2, file2, false);

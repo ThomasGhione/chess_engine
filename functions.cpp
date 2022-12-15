@@ -55,8 +55,8 @@ namespace chess {
         }
     }
 
-    void debugprint(gameStatus &gs) { //! white: \u2588
-        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: "; //TODO implement black last move
+    void debugprint(gameStatus &gs) { // gs = gamestatus, white square unicode: \u2588
+        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: ";
         if (gs.player == BLACK) std::cout << gs.lastMoveArray[0].file1 << gs.lastMoveArray[0].rank1 << gs.lastMoveArray[0].file2 << gs.lastMoveArray[0].rank2 << "\n\n\n";
         if (gs.player == WHITE) std::cout << gs.lastMoveArray[1].file1 << gs.lastMoveArray[1].rank1 << gs.lastMoveArray[1].file2 << gs.lastMoveArray[1].rank2 << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {

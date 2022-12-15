@@ -50,20 +50,22 @@
 namespace chess {
 
     using piece_id = unsigned char;
+    using light_square = bool;
 
     const char ML = 8; // ML = MAX_LINE
 
-    using lastMove = struct lastMove {
+    struct lastMove {
         char file1; int rank1;          // coords of the square before moving the piece
         char file2; int rank2;          // coords of the square after moving the piece
+        piece_id piece;                 // last piece moved
     };
 
     using board = struct square {
-        bool isLightSquare;             // true if light square, black if not
+        light_square isLightSquare;     // true if light square, black if not
         piece_id piece;                 // piece
     };
 
-    using gameStatus = struct gameStatus {
+    struct gameStatus {
         unsigned char player;
         unsigned int turns;             // turns counter
         //listOfMoves moves;            // moves struct
