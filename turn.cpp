@@ -17,7 +17,7 @@ namespace chess {
     }
 
     //void input move
-    void inputMove(gameStatus &gamestatus) {
+    void inputMove(gameStatus &gs) {
         std::cout << "\nPress M/m for more infos, or input your move: ";
         char iFile1, iFile2;
         int iRank1, iRank2;
@@ -37,36 +37,37 @@ namespace chess {
             goto ifWrongMove; // if coords are "< a1" || "> h8" then try again
         }
 
-        if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece == EMPTY) {
+        if (gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece == EMPTY) {
             std::cout << "You can't choose an empty square! Choose again: ";
             goto ifWrongMove; // if square is empty then try again
         }
         
-        switch (gamestatus.player) {
+        switch (gs.player) {
             case WHITE:
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { // check if input is valid (u can't choose your opponent pieces)
+                if (gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece > (unsigned char)(WHITE | KING)) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's white's turn! Choose again: ";
                     goto ifWrongMove; // if selected square has opponent's pieces then try again
-                } if (isMoveValid(gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) { // check if move is valid
-                    ++gamestatus.turns; // inc turn after checking if move is valid
-                    gamestatus.player = BLACK;
-                    gamestatus.lastMoveArray[0].file1 = iFile1;    /* setting up the last move */
-                    gamestatus.lastMoveArray[0].rank1 = iRank1;    /*                          */
-                    gamestatus.lastMoveArray[0].file2 = iFile2;    /*                          */
-                    gamestatus.lastMoveArray[0].rank2 = iRank2;    /*                          */
+                } if (isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {          // check if move is valid
+                    ++gs.turns; // inc turn after checking if move is valid
+                    gs.player = BLACK;
+                    gs.lastMoveArray[0].file1 = iFile1;                                                         /********************/
+                    gs.lastMoveArray[0].rank1 = iRank1;                                                         /* settings up      */
+                    gs.lastMoveArray[0].file2 = iFile2;                                                         /* last move coords */
+                    gs.lastMoveArray[0].rank2 = iRank2;                                                         /* and pieces       */
+                    gs.lastMoveArray[0].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;     /********************/
                     break;              
                 } std::cout << "Move isn't valid! choose again: "; // if we arrived here then the move isn't valid, try again
                 goto ifWrongMove;
             case BLACK:
-                if (gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { // check if input is valid (u can't choose your opponent pieces)
+                if (gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece < (unsigned char)BLACK) { // check if input is valid (u can't choose your opponent pieces)
                     std::cout << "It's black's turn! choose again: ";
                     goto ifWrongMove;
-                } if (isMoveValid(gamestatus, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
-                    gamestatus.player = WHITE;
-                    gamestatus.lastMoveArray[1].file1 = iFile1;
-                    gamestatus.lastMoveArray[1].rank1 = iRank1;
-                    gamestatus.lastMoveArray[1].file2 = iFile2;
-                    gamestatus.lastMoveArray[1].rank2 = iRank2;
+                } if (isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
+                    gs.player = WHITE;
+                    gs.lastMoveArray[1].file1 = iFile1;
+                    gs.lastMoveArray[1].rank1 = iRank1;
+                    gs.lastMoveArray[1].file2 = iFile2;
+                    gs.lastMoveArray[1].rank2 = iRank2;
                     break;              
                 } std::cout << "Move isn't valid! choose again: ";
                 goto ifWrongMove;
@@ -74,9 +75,9 @@ namespace chess {
         }
 
         //move the piece to the selected square and THEN delete the previous square piece
-        gamestatus.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
-        gamestatus.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
-        debugprint(gamestatus); //print the board every time a player makes a move
+        gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
+        gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
+        debugprint(gs); //print the board every time a player makes a move
     }
 
     //start of the game
