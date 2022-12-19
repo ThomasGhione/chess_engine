@@ -11,8 +11,10 @@
 #include <cctype>
 #include <bitset>
 
-#include <chrono>
-#include <time.h>
+#ifdef DEBUG
+    #include <chrono>
+    #include <time.h>
+#endif
 
 
 //define values
