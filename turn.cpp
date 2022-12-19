@@ -39,8 +39,9 @@ namespace chess {
         // if we arrive here we didn't exit, so we can ask the remaining inputs
         std::cin >> iRank1 >> iFile2 >> iRank2;
 
-        //! DEBUG ONLY
-        auto start = std::chrono::steady_clock::now();
+        #ifdef DEBUG
+            auto start = std::chrono::steady_clock::now();
+        #endif
 
         // check if coords are valid: "< a1" || "> h8"
         if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 || iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 || iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
@@ -62,7 +63,7 @@ namespace chess {
 
         // check if it's a legal move
         if (!(isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2)))) {
-            std::cout << "This move isn't legal! choose again: ";
+            std::cout << "This move isn't legal! Choose again: ";
             goto ifWrongMove;
         }
 
@@ -88,15 +89,17 @@ namespace chess {
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
         gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
 
-        //! DEBUG ONLY  
-        auto end = std::chrono::steady_clock::now();
-        auto diff = end - start;
+        #ifdef DEBUG
+            auto end = std::chrono::steady_clock::now();
+            auto diff = end - start;
+        #endif
 
         // print the chessboard after every move
         debugprint(gs);
 
-        //! DEBUG ONLY
-        std::cout << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";
+        #ifdef DEBUG
+            std::cout << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";
+        #endif
     }
 
     //start of the game
