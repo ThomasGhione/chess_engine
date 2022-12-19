@@ -6,7 +6,7 @@ int main() {
     chess::gameStatus gamestatus;                                       // declare our gamestatus; main variable where every info about the game is here
     gamestatus.turns = 0;                                               // set the turns to 0 before the game starts
     for (int i = 0; i < 6; ++i) gamestatus.hasAlreadyMoved[i] = false;  // rooks and kings didn't move yet so we set everything to false
-    gamestatus.lastMoveArray[0].file1 = gamestatus.lastMoveArray[0].file2 = gamestatus.lastMoveArray[1].file1 = gamestatus.lastMoveArray[1].file2 = 'X';
+    gamestatus.lastMoveArray[0].file1 = gamestatus.lastMoveArray[0].file2 = gamestatus.lastMoveArray[1].file1 = gamestatus.lastMoveArray[1].file2 = '0';
     gamestatus.lastMoveArray[0].rank1 = gamestatus.lastMoveArray[0].rank2 = gamestatus.lastMoveArray[1].rank1 = gamestatus.lastMoveArray[1].rank2 = 0;
     gamestatus.player = WHITE;                                          // white always starts first
 

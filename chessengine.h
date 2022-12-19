@@ -24,11 +24,11 @@
  *    CHESS PIECE = 1 1 | 1 1 1 1 1 1
  *                  first 2 bits define which player (01 meaning white, 10 meaning black)
  *                  last 6 bits define which piece we're referring to
+ *    EXAMPLE: "1 0 | 0 0 0 1 0 0" means the piece is a black bishop
  *    DEFINE ID FOR PIECES:
  */
 
 #define EMPTY 0x00      // 00000000
-
 #define PAWN 0x01       // 00000001    
 #define KNIGHT 0x02     // 00000010
 #define BISHOP 0x04     // 00000100
@@ -82,7 +82,7 @@ namespace chess {
     void debugprint(gameStatus &);
     //void printBoard();
 
-
+    std::string playerString(unsigned char &);
     int fromCharToInt(char); 
     void inputMove(gameStatus &);
     char gameStarts();
