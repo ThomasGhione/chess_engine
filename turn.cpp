@@ -39,6 +39,9 @@ namespace chess {
         // if we arrive here we didn't exit, so we can ask the remaining inputs
         std::cin >> iRank1 >> iFile2 >> iRank2;
 
+        //! DEBUG ONLY
+        auto start = std::chrono::steady_clock::now();
+
         // check if coords are valid: "< a1" || "> h8"
         if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 || iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 || iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
             std::cout << "Invalid coords! Choose again: ";
@@ -57,37 +60,43 @@ namespace chess {
             goto ifWrongMove;
         }
 
+        // check if it's a legal move
+        if (!(isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2)))) {
+            std::cout << "This move isn't legal! choose again: ";
+            goto ifWrongMove;
+        }
+
+        // if we arrive here it means the move is valid, therefore we make the other player move and (if it's white we increment the turn counter)
         switch (gs.player) {
             case WHITE:
-                if (isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {          // check if move is valid
-                    ++gs.turns; // inc turn after checking if move is valid
-                    gs.player = BLACK;
-                    gs.lastMoveArray[0].file1 = iFile1;                                                         /********************/
-                    gs.lastMoveArray[0].rank1 = iRank1;                                                         /* settings up      */
-                    gs.lastMoveArray[0].file2 = iFile2;                                                         /* last move coords */
-                    gs.lastMoveArray[0].rank2 = iRank2;                                                         /* and pieces       */
-                    gs.lastMoveArray[0].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;     /********************/
-                    break;              
-                } std::cout << "Move isn't valid! choose again: "; // if we arrive here then the move isn't valid, try again
-                goto ifWrongMove;
+                ++gs.turns;
+                gs.player = BLACK;
+                break;
             case BLACK:
-                if (isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
-                    gs.player = WHITE;
-                    gs.lastMoveArray[1].file1 = iFile1;
-                    gs.lastMoveArray[1].rank1 = iRank1;
-                    gs.lastMoveArray[1].file2 = iFile2;
-                    gs.lastMoveArray[1].rank2 = iRank2;
-                    gs.lastMoveArray[1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;
-                    break;              
-                } std::cout << "Move isn't valid! choose again: ";
-                goto ifWrongMove;
-            default: throw std::logic_error("logic_error"); // if player is neither white nor black then throw exception
+                gs.player = WHITE;
+                break;
         }
+        
+        // update lastMove 
+        gs.lastMove.file1 = iFile1;
+        gs.lastMove.rank1 = iRank1;
+        gs.lastMove.file2 = iFile2;
+        gs.lastMove.rank2 = iRank2;
+        gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;    
 
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
         gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
-        debugprint(gs); //print the board every time a player makes a move
+
+        //! DEBUG ONLY  
+        auto end = std::chrono::steady_clock::now();
+        auto diff = end - start;
+
+        // print the chessboard after every move
+        debugprint(gs);
+
+        //! DEBUG ONLY
+        std::cout << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";
     }
 
     //start of the game
@@ -103,16 +112,10 @@ namespace chess {
             case 'L': return 'L';       //TODO - IMPLEMENT LOAD
             case 'Q': exit(EXIT_SUCCESS);     
             default:
-                std::cout << "invalid option! Please choose again: ";
-                //std::cout << "player must be either white (W) or black (B), choose again: ";
+                std::cout << "invalid option! Please choose again: "; //std::cout << "player must be either white (W) or black (B), choose again: ";
                 goto ifWrongOption;
         }
     }
-
-
-
-
-
 
 
 }

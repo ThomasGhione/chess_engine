@@ -7,17 +7,15 @@ namespace chess {
         std::cout << "What do you want to promote your pown to?\nChoose between 'N', 'B', 'R' or 'Q': ";
         wrongOption:
         std::cin >> promotedPawn;
-        if (promotedPawn != 'N' && promotedPawn != 'B' && promotedPawn != 'R' && promotedPawn != 'Q') {
-            std::cout << "Option isn't valid! Choose again: ";
-            goto wrongOption;
-        }
         
         switch (promotedPawn) {
             case 'N': cb[rank1 - 1][file1 - 1].piece = player | KNIGHT; return true;
             case 'B': cb[rank1 - 1][file1 - 1].piece = player | BISHOP; return true;
             case 'R': cb[rank1 - 1][file1 - 1].piece = player | ROOK; return true;
             case 'Q': cb[rank1 - 1][file1 - 1].piece = player | QUEEN; return true;
-            default: throw std::invalid_argument("invalid argument");
+            default:
+                std::cout << "Option isn't valid! Choose again: ";
+                goto wrongOption;
         }
     }
 
@@ -30,7 +28,7 @@ namespace chess {
         }
 
         if ((rank2 == rank1) != (file2 == file1)) { // rooks can move like a "+"; "!=" = "XOR" (both equations can't be true at the same time)
-            if (rank1 < rank2) for (int trank = rank1 + 1; trank < rank2; ++trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false; // "cb[trank - 1][file2 - 1].piece" = "cb[trank - 1][file2 - 1].piece != EMPTY"
+            if (rank1 < rank2) for (int trank = rank1 + 1; trank < rank2; ++trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false; // the last if condition is an abbrevation for: "cb[trank - 1][file2 - 1].piece" = "cb[trank - 1][file2 - 1].piece != EMPTY"
             if (rank1 > rank2) for (int trank = rank1 - 1; trank > rank2; --trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false;
             if (file1 < file2) for (int tfile = file1 + 1; tfile < file2; ++tfile) if (gs.chessboard[rank2 - 1][tfile - 1].piece) return false;
             if (file1 > file2) for (int tfile = file1 - 1; tfile > file2; --tfile) if (gs.chessboard[rank2 - 1][tfile - 1].piece) return false;
@@ -39,9 +37,9 @@ namespace chess {
     }
 
     bool bishopMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) {
+        if ((rank2 == rank1) || (file2 == file1)) return false; // if rank2 == rank1 (same for file) then the move must be false
         int trank, tfile;   // declaring the for counters once here so I don't have to declare it 4 times
         bool flag = false;  // if the flag is true it means the move coords2 are valid so we can check for collisions, if it's false return false
-        if ((rank2 == rank1) || (file2 == file1)) return false; // if we arrive here it means the coords given don't correspond to how the bishop moves
         if ((rank2 > rank1) && (file2 > file1)) {
             for (trank = rank1, tfile = file1; trank < 9 || tfile < 9; ++trank, ++tfile) if ((rank2 == trank + 1) && (file2 == tfile + 1)) flag = true;
             if (!flag) return false;
@@ -70,20 +68,19 @@ namespace chess {
         switch (gs.chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
             case (PAWN):
-
                 if (file1 != file2) { // check if file2 is different to file1 (pawns can't move diagonally but they can take pieces on the square next to the diagonal)
-                    if ((gs.player == WHITE) && (gs.lastMoveArray[1].file1 == gs.lastMoveArray[1].file2) && (gs.lastMoveArray[1].rank1 == 7) && (gs.lastMoveArray[1].rank2 == 5)) {
-                        if ((rank2 == rank1 + 1) && (file2 == fromCharToInt(gs.lastMoveArray[1].file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
-                            gs.chessboard[gs.lastMoveArray[1].rank2 - 1][fromCharToInt(gs.lastMoveArray[1].file2) - 1].piece = EMPTY; // piece taken with en passant
+                    if ((gs.player == WHITE) && (gs.lastMove.file1 == gs.lastMove.file2) && (gs.lastMove.rank1 == 7) && (gs.lastMove.rank2 == 5)) {
+                        if ((rank2 == rank1 + 1) && (file2 == fromCharToInt(gs.lastMove.file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                            gs.chessboard[gs.lastMove.rank2 - 1][fromCharToInt(gs.lastMove.file2) - 1].piece = EMPTY; // piece taken with en passant
                             return true;
                         } 
-                    } if ((gs.player == BLACK) && (gs.lastMoveArray[0].file1 == gs.lastMoveArray[0].file2) && (gs.lastMoveArray[0].rank1 == 2) && (gs.lastMoveArray[0].rank2 == 4)) {
-                        if ((rank2 == rank1 - 1) && (file2 == fromCharToInt(gs.lastMoveArray[0].file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
-                            gs.chessboard[gs.lastMoveArray[0].rank2 - 1][fromCharToInt(gs.lastMoveArray[0].file2) - 1].piece = EMPTY; // piece taken with en passant
+                    } if ((gs.player == BLACK) && (gs.lastMove.file1 == gs.lastMove.file2) && (gs.lastMove.rank1 == 2) && (gs.lastMove.rank2 == 4)) {
+                        if ((rank2 == rank1 - 1) && (file2 == fromCharToInt(gs.lastMove.file2)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                            gs.chessboard[gs.lastMove.rank2 - 1][fromCharToInt(gs.lastMove.file2) - 1].piece = EMPTY; // piece taken with en passant
                             return true;
                         } 
                     }
-                    
+                    // normal way for a pawn to eat a piece
                     if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) return false;
                 } else if (gs.chessboard[rank2 - 1][file2 - 1].piece != EMPTY) return false; // can't move in a square already occupied if the pawn isn't taking any pieces
 

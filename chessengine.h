@@ -11,6 +11,9 @@
 #include <cctype>
 #include <bitset>
 
+#include <chrono>
+#include <time.h>
+
 
 //define values
 #define P 1 //pawn
@@ -71,7 +74,7 @@ namespace chess {
         //listOfMoves moves;            // moves struct
         board chessboard[ML][ML];       // cb = chessboard
         bool hasAlreadyMoved[6];        // king e1, rook a1, rook h1, king e8, rook a8, rook h8
-        lastMove lastMoveArray[2];      // lastmove[0] is for white and lastmove[1] is for black
+        lastMove lastMove;
     };
 
 
