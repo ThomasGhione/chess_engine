@@ -12,8 +12,7 @@ namespace chess {
             case 'f': return 6;
             case 'g': return 7;
             case 'h': return 8;
-            default: throw std::invalid_argument("invalid file coord");
-        }
+        } throw std::logic_error("Something went wrong with converting from char to int");
     }
 
     std::string playerString(unsigned char &player) {
@@ -28,6 +27,7 @@ namespace chess {
 
         ifWrongMove: // if something goes wrong while inputting the move or if it isn't valid then it goes back here and ask again until it's valid
         std::cin >> iFile1;
+
         if (iFile1 == 'M' || iFile1 == 'm') {
             std::cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\nInput: ";
             goto ifWrongMove;
@@ -98,7 +98,7 @@ namespace chess {
         debugprint(gs);
 
         #ifdef DEBUG
-            std::cout << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";
+            std::cout << "Time to calculate if the move was legal: " << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";
         #endif
     }
 
