@@ -51,11 +51,15 @@ namespace chess {
             case (BLACK | ROOK): return "bR";
             case (BLACK | QUEEN): return "bQ";
             case (BLACK | KING): return "bK"; 
-            default: throw std::invalid_argument("unexpected bitwise inclusive-OR");   
-        }
+        } throw std::logic_error("Something went wrong with displaying a piece");
     }
 
     void debugprint(gameStatus &gs) { // gs = gamestatus, white square unicode: \u2588
+
+        #ifdef DEBUG
+            auto start = std::chrono::steady_clock::now();
+        #endif
+
         std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: " << gs.lastMove.file1 << gs.lastMove.rank1 << gs.lastMove.file2 << gs.lastMove.rank2 << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gs.chessboard[rank][0].isLightSquare) {
@@ -68,6 +72,12 @@ namespace chess {
                 std::cout << "    " << rank + 1 << "\n           ██████      ██████      ██████      ██████\n";
             }
         } std::cout << "\n\n       A     B     C     D     E     F     G     H       TURN: " << gs.turns << "\n\n";
+
+        #ifdef DEBUG
+            auto end = std::chrono::steady_clock::now();
+            auto diff = end - start;
+            std::cout << "\nTime to print: " << std::chrono::duration <double, std::milli> (diff).count() << " ms\n";
+        #endif
     }
 
 }
