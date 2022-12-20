@@ -62,9 +62,6 @@ namespace chess {
     // check if move is legit
     bool isMoveValid(gameStatus &gs, int rank1, int file1, int rank2, int file2) {
 
-        // you can't take your own pieces
-        if ((gs.chessboard[rank2 - 1][file2 - 1].piece & PLAYERMASK) == gs.player) return false;
-
         switch (gs.chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
             case (PAWN):
@@ -86,13 +83,13 @@ namespace chess {
 
                 // TODO: fix the bug where the pawn can jump over pieces if it moves 2 squares from the starting square
                 switch (gs.player) {
-                    case (WHITE):
-                        if (rank1 == 2) return (rank2 == 3 || rank2 == 4);    // if pawn is on starting position then it can move only 1 or 2 squares forward
+                    case (WHITE): 
+                        if (rank1 == 2) return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece))); // if pawn is on starting position then it can move only 1 or 2 squares forward
                         if (rank2 != rank1 + 1) return false;                 // else it can only move 1 square forward                        
                         if (rank2 != 8) return true;                          // if rank2 != 8 then return true, otherwise promote the pawn
                         break;                                                // break so it jumps to "return promotePawn(...)"
                     case (BLACK):
-                        if (rank1 == 7) return (rank2 == 6 || rank2 == 5);
+                        if (rank1 == 7) return (rank2 == 6 || ((rank2 == 5) && (!gs.chessboard[5][file2 - 1].piece)));
                         if (rank2 != rank1 - 1) return false;
                         if (rank2 != 1) return true;
                         break;
@@ -124,7 +121,7 @@ namespace chess {
                     gs.hasAlreadyMoved[3] = true;
                     return true;                                            
                 }
-
+                // at this point we already checked if the king can castle or not, so the only possibilty is checking the normal moves
                 // check if it's not a normal move (1 square at time), if so, return false 
                 if (!(((rank2 == rank1 + 1) || (rank2 == rank1 - 1) || (rank2 == rank1)) && ((file2 == file1 + 1) || (file2 == file1 - 1) || (file2 == file1)))) return false;
                 
