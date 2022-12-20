@@ -50,8 +50,8 @@ namespace chess {
         }
 
         // check if the starting square selected is empty
-        if (gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece == EMPTY) {
-            std::cout << "You can't choose an empty square! Choose again: ";
+        if (!gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece) {
+            std::cout << "You can't choose your opponent's pieces! Choose again: ";
             goto ifWrongMove;
         }
 
@@ -60,6 +60,12 @@ namespace chess {
             std::cout << "It's " << playerString(gs.player) << "'s turn! Choose again: ";
             goto ifWrongMove;
         }
+
+        // you can't take your own pieces
+        if ((gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece & PLAYERMASK) == gs.player) {
+            std::cout << "You can't take your pieces! Choose again: ";
+            goto ifWrongMove;
+        }        
 
         // check if it's a legal move
         if (!(isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2)))) {
