@@ -2,7 +2,7 @@
 
 namespace chess {
 
-    void startingPosition(board emptyboard[ML][ML]) {
+    void startingPosition(board emptyboard[ML][ML]) noexcept {
         //pieces
         emptyboard[0][0].piece = emptyboard[0][7].piece = WHITE | ROOK;
         emptyboard[0][1].piece = emptyboard[0][6].piece = WHITE | KNIGHT;
@@ -28,7 +28,7 @@ namespace chess {
     } 
 
 
-    void createInitialBoard(board new_board[ML][ML]) { // set up light squares
+    void createInitialBoard(board new_board[ML][ML]) noexcept { // set up light squares
         for (int rank = 0; rank < ML; ++rank)
             for (int file = 0; file < ML; ++file) 
                 (!((rank + file) % 2)) ? (new_board[rank][file].isLightSquare = false) : (new_board[rank][file].isLightSquare = true);
@@ -36,9 +36,8 @@ namespace chess {
     }
 
 
-    std::string displayPiece(board debugboard[ML][ML], int rank, int file) {
-        switch (debugboard[rank][file].piece) { 
-            case (EMPTY): return (debugboard[rank][file].isLightSquare) ? "██" : "  ";     
+    std::string displayPiece(board debugboard[ML][ML], int rank, int file) noexcept {
+        switch (debugboard[rank][file].piece) {     
             case (WHITE | PAWN): return "wp";
             case (WHITE | KNIGHT): return "wN";
             case (WHITE | BISHOP): return "wB";
@@ -50,11 +49,12 @@ namespace chess {
             case (BLACK | BISHOP): return "bB";
             case (BLACK | ROOK): return "bR";
             case (BLACK | QUEEN): return "bQ";
-            case (BLACK | KING): return "bK"; 
-        } throw std::logic_error("Something went wrong with displaying a piece");
+            case (BLACK | KING): return "bK";
+            default: return (debugboard[rank][file].isLightSquare) ? "██" : "  "; 
+        }
     }
 
-    void debugprint(gameStatus &gs) { // gs = gamestatus, white square unicode: \u2588
+    void debugprint(gameStatus &gs) noexcept { // gs = gamestatus, white square unicode: \u2588
 
         #ifdef DEBUG
             auto start = std::chrono::steady_clock::now();

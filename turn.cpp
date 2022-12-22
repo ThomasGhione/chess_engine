@@ -15,7 +15,7 @@ namespace chess {
         } throw std::logic_error("Something went wrong with converting from char to int");
     }
 
-    std::string playerString(unsigned char &player) {
+    std::string playerString(unsigned char &player) noexcept {
         return (player == WHITE) ? "white" : "black";
     }
 
@@ -109,7 +109,7 @@ namespace chess {
     }
 
     //start of the game
-    char gameStarts() {
+    char gameStarts() noexcept {
         std::cout << "MENU:\n    W: play as white\n    B: play as black\n    S: save (to add)\n    L: load last game (to add)\n    Q: quit\nINPUT: ";
         char option;
         ifWrongOption:

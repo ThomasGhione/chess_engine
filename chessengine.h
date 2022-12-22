@@ -57,7 +57,7 @@ namespace chess {
     using piece_id = unsigned char;
     using light_square = bool;
 
-    const char ML = 8; // ML = MAX_LINE
+    const unsigned char ML = 8; // ML = MAX_LINE
 
     struct lastMove {
         char file1; int rank1;          // coords of the square before moving the piece
@@ -80,23 +80,22 @@ namespace chess {
     };
 
 
-    void createInitialBoard(board [ML][ML]);
-    void startingPosition(board [ML][ML]);
+    void createInitialBoard(board [ML][ML]) noexcept;
+    void startingPosition(board [ML][ML]) noexcept;
     
-    std::string displayPiece(board [ML][ML], int, int);
-    void debugprint(gameStatus &);
+    std::string displayPiece(board [ML][ML], int, int) noexcept;
+    void debugprint(gameStatus &) noexcept;
     //void printBoard();
 
-    std::string playerString(unsigned char &);
+    std::string playerString(unsigned char &) noexcept;
     int fromCharToInt(char); 
     void inputMove(gameStatus &);
-    char gameStarts();
+    char gameStarts() noexcept;
 
-    bool promotePawn(board [ML][ML], unsigned char &, int &, int &);
-    bool rookMove(gameStatus &, int &, int &, int &, int &, bool);
-    bool bishopMove(board [ML][ML], int &, int &, int &, int &);
-    // char player, board cb, int rank1, int file1, int rank2, int file2
-    bool isMoveValid(gameStatus &, int, int, int, int); // 1 = startPos // 2 = newPos 
+    bool promotePawn(board [ML][ML], unsigned char &, int &, int &) noexcept;
+    bool rookMove(gameStatus &, int &, int &, int &, int &, bool) noexcept;
+    bool bishopMove(board [ML][ML], int &, int &, int &, int &) noexcept;
+    bool isMoveValid(gameStatus &, int, int, int, int) noexcept;
 
 }
 
