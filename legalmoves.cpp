@@ -27,6 +27,7 @@ namespace chess {
             if ((rank1 == 8) && (file1 == 8)) gs.hasAlreadyMoved[5] = true;
         }
 
+        // TODO we can optimize this
         if ((rank2 == rank1) != (file2 == file1)) { // rooks can move like a "+"; "!=" = "XOR" (both equations can't be true at the same time)
             if (rank1 < rank2) for (int trank = rank1 + 1; trank < rank2; ++trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false; // the last if condition is an abbrevation for: "cb[trank - 1][file2 - 1].piece" = "cb[trank - 1][file2 - 1].piece != EMPTY"
             if (rank1 > rank2) for (int trank = rank1 - 1; trank > rank2; --trank) if (gs.chessboard[trank - 1][file2 - 1].piece) return false;
@@ -81,7 +82,6 @@ namespace chess {
                     if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) return false;
                 } else if (gs.chessboard[rank2 - 1][file2 - 1].piece != EMPTY) return false; // can't move in a square already occupied if the pawn isn't taking any pieces
 
-                // TODO: fix the bug where the pawn can jump over pieces if it moves 2 squares from the starting square
                 switch (gs.player) {
                     case (WHITE): 
                         if (rank1 == 2) return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece))); // if pawn is on starting position then it can move only 1 or 2 squares forward

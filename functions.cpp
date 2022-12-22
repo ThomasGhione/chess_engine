@@ -50,7 +50,7 @@ namespace chess {
             case (BLACK | ROOK): return "bR";
             case (BLACK | QUEEN): return "bQ";
             case (BLACK | KING): return "bK";
-            default: return (debugboard[rank][file].isLightSquare) ? "██" : "  "; 
+            default: return (debugboard[rank][file].isLightSquare) ? "██" : "  "; // default: case (EMPTY)
         }
     }
 
@@ -60,7 +60,7 @@ namespace chess {
             auto start = std::chrono::steady_clock::now();
         #endif
 
-        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: " << gs.lastMove.file1 << gs.lastMove.rank1 << gs.lastMove.file2 << gs.lastMove.rank2 << "\n\n\n";
+        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: " << gs.lastMove.file1 << gs.lastMove.rank1 << ' ' <<gs.lastMove.file2 << gs.lastMove.rank2 << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gs.chessboard[rank][0].isLightSquare) {
                 std::cout << "     ██████      ██████      ██████      ██████      \n" << rank + 1 << "    ";
