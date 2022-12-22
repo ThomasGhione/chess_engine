@@ -8,6 +8,7 @@ int main() {
     //std::cout << "10! = " << Fac<10>::result << "\n";
 
     #ifdef DEBUG
+        std::cout << "DEBUG RUNNING DEBUG BUILD\n\n";
         auto start = std::chrono::steady_clock::now();
     #endif
 

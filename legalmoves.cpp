@@ -2,7 +2,7 @@
 
 namespace chess {
 
-    bool promotePawn(board cb[ML][ML], unsigned char &player, int &rank1, int &file1) {
+    bool promotePawn(board cb[ML][ML], unsigned char &player, int &rank1, int &file1) noexcept {
         char promotedPawn;
         std::cout << "What do you want to promote your pown to?\nChoose between 'N', 'B', 'R' or 'Q': ";
         wrongOption:
@@ -19,7 +19,7 @@ namespace chess {
         }
     }
 
-    bool rookMove(gameStatus &gs, int &rank1, int &file1, int &rank2, int &file2, bool isQueen) {
+    bool rookMove(gameStatus &gs, int &rank1, int &file1, int &rank2, int &file2, bool isQueen) noexcept {
         if (!isQueen) { // since this function is also used to check queen moves, we have to know if we're passing a rook so if it moves it won't be able to be used to castle
             if ((rank1 == 1) && (file1 == 1)) gs.hasAlreadyMoved[1] = true;
             if ((rank1 == 1) && (file1 == 8)) gs.hasAlreadyMoved[2] = true;
@@ -36,7 +36,7 @@ namespace chess {
         } return false;     // if we arrived here it means both the equations are true or both are false
     }
 
-    bool bishopMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) {
+    bool bishopMove(board cb[ML][ML], int &rank1, int &file1, int &rank2, int &file2) noexcept {
         if ((rank2 == rank1) || (file2 == file1)) return false; // if rank2 == rank1 (same for file) then the move must be false
         int trank, tfile;   // declaring the for counters once here so I don't have to declare it 4 times
         bool flag = false;  // if the flag is true it means the move coords2 are valid so we can check for collisions, if it's false return false
@@ -60,7 +60,7 @@ namespace chess {
     }
 
     // check if move is legit
-    bool isMoveValid(gameStatus &gs, int rank1, int file1, int rank2, int file2) {
+    bool isMoveValid(gameStatus &gs, int rank1, int file1, int rank2, int file2) noexcept {
 
         switch (gs.chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
@@ -130,8 +130,10 @@ namespace chess {
                 return true;
 
         }
+
         // if we arrive here it means something went wrong with recognizing the piece id
-        throw std::invalid_argument("Invalid piece"); // 
+        std::cout << "The piece you tried to move seemed to have a problem the program couldn't understand, try again or reboot the program. :(\n";
+        return false; 
     }
     
 
