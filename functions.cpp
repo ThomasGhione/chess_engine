@@ -31,12 +31,12 @@ namespace chess {
     void createInitialBoard(board new_board[ML][ML]) noexcept { // set up light squares
         for (int rank = 0; rank < ML; ++rank)
             for (int file = 0; file < ML; ++file) 
-                (!((rank + file) % 2)) ? (new_board[rank][file].isLightSquare = false) : (new_board[rank][file].isLightSquare = true);
+                (((rank + file) % 2)) ? (new_board[rank][file].isLightSquare = true) : (new_board[rank][file].isLightSquare = false);
         startingPosition(new_board);
     }
 
 
-    std::string displayPiece(board debugboard[ML][ML], int rank, int file) noexcept {
+    std::string displayPiece(const board debugboard[ML][ML], const int rank, const int file) noexcept {
         switch (debugboard[rank][file].piece) {     
             case (WHITE | PAWN): return "wp";
             case (WHITE | KNIGHT): return "wN";
@@ -54,7 +54,7 @@ namespace chess {
         }
     }
 
-    void debugprint(gameStatus &gs) noexcept { // gs = gamestatus, white square unicode: \u2588
+    void debugprint(gameStatus &gs) noexcept { // white square unicode: \u2588
 
         #ifdef DEBUG
             auto start = std::chrono::steady_clock::now();

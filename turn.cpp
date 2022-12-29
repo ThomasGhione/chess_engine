@@ -2,6 +2,23 @@
 
 namespace chess {
 
+    std::string playerString(const unsigned char &player) noexcept {
+        return (player == WHITE) ? "WHITE" : "BLACK";
+    }
+
+    int fromCharToInt(const char file) {
+        switch (std::tolower(file)) {
+            case 'a': return 1;
+            case 'b': return 2;
+            case 'c': return 3;
+            case 'd': return 4;
+            case 'e': return 5;
+            case 'f': return 6;
+            case 'g': return 7;
+            case 'h': return 8;
+        } throw std::logic_error("Something went wrong with converting from char to int");
+    }
+
     //void input move
     void inputMove(gameStatus &gs) {
         std::cout << "\nPress M/m for more infos, or input your move: ";
@@ -30,11 +47,13 @@ namespace chess {
         // check if coords are valid: "< a1" || "> h8"
         if (iRank1 < 1 || iRank1 > 8 || iRank2 < 1 || iRank2 > 8 || iFile1 < 65 || (iFile1 > 72 && iFile1 < 97) || iFile1 > 104 || iFile2 < 65 || (iFile2 > 72 && iFile2 < 97) || iFile2 > 104) {
             std::cout << "Invalid coords! Choose again: ";
+            iFile1 = iFile2 = '0';
+            iRank1 = iRank2 = 0;
             goto ifWrongMove;
         }
         // check if the starting square selected is empty
         if (!gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece) {
-            std::cout << "You can't choose your opponent's pieces! Choose again: ";
+            std::cout << "You can't choose an EMPTY square! Choose again: ";
             goto ifWrongMove;
         }
         // check if we're selecting an opponent's piece
@@ -50,7 +69,7 @@ namespace chess {
 
         // check if it's a legal move
         // isMoveValid checks if a move is legal according to the chess rules
-        if (!(isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2)))) {
+        if (!isMoveValid(gs, iRank1, fromCharToInt(iFile1), iRank2, fromCharToInt(iFile2))) {
             std::cout << "This move isn't legal! Choose again: ";
             goto ifWrongMove;
         }
