@@ -2,23 +2,6 @@
 
 namespace chess {
 
-    std::string playerString(const unsigned char &player) noexcept {
-        return (player == WHITE) ? "WHITE" : "BLACK";
-    }
-
-    int fromCharToInt(const char file) {
-        switch (std::tolower(file)) {
-            case 'a': return 1;
-            case 'b': return 2;
-            case 'c': return 3;
-            case 'd': return 4;
-            case 'e': return 5;
-            case 'f': return 6;
-            case 'g': return 7;
-            case 'h': return 8;
-        } throw std::logic_error("Something went wrong with converting from char to int");
-    }
-
     //void input move
     void inputMove(gameStatus &gs) {
         std::cout << "\nPress M/m for more infos, or input your move: ";

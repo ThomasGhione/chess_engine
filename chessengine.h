@@ -88,7 +88,7 @@ namespace chess {
     //void printBoard();
 
     std::string playerString(const unsigned char &) noexcept;
-    int fromCharToInt(const char); 
+    int fromCharToInt(const char) noexcept; 
     
     void inputMove(gameStatus &);
     char gameStarts() noexcept;
