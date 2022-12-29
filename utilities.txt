@@ -1,6 +1,11 @@
+/*
 #include "chessengine.h"
 
 namespace chess {
+
+    std::string playerString(unsigned char &player) noexcept {
+        return (player == WHITE) ? "white" : "black";
+    }
 
     int fromCharToInt(char file) {
         switch (std::tolower(file)) {
@@ -15,9 +20,5 @@ namespace chess {
         } throw std::logic_error("Something went wrong with converting from char to int");
     }
 
-    std::string playerString(unsigned char &player) noexcept {
-        return (player == WHITE) ? "white" : "black";
-    }
-
-
 }
+*/

@@ -57,7 +57,7 @@ namespace chess {
     using piece_id = unsigned char;
     using light_square = bool;
 
-    const unsigned char ML = 8; // ML = MAX_LINE
+    const unsigned char ML = 8;         // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
 
     struct lastMove {
         char file1; int rank1;          // coords of the square before moving the piece
@@ -73,7 +73,7 @@ namespace chess {
     struct gameStatus {
         unsigned char player;
         unsigned int turns;             // turns counter
-        //listOfMoves moves;            // moves struct
+        //listOfMoves moves;            // TODO: moves struct
         board chessboard[ML][ML];       // cb = chessboard
         bool hasAlreadyMoved[6];        // king e1, rook a1, rook h1, king e8, rook a8, rook h8
         lastMove lastMove;
@@ -83,19 +83,19 @@ namespace chess {
     void createInitialBoard(board [ML][ML]) noexcept;
     void startingPosition(board [ML][ML]) noexcept;
     
-    std::string displayPiece(board [ML][ML], int, int) noexcept;
+    std::string displayPiece(const board [ML][ML], const int, const int) noexcept;
     void debugprint(gameStatus &) noexcept;
     //void printBoard();
 
-    std::string playerString(unsigned char &) noexcept;
-    int fromCharToInt(char); 
+    std::string playerString(const unsigned char &) noexcept;
+    int fromCharToInt(const char); 
     
     void inputMove(gameStatus &);
     char gameStarts() noexcept;
 
-    bool promotePawn(board [ML][ML], unsigned char &, int &, int &) noexcept;
-    bool rookMove(gameStatus &, int &, int &, int &, int &, bool) noexcept;
-    bool bishopMove(board [ML][ML], int &, int &, int &, int &) noexcept;
+    bool promotePawn(board [ML][ML], const unsigned char &, const int &, const int &) noexcept;
+    bool rookMove(gameStatus &, const int &, const int &, const int &, const int &, bool) noexcept;
+    bool bishopMove(board [ML][ML], const int &, const int &, const int &, const int &) noexcept;
     bool isMoveValid(gameStatus &, int, int, int, int) noexcept;
 
 }
