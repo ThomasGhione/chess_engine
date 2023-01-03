@@ -17,7 +17,7 @@ namespace chess {
         emptyboard[7][3].piece = BLACK | QUEEN;
         emptyboard[7][4].piece = BLACK | KING;
 
-        //both sides' pawns
+        //all pawns
         for (int file = 0; file < ML; ++file) {
             emptyboard[1][file].piece = WHITE | PAWN;
             emptyboard[6][file].piece = BLACK | PAWN;
@@ -43,7 +43,7 @@ namespace chess {
             case (WHITE | BISHOP): return "wB";
             case (WHITE | ROOK): return "wR";
             case (WHITE | QUEEN): return "wQ";
-            case (WHITE | KING): return "wK";
+            case (WHITE | KING): return "wK"; //TODO: \u2654
             case (BLACK | PAWN): return "bp";
             case (BLACK | KNIGHT): return "bN";
             case (BLACK | BISHOP): return "bB";
