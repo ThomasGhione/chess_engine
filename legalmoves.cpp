@@ -130,6 +130,7 @@ namespace chess {
                     return true;                                            
                 }
                 
+                return false; // if we arrive here it means we already checked for every possibility therefore the move isn't valid
         }
 
         // if we arrive here it means something went wrong with recognizing the piece id

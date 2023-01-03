@@ -3,7 +3,7 @@
 namespace chess {
 
     //void input move
-    void inputMove(gameStatus &gs) {
+    void inputMove(gameStatus &gs) noexcept {
         std::cout << "\nPress M/m for more infos, or input your move: ";
         char iFile1, iFile2;
         int iRank1, iRank2;

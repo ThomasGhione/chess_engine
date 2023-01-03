@@ -7,16 +7,14 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string.h>
-#include <stdexcept>
 #include <cctype>
 #include <bitset>
 
 #ifdef DEBUG
     #include <chrono>
-    #include <time.h>
 #endif
 
-
+/*
 //define values
 #define P 1 //pawn
 #define N 3
@@ -24,6 +22,7 @@
 #define R 5
 #define Q 9
 #define K 1000000
+*/
 
 /*
  *    CHESS PIECE = 1 1 | 1 1 1 1 1 1
@@ -57,40 +56,40 @@ namespace chess {
     using piece_id = unsigned char;
     using light_square = bool;
 
-    const unsigned char ML = 8;         // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
+    static inline const unsigned char ML = 8;          // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
 
     struct lastMove {
-        char file1; int rank1;          // coords of the square before moving the piece
-        char file2; int rank2;          // coords of the square after moving the piece
-        piece_id piece;                 // last piece moved
+        static inline char file1 = '0'; static inline int rank1 = 0; // coords of the square before moving the piece
+        static inline char file2 = '0'; static inline int rank2 = 0; // coords of the square after moving the piece
+        static inline piece_id piece;                        // last piece moved
     };
 
     using board = struct square {
-        light_square isLightSquare;     // true if light square, black if not
-        piece_id piece;                 // piece
+        light_square isLightSquare;      // true if light square, black if not
+        piece_id piece;                  // piece
     };
 
     struct gameStatus {
-        unsigned char player;
-        unsigned int turns;             // turns counter
-        //listOfMoves moves;            // TODO: moves struct
-        board chessboard[ML][ML];       // cb = chessboard
-        bool hasAlreadyMoved[6];        // king e1, rook a1, rook h1, king e8, rook a8, rook h8
-        lastMove lastMove;
+        static inline unsigned char player = WHITE;    // tells which player has to move. white always starts first
+        static inline unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
+        //listOfMoves moves;                           // TODO: moves struct
+        static inline board chessboard[ML][ML];        // cb = chessboard
+        static inline bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
+        static inline lastMove lastMove;
     };
 
 
     void createInitialBoard(board [ML][ML]) noexcept;
     void startingPosition(board [ML][ML]) noexcept;
     
-    std::string displayPiece(const board [ML][ML], const int, const int) noexcept;
+    std::string displayPiece(const board [ML][ML], const int, const int) noexcept ;
     void debugprint(gameStatus &) noexcept;
     //void printBoard();
 
     std::string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
     
-    void inputMove(gameStatus &);
+    void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
 
     bool promotePawn(board [ML][ML], const unsigned char &, const int &, const int &) noexcept;
