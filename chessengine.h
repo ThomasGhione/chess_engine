@@ -61,7 +61,7 @@ namespace chess {
     struct lastMove {
         static inline char file1 = '0'; static inline int rank1 = 0; // coords of the square before moving the piece
         static inline char file2 = '0'; static inline int rank2 = 0; // coords of the square after moving the piece
-        static inline piece_id piece;                        // last piece moved
+        static inline piece_id piece;                                // last piece moved
     };
 
     using board = struct square {
@@ -70,6 +70,8 @@ namespace chess {
     };
 
     struct gameStatus {
+        //static inline checkStruct check;             // becomes true everytime a player is in check
+
         static inline unsigned char player = WHITE;    // tells which player has to move. white always starts first
         static inline unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
         //listOfMoves moves;                           // TODO: moves struct
