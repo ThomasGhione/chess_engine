@@ -7,7 +7,7 @@ namespace chess {
     }
 
     int fromCharToInt(const char file) noexcept {
-        return std::tolower(file) - 96;
+        return std::tolower(file) - 'a' + 1;
     }
 
 }

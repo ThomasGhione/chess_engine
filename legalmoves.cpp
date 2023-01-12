@@ -4,7 +4,7 @@ namespace chess {
 
     bool promotePawn(board cb[ML][ML], const unsigned char &player, const int &rank1, const int &file1) noexcept {
         char promotedPawn;
-        std::cout << "What do you want to promote your pown to?\nChoose between 'N', 'B', 'R' or 'Q': ";
+        std::cout << "What do you want to promote your pawn to?\nChoose between 'N', 'B', 'R' or 'Q': ";
         wrongOption:
         std::cin >> promotedPawn;
         
@@ -39,29 +39,24 @@ namespace chess {
 
     bool bishopMove(board cb[ML][ML], const int &rank1, const int &file1, const int &rank2, const int &file2) noexcept {
         if ((rank2 == rank1) || (file2 == file1)) return false; // if rank2 == rank1 (same for file) then the move must be false
+        if (!(abs((rank2 - rank1)) == abs((file2 - file1)))) return false;
+
         int trank, tfile;   // declaring the for counters once here so I don't have to declare it 4 times
-        bool flag = false;  // if the flag is true it means the move coords2 are valid so we can check for collisions, if it's false return false
-        if ((rank2 > rank1) && (file2 > file1)) {
-            for (trank = rank1, tfile = file1; trank < 9 || tfile < 9; ++trank, ++tfile) if ((rank2 == trank + 1) && (file2 == tfile + 1)) flag = true;
-            if (!flag) return false;
-            for (trank = rank1 + 1, tfile = file1 + 1; trank < rank2 || tfile < file2; ++trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-        } if ((rank2 > rank1) && (file2 < file1)) {
-            for (trank = rank1, tfile = file1; trank < 9 || tfile > 0; ++trank, --tfile) if ((rank2 == trank + 1) && (file2 == tfile - 1)) flag = true;
-            if (!flag) return false;
-            for (trank = rank1 + 1, tfile = file1 - 1; trank < rank2 || tfile > file2; ++trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-        } if ((rank2 < rank1) && (file2 > file1)) {
-            for (trank = rank1, tfile = file1; trank > 0 || tfile < 9; --trank, ++tfile) if ((rank2 == trank - 1) && (file2 == tfile + 1)) flag = true;
-            if (!flag) return false;
-            for (trank = rank1 - 1, tfile = file1 + 1; trank > rank2 || tfile < file2; --trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-        } if ((rank2 < rank1) && (file2 < file1)) {
-            for (trank = rank1, tfile = file1; trank > 0 || tfile > 0; --trank, --tfile) if ((rank2 == trank - 1) && (file2 == tfile - 1)) flag = true; 
-            if (!flag) return false;
-            for (trank = rank1 - 1, tfile = file1 - 1; trank > rank2 || tfile > file2; --trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
-        } return true;
+        if ((rank2 > rank1) && (file2 > file1)) for (trank = rank1 + 1, tfile = file1 + 1; trank < rank2 || tfile < file2; ++trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+        if ((rank2 > rank1) && (file2 < file1)) for (trank = rank1 + 1, tfile = file1 - 1; trank < rank2 || tfile > file2; ++trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+        if ((rank2 < rank1) && (file2 > file1)) for (trank = rank1 - 1, tfile = file1 + 1; trank > rank2 || tfile < file2; --trank, ++tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+        if ((rank2 < rank1) && (file2 < file1)) for (trank = rank1 - 1, tfile = file1 - 1; trank > rank2 || tfile > file2; --trank, --tfile) if (cb[trank - 1][tfile - 1].piece) return false;
+        return true;
     }
 
     // check if move is legit
     bool isMoveValid(gameStatus &gs, int rank1, int file1, int rank2, int file2) noexcept {
+/*
+        if (gs.check.flag) {
+            if ((gs.player == WHITE) && (gs.chessboard[rank1 -1 ][file1 - 1].piece != (WHITE | KING))) return false;
+            if ((gs.player == BLACK) && (gs.chessboard[rank1 -1 ][file1 - 1].piece != (BLACK | KING))) return false;
+        }
+*/
 
         switch (gs.chessboard[rank1 - 1][file1 - 1].piece & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
@@ -84,6 +79,7 @@ namespace chess {
 
                 switch (gs.player) {
                     case (WHITE): 
+                        // TODO: fix potential bug in rank2 == 3
                         if (rank1 == 2) return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece))); // if pawn is on starting position then it can move only 1 or 2 squares forward
                         if (rank2 != rank1 + 1) return false;                 // else it can only move 1 square forward                        
                         if (rank2 != 8) return true;                          // if rank2 != 8 then return true, otherwise promote the pawn
