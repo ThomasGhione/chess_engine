@@ -1,6 +1,5 @@
 #include "chessengine.h"
 
-
 //template<int i> struct Fac { static const int result = i * Fac<i-1>::result; };
 //template<> struct Fac<1> { static const int result = 1; };
 
@@ -13,11 +12,19 @@ int main() {
         auto start = std::chrono::steady_clock::now();
     #endif
 
-
+    // TODO START OF LIST TEST
+    /*
+    std::list<chess::move> listOfMoves;
+    chess::move testMove;
+    testMove.file1 = testMove.file2 = 'a'; testMove.rank1 = testMove.rank2 = 1; testMove.piece = (WHITE | ROOK);
+    listOfMoves.push_back(testMove);
+    for (auto const &i : listOfMoves) std::cout << i.file1 << i.rank1 << ' ' << i.file2 << i.rank2 << ' ' << chess::getPiece(i.piece) << '\n';
+    */
+    // TODO END OF LIST TEST
 
     chess::gameStatus gamestatus;                           // declare our gamestatus; main variable where every info about the game is here                             
     chess::createInitialBoard(gamestatus.chessboard);       // create an empty board and put every pieces in its initial squares
-    chess::debugprint(gamestatus);                          // print the initial position
+    chess::printBoard(gamestatus);                          // print the initial position
 
     #ifdef DEBUG
         auto end = std::chrono::steady_clock::now();

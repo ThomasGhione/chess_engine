@@ -64,7 +64,8 @@
         "xlocmon": "cpp",
         "xloctime": "cpp",
         "xtree": "cpp",
-        "*.txt": "cpp"
+        "*.txt": "cpp",
+        "list": "cpp"
     },
     "C_Cpp.dimInactiveRegions": true
 }

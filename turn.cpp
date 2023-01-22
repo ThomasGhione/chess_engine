@@ -85,7 +85,7 @@ namespace chess {
         #endif
 
         // print the chessboard after every move
-        debugprint(gs);
+        printBoard(gs);
 
         #ifdef DEBUG
             std::cout << "Time to calculate if the move was legal: " << std::chrono::duration <double, std::nano> (diff).count() << " ns\n";

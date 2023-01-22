@@ -36,42 +36,29 @@ namespace chess {
     }
 
 
-    std::string displayPiece(const board debugboard[ML][ML], const int rank, const int file) noexcept {
-        switch (debugboard[rank][file].piece) {     
-            case (WHITE | PAWN): return "wp";
-            case (WHITE | KNIGHT): return "wN";
-            case (WHITE | BISHOP): return "wB";
-            case (WHITE | ROOK): return "wR";
-            case (WHITE | QUEEN): return "wQ";
-            case (WHITE | KING): return "wK"; //TODO: \u2654
-            case (BLACK | PAWN): return "bp";
-            case (BLACK | KNIGHT): return "bN";
-            case (BLACK | BISHOP): return "bB";
-            case (BLACK | ROOK): return "bR";
-            case (BLACK | QUEEN): return "bQ";
-            case (BLACK | KING): return "bK";
-            default: return (debugboard[rank][file].isLightSquare) ? "██" : "  "; // default: case (EMPTY)
-        }
+    std::string printPiece(const board debugboard[ML][ML], const int rank, const int file) noexcept {
+        if (getPiece(debugboard[rank][file].piece) != " ") return getPiece(debugboard[rank][file].piece);
+        return (debugboard[rank][file].isLightSquare) ? "█" : " "; // default: case (EMPTY)
     }
 
-    void debugprint(gameStatus &gs) noexcept { // white square unicode: \u2588
+    void printBoard(gameStatus &gs) noexcept { // white square unicode: \u2588
 
         #ifdef DEBUG
             auto start = std::chrono::steady_clock::now();
         #endif
 
-        std::cout << "\n\n       A     B     C     D     E     F     G     H       LAST MOVE: " << gs.lastMove.file1 << gs.lastMove.rank1 << ' ' <<gs.lastMove.file2 << gs.lastMove.rank2 << "\n\n\n";
+        std::cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: " << getPiece(gs.lastMove.piece) << ' ' << gs.lastMove.file1 << gs.lastMove.rank1 << ' ' <<gs.lastMove.file2 << gs.lastMove.rank2 << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (gs.chessboard[rank][0].isLightSquare) {
-                std::cout << "     ██████      ██████      ██████      ██████      \n" << rank + 1 << "    ";
-                for (int file = 0; file < ML; file += 2) std::cout << "██" << displayPiece(gs.chessboard, rank, file) << "██  " << displayPiece(gs.chessboard, rank, file+1) << "  ";
-                std::cout << "    " << rank + 1 << "\n     ██████      ██████      ██████      ██████      \n";
+                std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
+                for (int file = 0; file < ML; file += 2) std::cout << "██" << printPiece(gs.chessboard, rank, file) << "██  " << printPiece(gs.chessboard, rank, file+1) << "  ";
+                std::cout << "    " << rank + 1 << "\n     █████     █████     █████     █████     \n";
             } else {
-                std::cout << "           ██████      ██████      ██████      ██████\n" << rank + 1 << "    ";
-                for (int file = 0; file < ML; file += 2) std::cout << "  " << displayPiece(gs.chessboard, rank, file) << "  ██" << displayPiece(gs.chessboard, rank, file+1) << "██";
-                std::cout << "    " << rank + 1 << "\n           ██████      ██████      ██████      ██████\n";
+                std::cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
+                for (int file = 0; file < ML; file += 2) std::cout << "  " << printPiece(gs.chessboard, rank, file) << "  ██" << printPiece(gs.chessboard, rank, file+1) << "██";
+                std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";
             }
-        } std::cout << "\n\n       A     B     C     D     E     F     G     H       TURN: " << gs.turns << "\n\n";
+        } std::cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << gs.turns << "\n\n";
 
         #ifdef DEBUG
             auto end = std::chrono::steady_clock::now();
