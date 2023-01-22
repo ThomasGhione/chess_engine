@@ -9,6 +9,7 @@
 #include <string.h>
 #include <cctype>
 #include <bitset>
+#include <list>
 
 #ifdef DEBUG
     #include <chrono>
@@ -58,7 +59,7 @@ namespace chess {
 
     static inline const unsigned char ML = 8;          // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
 
-    struct lastMove {
+    struct move {
         static inline char file1 = '0'; static inline int rank1 = 0; // coords of the square before moving the piece
         static inline char file2 = '0'; static inline int rank2 = 0; // coords of the square after moving the piece
         static inline piece_id piece;                                // last piece moved
@@ -69,6 +70,8 @@ namespace chess {
         piece_id piece;                  // piece
     };
 
+    
+
     struct gameStatus {
         //static inline checkStruct check;             // becomes true everytime a player is in check
 
@@ -77,19 +80,21 @@ namespace chess {
         //listOfMoves moves;                           // TODO: moves struct
         static inline board chessboard[ML][ML];        // cb = chessboard
         static inline bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
-        static inline lastMove lastMove;
+        static inline move lastMove;
     };
+
 
 
     void createInitialBoard(board [ML][ML]) noexcept;
     void startingPosition(board [ML][ML]) noexcept;
     
-    std::string displayPiece(const board [ML][ML], const int, const int) noexcept ;
-    void debugprint(gameStatus &) noexcept;
+    std::string printPiece(const board [ML][ML], const int, const int) noexcept ;
+    void printBoard(gameStatus &) noexcept;
     //void printBoard();
 
     std::string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
+    std::string getPiece(piece_id) noexcept;
     
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;

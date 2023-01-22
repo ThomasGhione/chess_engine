@@ -1,3 +1,4 @@
+/*
 #include "chessengine.h"
 
 namespace chess {
@@ -28,7 +29,7 @@ namespace chess {
                     continue;
                     //! nothing to do here, skip to the next square
                 }
-/*
+
                 if ((chessboard[rank][file].piece && PLAYERMASK) == WHITE) {
                     //TODO check whiteTerritory
                 }
@@ -36,8 +37,9 @@ namespace chess {
                 if ((chessboard[rank][file].piece && PLAYERMASK) == BLACK) {
                     //TODO check blackTerritory
                 }
-*/
+
             }
         }
     }
 }
+*/
