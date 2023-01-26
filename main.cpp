@@ -12,19 +12,25 @@ int main() {
         auto start = std::chrono::steady_clock::now();
     #endif
 
-    // TODO START OF LIST TEST
-    /*
-    std::list<chess::move> listOfMoves;
-    chess::move testMove;
-    testMove.file1 = testMove.file2 = 'a'; testMove.rank1 = testMove.rank2 = 1; testMove.piece = (WHITE | ROOK);
-    listOfMoves.push_back(testMove);
-    for (auto const &i : listOfMoves) std::cout << i.file1 << i.rank1 << ' ' << i.file2 << i.rank2 << ' ' << chess::getPiece(i.piece) << '\n';
-    */
-    // TODO END OF LIST TEST
 
     chess::gameStatus gamestatus;                           // declare our gamestatus; main variable where every info about the game is here                             
     chess::createInitialBoard(gamestatus.chessboard);       // create an empty board and put every pieces in its initial squares
     chess::printBoard(gamestatus);                          // print the initial position
+
+    //gamestatus.listOfMoves.resize(0);
+
+    // TODO START OF LIST TEST
+    /*
+    chess::move testMove;
+    testMove.file1 = testMove.file2 = 'a'; testMove.rank1 = testMove.rank2 = 1; testMove.piece = (WHITE | ROOK);
+    gamestatus.listOfMoves.push_front(testMove);
+    testMove.file1 = testMove.file2 = 'b'; testMove.rank1 = testMove.rank2 = 2; testMove.piece = (WHITE | BISHOP);
+    gamestatus.listOfMoves.push_front(testMove);
+    testMove.file1 = testMove.file2 = 'c'; testMove.rank1 = testMove.rank2 = 3; testMove.piece = (BLACK | KNIGHT);
+    gamestatus.listOfMoves.push_front(testMove);
+    chess::printAllMoves(gamestatus.listOfMoves);
+    */
+    // TODO END OF LIST TEST
 
     #ifdef DEBUG
         auto end = std::chrono::steady_clock::now();

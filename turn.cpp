@@ -12,7 +12,13 @@ namespace chess {
         std::cin >> iFile1;
 
         if (iFile1 == 'M' || iFile1 == 'm') {
-            std::cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\nInput: ";
+            std::cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\n    Press P/p to print every move\nInput: ";
+            goto ifWrongMove;
+        }
+
+        // if user inputs P/p then print all moves
+        if (iFile1 == 'P' || iFile1 == 'p') {
+            printAllMoves(gs.listOfMoves);
             goto ifWrongMove;
         }
         
@@ -73,7 +79,10 @@ namespace chess {
         gs.lastMove.rank1 = iRank1;
         gs.lastMove.file2 = iFile2;
         gs.lastMove.rank2 = iRank2;
-        gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;    
+        gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;   
+
+        // update listOfMoves
+        gs.listOfMoves.push_back(gs.lastMove);
 
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        

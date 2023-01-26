@@ -28,4 +28,11 @@ namespace chess {
         }
     }
 
+    void printAllMoves(const std::list<move> &l) {
+        std::cout << "\nprint of all moves: \n";
+        for (const move &i : l) std::cout << getPiece(i.piece) << ' ' << i.file1 << i.rank1 << ' ' << i.file2 << i.rank2 << '\n';
+        std::cout << '\n';
+    }
+
+
 }
