@@ -37,7 +37,7 @@ namespace chess {
 
 
     std::string printPiece(const board debugboard[ML][ML], const int rank, const int file) noexcept {
-        if (getPiece(debugboard[rank][file].piece) != " ") return getPiece(debugboard[rank][file].piece);
+        if (debugboard[rank][file].piece != EMPTY) return getPiece(debugboard[rank][file].piece);
         return (debugboard[rank][file].isLightSquare) ? "█" : " "; // default: case (EMPTY)
     }
 

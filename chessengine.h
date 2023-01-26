@@ -11,6 +11,8 @@
 #include <bitset>
 #include <list>
 
+#include <algorithm>
+
 #ifdef DEBUG
     #include <chrono>
 #endif
@@ -60,9 +62,9 @@ namespace chess {
     static inline const unsigned char ML = 8;          // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
 
     struct move {
-        static inline char file1 = '0'; static inline int rank1 = 0; // coords of the square before moving the piece
-        static inline char file2 = '0'; static inline int rank2 = 0; // coords of the square after moving the piece
-        static inline piece_id piece;                                // last piece moved
+        char file1 = '0'; int rank1 = 0; // coords of the square before moving the piece
+        char file2 = '0'; int rank2 = 0; // coords of the square after moving the piece
+        piece_id piece;                  // last piece moved
     };
 
     using board = struct square {
@@ -77,10 +79,10 @@ namespace chess {
 
         static inline unsigned char player = WHITE;    // tells which player has to move. white always starts first
         static inline unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
-        //listOfMoves moves;                           // TODO: moves struct
+        std::list<move> listOfMoves;                   // TODO: moves struct
         static inline board chessboard[ML][ML];        // cb = chessboard
         static inline bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
-        static inline move lastMove;
+        move lastMove;
     };
 
 
@@ -95,6 +97,7 @@ namespace chess {
     std::string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
     std::string getPiece(piece_id) noexcept;
+    void printAllMoves(const std::list<move> &);
     
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
