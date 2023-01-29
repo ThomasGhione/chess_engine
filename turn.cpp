@@ -84,6 +84,16 @@ namespace chess {
         // update listOfMoves
         gs.listOfMoves.push_back(gs.lastMove);
 
+        // update wherePieeAt
+        /*
+        if (updatePieceCoords(gs.wherePieceAt, gs.lastMove)) {
+            std::cout << "\n\nDEBUG ONLY - PIECE MOVE UPDATED CORRECTLY\n\n";
+            // printPieceCoords(gs.wherePieceAt);
+        } else std::cout << "DEBUG ONLY - FAILED UPDATING PIECE";
+        */
+
+      
+
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
         gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;

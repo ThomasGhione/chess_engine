@@ -14,21 +14,29 @@ int main() {
 
 
     chess::gameStatus gamestatus;                           // declare our gamestatus; main variable where every info about the game is here                             
-    chess::createInitialBoard(gamestatus.chessboard);       // create an empty board and put every pieces in its initial squares
+    chess::createInitialBoard(gamestatus);                  // create an empty board and put every pieces in its initial squares
     chess::printBoard(gamestatus);                          // print the initial position
 
-    //gamestatus.listOfMoves.resize(0);
+    // in the starting position, these are the coordinates of where the pieces are  
+    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 1});
+    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 2});
+    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 7});
+    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 8});
+    chess::printPieceCoordsV(gamestatus.wherePieceAt);
+    /* gamestatus.wherePieceAt = { {'a', 1}, {'b', 1}, {'c', 1}, {'d', 1}, {'e', 1}, {'f', 1}, {'g', 1}, {'h', 1},
+                                {'a', 2}, {'b', 2}, {'c', 2}, {'d', 2}, {'e', 2}, {'f', 2}, {'g', 2}, {'h', 2},
+                                {'a', 7}, {'b', 7}, {'c', 7}, {'d', 7}, {'e', 7}, {'f', 7}, {'g', 7}, {'h', 7},
+                                {'a', 8}, {'b', 8}, {'c', 8}, {'d', 8}, {'e', 8}, {'f', 8}, {'g', 8}, {'h', 8} };*/
+    //?DEBUG chess::printPieceCoords(gamestatus.wherePieceAt);
 
     // TODO START OF LIST TEST
     /*
-    chess::move testMove;
-    testMove.file1 = testMove.file2 = 'a'; testMove.rank1 = testMove.rank2 = 1; testMove.piece = (WHITE | ROOK);
-    gamestatus.listOfMoves.push_front(testMove);
-    testMove.file1 = testMove.file2 = 'b'; testMove.rank1 = testMove.rank2 = 2; testMove.piece = (WHITE | BISHOP);
-    gamestatus.listOfMoves.push_front(testMove);
-    testMove.file1 = testMove.file2 = 'c'; testMove.rank1 = testMove.rank2 = 3; testMove.piece = (BLACK | KNIGHT);
-    gamestatus.listOfMoves.push_front(testMove);
-    chess::printAllMoves(gamestatus.listOfMoves);
+    chess::coords test;
+    test.file = 'a'; test.rank = 1;
+    gamestatus.wherePieceAt.push_back(test);
+    test.file = 'b'; test.rank = 2;
+    gamestatus.wherePieceAt.push_back(test);
+    for (auto i : gamestatus.wherePieceAt) std::cout << i.file << i.rank;
     */
     // TODO END OF LIST TEST
 

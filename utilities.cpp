@@ -34,5 +34,55 @@ namespace chess {
         std::cout << '\n';
     }
 
+    void printPieceCoords(const std::list<coords> &l) {
+        std::cout << "\nprint of all moves: \n";
+        for (const coords &i : l) std::cout << i.file << i.rank << '\n';
+        std::cout << '\n';
+    }
+
+    bool updatePieceCoords(std::list<coords> &l, move &m) {
+        for (coords &i : l) {
+            if ((i.file == m.file1) && (i.rank == m.rank1)) {
+                // update coords of the piece after moving it
+                i.file = m.file2;
+                i.rank = m.rank2;
+                return true; // piece found, so return true
+            }
+        }
+        return false;
+    }
+
+
+    void printPieceCoordsV(const std::vector<coords> &v) {
+        std::cout << "\nPrint of all moves (vector): ";
+        for (const coords &i : v) std::cout << i.file << i.rank << '\n';
+        std::cout << '\n';
+    }
+
+    coords changePiece(std::vector<coords> &v, char file, int rank) {
+        for (int i = 0; i < v.size(); ++i) {
+            if ((v[i].file == file) && (v[i].rank == rank)) {
+                
+            }
+        }
+    }
+
+    void updateCoordsV(gameStatus &gs, char file1, int rank1, char file2, int rank2) {
+        for (int i = 0; i < gs.wherePieceAt.size(); ++i) {
+            if ((gs.wherePieceAt[i].file == file1) && (gs.wherePieceAt[i].rank == rank1)) {
+                gs.wherePieceAt[i].file = file2;
+                gs.wherePieceAt[i].rank = rank2;
+                return;
+            }
+        }
+    }
+
+    void deletePieceV(std::vector<coords> &v, char file, int rank) {
+        for (int i = 0; i < v.size(); ++i)
+            if ((v[i].file == file) && (v[i].rank == rank)) {
+                v.erase(v.begin() + i);
+                return;
+            }
+    }
 
 }

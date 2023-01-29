@@ -2,37 +2,37 @@
 
 namespace chess {
 
-    void startingPosition(board emptyboard[ML][ML]) noexcept {
+    void startingPosition(gameStatus &gs) noexcept {
         //pieces
-        emptyboard[0][0].piece = emptyboard[0][7].piece = WHITE | ROOK;
-        emptyboard[0][1].piece = emptyboard[0][6].piece = WHITE | KNIGHT;
-        emptyboard[0][2].piece = emptyboard[0][5].piece = WHITE | BISHOP;
-        emptyboard[0][3].piece = WHITE | QUEEN;
-        emptyboard[0][4].piece = WHITE | KING;
+        gs.chessboard[0][0].piece = gs.chessboard[0][7].piece = WHITE | ROOK;
+        gs.chessboard[0][1].piece = gs.chessboard[0][6].piece = WHITE | KNIGHT;
+        gs.chessboard[0][2].piece = gs.chessboard[0][5].piece = WHITE | BISHOP;
+        gs.chessboard[0][3].piece = WHITE | QUEEN;
+        gs.chessboard[0][4].piece = WHITE | KING;
 
         //black pieces
-        emptyboard[7][0].piece = emptyboard[7][7].piece = BLACK | ROOK;
-        emptyboard[7][1].piece = emptyboard[7][6].piece = BLACK | KNIGHT;
-        emptyboard[7][2].piece = emptyboard[7][5].piece = BLACK | BISHOP;
-        emptyboard[7][3].piece = BLACK | QUEEN;
-        emptyboard[7][4].piece = BLACK | KING;
+        gs.chessboard[7][0].piece = gs.chessboard[7][7].piece = BLACK | ROOK;
+        gs.chessboard[7][1].piece = gs.chessboard[7][6].piece = BLACK | KNIGHT;
+        gs.chessboard[7][2].piece = gs.chessboard[7][5].piece = BLACK | BISHOP;
+        gs.chessboard[7][3].piece = BLACK | QUEEN;
+        gs.chessboard[7][4].piece = BLACK | KING;
 
         //all pawns
         for (int file = 0; file < ML; ++file) {
-            emptyboard[1][file].piece = WHITE | PAWN;
-            emptyboard[6][file].piece = BLACK | PAWN;
+            gs.chessboard[1][file].piece = WHITE | PAWN;
+            gs.chessboard[6][file].piece = BLACK | PAWN;
         }
 
         //empty squares
-        for (int rank = 2; rank < 6; ++rank) for (int file = 0; file < ML; ++file) emptyboard[rank][file].piece = EMPTY;
+        for (int rank = 2; rank < 6; ++rank) for (int file = 0; file < ML; ++file) gs.chessboard[rank][file].piece = EMPTY;
     } 
 
 
-    void createInitialBoard(board new_board[ML][ML]) noexcept { // set up light squares
+    void createInitialBoard(gameStatus &gs) noexcept { // set up light squares
         for (int rank = 0; rank < ML; ++rank)
             for (int file = 0; file < ML; ++file) 
-                (((rank + file) % 2)) ? (new_board[rank][file].isLightSquare = true) : (new_board[rank][file].isLightSquare = false);
-        startingPosition(new_board);
+                (((rank + file) % 2)) ? (gs.chessboard[rank][file].isLightSquare = true) : (gs.chessboard[rank][file].isLightSquare = false);
+        startingPosition(gs);
     }
 
 
