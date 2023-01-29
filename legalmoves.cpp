@@ -135,4 +135,131 @@ namespace chess {
     }
     
 
+
+
+
+
+    // list of moves
+    // TODO: NOT FINISHED
+    //! PROTOTYPE OF NEW FUNCTION TO CALCULATE EVERY MOVE (WILL BE THE NEW "IsMoveValid")
+    void everyLegalMove(gameStatus &gs) { //TODO "returns are placeholders"
+        
+        for (int rank = 0; rank < ML; ++rank) {
+            for (int file = 0; file < ML; ++file) {
+                if ((gs.chessboard[file][rank].piece != EMPTY) && (gs.player == (gs.chessboard[file][rank].piece & PLAYERMASK))) {
+                    
+                    //! PAWN
+                    if ((gs.chessboard[file][rank].piece & PIECEMASK) == PAWN) {
+                        if (gs.chessboard[file][rank].piece == (WHITE | PAWN)) {
+
+                        }
+                        if (gs.chessboard[file][rank].piece == (BLACK | PAWN)) {
+                            
+                        }
+
+                    }
+
+                    //! ROOK
+                    if ((gs.chessboard[file][rank].piece & PIECEMASK) == ROOK) {
+                        for (int it_file = file - 1; it_file >= 0; --it_file) {
+                            if (gs.chessboard[it_file][rank].piece == EMPTY) { // if square is empty then move is legal
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(it_file + 'a'), rank); // update the square of the piece
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][rank].piece & PLAYERMASK) != gs.player) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(it_file + 'a'), rank); // update the square of the piece
+                                deletePieceV(gs.wherePieceAt, (char)(it_file + 'a'), rank);                  // delete the taken piece
+                                return; // if there is an opponent piece move is legal
+                            }
+                            return; // if we arrive here it means we hit your own pieces 
+                        }
+                        for (int it_file = file + 1; it_file < ML; ++it_file) {
+                            if (gs.chessboard[it_file][rank].piece == EMPTY) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(it_file + 'a'), rank);
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][rank].piece & PLAYERMASK) != gs.player) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(it_file + 'a'), rank);
+                                deletePieceV(gs.wherePieceAt, (char)(it_file + 'a'), rank);
+                                return; // if there is an opponent piece move is legal
+                            }
+                            return; 
+                        }
+                        for (int it_rank = rank - 1; it_rank >= 0; --it_rank) {
+                            if (gs.chessboard[file][it_rank].piece == EMPTY) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(file + 'a'), it_rank);
+                                return;
+                            }
+                            if ((gs.chessboard[file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(file + 'a'), it_rank);
+                                deletePieceV(gs.wherePieceAt, (char)(file + 'a'), it_rank);
+                                return; // if there is an opponent piece move is legal
+                            }
+                            return;
+                        }
+                        for (int it_rank = rank + 1; it_rank < ML; ++it_rank) {
+                            if (gs.chessboard[file][it_rank].piece == EMPTY) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(file + 'a'), it_rank);
+                                return;
+                            }
+                            if ((gs.chessboard[file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                updateCoordsV(gs, (char)(file + 'a'), rank, (char)(file + 'a'), it_rank);
+                                deletePieceV(gs.wherePieceAt, (char)(file + 'a'), it_rank);
+                                return; // if there is an opponent piece move is legal
+                            }
+                            return;
+                        }
+                    }
+
+                    //! BISHOP
+                    if ((gs.chessboard[file][rank].piece & PIECEMASK) == BISHOP) {
+                        int it_file, it_rank;
+                        for (it_file = file - 1, it_rank = rank - 1; it_file >= 0 && it_rank >= 0; --it_file, --it_rank) {
+                            if (gs.chessboard[it_file][it_rank].piece == EMPTY) {
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                return;
+                            }
+                            return;                            
+                        }
+                        for (it_file = file + 1, it_rank = rank - 1; it_file < ML && it_rank >= 0; ++it_file, --it_rank) {
+                            if (gs.chessboard[it_file][it_rank].piece == EMPTY) {
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                return;
+                            }
+                            return;                            
+                        }
+                        for (it_file = file - 1, it_rank = rank + 1; it_file >= 0 && it_rank < ML; --it_file, ++it_rank) {
+                            if (gs.chessboard[it_file][it_rank].piece == EMPTY) {
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                return;
+                            }
+                            return;                            
+                        }
+                        for (it_file = file + 1, it_rank = rank + 1; it_file < ML && it_rank < ML; ++it_file, ++it_rank) {
+                            if (gs.chessboard[it_file][it_rank].piece == EMPTY) {
+                                return;
+                            }
+                            if ((gs.chessboard[it_file][it_rank].piece & PLAYERMASK) != gs.player) {
+                                return;
+                            }
+                            return;                            
+                        }
+                    }
+                    
+                }
+            } 
+        }
+
+        return;
+    }
+    
+    // if piece == black => blacklegalmoves
+
+
 }

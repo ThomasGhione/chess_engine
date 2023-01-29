@@ -10,7 +10,7 @@
 #include <cctype>
 #include <bitset>
 #include <list>
-
+#include <vector>
 #include <algorithm>
 
 #ifdef DEBUG
@@ -61,6 +61,11 @@ namespace chess {
 
     static inline const unsigned char ML = 8;          // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
 
+    struct coords {
+        char file;
+        int rank;
+    };
+
     struct move {
         char file1 = '0'; int rank1 = 0; // coords of the square before moving the piece
         char file2 = '0'; int rank2 = 0; // coords of the square after moving the piece
@@ -80,6 +85,9 @@ namespace chess {
         static inline unsigned char player = WHITE;    // tells which player has to move. white always starts first
         static inline unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
         std::list<move> listOfMoves;                   // TODO: moves struct
+        std::vector<coords> wherePieceAt;          // TODO: keeps track of piece positions in the board
+        std::list<coords> whiteLegalMoves;             // TODO: keeps track of white legal moves
+        std::list<coords> blackLegalMoves;             // TODO: keeps track of black legal moves
         static inline board chessboard[ML][ML];        // cb = chessboard
         static inline bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
         move lastMove;
@@ -87,8 +95,8 @@ namespace chess {
 
 
 
-    void createInitialBoard(board [ML][ML]) noexcept;
-    void startingPosition(board [ML][ML]) noexcept;
+    void createInitialBoard(gameStatus &) noexcept;
+    void startingPosition(gameStatus &) noexcept;
     
     std::string printPiece(const board [ML][ML], const int, const int) noexcept ;
     void printBoard(gameStatus &) noexcept;
@@ -98,7 +106,12 @@ namespace chess {
     int fromCharToInt(const char) noexcept; 
     std::string getPiece(piece_id) noexcept;
     void printAllMoves(const std::list<move> &);
-    
+    void printPieceCoords(const std::list<coords> &);
+    bool updatePieceCoords(std::list<coords> &, move &); // list of coords and move
+    void printPieceCoordsV(const std::vector<coords> &);
+    void deletePieceV(std::vector<coords> &v, char, int);
+    void updateCoordsV(gameStatus &, char, int, char, int);
+
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
 
