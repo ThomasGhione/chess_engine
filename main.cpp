@@ -22,7 +22,9 @@ int main() {
     for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 2});
     for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 7});
     for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 8});
-    chess::printPieceCoordsV(gamestatus.wherePieceAt);
+    //TODO: printPieceCoordsV is just to debug
+    //chess::printPieceCoordsV(gamestatus.wherePieceAt);
+
     /* gamestatus.wherePieceAt = { {'a', 1}, {'b', 1}, {'c', 1}, {'d', 1}, {'e', 1}, {'f', 1}, {'g', 1}, {'h', 1},
                                 {'a', 2}, {'b', 2}, {'c', 2}, {'d', 2}, {'e', 2}, {'f', 2}, {'g', 2}, {'h', 2},
                                 {'a', 7}, {'b', 7}, {'c', 7}, {'d', 7}, {'e', 7}, {'f', 7}, {'g', 7}, {'h', 7},
