@@ -63,6 +63,21 @@ namespace chess {
             goto ifWrongMove;
         }
 
+
+
+        // update wherePieceAt
+        //updateCoordsV(gs, iFile1, iRank1, iFile2, iRank2);
+        /*
+        if (((gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece & PLAYERMASK) != gs.player) &&
+            (gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece != EMPTY))
+            {
+                std::cout << "\n\n\nI DELETED A PIECE LOCATION :)\n";
+                deletePieceV(gs.wherePieceAt, iFile2, iRank2);
+        }
+        */
+        //TODO DEBUG ONLY:
+        printPieceCoordsV(gs.wherePieceAt);
+
         // if we arrive here it means the move is valid, therefore we make the other player move (and if it's white we increment the turn counter)
         switch (gs.player) {
             case WHITE:
@@ -83,16 +98,6 @@ namespace chess {
 
         // update listOfMoves
         gs.listOfMoves.push_back(gs.lastMove);
-
-        // update wherePieeAt
-        /*
-        if (updatePieceCoords(gs.wherePieceAt, gs.lastMove)) {
-            std::cout << "\n\nDEBUG ONLY - PIECE MOVE UPDATED CORRECTLY\n\n";
-            // printPieceCoords(gs.wherePieceAt);
-        } else std::cout << "DEBUG ONLY - FAILED UPDATING PIECE";
-        */
-
-      
 
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        

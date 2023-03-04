@@ -110,7 +110,7 @@ namespace chess {
     bool updatePieceCoords(std::list<coords> &, move &); // list of coords and move
     void printPieceCoordsV(const std::vector<coords> &);
     void deletePieceV(std::vector<coords> &v, char, int);
-    void updateCoordsV(gameStatus &, char, int, char, int);
+    bool updateCoordsV(gameStatus &, char, int, char, int);
 
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
