@@ -153,7 +153,31 @@ namespace chess {
             switch (gs.chessboard[file][rank].piece & PIECEMASK) {
 
                 //! PAWN
-                
+                /*
+                switch (gs.player) {
+                    
+                    case (WHITE): 
+                        // TODO: fix potential bug in rank2 == 3
+                        if (rank == 1) {
+                            // can move 2 squares
+                            gs.whiteLegalMoves.push_back({file, rank}); 
+                        }
+                        if (rank < 7) {
+                            // can move 1 square
+                        }
+
+                        if (rank == 7) {
+                            // promote pawn
+                        }
+                        break; 
+                    case (BLACK):
+                        if (rank == 7) return (rank2 == 6 || ((rank2 == 5) && (!gs.chessboard[5][file2 - 1].piece)));
+                        if (rank2 != rank - 1) return false;
+                        if (rank2 != 1) return true;
+                        break;
+                    
+                } */
+
                 //! KNIGHT
                 case (KNIGHT):
                     break;
