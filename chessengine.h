@@ -100,7 +100,7 @@ namespace chess {
     
     std::string printPiece(const board [ML][ML], const int, const int) noexcept ;
     void printBoard(gameStatus &) noexcept;
-    //void printBoard();
+    //void printBoard(); 
 
     std::string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
