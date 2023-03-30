@@ -17,11 +17,13 @@ int main() {
     chess::createInitialBoard(gamestatus);                  // create an empty board and put every pieces in its initial squares
     chess::printBoard(gamestatus);                          // print the initial position
 
-    // in the starting position, these are the coordinates of where the pieces are  
-    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 1});
-    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 2});
-    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 7});
-    for (char c = 'a'; c <= 'h'; ++c) gamestatus.wherePieceAt.push_back({c, 8});
+    // in the starting position, these are the coordinates of where the pieces are
+    for (char i = 'a'; i <= 'h'; ++i) {
+        gamestatus.wherePieceAt.push_back({i, 1});
+        gamestatus.wherePieceAt.push_back({i, 2});
+        gamestatus.wherePieceAt.push_back({i, 7});
+        gamestatus.wherePieceAt.push_back({i, 8});
+    }
     //TODO: printPieceCoordsV is just to debug
     //chess::printPieceCoordsV(gamestatus.wherePieceAt);
 
