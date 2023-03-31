@@ -13,7 +13,7 @@ namespace chess_engine_cs.Pieces.impl
         {
             Symbol = color == Color.White ? 'B' : 'b';
             PieceType = types.PieceTypes.FULL;
-
+            
         }
     }
 }

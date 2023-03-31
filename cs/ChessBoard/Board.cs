@@ -29,7 +29,7 @@ namespace chess_engine_cs.ChessBoard
             board[0, 3] = new Queen(Color.White);
             board[0, 4] = new King(Color.White);
 
-            board[0, 0] = board[7, 7] = new Rook(Color.Black);
+            board[7, 0] = board[7, 7] = new Rook(Color.Black);
             board[7, 1] = board[7, 6] = new Knight(Color.Black);
             board[7, 2] = board[7, 5] = new Bishop(Color.Black);
             board[7, 3] = new Queen(Color.Black);
@@ -56,8 +56,11 @@ namespace chess_engine_cs.ChessBoard
 
         private char PrintPiece(int rank, int pos) 
         {
-            if (board[rank, pos].PieceType != Pieces.types.PieceTypes.EMPTY) return getPiece(board[rank, pos]);
-            return ' '; //TOFIX
+
+            return (board[rank, pos].PieceType != Pieces.types.PieceTypes.EMPTY) ? getPiece(board[rank, pos]) : ' ';
+ 
+            // if (board[rank, pos].PieceType != Pieces.types.PieceTypes.EMPTY) ? getPiece(board[rank, pos]);
+            // return ' '; //TOFIX
         }
 
         private char getPiece(Piece piece)
