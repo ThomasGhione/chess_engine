@@ -2,7 +2,7 @@
 
 namespace chess {
 
-    void startingPosition(gameStatus &gs) noexcept {
+    [[noreturn]] void startingPosition(gameStatus &gs) noexcept {
         //pieces
         gs.chessboard[0][0].piece = gs.chessboard[0][7].piece = WHITE | ROOK;
         gs.chessboard[0][1].piece = gs.chessboard[0][6].piece = WHITE | KNIGHT;
@@ -28,7 +28,7 @@ namespace chess {
     } 
 
 
-    void createInitialBoard(gameStatus &gs) noexcept { // set up light squares
+    [[noreturn]] void createInitialBoard(gameStatus &gs) noexcept { // set up light squares
         for (int rank = 0; rank < ML; ++rank)
             for (int file = 0; file < ML; ++file) 
                 (((rank + file) % 2)) ? (gs.chessboard[rank][file].isLightSquare = true) : (gs.chessboard[rank][file].isLightSquare = false);
@@ -41,7 +41,7 @@ namespace chess {
         return (debugboard[rank][file].isLightSquare) ? "█" : " "; // default: case (EMPTY)
     }
 
-    void printBoard(gameStatus &gs) noexcept { // white square unicode: \u2588
+    [[noreturn]] void printBoard(gameStatus &gs) noexcept { // white square unicode: \u2588
 
         #ifdef DEBUG
             auto start = std::chrono::steady_clock::now();
