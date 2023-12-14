@@ -1,4 +1,4 @@
-#include "chessengine.h"
+#include "gamestatus.h"
 
 namespace chess {
 
@@ -18,7 +18,7 @@ namespace chess {
 
         // if user inputs P/p then print all moves
         if (iFile1 == 'P' || iFile1 == 'p') {
-            printAllMoves(gs.listOfMoves);
+            // printAllMoves(gs.listOfMoves);
             goto ifWrongMove;
         }
         
@@ -75,8 +75,8 @@ namespace chess {
                 deletePieceV(gs.wherePieceAt, iFile2, iRank2);
         }
         */
-        //TODO DEBUG ONLY:
-        printPieceCoordsV(gs.wherePieceAt);
+
+
 
         // if we arrive here it means the move is valid, therefore we make the other player move (and if it's white we increment the turn counter)
         switch (gs.player) {
@@ -97,7 +97,7 @@ namespace chess {
         gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;   
 
         // update listOfMoves
-        gs.listOfMoves.push_back(gs.lastMove);
+        //? gs.listOfMoves.push_back(gs.lastMove);
 
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        

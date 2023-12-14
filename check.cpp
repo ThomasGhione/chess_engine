@@ -1,16 +1,16 @@
 /*
-#include "chessengine.h"
+#include "gamestatus.h"
 
 namespace chess {
 
     struct checkStruct {
         static inline bool flag = false;
-        static inline piece_id piece[2];
+        static inline piece piece[2];
     };
 
     struct isCovered {
-        bool whiteTerritory[ML][ML];
-        bool blackTerritory[ML][ML];
+        bool whiteTerritory[DIM][DIM];
+        bool blackTerritory[DIM][DIM];
     };
 
 
@@ -21,9 +21,9 @@ namespace chess {
         return true;
     }
 
-    void checkTerritory(board chessboard[ML][ML]) {
-        for (int rank = 0; rank < ML; ++rank) {
-            for (int file = 0; file < ML; ++file) {
+    void checkTerritory(board chessboard[DIM][DIM]) {
+        for (int rank = 0; rank < DIM; ++rank) {
+            for (int file = 0; file < DIM; ++file) {
 
                 if ((chessboard[rank][file].piece && PLAYERMASK) == EMPTY) {
                     continue;

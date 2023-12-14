@@ -1,7 +1,4 @@
-#include "chessengine.h"
-
-//template<int i> struct Fac { static const int result = i * Fac<i-1>::result; };
-//template<> struct Fac<1> { static const int result = 1; };
+#include "gamestatus.h"
 
 int main() {
     //std::cout << "10! = " << Fac<10>::result << "\n";
@@ -17,12 +14,11 @@ int main() {
     chess::createInitialBoard(gamestatus);                  // create an empty board and put every pieces in its initial squares
     chess::printBoard(gamestatus);                          // print the initial position
 
-    // in the starting position, these are the coordinates of where the pieces are
+    // starting position
+    chess::addPiece(gamestatus.whitePieces, {WHITE | ROOK, 'a', 1});
+    gamestatus.whitePieces;
     for (char i = 'a'; i <= 'h'; ++i) {
-        gamestatus.wherePieceAt.push_back({i, 1});
-        gamestatus.wherePieceAt.push_back({i, 2});
-        gamestatus.wherePieceAt.push_back({i, 7});
-        gamestatus.wherePieceAt.push_back({i, 8});
+        //TODO CHANGE THIS
     }
     //TODO: printPieceCoordsV is just to debug
     //chess::printPieceCoordsV(gamestatus.wherePieceAt);
@@ -33,16 +29,6 @@ int main() {
                                 {'a', 8}, {'b', 8}, {'c', 8}, {'d', 8}, {'e', 8}, {'f', 8}, {'g', 8}, {'h', 8} };*/
     //?DEBUG chess::printPieceCoords(gamestatus.wherePieceAt);
 
-    // TODO START OF LIST TEST
-    /*
-    chess::coords test;
-    test.file = 'a'; test.rank = 1;
-    gamestatus.wherePieceAt.push_back(test);
-    test.file = 'b'; test.rank = 2;
-    gamestatus.wherePieceAt.push_back(test);
-    for (auto i : gamestatus.wherePieceAt) std::cout << i.file << i.rank;
-    */
-    // TODO END OF LIST TEST
 
     #ifdef DEBUG
         auto end = std::chrono::steady_clock::now();
