@@ -30,6 +30,18 @@ namespace chess {
         for (int rank = 2; rank < 6; ++rank)
             for (int file = 0; file < DIM; ++file)
                 gs.chessboard[rank][file].piece = EMPTY;
+
+
+        // set up whitePieces
+        gs.whitePieces = { {{WHITE | ROOK, 'a', 1}}, {{WHITE | KNIGHT, 'b', 1}}, {{WHITE | BISHOP, 'c', 1}}, {{WHITE | QUEEN, 'd', 1}},
+                           {{WHITE | KING, 'e', 1}}, {{WHITE | BISHOP, 'f', 1}}, {{WHITE | KNIGHT, 'g', 1}}, {{WHITE | ROOK, 'h', 1}},
+                            {{WHITE | PAWN, 'a', 2}}, {{WHITE | PAWN, 'b', 2}}, {{WHITE | PAWN, 'c', 2}}, {{WHITE | PAWN, 'd', 2}},
+                            {{WHITE | PAWN, 'e', 2}}, {{WHITE | PAWN, 'f', 2}}, {{WHITE | PAWN, 'g', 2}}, {{WHITE | PAWN, 'h', 2}} };
+        // set up blackPieces
+        gs.blackPieces = { {{BLACK | ROOK, 'a', 8}}, {{BLACK | KNIGHT, 'b', 8}}, {{BLACK | BISHOP, 'c', 8}}, {{BLACK | QUEEN, 'd', 8}},
+                           {{BLACK | KING, 'e', 8}}, {{BLACK | BISHOP, 'f', 8}}, {{BLACK | KNIGHT, 'g', 8}}, {{BLACK | ROOK, 'h', 8}},
+                            {{BLACK | PAWN, 'a', 7}}, {{BLACK | PAWN, 'b', 7}}, {{BLACK | PAWN, 'c', 7}}, {{BLACK | PAWN, 'd', 7}},
+                            {{BLACK | PAWN, 'e', 7}}, {{BLACK | PAWN, 'f', 7}}, {{BLACK | PAWN, 'g', 7}}, {{BLACK | PAWN, 'h', 7}} };
     } 
 
     __attribute__((optimize("unroll-loops")))
@@ -42,8 +54,11 @@ namespace chess {
 
 
     std::string printPiece(const board debugboard[DIM][DIM], const int rank, const int file) noexcept {
-        if (debugboard[rank][file].piece != EMPTY) return getPiece(debugboard[rank][file].piece);
-        return (debugboard[rank][file].isLightSquare) ? "█" : " "; // default: case (EMPTY)
+        if (debugboard[rank][file].piece != EMPTY)
+            return getPiece(debugboard[rank][file].piece);
+        return (debugboard[rank][file].isLightSquare)
+            ? "█"
+            : " "; // default: case (EMPTY)
     }
 
     __attribute__((optimize("unroll-loops")))
@@ -57,11 +72,13 @@ namespace chess {
         for (int rank = DIM - 1; rank >= 0; --rank) {
             if (gs.chessboard[rank][0].isLightSquare) {
                 std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
-                for (int file = 0; file < DIM; file += 2) std::cout << "██" << printPiece(gs.chessboard, rank, file) << "██  " << printPiece(gs.chessboard, rank, file+1) << "  ";
+                for (int file = 0; file < DIM; file += 2)
+                    std::cout << "██" << printPiece(gs.chessboard, rank, file) << "██  " << printPiece(gs.chessboard, rank, file+1) << "  ";
                 std::cout << "    " << rank + 1 << "\n     █████     █████     █████     █████     \n";
             } else {
                 std::cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
-                for (int file = 0; file < DIM; file += 2) std::cout << "  " << printPiece(gs.chessboard, rank, file) << "  ██" << printPiece(gs.chessboard, rank, file+1) << "██";
+                for (int file = 0; file < DIM; file += 2)
+                    std::cout << "  " << printPiece(gs.chessboard, rank, file) << "  ██" << printPiece(gs.chessboard, rank, file+1) << "██";
                 std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";
             }
         } std::cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << gs.turns << "\n\n";

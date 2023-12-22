@@ -13,6 +13,7 @@
 #include <vector>
 #include <algorithm>
 
+
 #ifdef DEBUG
     #include <chrono>
 #endif
@@ -77,7 +78,7 @@ namespace chess {
             this->piece = p, this->file1 = f, this->rank1 = r;
         }
         move(chess::piece p, char f1, int r1, char f2, int r2) {
-            this->piece = p, this->file1 = f1, this->rank1 = r2, this->file2 = f2, this->rank2 = r2;
+            this->piece = p, this->file1 = f1, this->rank1 = r1, this->file2 = f2, this->rank2 = r2;
         }
     };
 
@@ -136,6 +137,10 @@ namespace chess {
 
 
     //! TRACKER
+    void printPiecesCoords(const PiecesAndTheirLegalMoves&);
+    void printAllPieces(const gameStatus&);
+    void updatePieceCoords(PiecesAndTheirLegalMoves&, move);
+    void deletePiece(PiecesAndTheirLegalMoves&, piece);
     void addPiece(PiecesAndTheirLegalMoves&, move);
 }
 

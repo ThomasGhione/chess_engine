@@ -28,7 +28,8 @@ namespace chess {
         }
 
         // both equations can't be true at the same time, otherwise the rook would be able to move to the starting square (therefore skipping turn without moving at all)
-        if (!((rank2 == rank1) != (file2 == file1))) return false;
+        if (!((rank2 == rank1) != (file2 == file1)))
+            return false;
         // if we arrive here it means the coords are legal, now we can check if there is any piece in the way 
         if (rank1 < rank2)
             for (int trank = rank1 + 1; trank < rank2; ++trank)
@@ -50,8 +51,10 @@ namespace chess {
     }
 
     bool bishopMove(board cb[DIM][DIM], const int &rank1, const int &file1, const int &rank2, const int &file2) noexcept {
-        if ((rank2 == rank1) || (file2 == file1)) return false; // if rank2 == rank1 (same for file) then the move must be false
-        if (!(abs((rank2 - rank1)) == abs((file2 - file1)))) return false;
+        if ((rank2 == rank1) || (file2 == file1))
+            return false; // if rank2 == rank1 (same for file) then the move must be false
+        if (!(abs((rank2 - rank1)) == abs((file2 - file1))))
+            return false;
 
         int trank, tfile;   // declaring the for counters once here so I don't have to declare it 4 times
         if ((rank2 > rank1) && (file2 > file1))

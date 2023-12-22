@@ -1,6 +1,6 @@
 #include "gamestatus.h"
 
-int main() {
+[[noreturn]] int main() {
     //std::cout << "10! = " << Fac<10>::result << "\n";
 
     #ifdef DEBUG
@@ -15,18 +15,13 @@ int main() {
     chess::printBoard(gamestatus);                          // print the initial position
 
     // starting position
-    chess::addPiece(gamestatus.whitePieces, {WHITE | ROOK, 'a', 1});
-    gamestatus.whitePieces;
-    for (char i = 'a'; i <= 'h'; ++i) {
-        //TODO CHANGE THIS
-    }
+    
+    chess::printAllPieces(gamestatus);
     //TODO: printPieceCoordsV is just to debug
     //chess::printPieceCoordsV(gamestatus.wherePieceAt);
 
-    /* gamestatus.wherePieceAt = { {'a', 1}, {'b', 1}, {'c', 1}, {'d', 1}, {'e', 1}, {'f', 1}, {'g', 1}, {'h', 1},
-                                {'a', 2}, {'b', 2}, {'c', 2}, {'d', 2}, {'e', 2}, {'f', 2}, {'g', 2}, {'h', 2},
-                                {'a', 7}, {'b', 7}, {'c', 7}, {'d', 7}, {'e', 7}, {'f', 7}, {'g', 7}, {'h', 7},
-                                {'a', 8}, {'b', 8}, {'c', 8}, {'d', 8}, {'e', 8}, {'f', 8}, {'g', 8}, {'h', 8} };*/
+    
+    
     //?DEBUG chess::printPieceCoords(gamestatus.wherePieceAt);
 
 
