@@ -4,12 +4,12 @@
 //template<> struct Fac<1> { static const int result = 1; };
 
 int main() {
-    //std::cout << "10! = " << Fac<10>::result << "\n";
+    //cout << "10! = " << Fac<10>::result << "\n";
 
     #ifdef DEBUG
-        std::ios::sync_with_stdio(false);                   // faster cout - NEED TO TEST OUT WITH printf
-        std::cout << "\n!!!    RUNNING DEBUG BUILD    !!!\n\n";
-        auto start = std::chrono::steady_clock::now();
+        ios::sync_with_stdio(false);                   // faster cout - NEED TO TEST OUT WITH printf
+        cout << "\n!!!    RUNNING DEBUG BUILD    !!!\n\n";
+        auto start = chrono::steady_clock::now();
     #endif
 
 
@@ -40,22 +40,27 @@ int main() {
     gamestatus.wherePieceAt.push_back(test);
     test.file = 'b'; test.rank = 2;
     gamestatus.wherePieceAt.push_back(test);
-    for (auto i : gamestatus.wherePieceAt) std::cout << i.file << i.rank;
+    for (auto i : gamestatus.wherePieceAt) cout << i.file << i.rank;
     */
     // TODO END OF LIST TEST
 
     #ifdef DEBUG
-        auto end = std::chrono::steady_clock::now();
+        auto end = chrono::steady_clock::now();
         auto diff = end - start;
-        std::cout << "Time to set up the game: " << std::chrono::duration <double, std::milli> (diff).count() << " ms\n\n";
+        cout << "Time to set up the game: " << chrono::duration <double, milli> (diff).count() << " ms\n\n";
     #endif   
 
     unsigned char option = chess::gameStarts();             // option will be put inside the switch and return the player
                                                             // black can't start first so it has no meaning, after the engine is ready it'll have a meaning choosing to play as black 
     switch (option) {                                       // TODO - this switch is a placeholder
-        case 'W': /*gamestatus.player = WHITE;*/ break;
-        case 'B': /*gamestatus.player = BLACK;*/ break;
-        default: throw std::invalid_argument("not implemented yet");
+        case 'W':
+            //gamestatus.player = WHITE;
+            break;
+        case 'B':
+            //gamestatus.player = BLACK;
+            break;
+        default:
+            throw invalid_argument("not implemented yet");
     }
 
     while (true) {                                          // TODO remove placeholder => it has to be while (!checkmate()) { ... }

@@ -52,7 +52,7 @@
 #define PIECEMASK 0x3F  // 00111111 
 #define PLAYERMASK 0xC0 // 11000000
 
-
+using namespace std;
 
 namespace chess {
 
@@ -82,14 +82,14 @@ namespace chess {
     struct gameStatus {
         //static inline checkStruct check;             // becomes true everytime a player is in check
 
-        static inline unsigned char player = WHITE;    // tells which player has to move. white always starts first
-        static inline unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
-        std::list<move> listOfMoves;                   // TODO: moves struct
-        std::vector<coords> wherePieceAt;          // TODO: keeps track of piece positions in the board
-        std::list<coords> whiteLegalMoves;             // TODO: keeps track of white legal moves
-        std::list<coords> blackLegalMoves;             // TODO: keeps track of black legal moves
-        static inline board chessboard[ML][ML];        // cb = chessboard
-        static inline bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
+        unsigned char player = WHITE;    // tells which player has to move. white always starts first
+        unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
+        list<move> listOfMoves;                   // TODO: moves struct
+        vector<coords> wherePieceAt;          // TODO: keeps track of piece positions in the board
+        list<coords> whiteLegalMoves;             // TODO: keeps track of white legal moves
+        list<coords> blackLegalMoves;             // TODO: keeps track of black legal moves
+        board chessboard[ML][ML];        // cb = chessboard
+        bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
         move lastMove;
     };
 
@@ -98,18 +98,18 @@ namespace chess {
     void createInitialBoard(gameStatus &) noexcept;
     void startingPosition(gameStatus &) noexcept;
     
-    std::string printPiece(const board [ML][ML], const int, const int) noexcept ;
+    string printPiece(const board [ML][ML], const int, const int) noexcept ;
     void printBoard(gameStatus &) noexcept;
     //void printBoard(); 
 
-    std::string playerString(const unsigned char &) noexcept;
+    string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
-    std::string getPiece(piece_id) noexcept;
-    void printAllMoves(const std::list<move> &);
-    void printPieceCoords(const std::list<coords> &);
-    bool updatePieceCoords(std::list<coords> &, move &); // list of coords and move
-    void printPieceCoordsV(const std::vector<coords> &);
-    void deletePieceV(std::vector<coords> &v, char, int);
+    string getPiece(piece_id) noexcept;
+    void printAllMoves(const list<move> &);
+    void printPieceCoords(const list<coords> &);
+    bool updatePieceCoords(list<coords> &, move &); // list of coords and move
+    void printPieceCoordsV(const vector<coords> &);
+    void deletePieceV(vector<coords> &v, char, int);
     bool updateCoordsV(gameStatus &, char, int, char, int);
 
     void inputMove(gameStatus &) noexcept;
