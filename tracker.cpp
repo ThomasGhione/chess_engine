@@ -18,7 +18,7 @@ namespace chess {
         printPiecesCoords(gs.blackPieces);
     }
 
-    void updatePieceCoords(PiecesAndTheirLegalMoves& pieces, move move) {
+    void updatePieceCoords(PiecesAndTheirLegalMoves& pieces, const move& move) {
         // find piece
         for (unsigned int i = 0; i < pieces.size(); ++i) {
             if (pieces[i].front().piece == move.piece && pieces[i].front().file1 == move.file1 && pieces[i].front().rank1 == move.rank1) {

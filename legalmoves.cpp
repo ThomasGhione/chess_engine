@@ -9,10 +9,14 @@ namespace chess {
         std::cin >> promotedPawn;
         
         switch (std::toupper(promotedPawn)) {
-            case 'N': return (cb[rank1 - 1][file1 - 1].piece = player | KNIGHT);
-            case 'B': return (cb[rank1 - 1][file1 - 1].piece = player | BISHOP);
-            case 'R': return (cb[rank1 - 1][file1 - 1].piece = player | ROOK);
-            case 'Q': return (cb[rank1 - 1][file1 - 1].piece = player | QUEEN);
+            case 'N':
+                return (cb[rank1 - 1][file1 - 1].piece = player | KNIGHT);
+            [[unlikely]] case 'B':
+                return (cb[rank1 - 1][file1 - 1].piece = player | BISHOP);
+            case 'R':
+                return (cb[rank1 - 1][file1 - 1].piece = player | ROOK);
+            [[likely]] case 'Q':
+                return (cb[rank1 - 1][file1 - 1].piece = player | QUEEN);
             default:
                 std::cout << "Option isn't valid! Choose again: ";
                 goto wrongOption;
@@ -101,26 +105,38 @@ namespace chess {
                         } 
                     }
                     // normal way for a pawn to eat a piece
-                    if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY) return false;
-                } else if (gs.chessboard[rank2 - 1][file2 - 1].piece != EMPTY) return false; // can't move to an already occupied square if the pawn isn't taking a piece
+                    if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece == EMPTY)
+                        return false;
+                } else if (gs.chessboard[rank2 - 1][file2 - 1].piece != EMPTY)
+                    return false; // can't move to an already occupied square if the pawn isn't taking a piece
 
                 switch (gs.player) {
                     case (WHITE): 
                         // TODO: fix potential bug in rank2 == 3
-                        if (rank1 == 2) return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece))); // if pawn is on starting position then it can move only 1 or 2 squares forward
-                        if (rank2 != rank1 + 1) return false;                 // else it can only move 1 square forward                        
-                        if (rank2 != 8) return true;                          // if rank2 != 8 then return true, otherwise promote the pawn
+                        if (rank1 == 2)
+                            return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece))); // if pawn is on starting position then it can move only 1 or 2 squares forward
+                        if (rank2 != rank1 + 1)
+                            return false;                 // else it can only move 1 square forward                        
+                        if (rank2 != 8)
+                            return true;                          // if rank2 != 8 then return true, otherwise promote the pawn
                         break;                                                // break so it jumps to "return promotePawn(...)"
                     case (BLACK):
-                        if (rank1 == 7) return (rank2 == 6 || ((rank2 == 5) && (!gs.chessboard[5][file2 - 1].piece)));
-                        if (rank2 != rank1 - 1) return false;
-                        if (rank2 != 1) return true;
+                        if (rank1 == 7)
+                            return (rank2 == 6 || ((rank2 == 5) && (!gs.chessboard[5][file2 - 1].piece)));
+                        if (rank2 != rank1 - 1)
+                            return false;
+                        if (rank2 != 1)
+                            return true;
                         break;
                 } return promotePawn(gs.chessboard, gs.player, rank1, file1); // if we arrive here it means the only option left was the promotion
-            case (KNIGHT): return (((rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2)) || ((rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)));
-            case (BISHOP): return bishopMove(gs.chessboard, rank1, file1, rank2, file2);
-            case (ROOK): return rookMove(gs, rank1, file1, rank2, file2, false);
-            case (QUEEN): return (bishopMove(gs.chessboard, rank1, file1, rank2, file2) || rookMove(gs, rank1, file1, rank2, file2, true)) ? true : false;
+            case (KNIGHT):
+                return (((rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2)) || ((rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)));
+            case (BISHOP):
+                return bishopMove(gs.chessboard, rank1, file1, rank2, file2);
+            case (ROOK):
+                return rookMove(gs, rank1, file1, rank2, file2, false);
+            case (QUEEN):
+                return (bishopMove(gs.chessboard, rank1, file1, rank2, file2) || rookMove(gs, rank1, file1, rank2, file2, true)) ? true : false;
             case (KING): //TODO: implement check/checkmate
 
                 // check for non-castle moves, if it moved normally then we set the hasAlreadyMoved to true

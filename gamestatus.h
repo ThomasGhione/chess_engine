@@ -139,7 +139,7 @@ namespace chess {
     //! TRACKER
     void printPiecesCoords(const PiecesAndTheirLegalMoves&);
     void printAllPieces(const gameStatus&);
-    void updatePieceCoords(PiecesAndTheirLegalMoves&, move);
+    void updatePieceCoords(PiecesAndTheirLegalMoves&, const move&);
     void deletePiece(PiecesAndTheirLegalMoves&, piece);
     void addPiece(PiecesAndTheirLegalMoves&, move);
 }

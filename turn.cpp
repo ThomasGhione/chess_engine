@@ -77,7 +77,23 @@ namespace chess {
         */
 
 
+        // update lastMove 
+        gs.lastMove.file1 = iFile1;
+        gs.lastMove.rank1 = iRank1;
+        gs.lastMove.file2 = iFile2;
+        gs.lastMove.rank2 = iRank2;
+        gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;   
 
+        
+        //move the piece to the selected square and THEN delete the previous square piece
+        gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
+        gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
+
+        // update listOfMoves
+        (gs.player == WHITE)
+            ? updatePieceCoords(gs.whitePieces, {gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece, iFile1, iRank1, iFile2, iRank2})
+            : updatePieceCoords(gs.blackPieces, {gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece, iFile1, iRank1, iFile2, iRank2});
+        
         // if we arrive here it means the move is valid, therefore we make the other player move (and if it's white we increment the turn counter)
         switch (gs.player) {
             case WHITE:
@@ -88,24 +104,12 @@ namespace chess {
                 gs.player = WHITE;
                 break;
         }
-        
-        // update lastMove 
-        gs.lastMove.file1 = iFile1;
-        gs.lastMove.rank1 = iRank1;
-        gs.lastMove.file2 = iFile2;
-        gs.lastMove.rank2 = iRank2;
-        gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;   
-
-        // update listOfMoves
-        //? gs.listOfMoves.push_back(gs.lastMove);
-
-        //move the piece to the selected square and THEN delete the previous square piece
-        gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
-        gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
 
         #ifdef DEBUG
             auto end = std::chrono::steady_clock::now();
             auto diff = end - start;
+            
+            printAllPieces(gs);
         #endif
 
         // print the chessboard after every move
@@ -123,11 +127,16 @@ namespace chess {
         ifWrongOption:
         std::cin >> option;
         switch (toupper(option)) {
-            case 'W': return 'W';
-            case 'B': return 'B';       //TODO - WILL BE FINISHED AFTER CREATING THE ENGINE PROTOTYPE
-            case 'S': return 'S';       //TODO - IMPLEMENT SAVE
-            case 'L': return 'L';       //TODO - IMPLEMENT LOAD
-            case 'Q': exit(EXIT_SUCCESS);     
+            case 'W':
+                return 'W';
+            case 'B':
+                return 'B';       //TODO - WILL BE FINISHED AFTER CREATING THE ENGINE PROTOTYPE
+            case 'S':
+                return 'S';       //TODO - IMPLEMENT SAVE
+            case 'L':
+                return 'L';       //TODO - IMPLEMENT LOAD
+            case 'Q':
+                exit(EXIT_SUCCESS);     
             default:
                 std::cout << "invalid option! Please choose again: "; //std::cout << "player must be either white (W) or black (B), choose again: ";
                 goto ifWrongOption;

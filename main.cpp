@@ -1,6 +1,6 @@
 #include "gamestatus.h"
 
-[[noreturn]] int main() {
+int main() {
     //std::cout << "10! = " << Fac<10>::result << "\n";
 
     #ifdef DEBUG
