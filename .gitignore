@@ -1,4 +1,5 @@
 .vscode
+.vscode/settings.json
 a.exe
 chess.exe
 a.out
