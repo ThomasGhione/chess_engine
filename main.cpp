@@ -1,10 +1,7 @@
 #include "chessengine.h"
 
-//template<int i> struct Fac { static const int result = i * Fac<i-1>::result; };
-//template<> struct Fac<1> { static const int result = 1; };
 
 int main() {
-    //cout << "10! = " << Fac<10>::result << "\n";
 
     #ifdef DEBUG
         ios::sync_with_stdio(false);                   // faster cout - NEED TO TEST OUT WITH printf
@@ -13,36 +10,11 @@ int main() {
     #endif
 
 
-    chess::gameStatus gamestatus;                           // declare our gamestatus; main variable where every info about the game is here                             
-    chess::createInitialBoard(gamestatus);                  // create an empty board and put every pieces in its initial squares
-    chess::printBoard(gamestatus);                          // print the initial position
+    chess::gameStatus gamestatus;           // declare our gamestatus; main variable where every info about the game is here                             
+    chess::createInitialBoard(gamestatus);  // create an empty board and put every pieces in its initial squares
+    chess::printBoard(gamestatus);          // print the initial position
 
-    // in the starting position, these are the coordinates of where the pieces are
-    for (char i = 'a'; i <= 'h'; ++i) {
-        gamestatus.wherePieceAt.push_back({i, 1});
-        gamestatus.wherePieceAt.push_back({i, 2});
-        gamestatus.wherePieceAt.push_back({i, 7});
-        gamestatus.wherePieceAt.push_back({i, 8});
-    }
-    //TODO: printPieceCoordsV is just to debug
-    //chess::printPieceCoordsV(gamestatus.wherePieceAt);
-
-    /* gamestatus.wherePieceAt = { {'a', 1}, {'b', 1}, {'c', 1}, {'d', 1}, {'e', 1}, {'f', 1}, {'g', 1}, {'h', 1},
-                                {'a', 2}, {'b', 2}, {'c', 2}, {'d', 2}, {'e', 2}, {'f', 2}, {'g', 2}, {'h', 2},
-                                {'a', 7}, {'b', 7}, {'c', 7}, {'d', 7}, {'e', 7}, {'f', 7}, {'g', 7}, {'h', 7},
-                                {'a', 8}, {'b', 8}, {'c', 8}, {'d', 8}, {'e', 8}, {'f', 8}, {'g', 8}, {'h', 8} };*/
-    //?DEBUG chess::printPieceCoords(gamestatus.wherePieceAt);
-
-    // TODO START OF LIST TEST
-    /*
-    chess::coords test;
-    test.file = 'a'; test.rank = 1;
-    gamestatus.wherePieceAt.push_back(test);
-    test.file = 'b'; test.rank = 2;
-    gamestatus.wherePieceAt.push_back(test);
-    for (auto i : gamestatus.wherePieceAt) cout << i.file << i.rank;
-    */
-    // TODO END OF LIST TEST
+   
 
     #ifdef DEBUG
         auto end = chrono::steady_clock::now();

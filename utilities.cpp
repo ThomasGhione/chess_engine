@@ -2,7 +2,7 @@
 
 namespace chess {
 
-    string playerString(const unsigned char &player) noexcept {
+    string playerString(const player &player) noexcept {
         return (player == WHITE) ? "WHITE" : "BLACK";
     }
 
@@ -31,70 +31,10 @@ namespace chess {
 
 
     //! LIST functions
-
-
-    void printAllMoves(const list<move> &l) {
-        cout << "\nprint of all moves: \n";
-        for (const move &i : l) cout << getPiece(i.piece) << ' ' << i.file1 << i.rank1 << ' ' << i.file2 << i.rank2 << '\n';
-        cout << '\n';
-    }
-
-    void printPieceCoords(const list<coords> &l) {
-        cout << "\nprint of all moves: \n";
-        for (const coords &i : l) cout << i.file << i.rank << '\n';
-        cout << '\n';
-    }
-
-    bool updatePieceCoords(list<coords> &l, move &m) {
-        for (coords &i : l) {
-            if ((i.file == m.file1) && (i.rank == m.rank1)) {
-                // update coords of the piece after moving it
-                i.file = m.file2;
-                i.rank = m.rank2;
-                return true; // piece found, so return true
-            }
-        }
-        return false;
-    }
-
-    coords changePiece(vector<coords> &v, char file1, int rank1, char file2, int rank2) {
-        for (unsigned int i = 0; i < v.size(); ++i) {
-            if ((v[i].file == file1) && (v[i].rank == rank1)) { // if this is true it means we found the element
-                v[i].file = file2;
-                v[i].rank = rank2;
-                return {'0', 0}; //TODO PLACEHOLDER
-            }
-        } return {'0', 0}; //TODO PLACEHOLDER
-    }
+    void printAllMoves(const vector<move> &moves) {}
+    void printPiecesCoords(const vector<move> &moves) {}
+    bool updateLegalMoves() { return false; }
+    coords movePiece(unordered_set<coords> &piecesPosition, move &move) { return { 0, 0}; }
 
     //! VECTOR functions
-
-    void printPieceCoordsV(const vector<coords> &v) {
-        cout << "\nPrint of all moves (vector):\n";
-        unsigned int remaining_pieces = 0;
-        for (const coords &i : v) {
-            ++remaining_pieces;
-            cout << i.file << i.rank << '\n';
-        }
-        cout << "\nREMAINING PIECES: " << remaining_pieces << '\n';
-    }
-
-    bool updateCoordsV(gameStatus &gs, char file1, int rank1, char file2, int rank2) {
-        for (unsigned int i = 0; i < gs.wherePieceAt.size(); ++i) {
-            if ((gs.wherePieceAt[i].file == file1) && (gs.wherePieceAt[i].rank == rank1)) {
-                gs.wherePieceAt[i].file = file2;
-                gs.wherePieceAt[i].rank = rank2;
-                return true; // element found
-            }
-        } return false; // element not found, couldn't update coords
-    }
-
-    void deletePieceV(vector<coords> &v, char file, int rank) {
-        for (unsigned int i = 0; i < v.size(); ++i)
-            if ((v[i].file == file) && (v[i].rank == rank)) {
-                v.erase(v.begin() + i);
-                return;
-            }
-    }
-
 }

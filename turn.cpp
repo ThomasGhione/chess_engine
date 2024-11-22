@@ -13,15 +13,18 @@ namespace chess {
 
         if (iFile1 == 'M' || iFile1 == 'm') {
             cout << "MORE INFOS:\n    Format: file1rank1 file2rank2; example: e2 e4\n    Press M/m to print this menu again\n    Press Q/q to exit the program\n    Press P/p to print every move\nInput: ";
-            goto ifWrongMove;
+            // goto ifWrongMove;
         }
 
+        //TODO fix
         // if user inputs P/p then print all moves
+        /*
         if (iFile1 == 'P' || iFile1 == 'p') {
             printAllMoves(gs.listOfMoves);
             goto ifWrongMove;
         }
-        
+        */
+
         // check if the first input is equal to Q/q and if so quits
         if (iFile1 == 'Q' || iFile1 == 'q')
             exit(EXIT_SUCCESS);
@@ -42,17 +45,17 @@ namespace chess {
             goto ifWrongMove;
         }
         // check if the starting square selected is empty
-        if (!gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece) {
+        if (!gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece.id) {
             cout << "You can't choose an EMPTY square! Choose again: ";
             goto ifWrongMove;
         }
         // check if we're selecting an opponent's piece
-        if ((gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece & PLAYERMASK) != gs.player) {
+        if ((gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece.id & PLAYERMASK) != gs.player) {
             cout << "It's " << playerString(gs.player) << "'s turn! Choose again: ";
             goto ifWrongMove;
         }
         // you can't take your own pieces
-        if ((gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece & PLAYERMASK) == gs.player) {
+        if ((gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece.id & PLAYERMASK) == gs.player) {
             cout << "You can't take your pieces! Choose again: ";
             goto ifWrongMove;
         }        
@@ -67,17 +70,8 @@ namespace chess {
 
 
         // update wherePieceAt
-        //updateCoordsV(gs, iFile1, iRank1, iFile2, iRank2);
-        /*
-        if (((gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece & PLAYERMASK) != gs.player) &&
-            (gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece != EMPTY))
-            {
-                cout << "\n\n\nI DELETED A PIECE LOCATION :)\n";
-                deletePieceV(gs.wherePieceAt, iFile2, iRank2);
-        }
-        */
         //TODO DEBUG ONLY:
-        printPieceCoordsV(gs.wherePieceAt);
+        //printPieceCoordsV(gs.wherePieceAt);
 
         // if we arrive here it means the move is valid, therefore we make the other player move (and if it's white we increment the turn counter)
         switch (gs.player) {
@@ -91,18 +85,25 @@ namespace chess {
         }
         
         // update lastMove 
+        gs.lastMove.piece.coords.file = iFile1;
+        gs.lastMove.piece.coords.rank = iRank1;
+        gs.lastMove.movesTo.file = iFile2;
+        gs.lastMove.movesTo.rank = iRank2;
+        gs.lastMove.piece.id = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece.id;
+
+/*
         gs.lastMove.file1 = iFile1;
         gs.lastMove.rank1 = iRank1;
         gs.lastMove.file2 = iFile2;
         gs.lastMove.rank2 = iRank2;
         gs.lastMove.piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;   
-
+*/
         // update listOfMoves
         gs.listOfMoves.push_back(gs.lastMove);
 
         //move the piece to the selected square and THEN delete the previous square piece
         gs.chessboard[iRank2 - 1][fromCharToInt(iFile2) - 1].piece = gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece;        
-        gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece = EMPTY;
+        gs.chessboard[iRank1 - 1][fromCharToInt(iFile1) - 1].piece.id = EMPTY;
 
         #ifdef DEBUG
             auto end = chrono::steady_clock::now();

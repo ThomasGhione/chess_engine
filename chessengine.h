@@ -1,120 +1,99 @@
 #ifndef CHESSENGINE_H
 #define CHESSENGINE_H
 
-
-
-
-#include <stdlib.h>
-#include <iostream>
-#include <string.h>
-#include <cctype>
-#include <bitset>
-#include <list>
-#include <vector>
-#include <algorithm>
-
-#ifdef DEBUG
-    #include <chrono>
-#endif
-
-/*
-//define values
-#define P 1 //pawn
-#define N 3
-#define B 3
-#define R 5
-#define Q 9
-#define K 1000000
-*/
-
-/*
- *    CHESS PIECE = 1 1 | 1 1 1 1 1 1
- *                  first 2 bits define which player (01 meaning white, 10 meaning black)
- *                  last 6 bits define which piece we're referring to
- *    EXAMPLE: "1 0 | 0 0 0 1 0 0" means the piece is a black bishop
- *    DEFINE ID FOR PIECES:
- */
-
-#define EMPTY 0x00      // 00000000
-#define PAWN 0x01       // 00000001    
-#define KNIGHT 0x02     // 00000010
-#define BISHOP 0x04     // 00000100
-#define ROOK 0x08       // 00001000
-#define QUEEN 0x10      // 00010000
-#define KING 0x20       // 00100000
-#define WHITE 0x40      // 01000000
-#define BLACK 0x80      // 10000000
-
-/*
- * useful for bitwise operations:
- */
-
-#define PIECEMASK 0x3F  // 00111111 
-#define PLAYERMASK 0xC0 // 11000000
+#include "includes.h"
+#include "defines.h"
 
 using namespace std;
 
 namespace chess {
 
     using piece_id = unsigned char;
-    using light_square = bool;
+    using player = unsigned char;
 
-    static inline const unsigned char ML = 8;          // "ML" means "MAX_LINE", it's going to be our board's size (8x8 squares)
+    template<typename key, typename value>
+    using umap = unordered_map<key, value>;
+
+    template<typename value>
+    using uset = unordered_set<value>;
+
+    inline static const unsigned char ML = 8;   // "ML" stands for "MAX_LINE", it's going to be our board's size (8x8 squares)
 
     struct coords {
         char file;
         int rank;
+
+        coords() : file(EMPTY), rank(EMPTY) {};
+        coords(char f, int r) : file(f), rank(r) {};
+        // coords(coords &c) : file(c.file), rank(c.rank) {};
     };
 
-    struct move {
-        char file1 = '0'; int rank1 = 0; // coords of the square before moving the piece
-        char file2 = '0'; int rank2 = 0; // coords of the square after moving the piece
-        piece_id piece;                  // last piece moved
+    struct piece {
+        piece_id id;
+        coords coords;
+
+        piece() : id(EMPTY), coords() {};
+        piece(piece_id i, chess::coords c) : id(i), coords(c) {};
+        // piece(piece &p) : id(p.id), coords(p.coords) {};
     };
+    
+    struct move {
+        piece piece;
+        coords movesTo; // coords of the square after moving the piece
+
+        move() : piece(), movesTo() {};
+        move(chess::piece p, coords m) : piece(p), movesTo(m) {};
+        // move(move &m) : piece(m.piece), movesTo(m.movesTo) {};
+    };
+
 
     using board = struct square {
-        light_square isLightSquare;      // true if light square, black if not
-        piece_id piece;                  // piece
+        bool isLightSquare;      // true if light square, black if not
+        piece piece;          // piece
     };
 
     
-
     struct gameStatus {
         //static inline checkStruct check;             // becomes true everytime a player is in check
 
-        unsigned char player = WHITE;    // tells which player has to move. white always starts first
-        unsigned int turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
-        list<move> listOfMoves;                   // TODO: moves struct
-        vector<coords> wherePieceAt;          // TODO: keeps track of piece positions in the board
-        list<coords> whiteLegalMoves;             // TODO: keeps track of white legal moves
-        list<coords> blackLegalMoves;             // TODO: keeps track of black legal moves
+        player player = WHITE;    // tells which player has to move. white always starts first
+        size_t turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
+        vector<move> listOfMoves;  // records a game moves
+
+        uset<coords> piecesPosition();          // TODO: keeps track of piece positions in the board
+        umap<piece_id, vector<coords>> legalMoves();        // TODO: keeps track of white legal moves             // TODO: keeps track of black legal moves
+        
         board chessboard[ML][ML];        // cb = chessboard
-        bool hasAlreadyMoved[6] = {0};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
+        bool hasAlreadyMoved[6] {false};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
+        
         move lastMove;
     };
 
 
-
+    // setting up
     void createInitialBoard(gameStatus &) noexcept;
     void startingPosition(gameStatus &) noexcept;
     
+    // printing
     string printPiece(const board [ML][ML], const int, const int) noexcept ;
     void printBoard(gameStatus &) noexcept;
     //void printBoard(); 
 
+
     string playerString(const unsigned char &) noexcept;
     int fromCharToInt(const char) noexcept; 
     string getPiece(piece_id) noexcept;
-    void printAllMoves(const list<move> &);
-    void printPieceCoords(const list<coords> &);
-    bool updatePieceCoords(list<coords> &, move &); // list of coords and move
-    void printPieceCoordsV(const vector<coords> &);
-    void deletePieceV(vector<coords> &v, char, int);
-    bool updateCoordsV(gameStatus &, char, int, char, int);
 
+    void printAllMoves(const vector<move> &);
+    void printPiecesCoords(const vector<move> &);
+    bool updateLegalMoves();
+    coords movePiece(unordered_set<coords> &, move &);
+
+    // game
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
 
+    // pieces logic
     bool promotePawn(board [ML][ML], const unsigned char &, const int &, const int &) noexcept;
     bool rookMove(gameStatus &, const int &, const int &, const int &, const int &, bool) noexcept;
     bool bishopMove(board [ML][ML], const int &, const int &, const int &, const int &) noexcept;
@@ -125,4 +104,4 @@ namespace chess {
 
 
 
-#endif
+#endif // CHESSENGINE_H

@@ -1,3 +1,3 @@
 chcp 65001
-g++ -Wall -Wextra -Wpedantic -Werror -DDEBUG -O3 *.cpp -o "chess"
+g++ -std=c++23 -Wall -Wextra -Wpedantic -DDEBUG -O2 *.cpp -o "chess"
 chess.exe
