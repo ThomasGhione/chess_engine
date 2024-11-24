@@ -48,7 +48,6 @@ namespace chess {
 
 
     using board = struct square {
-        bool isLightSquare;      // true if light square, black if not
         piece piece;          // piece
     };
 
@@ -71,7 +70,6 @@ namespace chess {
 
 
     // setting up
-    void createInitialBoard(gameStatus &) noexcept;
     void startingPosition(gameStatus &) noexcept;
     
     // printing
@@ -81,7 +79,7 @@ namespace chess {
 
 
     string playerString(const unsigned char &) noexcept;
-    int fromCharToInt(const char) noexcept; 
+    int ctoi(const char) noexcept; 
     string getPiece(piece_id) noexcept;
 
     void printAllMoves(const vector<move> &);

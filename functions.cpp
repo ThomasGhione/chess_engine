@@ -30,20 +30,10 @@ namespace chess {
     } 
 
 
-    void createInitialBoard(gameStatus &gs) noexcept { // set up light squares
-        for (int rank = 0; rank < ML; ++rank)
-            for (int file = 0; file < ML; ++file) 
-                gs.chessboard[rank][file].isLightSquare = ((rank + file) % 2);
-        startingPosition(gs);
-    }
-
-
     string printPiece(const board debugboard[ML][ML], const int rank, const int file) noexcept {
         if (debugboard[rank][file].piece.id != EMPTY)
             return getPiece(debugboard[rank][file].piece.id);
-        return (debugboard[rank][file].isLightSquare)
-            ? "█"
-            : " "; // default: case (EMPTY)
+        return ((rank + file) % 2) ? "█" : " "; // default: case (EMPTY)
     }
 
     void printBoard(gameStatus &gs) noexcept { // white square unicode: \u2588
@@ -55,7 +45,7 @@ namespace chess {
         cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "
              << getPiece(gs.lastMove.piece.id) << ' ' << gs.lastMove.piece.coords.file << gs.lastMove.piece.coords.rank << ' ' << gs.lastMove.movesTo.file << gs.lastMove.movesTo.rank << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
-            if (gs.chessboard[rank][0].isLightSquare) {
+            if (rank % 2 == 1) {
                 cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
                 for (int file = 0; file < ML; file += 2)
                     cout << "██" << printPiece(gs.chessboard, rank, file) << "██  " << printPiece(gs.chessboard, rank, file+1) << "  ";

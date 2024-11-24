@@ -6,7 +6,7 @@ namespace chess {
         return (player == WHITE) ? "WHITE" : "BLACK";
     }
 
-    int fromCharToInt(const char file) noexcept {
+    int ctoi(const char file) noexcept {
         return tolower(file) - 'a' + 1;
     }
 

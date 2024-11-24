@@ -9,9 +9,9 @@ int main() {
         auto start = chrono::steady_clock::now();
     #endif
 
-
+    // TODO: this code is a mess, clean it up
     chess::gameStatus gamestatus;           // declare our gamestatus; main variable where every info about the game is here                             
-    chess::createInitialBoard(gamestatus);  // create an empty board and put every pieces in its initial squares
+    chess::startingPosition(gamestatus);    // create an empty board and put every pieces in its initial squares
     chess::printBoard(gamestatus);          // print the initial position
 
    
