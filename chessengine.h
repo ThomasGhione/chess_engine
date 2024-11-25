@@ -26,41 +26,52 @@ namespace chess {
         coords() : file(EMPTY), rank(EMPTY) {};
         coords(char f, int r) : file(f), rank(r) {};
         // coords(coords &c) : file(c.file), rank(c.rank) {};
+
+        bool operator==(const coords &c) {
+            return (file == c.file) && (rank == c.rank);
+        };
     };
 
-    struct piece {
+    struct piece : public coords {
         piece_id id;
-        coords coords;
 
-        piece() : id(EMPTY), coords() {};
-        piece(piece_id i, chess::coords c) : id(i), coords(c) {};
+        piece() : id(EMPTY) {};
+        piece(chess::coords c, piece_id i) : coords(c), id(i) {};
         // piece(piece &p) : id(p.id), coords(p.coords) {};
+
+        bool operator==(const piece &p) {
+            return id == p.id;
+        }
+
+        void move(chess::coords c) {
+            file = c.file;
+            rank = c.rank;
+        }
     };
     
-    struct move {
-        piece piece;
+    struct move : public piece {
         coords movesTo; // coords of the square after moving the piece
-
         move() : piece(), movesTo() {};
         move(chess::piece p, coords m) : piece(p), movesTo(m) {};
+
         // move(move &m) : piece(m.piece), movesTo(m.movesTo) {};
     };
 
 
     using board = struct square {
-        piece piece;          // piece
+        piece piece;
     };
 
     
     struct gameStatus {
-        //static inline checkStruct check;             // becomes true everytime a player is in check
+        //checkStruct check;             // becomes true everytime a player is in check
 
         player player = WHITE;    // tells which player has to move. white always starts first
         size_t turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
         vector<move> listOfMoves;  // records a game moves
 
-        uset<coords> piecesPosition();          // TODO: keeps track of piece positions in the board
-        umap<piece_id, vector<coords>> legalMoves();        // TODO: keeps track of white legal moves             // TODO: keeps track of black legal moves
+        // uset<piece> trackPiecePositions;     // TODO: keeps track of piece positions on the board
+        // umap<piece, vector<coords>> legalMoves;    // TODO: keeps track of white legal moves             // TODO: keeps track of black legal moves
         
         board chessboard[ML][ML];        // cb = chessboard
         bool hasAlreadyMoved[6] {false};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
@@ -73,29 +84,30 @@ namespace chess {
     void startingPosition(gameStatus &) noexcept;
     
     // printing
-    string printPiece(const board [ML][ML], const int, const int) noexcept ;
+    string printPieceOrEmpty(const board [ML][ML], const int, const int) noexcept ;
     void printBoard(gameStatus &) noexcept;
     //void printBoard(); 
 
 
-    string playerString(const unsigned char &) noexcept;
-    int ctoi(const char) noexcept; 
-    string getPiece(piece_id) noexcept;
+    string printPlayer(const unsigned char &) noexcept;
+    int ctoi(const char &) noexcept; 
+    char itoc(const int &) noexcept;
+    string printPiece(piece_id) noexcept;
 
-    void printAllMoves(const vector<move> &);
-    void printPiecesCoords(const vector<move> &);
+/*   void printAllMoves(const vector<move> &);
+    void printPieceOrEmptysCoords(const vector<move> &);
     bool updateLegalMoves();
-    coords movePiece(unordered_set<coords> &, move &);
+    coords movePiece(unordered_set<coords> &, move &); */
 
     // game
     void inputMove(gameStatus &) noexcept;
     char gameStarts() noexcept;
 
     // pieces logic
-    bool promotePawn(board [ML][ML], const unsigned char &, const int &, const int &) noexcept;
-    bool rookMove(gameStatus &, const int &, const int &, const int &, const int &, bool) noexcept;
-    bool bishopMove(board [ML][ML], const int &, const int &, const int &, const int &) noexcept;
-    bool isMoveValid(gameStatus &, int, int, int, int) noexcept;
+    bool promotePawn(board [ML][ML], const unsigned char &, const move &) noexcept;
+    bool rookMove(gameStatus &, const move &) noexcept;
+    bool bishopMove(board [ML][ML], const move &) noexcept;
+    bool isMoveValid(gameStatus &, move) noexcept;
 
 }
 

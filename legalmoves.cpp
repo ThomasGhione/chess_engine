@@ -2,7 +2,7 @@
 
 namespace chess {
 
-    bool promotePawn(board cb[ML][ML], const unsigned char &player, const int &rank1, const int &file1) noexcept {
+    bool promotePawn(board cb[ML][ML], const unsigned char &player, const move& m) noexcept {
         char promotedPawn;
         cout << "What do you want to promote your pawn to?\nChoose between 'N', 'B', 'R' or 'Q': ";
         wrongOption:
@@ -10,53 +10,55 @@ namespace chess {
         
         switch (toupper(promotedPawn)) {
             case 'N':
-                return (cb[rank1 - 1][file1 - 1].piece.id = player | KNIGHT);
+                return (cb[m.rank - 1][ctoi(m.file) - 1].piece.id = player | KNIGHT);
             case 'B':
-                return (cb[rank1 - 1][file1 - 1].piece.id = player | BISHOP);
+                return (cb[m.rank - 1][ctoi(m.file) - 1].piece.id = player | BISHOP);
             case 'R':
-                return (cb[rank1 - 1][file1 - 1].piece.id = player | ROOK);
+                return (cb[m.rank - 1][ctoi(m.file) - 1].piece.id = player | ROOK);
             case 'Q':
-                return (cb[rank1 - 1][file1 - 1].piece.id = player | QUEEN);
+                return (cb[m.rank - 1][ctoi(m.file) - 1].piece.id = player | QUEEN);
             default:
                 cout << "Option isn't valid! Choose again: ";
                 goto wrongOption;
         }
     }
 
-    bool rookMove(gameStatus &gs, const int &rank1, const int &file1, const int &rank2, const int &file2, bool isQueen) noexcept {
-        if (!isQueen) { // since this function is also used to check queen moves, we have to know if we're passing a rook so if it moves it won't be able to be used to castle
-            if ((rank1 == 1) && (file1 == 1))
+    bool rookMove(gameStatus &gs, const move& m) noexcept {
+        // since this function is also used to check queen moves,
+        // we have to know if we're passing a rook so if it moves it won't be able to be used to castle
+        if ((m.id & PIECEMASK) == ROOK) { 
+            if ((m.rank == 1) && (m.file == 1))
                 gs.hasAlreadyMoved[1] = true;
-            if ((rank1 == 1) && (file1 == 8))
+            if ((m.rank == 1) && (m.file == 8))
                 gs.hasAlreadyMoved[2] = true;
-            if ((rank1 == 8) && (file1 == 1))
+            if ((m.rank == 8) && (m.file == 1))
                 gs.hasAlreadyMoved[4] = true;
-            if ((rank1 == 8) && (file1 == 8))
+            if ((m.rank == 8) && (m.file == 8))
                 gs.hasAlreadyMoved[5] = true;
         }
 
-        if (rank1 != rank2 && file1 != file2)
+        if (m.rank != m.movesTo.rank && m.file != m.movesTo.file)
             return false;
 
-        const int dRank = (rank2 > rank1) ? 1 : (rank2 < rank1) ? -1 : 0;
-        const int dFile = (file2 > file1) ? 1 : (file2 < file1) ? -1 : 0;
+        const int dRank = (m.movesTo.rank > m.rank) ? 1 : (m.movesTo.rank < m.rank) ? -1 : 0;
+        const int dFile = (m.movesTo.file > m.file) ? 1 : (m.movesTo.file < m.file) ? -1 : 0;
 
-        for (int trank = rank1 + dRank, tfile = file1 + dFile; (trank != rank2) || (tfile != file2); trank += dRank, tfile += dFile)
+        for (int trank = m.rank + dRank, tfile = m.file + dFile; (trank != m.movesTo.rank) || (tfile != m.movesTo.file); trank += dRank, tfile += dFile)
             if (gs.chessboard[trank - 1][tfile - 1].piece.id)
                 return false;
 
         return true;
     }
 
-    bool bishopMove(board cb[ML][ML], const int &rank1, const int &file1, const int &rank2, const int &file2) noexcept {
-        if ((rank2 == rank1) || (file2 == file1))
+    bool bishopMove(board cb[ML][ML], const move& m) noexcept {
+        if ((m.movesTo.rank == m.rank) || (m.movesTo.file == m.file))
             return false;
 
-        const int dRank = (rank2 > rank1) ? 1 : -1;
-        const int dFile = (file2 > file1) ? 1 : -1;
+        const int dRank = (m.movesTo.rank > m.rank) ? 1 : -1;
+        const int dFile = (m.movesTo.file > m.file) ? 1 : -1;
 
-        int trank = rank1 + dRank, tfile = file1 + dFile;
-        while (trank != rank2 || tfile != file2) {
+        int trank = m.rank + dRank, tfile = m.file + dFile;
+        while (trank != m.movesTo.rank || tfile != m.movesTo.file) {
             if (cb[trank - 1][tfile - 1].piece.id)
                 return false;
             trank += dRank;
@@ -67,69 +69,69 @@ namespace chess {
     }
 
     // check if move is legit
-    bool isMoveValid(gameStatus &gs, int rank1, int file1, int rank2, int file2) noexcept {
+    bool isMoveValid(gameStatus &gs, move m) noexcept {
 /*
         if (gs.check.flag) {
-            if ((gs.player == WHITE) && (gs.chessboard[rank1 -1 ][file1 - 1].piece.id != (WHITE | KING))) return false;
-            if ((gs.player == BLACK) && (gs.chessboard[rank1 -1 ][file1 - 1].piece.id != (BLACK | KING))) return false;
+            if ((gs.player == WHITE) && (gs.chessboard[m.rank -1 ][ctoi(m.file) - 1].piece.id != (WHITE | KING))) return false;
+            if ((gs.player == BLACK) && (gs.chessboard[m.rank -1 ][ctoi(m.file) - 1].piece.id != (BLACK | KING))) return false;
         }
 */
 
-        switch (gs.chessboard[rank1 - 1][file1 - 1].piece.id & PIECEMASK) { //! check which piece i'm using and get the legal moves
+        switch (gs.chessboard[m.rank - 1][ctoi(m.file) - 1].piece.id & PIECEMASK) { //! check which piece i'm using and get the legal moves
             
             case (PAWN):
-                if (file1 != file2) { // check if file2 is different to file1 (pawns can't move diagonally but they can take pieces on the square next to the diagonal)
-                    if ((gs.player == WHITE) && (gs.lastMove.piece.coords.file == gs.lastMove.movesTo.file) && (gs.lastMove.piece.coords.rank == 7) && (gs.lastMove.movesTo.rank == 5)) {
-                        if ((rank2 == rank1 + 1) && (file2 == ctoi(gs.lastMove.movesTo.file)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                if (m.file != m.movesTo.file) { // check if m.movesTo.file is different to m.file (pawns can't move diagonally but they can take pieces on the square next to the diagonal)
+                    if ((gs.player == WHITE) && (gs.lastMove.file == gs.lastMove.movesTo.file) && (gs.lastMove.rank == 7) && (gs.lastMove.movesTo.rank == 5)) {
+                        if ((m.movesTo.rank == m.rank + 1) && (m.movesTo.file == ctoi(gs.lastMove.movesTo.file)) && ((m.movesTo.file == m.file + 1) || (m.movesTo.file == m.file - 1))) {
                             gs.chessboard[gs.lastMove.movesTo.rank - 1][ctoi(gs.lastMove.movesTo.file) - 1].piece.id = EMPTY; // piece taken with en passant
                             return true;
                         } 
                     }
-                    if ((gs.player == BLACK) && (gs.lastMove.piece.coords.file == gs.lastMove.movesTo.file) && (gs.lastMove.piece.coords.rank == 2) && (gs.lastMove.movesTo.rank == 4)) {
-                        if ((rank2 == rank1 - 1) && (file2 == ctoi(gs.lastMove.movesTo.file)) && ((file2 == file1 + 1) || (file2 == file1 - 1))) {
+                    if ((gs.player == BLACK) && (gs.lastMove.file == gs.lastMove.movesTo.file) && (gs.lastMove.rank == 2) && (gs.lastMove.movesTo.rank == 4)) {
+                        if ((m.movesTo.rank == m.rank - 1) && (m.movesTo.file == ctoi(gs.lastMove.movesTo.file)) && ((m.movesTo.file == m.file + 1) || (m.movesTo.file == m.file - 1))) {
                             gs.chessboard[gs.lastMove.movesTo.rank - 1][ctoi(gs.lastMove.movesTo.file) - 1].piece.id = EMPTY; // piece taken with en passant
                             return true;
                         } 
                     }
                     // normal way for a pawn to eat a piece
-                    if (!((file2 == file1 + 1) || (file2 == file1 - 1)) || gs.chessboard[rank2 - 1][file2 - 1].piece.id == EMPTY)
+                    if (((m.movesTo.file == m.file + 1) || (m.movesTo.file == m.file - 1)) && gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id != EMPTY)
                         return false;
                 }
-                else if (gs.chessboard[rank2 - 1][file2 - 1].piece.id != EMPTY)
+                else if (gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id != EMPTY)
                     return false; // can't move to an already occupied square if the pawn isn't taking a piece
 
                 switch (gs.player) {
                     case (WHITE): 
-                        // TODO: fix potential bug in rank2 == 3
-                        if (rank1 == 2)
-                            return (rank2 == 3 || ((rank2 == 4) && (!gs.chessboard[2][file2 - 1].piece.id))); // if pawn is on starting position then it can move only 1 or 2 squares forward
-                        if (rank2 != rank1 + 1)
+                        // TODO: fix potential bug in m.movesTo.rank == 3
+                        if (m.rank == 2)
+                            return (m.movesTo.rank == 3 || ((m.movesTo.rank == 4) && (!gs.chessboard[2][m.movesTo.file - 1].piece.id))); // if pawn is on starting position then it can move only 1 or 2 squares forward
+                        if (m.movesTo.rank != m.rank + 1)
                             return false;                 // else it can only move 1 square forward                        
-                        if (rank2 != 8)
-                            return true;                          // if rank2 != 8 then return true, otherwise promote the pawn
+                        if (m.movesTo.rank != 8)
+                            return true;                          // if m.movesTo.rank != 8 then return true, otherwise promote the pawn
                         break;                                                // break so it jumps to "return promotePawn(...)"
                     case (BLACK):
-                        if (rank1 == 7)
-                            return (rank2 == 6 || ((rank2 == 5) && (!gs.chessboard[5][file2 - 1].piece.id)));
-                        if (rank2 != rank1 - 1)
+                        if (m.rank == 7)
+                            return (m.movesTo.rank == 6 || ((m.movesTo.rank == 5) && (!gs.chessboard[5][m.movesTo.file - 1].piece.id)));
+                        if (m.movesTo.rank != m.rank - 1)
                             return false;
-                        if (rank2 != 1)
+                        if (m.movesTo.rank != 1)
                             return true;
                         break;
                 }
-                return promotePawn(gs.chessboard, gs.player, rank1, file1); // if we arrive here it means the only option left was the promotion
+                return promotePawn(gs.chessboard, gs.player, m); // if we arrive here it means the only option left was the promotion
             case (KNIGHT):
-                return (((rank2 == rank1 + 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 + 1) && (file2 == file1 - 2 || file2 == file1 + 2)) || ((rank2 == rank1 - 2) && (file2 == file1 - 1 || file2 == file1 + 1)) || ((rank2 == rank1 - 1) && (file2 == file1 - 2 || file2 == file1 + 2)));
+                return (((m.movesTo.rank == m.rank + 2) && (m.movesTo.file == m.file - 1 || m.movesTo.file == m.file + 1)) || ((m.movesTo.rank == m.rank + 1) && (m.movesTo.file == m.file - 2 || m.movesTo.file == m.file + 2)) || ((m.movesTo.rank == m.rank - 2) && (m.movesTo.file == m.file - 1 || m.movesTo.file == m.file + 1)) || ((m.movesTo.rank == m.rank - 1) && (m.movesTo.file == m.file - 2 || m.movesTo.file == m.file + 2)));
             case (BISHOP):
-                return bishopMove(gs.chessboard, rank1, file1, rank2, file2);
+                return bishopMove(gs.chessboard, m);
             case (ROOK):
-                return rookMove(gs, rank1, file1, rank2, file2, false);
+                return rookMove(gs, m);
             case (QUEEN):
-                return bishopMove(gs.chessboard, rank1, file1, rank2, file2) || rookMove(gs, rank1, file1, rank2, file2, true);
+                return bishopMove(gs.chessboard, m) || rookMove(gs, m);
             case (KING): //TODO: implement check/checkmate
 
                 // check for non-castle moves, if it moved normally then we set the hasAlreadyMoved to true
-                if (((rank2 == rank1 + 1) || (rank2 == rank1 - 1) || (rank2 == rank1)) && ((file2 == file1 + 1) || (file2 == file1 - 1) || (file2 == file1))) {
+                if (((m.movesTo.rank == m.rank + 1) || (m.movesTo.rank == m.rank - 1) || (m.movesTo.rank == m.rank)) && ((m.movesTo.file == m.file + 1) || (m.movesTo.file == m.file - 1) || (m.movesTo.file == m.file))) {
                     (gs.player == WHITE)
                         ? (gs.hasAlreadyMoved[0] = true)
                         : (gs.hasAlreadyMoved[3] = true);
@@ -138,25 +140,25 @@ namespace chess {
 
                 // TODO: we can optimize this :)
                 // castle short & long
-                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[2]) && (rank2 == 1) && (file2 == 7) && (gs.chessboard[rank2 - 1][file2 - 1].piece.id == EMPTY) && (gs.chessboard[0][5].piece.id == EMPTY)) {
+                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[2]) && (m.movesTo.rank == 1) && (m.movesTo.file == 7) && (gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id == EMPTY) && (gs.chessboard[0][5].piece.id == EMPTY)) {
                     gs.chessboard[0][5].piece.id = gs.chessboard[0][7].piece.id;  // move the rook
                     gs.chessboard[0][7].piece.id = EMPTY;                      // delete the rook before in previous position
                     gs.hasAlreadyMoved[0] = true;                           // set the king as "already moved" so it can't castle twice
                     return true;                                            
                 }
-                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[1]) && (rank2 == 1) && (file2 == 3) && (gs.chessboard[rank2 - 1][file2 - 1].piece.id == EMPTY) && (gs.chessboard[0][3].piece.id == EMPTY)) {
+                if ((!gs.hasAlreadyMoved[0]) && (!gs.hasAlreadyMoved[1]) && (m.movesTo.rank == 1) && (m.movesTo.file == 3) && (gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id == EMPTY) && (gs.chessboard[0][3].piece.id == EMPTY)) {
                     gs.chessboard[0][3].piece.id = gs.chessboard[0][0].piece.id;
                     gs.chessboard[0][0].piece.id = EMPTY;
                     gs.hasAlreadyMoved[0] = true;
                     return true;                                            
                 }
-                if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[5]) && (rank2 == 8) && (file2 == 7) && (gs.chessboard[rank2 - 1][file2 - 1].piece.id == EMPTY) && (gs.chessboard[7][5].piece.id == EMPTY)) {
+                if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[5]) && (m.movesTo.rank == 8) && (m.movesTo.file == 7) && (gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id == EMPTY) && (gs.chessboard[7][5].piece.id == EMPTY)) {
                     gs.chessboard[7][5].piece.id = gs.chessboard[7][7].piece.id;
                     gs.chessboard[7][7].piece.id = EMPTY;
                     gs.hasAlreadyMoved[3] = true;
                     return true;                                            
                 }
-                if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[4]) && (rank2 == 8) && (file2 == 3) && (gs.chessboard[rank2 - 1][file2 - 1].piece.id == EMPTY) && (gs.chessboard[7][3].piece.id == EMPTY)) {
+                if ((!gs.hasAlreadyMoved[3]) && (!gs.hasAlreadyMoved[4]) && (m.movesTo.rank == 8) && (m.movesTo.file == 3) && (gs.chessboard[m.movesTo.rank - 1][m.movesTo.file - 1].piece.id == EMPTY) && (gs.chessboard[7][3].piece.id == EMPTY)) {
                     gs.chessboard[7][3].piece.id = gs.chessboard[7][0].piece.id;
                     gs.chessboard[7][0].piece.id = EMPTY;            
                     gs.hasAlreadyMoved[3] = true;
