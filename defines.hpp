@@ -1,5 +1,5 @@
-#ifndef DEFINES_H
-#define DEFINES_H
+#ifndef DEFINES_HPP
+#define DEFINES_HPP
 
 /*
 //define values
@@ -37,4 +37,4 @@
 #define PLAYERMASK 0xC0 // 11000000
 
 
-#endif // DEFINES_H
+#endif // DEFINES_HPP

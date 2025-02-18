@@ -1,4 +1,4 @@
-#include "chessengine.h"
+#include "chessengine.hpp"
 
 namespace chess {
 
@@ -34,6 +34,34 @@ namespace chess {
         for (int rank = 2; rank < 6; ++rank)
             for (int file = 0; file < ML; ++file)
                 gs.chessboard[rank][file].piece = { { itoc(file), rank + 1}, EMPTY };
+
+        gs.trackPiecePositions = { 
+            // white pieces
+            { gs.chessboard[0][0].piece}, { gs.chessboard[0][1].piece}, { gs.chessboard[0][2].piece}, { gs.chessboard[0][3].piece},
+            { gs.chessboard[0][4].piece}, { gs.chessboard[0][5].piece}, { gs.chessboard[0][6].piece}, { gs.chessboard[0][7].piece},
+            // white pawns
+            { gs.chessboard[1][0].piece}, { gs.chessboard[1][1].piece}, { gs.chessboard[1][2].piece}, { gs.chessboard[1][3].piece},
+            { gs.chessboard[1][4].piece}, { gs.chessboard[1][5].piece}, { gs.chessboard[1][6].piece}, { gs.chessboard[1][7].piece},
+            // black pieces
+            { gs.chessboard[7][0].piece}, { gs.chessboard[7][1].piece}, { gs.chessboard[7][2].piece}, { gs.chessboard[7][3].piece},   
+            { gs.chessboard[7][4].piece}, { gs.chessboard[7][5].piece}, { gs.chessboard[7][6].piece}, { gs.chessboard[7][7].piece},
+            // black pawns
+            { gs.chessboard[6][0].piece}, { gs.chessboard[6][1].piece}, { gs.chessboard[6][2].piece}, { gs.chessboard[6][3].piece},
+            { gs.chessboard[6][4].piece}, { gs.chessboard[6][5].piece}, { gs.chessboard[6][6].piece}, { gs.chessboard[6][7].piece},
+        };
+
+
+        #ifdef DEBUG
+        for (auto i : gs.trackPiecePositions) {
+            cout << i.file << i.rank << ' ' << printPiece(i.id) << '\n';
+        } cout << '\n'; 
+        gs.legalMoves[gs.chessboard[0][1].piece] = { {'a', 3}, {'a', 4} };
+        for (auto i : gs.legalMoves) {
+            for (auto j : i.second) {
+                cout << j.file << j.rank << ' ';
+            } cout << '\n';
+        }
+        #endif // DEBUG    
     } 
 
     //start of the game

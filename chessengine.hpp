@@ -1,8 +1,8 @@
-#ifndef CHESSENGINE_H
-#define CHESSENGINE_H
+#ifndef CHESSENGINE_HPP
+#define CHESSENGINE_HPP
 
-#include "includes.h"
-#include "defines.h"
+#include "includes.hpp"
+#include "defines.hpp"
 
 using namespace std;
 
@@ -11,13 +11,13 @@ namespace chess {
     using piece_id = unsigned char;
     using player = unsigned char;
 
-    template<typename key, typename value>
-    using umap = unordered_map<key, value>;
+    // template<typename key, typename value>
+    // using umap = unordered_map<key, value>;
 
-    template<typename value>
-    using uset = unordered_set<value>;
+    // template<typename value>
+    // using uset = unordered_set<value>;
 
-    inline static const unsigned char ML = 8;   // "ML" stands for "MAX_LINE", it's going to be our board's size (8x8 squares)
+    inline static constexpr unsigned char ML = 8;   // "ML" stands for "MAX_LINE", it's going to be our board's size (8x8 squares)
 
     struct coords {
         char file;
@@ -27,8 +27,8 @@ namespace chess {
         coords(char f, int r) : file(f), rank(r) {};
         // coords(coords &c) : file(c.file), rank(c.rank) {};
 
-        bool operator==(const coords &c) {
-            return (file == c.file) && (rank == c.rank);
+        bool operator==(const coords &c) const {
+            return (file == c.file && rank == c.rank);
         };
     };
 
@@ -39,8 +39,13 @@ namespace chess {
         piece(chess::coords c, piece_id i) : coords(c), id(i) {};
         // piece(piece &p) : id(p.id), coords(p.coords) {};
 
-        bool operator==(const piece &p) {
-            return id == p.id;
+        bool operator==(const piece &p) const {
+            return (file == p.file && rank == p.rank && id == p.id);
+        }
+
+        bool operator<(const piece &p) const {
+            if (file != p.file) return (file < p.file);
+            return (rank < p.rank);
         }
 
         void move(chess::coords c) {
@@ -70,9 +75,9 @@ namespace chess {
         size_t turns = 0;          // counts the turn, it's set to 0 before the game starts and increment every time white moves
         vector<move> listOfMoves;  // records a game moves
 
-        // uset<piece> trackPiecePositions;     // TODO: keeps track of piece positions on the board
-        // umap<piece, vector<coords>> legalMoves;    // TODO: keeps track of white legal moves             // TODO: keeps track of black legal moves
-        
+        set<piece> trackPiecePositions;     // TODO: keeps track of piece positions on the board
+        map<piece, vector<coords>> legalMoves;    // TODO: keeps track of white legal moves    // TODO: keeps track of black legal moves
+
         board chessboard[ML][ML];        // cb = chessboard
         bool hasAlreadyMoved[6] {false};   // ORDER: king e1, rook a1, rook h1, king e8, rook a8, rook h8. specific values become true after one of them moves
         
@@ -111,7 +116,4 @@ namespace chess {
 
 }
 
-
-
-
-#endif // CHESSENGINE_H
+#endif // CHESSENGINE_HPP
