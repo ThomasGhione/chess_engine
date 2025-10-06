@@ -49,6 +49,12 @@ struct coords {
     bool operator==(const coords &c) const {
         return (file == c.file && rank == c.rank);
     }
+
+    coords& operator=(const coords &c) {
+        file = c.file;
+        rank = c.rank;
+        return *this;
+    }
 };
 
 }

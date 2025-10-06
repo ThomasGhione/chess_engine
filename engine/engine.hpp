@@ -45,6 +45,7 @@ private:
     double evaluate();
 
     bool isMate();
+    bool isStalemate();
 };
 
 }

@@ -31,7 +31,7 @@ protected:
     void setCoords(struct coords c);
     bool isSameColor(const Piece &p) const;
 
-    virtual bool updateLegalMoves() = 0;
+    virtual bool updateLegalMoves();
 };
 
 }

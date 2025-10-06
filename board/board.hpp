@@ -33,7 +33,7 @@ private:
 
     bool isWhiteTurn;
     bool castle[4];
-    bool enPassant;
+    coords enPassant;
     int halfMoveClock;
     int fullMoveClock;
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -45,7 +45,9 @@ private:
     inline uint8_t fromCoordsToPosition(const coords& coords);
     inline coords fromPositionToCoords(const int& position);
 
+    void fromFenToBoard(std::string fen);
 
+    void updatePiecePosition(const Piece& current, const coords& target);
 };
 
 }
