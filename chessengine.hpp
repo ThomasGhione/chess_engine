@@ -89,15 +89,15 @@ namespace chess {
     void startingPosition(gameStatus &) noexcept;
     
     // printing
-    string printPieceOrEmpty(const board [ML][ML], const int, const int) noexcept ;
-    void printBoard(gameStatus &) noexcept;
-    //void printBoard(); 
+    string getPieceOrEmpty(const board [ML][ML], const int, const int) noexcept ;
+    void getBoard(gameStatus &) noexcept;
+    //void getBoard(); 
 
 
-    string printPlayer(const unsigned char &) noexcept;
+    string getPlayer(const unsigned char &) noexcept;
     int ctoi(const char &) noexcept; 
     char itoc(const int &) noexcept;
-    string printPiece(piece_id) noexcept;
+    string getPiece(piece_id) noexcept;
 
 /*   void printAllMoves(const vector<move> &);
     void printPieceOrEmptysCoords(const vector<move> &);

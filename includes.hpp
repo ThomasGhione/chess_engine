@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <iostream>
-#include <string.h>
+#include <string>
 #include <cctype>
 #include <bitset>
 #include <list>
@@ -15,9 +15,12 @@
 #include <map>
 #include <utility> // used for std::pair
 
-
 #ifdef DEBUG
     #include <chrono>
 #endif
+
+#include "printer/prints.hpp"
+
+using namespace std;
 
 #endif // INCLUDES_HPP

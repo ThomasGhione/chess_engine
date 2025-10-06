@@ -1,6 +1,5 @@
 #include "chessengine.hpp"
 
-
 int main() {
 
     #ifdef DEBUG
@@ -12,7 +11,7 @@ int main() {
     // TODO: this code is a mess, clean it up
     chess::gameStatus gamestatus;           // declare our gamestatus; main variable where every info about the game is here                             
     chess::startingPosition(gamestatus);    // create an empty board and put every pieces in its initial squares
-    chess::printBoard(gamestatus);          // print the initial position
+    print::getBoard(gamestatus);          // print the initial position
 
    
 

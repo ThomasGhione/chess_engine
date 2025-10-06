@@ -53,7 +53,7 @@ namespace chess {
 
         // can't choose an opponent piece
         if ((gs.chessboard[cFrom.rank - 1][ctoi(cFrom.file) - 1].piece.id & PLAYERMASK) != gs.player) {
-            cout << "It's " << printPlayer(gs.player) << "'s turn! Choose again: ";
+            cout << "It's " << print::getPlayer(gs.player) << "'s turn! Choose again: ";
             goto ifWrongMove;
         }
 
@@ -98,7 +98,7 @@ namespace chess {
             auto diff = end - start;
         #endif
 
-        printBoard(gs); // print the chessboard after every move
+        print::getBoard(gs); // print the chessboard after every move
 
         #ifdef DEBUG
             cout << "Time to calculate if the move was legal: " << chrono::duration <double, nano> (diff).count() << " ns\n";

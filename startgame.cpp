@@ -53,7 +53,7 @@ namespace chess {
 
         #ifdef DEBUG
         for (auto i : gs.trackPiecePositions) {
-            cout << i.file << i.rank << ' ' << printPiece(i.id) << '\n';
+            cout << i.file << i.rank << ' ' << getPiece(i.id) << '\n';
         } cout << '\n'; 
         gs.legalMoves[gs.chessboard[0][1].piece] = { {'a', 3}, {'a', 4} };
         for (auto i : gs.legalMoves) {

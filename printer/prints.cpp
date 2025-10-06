@@ -1,12 +1,13 @@
-#include "chessengine.hpp"
+#include "../chessengine.hpp"
+#include "prints.hpp"
 
-namespace chess {
+namespace print {
 
-    string printPlayer(const player &player) noexcept {
+    string Prints::getPlayer(chess::player &player) noexcept {
         return (player == WHITE) ? "WHITE" : "BLACK";
     }
 
-    string printPiece(piece_id piece) noexcept {
+    string Prints::getPiece(chess::piece_id piece) noexcept {
         switch (piece) {     
             case (WHITE | PAWN):    return "P";
             case (WHITE | KNIGHT):  return "N";
@@ -24,31 +25,31 @@ namespace chess {
         }
     }
 
-    string printPieceOrEmpty(const board debugboard[ML][ML], const int rank, const int file) noexcept {
+    string Prints::getPieceOrEmpty(chess::board debugboard[ML][ML], int rank, int file) noexcept {
         if (debugboard[rank][file].piece.id != EMPTY)
-            return printPiece(debugboard[rank][file].piece.id);
+            return getPiece(debugboard[rank][file].piece.id);
         return ((rank + file) % 2) ? "█" : " "; // default: case (EMPTY)
     }
 
-    void printBoard(gameStatus &gs) noexcept { // white square unicode: \u2588
+    void Prints::getBoard(chess::gameStatus &gs) noexcept { // white square unicode: \u2588
 
         #ifdef DEBUG
             auto start = chrono::steady_clock::now();
         #endif
 
         cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "
-             << printPiece(gs.lastMove.id) << ' ' << gs.lastMove.file << gs.lastMove.rank << ' ' << gs.lastMove.movesTo.file << gs.lastMove.movesTo.rank << "\n\n\n";
+             << getPiece(gs.lastMove.id) << ' ' << gs.lastMove.file << gs.lastMove.rank << ' ' << gs.lastMove.movesTo.file << gs.lastMove.movesTo.rank << "\n\n\n";
         for (int rank = ML - 1; rank >= 0; --rank) {
             if (rank % 2 == 1) {
                 cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
                 for (int file = 0; file < ML; file += 2)
-                    cout << "██" << printPieceOrEmpty(gs.chessboard, rank, file) << "██  " << printPieceOrEmpty(gs.chessboard, rank, file+1) << "  ";
+                    cout << "██" << getPieceOrEmpty(gs.chessboard, rank, file) << "██  " << getPieceOrEmpty(gs.chessboard, rank, file+1) << "  ";
                 cout << "    " << rank + 1 << "\n     █████     █████     █████     █████     \n";
             }
             else {
                 cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
                 for (int file = 0; file < ML; file += 2)
-                    cout << "  " << printPieceOrEmpty(gs.chessboard, rank, file) << "  ██" << printPieceOrEmpty(gs.chessboard, rank, file+1) << "██";
+                    cout << "  " << getPieceOrEmpty(gs.chessboard, rank, file) << "  ██" << getPieceOrEmpty(gs.chessboard, rank, file+1) << "██";
                 cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";
             }
         }
