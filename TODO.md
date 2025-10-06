@@ -8,7 +8,8 @@
 [] vedere se e come implementare orologio (idee fornite = oggetto a parte,
                                            parametro dentro engine, etc..)
 
-
+[] rendere coords una classe (sta diventando troppo complicata come struct)
+[] rendere valid_coords un metodo privato
 
 - print
 - engine
