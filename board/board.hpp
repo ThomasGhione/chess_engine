@@ -24,17 +24,20 @@ class Board {
 
 
 public:
+
     Board(std::string fen);
 
-private:
-    const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
     std::array<Piece, 64> board;
+    
+private:
+
     bool isWhiteTurn;
     bool castle[4];
     bool enPassant;
     int halfMoveClock;
     int fullMoveClock;
+    const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     
 
     Board();

@@ -12,7 +12,7 @@ Piece::Piece(struct coords c, piece_id i, bool color)
     , isWhite(color)
 {}
 
-void Piece::move(struct coords c) {
+void Piece::setCoords(struct coords c) {
     auto valid_coords = [](uint8_t x) -> bool { return x >= 0 && x < 64; };
 
     if (valid_coords(c.file)) {
