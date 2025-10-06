@@ -1,9 +1,37 @@
+#ifndef PIECE_HPP
+#define PIECE_HPP
+
+#include "defines.hpp"
+#include "coords.hpp"
+#include <cstdint>
+
+namespace chess {
+
+enum piece_id {
+    P_EMPTY = 0,
+    P_PAWN = 1,
+    P_KNIGHT = 2,
+    P_BISHOP = 3,
+    P_ROOK = 4,
+    P_QUEEN = 5,
+    P_KING = 6
+};
+
 class Piece {
-    public:
-        Piece() : id(EMPTY) {}
-        Piece(coords c, piece_id i) : coords(c), id(i) {}
     
-    protected:
-        Coords coords;
-        piece_id id;
+public:
+    Piece();
+    Piece(coords c, piece_id i, bool color);
+
+    coords coords;  
+    piece_id id;
+    bool isWhite;
+
+protected:
+    void move(struct coords c);
+    bool isSameColor(const Piece &p) const;
+};
+
 }
+
+#endif

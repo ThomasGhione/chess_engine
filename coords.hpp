@@ -4,6 +4,8 @@
 #include <cstdint>
 #include "defines.hpp"
 
+namespace chess {
+
 struct coords {
     uint8_t file;
     uint8_t rank;
@@ -30,5 +32,7 @@ struct coords {
         return (file == c.file && rank == c.rank);
     }
 };
+
+}
 
 #endif

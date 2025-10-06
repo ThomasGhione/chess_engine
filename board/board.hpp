@@ -4,6 +4,7 @@
 #include <string>
 #include <array>
 #include <cstdint>
+#include "piece/piece.hpp"
 
 /*
     TODO: implement the board
@@ -17,6 +18,8 @@
         privato che crea una scacchiera vuota
 */
 
+namespace chess {
+
 class Board {
 
 
@@ -25,19 +28,23 @@ public:
 
 private:
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    std::array<Piece, 64> board;
+    bool isWhiteTurn;
+    bool castle[4];
+    bool enPassant;
+    int halfMoveClock;
+    int fullMoveClock;
     
-    std::array<uint8_t, 64> board; // TODO: cambiare a <piece , 64>
-    struct Coords {
-        uint8_t row;
-        uint8_t col;
-    };
 
     Board();
 
-    inline uint8_t fromCoordsToPosition(const Coords& coords);
-    inline Coords fromPositionToCoords(const int& position);
+    inline uint8_t fromCoordsToPosition(const coords& coords);
+    inline coords fromPositionToCoords(const int& position);
 
 
 };
+
+}
 
 #endif
