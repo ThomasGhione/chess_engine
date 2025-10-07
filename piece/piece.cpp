@@ -6,13 +6,13 @@ namespace chess {
 Piece::Piece()
     : id(P_EMPTY)
 {}
-Piece::Piece(struct coords c, piece_id i, bool color)
+Piece::Piece(Coords c, piece_id i, bool color)
     : coords(c)
     , id(i)
     , isWhite(color)
 {}
 
-void Piece::setCoords(struct coords c) {
+void Piece::setCoords(Coords c) {
     auto valid_coords = [](uint8_t x) -> bool { return x >= 0 && x < 64; };
 
     if (valid_coords(c.file)) {

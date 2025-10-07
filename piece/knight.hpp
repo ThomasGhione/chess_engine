@@ -7,7 +7,7 @@ namespace chess {
     
 class Knight : public Piece {
     public:
-        Knight(struct coords c, piece_id i, bool color) : Piece(c, P_KNIGHT, color) {}
+        Knight(Coords c, piece_id i, bool color) : Piece(c, P_KNIGHT, color) {}
 
         bool updateLegalMoves() override;
 };

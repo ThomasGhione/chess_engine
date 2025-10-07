@@ -21,14 +21,14 @@ class Piece {
     
 public:
     Piece();
-    Piece(coords c, piece_id i, bool color);
+    Piece(Coords c, piece_id i, bool color);
 
-    coords coords;  
+    Coords coords;  
     piece_id id;
     bool isWhite;
 
 protected:
-    void setCoords(struct coords c);
+    void setCoords(Coords c);
     bool isSameColor(const Piece &p) const;
 
     virtual bool updateLegalMoves();

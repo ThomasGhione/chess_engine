@@ -2,7 +2,7 @@
 
 namespace chess {
 
-Knight::Knight(struct coords c, piece_id i, bool color)
+Knight::Knight(Coords c, piece_id i, bool color)
     : Piece(c, P_KNIGHT, color)
 {}
 

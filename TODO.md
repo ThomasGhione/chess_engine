@@ -11,6 +11,8 @@
 [] rendere coords una classe (sta diventando troppo complicata come struct)
 [] rendere valid_coords un metodo privato
 
+[] aggiungere controlli/eccezioni per il fen
+
 - print
 - engine
     - scacchiera

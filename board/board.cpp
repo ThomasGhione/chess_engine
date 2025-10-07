@@ -18,7 +18,6 @@ Board& Board::operator=(const Board& other) {
         enPassant = other.enPassant;
         halfMoveClock = other.halfMoveClock;
         fullMoveClock = other.fullMoveClock;
-        // STARTING_FEN is const, so no need to copy
     }
     return *this;
 }
@@ -107,15 +106,15 @@ std::string Board::fromBoardToFen() {
     //! TODO This function has to be done to correctly load the game 
 }
 
-inline uint8_t Board::fromCoordsToPosition(const coords& coord) {
+inline uint8_t Board::fromCoordsToPosition(const Coords& coord) {
     return coord.file + coord.rank * 8;
 }
 
-inline coords Board::fromPositionToCoords(const int& position) {
+inline Coords Board::fromPositionToCoords(const int& position) {
     return { static_cast<uint8_t>(position % 8), static_cast<uint8_t>(position / 8) };
 }
 
-void Board::updatePiecePosition(const Piece& current, const coords& target) {
+void Board::updatePiecePosition(const Piece& current, const Coords& target) {
     board[fromCoordsToPosition(current.coords)] = EMPTY; // TODO: come eliminare il pezzo dalla casella?
     board[fromCoordsToPosition(target)] = current;  // assegno il vecchio pezzo nella nuova posizione
     board[fromCoordsToPosition(target)].coords = target; // aggiorno le coordinate del pezzo
