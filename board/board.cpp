@@ -4,8 +4,6 @@
 
 namespace chess {
 
-
-
 Board::Board(std::string fen) {
     fromFenToBoard(fen);
 }
@@ -14,7 +12,7 @@ Board& Board::operator=(const Board& other) {
     if (this != &other) {
         board = other.board;
         isWhiteTurn = other.isWhiteTurn;
-        std::copy(std::begin(other.castle), std::end(other.castle), std::begin(castle));
+        castle = other.castle;
         enPassant = other.enPassant;
         halfMoveClock = other.halfMoveClock;
         fullMoveClock = other.fullMoveClock;

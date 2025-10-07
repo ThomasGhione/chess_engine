@@ -36,7 +36,7 @@ public:
 private:
 
     bool isWhiteTurn;
-    bool castle[4];
+    std::array<bool, 4> castle;
     Coords enPassant;
     int halfMoveClock;
     int fullMoveClock;
