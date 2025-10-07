@@ -1,6 +1,9 @@
 #include "board/board.hpp"
 #include <unordered_map>
 #include <cstdint>
+#include <includes.hpp>
+#include <fstream>
+#include <filesystem>
 
 namespace engine {
 
@@ -30,7 +33,7 @@ public:
     void playGameVsHuman(); // same as above :)
 
     void saveGame();
-    void loadGame();
+    bool loadGame();
 
 private:
     chess::Board board;

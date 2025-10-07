@@ -25,10 +25,14 @@ class Board {
 
 public:
 
-    Board(std::string fen);
-
     std::array<Piece, 64> board;
     
+    Board(std::string fen);
+
+    std::string getCurrentFen();
+
+    Board& Board::operator=(const Board& other);
+
 private:
 
     bool isWhiteTurn;
@@ -38,16 +42,16 @@ private:
     int fullMoveClock;
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    
 
     Board();
+    
+    void fromFenToBoard(std::string fen);
+    std::string fromBoardToFen();
 
     inline uint8_t fromCoordsToPosition(const coords& coords);
     inline coords fromPositionToCoords(const int& position);
 
-    void fromFenToBoard(std::string fen);
-
-    void updatePiecePosition(const Piece& current, const coords& target);
+    void updatePiecePosition(const Piece& current, const coords& target);  
 };
 
 }

@@ -4,8 +4,23 @@
 
 namespace chess {
 
+
+
 Board::Board(std::string fen) {
     fromFenToBoard(fen);
+}
+
+Board& Board::operator=(const Board& other) {
+    if (this != &other) {
+        board = other.board;
+        isWhiteTurn = other.isWhiteTurn;
+        std::copy(std::begin(other.castle), std::end(other.castle), std::begin(castle));
+        enPassant = other.enPassant;
+        halfMoveClock = other.halfMoveClock;
+        fullMoveClock = other.fullMoveClock;
+        // STARTING_FEN is const, so no need to copy
+    }
+    return *this;
 }
 
 void Board::fromFenToBoard(std::string fen) {
@@ -86,6 +101,10 @@ void Board::fromFenToBoard(std::string fen) {
     // 6. Full-move number
     fenStream >> token;
     fullMoveClock = std::stoi(token);
+}
+
+std::string Board::fromBoardToFen() {
+    //! TODO This function has to be done to correctly load the game 
 }
 
 inline uint8_t Board::fromCoordsToPosition(const coords& coord) {
