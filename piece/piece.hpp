@@ -28,6 +28,9 @@ public:
     piece_id id;
     bool isWhite;
 
+    bool move(const Coords& c);
+    bool move(const uint8_t position);
+
 protected:
     bool isSameColor(const Piece &p) const;
 

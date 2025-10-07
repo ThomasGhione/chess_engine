@@ -3,17 +3,17 @@
 namespace chess {
 
 Coords::Coords()
-    : file(EMPTY)
-    , rank(EMPTY)
+    : file(INVALID_COORDS)
+    , rank(INVALID_COORDS)
 {}
 
 Coords::Coords(uint8_t f, uint8_t r)
         : Coords()
 {
-    if (isValid(f)) {
+    if (this->isValid(f)) {
         file = f;
     }
-    if (isValid(r)) {
+    if (this->isValid(r)) {
         rank = r;
     }
 }
@@ -25,10 +25,10 @@ Coords::Coords(std::string input)
         // TODO: gestire l'errore
     }
 
-    if (isValid(input[0] - 'a')) {
+    if (this->isLetter(input[0])) {
         file = input[0] - 'a';
     }
-    if (isValid(input[1] - '1')) {
+    if (this->isNumber(input[1])) {
         rank = input[1] - '1';
     }
 }
@@ -50,10 +50,10 @@ Coords& Coords::operator=(const Coords &other) {
 }
 
 void Coords::update(const Coords& other) {
-    if (isValid(other.file)) {
+    if (this->isValid(other.file)) {
         file = other.file;
     }
-    if (isValid(other.rank)) {
+    if (this->isValid(other.rank)) {
         rank = other.rank;
     }
 }
@@ -61,6 +61,14 @@ void Coords::update(const Coords& other) {
 
 bool Coords::isValid(uint8_t x) const {
     return x >= 0 && x < 64;
+}
+
+bool Coords::isLetter(char c) const {
+    return ((c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'));
+}
+
+bool Coords::isNumber(char c) const {
+    return (c >= '1' && c <= '8');
 }
 
 }

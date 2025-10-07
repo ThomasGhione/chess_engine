@@ -45,7 +45,7 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
         auto start = chrono::steady_clock::now();
     #endif
 
-    std::cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: ";
+    std::cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "; // TODO: implement last move
     for (int rank = 7; rank >= 0; --rank) {
         if (rank % 2 == 1) {
             std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
@@ -59,7 +59,7 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
                 std::cout << "  " << getPieceOrEmpty(board, {rank, file}) << "  ██" << getPieceOrEmpty(board, {rank, file+1}) << "██";
             std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";            
         }
-        cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.fullMoveClock << "\n\n";
+        cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.getFullMoveClock() << "\n\n";
     }
 
 

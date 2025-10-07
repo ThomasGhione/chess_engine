@@ -22,4 +22,11 @@ bool Piece::isSameColor(const Piece &p) const {
     return isWhite == p.isWhite;
 }
 
+bool Piece::move(const Coords& c) {
+    return true;
+}
+bool Piece::move(const uint8_t position) {
+    return true;
+}
+
 }
