@@ -39,14 +39,28 @@ std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::coor
     return ((coords.rank + coords.file) % 2) ? "█" : " "; // default: case (EMPTY)
 }
 
-void Prints::getBoard(chess::gameStatus &gs) { // white square unicode: \u2588
+void Prints::getBoard(const chess::Board& board) { // white square unicode: \u2588
 
     #ifdef DEBUG
         auto start = chrono::steady_clock::now();
     #endif
 
-
-
+    std::cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: ";
+    for (int rank = 7; rank >= 0; --rank) {
+        if (rank % 2 == 1) {
+            std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
+            for (int file = 0; file < 8; file += 2)
+                std::cout << "██" << getPieceOrEmpty(board, {file, rank}) << "██  " << getPieceOrEmpty(board, {file+1, rank}) << "  ";
+            std::cout << "    " << rank+1 << "\n     █████     █████     █████     █████     \n";
+        }
+        else {
+            std::cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
+            for (int file = 0; file < 8; file += 2)
+                std::cout << "  " << getPieceOrEmpty(board, {rank, file}) << "  ██" << getPieceOrEmpty(board, {rank, file+1}) << "██";
+            std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";            
+        }
+        cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.fullMoveClock << "\n\n";
+    }
 
 
 /*

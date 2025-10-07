@@ -19,14 +19,9 @@ public:
 
     bool operator==(const Coords &other) const;
     bool operator!=(const Coords &other) const;
+    Coords& operator=(const Coords &other);
 
-    Coords& operator=(const Coords &other) {
-        if (this != &other) {
-            file = other.file;
-            rank = other.rank;
-            return *this;
-        }
-    }
+    void update(const Coords& other);
 
 private:
     bool isValid(uint8_t x) const;

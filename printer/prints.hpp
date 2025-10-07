@@ -18,7 +18,7 @@ class Prints {
         static string getPlayer(const bool isWhiteTurn);
         static string getPiece(const chess::Piece& piece);
         static string getPieceOrEmpty(const chess::Board& board, const chess::coords& coords);
-        static void getBoard(chess::gameStatus &gs);
+        static void getBoard(const chess::Board& board);
 
 };
 

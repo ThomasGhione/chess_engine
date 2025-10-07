@@ -49,6 +49,16 @@ Coords& Coords::operator=(const Coords &other) {
     }
 }
 
+void Coords::update(const Coords& other) {
+    if (isValid(other.file)) {
+        file = other.file;
+    }
+    if (isValid(other.rank)) {
+        rank = other.rank;
+    }
+}
+
+
 bool Coords::isValid(uint8_t x) const {
     return x >= 0 && x < 64;
 }

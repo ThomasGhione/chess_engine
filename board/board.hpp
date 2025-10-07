@@ -26,6 +26,11 @@ class Board {
 public:
 
     std::array<Piece, 64> board;
+    bool isWhiteTurn;
+    std::array<bool, 4> castle;
+    Coords enPassant;
+    int halfMoveClock;
+    int fullMoveClock;
     
     Board(std::string fen);
 
@@ -35,11 +40,6 @@ public:
 
 private:
 
-    bool isWhiteTurn;
-    std::array<bool, 4> castle;
-    Coords enPassant;
-    int halfMoveClock;
-    int fullMoveClock;
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 

@@ -21,6 +21,7 @@ class Piece {
     
 public:
     Piece();
+    Piece(Coords c, piece_id i); // for EMPTY squares
     Piece(Coords c, piece_id i, bool color);
 
     Coords coords;  
@@ -28,7 +29,6 @@ public:
     bool isWhite;
 
 protected:
-    void setCoords(Coords c);
     bool isSameColor(const Piece &p) const;
 
     virtual bool updateLegalMoves();
