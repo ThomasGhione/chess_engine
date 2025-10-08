@@ -1,0 +1,13 @@
+\contentsline {section}{\numberline {1}Obbiettivi del progetto}{2}{}%
+\contentsline {paragraph}{Punti cardini dello sviluppo}{2}{}%
+\contentsline {section}{\numberline {2}Lista delle cose da fare}{2}{}%
+\contentsline {subsection}{\numberline {2.1}Board}{2}{}%
+\contentsline {subsection}{\numberline {2.2}Engine}{2}{}%
+\contentsline {subsection}{\numberline {2.3}Coords}{2}{}%
+\contentsline {subsection}{\numberline {2.4}Printer}{2}{}%
+\contentsline {subsection}{\numberline {2.5}Piece}{3}{}%
+\contentsline {subsection}{\numberline {2.6}Runner}{3}{}%
+\contentsline {subsection}{\numberline {2.7}Nuove funzionalità}{3}{}%
+\contentsline {section}{\numberline {3}Architettura del progetto}{3}{}%
+\contentsline {subsection}{\numberline {3.1}Componenti generali}{3}{}%
+\contentsline {paragraph}{Coords}{3}{}%
