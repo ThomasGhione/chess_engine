@@ -7,18 +7,26 @@
 This is a script made in C++ which lets you play chess using the terminal (no graphics libraries).
 It's been tested on W11, W10 and Ubuntu 20.04 so far.
 
-TODO:
-As soon as I complete implementing every rule I'll start programming an engine to play against.
-
-
 # Compile
 
-"g++ -Wall -Wextra -Wpedantic -Werror *.cpp"
-Then run "a.exe" for Windows or "./a.out" for Linux.
-Windows only: try running "chcp 65001" if chessboard doesn't display properly. If it doesn't work on Powershell then
-try it on the CMD.
+## Windows
+First of all, compile the project:
+```g++ -Wall -Wextra -Wpedantic -Werror *.cpp```
 
-MORE INFOS:
+Then, you can run it by:
+```a.exe```
+
+Try running "chcp 65001" if chessboard doesn't display properly.
+If it doesn't work on Powershell then try it on the CMD.
+
+## Linux
+First of all, compile the project:
+```g++ -Wall -Wextra -Wpedantic -Werror *.cpp```
+
+Then, you can run it by:
+```./a.out```
+
+## MORE INFOS:
 Run with -DDEBUG to get the execution time of each move (excluding how much it takes for the user to input the move.
 Run with -O3 to get aggressive optimizations, from my tests it looks like it doesn't break the program, and it also
 looks like the very first move is gonna take relatively more time but this issue goes away right after.
