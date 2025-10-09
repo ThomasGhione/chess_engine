@@ -110,7 +110,105 @@ void Board::fromFenToBoard(std::string fen) {
 }
 
 std::string Board::fromBoardToFen() {
-    //! TODO This function has to be done to correctly load the game 
+    std::string fen = "";
+
+    int numOfEmptySquares = 0;
+
+    // Board
+    for (int i = 0; i < board.size(); i++) {
+        if (i % 8 == 0 && i > 0) {
+            numOfEmptySquares = 0;
+            fen.push_back('/');
+        }
+
+        switch (board[i].id)
+        {
+            case P_EMPTY:
+                ++numOfEmptySquares;
+
+                if (numOfEmptySquares == 1)
+                    fen.push_back('0' + numOfEmptySquares);
+                else 
+                    fen[fen.size()-1] = '0' + numOfEmptySquares;
+
+                break;
+
+            case P_PAWN:
+                fen.push_back(board[i].isWhite ? 'P' : 'p');
+                numOfEmptySquares = 0;
+
+                break;
+
+            case P_KNIGHT:
+                fen.push_back(board[i].isWhite ? 'N' : 'n');
+                numOfEmptySquares = 0;
+
+                break;
+
+            case P_BISHOP:
+                fen.push_back(board[i].isWhite ? 'B' : 'b');
+                numOfEmptySquares = 0;
+
+                break;        
+
+            case P_ROOK:
+                fen.push_back(board[i].isWhite ? 'R' : 'r');
+                numOfEmptySquares = 0;
+
+                break;
+
+            case P_QUEEN:
+                fen.push_back(board[i].isWhite ? 'Q' : 'q');
+                numOfEmptySquares = 0;
+            
+                break;
+
+            case P_KING:
+                fen.push_back(board[i].isWhite ? 'K' : 'k');
+                numOfEmptySquares = 0;
+
+                break;
+
+            default:
+                // There should be an exception
+                break;
+        }
+    }
+
+    fen.push_back(' ');
+
+    // Turn
+    fen.push_back(getIsWhiteTurn() ? 'w' : 'b');
+    fen.push_back(' ');
+
+    // Castling
+    auto castling = getCastling();
+    if (castling[0]) fen.push_back('K');
+    if (castling[1]) fen.push_back('Q');
+    if (castling[2]) fen.push_back('k');
+    if (castling[3]) fen.push_back('q');
+    if (!castling[0] && !castling[1] && !castling[2] && !castling[3]) 
+        fen.push_back('-');
+    fen.push_back(' ');
+
+    // En passant
+    auto ep = getEnPassant();
+    if (ep.file == 0 && ep.rank == 0) {
+        fen.push_back('-');
+    } else {
+        fen.push_back('a' + ep.file);
+        fen.push_back('1' + ep.rank);
+    }
+    fen.push_back(' ');
+
+    // Half-move clock
+    fen += std::to_string(getHalfMoveClock());
+    fen.push_back(' ');
+
+    // Full-move number
+    fen += std::to_string(getFullMoveClock());
+
+    return fen;
 }
 
 inline uint8_t Board::fromCoordsToPosition(const Coords& coord) const {

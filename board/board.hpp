@@ -53,6 +53,11 @@ public:
 private:
     // fen starts from a8 (top left)
     // (a8->h8, a7->h7, a6->h6, a5->h5, a4->h4, a3->h3, a2->h2, a1->h1)
+    // Upper char = white piece
+    // Lower char = black piece
+    // Numbers = empty squares
+    // '/' = new line
+    // ' ' = next section
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     bool isWhiteTurn;
