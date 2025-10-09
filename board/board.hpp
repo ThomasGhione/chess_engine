@@ -35,10 +35,9 @@ namespace chess {
 class Board {
 
 public:
-
     std::array<Piece, 64> board;
     
-    
+    Board();
     Board(std::string fen);
     
     std::string getCurrentFen();
@@ -48,6 +47,12 @@ public:
     Coords getEnPassant() const;    
     int getHalfMoveClock() const;    
     int getFullMoveClock() const;
+
+    uint8_t fromCoordsToPosition(const Coords& coords) const;
+    Coords fromPositionToCoords(const int position) const;
+
+    bool updatePiecePosition(const Piece& current, const Coords& target);  
+
     Board& Board::operator=(const Board& other);
     
 private:
@@ -66,15 +71,8 @@ private:
     int halfMoveClock;
     int fullMoveClock;
     
-    Board();
-    
     void fromFenToBoard(std::string fen);
     std::string fromBoardToFen();
-
-    inline uint8_t fromCoordsToPosition(const Coords& coords) const;
-    inline Coords fromPositionToCoords(const int position) const;
-
-    bool updatePiecePosition(const Piece& current, const Coords& target);  
 };
 
 }

@@ -2,8 +2,33 @@
 
 namespace engine {
 
-    //! TODO Try to add support for multiple saves
+    void Engine::playGameVsHuman() {
+        while (!isMate()) {
+            std::cout << "It's white's turn: ";
+            takePlayerTurn();
+            std::cout << "It's black's turn: ";
+            takePlayerTurn();
+        }
+        // TODO: stampare il vincitore e ristampare il menu
+    }
 
+    void Engine::takePlayerTurn() {
+        // reading input
+        std::cout << "Insert the coords: ";
+        char fromFile, fromRank, toFile, toRank;
+        std::cin >> fromFile >> fromRank >> toFile >> toRank;
+        
+        // setting variables up
+        chess::Coords currentCoords = {fromFile, fromRank};
+        chess::Coords targetCoords = {toFile, toRank};
+        chess::Piece pieceToMove = board.board[board.fromCoordsToPosition(currentCoords)];
+
+        // moving the piece 
+        board.updatePiecePosition(pieceToMove, targetCoords);
+    }
+
+
+    //! TODO Try to add support for multiple saves
     void Engine::saveGame() {
 
         if (filesystem::exists("save.txt")) {

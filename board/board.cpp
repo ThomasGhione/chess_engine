@@ -5,6 +5,10 @@
 
 namespace chess {
 
+Board::Board() {
+    fromFenToBoard(STARTING_FEN);
+}
+
 Board::Board(std::string fen) {
     fromFenToBoard(fen);
 }
