@@ -33,8 +33,8 @@ std::string Prints::getPiece(const chess::Piece& piece) {
 }
 
 std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::coords& coords) {
-    if (board.board[coords.file * 8 + coords.rank].id != EMPTY) {
-        return getPiece(board.board[coords.file * 8 + coords.rank]);
+    if (board[coords.file * 8 + coords.rank].id != EMPTY) {
+        return getPiece(board[coords.file * 8 + coords.rank]);
     }
     return ((coords.rank + coords.file) % 2) ? "█" : " "; // default: case (EMPTY)
 }

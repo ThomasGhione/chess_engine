@@ -33,6 +33,14 @@ Board& Board::operator=(const Board& other) {
     return *this;
 }
 
+Piece& Board::operator[](std::size_t index) {
+    return board[index];
+}
+
+const Piece& Board::operator[](std::size_t index) const {
+    return board[index];
+}
+
 void Board::fromFenToBoard(std::string fen) {
     if (fen.empty()) {
         fen = STARTING_FEN;
@@ -196,7 +204,7 @@ inline Coords Board::fromPositionToCoords(const int position) const {
     return { static_cast<uint8_t>(position % 8), static_cast<uint8_t>(position / 8) };
 }
 
-bool Board::updatePiecePosition(const Piece& current, const Coords& target) {
+bool Board::movePiece(const Piece& current, const Coords& target) {
     // TODO: interrogare il pezzo
     // TODO: se è una mossa lecita, allora:
 

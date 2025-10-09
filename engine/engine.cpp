@@ -22,7 +22,7 @@ void Engine::takeEngineTurn() {
     chess::Coords targetCoords;
     chess::Piece pieceToMove;
 
-    board.updatePiecePosition(pieceToMove, targetCoords);
+    board.movePiece(pieceToMove, targetCoords);
 }
 
 void Engine::playGameVsHuman() {
@@ -44,10 +44,10 @@ void Engine::takePlayerTurn() {
     // setting variables up
     chess::Coords currentCoords = {fromFile, fromRank};
     chess::Coords targetCoords = {toFile, toRank};
-    chess::Piece pieceToMove = board.board[board.fromCoordsToPosition(currentCoords)];
+    chess::Piece pieceToMove = board[board.fromCoordsToPosition(currentCoords)];
 
     // moving the piece 
-    board.updatePiecePosition(pieceToMove, targetCoords);
+    board.movePiece(pieceToMove, targetCoords);
 }
 
 

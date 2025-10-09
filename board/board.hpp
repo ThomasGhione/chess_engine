@@ -51,9 +51,11 @@ public:
     uint8_t fromCoordsToPosition(const Coords& coords) const;
     Coords fromPositionToCoords(const int position) const;
 
-    bool updatePiecePosition(const Piece& current, const Coords& target);  
+    bool movePiece(const Piece& current, const Coords& target);  
 
     Board& Board::operator=(const Board& other);
+    Piece& operator[](std::size_t index);
+    const Piece& operator[](std::size_t index) const;
     
 private:
     // fen starts from a8 (top left)
