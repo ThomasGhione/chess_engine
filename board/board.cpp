@@ -114,103 +114,75 @@ void Board::fromFenToBoard(std::string fen) {
 }
 
 std::string Board::fromBoardToFen() {
-    std::string fen = "";
+    std::string fen;
+    int emptySquaresCounter = 0;
 
-    int numOfEmptySquares = 0;
-
-    // Board
-    for (int i = 0; i < board.size(); i++) {
-        if (i % 8 == 0 && i > 0) {
-            numOfEmptySquares = 0;
-            fen.push_back('/');
+    for (int i = 0; i < board.size(); ++i) {
+        
+        if (i > 0 && i % 8 == 0) { // nuova riga ogni 8 pezzi
+            if (emptySquaresCounter > 0) {
+                fen += std::to_string(emptySquaresCounter);
+                emptySquaresCounter = 0;
+            }
+            fen += '/';
         }
 
-        switch (board[i].id)
-        {
-            case P_EMPTY:
-                ++numOfEmptySquares;
+        const Piece& piece = board[i];
 
-                if (numOfEmptySquares == 1)
-                    fen.push_back('0' + numOfEmptySquares);
-                else 
-                    fen[fen.size()-1] = '0' + numOfEmptySquares;
+        if (piece.id == P_EMPTY) {
+            ++emptySquaresCounter;
+        } else {
+            if (emptySquaresCounter > 0) {
+                fen += std::to_string(emptySquaresCounter);
+                emptySquaresCounter = 0;
+            }
 
-                break;
+            char c;
+            switch (piece.id) {
+                case P_PAWN:   c = 'p'; break;
+                case P_KNIGHT: c = 'n'; break;
+                case P_BISHOP: c = 'b'; break;
+                case P_ROOK:   c = 'r'; break;
+                case P_QUEEN:  c = 'q'; break;
+                case P_KING:   c = 'k'; break;
+                default:       c = '?'; break;
+            }
 
-            case P_PAWN:
-                fen.push_back(board[i].isWhite ? 'P' : 'p');
-                numOfEmptySquares = 0;
-
-                break;
-
-            case P_KNIGHT:
-                fen.push_back(board[i].isWhite ? 'N' : 'n');
-                numOfEmptySquares = 0;
-
-                break;
-
-            case P_BISHOP:
-                fen.push_back(board[i].isWhite ? 'B' : 'b');
-                numOfEmptySquares = 0;
-
-                break;        
-
-            case P_ROOK:
-                fen.push_back(board[i].isWhite ? 'R' : 'r');
-                numOfEmptySquares = 0;
-
-                break;
-
-            case P_QUEEN:
-                fen.push_back(board[i].isWhite ? 'Q' : 'q');
-                numOfEmptySquares = 0;
-            
-                break;
-
-            case P_KING:
-                fen.push_back(board[i].isWhite ? 'K' : 'k');
-                numOfEmptySquares = 0;
-
-                break;
-
-            default:
-                // There should be an exception
-                break;
+            fen += piece.isWhite ? std::toupper(c) : c;
         }
     }
 
-    fen.push_back(' ');
+    if (emptySquaresCounter > 0) { // edge case ultima riga => se ci sono caselle vuote non scritte
+        fen += std::to_string(emptySquaresCounter);
+    }
 
-    // Turn
-    fen.push_back(getIsWhiteTurn() ? 'w' : 'b');
-    fen.push_back(' ');
+    // turn
+    fen += ' ';
+    fen += getIsWhiteTurn() ? 'w' : 'b';
 
-    // Castling
-    auto castling = getCastling();
-    if (castling[0]) fen.push_back('K');
-    if (castling[1]) fen.push_back('Q');
-    if (castling[2]) fen.push_back('k');
-    if (castling[3]) fen.push_back('q');
-    if (!castling[0] && !castling[1] && !castling[2] && !castling[3]) 
-        fen.push_back('-');
-    fen.push_back(' ');
+    // castling
+    fen += ' ';
+    std::array<bool, 4> castling = getCastling();
+    std::string castlingStr;
+    if (castling[0]) castlingStr += 'K';
+    if (castling[1]) castlingStr += 'Q';
+    if (castling[2]) castlingStr += 'k';
+    if (castling[3]) castlingStr += 'q';
+    fen += castlingStr.empty() ? "-" : castlingStr;
 
-    // En passant
-    auto ep = getEnPassant();
-    if (ep.file == 0 && ep.rank == 0) {
-        fen.push_back('-');
+    // en passant
+    fen += ' ';
+    Coords ep = getEnPassant();
+    if (ep.file == 0 && ep.rank == 0) { // TODO: cambiare con le coordinate invalide 
+        fen += '-';
     } else {
-        fen.push_back('a' + ep.file);
-        fen.push_back('1' + ep.rank);
+        fen += static_cast<char>('a' + ep.file);
+        fen += static_cast<char>('1' + ep.rank);
     }
-    fen.push_back(' ');
 
-    // Half-move clock
-    fen += std::to_string(getHalfMoveClock());
-    fen.push_back(' ');
-
-    // Full-move number
-    fen += std::to_string(getFullMoveClock());
+    // half moves and full moves
+    fen += ' ' + std::to_string(getHalfMoveClock());
+    fen += ' ' + std::to_string(getFullMoveClock());
 
     return fen;
 }
