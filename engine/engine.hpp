@@ -37,6 +37,7 @@ public:
 
 private:
     chess::Board board;
+    bool isHumanWhite;
     
     // PieceMovesMap legalMoves;
 
