@@ -7,18 +7,6 @@
 #include "piece/piece.hpp"
 
 /*
-    TODO: implement the board
-    deve essere di dimensione di una scacchiera (matrice 8x8, array)
-    deve "contenere" tutti i pezzi presenti
-
-    board ha un costruttore che parte da un fen
-        - variabile costanche che è il fen di partenza                          V
-        - puoi partire da ogni posizione in base al fen
-    l'inizializzazione del costruttore si deve affidare ad un costruttore
-        privato che crea una scacchiera vuota
-*/
-
-/*
     a8->h8, a7->h7, ...
     board[64]
         board[0] => a8
