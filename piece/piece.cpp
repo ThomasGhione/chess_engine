@@ -1,5 +1,4 @@
 #include "piece.hpp"
-#include "coords.hpp"
 
 namespace chess {
 

@@ -41,6 +41,14 @@ const Piece& Board::operator[](std::size_t index) const {
     return board[index];
 }
 
+Piece& Board::at(const uint8_t position) { 
+    return board.at(position);
+}
+
+const Piece& Board::at(const uint8_t position) const {
+    return board.at(position);
+}
+
 void Board::fromFenToBoard(std::string fen) {
     if (fen.empty()) {
         fen = STARTING_FEN;

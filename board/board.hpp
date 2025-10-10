@@ -4,7 +4,7 @@
 #include <string>
 #include <array>
 #include <cstdint>
-#include "piece/piece.hpp"
+#include "../piece/piece.hpp"
 
 /*
     a8->h8, a7->h7, ...
@@ -44,6 +44,9 @@ public:
     Board& Board::operator=(const Board& other);
     Piece& operator[](std::size_t index);
     const Piece& operator[](std::size_t index) const;
+
+    Piece& at(const uint8_t position);
+    const Piece& at(const uint8_t position) const;
     
 private:
     // fen starts from a8 (top left)

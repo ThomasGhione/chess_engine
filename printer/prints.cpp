@@ -1,4 +1,3 @@
-#include "chessengine.hpp"
 #include "prints.hpp"
 
 namespace print {
@@ -32,7 +31,7 @@ std::string Prints::getPiece(const chess::Piece& piece) {
     }
 }
 
-std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::coords& coords) {
+std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords) {
     if (board[coords.file * 8 + coords.rank].id != EMPTY) {
         return getPiece(board[coords.file * 8 + coords.rank]);
     }

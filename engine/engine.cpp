@@ -2,7 +2,7 @@
 
 namespace engine {
 
-void Engine::playGameVsEngine() {
+void Engine::playGameVsEngine(bool isWhite) {
     while (!isMate()) {
         if (isHumanWhite) {
             std::cout << "It's your turn: ";

@@ -1,7 +1,7 @@
-#include "board/board.hpp"
+#include "../board/board.hpp"
 #include <unordered_map>
 #include <cstdint>
-#include <includes.hpp>
+#include "../includes.hpp"
 #include <fstream>
 #include <filesystem>
 
@@ -20,7 +20,7 @@ namespace engine {
 
 class Engine {
 
-    using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::coords>>;
+    using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
     
 public:
 
@@ -29,7 +29,7 @@ public:
 
     double eval;
 
-    void playGameVsEngine(); // ciclo prinipale
+    void playGameVsEngine(bool isWhite); // ciclo prinipale
     void playGameVsHuman(); // same as above :)
 
     void saveGame();

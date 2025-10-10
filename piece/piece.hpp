@@ -1,8 +1,8 @@
 #ifndef PIECE_HPP
 #define PIECE_HPP
 
-#include "defines.hpp"
-#include "coords.hpp"
+#include "../defines.hpp"
+#include "../coords/coords.hpp"
 #include <cstdint>
 
 namespace chess {
