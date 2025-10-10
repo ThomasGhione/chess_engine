@@ -55,9 +55,11 @@ void Engine::takePlayerTurn() {
     board.movePiece(pieceToMove, targetCoords);
 }
 
+/*
 void Engine::playGame() {
-    print::Menu::showMainMenu(this);
+    print::Menu::showMainMenu();
 }
+*/
 
 //! TODO Try to add support for multiple saves
 void Engine::saveGame() {

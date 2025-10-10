@@ -1,32 +1,34 @@
 #include "menu.hpp"
 
 namespace print {
-    void Menu::showMainMenu(engine::Engine* engine) {
-        clearScreen();
+    void Menu::showMainMenu(engine::Engine& engine) {
+        while (true) {
+            clearScreen();
         
-        std::cout << "\n\n==================== MAIN MENU ====================\n\n";
-        std::cout << "1. One Player\n";
-        std::cout << "2. Two Players\n";
-        std::cout << "3. Quit Game\n\n";
-        std::cout << "Select an option (1-3): ";
+            std::cout << "\n\n==================== MAIN MENU ====================\n\n";
+            std::cout << "1. One Player\n";
+            std::cout << "2. Two Players\n";
+            std::cout << "3. Quit Game\n\n";
+            std::cout << "Select an option (1-3): ";
         
-        char choice;
-        std::cin >> choice;
-        while (choice < '1' || choice > '3') {
-            std::cout << "Invalid option. Please select a valid option (1-3): ";
+            char choice;
             std::cin >> choice;
-        }
+            while (choice < '1' || choice > '3') {
+                std::cout << "Invalid option. Please select a valid option (1-3): ";
+                std::cin >> choice;
+            }
 
-        switch (choice) {
-            case '1':
-                showOnePlayerMenu(*engine);
-                break;
-            case '2':
-                showTwoPlayersMenu(*engine);
-                break;
-            case '3':
-                QuitGame();
-                break;
+            switch (choice) {
+                case '1':
+                    showOnePlayerMenu(engine);
+                    break;
+                case '2':
+                    showTwoPlayersMenu(engine);
+                    break;
+                case '3':
+                    QuitGame();
+                    break;
+            }
         }
     }
 
@@ -57,7 +59,8 @@ namespace print {
                 engine.loadGame();
                 break;
             case '4':
-                showMainMenu(engine);
+                // Back to main menu
+                // showMainMenu(engine);
                 break;
         }
     }
@@ -82,7 +85,8 @@ namespace print {
                 engine.playGameVsHuman();
                 break;
             case '2':
-                showMainMenu(engine);
+                // Back to main menu
+                // showMainMenu(engine);
                 break;
         }
     }

@@ -33,7 +33,7 @@ public:
     void playGameVsEngine(bool isWhite); // ciclo prinipale
     void playGameVsHuman(); // same as above :)
 
-    void playGame();
+    //void playGame();
     void saveGame();
     bool loadGame();
 
