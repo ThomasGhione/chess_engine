@@ -141,7 +141,7 @@ std::string Board::fromBoardToFen() {
                 fen += std::to_string(emptySquaresCounter);
                 emptySquaresCounter = 0;
             }
-            fen += '/';
+            fen.push_back('/');
         }
 
         const Piece& piece = board[i];
@@ -165,41 +165,43 @@ std::string Board::fromBoardToFen() {
                 default:       c = '?'; break;
             }
 
-            fen += piece.isWhite ? std::toupper(c) : c;
+            fen.push_back(piece.isWhite ? std::toupper(c) : c);
         }
     }
 
     if (emptySquaresCounter > 0) { // edge case ultima riga => se ci sono caselle vuote non scritte
-        fen += std::to_string(emptySquaresCounter);
+        fen.push_back('0' + emptySquaresCounter);
     }
 
     // turn
-    fen += ' ';
-    fen += getIsWhiteTurn() ? 'w' : 'b';
+    fen.push_back(' ');
+    fen.push_back(getIsWhiteTurn() ? 'w' : 'b');
 
     // castling
-    fen += ' ';
+    fen.push_back(' ');
     std::array<bool, 4> castling = getCastling();
     std::string castlingStr;
     if (castling[0]) castlingStr += 'K';
     if (castling[1]) castlingStr += 'Q';
     if (castling[2]) castlingStr += 'k';
     if (castling[3]) castlingStr += 'q';
-    fen += castlingStr.empty() ? "-" : castlingStr;
+    fen.append(castlingStr.empty() ? "-" : castlingStr);
 
     // en passant
-    fen += ' ';
+    fen.push_back(' ');
     Coords ep = getEnPassant();
-    if (ep.file == 0 && ep.rank == 0) { // TODO: cambiare con le coordinate invalide 
-        fen += '-';
+    if (ep.file == 0 && ep.rank == 0) { // TODO: cambiare con le coordinate invalide
+        fen.push_back('-');
     } else {
-        fen += static_cast<char>('a' + ep.file);
-        fen += static_cast<char>('1' + ep.rank);
+        fen.push_back(static_cast<char>('a' + ep.file));
+        fen.push_back(static_cast<char>('1' + ep.rank));
     }
 
     // half moves and full moves
-    fen += ' ' + std::to_string(getHalfMoveClock());
-    fen += ' ' + std::to_string(getFullMoveClock());
+    fen.push_back(' ');
+    fen.append(std::to_string(getHalfMoveClock()));
+    fen.push_back(' ');
+    fen.append(std::to_string(getFullMoveClock()));
 
     return fen;
 }
