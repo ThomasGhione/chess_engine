@@ -9,7 +9,7 @@ namespace print {
     class Menu {
 
         public:
-            static void showMainMenu(engine::Engine& engine);
+            static void showMainMenu(engine::Engine* engine);
             static void showOnePlayerMenu(engine::Engine& engine);
             static void showTwoPlayersMenu(engine::Engine& engine);
             static void QuitGame();

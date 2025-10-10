@@ -1,10 +1,15 @@
 #include "engine.hpp"
 
+
 namespace engine {
+
+Engine::Engine()
+    : board()
+{}
 
 void Engine::playGameVsEngine(bool isWhite) {
     while (!isMate()) {
-        if (isHumanWhite) {
+        if (isPlayerWhite) {
             std::cout << "It's your turn: ";
             takePlayerTurn();
             std::cout << "Engine's thinking... ";
@@ -50,6 +55,9 @@ void Engine::takePlayerTurn() {
     board.movePiece(pieceToMove, targetCoords);
 }
 
+void Engine::playGame() {
+    print::Menu::showMainMenu(this);
+}
 
 //! TODO Try to add support for multiple saves
 void Engine::saveGame() {

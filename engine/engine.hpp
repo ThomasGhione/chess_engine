@@ -4,6 +4,7 @@
 #include "../includes.hpp"
 #include <fstream>
 #include <filesystem>
+#include "menu.hpp"
 
 namespace engine {
 
@@ -32,12 +33,13 @@ public:
     void playGameVsEngine(bool isWhite); // ciclo prinipale
     void playGameVsHuman(); // same as above :)
 
+    void playGame();
     void saveGame();
     bool loadGame();
 
 private:
     chess::Board board;
-    bool isHumanWhite;
+    bool isPlayerWhite;
     
     // PieceMovesMap legalMoves;
 

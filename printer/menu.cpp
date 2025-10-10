@@ -1,7 +1,7 @@
 #include "menu.hpp"
 
 namespace print {
-    void Menu::showMainMenu(engine::Engine& engine) {
+    void Menu::showMainMenu(engine::Engine* engine) {
         clearScreen();
         
         std::cout << "\n\n==================== MAIN MENU ====================\n\n";
@@ -19,10 +19,10 @@ namespace print {
 
         switch (choice) {
             case '1':
-                showOnePlayerMenu(engine);
+                showOnePlayerMenu(*engine);
                 break;
             case '2':
-                showTwoPlayersMenu(engine);
+                showTwoPlayersMenu(*engine);
                 break;
             case '3':
                 QuitGame();
