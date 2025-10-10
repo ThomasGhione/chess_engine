@@ -37,7 +37,7 @@ class Board {
 public:
     std::array<Piece, 64> board;
     
-    Board();
+    Board();                    // Default constructor => starting position
     Board(std::string fen);
     
     std::string getCurrentFen();

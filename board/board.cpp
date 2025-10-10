@@ -123,7 +123,7 @@ void Board::fromFenToBoard(std::string fen) {
 
 std::string Board::fromBoardToFen() {
     std::string fen;
-    fen.reserve(64);
+    fen.reserve(71);
     int emptySquaresCounter = 0;
 
     for (int i = 0; i < board.size(); ++i) {
