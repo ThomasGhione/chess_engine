@@ -16,6 +16,10 @@ public:
     void getAllLegalMoves(const chessboard& board) override;
     bool canMoveTo(const Coords& target) const override;
 
+    bool isInCheck(const chessboard& board) const; // TODO: implementare
+    bool isInCheckmate(const chessboard& board) const; // TODO: implementare
+private:
+    static const int directions[8][2]; // tutte le direzioni in cui il re può muoversi
 };
 
 }
