@@ -206,11 +206,11 @@ std::string Board::fromBoardToFen() {
     return fen;
 }
 
-inline uint8_t Board::fromCoordsToPosition(const Coords& coord) const {
+uint8_t Board::fromCoordsToPosition(const Coords& coord) const {
     return coord.file + coord.rank * 8;
 }
 
-inline Coords Board::fromPositionToCoords(const int position) const {
+Coords Board::fromPositionToCoords(const int position) const {
     return { static_cast<uint8_t>(position % 8), static_cast<uint8_t>(position / 8) };
 }
 

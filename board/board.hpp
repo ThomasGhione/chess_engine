@@ -20,10 +20,12 @@
 
 namespace chess {
 
+using chessboard = std::array<Piece, 64>;
+
 class Board {
 
 public:
-    std::array<Piece, 64> board;
+    chessboard board;
     
     Board();                    // Default constructor => starting position
     Board(std::string fen);
@@ -36,8 +38,8 @@ public:
     int getHalfMoveClock() const;    
     int getFullMoveClock() const;
 
-    uint8_t fromCoordsToPosition(const Coords& coords) const;
-    Coords fromPositionToCoords(const int position) const;
+    static uint8_t fromCoordsToPosition(const Coords& coords);
+    static Coords fromPositionToCoords(const int position);
 
     bool movePiece(const Piece& current, const Coords& target);  
 

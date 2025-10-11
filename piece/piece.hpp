@@ -3,7 +3,10 @@
 
 #include "../defines.hpp"
 #include "../coords/coords.hpp"
+#include "../board/board.hpp"
 #include <cstdint>
+#include <vector>
+#include <set>
 
 namespace chess {
 
@@ -27,14 +30,13 @@ public:
     Coords coords;  
     piece_id id;
     bool isWhite;
-
-    bool move(const Coords& c);
-    bool move(const uint8_t position);
+    std::vector<Coords> legalMoves; // per l'engine
 
 protected:
     bool isSameColor(const Piece &p) const;
-
-    virtual bool updateLegalMoves();
+    
+    virtual void getAllLegalMoves(const chessboard& board); // per l'engine
+    virtual bool canMoveTo(const Coords& target) const; // prima chiamo getAllLegalMoves e poi vedo se target è in quella lista
 };
 
 }
