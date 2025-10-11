@@ -15,9 +15,37 @@ Una coordinata non è altro che: $ R \bigtimes C$.
 
 \subsection{Board}
 
+\paragraph{Descrizione classe:}
 Rappresenta la foto di una scacchiera in questo momento.
-Per questa ragione, Board e' una classe contenente un: 
+Per questa ragione, Board e' una classe contenente un:
 
+\paragraph{Costruttori}
+Sono presenti due costruttori:
+
+\begin{enumerate}
+  \item Costruttore vuoto: Genera la posizione classica degli scacchi.
+  \item (std::string): Costruttore che prende un FEN
+  costruendo la relativa posizione.
+\end{enumerate}
+
+\paragraph{Attributi:}
 \begin{listing}
   std::array<Piece, 64> board;
 \end{listing}
+
+La posizione dell'array \textit{board} 0 rappresenta la casella: a8.
+Procedendo con l'indice di \textit{board}, iniziando dalla
+casella \textit{a8} (casa in alto a sinistra nella scacchiera),
+si procede da da sinistra verso destra e dell'alto verso il basso.
+
+Riposto alcune corrispondenze per spiegare ulteriormente:
+\begin{itemize}
+  \item Indice 7: h8
+  \item Indice 9: b7
+  \item Indice 18: c6
+  \item Indice 37: f4
+\end{itemize}
+
+\paragraph{Metodi:}
+
+

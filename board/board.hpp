@@ -6,18 +6,6 @@
 #include <cstdint>
 #include "../piece/piece.hpp"
 
-/*
-    a8->h8, a7->h7, ...
-    board[64]
-        board[0] => a8
-        board[1] => b8
-        ...
-        board[7] => h8
-        board[8] => a7
-        board[15] => h7
-        board[16] => a6
-*/
-
 namespace chess {
 
 using chessboard = std::array<Piece, 64>;
@@ -27,21 +15,22 @@ class Board {
 public:
     chessboard board;
     
-    Board();                    // Default constructor => starting position
+    // Default constructor => starting position
+    Board();
     Board(std::string fen);
     
     std::string getCurrentFen();
     
-    bool getIsWhiteTurn() const;    
-    std::array<bool, 4> getCastling() const;    
-    Coords getEnPassant() const;    
-    int getHalfMoveClock() const;    
+    bool getIsWhiteTurn() const;
+    std::array<bool, 4> getCastling() const;
+    Coords getEnPassant() const;
+    int getHalfMoveClock() const;
     int getFullMoveClock() const;
 
     static uint8_t fromCoordsToPosition(const Coords& coords);
     static Coords fromPositionToCoords(const int position);
 
-    bool movePiece(const Piece& current, const Coords& target);  
+    bool movePiece(const Piece& current, const Coords& target);
 
     Board& Board::operator=(const Board& other);
     Piece& operator[](std::size_t index);
@@ -51,13 +40,6 @@ public:
     const Piece& at(const uint8_t position) const;
     
 private:
-    // fen starts from a8 (top left)
-    // (a8->h8, a7->h7, a6->h6, a5->h5, a4->h4, a3->h3, a2->h2, a1->h1)
-    // Upper char = white piece
-    // Lower char = black piece
-    // Numbers = empty squares
-    // '/' = new line
-    // ' ' = next section
     const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     bool isWhiteTurn;
