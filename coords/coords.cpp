@@ -54,6 +54,10 @@ Coords& Coords::operator=(const Coords &other) {
 }
 
 void Coords::update(const Coords& other) {
+  // TOBE FIXED: Avendo other istanza di Cooords
+  // il controllo isValid passa sempre.
+  // Andrebbe controllato solo che sia diverso da 9 (coordina illegale)
+
     if (this->isValid(other.file)) {
         file = other.file;
     }
