@@ -15,7 +15,7 @@ void King::getAllLegalMoves(const chessboard& board) {
 
     for (const auto& dir : directions) {
         Coords newPos(start.file + dir[0], start.rank + dir[1]);
-        if (newPos.file >= 0 && newPos.file < 8 && newPos.rank >= 0 && newPos.rank < 8) {
+        if (isInBounds(newPos)) {
             const Piece* target = board.at(Board::fromCoordsToPosition(newPos)).get();
             if (!target || !isSameColor(*target)) {
                 legalMoves.emplace_back(newPos);

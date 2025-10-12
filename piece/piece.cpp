@@ -25,5 +25,8 @@ bool Piece::canMoveTo(const Coords& target) const {
     return std::find(legalMoves.cbegin(), legalMoves.cend(), target) != legalMoves.cend(); 
 }
 
+bool Piece::isInBounds(const Coords& pos) const {
+    return pos.file >= 0 && pos.file < 8 && pos.rank >= 0 && pos.rank < 8;
+}
 
 }

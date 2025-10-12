@@ -4,7 +4,6 @@ namespace chess {
 
 Rook::Rook(Coords c, piece_id i, bool color)
     : Piece(c, i, color)
-    , hasMoved(false)
 {
     legalMoves.reserve(14);
 }
@@ -17,13 +16,13 @@ void Rook::getAllLegalMoves(const chessboard& board) {
 
     for (const auto& dir : directions) {
         Coords newPos(start.file + dir[0], start.rank + dir[1]);
-        while (newPos.file >= 0 && newPos.file < 8 && newPos.rank >= 0 && newPos.rank < 8) {
+        while (isInBounds(newPos)) {
             auto& square = board.at(Board::fromCoordsToPosition(newPos));
             const Piece* target = square.get();
             if (!target) {
                 legalMoves.emplace_back(newPos);
             } else {
-                if (target->isWhite != myColor) {
+                if (!isSameColor(*target)) {
                     legalMoves.emplace_back(newPos);
                 }
                 break;

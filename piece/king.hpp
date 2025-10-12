@@ -15,10 +15,10 @@ public:
 
     void getAllLegalMoves(const chessboard& board) override final;
 
-    bool isInCheck(const chessboard& board) const; // TODO: implementare
-    bool isInCheckmate(const chessboard& board) const; // TODO: implementare
+    bool isInCheck(const chessboard& board) const; // TODO: implement
+    bool isInCheckmate(const chessboard& board) const; // TODO: implement
 private:
-    static constexpr int directions[8][2] = { // tutte le direzioni in cui il re può muoversi
+    static constexpr int directions[8][2] = { // All directions the king can move
         {1, 0}, {0, 1}, {-1, 0}, {0, -1},
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };

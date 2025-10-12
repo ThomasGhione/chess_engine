@@ -7,9 +7,15 @@ namespace chess {
     
 class Knight : public Piece {
     public:
-        Knight(Coords c, piece_id i, bool color) : Piece(c, P_KNIGHT, color) {}
+        Knight(Coords c, piece_id i, bool color);
 
-        bool updateLegalMoves() override;
+        void getAllLegalMoves(const chessboard& board) override final;
+    
+    private:
+        static constexpr int directions[8][2] = {
+            {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+            {1, 2}, {1, -2}, {-1, 2}, {-1, -2}
+        };
 };
 
 }

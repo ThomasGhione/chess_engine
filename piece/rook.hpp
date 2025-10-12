@@ -9,8 +9,6 @@ namespace chess {
 class Rook : public Piece {
 
 public:
-    bool hasMoved;
-
     Rook(Coords c, piece_id i, bool color);
 
     void getAllLegalMoves(const chessboard& board) override final;
