@@ -9,11 +9,14 @@ namespace chess {
 class Rook : public Piece {
 
 public:
+    bool hasMoved;
+
     Rook(Coords c, piece_id i, bool color);
 
-    void getAllLegalMoves(const chessboard& board) override;
-    bool canMoveTo(const Coords& target) const override;
+    void getAllLegalMoves(const chessboard& board) override final;
 
+private:
+    static constexpr int directions[4][2] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
 }; 
 
 }

@@ -2,11 +2,11 @@
 
 namespace print {
   std::string Menu::getMainMenu() {
-    const std::string line1 ="\n\n==================== MAIN MENU ====================\n\n";
-    const std::string line2 ="1. One Player\n";
-    const std::string line3 ="2. Two Players\n";
-    const std::string line4 ="0. Quit Game\n\n";
-    const std::string line5 ="Select an option (1-3): ";
+    static const std::string line1 = "\n\n==================== MAIN MENU ====================\n\n";
+    static const std::string line2 = "1. One Player\n";
+    static const std::string line3 = "2. Two Players\n";
+    static const std::string line4 = "0. Quit Game\n\n";
+    static const std::string line5 = "Select an option (1-3): ";
     return line1 + line2 + line3 + line4 + line5;
   }
 
@@ -23,11 +23,11 @@ namespace print {
 
   std::string Menu::getPlayWhitEngineMenu(){
 
-    const std::string line1= "\n\n==================== ONE PLAYER MENU ====================\n\n";
-    const std::string line2= "1. Play as White\n";
-    const std::string line3= "2. Play as Black\n";
-    const std::string line4= "3. Load Game\n";
-    const std::string line5= "4. Back to Main Menu\n\n";
+    static const std::string line1 = "\n\n==================== ONE PLAYER MENU ====================\n\n";
+    static const std::string line2 = "1. Play as White\n";
+    static const std::string line3 = "2. Play as Black\n";
+    static const std::string line4 = "3. Load Game\n";
+    static const std::string line5 = "4. Back to Main Menu\n\n";
 
     return line1 + line2 + line3 + line4 + line5;
   }

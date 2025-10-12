@@ -66,6 +66,15 @@ void Coords::update(const Coords& other) {
     }
 }
 
+void Coords::update(const uint8_t f, const uint8_t r) {
+    if (this->isValid(f)) {
+        file = f;
+    }
+    if (this->isValid(r)) {
+        rank = r;
+    }
+}
+
 
 bool Coords::isValid(uint8_t x) const {
     return (x < 64);

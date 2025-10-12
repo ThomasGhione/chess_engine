@@ -21,6 +21,9 @@ bool Piece::isSameColor(const Piece &p) const {
     return isWhite == p.isWhite;
 }
 
+bool Piece::canMoveTo(const Coords& target) const {
+    return std::find(legalMoves.cbegin(), legalMoves.cend(), target) != legalMoves.cend(); 
+}
 
 
 }

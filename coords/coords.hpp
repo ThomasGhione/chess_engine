@@ -22,6 +22,7 @@ public:
     Coords& operator=(const Coords &other);
 
     void update(const Coords& other);
+    void update(const uint8_t f, const uint8_t r);
 
 private:
     bool isValid(uint8_t x) const;

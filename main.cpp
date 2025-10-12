@@ -3,6 +3,6 @@
 
 int main() {
   engine::Engine engine;
-  print::Menu::showMainMenu(engine);
+  print::Menu::getMainMenu();
   return 0;
 }

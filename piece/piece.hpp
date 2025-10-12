@@ -36,7 +36,7 @@ protected:
     bool isSameColor(const Piece &p) const;
     
     virtual void getAllLegalMoves(const chessboard& board); // per l'engine
-    virtual bool canMoveTo(const Coords& target) const; // prima chiamo getAllLegalMoves e poi vedo se target è in quella lista
+    bool canMoveTo(const Coords& target) const; // prima chiamo getAllLegalMoves e poi vedo se target è in quella lista
 };
 
 }
