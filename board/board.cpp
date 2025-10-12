@@ -6,10 +6,17 @@
 namespace chess {
 
 Board::Board() {
+    static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     fromFenToBoard(STARTING_FEN);
 }
 
+Board::Board(int empty) {
+    std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+    fromFenToBoard(empty_fen);
+}
+
 Board::Board(std::string fen) {
+    static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     fromFenToBoard(fen);
 }
 
@@ -69,6 +76,9 @@ void Board::fromFenToBoard(std::string fen) {
             file = 0;
         }
         else if (std::isdigit(c)) { // empty squares
+            // TODO: forse è meglio creare un pezzo EMPTY statico e copiarlo
+            // TODO: aggiungere le coordinate ai pezzi vuoti? 
+            // Piece emptySquare {{static_cast<uint8_t>(file), static_cast<uint8_t>(rank)}, P_EMPTY, false};
             file += (c - '0');
         }
         else { // piece
@@ -129,7 +139,7 @@ void Board::fromFenToBoard(std::string fen) {
     fullMoveClock = std::stoi(token);
 }
 
-std::string Board::fromBoardToFen() {
+std::string Board::getCurrentFen() {
     std::string fen;
     fen.reserve(71);
     int emptySquaresCounter = 0;

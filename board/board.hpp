@@ -17,6 +17,7 @@ public:
     
     // Default constructor => starting position
     Board();
+    Board(int empty = EMPTY);
     Board(std::string fen);
     
     std::string getCurrentFen();
@@ -40,7 +41,7 @@ public:
     const Piece& at(const uint8_t position) const;
     
 private:
-    const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static const std::string STARTING_FEN;
     
     bool isWhiteTurn;
     std::array<bool, 4> castle;
@@ -49,7 +50,6 @@ private:
     int fullMoveClock;
     
     void fromFenToBoard(std::string fen);
-    std::string fromBoardToFen();
 };
 
 }
