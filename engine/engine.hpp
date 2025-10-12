@@ -21,7 +21,7 @@ namespace engine {
 
 class Engine {
 
-    using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
+  using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
     
 public:
 
@@ -36,6 +36,8 @@ public:
     //void playGame();
     void saveGame();
     bool loadGame();
+
+    void startGame();
 
 private:
     chess::Board board;

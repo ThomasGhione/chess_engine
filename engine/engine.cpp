@@ -7,6 +7,27 @@ Engine::Engine()
     : board()
 {}
 
+void Engine::startGame(){
+  print::Menu.clearScreen();
+
+  std::cout << print::Menu.getMainMenu();
+
+  uint8_t numberOfPlayers = print::Menu.getPlayerInput();
+  
+  if(numberOfPlayers == 0){
+    exit(0);
+  }
+
+  if(numberOfPlayers == 1){
+    // da stampare menu per scelta del colore
+
+    this->playGameVsEngine();
+    return;
+  }
+
+  this->playGameVsHuman();
+}
+
 void Engine::playGameVsEngine(bool isWhite) {
     while (!isMate()) {
         if (isPlayerWhite) {
@@ -21,13 +42,11 @@ void Engine::playGameVsEngine(bool isWhite) {
 void Engine::takeEngineTurn() {
     //! EVERYTHING'S A PLACEHOLDER
     
-    evaluate();
-
-    chess::Coords currentCoords;
-    chess::Coords targetCoords;
-    chess::Piece pieceToMove;
-
-    board.movePiece(pieceToMove, targetCoords);
+    //evaluate();
+    //chess::Coords currentCoords;
+    //chess::Coords targetCoords;
+    //chess::Piece pieceToMove;
+    //board.movePiece(pieceToMove, targetCoords);
 }
 
 void Engine::playGameVsHuman() {
