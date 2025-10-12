@@ -25,8 +25,8 @@ public:
 
 private:
     bool isValid(uint8_t x) const;
-    bool Coords::isLetter(char c) const;
-    bool Coords::isNumber(char c) const;
+    bool isLetter(char c) const;
+    bool isNumber(char c) const;
 };
 
 }

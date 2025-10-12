@@ -10,6 +10,7 @@ Coords::Coords()
 Coords::Coords(uint8_t f, uint8_t r)
         : Coords()
 {
+  //TOBE FIXED chiamata a funzione che controlla altre cose.
     if (this->isValid(f)) {
         file = f;
     }
@@ -23,8 +24,10 @@ Coords::Coords(std::string input)
 {
     if (input.length() != 2) {
         // TODO: gestire l'errore
+      return;
     }
-
+    
+    // TOBE FIXED se lettera maiuscola invece che minuscola.
     if (this->isLetter(input[0])) {
         file = input[0] - 'a';
     }
@@ -42,6 +45,7 @@ bool Coords::operator!=(const Coords &other) const {
 }
 
 Coords& Coords::operator=(const Coords &other) {
+  // TOBE FIXED: Se sono uguali non ritorna nulla.
     if (this != &other) {
         file = other.file;
         rank = other.rank;
@@ -60,7 +64,7 @@ void Coords::update(const Coords& other) {
 
 
 bool Coords::isValid(uint8_t x) const {
-    return x >= 0 && x < 64;
+    return (x < 64);
 }
 
 bool Coords::isLetter(char c) const {
