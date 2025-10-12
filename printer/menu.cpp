@@ -1,46 +1,57 @@
 #include "menu.hpp"
 
 namespace print {
-    void Menu::showMainMenu(engine::Engine& engine) {
-        while (true) {
-            clearScreen();
-        
-            std::cout << "\n\n==================== MAIN MENU ====================\n\n";
-            std::cout << "1. One Player\n";
-            std::cout << "2. Two Players\n";
-            std::cout << "3. Quit Game\n\n";
-            std::cout << "Select an option (1-3): ";
-        
-            char choice;
-            std::cin >> choice;
-            while (choice < '1' || choice > '3') {
-                std::cout << "Invalid option. Please select a valid option (1-3): ";
-                std::cin >> choice;
-            }
+  std::string Menu::getMainMenu() {
+    const std::string line1 ="\n\n==================== MAIN MENU ====================\n\n";
+    const std::string line2 ="1. One Player\n";
+    const std::string line3 ="2. Two Players\n";
+    const std::string line4 ="0. Quit Game\n\n";
+    const std::string line5 ="Select an option (1-3): ";
+    return line1 + line2 + line3 + line4 + line5;
+  }
 
-            switch (choice) {
-                case '1':
-                    showOnePlayerMenu(engine);
-                    break;
-                case '2':
-                    showTwoPlayersMenu(engine);
-                    break;
-                case '3':
-                    QuitGame();
-                    break;
-            }
-        }
+  uint8_t Menu::getPlayerInput(){
+    char choice;
+    std::cin >> choice;
+    while (choice < '0' || choice > '2') {
+        std::cout << "Invalid option. Please select a valid option (1-3): ";
+        std::cin >> choice;
     }
 
-    void Menu::showOnePlayerMenu(engine::Engine& engine) {
+    return static_cast<uint8_t>(choice);
+  }
+
+  std::string Menu::getPlayWhitEngineMenu(){
+
+    const std::string line1= "\n\n==================== ONE PLAYER MENU ====================\n\n";
+    const std::string line2= "1. Play as White\n";
+    const std::string line3= "2. Play as Black\n";
+    const std::string line4= "3. Load Game\n";
+    const std::string line5= "4. Back to Main Menu\n\n";
+
+    return line1 + line2 + line3 + line4 + line5;
+  }
+}
+/*
+
+
+switch (choice) {
+    case '1':
+        showOnePlayerMenu(engine);
+        break;
+    case '2':
+        showTwoPlayersMenu(engine);
+        break;
+    case '3':
+        QuitGame();
+        break;
+}
+ 
+ */
+/*void Menu::showOnePlayerMenu(engine::Engine& engine) {
+
         clearScreen();
         
-        std::cout << "\n\n==================== ONE PLAYER MENU ====================\n\n";
-        std::cout << "1. Play as White\n";
-        std::cout << "2. Play as Black\n";
-        std::cout << "3. Load Game\n";
-        std::cout << "4. Back to Main Menu\n\n";
-
         char choice;
         std::cin >> choice;
         while (choice < '1' || choice > '4') {
@@ -105,5 +116,4 @@ namespace print {
         #else
             system("clear");
         #endif
-    }
-}
+    }*/

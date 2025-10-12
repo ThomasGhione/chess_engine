@@ -2,22 +2,21 @@
 #define MENU_HPP
 
 #include <iostream>
+#include <string>
+#include <cstdint>
 #include "../engine/engine.hpp"
 
 namespace print {
     
-    class Menu {
+  class Menu {
+    public:
+      static std::string getMainMenu();
+      static std::string getPlayWhitEngineMenu();
 
-        public:
-            static void showMainMenu(engine::Engine& engine);
-            static void showOnePlayerMenu(engine::Engine& engine);
-            static void showTwoPlayersMenu(engine::Engine& engine);
-            static void QuitGame();
-
-        private:
-            static void clearScreen();
-    };
-
+      static uint8_t getPlayerInput();
+    private:
+      static void clearScreen();
+  };
 }
 
 #endif
