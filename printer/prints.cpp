@@ -7,28 +7,26 @@ std::string Prints::getPlayer(const bool isWhiteTurn) {
 }
 
 std::string Prints::getPiece(const chess::Piece& piece) {
-    if (piece.isWhite) {
-        switch (piece.id) {
-            case 1: return "P";
-            case 2: return "N";
-            case 3: return "B";
-            case 4: return "R";
-            case 5: return "Q";
-            case 6: return "K";
-            default: return "?";
-        }
+  if (piece.isWhite) {
+    switch (piece.id) {
+        case 1: return "P";
+        case 2: return "N";
+        case 3: return "B";
+        case 4: return "R";
+        case 5: return "Q";
+        case 6: return "K";
+        default: return "?";
     }
-    else {
-        switch (piece.id) {
-            case 1: return "p";
-            case 2: return "n";
-            case 3: return "b";
-            case 4: return "r";
-            case 5: return "q";
-            case 6: return "k";
-            default: return "?";
-        }
-    }
+  }
+  switch (piece.id) {
+      case 1: return "p";
+      case 2: return "n";
+      case 3: return "b";
+      case 4: return "r";
+      case 5: return "q";
+      case 6: return "k";
+      default: return "?";
+  }
 }
 
 std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords) {
@@ -48,14 +46,17 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
     for (int rank = 7; rank >= 0; --rank) {
         if (rank % 2 == 1) {
             std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
-            for (int file = 0; file < 8; file += 2)
-                std::cout << "██" << getPieceOrEmpty(board, {file, rank}) << "██  " << getPieceOrEmpty(board, {file+1, rank}) << "  ";
+            for (uint8_t file = 0; file < 8; file += 2){
+                std::cout << "██" << getPieceOrEmpty(board, {file, static_cast<uint8_t>(rank)}) 
+                  << "██  " << getPieceOrEmpty(board, {static_cast<uint8_t>(file+1), static_cast<uint8_t>(rank)}) << "  ";
+            }
             std::cout << "    " << rank+1 << "\n     █████     █████     █████     █████     \n";
         }
         else {
             std::cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
-            for (int file = 0; file < 8; file += 2)
-                std::cout << "  " << getPieceOrEmpty(board, {rank, file}) << "  ██" << getPieceOrEmpty(board, {rank, file+1}) << "██";
+            for (uint8_t file = 0; file < 8; file += 2)
+                std::cout << "  " << getPieceOrEmpty(board, {static_cast<uint8_t>(rank), file}) 
+                  << "  ██" << getPieceOrEmpty(board, {static_cast<uint8_t>(rank), static_cast<uint8_t>(file+1)}) << "██";
             std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";            
         }
         cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.getFullMoveClock() << "\n\n";

@@ -8,7 +8,7 @@ King::King(Coords c, piece_id i, bool color)
     legalMoves.reserve(8); // max 8 moves for a king
 }
 
-void King::getAllLegalMoves(const chessboard& board) {
+void King::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
     legalMoves.clear();
 
     const Coords start = this->coords;
@@ -24,11 +24,11 @@ void King::getAllLegalMoves(const chessboard& board) {
     }
 }
 
-bool King::isInCheck(const chessboard& board) const {
+bool King::isInCheck(const std::array<chess::Piece, 64>& board) const {
     // Implementation here
 }
 
-bool King::isInCheckmate(const chessboard& board) const {
+bool King::isInCheckmate(const std::array<chess::Piece, 64>& board) const {
     return (isInCheck(board) && legalMoves.empty());
 }
 

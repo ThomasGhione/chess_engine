@@ -3,7 +3,7 @@
 
 #include "../defines.hpp"
 #include "../coords/coords.hpp"
-#include "../board/board.hpp"
+//#include "../board/board.hpp"
 #include <cstdint>
 #include <vector>
 #include <set>
@@ -22,9 +22,6 @@ enum piece_id {
 };
 
 class Piece {
-
-using chessboard = std::array<chess::Piece, 64>;
-
 public:
     Piece();
     Piece(Coords c, piece_id i); // for EMPTY squares

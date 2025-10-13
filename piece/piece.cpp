@@ -27,7 +27,7 @@ bool Piece::canMoveTo(const Coords& target) const {
 }
 
 bool Piece::isInBounds(const Coords& pos) const {
-    return pos.file >= 0 && pos.file < 8 && pos.rank >= 0 && pos.rank < 8;
+    return pos.file < 8 && pos.rank < 8;
 }
 
 }

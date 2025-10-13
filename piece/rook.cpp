@@ -8,7 +8,7 @@ Rook::Rook(Coords c, piece_id i, bool color)
     legalMoves.reserve(14);
 }
 
-void Rook::getAllLegalMoves(const chessboard& board) {
+void Rook::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
     legalMoves.clear();
     
     const bool myColor = this->isWhite;

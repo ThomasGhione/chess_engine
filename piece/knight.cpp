@@ -6,7 +6,7 @@ Knight::Knight(Coords c, piece_id i, bool color)
     : Piece(c, P_KNIGHT, color)
 {}
 
-void Knight::getAllLegalMoves(const chessboard& board) {
+void Knight::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
     legalMoves.clear();
 
     for (const auto& dir : directions) {
