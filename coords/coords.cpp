@@ -51,6 +51,8 @@ Coords& Coords::operator=(const Coords &other) {
         rank = other.rank;
         return *this;
     }
+    // Messo solo per non avere errore, da sistemare!
+    return *this;
 }
 
 void Coords::update(const Coords& other) {

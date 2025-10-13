@@ -1,18 +1,17 @@
 #include "engine.hpp"
 
-
 namespace engine {
 
-Engine::Engine()
-    : board()
-{}
+Engine::Engine(){
+  this->board = chess::Board();
+}
 
 void Engine::startGame(){
-  print::Menu.clearScreen();
+  //print::Menu::clearScreen();
 
-  std::cout << print::Menu.getMainMenu();
+  std::cout << print::Menu::getMainMenu();
 
-  uint8_t numberOfPlayers = print::Menu.getPlayerInput();
+  uint8_t numberOfPlayers = print::Menu::getPlayerInput();
   
   if(numberOfPlayers == 0){
     exit(0);
@@ -21,7 +20,7 @@ void Engine::startGame(){
   if(numberOfPlayers == 1){
     // da stampare menu per scelta del colore
 
-    this->playGameVsEngine();
+    this->playGameVsEngine(true);
     return;
   }
 
@@ -29,14 +28,19 @@ void Engine::startGame(){
 }
 
 void Engine::playGameVsEngine(bool isWhite) {
-    while (!isMate()) {
-        if (isPlayerWhite) {
-            std::cout << "It's your turn: ";
-            takePlayerTurn();
-            std::cout << "Engine's thinking... ";
-            takeEngineTurn();
-        }
+  while (!isMate()) {
+    if(isWhite){
+      std::cout << "It's your turn: ";
+      takePlayerTurn();
+      std::cout << "Engine's thinking... ";
+      takeEngineTurn();
+    }else{
+      std::cout << "Engine's thinking... ";
+      takeEngineTurn();
+      std::cout << "It's your turn: ";
+      takePlayerTurn();
     }
+  }
 }
 
 void Engine::takeEngineTurn() {
@@ -66,8 +70,10 @@ void Engine::takePlayerTurn() {
     std::cin >> fromFile >> fromRank >> toFile >> toRank;
     
     // setting variables up
-    chess::Coords currentCoords = {fromFile, fromRank};
-    chess::Coords targetCoords = {toFile, toRank};
+    // TOBE FIXED: Stiamo convertendo un char in un numero uint8_t
+    // Non mi pare converta '0' in 0
+    chess::Coords currentCoords = {static_cast<uint8_t>(fromFile - '0'), static_cast<uint8_t>(fromRank - 'a')};
+    chess::Coords targetCoords = {static_cast<uint8_t>(toFile - '0'), static_cast<uint8_t>(toRank - 'a')};
     chess::Piece pieceToMove = board[board.fromCoordsToPosition(currentCoords)];
 
     // moving the piece 

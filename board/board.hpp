@@ -8,32 +8,32 @@
 
 namespace chess {
 
-using chessboard = std::array<Piece, 64>;
-
 class Board {
 
 public:
-    chessboard board;
+    std::array<chess::Piece, 64> board;
     
     // Default constructor => starting position
     Board();
-    Board(int empty = EMPTY);
+
+    // Board(int empty = EMPTY); Note: Non possiamo avere il costruttore fatto in questo modo, chiedi a Daniele.
+    //Board(int empty);
     Board(std::string fen);
     
     std::string getCurrentFen();
     
-    bool getIsWhiteTurn() const;
-    std::array<bool, 4> getCastling() const;
-    Coords getEnPassant() const;
-    int getHalfMoveClock() const;
-    int getFullMoveClock() const;
+    bool getIsWhiteTurn() const {return this->isWhiteTurn;}
+    std::array<bool, 4> getCastling() const {return this->castle;}
+    chess::Coords getEnPassant() const {return this->enPassant;}
+    int getHalfMoveClock() const {return this->halfMoveClock;}
+    int getFullMoveClock() const {return this->fullMoveClock;}
 
     static uint8_t fromCoordsToPosition(const Coords& coords);
     static Coords fromPositionToCoords(const int position);
 
     bool movePiece(const Piece& current, const Coords& target);
 
-    Board& Board::operator=(const Board& other);
+    Board& operator=(const chess::Board& other);
     Piece& operator[](std::size_t index);
     const Piece& operator[](std::size_t index) const;
 

@@ -16,6 +16,7 @@ public:
     Coords();
     Coords(uint8_t f, uint8_t r);
     Coords(std::string input);
+    Coords(const Coords& c);
 
     bool operator==(const Coords &other) const;
     bool operator!=(const Coords &other) const;

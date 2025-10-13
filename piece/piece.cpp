@@ -6,16 +6,17 @@ Piece::Piece()
     : id(P_EMPTY)
 {}
 
-Piece::Piece(Coords c, piece_id i)
-    : coords(c)
-    , id(i)
-{}
+// Per poter fare:     : coords(c)
+// Serve anche il costruttore!
 
-Piece::Piece(Coords c, piece_id i, bool color)
-    : coords(c)
-    , id(i)
-    , isWhite(color)
-{}
+Piece::Piece(Coords c, piece_id i): id(i){
+  this->coords = c;
+}
+
+Piece::Piece(Coords c, piece_id i, bool color) : id(i)
+  , isWhite(color){
+  this->coords = c;
+}
 
 bool Piece::isSameColor(const Piece &p) const {
     return isWhite == p.isWhite;

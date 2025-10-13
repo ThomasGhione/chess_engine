@@ -12,13 +12,13 @@
 namespace print {
 
 class Prints {
-    public:
-        Prints();
+public:
+  Prints();
 
-        static string getPlayer(const bool isWhiteTurn);
-        static string getPiece(const chess::Piece& piece);
-        static string getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords);
-        static void getBoard(const chess::Board& board);
+  static std::string getPlayer(const bool isWhiteTurn);
+  static std::string getPiece(const chess::Piece& piece);
+  static std::string getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords);
+  static void getBoard(const chess::Board& board);
 };
 
 }

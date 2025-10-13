@@ -1,5 +1,5 @@
 #include "../piece/piece.cpp"
-#include "../piece/piece..hpp"
+#include "../piece/piece.hpp"
 
 //#include <iostream>
 //#include <cstdint>

@@ -10,23 +10,16 @@ Board::Board() {
     fromFenToBoard(STARTING_FEN);
 }
 
+/*
 Board::Board(int empty) {
     std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
     fromFenToBoard(empty_fen);
-}
+}*/
 
 Board::Board(std::string fen) {
     static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     fromFenToBoard(fen);
 }
-
-// getters
-bool Board::getIsWhiteTurn() const { return isWhiteTurn; }
-std::array<bool, 4> Board::getCastling() const { return castle; }
-Coords Board::getEnPassant() const { return enPassant; }
-int Board::getHalfMoveClock() const { return halfMoveClock; }
-int Board::getFullMoveClock() const { return fullMoveClock; }
-
 
 Board& Board::operator=(const Board& other) {
     if (this != &other) {
@@ -144,7 +137,7 @@ std::string Board::getCurrentFen() {
     fen.reserve(71);
     int emptySquaresCounter = 0;
 
-    for (int i = 0; i < board.size(); ++i) {
+    for (long unsigned int i = 0; i < board.size(); ++i) {
         
         if (i > 0 && i % 8 == 0) { // nuova riga ogni 8 pezzi
             if (emptySquaresCounter > 0) {

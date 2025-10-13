@@ -2,7 +2,6 @@
 
 
 int main() {
-  engine::Engine engine;
-  print::Menu::getMainMenu();
+  engine::Engine e = engine::Engine();
   return 0;
 }

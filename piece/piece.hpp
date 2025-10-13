@@ -23,10 +23,13 @@ enum piece_id {
 
 class Piece {
 
+using chessboard = std::array<chess::Piece, 64>;
+
 public:
     Piece();
     Piece(Coords c, piece_id i); // for EMPTY squares
     Piece(Coords c, piece_id i, bool color);
+    Piece(const chess::Piece& p);
 
     Coords coords;  
     piece_id id;
@@ -34,10 +37,11 @@ public:
     bool hasMoved = false; // Tracks if the piece has moved
     std::vector<Coords> legalMoves; // Legal moves for the engine
 
-    virtual void getAllLegalMoves(const chessboard& board) = 0; // Pure virtual for derived classes
+    //virtual void getAllLegalMoves(const chessboard& board) = 0; // Pure virtual for derived classes
 
     bool canMoveTo(const Coords& target) const; // Check if target is in legalMoves
 
+    Piece& operator=(const chess::Piece& p);
 protected:
     bool isSameColor(const Piece &p) const; // Check if two pieces have the same color
 

@@ -1,10 +1,14 @@
 # Variabili compilatore
 CXX = g++
 FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -fext-numeric-literals -g
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -o "chess"
+
+#Directory to be added:
+# ./printer/*.cpp ./piece/*.cpp
+PRODPATH = main.cpp ./engine/*.cpp ./board/*.cpp ./coords/*.cpp 
 
 prod: 
-	#g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 *.cpp ./board/*.cpp ./coords/*.cpp ./engine/*.cpp ./piece/*.cpp ./printer/*.cpp -o "chess"
-	g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 main.cpp -o "chess"
+	$(CXX) $(PRODFLAGS) $(PRODPATH)
 
 debug:
 	g++ -std=c++23 -Wall -Wextra -Wpedantic -g *.cpp ./board/*.cpp ./coords/*.cpp ./engine/*.cpp ./piece/*.cpp ./printer/*.cpp -o "chess"
