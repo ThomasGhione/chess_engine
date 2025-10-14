@@ -2,9 +2,14 @@
 
 namespace chess {
 
+const std::string Board::STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 Board::Board() {
-    static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //this->fromFenToBoard(STARTING_FEN);
+    this->fromFenToBoard(STARTING_FEN);
+}
+
+Board::Board(std::string fen) {
+    fromFenToBoard(fen);
 }
 
 bool Board::isCurrentPositionMate(){
@@ -18,20 +23,9 @@ std::string Board::getCurrentPositionFen(){
   return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 }
 
-}
-
-
-
-
-/*
-Board::Board(int empty) {
+void Board::createEmpty() {
     std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
     fromFenToBoard(empty_fen);
-}
-
-Board::Board(std::string fen) {
-    static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    fromFenToBoard(fen);
 }
 
 Board& Board::operator=(const Board& other) {
@@ -84,7 +78,7 @@ void Board::fromFenToBoard(std::string fen) {
         else if (std::isdigit(c)) { // empty squares
             // TODO: forse è meglio creare un pezzo EMPTY statico e copiarlo
             // TODO: aggiungere le coordinate ai pezzi vuoti? 
-            // Piece emptySquare {{static_cast<uint8_t>(file), static_cast<uint8_t>(rank)}, P_EMPTY, false};
+            Piece emptySquare {{static_cast<uint8_t>(file), static_cast<uint8_t>(rank)}, P_EMPTY, false};
             file += (c - '0');
         }
         else { // piece
@@ -249,4 +243,5 @@ bool Board::movePiece(const Piece& current, const Coords& target) {
 
     return true;
 }
-*/
+
+}

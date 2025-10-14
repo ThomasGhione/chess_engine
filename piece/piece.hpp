@@ -3,13 +3,14 @@
 
 #include "../defines.hpp"
 #include "../coords/coords.hpp"
-//#include "../board/board.hpp"
 #include <cstdint>
 #include <vector>
 #include <set>
 #include <algorithm>
 
 namespace chess {
+
+class chessboard; // Forward declaration
 
 enum piece_id {
     P_EMPTY = 0,
@@ -26,7 +27,7 @@ public:
     Piece();
     Piece(Coords c, piece_id i); // for EMPTY squares
     Piece(Coords c, piece_id i, bool color);
-    Piece(const chess::Piece& p);
+    Piece(const chess::Piece& p) = default;
 
     Coords coords;  
     piece_id id;
@@ -34,7 +35,7 @@ public:
     bool hasMoved = false; // Tracks if the piece has moved
     std::vector<Coords> legalMoves; // Legal moves for the engine
 
-    //virtual void getAllLegalMoves(const chessboard& board) = 0; // Pure virtual for derived classes
+    // virtual void getAllLegalMoves(const chessboard& board) = 0; // Pure virtual for derived classes
 
     bool canMoveTo(const Coords& target) const; // Check if target is in legalMoves
 
@@ -46,6 +47,6 @@ protected:
     bool isInBounds(const Coords& pos) const; // Check if position is within board bounds
 };
 
-}
+} // namespace chess
 
 #endif

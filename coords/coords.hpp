@@ -13,17 +13,19 @@ public:
     uint8_t file;
     uint8_t rank;
 
+    constexpr static uint8_t INVALID_COORDS = 255;
+
     Coords();
     Coords(uint8_t f, uint8_t r);
     Coords(std::string input);
-    Coords(const Coords& c);
+    Coords(const Coords& c) = default;
 
     bool operator==(const Coords &other) const;
     bool operator!=(const Coords &other) const;
     Coords& operator=(const Coords &other);
 
-    void update(const Coords& other);
-    void update(const uint8_t f, const uint8_t r);
+    bool update(const Coords& other);
+    bool update(const uint8_t f, const uint8_t r);
 
 private:
     bool isValid(uint8_t x) const;

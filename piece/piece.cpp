@@ -30,4 +30,15 @@ bool Piece::isInBounds(const Coords& pos) const {
     return pos.file < 8 && pos.rank < 8;
 }
 
+Piece& Piece::operator=(const chess::Piece& p) {
+    if (this != &p) {
+        coords = p.coords;
+        id = p.id;
+        isWhite = p.isWhite;
+        hasMoved = p.hasMoved;
+        legalMoves = p.legalMoves;
+    }
+    return *this;
+}
+
 }

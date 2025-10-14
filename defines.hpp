@@ -19,8 +19,6 @@
  *    DEFINE ID FOR PIECES:
  */
 
-#define INVALID_COORDS 9
-
 #define EMPTY 0x00      // 00000000
 #define PAWN 0x01       // 00000001    
 #define KNIGHT 0x02     // 00000010

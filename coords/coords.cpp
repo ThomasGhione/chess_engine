@@ -10,7 +10,7 @@ Coords::Coords()
 Coords::Coords(uint8_t f, uint8_t r)
         : Coords()
 {
-  //TOBE FIXED chiamata a funzione che controlla altre cose.
+  //TODO chiamata a funzione che controlla altre cose.
     if (this->isValid(f)) {
         file = f;
     }
@@ -26,10 +26,9 @@ Coords::Coords(std::string input)
         // TODO: gestire l'errore
       return;
     }
-    
-    // TOBE FIXED se lettera maiuscola invece che minuscola.
-    if (this->isLetter(input[0])) {
-        file = input[0] - 'a';
+
+    if (this->isLetter(std::tolower(input[0]))) {
+        file = std::tolower(input[0]) - 'a';
     }
     if (this->isNumber(input[1])) {
         rank = input[1] - '1';
@@ -51,30 +50,26 @@ Coords& Coords::operator=(const Coords &other) {
         rank = other.rank;
         return *this;
     }
-    // Messo solo per non avere errore, da sistemare!
+    //! Messo solo per non avere errore, da sistemare!
     return *this;
 }
 
-void Coords::update(const Coords& other) {
-  // TOBE FIXED: Avendo other istanza di Cooords
-  // il controllo isValid passa sempre.
-  // Andrebbe controllato solo che sia diverso da 9 (coordina illegale)
-
-    if (this->isValid(other.file)) {
-        file = other.file;
+bool Coords::update(const Coords& other) {
+    if (this->file == INVALID_COORDS || this->rank == INVALID_COORDS) {
+        return false;
     }
-    if (this->isValid(other.rank)) {
-        rank = other.rank;
-    }
+    this->file = other.file;
+    this->rank = other.rank;
+    return true;
 }
 
-void Coords::update(const uint8_t f, const uint8_t r) {
-    if (this->isValid(f)) {
-        file = f;
+bool Coords::update(const uint8_t f, const uint8_t r) {
+    if (this->file == INVALID_COORDS || this->rank == INVALID_COORDS) {
+        return false;
     }
-    if (this->isValid(r)) {
-        rank = r;
-    }
+    this->file = f;
+    this->rank = r;
+    return true;
 }
 
 
