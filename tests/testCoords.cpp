@@ -1,5 +1,4 @@
 #include "../coords/coords.hpp"
-#include "../coords/coords.cpp"
 
 #include <iostream>
 #include <cstdint>

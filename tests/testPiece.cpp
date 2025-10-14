@@ -1,4 +1,3 @@
-#include "../piece/piece.cpp"
 #include "../piece/piece.hpp"
 
 //#include <iostream>

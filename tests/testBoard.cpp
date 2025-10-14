@@ -1,4 +1,3 @@
-#include "../board/board.cpp"
 #include "../board/board.hpp"
 
 //#include <iostream>
