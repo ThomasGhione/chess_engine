@@ -1,4 +1,3 @@
-
 #include "../engine/engine.cpp"
 #include "../engine/engine.hpp"
 
@@ -12,7 +11,7 @@ ut::suite engineSuite = [] {
   using namespace ut;
 
   "Default constructor"_test = []{
-    chess::Engine e = chess::Engine();
+    engine::Engine e = engine::Engine();
   
     expect(true);
   };

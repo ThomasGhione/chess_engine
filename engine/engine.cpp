@@ -7,8 +7,6 @@ Engine::Engine(){
 }
 
 void Engine::startGame(){
-  //print::Menu::clearScreen();
-
   std::cout << print::Menu::getMainMenu();
 
   uint8_t numberOfPlayers = print::Menu::getPlayerInput();
@@ -18,13 +16,28 @@ void Engine::startGame(){
   }
 
   if(numberOfPlayers == 1){
-    // da stampare menu per scelta del colore
-
-    //this->playGameVsEngine(true);
+    //std::cout << "Not available in this moment" << std::endl;
+    std::cout << "Not available in this moment" << std::endl;
     return;
   }
 
   this->playGameVsHuman();
+}
+
+void Engine::playGameVsHuman() {
+    while (!this->isMate()) {
+        std::cout << "It's white's turn: ";
+        takePlayerTurn();
+
+        std::cout << "It's black's turn: ";
+        takePlayerTurn();
+    }
+}
+
+bool Engine::isMate(){
+  return true;
+}
+
 }
 /*
 void Engine::playGameVsEngine(bool isWhite) {
@@ -52,19 +65,8 @@ void Engine::takeEngineTurn() {
     //chess::Piece pieceToMove;
     //board.movePiece(pieceToMove, targetCoords);
 }*/
-
-void Engine::playGameVsHuman() {
-    while (!this->isMate()) {
-        std::cout << "It's white's turn: ";
-        takePlayerTurn();
-
-        std::cout << "It's black's turn: ";
-        takePlayerTurn();
-    }
-}
-
+/*
 void Engine::takePlayerTurn() {
-  /*
     // reading input
     std::cout << "Insert the coords: ";
     char fromFile, fromRank, toFile, toRank;
@@ -80,11 +82,9 @@ void Engine::takePlayerTurn() {
     // moving the piece 
     board.movePiece(pieceToMove, targetCoords);
 
-  */
 }
 
 void Engine::saveGame() {
-  /*
     if (std::filesystem::exists("save.txt")) {
         char ans;
         
@@ -101,11 +101,10 @@ void Engine::saveGame() {
     std::ofstream SaveFile("saves/save.txt");
     SaveFile << board.getCurrentFen(); 
     SaveFile.close();
-    */
 }
-    
+
+
 bool Engine::loadGame() {
-  /*
     std::ifstream SaveFile("saves/save.txt");
     if (!SaveFile.is_open()) {
         return false;
@@ -121,12 +120,5 @@ bool Engine::loadGame() {
     }
     
     return true;
-    */
-    return true;
 }
-
-bool Engine::isMate(){
-  return true;
-}
-
-}
+*/

@@ -11,14 +11,10 @@ namespace print {
   }
 
   uint8_t Menu::getPlayerInput(){
-    char choice;
+    std::string choice;
     std::cin >> choice;
-    while (choice < '0' || choice > '2') {
-        std::cout << "Invalid option. Please select a valid option (1-3): ";
-        std::cin >> choice;
-    }
-
-    return static_cast<uint8_t>(choice);
+    int castedInput = std::stoi(choice); 
+    return static_cast<uint8_t>(castedInput);
   }
 
   std::string Menu::getPlayWhitEngineMenu(){

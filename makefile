@@ -11,7 +11,7 @@ prod:
 	$(CXX) $(PRODFLAGS) $(PRODPATH)
 
 debug:
-	g++ -std=c++23 -Wall -Wextra -Wpedantic -g *.cpp ./board/*.cpp ./coords/*.cpp ./engine/*.cpp ./piece/*.cpp ./printer/*.cpp -o "chess"
+	$(CXX) $(PRODFLAGS) -g $(PRODPATH)
 
 test:
 	$(CXX) $(FLAGS) tests/*.cpp -o "outputTest"

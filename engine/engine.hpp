@@ -26,14 +26,14 @@ public:
   void playGameVsHuman(); // same as above :)
 
   //void playGame();
-  void saveGame();
-  bool loadGame();
+  //void saveGame();
+  //bool loadGame();
 
   void startGame();
 
 private:
   //chess::Board board;
-  bool isPlayerWhite;
+  //bool isPlayerWhite;
   
   // PieceMovesMap legalMoves;
 

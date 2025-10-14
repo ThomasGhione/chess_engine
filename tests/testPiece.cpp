@@ -11,7 +11,7 @@ ut::suite piceSuite = [] {
   using namespace ut;
 
   "Default constructor"_test = []{
-    chess::Pice p = chess::Piece();
+    chess::Piece p = chess::Piece();
   
     expect(true);
   };
