@@ -5,7 +5,7 @@ PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -o "chess"
 
 #Directory to be added:
 # PRODPATH = main.cpp ./engine/*.cpp ./board/*.cpp ./coords/*.cpp ./printer/*.cpp ./piece/*.cpp
-PRODPATH = main.cpp ./engine/*.cpp ./printer/*.cpp
+PRODPATH = main.cpp ./engine/*.cpp ./printer/*.cpp ./board/*.cpp
 
 prod: 
 	$(CXX) $(PRODFLAGS) $(PRODPATH)

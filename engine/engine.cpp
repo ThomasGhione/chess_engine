@@ -3,7 +3,7 @@
 namespace engine {
 
 Engine::Engine(){
-  //this->board = chess::Board();
+  this->board = chess::Board();
 }
 
 void Engine::startGame(){
@@ -11,31 +11,43 @@ void Engine::startGame(){
 
   uint8_t numberOfPlayers = print::Menu::getPlayerInput();
 
-  if(numberOfPlayers == 0){
-    exit(0);
-  }
-
-  if(numberOfPlayers == 1){
-    //std::cout << "Not available in this moment" << std::endl;
-    std::cout << "Not available in this moment" << std::endl;
+  if(numberOfPlayers == 2){
+    this->playGameVsHuman();
     return;
   }
 
-  this->playGameVsHuman();
+  if(numberOfPlayers == 1){
+    std::cout << "Not available in this moment" << std::endl;
+    return;
+  }
+  
+  // By default exit program for other input of 'numberOfPlayers'
 }
 
 void Engine::playGameVsHuman() {
-    while (!this->isMate()) {
-        std::cout << "It's white's turn: ";
-        takePlayerTurn();
+  while(!this->isMate()) {
+    std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
 
-        std::cout << "It's black's turn: ";
-        takePlayerTurn();
-    }
+    std::cout << "It's white's turn: ";
+    this->takePlayerTurn();
+
+    std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
+
+    std::cout << "It's black's turn: ";
+    this->takePlayerTurn();
+
+    sleep(3);
+  }
 }
 
 bool Engine::isMate(){
-  return true;
+  return this->board.isCurrentPositionMate();
+}
+
+
+void Engine::takePlayerTurn() {
+  std::cout << "Funzione leggi la mossa non ancora implementata" << std::endl;
+  return;
 }
 
 }

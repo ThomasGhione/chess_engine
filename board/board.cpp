@@ -1,20 +1,33 @@
-#include <sstream>
-#include <cctype>
-#include <algorithm>
 #include "board.hpp"
 
 namespace chess {
 
 Board::Board() {
     static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    fromFenToBoard(STARTING_FEN);
+    //this->fromFenToBoard(STARTING_FEN);
 }
+
+bool Board::isCurrentPositionMate(){
+  // Interroga i due re presenti se sono in posizione di matto.
+  return false;
+}
+
+
+std::string Board::getCurrentPositionFen(){
+  // Funzione ancora da fare.
+  return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+}
+
+}
+
+
+
 
 /*
 Board::Board(int empty) {
     std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
     fromFenToBoard(empty_fen);
-}*/
+}
 
 Board::Board(std::string fen) {
     static const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -236,12 +249,4 @@ bool Board::movePiece(const Piece& current, const Coords& target) {
 
     return true;
 }
-
-
-}
-/*
-    e2->e4
-    1) BOARD - copiare il pezzo in e4
-    2) BOARD - eliminare il pezzo in e2
-    3) PIECE - aggiornare le coordinate interne a piece
 */

@@ -1,8 +1,13 @@
-/*
 #include "prints.hpp"
 
 namespace print {
 
+std::string Prints::getPrintableBoard(const std::string& FEN){
+  return "Scacchiera: " + FEN;
+}
+
+}
+/*
 std::string Prints::getPlayer(const bool isWhiteTurn) {
     return (isWhiteTurn) ? "WHITE" : "BLACK";
 }
@@ -84,7 +89,5 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
         auto diff = end - start;
         cout << "\nTime to print: " << chrono::duration <double, milli> (diff).count() << " ms\n";
     #endif
-}
-
 }
 */
