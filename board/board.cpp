@@ -24,8 +24,8 @@ std::string Board::getCurrentPositionFen(){
 }
 
 void Board::createEmpty() {
-    std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
-    fromFenToBoard(empty_fen);
+    const std::string empty_fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+    this->fromFenToBoard(empty_fen);
 }
 
 Board& Board::operator=(const Board& other) {
@@ -127,7 +127,7 @@ void Board::fromFenToBoard(std::string fen) {
                      static_cast<uint8_t>(token[1] - '1')};
     }
     else {
-        enPassant = {0, 0}; // TODO: forse meglio usare coordinate invalide tipo {-1,-1}?
+        enPassant = {Coords::INVALID_COORDS, Coords::INVALID_COORDS};
     }
     
     // 5. Half-move clock

@@ -13,21 +13,16 @@ ut::suite coordsSuite = [] {
     // Parametro invalido con stringa piu' lunga
     // di due caratteri
     chess::Coords c = chess::Coords("f10");
-  
-    //std::cout << std::endl << "file:" << c.file << std::endl;
 
-    const uint8_t expectResult = 9;
-    expect(c.file == expectResult);
-    expect(c.rank == expectResult);
+    expect(c.file == 255_u8);
+    expect(c.rank == 255_u8);
   };
 
   "Empty constructor"_test = []{
-    
     chess::Coords c = chess::Coords();
 
-    const uint8_t expectResult = 9;
-    expect(c.file == expectResult);
-    expect(c.rank == expectResult);
+    expect(c.file == 255_u8);
+    expect(c.rank == 255_u8);
   };
 
 

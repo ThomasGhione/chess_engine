@@ -15,7 +15,6 @@ class Board {
 
 public:
     Board(); // Default constructor => starting position
-    Board(int empty); // empty board
     Board(std::string fen);
     Board(const Board& b) = default;
 
