@@ -4,6 +4,7 @@
 #include "piece.hpp"
 #include <vector>
 #include <algorithm>
+#include <array>
 
 
 namespace chess {
@@ -11,7 +12,8 @@ namespace chess {
 class King : public Piece {
 
 public:
-    King(Coords c, piece_id i, bool color);
+    //King(Coords c, piece_id i, bool color);
+    King(Coords c, bool color);
 
     void getAllLegalMoves(const std::array<chess::Piece, 64>& board);
 

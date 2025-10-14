@@ -9,9 +9,15 @@ Rook::Rook(Coords c, piece_id i, bool color)
 }
 
 void Rook::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
-    legalMoves.clear();
+  // Abbiamo un problema di inclusione incrociata!
+  
+  // Istruzioni messe per evitare waring
+  chess::Piece p = board.at(0);
+  p.isWhite = true;
+  /*  
+  legalMoves.clear();
     
-    const bool myColor = this->isWhite;
+    //const bool myColor = this->isWhite;
     const Coords start = this->coords;
 
     for (const auto& dir : directions) {
@@ -30,6 +36,7 @@ void Rook::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
             newPos.update(newPos.file + dir[0], newPos.rank + dir[1]);
         }
     }
+    */
 }
 
 }

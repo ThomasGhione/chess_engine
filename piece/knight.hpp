@@ -2,12 +2,14 @@
 #define KNIGHT_HPP
 
 #include "piece.hpp"
+#include <array>
 
 namespace chess {
     
 class Knight : public Piece {
 public:
-  Knight(Coords c, piece_id i, bool color);
+  //Knight(Coords c, piece_id i, bool color);
+  Knight(Coords c, bool color);
 
   void getAllLegalMoves(const std::array<chess::Piece, 64>& board);
     

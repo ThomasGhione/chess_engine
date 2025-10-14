@@ -3,6 +3,7 @@
 
 #include "piece.hpp"
 #include <algorithm>
+#include <array>
 
 namespace chess {
 
