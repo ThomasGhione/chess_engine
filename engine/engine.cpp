@@ -3,7 +3,7 @@
 namespace engine {
 
 Engine::Engine(){
-  this->board = chess::Board();
+  //this->board = chess::Board();
 }
 
 void Engine::startGame(){
@@ -12,7 +12,7 @@ void Engine::startGame(){
   std::cout << print::Menu::getMainMenu();
 
   uint8_t numberOfPlayers = print::Menu::getPlayerInput();
-  
+
   if(numberOfPlayers == 0){
     exit(0);
   }
@@ -20,13 +20,13 @@ void Engine::startGame(){
   if(numberOfPlayers == 1){
     // da stampare menu per scelta del colore
 
-    this->playGameVsEngine(true);
+    //this->playGameVsEngine(true);
     return;
   }
 
   this->playGameVsHuman();
 }
-
+/*
 void Engine::playGameVsEngine(bool isWhite) {
   while (!isMate()) {
     if(isWhite){
@@ -41,8 +41,8 @@ void Engine::playGameVsEngine(bool isWhite) {
       takePlayerTurn();
     }
   }
-}
-
+}*/
+/*
 void Engine::takeEngineTurn() {
     //! EVERYTHING'S A PLACEHOLDER
     
@@ -51,19 +51,20 @@ void Engine::takeEngineTurn() {
     //chess::Coords targetCoords;
     //chess::Piece pieceToMove;
     //board.movePiece(pieceToMove, targetCoords);
-}
+}*/
 
 void Engine::playGameVsHuman() {
-    while (!isMate()) {
+    while (!this->isMate()) {
         std::cout << "It's white's turn: ";
         takePlayerTurn();
+
         std::cout << "It's black's turn: ";
         takePlayerTurn();
     }
-    // TODO: stampare il vincitore e ristampare il menu
 }
 
 void Engine::takePlayerTurn() {
+  /*
     // reading input
     std::cout << "Insert the coords: ";
     char fromFile, fromRank, toFile, toRank;
@@ -78,24 +79,19 @@ void Engine::takePlayerTurn() {
 
     // moving the piece 
     board.movePiece(pieceToMove, targetCoords);
+
+  */
 }
 
-/*
-void Engine::playGame() {
-    print::Menu::showMainMenu();
-}
-*/
-
-//! TODO Try to add support for multiple saves
 void Engine::saveGame() {
-
-    if (filesystem::exists("save.txt")) {
+  /*
+    if (std::filesystem::exists("save.txt")) {
         char ans;
         
-        cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
-        cin >> ans;
+        std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
+        std::cin >> ans;
         if (ans == 'Y' || ans == 'y') {
-            filesystem::remove("saves/save.txt");
+          std::filesystem::remove("saves/save.txt");
         }
         else {
             return;
@@ -105,9 +101,11 @@ void Engine::saveGame() {
     std::ofstream SaveFile("saves/save.txt");
     SaveFile << board.getCurrentFen(); 
     SaveFile.close();
+    */
 }
     
 bool Engine::loadGame() {
+  /*
     std::ifstream SaveFile("saves/save.txt");
     if (!SaveFile.is_open()) {
         return false;
@@ -123,5 +121,12 @@ bool Engine::loadGame() {
     }
     
     return true;
+    */
+    return true;
 }
+
+bool Engine::isMate(){
+  return true;
+}
+
 }

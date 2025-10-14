@@ -1,3 +1,4 @@
+/*
 #include "prints.hpp"
 
 namespace print {
@@ -61,9 +62,6 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
         }
         cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.getFullMoveClock() << "\n\n";
     }
-
-
-/*
     cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "
          << getPiece(gs.lastMove.id) << ' ' << gs.lastMove.file << gs.lastMove.rank << ' ' << gs.lastMove.movesTo.file << gs.lastMove.movesTo.rank << "\n\n\n";
     for (int rank = ML - 1; rank >= 0; --rank) {
@@ -81,7 +79,6 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
         }
     }
     cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << gs.turns << "\n\n";
-*/
     #ifdef DEBUG
         auto end = chrono::steady_clock::now();
         auto diff = end - start;
@@ -90,3 +87,4 @@ void Prints::getBoard(const chess::Board& board) { // white square unicode: \u25
 }
 
 }
+*/

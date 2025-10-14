@@ -1,25 +1,28 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include "../board/board.hpp"
+#include <filesystem>
+#include <fstream>
 #include <unordered_map>
 #include <cstdint>
-#include "../includes.hpp"
-#include <fstream>
-#include <filesystem>
+#include <iostream>
+
+
+//#include "../board/board.hpp"
+//#include "../includes.hpp"
 #include "../printer/menu.hpp"
 
 namespace engine {
 class Engine {
 
-using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
+//using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
     
 public:
   Engine();
 
-  double eval;
+  //double eval;
 
-  void playGameVsEngine(bool isWhite); // ciclo prinipale
+  //void playGameVsEngine(bool isWhite); // ciclo prinipale
   void playGameVsHuman(); // same as above :)
 
   //void playGame();
@@ -29,20 +32,20 @@ public:
   void startGame();
 
 private:
-  chess::Board board;
+  //chess::Board board;
   bool isPlayerWhite;
   
   // PieceMovesMap legalMoves;
 
-  PieceMovesMap getLegalMoves();
+  //std::unordered_map<chess::Piece, std::vector<chess::Coords>> getLegalMoves();
 
   void takePlayerTurn(); // muove il giocatore...
-  void takeEngineTurn(); // ...mossa dopo muove l'engine
+  //void takeEngineTurn(); // ...mossa dopo muove l'engine
 
-  double evaluate();
+  //double evaluate();
 
   bool isMate();
-  bool isStalemate();
+  //bool isStalemate();
 };
 }
 #endif // !ENGINE_HPP
