@@ -17,7 +17,6 @@ Una coordinata non è altro che: $ R \bigtimes C$.
 
 \paragraph{Descrizione classe:}
 Rappresenta la foto di una scacchiera in questo momento.
-Per questa ragione, Board e' una classe contenente un:
 
 \paragraph{Costruttori}
 Sono presenti due costruttori:
@@ -30,10 +29,17 @@ Sono presenti due costruttori:
 
 \paragraph{Attributi:}
 \begin{listing}
-  std::array<chess::Piece, 64> board;
+\item bitmap board
 \end{listing}
 
-La posizione dell'array \textit{board} 0 rappresenta la casella: a8.
+La bitmap contiene in totale 3 informazioni:
+\begin{enumerate}
+  \item Indice, che viene trasformato in coordinate
+  \item Tipo del pezzo tramite 6 bit
+  \item Colore del pezzo tramite 2 bit
+\end{enumerate}
+
+La posizione \textit{board} 0 rappresenta la casella: a8.
 Procedendo con l'indice di \textit{board}, iniziando dalla
 casella \textit{a8} (casa in alto a sinistra nella scacchiera),
 si procede da da sinistra verso destra e dell'alto verso il basso.
