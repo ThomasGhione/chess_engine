@@ -9,6 +9,9 @@ PRODPATH = ./engine/*.cpp ./board/*.cpp ./coords/*.cpp ./printer/*.cpp ./piece/*
 
 TESTPATH = ./tests/*.cpp
 
+CPPANALYZE = cppcheck
+CPPCHEACKFLAGS = --enable=all --verbose
+
 prod: 
 	$(CXX) $(PRODFLAGS) main.cpp $(PRODPATH)
 
@@ -19,4 +22,8 @@ test:
 	$(CXX) $(FLAGS) $(TESTPATH) $(PRODPATH) -o "outputTest"
 	mv outputTest tests/outputTest
 
+analyze:
+	$(CPPANALYZE) main.cpp $(PRODPATH) $(CPPCHEACKFLAGS)  
+
 clean: rm -f chess
+
