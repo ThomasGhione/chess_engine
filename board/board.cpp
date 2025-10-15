@@ -8,7 +8,7 @@ Board::Board() {
     this->fromFenToBoard(STARTING_FEN);
 }
 
-Board::Board(std::string fen) {
+Board::Board(const std::string& fen) {
     fromFenToBoard(fen);
 }
 

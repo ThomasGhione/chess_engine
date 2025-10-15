@@ -17,7 +17,7 @@ public:
 
     Coords();
     Coords(uint8_t f, uint8_t r);
-    Coords(std::string input);
+    Coords(const std::string& input);
     Coords(const Coords& c) = default;
 
     bool operator==(const Coords &other) const;

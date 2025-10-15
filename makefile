@@ -10,7 +10,7 @@ PRODPATH = ./engine/*.cpp ./board/*.cpp ./coords/*.cpp ./printer/*.cpp ./piece/*
 TESTPATH = ./tests/*.cpp
 
 CPPANALYZE = cppcheck
-CPPCHEACKFLAGS = --enable=all --verbose
+CPPCHEACKFLAGS = --enable=all --verbose --suppress=missingIncludeSystem
 
 prod: 
 	$(CXX) $(PRODFLAGS) main.cpp $(PRODPATH)
