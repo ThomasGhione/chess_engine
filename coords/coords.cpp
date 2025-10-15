@@ -19,7 +19,7 @@ Coords::Coords(uint8_t f, uint8_t r)
     }
 }
 
-Coords::Coords(std::string input)
+Coords::Coords(const std::string& input)
     : Coords()
 {
     if (input.length() != 2) {
