@@ -7,12 +7,9 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <cstddef>
 #include "../piece/piece.hpp"
 
-
-#include <array>
-#include <cstdint>
-#include <cstddef>
 
 namespace chess {
 
