@@ -9,10 +9,113 @@
 #include <algorithm>
 #include "../piece/piece.hpp"
 
+
+#include <array>
+#include <cstdint>
+#include <cstddef>
+
 namespace chess {
 
 class Board {
 
+private:
+    std::array<uint32_t, 8> data; // 8 × 32 bit = 256 bit = 32 byte
+
+public:
+    // Costruttori
+    constexpr Board() noexcept : data{0} {}
+    constexpr Board(const std::array<uint32_t, 8>& initial_data) noexcept
+        : data(initial_data) {}
+    
+    // Accesso diretto - massima efficienza
+    constexpr uint8_t get(int row, int col) const noexcept {
+        return (data[row] >> (col * 4)) & 0x0F;
+    }
+    
+    constexpr void set(int row, int col, uint8_t value) noexcept {
+        constexpr uint32_t MASK = 0x0F;
+        const int shift = col * 4;
+        data[row] = (data[row] & ~(MASK << shift)) | ((value & MASK) << shift);
+    }
+    
+    // Accesso per indice lineare (0-63)
+    constexpr uint8_t operator[](int index) const noexcept {
+        return get(index / 8, index % 8);
+    }
+    
+    constexpr void set_linear(int index, uint8_t value) noexcept {
+        set(index / 8, index % 8, value);
+    }
+    
+    // Operazioni bulk sulle righe - MOLTO efficienti per algoritmi scacchistici
+    constexpr uint32_t get_row(int row) const noexcept { 
+        return data[row]; 
+    }
+    
+    constexpr void set_row(int row, uint32_t value) noexcept { 
+        data[row] = value; 
+    }
+    
+    // Accesso diretto ai dati (per operazioni avanzate)
+    constexpr const std::array<uint32_t, 8>& get_data() const noexcept {
+        return data;
+    }
+    
+    constexpr void set_data(const std::array<uint32_t, 8>& new_data) noexcept {
+        data = new_data;
+    }
+    
+    // Operazioni di confronto e utility
+    constexpr bool operator==(const Board& other) const noexcept {
+        return data == other.data;
+    }
+    constexpr bool operator!=(const Board& other) const noexcept {
+        return data != other.data;
+    }
+    
+    constexpr void clear() noexcept { 
+        data.fill(0); 
+    }
+    
+    // Dimensione garantita
+    static constexpr size_t size() noexcept { 
+        return sizeof(data); // 32 byte
+    }
+    
+    // Iteratori per algoritmi generici
+    constexpr auto begin() noexcept { 
+        return data.begin(); 
+    }
+    
+    constexpr auto end() noexcept { 
+        return data.end(); 
+    }
+    
+    constexpr auto begin() const noexcept { 
+        return data.begin(); 
+    }
+    
+    constexpr auto end() const noexcept { 
+        return data.end(); 
+    }
+    
+    constexpr auto cbegin() const noexcept { 
+        return data.cbegin(); 
+    }
+    
+    constexpr auto cend() const noexcept { 
+        return data.cend(); 
+    }
+
+
+
+
+
+
+
+
+
+    /*
 public:
     Board(); // Default constructor => starting position
     Board(const std::string& fen);
@@ -55,7 +158,13 @@ private:
     int fullMoveClock;
     
     void fromFenToBoard(std::string fen);
+*/
+
+
+
 };
+
+
 
 } // namespace chess
 
