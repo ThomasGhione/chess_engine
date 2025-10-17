@@ -10,8 +10,8 @@ namespace chess {
 class Coords {
 
 public:
-    uint8_t file;
-    uint8_t rank;
+    uint8_t file; // column
+    uint8_t rank; // row
 
     constexpr static uint8_t INVALID_COORDS = 255;
 

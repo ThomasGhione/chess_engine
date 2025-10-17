@@ -29,18 +29,28 @@
 #include <cstdint>
 //#include <sstream>
 //#include <cctype>
-//#include <algorithm>
+#include <vector>
+#include <algorithm>
 #include <cstddef>
 //#include "../piece/piece.hpp"
 
+#include "../Coords/coords.hpp"
+
 namespace chess {
+
+using board = std::array<uint32_t, 8>;
 
 class Board {
 
 private:
-  std::array<uint32_t, 8> data; // 8 * 32 bit = 256 bit = 32 byte
-  static constexpr uint8_t BIT_MASK_4_BITS = 0x0F;
+    board chessboard; // 8 * 32 bit = 256 bit = 32 byte
+    uint8_t castle = 0; // 4 bit for castling rights (KQkq)
+    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
+    uint8_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
+    uint8_t fullMoveClock = 1; // Tracks the number of full moves in the game
+    uint8_t activeColor = WHITE; // Tracks the active color (white or black)
 
+    static constexpr uint8_t BIT_MASK_4_BITS = 0x0F;
 
 public:
     enum piece_id : uint8_t {
@@ -60,88 +70,109 @@ public:
     };
 
 
-    constexpr Board() noexcept : data{0} {}
-    constexpr Board(const std::array<uint32_t, 8>& initial_data) noexcept
-        : data(initial_data) {}
+    Board() noexcept : chessboard{0} {}
+    Board(const std::array<uint32_t, 8>& chessboard) noexcept
+        : chessboard(chessboard)
+        , castle(0x0F) // 0x0F = 0000 1111 => all castling rights available
+        , enPassant({Coords(), Coords()}) 
+        , halfMoveClock(0)
+        , fullMoveClock(1)
+        , activeColor(WHITE)
+    {}
    
-    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept {
-      // assert(col <= 7)
-      // assert(row <= 7)
-      return (data.at(row) >> (col * 4)) & this->BIT_MASK_4_BITS;
+    //! GETTERS
+    // assert(col <= 7)
+    // assert(row <= 7)
+    uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->BIT_MASK_4_BITS; }
+    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->BIT_MASK_4_BITS; }
+
+    //! SETTERS
+    void set(Coords coords, uint8_t value) noexcept {
+        const uint8_t shift = coords.file * 4;
+        chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(BIT_MASK_4_BITS << shift)) | ((value & BIT_MASK_4_BITS) << shift);
     }
-    
+
     void set(uint8_t row, uint8_t col, uint8_t value) noexcept {
-      // row = row & MASK(00000000...111)
         const uint8_t shift = col * 4;
-        data.at(row) = (data.at(row) & ~(BIT_MASK_4_BITS << shift)) | ((value & BIT_MASK_4_BITS) << shift);
+        chessboard.at(row) = (chessboard.at(row) & ~(BIT_MASK_4_BITS << shift)) | ((value & BIT_MASK_4_BITS) << shift);
     }
+
+    void set_linear(uint8_t index, uint8_t value) noexcept { this->set(index % 8, index / 8, value); }
     
-    // assert index 0-63
-    constexpr uint8_t operator[](uint8_t index) const noexcept {
-        return this->get(index / 8, index % 8);
+    constexpr uint8_t coordsToIndex(const Coords& coords) const noexcept {
+        return coords.rank * 8 + coords.file;
     }
-    
-    void set_linear(uint8_t index, uint8_t value) noexcept {
-        this->set(index / 8, index % 8, value);
-    }
-    
-    // assert row <= 7
-    constexpr uint32_t get_row(uint8_t row) const noexcept {
-        return data.at(row);
-    }
-    
-    // assert row <= 7
-    void set_row(uint8_t row, uint32_t value) noexcept { 
-        data.at(row) = value; 
-    }
-    
+
+    //! Operator overloads
+    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
+    constexpr uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
+    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index % 8, index / 8); } // assert index 0-63 r
+    constexpr uint8_t operator[](uint8_t index) noexcept { return this->get(index % 8, index / 8); }
+    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
+    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+
     /*
-    constexpr const std::array<uint32_t, 8>& get_data() const noexcept {
-        return data;
+    constexpr const std::array<uint32_t, 8>& chessboard() const noexcept {
+        return chessboard;
     }
     
-    void set_data(const std::array<uint32_t, 8>& new_data) noexcept {
-        data = new_data;
+    void chessboard(const std::array<uint32_t, 8>& chessboard) noexcept {
+        chessboard = chessboard;
     }*/
     
-    constexpr bool operator==(const Board& other) const noexcept {
-        return this->data == other.data;
-    }
-    constexpr bool operator!=(const Board& other) const noexcept {
-        return this->data != other.data;
-    }
     /* 
     void clear() noexcept { 
-        data.fill(0); 
+        chessboard.fill(0); 
     }*/
     
-    static constexpr size_t size() noexcept { //! PER DEBUG
-        return sizeof(data); // 32 byte
+    //! PER DEBUG
+    static constexpr size_t size() noexcept { return sizeof(chessboard); } // 32 byte
+
+    // Iterator support
+    auto begin() noexcept { return chessboard.begin(); }
+    auto end() noexcept { return chessboard.end(); }
+    constexpr auto begin() const noexcept { return chessboard.begin(); }
+    constexpr auto end() const noexcept { return chessboard.end(); }
+    constexpr auto cbegin() const noexcept { return chessboard.cbegin(); }
+    constexpr auto cend() const noexcept { return chessboard.cend(); }
+
+
+    // Piece movement logic
+    bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
+        uint8_t p1 = this->get(pos1);
+        uint8_t p2 = this->get(pos2);
+        if (p1 == EMPTY || p2 == EMPTY) return false;
+        return (p1 & BLACK) == (p2 & BLACK);
     }
-    
-    auto begin() noexcept { 
-        return data.begin(); 
+
+    void move(Coords from, Coords to) noexcept {
+        //TODO check if move is valid
+        uint8_t piece = this->get(from);
+        this->set(to, piece);
+        this->set(from, EMPTY);
     }
-    
-    auto end() noexcept { 
-        return data.end(); 
+
+    bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
+        // getAllLegalMoves is not const-qualified; cast away const on this to call it.
+        // This is safe only if getAllLegalMoves does not actually modify observable state.
+        std::vector<Coords> allLegalMoves = getAllLegalMoves(from);
+        return std::find(allLegalMoves.cbegin(), allLegalMoves.cend(), to) != allLegalMoves.cend();
     }
-    
-    constexpr auto begin() const noexcept { 
-        return data.begin(); 
+
+    std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
+        //TODO implement actual logic to get legal moves for the piece at 'from'
+        /*
+        switch (this->get(from) & 0x07) { // Mask to get piece type only
+            case PAWN: return Pawn::getPawnMoves(this, from);
+            case KNIGHT: return Knight::getKnightMoves(this, from);
+            case BISHOP: return Bishop::getBishopMoves(this, from);
+            case ROOK: return Rook::getRookMoves(this, from);
+            case QUEEN: return Queen::getQueenMoves(this, from);
+            case KING: return King::getKingMoves(this, from);
+        } */
+        return {};
     }
-    
-    constexpr auto end() const noexcept { 
-        return data.end(); 
-    }
-    
-    constexpr auto cbegin() const noexcept { 
-        return data.cbegin(); 
-    }
-    
-    constexpr auto cend() const noexcept { 
-        return data.cend(); 
-    }
+
 
     /*
 public:

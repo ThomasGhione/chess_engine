@@ -2,7 +2,7 @@
 
 namespace chess {
 
-Coords::Coords()
+constexpr Coords::Coords()
     : file(INVALID_COORDS)
     , rank(INVALID_COORDS)
 {}

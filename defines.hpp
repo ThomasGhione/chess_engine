@@ -19,15 +19,15 @@
  *    DEFINE ID FOR PIECES:
  */
 
-#define EMPTY 0x00      // 00000000
-#define PAWN 0x01       // 00000001    
-#define KNIGHT 0x02     // 00000010
-#define BISHOP 0x04     // 00000100
-#define ROOK 0x08       // 00001000
-#define QUEEN 0x10      // 00010000
-#define KING 0x20       // 00100000
-#define WHITE 0x40      // 01000000
-#define BLACK 0x80      // 10000000
+// #define EMPTY 0x00      // 00000000
+// #define PAWN 0x01       // 00000001    
+// #define KNIGHT 0x02     // 00000010
+// #define BISHOP 0x04     // 00000100
+// #define ROOK 0x08       // 00001000
+// #define QUEEN 0x10      // 00010000
+// #define KING 0x20       // 00100000
+// #define WHITE 0x40      // 01000000
+// #define BLACK 0x80      // 10000000
 
 /*
  * useful for bitwise operations:
