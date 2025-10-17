@@ -2,9 +2,44 @@
 
 namespace print {
 
+using namespace chess;
+
 std::string Prints::getPrintableBoard(const std::string& FEN){
   return "Scacchiera: " + FEN;
 }
+
+// Versione alternativa più compatta se preferisci
+std::string Prints::getBasicBoard(const Board& board) {
+    std::string result = "  a b c d e f g h\n";
+    for (int row = 7; row >= 0; --row) {
+        result += std::to_string(row + 1) + " ";
+        for (int col = 0; col < 8; ++col) {
+            uint8_t piece = board.get(row, col);
+            char symbol = '.';
+
+            if (piece != Board::EMPTY) {
+                bool is_black = piece & Board::BLACK;
+                piece &= 0x7;
+                
+                switch (piece) {
+                    case Board::PAWN:   symbol = is_black ? 'p' : 'P'; break;
+                    case Board::KNIGHT: symbol = is_black ? 'n' : 'N'; break;
+                    case Board::BISHOP: symbol = is_black ? 'b' : 'B'; break;
+                    case Board::ROOK:   symbol = is_black ? 'r' : 'R'; break;
+                    case Board::QUEEN:  symbol = is_black ? 'q' : 'Q'; break;
+                    case Board::KING:   symbol = is_black ? 'k' : 'K'; break;
+                    default:     symbol = '?';
+                }
+            }
+            result += symbol;
+            result += ' ';
+        }
+        result += " " + std::to_string(row + 1) + "\n";
+    }
+    result += "  a b c d e f g h\n";
+    return result;
+}
+
 
 }
 /*

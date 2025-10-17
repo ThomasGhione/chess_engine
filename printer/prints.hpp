@@ -2,6 +2,8 @@
 #define PRINTS_HPP
 
 #include <string>
+#include <iostream>
+#include "../board/board.hpp"
 
 //#include "../includes.hpp"
 //#include "../engine/engine.hpp"
@@ -20,6 +22,7 @@ public:
   //static std::string getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords);
   //static void getBoard(const chess::Board& board);
   static std::string getPrintableBoard(const std::string& FEN);
+  static std::string getBasicBoard(const chess::Board& board);
 };
 
 }

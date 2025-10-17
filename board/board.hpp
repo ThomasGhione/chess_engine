@@ -39,10 +39,27 @@ class Board {
 
 private:
   std::array<uint32_t, 8> data; // 8 * 32 bit = 256 bit = 32 byte
-  constexpr uint8_t BIT_MASK_4_BITS = 0x0F;
+  static constexpr uint8_t BIT_MASK_4_BITS = 0x0F;
 
 
 public:
+    enum piece_id : uint8_t {
+        // piece bits
+        EMPTY  = 0x0, // 0000 
+        PAWN   = 0x1, // 0001
+        KNIGHT = 0x2, // 0010
+        BISHOP = 0x3, // 0011
+        ROOK   = 0x4, // 0100
+        QUEEN  = 0x5, // 0101
+        KING   = 0x6, // 0110
+        // color bit
+        BLACK  = 0x8, // 1000
+        WHITE  = 0x0, // 0000
+
+        // ENPASSANT = 0x7  // 0111
+    };
+
+
     constexpr Board() noexcept : data{0} {}
     constexpr Board(const std::array<uint32_t, 8>& initial_data) noexcept
         : data(initial_data) {}

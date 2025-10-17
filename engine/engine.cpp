@@ -26,22 +26,25 @@ void Engine::startGame(){
 
 void Engine::playGameVsHuman() {
   while(!this->isMate()) {
-    std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
+    // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
+    std::cout << print::Prints::getBasicBoard( this->board ) << std::endl;
 
     std::cout << "It's white's turn: ";
     this->takePlayerTurn();
 
-    std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
+    // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
+    std::cout << print::Prints::getBasicBoard( this->board ) << std::endl;
 
     std::cout << "It's black's turn: ";
     this->takePlayerTurn();
 
-    sleep(3);
+    // sleep(3);
   }
 }
 
 bool Engine::isMate(){
-  return this->board.isCurrentPositionMate();
+  // return this->board.isCurrentPositionMate();
+  return false;
 }
 
 
