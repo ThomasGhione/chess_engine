@@ -1,3 +1,4 @@
+/*
 #include "knight.hpp"
 
 namespace chess {
@@ -16,7 +17,7 @@ void Knight::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
   chess::Piece p = board.at(0);
   p.isWhite = true;
 
-  /*
+  
     legalMoves.clear();
 
     for (const auto& dir : directions) {
@@ -28,7 +29,8 @@ void Knight::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
             }
         }
     }
-    */
+    
 }
 
 }
+*/

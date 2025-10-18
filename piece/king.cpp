@@ -1,3 +1,4 @@
+/*
 #include "king.hpp"
 
 namespace chess {
@@ -22,7 +23,7 @@ void King::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
   p.isWhite = true;
 
     
-    /*legalMoves.clear();
+    legalMoves.clear();
 
     const Coords start = this->coords;
 
@@ -34,7 +35,7 @@ void King::getAllLegalMoves(const std::array<chess::Piece, 64>& board) {
                 legalMoves.emplace_back(newPos);
             }
         }
-    }*/
+    }
 }
 
 bool King::isInCheck(const std::array<chess::Piece, 64>& board) const {
@@ -51,3 +52,4 @@ bool King::isInCheckmate(const std::array<chess::Piece, 64>& board) const {
 }
 
 }
+*/

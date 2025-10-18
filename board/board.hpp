@@ -106,12 +106,12 @@ public:
     }
 
     //! Operator overloads
-    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
-    constexpr uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index % 8, index / 8); } // assert index 0-63 r
-    constexpr uint8_t operator[](uint8_t index) noexcept { return this->get(index % 8, index / 8); }
-    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
-    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+    uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
+    uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
+    uint8_t operator[](uint8_t index) const noexcept { return this->get(index % 8, index / 8); } // assert index 0-63 r
+    uint8_t operator[](uint8_t index) noexcept { return this->get(index % 8, index / 8); }
+    bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
+    bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 
     /*
     constexpr const std::array<uint32_t, 8>& chessboard() const noexcept {
@@ -147,10 +147,14 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
+    static uint8_t fromCoordsToPosition(const Coords& coords) {
+        return coords.rank * 8 + coords.file;
+    }
+
+
     bool move(Coords from, Coords to) noexcept {
-        if (canMoveTo(from, to) == false) {
+        if (!canMoveTo(from, to))
             return false;
-        }
         uint8_t piece = this->get(from);
         this->set(to, piece);
         this->set(from, EMPTY);
@@ -158,8 +162,6 @@ public:
     }
 
     bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
-        // getAllLegalMoves is not const-qualified; cast away const on this to call it.
-        // This is safe only if getAllLegalMoves does not actually modify observable state.
         std::vector<Coords> allLegalMoves = getAllLegalMoves(from);
         return std::find(allLegalMoves.cbegin(), allLegalMoves.cend(), to) != allLegalMoves.cend();
     }

@@ -1,3 +1,4 @@
+/*
 #ifndef KNIGHT_HPP
 #define KNIGHT_HPP
 
@@ -23,3 +24,4 @@ private:
 }
 
 #endif
+*/

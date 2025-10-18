@@ -11,7 +11,7 @@ namespace driver {
     {}
 
     void Driver::startGame() {
-        while (true) {
+        while (true) { /*
             u_int8_t choice = menu.mainMenu();
 
             switch (choice) {
@@ -45,7 +45,7 @@ namespace driver {
                 default:
                     std::cout << "Invalid option. Please select a valid option.\n";
                     break;
-            }
-        }
+            }*/
+        } 
     }
 }

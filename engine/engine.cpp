@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "../coords/coords.hpp"
 
 namespace engine {
 
@@ -7,6 +8,7 @@ Engine::Engine(){
 }
 
 void Engine::startGame(){
+  /*
   std::cout << print::Menu::mainMenu();
 
   uint8_t numberOfPlayers = print::Menu::getPlayerInput();
@@ -22,6 +24,7 @@ void Engine::startGame(){
   }
   
   // By default exit program for other input of 'numberOfPlayers'
+  */
 }
 
 void Engine::playGameVsHuman() {

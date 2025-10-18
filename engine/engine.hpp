@@ -14,6 +14,7 @@
 #include "../printer/menu.hpp"
 #include "../printer/prints.hpp"
 #include "../board/board.hpp"
+#include "../coords/coords.hpp"
 
 namespace engine {
 class Engine {

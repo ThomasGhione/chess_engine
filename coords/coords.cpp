@@ -2,7 +2,7 @@
 
 namespace chess {
 
-constexpr Coords::Coords()
+Coords::Coords()
     : file(INVALID_COORDS)
     , rank(INVALID_COORDS)
 {}
@@ -73,16 +73,20 @@ bool Coords::update(const uint8_t f, const uint8_t r) {
 }
 
 
-bool Coords::isValid(uint8_t x) const {
+bool Coords::isValid(uint8_t x) {
     return (x < 64);
 }
 
-bool Coords::isLetter(char c) const {
+bool Coords::isLetter(char c) {
     return ((c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'));
 }
 
-bool Coords::isNumber(char c) const {
+bool Coords::isNumber(char c) {
     return (c >= '1' && c <= '8');
+}
+
+bool isInBounds(const Coords& coords) {
+    return ((coords.file < 8 && coords.rank < 8) && (coords.file >= 0 && coords.rank >= 0));
 }
 
 }

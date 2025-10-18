@@ -27,10 +27,10 @@ public:
     bool update(const Coords& other);
     bool update(const uint8_t f, const uint8_t r);
 
-private:
-    bool isValid(uint8_t x) const;
-    bool isLetter(char c) const;
-    bool isNumber(char c) const;
+    static bool isValid(uint8_t x);
+    static bool isLetter(char c);
+    static bool isNumber(char c);
+    static bool isInBounds(const Coords& coords);
 };
 
 }

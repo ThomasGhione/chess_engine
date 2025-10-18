@@ -9,8 +9,8 @@ namespace print {
 
     class Menu {
       	public:
-        	static u_int8_t mainMenu();
-        	static u_int8_t playWithEngineMenu();
+        	static uint8_t mainMenu();
+        	static uint8_t playWithEngineMenu();
       
       	private:
         	static void clearScreen();

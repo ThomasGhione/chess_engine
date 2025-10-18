@@ -6,11 +6,11 @@ namespace print {
     // 1 -> One Player
     // 2 -> Two Players
     // 0 -> Quit Game
-    u_int8_t Menu::mainMenu() {
+    uint8_t Menu::mainMenu() {
 
         static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Quit Game\n\nSelect an option (1-3): ";
 
-        u_int8_t choice;
+        uint8_t choice;
 
         std::cout << line;
         std::cin >> choice;
@@ -30,13 +30,13 @@ namespace print {
     // 2 -> Play as Black
     // 3 -> Load Game
     // 4 -> Back to Main Menu
-    u_int8_t Menu::playWithEngineMenu() {
+    uint8_t Menu::playWithEngineMenu() {
 
         static const std::string prompt = "\n\n==================== ONE PLAYER MENU ====================\n\n1. Play as White\n2. Play as Black\n3. Load Game\n4. Back to Main Menu\n\nSelect an option (1-4): ";
 
         std::cout << prompt;
 
-        u_int8_t choice;
+        uint8_t choice;
         std::cin >> choice;
 
         while (choice < 1 || choice > 4) {
