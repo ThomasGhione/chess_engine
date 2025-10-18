@@ -1,28 +1,48 @@
-/*
-
 #ifndef KING_HPP
 #define KING_HPP
 
 #include <vector>
-#include <algorithm>
 #include <array>
 #include "../coords/coords.hpp"
-
+#include "../board/board.hpp"
 
 namespace chess {
 
 class King{
 
 public:
-    //King(Coords c, piece_id i, bool color);
-    King(Coords c, bool color);
 
-    void getAllLegalMoves(const std::array<chess::Piece, 64>& board);
+//TODO maybe we need to implement check, checkmate, and stalemate here?
 
-    bool isInCheck(const std::array<chess::Piece, 64>& board) const; // TODO: implement
-    bool isInCheckmate(const std::array<chess::Piece, 64>& board) const; // TODO: implement
+//TODO implement castling!!
+
+[[nodiscard]] static std::vector<Coords> getAllQueenMoves(const Board& board, const Coords& from) noexcept {
+
+    std::vector<Coords> legalMoves;
+    legalMoves.reserve(27);
+
+    const Coords start = from;
+    uint8_t startVal = board.get(start);
+
+    if (startVal != Board::QUEEN)
+        return legalMoves; // no piece at source
+
+    //TODO S maybe there's a way not to loop?
+    for (const auto& dir : directions) {
+        Coords newPos(start.file + dir[0], start.rank + dir[1]);
+        if (Coords::isInBounds(newPos)) {
+            uint8_t sq = board.get(newPos);
+            if (sq == Board::EMPTY || !board.isSameColor(start, newPos)) {
+                legalMoves.emplace_back(newPos);
+            }
+        }
+    }
+
+    return legalMoves;
+}
+
 private:
-    static constexpr int directions[8][2] = { // All directions the king can move
+    static constexpr int directions[8][2] = {
         {1, 0}, {0, 1}, {-1, 0}, {0, -1},
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
@@ -31,4 +51,3 @@ private:
 }
 
 #endif
-*/

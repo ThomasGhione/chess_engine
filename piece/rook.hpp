@@ -1,7 +1,6 @@
 #ifndef ROOK_HPP
 #define ROOK_HPP
 
-#include <algorithm>
 #include <array>
 #include <vector>
 #include "../board/board.hpp"
@@ -31,14 +30,13 @@ public:
         while (Coords::isInBounds(newPos)) {
             uint8_t sq = board.get(newPos);
             // TODO maybe there's a way not to duplicate lines 35 & 38?
-            if (sq == Board::EMPTY) {
-                legalMoves.emplace_back(newPos);
-            } else {
+            if (sq != Board::EMPTY) {
                 if (!board.isSameColor(start, newPos)) {
                     legalMoves.emplace_back(newPos);
                 }
                 break;
             }
+            legalMoves.emplace_back(newPos);
             newPos.update(newPos.file + dir[0], newPos.rank + dir[1]);
         }
     }
