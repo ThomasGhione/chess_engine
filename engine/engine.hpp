@@ -17,7 +17,8 @@
 #include "../coords/coords.hpp"
 
 namespace engine {
-class Engine {
+
+class Engine final {
 
 //using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
     
