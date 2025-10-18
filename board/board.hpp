@@ -147,6 +147,7 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
+    // TODO check whether this works or not?
     static uint8_t fromCoordsToPosition(const Coords& coords) {
         return coords.rank * 8 + coords.file;
     }
@@ -161,6 +162,7 @@ public:
         return true;
     }
 
+    
     bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
         std::vector<Coords> allLegalMoves = getAllLegalMoves(from);
         return std::find(allLegalMoves.cbegin(), allLegalMoves.cend(), to) != allLegalMoves.cend();
