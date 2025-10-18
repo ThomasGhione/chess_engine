@@ -85,7 +85,7 @@ bool Coords::isNumber(char c) {
     return (c >= '1' && c <= '8');
 }
 
-bool isInBounds(const Coords& coords) {
+bool Coords::isInBounds(const Coords& coords) {
     return ((coords.file < 8 && coords.rank < 8) && (coords.file >= 0 && coords.rank >= 0));
 }
 
