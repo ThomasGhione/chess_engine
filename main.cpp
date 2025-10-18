@@ -4,6 +4,7 @@
 using namespace chess;
 using namespace print;
 using namespace engine;
+using namespace driver;
 
 int main() {
 
@@ -11,6 +12,8 @@ int main() {
     Engine engine = Engine();
 
     Driver driver = Driver(menu, engine);
+
+    driver.startGame();
 
   /*
       // 1. CREAZIONE BOARD VUOTA

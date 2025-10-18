@@ -2,34 +2,62 @@
 
 namespace print {
 
-  std::string Menu::getMainMenu() {
-    static const std::string line1 = "\n\n==================== MAIN MENU ====================\n\n";
-    static const std::string line2 = "1. One Player\n";
-    static const std::string line3 = "2. Two Players\n";
-    static const std::string line4 = "0. Quit Game\n\n";
-    static const std::string line5 = "Select an option (1-3): ";
-    return line1 + line2 + line3 + line4 + line5;
-  }
+    // It can return:
+    // 1 -> One Player
+    // 2 -> Two Players
+    // 0 -> Quit Game
+    u_int8_t Menu::mainMenu() {
 
-  uint8_t Menu::getPlayerInput(){
-    std::string choice;
-    std::cin >> choice;
-    int castedInput = std::stoi(choice); 
-    return static_cast<uint8_t>(castedInput);
-  }
+        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Quit Game\n\nSelect an option (1-3): ";
 
-  std::string Menu::getPlayWhitEngineMenu(){
+        u_int8_t choice;
 
-    static const std::string line1 = "\n\n==================== ONE PLAYER MENU ====================\n\n";
-    static const std::string line2 = "1. Play as White\n";
-    static const std::string line3 = "2. Play as Black\n";
-    static const std::string line4 = "3. Load Game\n";
-    static const std::string line5 = "4. Back to Main Menu\n\n";
+        std::cout << line;
+        std::cin >> choice;
 
-    return line1 + line2 + line3 + line4 + line5;
-  }
-  
+        while (choice < 1 || choice > 3) {
+            std::cout << "Invalid option. Please select a valid option (1-3): ";
+            std::cin >> choice;
+        }
+
+        clearScreen();
+                
+        return choice;
+    }
+
+    // It can return:
+    // 1 -> Play as White
+    // 2 -> Play as Black
+    // 3 -> Load Game
+    // 4 -> Back to Main Menu
+    u_int8_t Menu::playWithEngineMenu() {
+
+        static const std::string prompt = "\n\n==================== ONE PLAYER MENU ====================\n\n1. Play as White\n2. Play as Black\n3. Load Game\n4. Back to Main Menu\n\nSelect an option (1-4): ";
+
+        std::cout << prompt;
+
+        u_int8_t choice;
+        std::cin >> choice;
+
+        while (choice < 1 || choice > 4) {
+            std::cout << "Invalid option. Please select a valid option (1-4): ";
+            std::cin >> choice;
+        }
+
+        clearScreen();
+        return choice;
+    }
+
+    void Menu::clearScreen() {
+        #ifdef _WIN32
+            system("cls");
+        #else
+            system("clear");
+        #endif
+    }
 }
+
+
 /*
 
 
@@ -108,10 +136,5 @@ switch (choice) {
         exit(EXIT_SUCCESS);
     }
 
-    void Menu::clearScreen() {
-        #ifdef _WIN32
-            system("cls");
-        #else
-            system("clear");
-        #endif
-    }*/
+
+*/

@@ -7,15 +7,14 @@
 
 namespace print {
 
-  class Menu {
-    public:
-      static std::string getMainMenu();
-      static std::string getPlayWhitEngineMenu();
-
-      static uint8_t getPlayerInput();
-    private:
-      //static void clearScreen();
-  };
+    class Menu {
+      	public:
+        	static u_int8_t mainMenu();
+        	static u_int8_t playWithEngineMenu();
+      
+      	private:
+        	static void clearScreen();
+    };
 
 }
 

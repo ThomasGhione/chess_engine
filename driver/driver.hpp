@@ -1,7 +1,7 @@
 #ifndef DRIVER_HPP
 #define DRIVER_HPP
 
-#include "../printer/prints.hpp"
+#include "../printer/menu.hpp"
 #include "../engine/engine.hpp"
 
 
@@ -10,13 +10,18 @@ namespace driver {
     class Driver {
 
         public:
-            Driver(menu::Menu menu, engine::Engine engine);
-
-        private:
-            menu::Menu menu;
+            print::Menu menu;
             engine::Engine engine;
 
-    }
+            Driver(print::Menu menu, engine::Engine engine);
+
+            void startGame();
+            void fromMenuToEngine();
+            void fromEngineToMenu();
+
+        private:
+
+    };
 
 }
 

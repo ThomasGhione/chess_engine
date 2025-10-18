@@ -7,7 +7,7 @@ Engine::Engine(){
 }
 
 void Engine::startGame(){
-  std::cout << print::Menu::getMainMenu();
+  std::cout << print::Menu::mainMenu();
 
   uint8_t numberOfPlayers = print::Menu::getPlayerInput();
 
