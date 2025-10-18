@@ -34,7 +34,7 @@
 #include <cstddef>
 //#include "../piece/piece.hpp"
 
-#include "../Coords/coords.hpp"
+#include "../coords/coords.hpp"
 
 namespace chess {
 
