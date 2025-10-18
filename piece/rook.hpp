@@ -1,13 +1,13 @@
 #ifndef ROOK_HPP
 #define ROOK_HPP
 
-#include "piece.hpp"
 #include <algorithm>
 #include <array>
+#include "../coords/coords.hpp"
 
 namespace chess {
 
-class Rook : public Piece {
+class Rook{
 
 public:
     Rook(Coords c, piece_id i, bool color);

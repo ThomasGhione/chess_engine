@@ -1,15 +1,15 @@
 #ifndef KING_HPP
 #define KING_HPP
 
-#include "piece.hpp"
 #include <vector>
 #include <algorithm>
 #include <array>
+#include "../coords/coords.hpp"
 
 
 namespace chess {
 
-class King : public Piece {
+class King{
 
 public:
     //King(Coords c, piece_id i, bool color);

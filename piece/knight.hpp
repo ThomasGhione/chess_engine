@@ -1,12 +1,12 @@
 #ifndef KNIGHT_HPP
 #define KNIGHT_HPP
 
-#include "piece.hpp"
 #include <array>
+#include "../coords/coords.hpp"
 
 namespace chess {
     
-class Knight : public Piece {
+class Knight{
 public:
   //Knight(Coords c, piece_id i, bool color);
   Knight(Coords c, bool color);

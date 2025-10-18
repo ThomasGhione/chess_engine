@@ -1,6 +1,7 @@
 #include "menu.hpp"
 
 namespace print {
+
   std::string Menu::getMainMenu() {
     static const std::string line1 = "\n\n==================== MAIN MENU ====================\n\n";
     static const std::string line2 = "1. One Player\n";
@@ -27,6 +28,7 @@ namespace print {
 
     return line1 + line2 + line3 + line4 + line5;
   }
+  
 }
 /*
 
