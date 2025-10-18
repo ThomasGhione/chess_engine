@@ -50,7 +50,9 @@ private:
     uint8_t fullMoveClock = 1; // Tracks the number of full moves in the game
     uint8_t activeColor = WHITE; // Tracks the active color (white or black)
 
-    static constexpr uint8_t BIT_MASK_4_BITS = 0x0F;
+    static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
+    static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
+    static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
 
 public:
     enum piece_id : uint8_t {
@@ -73,7 +75,7 @@ public:
     Board() noexcept : chessboard{0} {}
     Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
-        , castle(0x0F) // 0x0F = 0000 1111 => all castling rights available
+        , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
         , enPassant({Coords(), Coords()}) 
         , halfMoveClock(0)
         , fullMoveClock(1)
@@ -83,18 +85,18 @@ public:
     //! GETTERS
     // assert(col <= 7)
     // assert(row <= 7)
-    uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->BIT_MASK_4_BITS; }
-    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->BIT_MASK_4_BITS; }
+    uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
+    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
 
     //! SETTERS
     void set(Coords coords, uint8_t value) noexcept {
         const uint8_t shift = coords.file * 4;
-        chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(BIT_MASK_4_BITS << shift)) | ((value & BIT_MASK_4_BITS) << shift);
+        chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
     void set(uint8_t row, uint8_t col, uint8_t value) noexcept {
         const uint8_t shift = col * 4;
-        chessboard.at(row) = (chessboard.at(row) & ~(BIT_MASK_4_BITS << shift)) | ((value & BIT_MASK_4_BITS) << shift);
+        chessboard.at(row) = (chessboard.at(row) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
     void set_linear(uint8_t index, uint8_t value) noexcept { this->set(index % 8, index / 8, value); }
@@ -145,11 +147,14 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
-    void move(Coords from, Coords to) noexcept {
-        //TODO check if move is valid
+    bool move(Coords from, Coords to) noexcept {
+        if (canMoveTo(from, to) == false) {
+            return false;
+        }
         uint8_t piece = this->get(from);
         this->set(to, piece);
         this->set(from, EMPTY);
+        return true;
     }
 
     bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
@@ -162,7 +167,7 @@ public:
     std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
         //TODO implement actual logic to get legal moves for the piece at 'from'
         /*
-        switch (this->get(from) & 0x07) { // Mask to get piece type only
+        switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
             case PAWN: return Pawn::getPawnMoves(this, from);
             case KNIGHT: return Knight::getKnightMoves(this, from);
             case BISHOP: return Bishop::getBishopMoves(this, from);
