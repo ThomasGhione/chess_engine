@@ -7,15 +7,16 @@ using namespace engine;
 using namespace driver;
 
 int main() {
-/*
+
     Menu menu = Menu();
     Engine engine = Engine();
 
     Driver driver = Driver(menu, engine);
 
-    driver.startGame(); */
+    driver.startGame(); 
 
-  /*
+    /*
+
       // 1. CREAZIONE BOARD VUOTA
     Board board;
     std::cout << "1. Creazione board vuota:\n";
@@ -103,8 +104,8 @@ int main() {
         sum += row_value;
     }
     std::cout << "Somma di tutti i valori delle righe: " << sum << " (dovrebbe essere 0)\n";
-*/
-  engine::Engine e = engine::Engine();
-  e.startGame();
-  return 0;
+    engine::Engine e = engine::Engine();
+    e.startGame();
+    return 0;
+    */
 }

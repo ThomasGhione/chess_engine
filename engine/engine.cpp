@@ -7,25 +7,6 @@ Engine::Engine(){
   this->board = chess::Board();
 }
 
-void Engine::startGame(){
-  /*
-  std::cout << print::Menu::mainMenu();
-
-  uint8_t numberOfPlayers = print::Menu::getPlayerInput();
-
-  if(numberOfPlayers == 2){
-    this->playGameVsHuman();
-    return;
-  }
-
-  if(numberOfPlayers == 1){
-    std::cout << "Not available in this moment" << std::endl;
-    return;
-  }
-  
-  // By default exit program for other input of 'numberOfPlayers'
-  */
-}
 
 void Engine::playGameVsHuman() {
   while(!this->isMate()) {
@@ -56,23 +37,81 @@ void Engine::takePlayerTurn() {
   return;
 }
 
-}
-/*
-void Engine::playGameVsEngine(bool isWhite) {
-  while (!isMate()) {
-    if(isWhite){
-      std::cout << "It's your turn: ";
-      takePlayerTurn();
-      std::cout << "Engine's thinking... ";
-      takeEngineTurn();
-    }else{
-      std::cout << "Engine's thinking... ";
-      takeEngineTurn();
-      std::cout << "It's your turn: ";
-      takePlayerTurn();
+
+void Engine::saveGame() {
+    if (std::filesystem::exists("save.txt")) {
+        char ans;
+        
+        std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
+        std::cin >> ans;
+        if (ans == 'Y' || ans == 'y') {
+          std::filesystem::remove("saves/save.txt");
+        }
+        else {
+            return;
+        }   
     }
+    
+    std::ofstream SaveFile("saves/save.txt");
+    SaveFile << board.getCurrentFen(); 
+    SaveFile.close();
+}
+
+
+void Engine::loadGame(bool isWithPlayer) {
+    std::ifstream SaveFile("saves/save.txt");
+    if (!SaveFile.is_open()) {
+        // TODO Aggiungere messaggio di errore
+        return;
+    }
+
+    std::string line;
+    
+    if (std::getline(SaveFile, line)) {
+        board = chess::Board(line); 
+    } 
+
+	// TODO aggiungere controlli/eccezioni per il fen
+	
+	SaveFile.close();
+
+	if (isWithPlayer) {
+		this->playGameVsHuman();
+	} else {
+		std::cout << "Select your color:\n1. White\n2. Black\n";
+		int choice;
+		std::cin >> choice;
+		if (choice == 1) {
+			this->isPlayerWhite = true;
+		} else {
+			this->isPlayerWhite = false;
+		}
+
+		this->playGameVsEngine(this->isPlayerWhite);
+	}
+
+}
+
+void Engine::playGameVsEngine(bool isWhite) {
+  /*
+	while (!isMate()) {
+	if(isWhite){
+	  std::cout << "It's your turn: ";
+	  takePlayerTurn();
+	  std::cout << "Engine's thinking... ";
+	  takeEngineTurn();
+	}else{
+	  std::cout << "Engine's thinking... ";
+	  takeEngineTurn();
+	  std::cout << "It's your turn: ";
+	  takePlayerTurn();
+	}
   }
-}*/
+*/
+}
+
+}
+
 /*
 void Engine::takeEngineTurn() {
     //! EVERYTHING'S A PLACEHOLDER
@@ -102,41 +141,7 @@ void Engine::takePlayerTurn() {
 
 }
 
-void Engine::saveGame() {
-    if (std::filesystem::exists("save.txt")) {
-        char ans;
-        
-        std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
-        std::cin >> ans;
-        if (ans == 'Y' || ans == 'y') {
-          std::filesystem::remove("saves/save.txt");
-        }
-        else {
-            return;
-        }   
-    }
-    
-    std::ofstream SaveFile("saves/save.txt");
-    SaveFile << board.getCurrentFen(); 
-    SaveFile.close();
-}
 
-
-bool Engine::loadGame() {
-    std::ifstream SaveFile("saves/save.txt");
-    if (!SaveFile.is_open()) {
-        return false;
-    }
-    
-    std::string line;
-    
-    if (std::getline(SaveFile, line)) {
-        board = chess::Board(line); // TODO aggiungere controlli/eccezioni per il fen
-    } 
-    else {
-        return false;
-    }
-    
-    return true;
-}
 */
+
+

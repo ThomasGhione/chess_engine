@@ -16,10 +16,6 @@ namespace driver {
             Driver(print::Menu menu, engine::Engine engine);
 
             void startGame();
-            void fromMenuToEngine();
-            void fromEngineToMenu();
-
-        private:
 
     };
 

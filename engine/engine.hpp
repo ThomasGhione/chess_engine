@@ -1,11 +1,11 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-//#include <filesystem>
-//#include <fstream>
 //#include <unordered_map>
 #include <cstdint>
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 
 // Usata solo per sleep 
 // #include <unistd.h>
@@ -25,21 +25,20 @@ class Engine final {
 public:
   Engine();
 
-
-  void startGame();
   void playGameVsHuman();
 
+  void saveGame();
+  void loadGame(bool isWithPlayer);
+
   //void playGame();
-  //void saveGame();
-  //bool loadGame();
-  //void playGameVsEngine(bool isWhite); // ciclo prinipale
+  void playGameVsEngine(bool isWhite); // ciclo prinipale
   
   //double eval;
 
 private:
   chess::Board board;
 
-  //bool isPlayerWhite;
+  bool isPlayerWhite;
   // PieceMovesMap legalMoves;
   //std::unordered_map<chess::Piece, std::vector<chess::Coords>> getLegalMoves();
 
@@ -51,4 +50,5 @@ private:
 
 };
 }
-#endif // !ENGINE_HPP
+
+#endif

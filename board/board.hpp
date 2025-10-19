@@ -24,11 +24,11 @@
  * */
 
 
-//#include <string>
+#include <string>
 #include <array>
 #include <cstdint>
-//#include <sstream>
-//#include <cctype>
+#include <cctype>
+#include <sstream>
 #include <vector>
 #include <tuple>
 #include <algorithm>
@@ -95,12 +95,17 @@ public:
         , fullMoveClock(1)
         , activeColor(WHITE)
     {}
+
+    Board(const std::string& fen) {
+        fromFenToBoard(fen);
+    }
    
     //! GETTERS
     // assert(col <= 7)
     // assert(row <= 7)
     uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
+    std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
     //! SETTERS
     void set(Coords coords, uint8_t value) noexcept {
@@ -193,6 +198,214 @@ public:
         }
         return {};
     }
+
+    void fromFenToBoard(const std::string& fen) {
+        std::array<uint32_t, 8> parsedBoard{};
+        uint8_t parsedCastle = 0;
+        std::array<Coords, 2> parsedEnPassant{Coords{}, Coords{}};
+        uint8_t parsedHalfMove = 0;
+        uint8_t parsedFullMove = 1;
+        uint8_t parsedActiveColor = WHITE;
+
+        std::istringstream fenStream(fen);
+        std::string boardSection;
+        std::string activeSection;
+        std::string castlingSection;
+        std::string enPassantSection;
+        std::string halfMoveSection;
+        std::string fullMoveSection;
+
+        if (!(fenStream >> boardSection >> activeSection >> castlingSection >> enPassantSection >> halfMoveSection >> fullMoveSection)) {
+            return;
+        }
+
+        std::istringstream boardStream(boardSection);
+        std::string rankSegment;
+        int rankIndex = 7;
+        while (std::getline(boardStream, rankSegment, '/') && rankIndex >= 0) {
+            int fileIndex = 0;
+            for (char symbol : rankSegment) {
+                if (std::isdigit(static_cast<unsigned char>(symbol))) {
+                    fileIndex += symbol - '0';
+                    if (fileIndex > 8) {
+                        return;
+                    }
+                    continue;
+                }
+
+                if (fileIndex >= 8) {
+                    return;
+                }
+
+                const bool isWhitePiece = std::isupper(static_cast<unsigned char>(symbol));
+                const char lowerSymbol = static_cast<char>(std::tolower(static_cast<unsigned char>(symbol)));
+
+                uint8_t pieceType = EMPTY;
+                switch (lowerSymbol) {
+                    case 'p': pieceType = PAWN; break;
+                    case 'n': pieceType = KNIGHT; break;
+                    case 'b': pieceType = BISHOP; break;
+                    case 'r': pieceType = ROOK; break;
+                    case 'q': pieceType = QUEEN; break;
+                    case 'k': pieceType = KING; break;
+                    default: return;
+                }
+
+                uint8_t encodedPiece = pieceType;
+                if (!isWhitePiece) {
+                    encodedPiece |= BLACK;
+                }
+
+                parsedBoard.at(rankIndex) |= static_cast<uint32_t>(encodedPiece) << (fileIndex * 4);
+                ++fileIndex;
+            }
+
+            if (fileIndex != 8) {
+                return;
+            }
+
+            --rankIndex;
+        }
+
+        if (rankIndex != -1) {
+            return;
+        }
+
+        if (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) {
+            parsedActiveColor = BLACK;
+        }
+
+        if (castlingSection != "-") {
+            for (char castleChar : castlingSection) {
+                switch (castleChar) {
+                    case 'K': parsedCastle |= 0x1; break;
+                    case 'Q': parsedCastle |= 0x2; break;
+                    case 'k': parsedCastle |= 0x4; break;
+                    case 'q': parsedCastle |= 0x8; break;
+                    default: break;
+                }
+            }
+        }
+
+        if (enPassantSection.size() == 2 && enPassantSection != "-") {
+            char fileChar = enPassantSection[0];
+            char rankChar = enPassantSection[1];
+            if (fileChar >= 'a' && fileChar <= 'h' && rankChar >= '1' && rankChar <= '8') {
+                uint8_t file = static_cast<uint8_t>(fileChar - 'a');
+                uint8_t rank = static_cast<uint8_t>(rankChar - '1');
+                parsedEnPassant[0] = Coords(file, rank);
+            }
+        }
+
+        try {
+            int halfMove = std::stoi(halfMoveSection);
+            halfMove = std::clamp(halfMove, 0, 255);
+            parsedHalfMove = static_cast<uint8_t>(halfMove);
+        } catch (...) {
+            parsedHalfMove = 0;
+        }
+
+        try {
+            int fullMove = std::stoi(fullMoveSection);
+            fullMove = std::clamp(fullMove, 1, 255);
+            parsedFullMove = static_cast<uint8_t>(fullMove);
+        } catch (...) {
+            parsedFullMove = 1;
+        }
+
+        chessboard = parsedBoard;
+        castle = parsedCastle;
+        enPassant = parsedEnPassant;
+        halfMoveClock = parsedHalfMove;
+        fullMoveClock = parsedFullMove;
+        activeColor = parsedActiveColor;
+    }
+
+    std::string fromBoardToFen() const {
+        std::string fen;
+        fen.reserve(90);
+
+        for (int rank = 7; rank >= 0; --rank) {
+            int emptySquaresCounter = 0;
+
+            for (int file = 0; file < 8; ++file) {
+                const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
+                const uint8_t pieceType = rawPiece & MASK_PIECE_TYPE;
+
+                if (pieceType == EMPTY) {
+                    ++emptySquaresCounter;
+                    continue;
+                }
+
+                if (emptySquaresCounter > 0) {
+                    fen += std::to_string(emptySquaresCounter);
+                    emptySquaresCounter = 0;
+                }
+
+                char symbol = '?';
+                switch (pieceType) {
+                    case PAWN:   symbol = 'p'; break;
+                    case KNIGHT: symbol = 'n'; break;
+                    case BISHOP: symbol = 'b'; break;
+                    case ROOK:   symbol = 'r'; break;
+                    case QUEEN:  symbol = 'q'; break;
+                    case KING:   symbol = 'k'; break;
+                    default:     symbol = '?'; break;
+                }
+
+                const bool isWhitePiece = (rawPiece & MASK_COLOR) == WHITE;
+                if (isWhitePiece) {
+                    symbol = static_cast<char>(std::toupper(static_cast<unsigned char>(symbol)));
+                }
+
+                fen += symbol;
+            }
+
+            if (emptySquaresCounter > 0) {
+                fen += std::to_string(emptySquaresCounter);
+            }
+
+            if (rank > 0) {
+                fen += '/';
+            }
+        }
+
+        fen += ' ';
+        fen += (activeColor == WHITE) ? 'w' : 'b';
+
+        fen += ' ';
+        std::string castlingStr;
+        if (castle & 0x1) { castlingStr += 'K'; }
+        if (castle & 0x2) { castlingStr += 'Q'; }
+        if (castle & 0x4) { castlingStr += 'k'; }
+        if (castle & 0x8) { castlingStr += 'q'; }
+        fen += castlingStr.empty() ? "-" : castlingStr;
+
+        fen += ' ';
+        const Coords* epSquare = nullptr;
+        for (const auto& candidate : enPassant) {
+            if (Coords::isInBounds(candidate)) {
+                epSquare = &candidate;
+                break;
+            }
+        }
+
+        if (epSquare == nullptr) {
+            fen += '-';
+        } else {
+            fen += static_cast<char>('a' + epSquare->file);
+            fen += static_cast<char>('1' + epSquare->rank);
+        }
+
+        fen += ' ';
+        fen += std::to_string(halfMoveClock);
+
+        fen += ' ';
+        fen += std::to_string(fullMoveClock);
+
+        return fen;
+    }
+
 
 
     /*
