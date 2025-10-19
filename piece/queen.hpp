@@ -13,7 +13,7 @@ class Queen final {
 
 public:
 
-[[nodiscard]] static std::vector<Coords> getAllQueenMoves(const Board& board, const Coords& from) noexcept {
+[[nodiscard]] static std::vector<Coords> getQueenMoves(const Board& board, const Coords& from) noexcept {
 
     std::vector<Coords> legalMoves;
     legalMoves.reserve(27);
@@ -26,11 +26,16 @@ public:
 
     for (const auto& dir : directions) {
         Coords newPos(start.file + dir[0], start.rank + dir[1]);
-        if (Coords::isInBounds(newPos)) {
+        while (Coords::isInBounds(newPos)) {
             uint8_t sq = board.get(newPos);
-            if (sq == Board::EMPTY || !board.isSameColor(start, newPos)) {
-                legalMoves.emplace_back(newPos);
+            if (sq != Board::EMPTY) {
+                if (!board.isSameColor(start, newPos)) {
+                    legalMoves.emplace_back(newPos);
+                }
+                break;
             }
+            legalMoves.emplace_back(newPos);
+            newPos.update(newPos.file + dir[0], newPos.rank + dir[1]);
         }
     }
 

@@ -15,7 +15,7 @@ public:
 
 
 //TODO implement promotion, en passant
-[[nodiscard]] static std::vector<Coords> getAllPawnMoves(const Board& board, const Coords& from) noexcept {
+[[nodiscard]] static std::vector<Coords> getPawnMoves(const Board& board, const Coords& from) noexcept {
 
     std::vector<Coords> legalMoves;
     legalMoves.reserve(4);

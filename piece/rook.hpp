@@ -12,7 +12,7 @@ class Rook final {
 
 public:
 
-[[nodiscard]] static std::vector<Coords> getAllRookMoves(const Board& board, const Coords& from) noexcept {
+[[nodiscard]] static std::vector<Coords> getRookMoves(const Board& board, const Coords& from) noexcept {
     
     std::vector<Coords> legalMoves;
     legalMoves.reserve(14);
@@ -23,13 +23,11 @@ public:
     if (startVal != Board::ROOK)
         return legalMoves; // no piece at source
 
-    
     // #pragma unroll
     for (const auto& dir : directions) {
         Coords newPos(start.file + dir[0], start.rank + dir[1]);
         while (Coords::isInBounds(newPos)) {
             uint8_t sq = board.get(newPos);
-            // TODO maybe there's a way not to duplicate lines 35 & 38?
             if (sq != Board::EMPTY) {
                 if (!board.isSameColor(start, newPos)) {
                     legalMoves.emplace_back(newPos);

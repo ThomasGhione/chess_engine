@@ -13,7 +13,7 @@ class Knight final {
 
 public:
 
-[[nodiscard]] static std::vector<Coords> getAllKnightMoves(const Board& board, const Coords& from) noexcept {
+[[nodiscard]] static std::vector<Coords> getKnightMoves(const Board& board, const Coords& from) noexcept {
 
     std::vector<Coords> legalMoves;
     legalMoves.reserve(8);

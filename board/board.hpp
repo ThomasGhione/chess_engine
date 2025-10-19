@@ -30,17 +30,45 @@
 //#include <sstream>
 //#include <cctype>
 #include <vector>
+#include <tuple>
 #include <algorithm>
 #include <cstddef>
+#include <unordered_map>
 //#include "../piece/piece.hpp"
 
 #include "../coords/coords.hpp"
+
+// #include "../piece/pawn.hpp"
+// #include "../piece/knight.hpp"
+// #include "../piece/bishop.hpp"
+// #include "../piece/rook.hpp"
+// #include "../piece/knight.hpp"
+// #include "../piece/queen.hpp"
+// #include "../piece/king.hpp"
 
 namespace chess {
 
 using board = std::array<uint32_t, 8>;
 
 class Board {
+
+public:
+    enum piece_id : uint8_t {
+    // piece bits
+    EMPTY  = 0x0, // 0000 
+    PAWN   = 0x1, // 0001
+    KNIGHT = 0x2, // 0010
+    BISHOP = 0x3, // 0011
+    ROOK   = 0x4, // 0100
+    QUEEN  = 0x5, // 0101
+    KING   = 0x6, // 0110
+    // color bit
+    BLACK  = 0x8, // 1000
+    WHITE  = 0x0, // 0000
+
+    // ENPASSANT = 0x7  // 0111
+};
+
 
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
@@ -54,23 +82,9 @@ private:
     static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
     static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
 
+    // std::unordered_map<std::tuple<piece_id, Coords>, std::vector<chess::Coords>> legalMoves; //? maybe there's a better way?
+
 public:
-    enum piece_id : uint8_t {
-        // piece bits
-        EMPTY  = 0x0, // 0000 
-        PAWN   = 0x1, // 0001
-        KNIGHT = 0x2, // 0010
-        BISHOP = 0x3, // 0011
-        ROOK   = 0x4, // 0100
-        QUEEN  = 0x5, // 0101
-        KING   = 0x6, // 0110
-        // color bit
-        BLACK  = 0x8, // 1000
-        WHITE  = 0x0, // 0000
-
-        // ENPASSANT = 0x7  // 0111
-    };
-
 
     Board() noexcept : chessboard{0} {}
     Board(const std::array<uint32_t, 8>& chessboard) noexcept
@@ -169,16 +183,14 @@ public:
     }
 
     std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
-        //TODO implement actual logic to get legal moves for the piece at 'from'
-        /*
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
-            case PAWN: return Pawn::getPawnMoves(this, from);
-            case KNIGHT: return Knight::getKnightMoves(this, from);
-            case BISHOP: return Bishop::getBishopMoves(this, from);
-            case ROOK: return Rook::getRookMoves(this, from);
-            case QUEEN: return Queen::getQueenMoves(this, from);
-            case KING: return King::getKingMoves(this, from);
-        } */
+            // case PAWN: return Pawn::getPawnMoves(*this, from);
+            // case KNIGHT: return Knight::getKnightMoves(*this, from);
+            // case BISHOP: return Bishop::getBishopMoves(*this, from);
+            // case ROOK: return Rook::getRookMoves(*this, from);  // TODO implement castling
+            // case QUEEN: return Queen::getQueenMoves(*this, from);
+            // case KING: return King::getKingMoves(*this, from); // TODO implement castling, check, checkmate, stalemate
+        }
         return {};
     }
 

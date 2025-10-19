@@ -16,7 +16,7 @@ public:
 
 //TODO implement castling!!
 
-[[nodiscard]] static std::vector<Coords> getAllQueenMoves(const Board& board, const Coords& from) noexcept {
+[[nodiscard]] static std::vector<Coords> getKingMoves(const Board& board, const Coords& from) noexcept {
 
     std::vector<Coords> legalMoves;
     legalMoves.reserve(27);
@@ -24,7 +24,7 @@ public:
     const Coords start = from;
     uint8_t startVal = board.get(start);
 
-    if (startVal != Board::QUEEN)
+    if (startVal != Board::KING)
         return legalMoves; // no piece at source
 
     //TODO S maybe there's a way not to loop?
