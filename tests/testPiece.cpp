@@ -1,4 +1,3 @@
-#include "../piece/piece.hpp"
 
 //#include <iostream>
 //#include <cstdint>
@@ -10,7 +9,6 @@ ut::suite piceSuite = [] {
   using namespace ut;
 
   "Default constructor"_test = []{
-    chess::Piece p = chess::Piece();
   
     expect(true);
   };

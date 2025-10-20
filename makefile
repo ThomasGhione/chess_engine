@@ -16,7 +16,7 @@ prod:
 	$(CXX) $(PRODFLAGS) main.cpp $(PRODPATH)
 
 debug:
-	$(CXX) $(PRODFLAGS) -g $(PRODPATH)
+	$(CXX) $(PRODFLAGS) -g main.cpp $(PRODPATH)
 
 test:
 	$(CXX) $(FLAGS) $(TESTPATH) $(PRODPATH) -o "outputTest"

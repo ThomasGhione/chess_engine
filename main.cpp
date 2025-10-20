@@ -8,13 +8,60 @@ using namespace driver;
 
 int main() {
 
+    chess::Board b = chess::Board();
+    
+    const std::string FEN_TEST = "r3kb1r/pp1n1ppp/1qpp4/8/2P2B2/2Q2BP1/PP2P2P/R3K2R b KQkq - 5 15";
+
+    b.fromFenToBoard(FEN_TEST);
+    
+    char coll[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+
+    uint8_t wpawn = ( (chess::Board::WHITE) | (chess::Board::PAWN));
+    uint8_t bpawn = ( (chess::Board::BLACK) | (chess::Board::PAWN));
+    
+    uint8_t wrook = ( (chess::Board::WHITE) | (chess::Board::ROOK));
+    uint8_t brook = ( (chess::Board::BLACK) | (chess::Board::ROOK));
+    
+    uint8_t wknight = ( (chess::Board::WHITE) | (chess::Board::KNIGHT));
+    uint8_t bknight = ( (chess::Board::BLACK) | (chess::Board::KNIGHT));
+    
+    uint8_t wbishop = ( (chess::Board::WHITE) | (chess::Board::BISHOP));
+    uint8_t bbishop = ( (chess::Board::BLACK) | (chess::Board::BISHOP));
+    
+    uint8_t wqueen = ( (chess::Board::WHITE) | (chess::Board::QUEEN));
+    uint8_t bqueen = ( (chess::Board::BLACK) | (chess::Board::QUEEN));
+
+
+    uint8_t wking = ( (chess::Board::WHITE) | (chess::Board::KING));
+    uint8_t bking = ( (chess::Board::BLACK) | (chess::Board::KING));
+
+    uint8_t empty = (chess::Board::EMPTY) ;
+
+    std::array<uint8_t, 64> expectPos = {wrook, empty, empty, empty, wking, empty, empty, wrook,
+                              wpawn, wpawn, empty, empty, wpawn, empty, empty, wpawn,
+                              empty, empty, wqueen, empty, empty, wbishop, wpawn, empty,
+                              empty, empty, wpawn, empty, empty, wbishop, empty, empty,
+                              empty, empty, empty, empty, empty, empty, empty, empty,
+                              empty, bqueen, bpawn, bpawn, empty, empty, empty, empty,
+                              bpawn, bpawn, empty, bknight, empty, bpawn, bpawn, bpawn,
+                              brook, empty, empty, empty, bking, bbishop, empty, brook};
+    
+    int indexArray = 0;
+    for(int i = 1; i <= 8; i++){
+      for(char colll : coll){
+        std::cout << (int) b.getByNoteCoords(colll + std::to_string(i)) << "==" <<  (int) expectPos.at(indexArray) << std::endl;
+
+        indexArray++;
+      }
+    }
+    /*
     Menu menu = Menu();
     Engine engine = Engine();
 
     Driver driver = Driver(menu, engine);
 
     driver.startGame(); 
-
+    */
     /*
 
       // 1. CREAZIONE BOARD VUOTA

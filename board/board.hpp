@@ -105,12 +105,30 @@ public:
     // assert(row <= 7)
     uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
+
+    
+    uint8_t getByNoteCoords(std::string square) noexcept {
+      // Debug now
+      uint8_t col = square.at(0) - 'a';
+      uint8_t row = square.at(1) - '1';
+
+      return this->get(row, col);
+    }
+
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
     //! SETTERS
     void set(Coords coords, uint8_t value) noexcept {
         const uint8_t shift = coords.file * 4;
         chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
+    }
+
+    void setByNoteCoords(std::string square, uint8_t value) noexcept {
+      // Debug now
+      uint8_t col = square.at(0) - 'a';
+      uint8_t row = square.at(1) - '1';
+
+      this->set(row, col, value);
     }
 
     void set(uint8_t row, uint8_t col, uint8_t value) noexcept {
