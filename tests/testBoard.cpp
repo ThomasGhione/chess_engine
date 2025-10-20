@@ -113,22 +113,53 @@ ut::suite boardSuite = [] {
       }
     }
   };
-};
+  
+  "fen_to_board"_test = []{
+    chess::Board b = chess::Board();
+    
+    const std::string FEN_TEST = "r3kb1r/pp1n1ppp/2p1bq2/8/2Pp4/5PP1/PP1BP1BP/2RQK1NR b Kkq - 4 11";
 
-/*
-    enum piece_id : uint8_t {
-    // piece bits
-    EMPTY  = 0x0, // 0000 
-    PAWN   = 0x1, // 0001
-    KNIGHT = 0x2, // 0010
-    BISHOP = 0x3, // 0011
-    ROOK   = 0x4, // 0100
-    QUEEN  = 0x5, // 0101
-    KING   = 0x6, // 0110
-    // color bit
-    BLACK  = 0x8, // 1000
-    WHITE  = 0x0, // 0000
+    b.fromFenToBoard(FEN_TEST);
+    
+    char coll[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
 
-    // ENPASSANT = 0x7  // 0111
+    uint8_t wpawn = ( (chess::Board::WHITE) | (chess::Board::PAWN));
+    uint8_t bpawn = ( (chess::Board::BLACK) | (chess::Board::PAWN));
+    
+    uint8_t wrook = ( (chess::Board::WHITE) | (chess::Board::ROOK));
+    uint8_t brook = ( (chess::Board::BLACK) | (chess::Board::ROOK));
+    
+    uint8_t wknight = ( (chess::Board::WHITE) | (chess::Board::KNIGHT));
+    uint8_t bknight = ( (chess::Board::BLACK) | (chess::Board::KNIGHT));
+    
+    uint8_t wbishop = ( (chess::Board::WHITE) | (chess::Board::BISHOP));
+    uint8_t bbishop = ( (chess::Board::BLACK) | (chess::Board::BISHOP));
+    
+    uint8_t wqueen = ( (chess::Board::WHITE) | (chess::Board::QUEEN));
+    uint8_t bqueen = ( (chess::Board::BLACK) | (chess::Board::QUEEN));
+
+
+    uint8_t wking = ( (chess::Board::WHITE) | (chess::Board::KING));
+    uint8_t bking = ( (chess::Board::BLACK) | (chess::Board::KING));
+
+    uint8_t empty = (chess::Board::EMPTY) ;
+
+    std::array<uint8_t, 64> expectPos = {empty, empty, wrook, wqueen, wking, empty, wknight, wrook,
+                              wpawn, wpawn, empty, wbishop, wpawn, empty, wbishop, wpawn,
+                              empty, empty, empty, empty, empty, wpawn, wpawn, empty,
+                              empty, empty, wpawn, bpawn, empty, empty, empty, empty,
+                              empty, empty, empty, empty, empty, empty, empty, empty,
+                              empty, empty, bpawn, empty, bbishop, bqueen, empty, empty,
+                              bpawn, bpawn, empty, bknight, empty, bpawn, bpawn, bpawn,
+                              brook, empty, empty, empty, bking, bbishop, empty, brook};
+    
+    int indexArray = 0;
+    for(int i = 1; i <= 8; i++){
+      for(char colll : coll){
+        expect(b.getByNoteCoords(colll + std::to_string(i)) == expectPos.at(indexArray));
+
+        indexArray++;
+      }
+    }
+  };
 };
-*/
