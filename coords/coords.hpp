@@ -3,7 +3,6 @@
 
 #include <string>
 #include <cstdint>
-#include "../defines.hpp"
 
 namespace chess {
 

@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <unordered_map>
-//#include "../piece/piece.hpp"
 
 #include "../coords/coords.hpp"
 

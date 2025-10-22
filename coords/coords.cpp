@@ -10,20 +10,18 @@ Coords::Coords()
 Coords::Coords(uint8_t f, uint8_t r)
         : Coords()
 {
-  //TODO chiamata a funzione che controlla altre cose.
     if (this->isValid(f)) {
-        file = f;
+        this->file = f;
     }
     if (this->isValid(r)) {
-        rank = r;
+        this->rank = r;
     }
 }
 
-Coords::Coords(const std::string& input)
+explicit Coords::Coords(const std::string& input)
     : Coords()
 {
     if (input.length() != 2) {
-        // TODO: gestire l'errore
       return;
     }
 
@@ -36,7 +34,7 @@ Coords::Coords(const std::string& input)
 }
 
 bool Coords::operator==(const Coords &other) const {
-    return (file == other.file && rank == other.rank);
+    return (this->file == other.file) && (this->rank == other.rank);
 }
 
 bool Coords::operator!=(const Coords &other) const {
@@ -44,29 +42,22 @@ bool Coords::operator!=(const Coords &other) const {
 }
 
 Coords& Coords::operator=(const Coords &other) {
-  // TOBE FIXED: Se sono uguali non ritorna nulla.
     if (this != &other) {
         file = other.file;
         rank = other.rank;
-        return *this;
     }
-    //! Messo solo per non avere errore, da sistemare!
     return *this;
 }
 
 bool Coords::update(const Coords& other) {
-    if (this->file == INVALID_COORDS || this->rank == INVALID_COORDS) {
-        return false;
-    }
-    this->file = other.file;
-    this->rank = other.rank;
-    return true;
+    return this->update(other->file, oher->rank);
 }
 
 bool Coords::update(const uint8_t f, const uint8_t r) {
     if (this->file == INVALID_COORDS || this->rank == INVALID_COORDS) {
         return false;
     }
+
     this->file = f;
     this->rank = r;
     return true;
@@ -82,11 +73,11 @@ bool Coords::isLetter(char c) {
 }
 
 bool Coords::isNumber(char c) {
-    return (c >= '1' && c <= '8');
+    return (c >= '1') && (c <= '8');
 }
 
 bool Coords::isInBounds(const Coords& coords) {
-    return (coords.file < 8 && coords.rank < 8);
+    return (coords.file < 8) && (coords.rank < 8);
 }
 
 }
