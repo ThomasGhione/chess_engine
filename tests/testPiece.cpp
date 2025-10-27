@@ -1,6 +1,7 @@
+//TODO make tests for other pieces.
+// Now a moment I have done Pawn.
 
-//#include <iostream>
-//#include <cstdint>
+
 #include "ut.hpp"
 
 namespace ut = boost::ut;

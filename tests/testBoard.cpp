@@ -1,7 +1,8 @@
+// Not cover all functions
+
+
 #include "../board/board.hpp"
 
-//#include <iostream>
-//#include <cstdint>
 #include "ut.hpp"
 
 namespace ut = boost::ut;
