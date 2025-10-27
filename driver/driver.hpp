@@ -16,9 +16,12 @@ namespace driver {
             Driver(print::Menu menu, engine::Engine engine);
 
             void startGame();
+            
+        private:    
+            bool loadGame(bool isWithPlayer);            
+            void saveGame();
 
     };
-
 }
 
 #endif

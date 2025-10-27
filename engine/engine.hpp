@@ -25,20 +25,23 @@ class Engine final {
 public:
   Engine();
 
+  chess::Board board;
+  bool isPlayerWhite;
+
+
   void playGameVsHuman();
 
   void saveGame();
-  void loadGame(bool isWithPlayer);
+  //void loadGame(bool isWithPlayer);
 
   //void playGame();
   void playGameVsEngine(bool isWhite); // ciclo prinipale
   
   //double eval;
 
-private:
-  chess::Board board;
 
-  bool isPlayerWhite;
+private:
+
   // PieceMovesMap legalMoves;
   //std::unordered_map<chess::Piece, std::vector<chess::Coords>> getLegalMoves();
 

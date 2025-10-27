@@ -20,20 +20,20 @@ namespace driver {
                     uint8_t colorChoice = menu.playWithEngineMenu();
                     switch (colorChoice) {
                         case '1':
-                        engine.playGameVsEngine(true);
-                        break;
+                            engine.playGameVsEngine(true);
+                            break;
                         case '2':
-                        engine.playGameVsEngine(false);
-                        break;
+                            engine.playGameVsEngine(false);
+                            break;
                         case '3':
-                        engine.loadGame(false);
-                        break;
+                            loadGame(false);
+                            break;
                         case '4':
-                        // Back to main menu
-                        break;
+                            // Back to main menu
+                            break;
                         default:
-                        std::cout << "Invalid option. Please select a valid option.\n";
-                        break;
+                            std::cout << "Invalid option. Please select a valid option.\n";
+                            break;
                     }
                     break;
                 }
@@ -42,17 +42,17 @@ namespace driver {
                     uint8_t twoPlayerChoice = menu.playWithPlayerMenu();
                     switch (twoPlayerChoice) {
                         case '1':
-                        engine.playGameVsHuman();
-                        break;
+                            engine.playGameVsHuman();
+                            break;
                         case '2':
-                        engine.loadGame(true);
-                        break;
+                            loadGame(true);
+                            break;
                         case '3':
-                        // Back to main menu
-                        break;
+                            // Back to main menu
+                            break;
                         default:
-                        std::cout << "Invalid option. Please select a valid option.\n";
-                        break;
+                            std::cout << "Invalid option. Please select a valid option.\n";
+                            break;
                     }
                     break;
                 }
@@ -63,9 +63,63 @@ namespace driver {
                     break;
 
                 default:
-                std::cout << "Invalid option. Please select a valid option.\n";
-                break;
+                    std::cout << "Invalid option. Please select a valid option.\n";
+                    break;
             }
         } 
+    }
+
+    bool Driver::loadGame(bool isWithPlayer) {
+        std::ifstream SaveFile("saves/save.txt");
+        if (!SaveFile.is_open()) {
+            std::cerr << "Error: Unable to open save file.\n";
+            return false;
+        }
+
+        std::string line;
+    
+        if (std::getline(SaveFile, line)) {
+            this->engine.board = chess::Board(line);
+        } 
+
+	    // TODO aggiungere controlli/eccezioni per il fen
+	
+	    SaveFile.close();
+
+        if (isWithPlayer) {
+            this->engine.playGameVsHuman();
+        } else {
+            std::cout << "Select your color:\n1. White\n2. Black\n";
+            int choice;
+            std::cin >> choice;
+            if (choice == 1) {
+                this->engine.isPlayerWhite = true;
+            } else {
+                this->engine.isPlayerWhite = false;
+            }
+
+            this->engine.playGameVsEngine(this->engine.isPlayerWhite);
+        }
+    }
+
+    void Driver::saveGame() {
+    /*    
+        if (std::filesystem::exists("save.txt")) {
+            char ans;
+            
+            std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
+            std::cin >> ans;
+            if (ans == 'Y' || ans == 'y') {
+            std::filesystem::remove("saves/save.txt");
+            }
+            else {
+                return;
+            }   
+        }
+    
+        std::ofstream SaveFile("saves/save.txt");
+        SaveFile << engine.board.getCurrentFen();
+        SaveFile.close();
+    */
     }
 }

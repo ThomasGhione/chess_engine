@@ -58,6 +58,28 @@ void Engine::saveGame() {
 }
 
 
+void Engine::playGameVsEngine(bool isWhite) {
+  /*
+	while (!isMate()) {
+	if(isWhite){
+	  std::cout << "It's your turn: ";
+	  takePlayerTurn();
+	  std::cout << "Engine's thinking... ";
+	  takeEngineTurn();
+	}else{
+	  std::cout << "Engine's thinking... ";
+	  takeEngineTurn();
+	  std::cout << "It's your turn: ";
+	  takePlayerTurn();
+	}
+  }
+*/
+}
+
+}
+
+/*
+
 void Engine::loadGame(bool isWithPlayer) {
     std::ifstream SaveFile("saves/save.txt");
     if (!SaveFile.is_open()) {
@@ -92,27 +114,8 @@ void Engine::loadGame(bool isWithPlayer) {
 
 }
 
-void Engine::playGameVsEngine(bool isWhite) {
-  /*
-	while (!isMate()) {
-	if(isWhite){
-	  std::cout << "It's your turn: ";
-	  takePlayerTurn();
-	  std::cout << "Engine's thinking... ";
-	  takeEngineTurn();
-	}else{
-	  std::cout << "Engine's thinking... ";
-	  takeEngineTurn();
-	  std::cout << "It's your turn: ";
-	  takePlayerTurn();
-	}
-  }
-*/
-}
 
-}
 
-/*
 void Engine::takeEngineTurn() {
     //! EVERYTHING'S A PLACEHOLDER
     
