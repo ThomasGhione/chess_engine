@@ -84,9 +84,14 @@ private:
 
     // std::unordered_map<std::tuple<piece_id, Coords>, std::vector<chess::Coords>> legalMoves; //? maybe there's a better way?
 
+    std::string startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 public:
 
-    Board() noexcept : chessboard{0} {}
+    Board() noexcept {
+        fromFenToBoard(startingFen);
+    }
+
     Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
         , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
@@ -174,11 +179,10 @@ public:
     void chessboard(const std::array<uint32_t, 8>& chessboard) noexcept {
         chessboard = chessboard;
     }*/
-    
-    /* 
+     
     void clear() noexcept { 
         chessboard.fill(0); 
-    }*/
+    }
     
     //! PER DEBUG
     static constexpr size_t size() noexcept { return sizeof(chessboard); } // 32 byte

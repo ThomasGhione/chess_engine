@@ -8,6 +8,8 @@ namespace print {
     // 3 -> Quit Game
     uint8_t Menu::mainMenu() {
 
+        clearScreen();
+
         static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Quit Game\n\nSelect an option (1-3): ";
 
         uint8_t choice;

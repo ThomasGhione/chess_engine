@@ -14,11 +14,11 @@ void Engine::playGameVsHuman() {
 
     // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
 
-    std::cout << "It's white's turn: ";
+    std::cout << "It's white's turn: \n\n";
     this->takePlayerTurn();
 
     // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-    std::cout << "It's black's turn: ";
+    std::cout << "It's black's turn: \n\n";
     this->takePlayerTurn();
 
     // sleep(3);
