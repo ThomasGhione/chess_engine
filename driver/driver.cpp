@@ -100,6 +100,8 @@ namespace driver {
 
             this->engine.playGameVsEngine(this->engine.isPlayerWhite);
         }
+
+        return true;
     }
 
     void Driver::saveGame() {

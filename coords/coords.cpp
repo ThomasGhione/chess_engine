@@ -18,7 +18,7 @@ Coords::Coords(uint8_t f, uint8_t r)
     }
 }
 
-explicit Coords::Coords(const std::string& input)
+Coords::Coords(const std::string& input)
     : Coords()
 {
     if (input.length() != 2) {
@@ -50,7 +50,7 @@ Coords& Coords::operator=(const Coords &other) {
 }
 
 bool Coords::update(const Coords& other) {
-    return this->update(other->file, oher->rank);
+    return this->update(other.file, other.rank);
 }
 
 bool Coords::update(const uint8_t f, const uint8_t r) {

@@ -1,6 +1,29 @@
 #ifndef BOARD_HPP
 #define BOARD_HPP
 
+/*
+ * if(pezzo e' sto colore)
+ *
+ * f(bit colore) = 2x -1
+ *
+ * bit 0 -> nero -> -1
+ * bit 1 -> bianco -> 1
+ *
+ * z(board)
+ * sum 4 bit della board
+ * ti prendi solo il bit colore (f(bit colore)) * (g(bit pezzo))
+ *
+ * Alla pos iniziale z(board) = 0
+ *
+ * Se pos fosse: 1 pedone bianco e i due re:
+ * z(board) = +1
+ *
+ * Se regina e' il 5 pezzo e re il 5 e pedone il 1
+ * Se pos fosse: 1 regina bianca e 1 pedone nero i due re:
+ * z(board) = +4
+ * */
+
+
 #include <string>
 #include <array>
 #include <cstdint>
@@ -11,8 +34,17 @@
 #include <algorithm>
 #include <cstddef>
 #include <unordered_map>
+//#include "../piece/piece.hpp"
 
 #include "../coords/coords.hpp"
+
+// #include "../piece/pawn.hpp"
+// #include "../piece/knight.hpp"
+// #include "../piece/bishop.hpp"
+// #include "../piece/rook.hpp"
+// #include "../piece/knight.hpp"
+// #include "../piece/queen.hpp"
+// #include "../piece/king.hpp"
 
 namespace chess {
 
@@ -55,7 +87,7 @@ private:
 public:
 
     Board() noexcept : chessboard{0} {}
-    explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept
+    Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
         , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
         , enPassant({Coords(), Coords()}) 
@@ -64,8 +96,8 @@ public:
         , activeColor(WHITE)
     {}
 
-    explicit Board(const std::string& fen) {
-        this->fromFenToBoard(fen);
+    Board(const std::string& fen) {
+        fromFenToBoard(fen);
     }
    
     //! GETTERS
@@ -73,7 +105,6 @@ public:
     // assert(row <= 7)
     uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
-
     
     uint8_t getByNoteCoords(const std::string& square) noexcept {
       // Debug now
@@ -82,21 +113,34 @@ public:
 
       return this->get(row, col);
     }
-
+    
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
+
+    uint8_t getActiveColor() const noexcept { return this->activeColor; }
+
+    // Both ways to get color of piece at position
+    uint8_t getColor(const Coords& pos) const noexcept {
+        const uint8_t rawPiece = this->get(pos);
+        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
+            return EMPTY;
+        }
+        return (rawPiece & MASK_COLOR) != 0 ? BLACK : WHITE;
+    }
+
+    uint8_t getColor(uint8_t index) const noexcept {
+        const uint8_t rank = static_cast<uint8_t>(index / 8);
+        const uint8_t file = static_cast<uint8_t>(index % 8);
+        const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
+        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
+            return EMPTY;
+        }
+        return (rawPiece & MASK_COLOR) != 0 ? BLACK : WHITE;
+    }
 
     //! SETTERS
     void set(Coords coords, uint8_t value) noexcept {
         const uint8_t shift = coords.file * 4;
         chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
-    }
-
-    void setByNoteCoords(const std::string& square, const uint8_t& value) noexcept {
-      // Debug now
-      uint8_t col = square.at(0) - 'a';
-      uint8_t row = square.at(1) - '1';
-
-      this->set(row, col, value);
     }
 
     void set(uint8_t row, uint8_t col, uint8_t value) noexcept {
@@ -108,6 +152,10 @@ public:
     
     constexpr uint8_t coordsToIndex(const Coords& coords) const noexcept {
         return coords.rank * 8 + coords.file;
+    }
+
+    void setNextTurn() noexcept {
+        activeColor = (activeColor == WHITE) ? BLACK : WHITE;
     }
 
     //! Operator overloads
@@ -164,12 +212,13 @@ public:
         uint8_t piece = this->get(from);
         this->set(to, piece);
         this->set(from, EMPTY);
+        this->setNextTurn();
         return true;
     }
 
     
     bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
-        std::vector<Coords> allLegalMoves = this->getAllLegalMoves(from);
+        std::vector<Coords> allLegalMoves = getAllLegalMoves(from);
         return std::find(allLegalMoves.cbegin(), allLegalMoves.cend(), to) != allLegalMoves.cend();
     }
 
@@ -273,7 +322,7 @@ public:
             }
         }
 
-        if (enPassantSection.size() == 2){
+        if (enPassantSection.size() == 2 && enPassantSection != "-") {
             char fileChar = enPassantSection[0];
             char rankChar = enPassantSection[1];
             if (fileChar >= 'a' && fileChar <= 'h' && rankChar >= '1' && rankChar <= '8') {
@@ -368,8 +417,6 @@ public:
         fen += castlingStr.empty() ? "-" : castlingStr;
 
         fen += ' ';
-
-        //TODO Ottimizzare tramite std::find_if
         const Coords* epSquare = nullptr;
         for (const auto& candidate : enPassant) {
             if (Coords::isInBounds(candidate)) {
