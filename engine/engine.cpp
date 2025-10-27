@@ -32,83 +32,73 @@ bool Engine::isMate(){
 
 
 void Engine::takePlayerTurn() {
-  std::string playerInput;
+    std::string playerInput;
 
-  bool isWhiteTurn = this->board.getActiveColor() == chess::Board::WHITE;
-  std::string currentBoard = print::Prints::getBasicBoard( this->board );
+    bool isWhiteTurn = (this->board.getActiveColor() == chess::Board::WHITE);
+    std::string currentBoard = print::Prints::getBasicBoard(this->board);
 
-  while (true) {
-      std::cout << currentBoard << std::endl;
+    bool error = true;
+    while (error) {
+        std::cout << currentBoard << "\n";
 
-      std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
-      std::cin >> playerInput;
+        std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
+        std::cin >> playerInput;
 
-      //! TODO Check if player wants to save or quit
-      
-      /*
-      if (playerInput == "s") {
-          this->saveGame();
-          return;
-      }
+        //! TODO Check if player wants to save or quit
 
-      if (playerInput == "q") {
-          this->quitGame();
-          return;
-      }
-      */
+        /*
+        if (playerInput == "s") {
+            this->saveGame();
+            return;
+        }
 
+        if (playerInput == "q") {
+            this->quitGame();
+            return;
+        }
+        */
 
-      if (playerInput.length() != 4 || 
-            playerInput[0] < 'a' || playerInput[0] > 'h' || 
-            playerInput[1] < '1' || playerInput[1] > '8' || 
-            playerInput[2] < 'a' || playerInput[2] > 'h' || 
-            playerInput[3] < '1' || playerInput[3] > '8') {
-          
-            std::cout << "Invalid move format. Please enter your move in the format 'e2e4'." << std::endl;
+        if (playerInput.length() != 4) {
+            std::cout << "Invalid move length. Please enter your move in the format 'e2e4'.\n";
             continue;
-      }
+        }
 
-      chess::Coords srcCoords(playerInput.substr(0, 2));
-      chess::Coords dstCoords(playerInput.substr(2, 2));
-      uint8_t piece = this->board.get(srcCoords);
-
-      // Check if there's a piece at the source square
-      if (piece == chess::Board::EMPTY) {
-          std::cout << "There is no piece at the source square. Please enter a valid move." << std::endl;
-          continue;
-      }
-
-      // Check for correct turn
-      if (isWhiteTurn && this->board.getColor(srcCoords) != chess::Board::WHITE) {
-          std::cout << "It's White's turn. Please move a white piece." << std::endl;
-          continue;
-      }
-
-      if (!isWhiteTurn && this->board.getColor(srcCoords) != chess::Board::BLACK) {
-          std::cout << "It's Black's turn. Please move a black piece." << std::endl;
-          continue;
-      }
-
-      // Check for same color
-      if (this->board.isSameColor(srcCoords, dstCoords)) {
-          std::cout << "You cannot move to a square occupied by your own piece." << std::endl;
-          continue;
-      }
-
-      //! TODO Check if the move is legal (e.g. not putting the king in check, etc.)
-
-      if (!this->board.move(
-          chess::Coords(std::string{playerInput.substr(0, 2)}), 
-          chess::Coords(std::string{playerInput.substr(2, 2)})
-      )) {
-          std::cout << "Invalid move. Please try again." << std::endl;
-          continue;
-      }
-
-      break;
-  }
+        chess::Coords fromCoords(playerInput.substr(0, 2));
+        chess::Coords toCoords(playerInput.substr(2, 2));
   
-  return;
+        if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
+            std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
+            continue;
+        }
+  
+        uint8_t piece = this->board.get(fromCoords);
+  
+
+        if (piece == chess::Board::EMPTY) {
+            std::cout << "There is no piece at the source square. Please enter a valid move.\n";
+            continue;
+        }
+
+        if (isWhiteTurn != (this->board.getColor(fromCoords) == chess::Board::WHITE)) {
+            std::cout << "It's not your turn to move that piece. Please enter a valid move.\n";
+            continue;
+        }
+
+        // TODO: check whether it's redundant or not
+        if (this->board.isSameColor(fromCoords, toCoords)) {
+            std::cout << "You cannot move to a square occupied by your own piece.\n";
+            continue;
+        }
+  
+        if (!this->board.move(fromCoords, toCoords)) {
+            std::cout << "Invalid move. Please try again.";
+            continue;
+        }
+  
+        error = false;
+   }
+  
+    return;
 }
 
 
@@ -203,15 +193,15 @@ void Engine::takeEngineTurn() {
 void Engine::takePlayerTurn() {
     // reading input
     std::cout << "Insert the coords: ";
-    char fromFile, fromRank, toFile, toRank;
-    std::cin >> fromFile >> fromRank >> toFile >> toRank;
+    char fromCoordsFile, fromCoordsRank, toFile, toRank;
+    std::cin >> fromCoordsFile >> fromCoordsRank >> toFile >> toRank;
     
     // setting variables up
     // TOBE FIXED: Stiamo convertendo un char in un numero uint8_t
     // Non mi pare converta '0' in 0
-    chess::Coords currentCoords = {static_cast<uint8_t>(fromFile - '0'), static_cast<uint8_t>(fromRank - 'a')};
+    chess::Coords currentCoords = {static_cast<uint8_t>(fromCoordsFile - '0'), static_cast<uint8_t>(fromCoordsRank - 'a')};
     chess::Coords targetCoords = {static_cast<uint8_t>(toFile - '0'), static_cast<uint8_t>(toRank - 'a')};
-    chess::Piece pieceToMove = board[board.fromCoordsToPosition(currentCoords)];
+    chess::Piece pieceToMove = board[board.fromCoordsCoordsToPosition(currentCoords)];
 
     // moving the piece 
     board.movePiece(pieceToMove, targetCoords);
