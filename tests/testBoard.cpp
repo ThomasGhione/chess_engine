@@ -162,4 +162,33 @@ ut::suite boardSuite = [] {
       }
     }
   };
+
+  "fromBoardToFen"_test = []{
+    // Eseguire mosse:
+    // 1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Qh4 5. Nc3 Bb4 6. Be2 Qxe4 7. Nb5 Bxc3+ 8. bxc3 Kd8 9. O-O
+    // Paragonare a FEN:
+    // r1bk2nr/pppp1ppp/2n5/1N6/4q3/2P5/P1P1BPPP/R1BQ1RK1 b - - 2 9
+  };
+  
+  "fromBoardToFen"_test = []{
+    // Eseguire mosse:
+    // 1. c4 e5 2. Nc3 Nf6 3. Nf3 d5 4. cxd5 Bd6 5. e4 O-O 6. Bb5 c6 7. dxc6 bxc6 8. Ba4 Nbd7 9. Bxc6 Ba6 10. d3 Nc5 11. O-O Rb8 12. Ne1 Qc7 13. f4 Qxc6
+    // Paragonare a FEN:
+    // 1r3rk1/p4ppp/b1qb1n2/2n1p3/4PP2/2NP4/PP4PP/R1BQNRK1 w - - 0 14
+  };
+  
+  "fromBoardToFen"_test = []{
+    // Eseguire mosse:
+    // 1. c4 e5 2. Nc3 Nf6 3. Nf3 d5 4. cxd5 Bd6 5. e4 O-O 6. Bb5 c6 7. dxc6 bxc6 8. Ba4 Nbd7 9. Bxc6 Ba6 10. d3 Nc5 11. O-O Rb8 12. Ne1 Qc7 13. f4 Qxc6
+    // Paragonare a FEN:
+    // 1r3rk1/p4ppp/b1qb1n2/2n1p3/4PP2/2NP4/PP4PP/R1BQNRK1 w - - 0 14
+  };
+
+
+  "fromBoardToFen"_test = []{
+    // Eseguire mosse:
+    // 1. e4 d5 2. exd5 Nf6 3. Nc3 Nxd5 4. Nxd5 Qxd5 5. d4 Nc6 6. Be3 Bf5 7. Nf3 e5 8. dxe5 Qxd1+ 9. Kxd1 O-O-O+ 10. Kc1
+    // Paragonare a FEN:
+    // 2kr1b1r/ppp2ppp/2n5/4Pb2/8/4BN2/PPP2PPP/R1K2B1R b - - 2 10
+  };
 };
