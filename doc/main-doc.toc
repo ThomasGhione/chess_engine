@@ -3,11 +3,26 @@
 \contentsline {section}{\numberline {2}Lista delle cose da fare}{2}{}%
 \contentsline {subsection}{\numberline {2.1}Board}{2}{}%
 \contentsline {subsection}{\numberline {2.2}Engine}{2}{}%
-\contentsline {subsection}{\numberline {2.3}Coords}{2}{}%
-\contentsline {subsection}{\numberline {2.4}Printer}{2}{}%
+\contentsline {subsection}{\numberline {2.3}Coords}{3}{}%
+\contentsline {subsection}{\numberline {2.4}Printer}{3}{}%
 \contentsline {subsection}{\numberline {2.5}Piece}{3}{}%
 \contentsline {subsection}{\numberline {2.6}Runner}{3}{}%
 \contentsline {subsection}{\numberline {2.7}Nuove funzionalità}{3}{}%
-\contentsline {section}{\numberline {3}Architettura del progetto}{3}{}%
-\contentsline {subsection}{\numberline {3.1}Componenti generali}{3}{}%
-\contentsline {paragraph}{Coords}{3}{}%
+\contentsline {subsection}{\numberline {2.8}Idee per Evaluation}{3}{}%
+\contentsline {subsubsection}{\numberline {2.8.1}Generale:}{3}{}%
+\contentsline {subsubsection}{\numberline {2.8.2}Endgame (+middlegame)}{4}{}%
+\contentsline {subsection}{\numberline {2.9}Idee per la search}{5}{}%
+\contentsline {subsubsection}{\numberline {2.9.1}Generale}{5}{}%
+\contentsline {subsubsection}{\numberline {2.9.2}Middlegame}{5}{}%
+\contentsline {subsubsection}{\numberline {2.9.3}Endgame}{5}{}%
+\contentsline {section}{\numberline {3}Architettura del progetto}{5}{}%
+\contentsline {subsection}{\numberline {3.1}Componenti generali}{5}{}%
+\contentsline {paragraph}{Coords}{5}{}%
+\contentsline {subsection}{\numberline {3.2}Board}{5}{}%
+\contentsline {paragraph}{Descrizione classe:}{5}{}%
+\contentsline {paragraph}{Costruttori}{5}{}%
+\contentsline {paragraph}{Metodi:}{6}{}%
+\contentsline {subsection}{\numberline {3.3}Engine}{6}{}%
+\contentsline {paragraph}{Descrizione classe:}{6}{}%
+\contentsline {paragraph}{Costruttori}{6}{}%
+\contentsline {paragraph}{Metodi:}{6}{}%

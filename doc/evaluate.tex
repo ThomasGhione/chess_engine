@@ -1,0 +1,25 @@
+\section{Funzione di valutazione}
+
+Uno degli aspetti chiave di una motore è
+avere una funzione che valuti una posizione.
+
+$$ val(\mathbb{R}^{9}) \longrightarrow \mathbb{R}$$
+
+Scomponiamo questa funzione per capire i suoi campi.
+
+\begin{itemize}
+\item L'input è rappresentato da le otto
+righe della scacchiera e un ultimo dato che rappresenta
+delle informazioni supplementari:
+Casella del possibile presa al varco, numero mosse, ecc...
+
+\item L'output della funzione rappresenta un numero che
+idealmente dovrebbe specchiare la situazione sulla scacchiera.
+Un numero negativo indica un vantaggio al possessore dei pezzi neri.
+Un numero positivo indica un vantaggio per il possessore dei pezzi bianchi.
+Il numero 0 dovrebbe essere una posizione uguale.
+\end{itemize}
+
+\subsection{Criteri di valutazione per una posizione}
+
+
