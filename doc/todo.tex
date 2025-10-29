@@ -59,3 +59,63 @@ funzionante in tempo reale.
 
 \item Creare un motore per giocare contro il computer offline.
 \end{enumerate}
+
+\subsection{Idee per Evaluation}
+  \subsubsection{Generale:}
+    \begin{itemize}
+      \item delta di materiale
+      \item mobilita' pezzi
+      \item centralita' pezzi
+      \item king's safety
+      \item pawn islands 
+      \item pedoni doppi/tripli
+      \item pedoni in prossimita' di promozione (7o e 2o rank)
+      \item pinned pieces 
+      \item numero mosse legali totali
+      \item occupazione delle ali.
+      \item triangolazione re per guadagnare tempo.
+      \item dono greco.
+      \item sacrificio pezzi minori per vantaggio sviluppo.
+      \item forchetta
+      \item alfieri in fianchetto
+      \item attacchi di scoperta
+      \item pezzi sospesi (+malus)
+      \item pezzi difesi (+bonus)
+      \item sacrificio semplificativo
+      \item evitare il cambio nello svantaggio
+      \item cambio forzante
+      \item valore nel far perdere l'arrocco
+      \item cavallo messo in avamposto non scacciabile
+      \item scacco di scoperta
+    \end{itemize}
+
+  \subsubsection{Endgame (+middlegame)}
+    \begin{itemize}
+      \item mobilita' re
+      \item pedoni passati
+      \item pedoni passati supportati da altri pedoni
+      \item Cattura pedoni centrali contro laterali.
+      \item Mosse Zugzwang 
+    \end{itemize}
+
+\subsection{Idee per la search}
+  \subsubsection{Generale}
+    \begin{itemize}
+      \item cercare prima e piu' a fondo se si da' scacco
+      \item cercare prima ogni mossa che cattura un pezzo
+      \item cercare piu' a fondo se si vince un pezzo
+      \item cercare per ultimo ogni mossa che perde materiale
+      \item cercare prima ogni mossa che centralizza un pezzo (o che si avvicina al re opposto)
+    \end{itemize}
+
+  \subsubsection{Middlegame}
+    \begin{itemize}
+      \item Cercare in profondità di attaccare le caselle deboli dell'avversario
+    \end{itemize}
+  
+  \subsubsection{Endgame}
+    \begin{itemize}
+      \item cercare prima le mosse che diminuiscono la mobilita' del re avversario
+      \item cercare prima le mosse che obbligano il re avversario ad avvicinarsi al bordo scacchiera
+      \item cercare prima le promozioni di pedoni
+    \end{itemize}
