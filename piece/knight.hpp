@@ -19,7 +19,7 @@ public:
     legalMoves.reserve(8);
 
     const Coords start = from;
-    uint8_t startVal = board.get(start);
+    Board::piece_id startVal = board.get(start);
 
     if (startVal != Board::KNIGHT)
         return legalMoves; // no piece at source
@@ -27,7 +27,7 @@ public:
     for (const auto& dir : directions) {
         Coords newPos(start.file + dir[0], start.rank + dir[1]);
         if (Coords::isInBounds(newPos)) {
-            uint8_t sq = board.get(newPos);
+            Board::piece_id sq = board.get(newPos);
             if (sq == Board::EMPTY || !board.isSameColor(start, newPos)) {
                 legalMoves.emplace_back(newPos);
             }

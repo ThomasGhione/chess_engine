@@ -125,7 +125,7 @@ public:
 
     // Both ways to get color of piece at position
     uint8_t getColor(const Coords& pos) const noexcept {
-        const uint8_t rawPiece = this->get(pos);
+        const piece_id rawPiece = static_cast<piece_id>((chessboard.at(pos.rank) >> (pos.file * 4)) & MASK_PIECE); // this->get(pos);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
         }
@@ -143,17 +143,17 @@ public:
     }
 
     //! SETTERS
-    void set(Coords coords, uint8_t value) noexcept {
+    void set(Coords coords, piece_id value) noexcept {
         const uint8_t shift = coords.file * 4;
         chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    void set(uint8_t row, uint8_t col, uint8_t value) noexcept {
+    void set(uint8_t row, uint8_t col, piece_id value) noexcept {
         const uint8_t shift = col * 4;
         chessboard.at(row) = (chessboard.at(row) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    void set_linear(uint8_t index, uint8_t value) noexcept { this->set(index % 8, index / 8, value); }
+    void set_linear(uint8_t index, piece_id value) noexcept { this->set(index % 8, index / 8, value); }
     
     constexpr uint8_t coordsToIndex(const Coords& coords) const noexcept {
         return coords.rank * 8 + coords.file;
@@ -213,7 +213,7 @@ public:
     bool move(Coords from, Coords to) noexcept {
         if (!canMoveTo(from, to))
             return false;
-        uint8_t piece = this->get(from);
+        piece_id piece = static_cast<piece_id>(this->get(from));
         this->set(to, piece);
         this->set(from, EMPTY);
         this->setNextTurn();
