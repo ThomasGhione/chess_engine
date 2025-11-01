@@ -25,5 +25,8 @@ test:
 analyze:
 	$(CPPANALYZE) main.cpp $(PRODPATH) $(CPPCHEACKFLAGS)  
 
-clean: rm -f chess
+cls: 
+	rm -f chess
+	rm -f tests/outputTest
+	rm -f doc/main-doc.{aux,log,pdf,toc}
 

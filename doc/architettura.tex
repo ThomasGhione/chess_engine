@@ -1,7 +1,10 @@
 \section{Architettura del progetto}
 
-\subsection{Componenti generali}
+\immediate\write18{convert img/component-diagram.drawio.svg img/component-diagram.png}
+\includegraphics[scale=0.6]{./img/component-diagram.png}
 
+
+\subsection{Componenti generali}
 \paragraph{Coords}
 È una classe che rappresenta le coordinate nella scacchiera.
 Quindi, l'insieme delle righe sarà così composto:
@@ -10,8 +13,7 @@ $ R := \{A,B,C,D,E,F,G,H\}$
 Mentre l'insieme delle colonne:
 $C := \{1,2,3,4,5,6,7,8\}$
 
-Una coordinata non è altro che: $ R \bigtimes C$.
-
+Una coordinata non è altro che: $ R X C$.
 
 \subsection{Board}
 
@@ -29,15 +31,18 @@ Sono presenti due costruttori:
 
 \paragraph{Attributi:}
 \begin{lstlisting}
-\item bitmap board
+  bitmap board
 \end{lstlisting}
 
 La bitmap contiene in totale 3 informazioni:
 \begin{enumerate}
   \item Indice, che viene trasformato in coordinate
-  \item Tipo del pezzo tramite 6 bit
-  \item Colore del pezzo tramite 2 bit
+  \item Tipo del pezzo tramite 3 bit
+  \item Colore del pezzo tramite 1 bit
 \end{enumerate}
+
+\immediate\write18{convert img/piecebit.drawio.svg img/piecebit.png}
+\includegraphics[scale=0.6]{./img/piecebit.png}
 
 La posizione \textit{board} 0 rappresenta la casella: a8.
 Procedendo con l'indice di \textit{board}, iniziando dalla
@@ -71,7 +76,6 @@ E' presente un solo costruttore:
 \paragraph{Attributi:}
 \begin{lstlisting}
   Board board;
-  Menu menu;
 \end{lstlisting}
 
 \paragraph{Metodi:}
