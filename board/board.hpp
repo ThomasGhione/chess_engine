@@ -213,7 +213,24 @@ public:
     bool move(Coords from, Coords to) noexcept {
         if (!canMoveTo(from, to))
             return false;
+
         piece_id piece = static_cast<piece_id>(this->get(from));
+        const uint8_t pieceType = static_cast<uint8_t>(piece) & MASK_PIECE_TYPE;
+
+
+        // TODO: wrap this code inside a method and ask the user's input
+        if (pieceType == PAWN) {
+            const bool isWhite = (static_cast<uint8_t>(piece) & BLACK) == 0;
+            const bool reachingLast = (isWhite && to.rank == 7) || (!isWhite && to.rank == 0);
+            if (reachingLast) {
+                const uint8_t colorBit = static_cast<uint8_t>(piece) & BLACK;
+                piece_id promoted = static_cast<piece_id>(static_cast<uint8_t>(QUEEN) | colorBit);
+                this->set(to, promoted);
+                this->set(from, EMPTY);
+                this->setNextTurn();
+                return true;
+            }
+        }
         this->set(to, piece);
         this->set(from, EMPTY);
         this->setNextTurn();
@@ -228,7 +245,7 @@ public:
 
     std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
-            // case PAWN: return Pawn::getPawnMoves(*this, from);
+            case PAWN: return Pawn::getPawnMoves(*this, from);
             case KNIGHT: return Knight::getKnightMoves(*this, from);
             case BISHOP: return Bishop::getBishopMoves(*this, from);
             case ROOK: return Rook::getRookMoves(*this, from);  // TODO implement castling

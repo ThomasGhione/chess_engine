@@ -4,7 +4,7 @@
 
 namespace chess {
 
-std::vector<Coords> Pawn::getPawnMoves(Board& board, const Coords& from) noexcept {
+std::vector<Coords> Pawn::getPawnMoves(const Board& board, const Coords& from) noexcept {
     std::vector<Coords> legalMoves;
     legalMoves.reserve(4);
 
@@ -43,14 +43,8 @@ std::vector<Coords> Pawn::getPawnMoves(Board& board, const Coords& from) noexcep
         }
     }
 
-    // TODO: en passant and promotion handling (non-interactive)
+    // TODO: en passant; promotion is handled during move execution (Board::move)
     return legalMoves;
-}
-
-void Pawn::promotePawn(Board& board, const Coords& pos, bool isWhite) noexcept {
-    // Non-interactive default: promote to Queen
-    uint8_t piece = Board::QUEEN | (isWhite ? Board::WHITE : Board::BLACK);
-    board.set(pos, static_cast<Board::piece_id>(piece));
 }
 
 } // namespace chess

@@ -4,7 +4,7 @@
 #include "bishop.hpp"
 #include "king.hpp"
 #include "knight.hpp"
-// #include "pawn.hpp"
+#include "pawn.hpp"
 #include "queen.hpp"
 #include "rook.hpp"
 
