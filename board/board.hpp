@@ -34,7 +34,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <unordered_map>
-//#include "../piece/piece.hpp"
+#include "../piece/piece.hpp"
 
 #include "../coords/coords.hpp"
 
@@ -229,11 +229,11 @@ public:
     std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
             // case PAWN: return Pawn::getPawnMoves(*this, from);
-            // case KNIGHT: return Knight::getKnightMoves(*this, from);
-            // case BISHOP: return Bishop::getBishopMoves(*this, from);
-            // case ROOK: return Rook::getRookMoves(*this, from);  // TODO implement castling
-            // case QUEEN: return Queen::getQueenMoves(*this, from);
-            // case KING: return King::getKingMoves(*this, from); // TODO implement castling, check, checkmate, stalemate
+            case KNIGHT: return Knight::getKnightMoves(*this, from);
+            case BISHOP: return Bishop::getBishopMoves(*this, from);
+            case ROOK: return Rook::getRookMoves(*this, from);  // TODO implement castling
+            case QUEEN: return Queen::getQueenMoves(*this, from);
+            case KING: return King::getKingMoves(*this, from); // TODO implement castling, check, checkmate, stalemate
         }
         return {};
     }
