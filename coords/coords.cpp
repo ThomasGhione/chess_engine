@@ -80,4 +80,16 @@ bool Coords::isInBounds(const Coords& coords) {
     return (coords.file < 8) && (coords.rank < 8);
 }
 
+std::string Coords::toString() const {
+    std::string result(2, ' ');
+    if (this->file < 8 && this->rank < 8) {
+        result[0] = static_cast<char>('a' + this->file);
+        result[1] = static_cast<char>('1' + this->rank);
+    } else {
+        result = "??";
+    }
+    return result;
+
+}
+
 }

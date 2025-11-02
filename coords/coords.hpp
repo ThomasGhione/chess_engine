@@ -30,6 +30,8 @@ public:
     static bool isLetter(char c);
     static bool isNumber(char c);
     static bool isInBounds(const Coords& coords);
+
+    std::string toString() const;
 };
 
 }

@@ -72,7 +72,12 @@ public:
 
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
-    uint8_t castle = 0; // 4 bit for castling rights (KQkq)
+
+    std::vector<bool> castle = {true, true, true, true};
+    std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
+    // uint8_t castle = 0x0F; // 4 bit for castling rights (KQkq) // 0000 1111 = all castling rights available // 1111=0x0F
+    // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
+
     std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
     uint8_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
     uint8_t fullMoveClock = 1; // Tracks the number of full moves in the game
@@ -111,7 +116,7 @@ public:
     uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
     
-    uint8_t getByNoteCoords(const std::string& square) noexcept {
+    uint8_t getByNoteCoords(const std::string& square) const noexcept { // TODO method name to "get()"
       // Debug now
       uint8_t col = square.at(0) - 'a';
       uint8_t row = square.at(1) - '1';
@@ -121,7 +126,17 @@ public:
     
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
+    // TODO check whether Castle and HasMoved getters works fine :D
     uint8_t getActiveColor() const noexcept { return this->activeColor; }
+    bool getCastle(const uint8_t index) const noexcept { return this->castle.at(index); }
+    bool getHasMoved(const uint8_t index) const noexcept { return this->hasMoved.at(index); }
+    // uint8_t getCastle() const noexcept { return this->castle; }
+    // uint8_t getWhiteCastleRights() const noexcept { return (this->castle >> 2) & 0x03; } // KQ
+    // uint8_t getBlackCastleRights() const noexcept { return this->castle & 0x03; } // kq
+    // uint8_t getHasMoved() const noexcept { return this->hasMoved; }
+    // uint8_t getWhiteHasMoved() const noexcept { return (this->hasMoved >> 4) & 0x07; } // K Ra Rh
+    // uint8_t getBlackHasMoved() const noexcept { return this->hasMoved & 0x07; } // k ra rh
+
 
     // Both ways to get color of piece at position
     uint8_t getColor(const Coords& pos) const noexcept {
@@ -155,6 +170,9 @@ public:
 
     void set_linear(uint8_t index, piece_id value) noexcept { this->set(index % 8, index / 8, value); }
     
+    // void setCastle(uint8_t value) noexcept { this->castle = value; }
+    // void setHasMoved(uint8_t value) noexcept { this->hasMoved = value; }
+
     constexpr uint8_t coordsToIndex(const Coords& coords) const noexcept {
         return coords.rank * 8 + coords.file;
     }
@@ -231,6 +249,35 @@ public:
                 return true;
             }
         }
+        else if (pieceType == KING) {
+            const bool isWhite = (static_cast<uint8_t>(piece) & BLACK) == 0;
+            if (isWhite) {
+                if (from.toString() == "e1" && to.toString() == "g1") { // White kingside castling
+                    // Move the rook as well
+                    this->set(Coords(5, 0), static_cast<piece_id>(ROOK | WHITE));
+                    this->set(Coords(7, 0), EMPTY);
+                }
+                else if (from.toString() == "e1" && to.toString() == "c1") { // White queenside castling
+                    // Move the rook as well
+                    this->set(Coords(3, 0), static_cast<piece_id>(ROOK | WHITE));
+                    this->set(Coords(0, 0), EMPTY);
+                }
+            }
+            else {
+                if (from.toString() == "e8" && to.toString() == "g8") { // Black kingside castling
+                    // Move the rook as well
+                    this->set(Coords(5, 7), static_cast<piece_id>(ROOK | BLACK));
+                    this->set(Coords(7, 7), EMPTY);
+                }
+                else if (from.toString() == "e8" && to.toString() == "c8") { // Black queenside castling
+                    // Move the rook as well
+                    this->set(Coords(3, 7), static_cast<piece_id>(ROOK | BLACK));
+                    this->set(Coords(0, 7), EMPTY);
+                }
+            }
+        }
+
+
         this->set(to, piece);
         this->set(from, EMPTY);
         this->setNextTurn();
@@ -257,7 +304,7 @@ public:
 
     void fromFenToBoard(const std::string& fen) {
         std::array<uint32_t, 8> parsedBoard{};
-        uint8_t parsedCastle = 0;
+        std::vector<bool> parsedCastle(4, false);
         std::array<Coords, 2> parsedEnPassant{Coords{}, Coords{}};
         uint8_t parsedHalfMove = 0;
         uint8_t parsedFullMove = 1;
@@ -334,10 +381,10 @@ public:
         if (castlingSection != "-") {
             for (char castleChar : castlingSection) {
                 switch (castleChar) {
-                    case 'K': parsedCastle |= 0x1; break;
-                    case 'Q': parsedCastle |= 0x2; break;
-                    case 'k': parsedCastle |= 0x4; break;
-                    case 'q': parsedCastle |= 0x8; break;
+                    case 'K': parsedCastle[0] = true; break;
+                    case 'Q': parsedCastle[1] = true; break;
+                    case 'k': parsedCastle[2] = true; break;
+                    case 'q': parsedCastle[3] = true; break;
                     default: break;
                 }
             }
@@ -431,10 +478,10 @@ public:
 
         fen += ' ';
         std::string castlingStr;
-        if (castle & 0x1) { castlingStr += 'K'; }
-        if (castle & 0x2) { castlingStr += 'Q'; }
-        if (castle & 0x4) { castlingStr += 'k'; }
-        if (castle & 0x8) { castlingStr += 'q'; }
+        if (castle[0]) { castlingStr += 'K'; }
+        if (castle[1]) { castlingStr += 'Q'; }
+        if (castle[2]) { castlingStr += 'k'; }
+        if (castle[3]) { castlingStr += 'q'; }
         fen += castlingStr.empty() ? "-" : castlingStr;
 
         fen += ' ';
