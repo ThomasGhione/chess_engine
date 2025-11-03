@@ -1,29 +1,6 @@
 #ifndef BOARD_HPP
 #define BOARD_HPP
 
-/*
- * if(pezzo e' sto colore)
- *
- * f(bit colore) = 2x -1
- *
- * bit 0 -> nero -> -1
- * bit 1 -> bianco -> 1
- *
- * z(board)
- * sum 4 bit della board
- * ti prendi solo il bit colore (f(bit colore)) * (g(bit pezzo))
- *
- * Alla pos iniziale z(board) = 0
- *
- * Se pos fosse: 1 pedone bianco e i due re:
- * z(board) = +1
- *
- * Se regina e' il 5 pezzo e re il 5 e pedone il 1
- * Se pos fosse: 1 regina bianca e 1 pedone nero i due re:
- * z(board) = +4
- * */
-
-
 #include <string>
 #include <array>
 #include <cstdint>
@@ -34,17 +11,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <unordered_map>
-#include "../piece/piece.hpp"
 
+#include "../piece/piece.hpp"
 #include "../coords/coords.hpp"
 
-// #include "../piece/pawn.hpp"
-// #include "../piece/knight.hpp"
-// #include "../piece/bishop.hpp"
-// #include "../piece/rook.hpp"
-// #include "../piece/knight.hpp"
-// #include "../piece/queen.hpp"
-// #include "../piece/king.hpp"
 
 namespace chess {
 
