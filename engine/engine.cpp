@@ -7,6 +7,32 @@ Engine::Engine(){
   this->board = chess::Board();
 }
 
+uint64_t Engine::getMaterialDelta(chess::Board b){
+
+  constexpr int coefficientPiece = [](uint8_t piece){
+    constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
+    return 2*(piece >> 4)- 1; 
+  }
+
+  constexpr uint64_t pieceValue = f(uint8_t x){
+      return x * (-1267.0/60.0 +
+          x * (3445.0/72.0 +
+          x * (-881.0/24.0 +
+          x * (937.0/72.0 +
+          x * (-87.0/40.0 +
+          x * (5.0/36.0))))));
+  }
+
+  uint64_t delta = 0;
+  const uint8_t MAX_INDEX = 64;
+  for(uint8_t i = 0; i < MAX_INDEX; i++){
+    uint8_t piece = b.get( i % 8, i/8);
+
+    delta += coefficientPiece(piece) * pieceValue(piece);
+  }
+
+  return delta;
+}
 
 void Engine::playGameVsHuman() {
   while(!this->isMate()) {
@@ -122,6 +148,11 @@ void Engine::saveGame() {
 }
 
 
+void Engine::playGameVsEngine(bool isWhite) {}
+
+}
+
+/*
 void Engine::playGameVsEngine(bool isWhite) {
   /*
 	while (!isMate()) {
@@ -139,11 +170,6 @@ void Engine::playGameVsEngine(bool isWhite) {
   }
 */
 }
-
-}
-
-/*
-
 void Engine::loadGame(bool isWithPlayer) {
     std::ifstream SaveFile("saves/save.txt");
     if (!SaveFile.is_open()) {
@@ -177,9 +203,6 @@ void Engine::loadGame(bool isWithPlayer) {
 	}
 
 }
-
-
-
 void Engine::takeEngineTurn() {
     //! EVERYTHING'S A PLACEHOLDER
     
@@ -207,8 +230,4 @@ void Engine::takePlayerTurn() {
     board.movePiece(pieceToMove, targetCoords);
 
 }
-
-
 */
-
-
