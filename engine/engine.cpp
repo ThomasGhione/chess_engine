@@ -150,8 +150,6 @@ void Engine::saveGame() {
 
 void Engine::playGameVsEngine(bool isWhite) {}
 
-}
-
 /*
 void Engine::playGameVsEngine(bool isWhite) {
   /*
@@ -168,8 +166,10 @@ void Engine::playGameVsEngine(bool isWhite) {
 	  takePlayerTurn();
 	}
   }
-*/
+
 }
+*/
+
 void Engine::loadGame(bool isWithPlayer) {
     std::ifstream SaveFile("saves/save.txt");
     if (!SaveFile.is_open()) {
@@ -203,15 +203,10 @@ void Engine::loadGame(bool isWithPlayer) {
 	}
 
 }
-void Engine::takeEngineTurn() {
-    //! EVERYTHING'S A PLACEHOLDER
-    
-    //evaluate();
-    //chess::Coords currentCoords;
-    //chess::Coords targetCoords;
-    //chess::Piece pieceToMove;
-    //board.movePiece(pieceToMove, targetCoords);
-}*/
+void Engine::takeEngineTurn() {}
+
+
+}
 /*
 void Engine::takePlayerTurn() {
     // reading input
