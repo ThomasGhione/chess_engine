@@ -43,8 +43,8 @@ bool Coords::operator!=(const Coords &other) const {
 
 Coords& Coords::operator=(const Coords &other) {
     if (this != &other) {
-        file = other.file;
-        rank = other.rank;
+        this->file = other.file;
+        this->rank = other.rank;
     }
     return *this;
 }
