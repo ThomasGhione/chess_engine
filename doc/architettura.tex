@@ -4,19 +4,53 @@
 \includegraphics[scale=0.6]{./img/component-diagram.png}
 
 
-\subsection{Componenti generali}
-\paragraph{Coords}
+\paragraph{Descrizione classe:}
 È una classe che rappresenta le coordinate nella scacchiera.
 Quindi, l'insieme delle righe sarà così composto:
 $ R := \{A,B,C,D,E,F,G,H\}$
 
 Mentre l'insieme delle colonne:
 $C := \{1,2,3,4,5,6,7,8\}$
-
 Una coordinata non è altro che: $ R X C$.
 
-\subsection{Board}
+\paragraph{Costruttori}
+Sono presenti quattro costruttori:
+\begin{enumerate}
+\item Costruttore vuoto
+\item Costruttore passando indici riga e colonna
+\item Costruttore passando notazione stringa scacchistica
+\item Costruttore tramite altra Coords
+\end{enumerate}
 
+\paragraph{Attributi:}
+\begin{itemize}
+  \item file: Colonna della scacchiera
+  \item rank: Riga della scacchiera
+\end{itemize}
+
+\paragraph{Metodi:}
+\begin{enumerate}
+\item Operatori:
+  \begin{enumerate}
+    \item ==
+    \item !=
+    \item =
+  \end{enumearte}
+\item update, per modifica le coordiante
+  \begin{enumerate}
+    \item Passando un'altra coordianta
+    \item Passando le esplicite coordinate riga e colonna
+  \end{enumearte}
+\item Metodi statici di controllo:
+  \begin{enumerate}
+    \item isValid: per l'indice
+    \item isLetter: per la colonna
+    \item isNumber: per la riga
+    \item isInBounds: Se non eccede la scacchiera 8x8.
+  \end{enumearte}
+\end{enumerate}
+
+\subsection{Board}
 \paragraph{Descrizione classe:}
 Rappresenta la foto di una scacchiera in questo momento.
 
@@ -59,9 +93,7 @@ Riposto alcune corrispondenze per spiegare ulteriormente:
 
 \paragraph{Metodi:}
 
-
 \subsection{Engine}
-
 \paragraph{Descrizione classe:}
 E' la classe che gestisce il gioco.
 Media l'interazione tra l'utente e le componenti.

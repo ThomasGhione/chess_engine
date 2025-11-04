@@ -5,9 +5,7 @@
 #include <cstdint>
 
 namespace chess {
-
 class Coords {
-
 public:
     uint8_t file; // column
     uint8_t rank; // row
@@ -32,8 +30,6 @@ public:
     static bool isInBounds(const Coords& coords);
 
     std::string toString() const;
-};
-
-}
-
+}; // class Coords
+} // namespace chess
 #endif
