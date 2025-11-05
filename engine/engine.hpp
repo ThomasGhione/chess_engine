@@ -47,7 +47,7 @@ private:
 
   void takePlayerTurn();
   bool isMate();
-  uint64_t getMaterialDelta(chess::Board b);
+  int64_t getMaterialDelta(chess::Board b);
 
   //void takeEngineTurn(); // ...mossa dopo muove l'engine
   //double evaluate();
