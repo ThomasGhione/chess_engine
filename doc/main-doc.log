@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.4.20)  4 NOV 2025 17:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.4.20)  5 NOV 2025 10:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -77,7 +77,7 @@ File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count269
 \l__pdf_internal_box=\box53
 )
-No file main-doc.aux.
+(./main-doc.aux)
 \openout1 = `main-doc.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 10.
@@ -95,6 +95,7 @@ LaTeX Font Info:    ... okay on input line 10.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 10.
 LaTeX Font Info:    ... okay on input line 10.
 \c@lstlisting=\count270
+
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count271
@@ -124,20 +125,20 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <6> on input line 12.
 
-No file main-doc.toc.
-\tf@toc=\write3
-\openout3 = `main-doc.toc'.
-
-[1
-
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] (./obbiettivi.tex
+(./main-doc.toc
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <7> on input line 4.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 4.
 )
-(./todo.tex [2] [3{/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
-[4]) (./architettura.tex
+\tf@toc=\write3
+\openout3 = `main-doc.toc'.
+
+ [1
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+(./obbiettivi.tex) (./todo.tex [2] [3] [4{/usr/share/texmf/fonts/enc/dvips/cm-s
+uper/cm-super-ts1.enc}]) (./architettura.tex
 runsystem(convert img/component-diagram.drawio.svg img/component-diagram.png)..
 .disabled (restricted).
 
@@ -151,26 +152,35 @@ Overfull \hbox (65.73766pt too wide) in paragraph at lines 4--5
 [] 
  []
 
-[5 <./img/component-diagram.png>]
+(./component/coords.tex [5]
+Overfull \hbox (23.71025pt too wide) in paragraph at lines 3--6
+\OT1/cmr/m/n/10 chiera. Quindi, l'insieme delle righe sar^^Ra cos^^R^^P com-pos
+to: $\OML/cmm/m/it/10 R \OT1/cmr/m/n/10 := \OMS/cmsy/m/n/10 f\OML/cmm/m/it/10 A
+; B; C; D; E; F; G; H\OMS/cmsy/m/n/10 g$ 
+ []
+
+[6 <./img/component-diagram.png>]) (./component/board.tex
 runsystem(convert img/piecebit.drawio.svg img/piecebit.png)...disabled (restric
 ted).
 
-<./img/piecebit.png, id=28, 452.69125pt x 61.22874pt>
+<./img/piecebit.png, id=33, 452.69125pt x 61.22874pt>
 File: ./img/piecebit.png Graphic file (type png)
 <use ./img/piecebit.png>
-Package pdftex.def Info: ./img/piecebit.png  used on input line 45.
+Package pdftex.def Info: ./img/piecebit.png  used on input line 27.
 (pdftex.def)             Requested size: 271.61684pt x 36.73752pt.
- [6 <./img/piecebit.png>]) [7] (./main-doc.aux)
+ [7 <./img/piecebit.png>]) (./component/engine.tex) (./component/driver.tex [8]
+)
+(./component/stato.tex)) [9] (./main-doc.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2968 strings out of 476106
- 43720 string characters out of 5793933
- 1930975 words of memory out of 5000000
- 24995 multiletter control sequences out of 15000+600000
+ 3005 strings out of 476106
+ 44485 string characters out of 5793933
+ 1931975 words of memory out of 5000000
+ 25012 multiletter control sequences out of 15000+600000
  563005 words of font info for 52 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
  57i,8n,65p,200b,978s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -184,10 +194,10 @@ ype1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
 lic/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
 onts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmti10.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1000.pfb>
-Output written on main-doc.pdf (7 pages, 141816 bytes).
+Output written on main-doc.pdf (9 pages, 150105 bytes).
 PDF statistics:
- 86 PDF objects out of 1000 (max. 8388607)
- 52 compressed objects within 1 object stream
+ 92 PDF objects out of 1000 (max. 8388607)
+ 56 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

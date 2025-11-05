@@ -1,0 +1,54 @@
+\subsection{Coords}
+\paragraph{Descrizione classe:}
+È una classe che rappresenta le coordinate nella scacchiera.
+Quindi, l'insieme delle righe sarà così composto:
+$ R := \{A,B,C,D,E,F,G,H\}$
+
+Mentre l'insieme delle colonne:
+$C := \{1,2,3,4,5,6,7,8\}$
+Una coordinata non è altro che: $ R X C$.
+
+\paragraph{Costruttori}
+Sono presenti quattro costruttori:
+\begin{enumerate}
+\item Costruttore vuoto
+\item Costruttore passando indici riga e colonna
+\item Costruttore passando notazione stringa scacchistica
+\item Costruttore tramite altra Coords
+\end{enumerate}
+
+\paragraph{Attributi:}
+\begin{itemize}
+  \item file: Colonna della scacchiera
+  \item rank: Riga della scacchiera
+\end{itemize}
+
+\paragraph{Metodi:}
+\begin{enumerate}
+\item Operatori:
+  \begin{enumerate}
+    \item ==
+    \item !=
+    \item =
+  \end{enumerate}
+\item update, per modifica le coordiante
+  \begin{enumerate}
+    \item Passando un'altra coordianta
+    \item Passando le esplicite coordinate riga e colonna
+  \end{enumerate}
+\item Metodi statici di controllo:
+  \begin{enumerate}
+    \item isValid: per l'indice
+    \item isLetter: per la colonna
+    \item isNumber: per la riga
+    \item isInBounds: Se non eccede la scacchiera 8x8.
+  \end{enumerate}
+\end{enumerate}
+
+\paragraph{Decisioni progettuali}
+Da subito ci siamo accorti che le coordiante sarebbero state qualcosa
+di importante.
+Il primo approccio è stato quello di usare una \textit{struct}.
+Tuttavia, dopo alcuni commit abbiamo preferito
+passare a una \textit{class} avendo \textit{Coords} diversi
+metodi propri e controlli da effettuare.
