@@ -43,8 +43,8 @@ bool Coords::operator!=(const Coords &other) const {
 
 Coords& Coords::operator=(const Coords &other) {
     if (this != &other) {
-        file = other.file;
-        rank = other.rank;
+        this->file = other.file;
+        this->rank = other.rank;
     }
     return *this;
 }
@@ -54,7 +54,7 @@ bool Coords::update(const Coords& other) {
 }
 
 bool Coords::update(const uint8_t f, const uint8_t r) {
-    if (this->file == INVALID_COORDS || this->rank == INVALID_COORDS) {
+    if (f == INVALID_COORDS || r == INVALID_COORDS) {
         return false;
     }
 
