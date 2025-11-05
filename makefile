@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 # Variabili compilatore
 CXX = g++
 FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -fext-numeric-literals -g
