@@ -20,9 +20,16 @@ namespace chess {
 
 using board = std::array<uint32_t, 8>;
 
+
+
 class Board {
 
 public:
+
+    static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
+    static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
+    static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
+
     enum piece_id : uint8_t {
     // piece bits
     EMPTY  = 0x0, // 0000 
@@ -37,8 +44,7 @@ public:
     WHITE  = 0x0, // 0000
 
     // ENPASSANT = 0x7  // 0111
-};
-
+    };
 
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
@@ -53,13 +59,16 @@ private:
     uint8_t fullMoveClock = 1; // Tracks the number of full moves in the game
     uint8_t activeColor = WHITE; // Tracks the active color (white or black)
 
-    static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
-    static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
-    static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
+
 
     // std::unordered_map<std::tuple<piece_id, Coords>, std::vector<chess::Coords>> legalMoves; //? maybe there's a better way?
 
     std::string startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+
+    uint64_t piecesBitMap = 0; // 64 bits to represent presence of pieces on the board
+    
+
 
 public:
 
