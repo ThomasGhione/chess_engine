@@ -15,6 +15,7 @@
 #include "../piece/piece.hpp"
 #include "../coords/coords.hpp"
 
+#include "../piece/pieces.hpp" // bitmap utilities
 
 namespace chess {
 
@@ -66,7 +67,7 @@ private:
     std::string startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
-    uint64_t piecesBitMap = 0; // 64 bits to represent presence of pieces on the board
+    uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
     
 
 
@@ -280,6 +281,100 @@ public:
         }
         return {};
     }
+
+
+
+
+    //! GET MOVE BY BITBOARD
+    //!
+    //! GET MOVE BY BITBOARD
+    //!
+    //! GET MOVE BY BITBOARD
+
+    uint64_t getPiecesBitMap() const noexcept {
+        uint64_t bitMap = 0;
+        for (uint8_t rank = 0; rank < 8; ++rank) {
+            for (uint8_t file = 0; file < 8; ++file) {
+                uint8_t piece = this->get(rank, file);
+                if (piece != EMPTY) {
+                    uint8_t index = rank * 8 + file;
+                    bitMap |= (1ULL << index);
+                }
+            }
+        }
+        return bitMap;
+    }
+
+    void setOccupancyBB() noexcept {
+        this->occupancy = this->getPiecesBitMap();
+    }
+
+
+
+
+    bool moveBB(const Coords& from, const Coords& to, const piece_id piece) noexcept {
+        
+        if (!canMoveTo(from, to)) // TODO modificare questo e gestire veramente il movimento
+            return false;
+
+        uint8_t fromIndex = from.rank * 8 + from.file;
+        uint8_t toIndex = to.rank * 8 + to.file;
+
+        // update the occupancy bitboard
+        occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+        occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
+
+        this->set(to, piece);
+        this->set(from, EMPTY);
+        this->setNextTurn();
+        return true;
+    }
+
+    bool canMoveToBB(const Coords& from, const Coords& to) const noexcept {
+        uint64_t bitMap = occupancy; // Get current bitboard
+        
+        uint8_t fromIndex = from.rank * 8 + from.file;
+        uint8_t toIndex = to.rank * 8 + to.file;
+
+        switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
+            case PAWN:
+                bitMap = pieces::getPawnAttacks(bitMap, (this->getColor(from) == WHITE));
+                break;
+            case KNIGHT:
+                bitMap = pieces::getKnightAttacks(bitMap);
+                break;
+            case BISHOP:
+                bitMap = pieces::getBishopAttacks(bitMap, occupancy);
+                break;
+            case ROOK:
+                bitMap = pieces::getRookAttacks(bitMap, occupancy);
+                break;
+            case QUEEN:
+                bitMap = pieces::getQueenAttacks(bitMap, occupancy);
+                break;
+            case KING:
+                bitMap = pieces::getKingAttacks(bitMap);
+                break;
+            default:
+                break;
+        }
+
+        // se Coords to è dentro getSpecificPieceAttacks allora ritorna true:
+        return (bitMap & (1ULL << toIndex)) != 0;
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
     void fromFenToBoard(const std::string& fen) {
         std::array<uint32_t, 8> parsedBoard{};

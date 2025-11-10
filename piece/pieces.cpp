@@ -41,7 +41,7 @@ U64 initQueenBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(sq
 U64 initKingBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
 
 // Placeholder: se il boardBitboard codifica già i pezzi, qui si filtrerebbe.
-U64 getPieceBitboard(chess::Board::piece_id piece, const U64& boardBitboard) noexcept {
+U64 getPieceBitboard(uint8_t piece, const U64& boardBitboard) noexcept {
 	/*
     // filter by piecetype by doing piece | MASK_PIECE:
     U64 pieceMask = static_cast<U64>(piece) | chess::Board::MASK_PIECE;

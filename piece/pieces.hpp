@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "../coords/coords.hpp"
-#include "../board/board.hpp"
+// #include "../board/board.hpp"
 
 namespace pieces {
 
@@ -23,7 +23,7 @@ enum Type {
 }; */
 
 // ==================== INIT / BITBOARD BUILDERS ====================
-U64 getPieceBitboard(chess::Board::piece_id piece, const U64& boardBitboard) noexcept;
+U64 getPieceBitboard(uint8_t piece, const U64& boardBitboard) noexcept;
 
 U64 initPawnBitboard(int16_t squareIndex) noexcept;
 U64 initKnightBitboard(int16_t squareIndex) noexcept;
@@ -49,4 +49,5 @@ inline int16_t rankOf(int16_t sq) noexcept { return static_cast<int16_t>(sq / 8)
 std::vector<U64> bitboardToIndices(U64 bb) noexcept;
 
 } // namespace pieces
+
 #endif
