@@ -92,4 +92,9 @@ std::string Coords::toString() const {
 
 }
 
+uint8_t Coords::toIndex() const noexcept {
+    return static_cast<uint8_t>(this->rank * 8 + this->file);
+}
+
+
 }

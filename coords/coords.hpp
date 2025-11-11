@@ -30,6 +30,7 @@ public:
     static bool isInBounds(const Coords& coords);
 
     std::string toString() const;
+    uint8_t toIndex() const noexcept;
 }; // class Coords
 } // namespace chess
 #endif

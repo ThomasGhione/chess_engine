@@ -84,7 +84,9 @@ public:
         , halfMoveClock(0)
         , fullMoveClock(1)
         , activeColor(WHITE)
-    {}
+    {
+        this->updateOccupancyBB();
+    }
 
     Board(const std::string& fen) {
         fromFenToBoard(fen);
@@ -202,11 +204,6 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
-    // TODO check whether this works or not?
-    static uint8_t fromCoordsToPosition(const Coords& coords) {
-        return coords.rank * 8 + coords.file;
-    }
-
 
     bool move(Coords from, Coords to) noexcept {
         if (!canMoveTo(from, to))
@@ -309,25 +306,17 @@ public:
         this->occupancy = this->getPiecesBitMap();
     }
 
-
-
-
-    bool moveBB(const Coords& from, const Coords& to, const piece_id piece) noexcept {
-        
+    bool moveBB(const Coords& from, const Coords& to, const piece_id piece) noexcept {        
         if (!canMoveTo(from, to))
             return false;
-
-        uint8_t fromIndex = fromCoordsToPosition(from);
-        uint8_t toIndex = fromCoordsToPosition(to);
-
-        // update the occupancy bitboard
-
 
         this->set(to, piece);
         this->set(from, EMPTY);
 
         updateOccupancyBB();
         // manual update occupancy:
+        // uint8_t fromIndex = from.toIndex();
+        // uint8_t toIndex = to.toIndex();
         // occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
         // occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
 
@@ -338,8 +327,8 @@ public:
     bool canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         uint64_t bitMap = occupancy; // Get current bitboard
 
-        uint8_t fromIndex = fromCoordsToPosition(from);
-        uint8_t toIndex = fromCoordsToPosition(to);
+        uint8_t fromIndex = from.toIndex();
+        uint8_t toIndex = to.toIndex();
 
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
             case PAWN:
@@ -501,6 +490,8 @@ public:
         halfMoveClock = parsedHalfMove;
         fullMoveClock = parsedFullMove;
         activeColor = parsedActiveColor;
+
+        this->updateOccupancyBB();
     }
 
     std::string fromBoardToFen() const {
