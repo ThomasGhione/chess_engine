@@ -1,0 +1,255 @@
+[33mcommit f75285aaec15f9feab606203c2510e324ac9f17a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mnewboard[m[33m, [m[1;31morigin/newboard[m[33m)[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Mon Nov 10 19:13:54 2025 +0100
+
+    wip: bitboards
+
+[33mcommit 1ebb7d3c62782599b33581e6b036320b4d40f702[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Mon Nov 10 18:46:22 2025 +0100
+
+    wip: get moves by bitboard
+
+[33mcommit d154b2c06d359d916c3bad82b7786b3e2eb63761[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Mon Nov 10 12:34:28 2025 +0100
+
+    Refactor board's tests and added newer ones
+
+[33mcommit b412169db338213e5c548e9b4ad9c49ad6b5afd0[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Thu Nov 6 15:07:20 2025 +0100
+
+    Add 2 tests about knigth
+
+[33mcommit 7fc335271af4c9ffab5e905ffed0238fc78b6284[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Thu Nov 6 11:48:33 2025 +0100
+
+    Add gamestatus to makefile and bat
+
+[33mcommit a6d4aa5b2e748e58c78f943562e14067d7f78540[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Wed Nov 5 22:09:28 2025 +0100
+
+    fixed Coords string constructor
+
+[33mcommit 65d6a2f39a772cbae199509d400d636d8dfe9b83[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Wed Nov 5 18:52:43 2025 +0100
+
+    wip: gamestatus
+
+[33mcommit ef4120e102c60ecbe6f08151d3cf379db7b08768[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Wed Nov 5 18:07:10 2025 +0100
+
+    Fix delta material stupid errors
+
+[33mcommit 7eb1723ef2378a85c68fe66e571a16e484b3116d[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Nov 5 12:15:22 2025 +0100
+
+    Add stato0 files, remove compile output file
+
+[33mcommit 40c2682937e587b835bfc1d8dc3154832b2ef69e[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Nov 5 12:02:11 2025 +0100
+
+    Delete files aux and fix minor issue in makefile
+
+[33mcommit d558a7ccd82db79ca2433eab570edd5749072ecf[m
+Merge: 3359b77 3221bd9
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Nov 5 12:00:47 2025 +0100
+
+    Merge branch 'newboard' of https://github.com/ThomasGhione/chess_engine into newboard
+
+[33mcommit 3359b778a30208b3a61199943bc5e9351db721c3[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Nov 5 11:54:26 2025 +0100
+
+    Fix doc structure, minor fix to makefile
+
+[33mcommit 3221bd924f1e0c5bd0507a103555649b9f093f19[m
+Author: Alex Bonello <alexbonello18@gmail.com>
+Date:   Tue Nov 4 17:29:17 2025 +0000
+
+    small fix in Coords::update
+
+[33mcommit a337d2b7b0b72c36c2e8e0eb95a79ba98686a6c6[m
+Author: Alex Bonello <alexbonello18@gmail.com>
+Date:   Tue Nov 4 17:25:13 2025 +0000
+
+    fixed Coords::operator=
+
+[33mcommit be47b859ca214329195c5fc09f75fbae2d091816[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Tue Nov 4 18:08:41 2025 +0100
+
+    Doc about coords and todo
+
+[33mcommit 51ebed8be420de3b901d8011b68555ccdf4e5d58[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Mon Nov 3 15:22:04 2025 +0100
+
+    Fix errors
+
+[33mcommit 23ffd0e2d3465b3247a98993686065fd7350bc1e[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Mon Nov 3 14:32:47 2025 +0100
+
+    Fix include lines
+
+[33mcommit e510ffe1368757ff6db269297bb0621935b80e49[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Mon Nov 3 14:31:10 2025 +0100
+
+    Add delta piece function
+
+[33mcommit 95d9674040d9c52e7601ee1fce733d3ca57f8d0f[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Sun Nov 2 17:47:48 2025 +0100
+
+    upsie 2
+
+[33mcommit 31f7728994ec219f3a59b615135d8def1f0809bb[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Sun Nov 2 17:45:02 2025 +0100
+
+    upsie
+
+[33mcommit b639d9576ff4a3a1994764b3773b2ab59e76cd42[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Sun Nov 2 17:43:07 2025 +0100
+
+    Deleting chess.exe file in run.bat
+
+[33mcommit d5f742993ef3937d6410623c8483a3e3cd102f07[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Sun Nov 2 17:41:36 2025 +0100
+
+    added: castling, Coords.toString()
+
+[33mcommit d691353d3182e1d5008fd313e0b706ecb4fb1251[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Sat Nov 1 19:35:59 2025 +0100
+
+    added pawn's logic
+
+[33mcommit e089cc14d005a989d2cf7a6193522063ebb3a574[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Sat Nov 1 19:12:28 2025 +0100
+
+    added piece logic (pawn's logic still missing)
+
+[33mcommit 0d016f6d807ec534e78ead29bf8b80f170326d01[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Sat Nov 1 17:38:25 2025 +0100
+
+    added tests
+
+[33mcommit c127ed1c23949c8d9e5a39cb74ec36871f075ec9[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Sat Nov 1 11:58:26 2025 +0100
+
+    Doc update
+
+[33mcommit 2cc96b76dd2d5647e5e9c9013f6d7e57b511359b[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Wed Oct 29 22:41:10 2025 +0100
+
+    added promote pawn, more coherent types (uint8_t->piece_id)
+
+[33mcommit 237e12df82fa808a3d8d8c1dd64fe4f22265f5a2[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Oct 29 16:12:04 2025 +0100
+
+    Writing some doc
+
+[33mcommit f300f84fa346dfce78ec957eb65010d5ce44911c[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Wed Oct 29 13:08:58 2025 +0100
+
+    Added evaluation and search ideas in todo.tex
+
+[33mcommit 40a5e6bb0634c9ee1beb02d47ad7c200b324e23d[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Mon Oct 27 21:59:44 2025 +0100
+
+    refactor: takePlayerTurn
+
+[33mcommit eaeeb633df7e0c5e9b25038d6bb3bdd9d74f5a20[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Mon Oct 27 21:31:35 2025 +0100
+
+    Small fixes
+
+[33mcommit 93f93bfe438701a6a1247969ea64fdc3bc8f87ef[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Mon Oct 27 17:24:09 2025 +0100
+
+    Add commets to test files
+
+[33mcommit 879f31e46bfce20f854aa1194f8afdfc9f3ec6a4[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Mon Oct 27 14:19:38 2025 +0100
+
+    Implemented first version of takePlayerTurn, and added some more functions in board.hpp
+
+[33mcommit 0be0b0264bd6bd4f56dc81804c515ce76a29ab3d[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Mon Oct 27 12:49:35 2025 +0100
+
+    Add new tests
+
+[33mcommit d87ff2de26e619b638a2f0d3c9e4031e8d9ce2f8[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Mon Oct 27 12:17:13 2025 +0100
+
+    Moved loadGame() from engine to driver
+
+[33mcommit 87338974d2fc7f05c443c026c2f517adf6a90ee1[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Oct 22 17:38:36 2025 +0200
+
+    fix little problems in board.hpp
+
+[33mcommit dac6efceeb93252f1e4686a7a27e7e5b3c7a7b6f[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Oct 22 17:10:26 2025 +0200
+
+    modify turn.cpp
+
+[33mcommit 798d579607de5856926a1aecee72297d65562cbf[m
+Author: Daniele <daniele.ferretti.uni@gmail.com>
+Date:   Wed Oct 22 16:56:58 2025 +0200
+
+    remove old files, remove old code in main, fix minor issue in coords and board
+
+[33mcommit 8aa29edbc2d7d95c5ce129b7e06a2fcb83e688d3[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Mon Oct 20 16:11:41 2025 +0200
+
+    Add new tests for board class
+
+[33mcommit ab9c670416a55bcad9ec360d39fa855d8f8686c8[m
+Author: DanieleFerretti03 <daniele.ferretti.uni@gmail.com>
+Date:   Mon Oct 20 13:11:11 2025 +0200
+
+    Add some tests for board class
+
+[33mcommit 8265006c6acfe99c17e055de862e1f836aa1f68d[m
+Author: Simo64Terminator <simo64.tomasella@gmail.com>
+Date:   Sun Oct 19 19:09:28 2025 +0200
+
+    Implemented: fenToBoard, boardToFen; fixed: menu, engine
+
+[33mcommit 035cd93ac264f407dbd0eb5aeaae38ba110429f1[m
+Author: thomasghionesanremo@gmail.com <thomasghionesanremo@gmail.com>
+Date:   Sun Oct 19 12:10:00 2025 +0200
+
+    small fixes, small changes
+
+[33mcommit 701e7bf2bf3db4cdf3fe360b0643a01de2383656[m
+Author: thomasghionesanremo@gmail.com

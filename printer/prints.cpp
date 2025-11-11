@@ -39,7 +39,20 @@ std::string Prints::getBasicBoard(const Board& board) {
     result += "  a b c d e f g h\n";
     return result;
 }
-
+std::string Prints::getBitBoard(const pieces::U64& bitboard){
+    std::string res;
+    res.reserve(8*(8*2+1));//alloca direttamente lo spazio in memoria cosi da renderlo leggermente piu efficiente
+    for(int rank = 7; rank >= 0; --rank) {
+        for(int file = 0; file < 0; ++file){
+            int square= rank * 8 + file;
+            uint64_t mask= 1ULL << square;
+            res+=(bitboard & mask) ? '1':'.';
+            res+=" ";
+        }
+        res+='\n';
+    }
+    return res;
+}
 
 }
 /*
