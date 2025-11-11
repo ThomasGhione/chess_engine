@@ -69,7 +69,7 @@ private:
 
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
     
-
+    
 
 public:
 
@@ -305,7 +305,7 @@ public:
         return bitMap;
     }
 
-    void setOccupancyBB() noexcept {
+    void updateOccupancyBB() noexcept {
         this->occupancy = this->getPiecesBitMap();
     }
 
@@ -314,53 +314,58 @@ public:
 
     bool moveBB(const Coords& from, const Coords& to, const piece_id piece) noexcept {
         
-        if (!canMoveTo(from, to)) // TODO modificare questo e gestire veramente il movimento
+        if (!canMoveTo(from, to))
             return false;
 
-        uint8_t fromIndex = from.rank * 8 + from.file;
-        uint8_t toIndex = to.rank * 8 + to.file;
+        uint8_t fromIndex = fromCoordsToPosition(from);
+        uint8_t toIndex = fromCoordsToPosition(to);
 
         // update the occupancy bitboard
-        occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
-        occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
+
 
         this->set(to, piece);
         this->set(from, EMPTY);
+
+        updateOccupancyBB();
+        // manual update occupancy:
+        // occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
+        // occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+
         this->setNextTurn();
         return true;
     }
 
     bool canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         uint64_t bitMap = occupancy; // Get current bitboard
-        
-        uint8_t fromIndex = from.rank * 8 + from.file;
-        uint8_t toIndex = to.rank * 8 + to.file;
+
+        uint8_t fromIndex = fromCoordsToPosition(from);
+        uint8_t toIndex = fromCoordsToPosition(to);
 
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
             case PAWN:
-                bitMap = pieces::getPawnAttacks(bitMap, (this->getColor(from) == WHITE));
+                bitMap = pieces::getPawnAttacks(fromIndex, (this->getColor(from) == WHITE));
                 break;
             case KNIGHT:
-                bitMap = pieces::getKnightAttacks(bitMap);
+                bitMap = pieces::getKnightAttacks(fromIndex);
                 break;
             case BISHOP:
-                bitMap = pieces::getBishopAttacks(bitMap, occupancy);
+                bitMap = pieces::getBishopAttacks(fromIndex, bitMap);
                 break;
             case ROOK:
-                bitMap = pieces::getRookAttacks(bitMap, occupancy);
+                bitMap = pieces::getRookAttacks(fromIndex, bitMap);
                 break;
             case QUEEN:
-                bitMap = pieces::getQueenAttacks(bitMap, occupancy);
+                bitMap = pieces::getQueenAttacks(fromIndex, bitMap);
                 break;
             case KING:
-                bitMap = pieces::getKingAttacks(bitMap);
+                bitMap = pieces::getKingAttacks(fromIndex);
                 break;
             default:
                 break;
         }
 
-        // se Coords to è dentro getSpecificPieceAttacks allora ritorna true:
-        return (bitMap & (1ULL << toIndex)) != 0;
+        // se Coords to è dentro get_Attacks allora return true:
+        return (bitMap & (1ULL << toIndex));
 
     }
 

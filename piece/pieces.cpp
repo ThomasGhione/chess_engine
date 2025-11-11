@@ -97,10 +97,12 @@ U64 getKingAttacks(int16_t squareIndex) noexcept {
 // ------------------------------------------------------------
 U64 getPawnAttacks(int16_t squareIndex, bool isWhite) noexcept {
 	if (squareIndex < 0 || squareIndex >= 64) return 0ULL;
+
 	int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 attackBitboard = 0ULL;
 	int16_t forwardDir = isWhite ? 1 : -1;
 	int16_t newRank = rank + forwardDir;
+	
 	if (newRank >= 0 && newRank < 8) {
 		if (file - 1 >= 0) attackBitboard |= ONE << (newRank * 8 + (file - 1));
 		if (file + 1 < 8)  attackBitboard |= ONE << (newRank * 8 + (file + 1));
@@ -137,12 +139,20 @@ U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexc
 // ------------------------------------------------------------
 // Sliding piece helpers
 // ------------------------------------------------------------
-static U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
+static inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
 	U64 rayBitboard = 0ULL;
 	file += deltaFile; 
     rank += deltaRank;
 	
-    while (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+/* 
+TODO pls someone test this :(
+#if defined(__GNUC__) || defined(__clang__)
+    #pragma GCC unroll 8
+#elif defined(_MSC_VER)
+    #pragma loop(unroll)
+#endif
+*/
+	while (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
 		int16_t square = (rank * 8) + file;
 		rayBitboard |= (ONE << square);
 		
