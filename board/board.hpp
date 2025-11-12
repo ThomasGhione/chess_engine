@@ -6,15 +6,10 @@
 #include <cstdint>
 #include <cctype>
 #include <sstream>
-#include <vector>
-#include <tuple>
 #include <algorithm>
 #include <cstddef>
-#include <unordered_map>
 
-#include "../piece/piece.hpp"
 #include "../coords/coords.hpp"
-
 #include "../piece/pieces.hpp" // bitmap utilities
 
 namespace chess {
@@ -201,81 +196,6 @@ public:
     }
 
 
-    bool move(Coords from, Coords to) noexcept {
-        if (!canMoveTo(from, to))
-            return false;
-
-        piece_id piece = static_cast<piece_id>(this->get(from));
-        const uint8_t pieceType = static_cast<uint8_t>(piece) & MASK_PIECE_TYPE;
-
-
-        // TODO: wrap this code inside a method and ask the user's input
-        if (pieceType == PAWN) {
-            const bool isWhite = (static_cast<uint8_t>(piece) & BLACK) == 0;
-            const bool reachingLast = (isWhite && to.rank == 7) || (!isWhite && to.rank == 0);
-            if (reachingLast) {
-                const uint8_t colorBit = static_cast<uint8_t>(piece) & BLACK;
-                piece_id promoted = static_cast<piece_id>(static_cast<uint8_t>(QUEEN) | colorBit);
-                this->set(to, promoted);
-                this->set(from, EMPTY);
-                this->setNextTurn();
-                return true;
-            }
-        }
-        else if (pieceType == KING) {
-            const bool isWhite = (static_cast<uint8_t>(piece) & BLACK) == 0;
-            if (isWhite) {
-                if (from.toString() == "e1" && to.toString() == "g1") { // White kingside castling
-                    // Move the rook as well
-                    this->set(Coords(5, 0), static_cast<piece_id>(ROOK | WHITE));
-                    this->set(Coords(7, 0), EMPTY);
-                }
-                else if (from.toString() == "e1" && to.toString() == "c1") { // White queenside castling
-                    // Move the rook as well
-                    this->set(Coords(3, 0), static_cast<piece_id>(ROOK | WHITE));
-                    this->set(Coords(0, 0), EMPTY);
-                }
-            }
-            else {
-                if (from.toString() == "e8" && to.toString() == "g8") { // Black kingside castling
-                    // Move the rook as well
-                    this->set(Coords(5, 7), static_cast<piece_id>(ROOK | BLACK));
-                    this->set(Coords(7, 7), EMPTY);
-                }
-                else if (from.toString() == "e8" && to.toString() == "c8") { // Black queenside castling
-                    // Move the rook as well
-                    this->set(Coords(3, 7), static_cast<piece_id>(ROOK | BLACK));
-                    this->set(Coords(0, 7), EMPTY);
-                }
-            }
-        }
-
-
-        this->set(to, piece);
-        this->set(from, EMPTY);
-        this->setNextTurn();
-        return true;
-    }
-
-    
-    bool canMoveTo(const Coords& from, const Coords& to) const noexcept {
-        std::vector<Coords> allLegalMoves = getAllLegalMoves(from);
-        return std::find(allLegalMoves.cbegin(), allLegalMoves.cend(), to) != allLegalMoves.cend();
-    }
-
-    std::vector<Coords> getAllLegalMoves(const Coords& from) const noexcept {
-        switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
-            case PAWN: return Pawn::getPawnMoves(*this, from);
-            case KNIGHT: return Knight::getKnightMoves(*this, from);
-            case BISHOP: return Bishop::getBishopMoves(*this, from);
-            case ROOK: return Rook::getRookMoves(*this, from);  // TODO implement castling
-            case QUEEN: return Queen::getQueenMoves(*this, from);
-            case KING: return King::getKingMoves(*this, from); // TODO implement castling, check, checkmate, stalemate
-        }
-        return {};
-    }
-
-
 
 
     //! GET MOVE BY BITBOARD
@@ -308,7 +228,7 @@ public:
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept {        
-        if (!canMoveTo(from, to))
+        if (!canMoveToBB(from, to))
             return false;
 
         piece_id piece = static_cast<piece_id>(this->get(from));
@@ -324,14 +244,15 @@ public:
     }
 
     bool canMoveToBB(const Coords& from, const Coords& to) const noexcept {
-        uint64_t bitMap = occupancy; // Get current bitboard
+        uint64_t bitMap;
 
         uint8_t fromIndex = from.toIndex();
         uint8_t toIndex = to.toIndex();
 
         switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
             case PAWN:
-                bitMap = pieces::getPawnAttacks(fromIndex, (this->getColor(from) == WHITE));
+                bitMap = pieces::getPawnAttacks(fromIndex, (this->getColor(from) == WHITE))
+                       | pieces::getPawnForwardPushes(fromIndex, (this->getColor(from) == WHITE), bitMap);
                 break;
             case KNIGHT:
                 bitMap = pieces::getKnightAttacks(fromIndex);
@@ -354,7 +275,6 @@ public:
 
         // se Coords to è dentro get_Attacks allora return true:
         return (bitMap & (1ULL << toIndex));
-
     }
 
 
@@ -577,53 +497,6 @@ public:
 
         return fen;
     }
-
-
-
-    /*
-public:
-    Board(); // Default constructor => starting position
-    Board(const std::string& fen);
-    Board(const Board& b) = default;
-
-    void createEmpty();
-
-    bool isCurrentPositionMate();
-    std::string getCurrentPositionFen();
-    
-    std::array<Piece, 64> board;
-
-    std::string getCurrentFen();
-    
-    bool getIsWhiteTurn() const {return this->isWhiteTurn;}
-    std::array<bool, 4> getCastling() const {return this->castle;}
-    chess::Coords getEnPassant() const {return this->enPassant;}
-    uint8_t getHalfMoveClock() const {return this->halfMoveClock;}
-    uint8_t getFullMoveClock() const {return this->fullMoveClock;}
-
-    static uint8_t fromCoordsToPosition(const Coords& coords);
-    static Coords fromPositionToCoords(const uint8_t position);
-
-    bool movePiece(const Piece& current, const Coords& target);
-
-    Board& operator=(const chess::Board& other);
-    Piece& operator[](std::size_t index);
-    const Piece& operator[](std::size_t index) const;
-
-    Piece& at(const uint8_t position);
-    const Piece& at(const uint8_t position) const;
-    
-private:
-    static const std::string STARTING_FEN;
-    
-    bool isWhiteTurn;
-    std::array<bool, 4> castle;
-    Coords enPassant;
-    uint8_t halfMoveClock;
-    uint8_t fullMoveClock;
-    
-    void fromFenToBoard(std::string fen);
-*/
 
 };
 
