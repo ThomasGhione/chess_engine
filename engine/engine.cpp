@@ -4,11 +4,10 @@
 namespace engine {
 
 Engine::Engine()
-  : globalEval(0)
+  : board(chess::Board())
+  , globalEval(0)
   , depth(0)
-{
-  this->board = chess::Board();
-}
+{}
 
 int64_t Engine::getMaterialDelta(chess::Board b) {
 
@@ -119,7 +118,7 @@ void Engine::takePlayerTurn() {
             continue;
         }
   
-        if (!this->board.move(fromCoords, toCoords)) {
+        if (!this->board.moveBB(fromCoords, toCoords)) {
             std::cout << "Invalid move. Please try again.";
             continue;
         }

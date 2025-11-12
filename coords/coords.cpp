@@ -26,10 +26,10 @@ Coords::Coords(const std::string& input)
     }
 
     if (this->isLetter(std::tolower(input[0]))) {
-        rank = std::tolower(input[0]) - 'a';
+        file = std::tolower(input[0]) - 'a';
     }
     if (this->isNumber(input[1])) {
-        file = input[1] - '1';
+        rank = input[1] - '1';
     }
 }
 
