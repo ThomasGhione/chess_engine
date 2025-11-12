@@ -3,17 +3,20 @@
 
 namespace engine {
 
-Engine::Engine(){
+Engine::Engine()
+  : globalEval(0)
+  , depth(0)
+{
   this->board = chess::Board();
 }
 
-int64_t Engine::getMaterialDelta(chess::Board b){
+int64_t Engine::getMaterialDelta(chess::Board b) {
 
-  constexpr auto coefficientPiece = [](uint8_t piece){
-    return 2*(piece >> 4)- 1; 
+  constexpr auto coefficientPiece = [](uint8_t piece) {
+    return 2 * (piece >> 4) - 1; 
   };
 
-  constexpr auto pieceValue = [](int8_t x){
+  constexpr auto pieceValue = [](int8_t x) {
       return static_cast<int64_t>(x * (-1267.0/60.0 +
           x * (3445.0/72.0 +
           x * (-881.0/24.0 +
@@ -25,7 +28,7 @@ int64_t Engine::getMaterialDelta(chess::Board b){
 
   int64_t delta = 0;
   const uint8_t MAX_INDEX = 64;
-  for(uint8_t i = 0; i < MAX_INDEX; i++){
+  for(uint8_t i = 0; i < MAX_INDEX; i++) {
     uint8_t piece = b.get( i % 8, i/8);
 
     delta += coefficientPiece(piece) * pieceValue(piece);
@@ -51,7 +54,7 @@ void Engine::playGameVsHuman() {
   }
 }
 
-bool Engine::isMate(){
+bool Engine::isMate() {
   // return this->board.isCurrentPositionMate();
   return false;
 }
@@ -127,7 +130,7 @@ void Engine::takePlayerTurn() {
     return;
 }
 
-
+/*
 void Engine::saveGame() {
     if (std::filesystem::exists("save.txt")) {
         char ans;
@@ -145,7 +148,7 @@ void Engine::saveGame() {
     std::ofstream SaveFile("saves/save.txt");
     SaveFile << board.getCurrentFen(); 
     SaveFile.close();
-}
+} */
 
 
 void Engine::playGameVsEngine(bool isWhite) {}
@@ -153,7 +156,7 @@ void Engine::playGameVsEngine(bool isWhite) {}
 /*
 void Engine::playGameVsEngine(bool isWhite) {
 	while (!isMate()) {
-	if(isWhite){
+	if(isWhite) {
 	  std::cout << "It's your turn: ";
 	  takePlayerTurn();
 	  std::cout << "Engine's thinking... ";
@@ -167,60 +170,6 @@ void Engine::playGameVsEngine(bool isWhite) {
   }
 
 }
-
-
-void Engine::loadGame(bool isWithPlayer) {
-    std::ifstream SaveFile("saves/save.txt");
-    if (!SaveFile.is_open()) {
-        // TODO Aggiungere messaggio di errore
-        return;
-    }
-
-    std::string line;
-    
-    if (std::getline(SaveFile, line)) {
-        board = chess::Board(line); 
-    } 
-
-	// TODO aggiungere controlli/eccezioni per il fen
-	
-	SaveFile.close();
-
-	if (isWithPlayer) {
-		this->playGameVsHuman();
-	} else {
-		std::cout << "Select your color:\n1. White\n2. Black\n";
-		int choice;
-		std::cin >> choice;
-		if (choice == 1) {
-			this->isPlayerWhite = true;
-		} else {
-			this->isPlayerWhite = false;
-		}
-
-		this->playGameVsEngine(this->isPlayerWhite);
-	}
-
-}
 */
 
-}
-/*
-void Engine::takePlayerTurn() {
-    // reading input
-    std::cout << "Insert the coords: ";
-    char fromCoordsFile, fromCoordsRank, toFile, toRank;
-    std::cin >> fromCoordsFile >> fromCoordsRank >> toFile >> toRank;
-    
-    // setting variables up
-    // TOBE FIXED: Stiamo convertendo un char in un numero uint8_t
-    // Non mi pare converta '0' in 0
-    chess::Coords currentCoords = {static_cast<uint8_t>(fromCoordsFile - '0'), static_cast<uint8_t>(fromCoordsRank - 'a')};
-    chess::Coords targetCoords = {static_cast<uint8_t>(toFile - '0'), static_cast<uint8_t>(toRank - 'a')};
-    chess::Piece pieceToMove = board[board.fromCoordsCoordsToPosition(currentCoords)];
-
-    // moving the piece 
-    board.movePiece(pieceToMove, targetCoords);
-
-}
-*/
+} // namespace engine

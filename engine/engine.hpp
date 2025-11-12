@@ -23,35 +23,30 @@ class Engine final {
 //using PieceMovesMap = std::unordered_map<chess::Piece, std::vector<chess::Coords>>;
     
 public:
-  Engine();
+    Engine();
 
-  chess::Board board;
-  bool isPlayerWhite;
+    chess::Board board;
+    bool isPlayerWhite;
 
+    int64_t globalEval;
+    uint64_t depth;
 
-  void playGameVsHuman();
-
-  void saveGame();
-  //void loadGame(bool isWithPlayer);
-
-  //void playGame();
-  void playGameVsEngine(bool isWhite); // ciclo prinipale
+    void playGameVsHuman();
+    void playGameVsEngine(bool isWhite); // ciclo prinipale
   
-  //double eval;
+
+    void search();
+    int64_t evaluate(); 
 
 
 private:
 
-  // PieceMovesMap legalMoves;
-  //std::unordered_map<chess::Piece, std::vector<chess::Coords>> getLegalMoves();
+    void takePlayerTurn();
+    bool isMate();
+    int64_t getMaterialDelta(chess::Board b);
 
-  void takePlayerTurn();
-  bool isMate();
-  int64_t getMaterialDelta(chess::Board b);
-
-  //void takeEngineTurn(); // ...mossa dopo muove l'engine
-  //double evaluate();
-  //bool isStalemate();
+    //void takeEngineTurn(); // ...mossa dopo muove l'engine
+    //bool isStalemate();
 
 };
 }
