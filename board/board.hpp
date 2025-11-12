@@ -179,7 +179,7 @@ public:
     //! PER DEBUG
     static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
     static size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
-
+    
     // Iterator support
     auto begin() noexcept { return chessboard.begin(); }
     auto end() noexcept { return chessboard.end(); }
@@ -197,6 +197,11 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
+    void updateChessboard(const Coords& from, const Coords& to) noexcept {
+        piece_id piece = static_cast<piece_id>(this->get(from));
+        this->set(to, piece);
+        this->set(from, EMPTY);
+    }
 
 
 
@@ -230,23 +235,13 @@ public:
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept {   
-        
-
 #ifdef DEBUG
         auto chrono_start = std::chrono::high_resolution_clock::now();
 #endif
+        if (!canMoveToBB(from, to)) return false;
 
-        if (!canMoveToBB(from, to))
-            return false;
-
-        piece_id piece = static_cast<piece_id>(this->get(from));
-
-        this->set(to, piece);
-        this->set(from, EMPTY);
-
-        // updateOccupancyBB();
+        updateChessboard(from, to);
         fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
-
         this->setNextTurn();
 
 #ifdef DEBUG
@@ -254,7 +249,6 @@ public:
         std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
         std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
 #endif
-
         return true;
     }
 

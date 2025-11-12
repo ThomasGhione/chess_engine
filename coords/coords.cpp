@@ -65,7 +65,7 @@ bool Coords::update(const uint8_t f, const uint8_t r) {
 
 
 bool Coords::isValid(uint8_t x) noexcept {
-    return (x < 64);
+    return (x < 8);
 }
 
 bool Coords::isLetter(char c) noexcept {
@@ -77,7 +77,7 @@ bool Coords::isNumber(char c) noexcept {
 }
 
 bool Coords::isInBounds(const Coords& coords) noexcept {
-    return (coords.file < 8) && (coords.rank < 8);
+    return (isValid(coords.file) && isValid(coords.rank));
 }
 
 std::string Coords::toString() const {

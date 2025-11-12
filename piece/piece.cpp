@@ -36,15 +36,6 @@ U64 initRookBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squ
 U64 initQueenBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
 U64 initKingBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
 
-// Placeholder: se il boardBitboard codifica già i pezzi, qui si filtrerebbe.
-U64 getPieceBitboard(uint8_t piece, const U64& boardBitboard) noexcept {
-	/*
-    // filter by piecetype by doing piece | MASK_PIECE:
-    U64 pieceMask = static_cast<U64>(piece) | chess::Board::MASK_PIECE;
-    return boardBitboard & pieceMask;
-    */
-    return boardBitboard;
-}
 
 // ------------------------------------------------------------
 // Knight attacks
@@ -79,7 +70,8 @@ U64 getKingAttacks(int16_t squareIndex) noexcept {
 
 	for (int16_t deltaFile = -1; deltaFile <= 1; ++deltaFile) {
 		for (int16_t deltaRank = -1; deltaRank <= 1; ++deltaRank) {
-			if (deltaFile == 0 && deltaRank == 0) continue;
+			if (deltaFile == 0 && deltaRank == 0)
+				continue;
 			int16_t newFile = file + deltaFile, newRank = rank + deltaRank;
 			if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
 				attackBitboard |= ONE << (newRank * 8 + newFile);
@@ -100,8 +92,12 @@ U64 getPawnAttacks(int16_t squareIndex, bool isWhite) noexcept {
 	int16_t newRank = rank + forwardDir;
 	
 	if (newRank >= 0 && newRank < 8) {
-		if (file - 1 >= 0) attackBitboard |= ONE << (newRank * 8 + (file - 1));
-		if (file + 1 < 8)  attackBitboard |= ONE << (newRank * 8 + (file + 1));
+		if (file - 1 >= 0) {
+			attackBitboard |= ONE << (newRank * 8 + (file - 1));
+		}
+		if (file + 1 < 8) {
+			attackBitboard |= ONE << (newRank * 8 + (file + 1));
+		}
 	}
 	return attackBitboard;
 }
@@ -139,7 +135,6 @@ inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank,
 	U64 rayBitboard = 0ULL;
 	file += deltaFile;
   	rank += deltaRank;
-	
 /* 
 TODO pls someone test this :(
 #if defined(__GNUC__) || defined(__clang__)
@@ -148,15 +143,9 @@ TODO pls someone test this :(
     #pragma loop(unroll)
 #endif
 */
-	while (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
-		int16_t square = (rank * 8) + file;
+	for (int16_t square = (rank * 8) + file; (file >= 0 && file < 8 && rank >= 0 && rank < 8) && !(occupancy & (ONE << square)); file += deltaFile, rank += deltaRank) {
+		square = (rank * 8) + file;
 		rayBitboard |= (ONE << square);
-		
-    if (occupancy & (ONE << square)){
-      break; // blocked by piece
-    }
-		file += deltaFile;
-        rank += deltaRank;
 	}
 	return rayBitboard;
 }
