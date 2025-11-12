@@ -155,12 +155,8 @@ public:
     // void setCastle(uint8_t value) noexcept { this->castle = value; }
     // void setHasMoved(uint8_t value) noexcept { this->hasMoved = value; }
 
-    constexpr uint8_t coordsToIndex(const Coords& coords) const noexcept {
-        return coords.rank * 8 + coords.file;
-    }
-
     void setNextTurn() noexcept {
-        activeColor = (activeColor == WHITE) ? BLACK : WHITE;
+        this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
     }
 
     //! Operator overloads
@@ -306,19 +302,22 @@ public:
         this->occupancy = this->getPiecesBitMap();
     }
 
-    bool moveBB(const Coords& from, const Coords& to, const piece_id piece) noexcept {        
+    void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
+        occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
+        occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+    }
+
+    bool moveBB(const Coords& from, const Coords& to) noexcept {        
         if (!canMoveTo(from, to))
             return false;
+
+        piece_id piece = static_cast<piece_id>(this->get(from));
 
         this->set(to, piece);
         this->set(from, EMPTY);
 
-        updateOccupancyBB();
-        // manual update occupancy:
-        // uint8_t fromIndex = from.toIndex();
-        // uint8_t toIndex = to.toIndex();
-        // occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
-        // occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+        // updateOccupancyBB();
+        fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
 
         this->setNextTurn();
         return true;
