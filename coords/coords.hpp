@@ -24,10 +24,10 @@ public:
     bool update(const Coords& other);
     bool update(const uint8_t f, const uint8_t r);
 
-    static bool isValid(uint8_t x);
-    static bool isLetter(char c);
-    static bool isNumber(char c);
-    static bool isInBounds(const Coords& coords);
+    static bool isValid(uint8_t x) noexcept;
+    static bool isLetter(char c) noexcept;
+    static bool isNumber(char c) noexcept;
+    static bool isInBounds(const Coords& coords) noexcept;
 
     std::string toString() const;
     uint8_t toIndex() const noexcept;
