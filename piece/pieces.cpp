@@ -1,10 +1,6 @@
 #include "pieces.hpp"
-#include "../coords/coords.hpp"
-#include "../board/board.hpp"
-
 
 // Se servono ottimizzazioni future: sostituire con magic bitboards.
-
 namespace pieces {
 
 static constexpr U64 ONE = 1ULL; // 0x0000000000000001
@@ -139,10 +135,10 @@ U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexc
 // ------------------------------------------------------------
 // Sliding piece helpers
 // ------------------------------------------------------------
-static inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
+inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
 	U64 rayBitboard = 0ULL;
-	file += deltaFile; 
-    rank += deltaRank;
+	file += deltaFile;
+  rank += deltaRank;
 	
 /* 
 TODO pls someone test this :(
@@ -156,9 +152,9 @@ TODO pls someone test this :(
 		int16_t square = (rank * 8) + file;
 		rayBitboard |= (ONE << square);
 		
-        if (occupancy & (ONE << square))
-            break; // blocked by piece
-
+    if (occupancy & (ONE << square)){
+      break; // blocked by piece
+    }
 		file += deltaFile;
         rank += deltaRank;
 	}
@@ -191,7 +187,4 @@ U64 getQueenAttacks(int16_t squareIndex, U64 occupancy) noexcept {
 	return getBishopAttacks(squareIndex, occupancy) | 
            getRookAttacks(squareIndex, occupancy);
 }
-
-
-
-}
+} // namespace pieces

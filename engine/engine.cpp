@@ -151,7 +151,17 @@ void Engine::saveGame() {
 } */
 
 
-void Engine::playGameVsEngine(bool isWhite) {}
+void Engine::playGameVsEngine(bool isWhite) {
+  std::string output = "In questo momento non è possibile giocare come ";
+  if(isWhite){
+    output += "bianco";
+  }else{
+    output += "nero";
+  }
+  output += " sarà una futura possibilità.\n";
+
+  std::cout << output;
+}
 
 /*
 void Engine::playGameVsEngine(bool isWhite) {

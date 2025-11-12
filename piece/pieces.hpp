@@ -4,9 +4,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "../coords/coords.hpp"
-// #include "../board/board.hpp"
-
 namespace pieces {
 
 using U64 = uint64_t;
@@ -44,6 +41,7 @@ U64 getRookAttacks(int16_t squareIndex, U64 occupancy) noexcept;
 U64 getQueenAttacks(int16_t squareIndex, U64 occupancy) noexcept;
 
 // ==================== UTILS ====================
+inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy);
 inline int16_t fileOf(int16_t sq) noexcept { return static_cast<int16_t>(sq % 8); }
 inline int16_t rankOf(int16_t sq) noexcept { return static_cast<int16_t>(sq / 8); }
 std::vector<U64> bitboardToIndices(U64 bb) noexcept;
