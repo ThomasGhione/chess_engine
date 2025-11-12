@@ -12,6 +12,12 @@
 #include "../coords/coords.hpp"
 #include "../piece/pieces.hpp" // bitmap utilities
 
+
+#ifdef DEBUG
+#include <chrono>
+#include <iostream>
+#endif
+
 namespace chess {
 
 using board = std::array<uint32_t, 8>;
@@ -51,8 +57,8 @@ private:
     // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
 
     std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
-    uint8_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
-    uint8_t fullMoveClock = 1; // Tracks the number of full moves in the game
+    uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
+    uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
     uint8_t activeColor = WHITE; // Tracks the active color (white or black)
 
 
@@ -151,7 +157,14 @@ public:
     // void setHasMoved(uint8_t value) noexcept { this->hasMoved = value; }
 
     void setNextTurn() noexcept {
-        this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
+        // this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
+        if (this->activeColor == WHITE) {
+            this->activeColor = BLACK;
+        } else {
+            this->activeColor = WHITE;
+            this->fullMoveClock++;
+        }
+        this->halfMoveClock++;
     }
 
     //! Operator overloads
@@ -162,21 +175,10 @@ public:
     bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
     bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 
-    /*
-    constexpr const std::array<uint32_t, 8>& chessboard() const noexcept {
-        return chessboard;
-    }
-    
-    void chessboard(const std::array<uint32_t, 8>& chessboard) noexcept {
-        chessboard = chessboard;
-    }*/
-     
-    void clear() noexcept { 
-        chessboard.fill(0); 
-    }
-    
+
     //! PER DEBUG
-    static constexpr size_t size() noexcept { return sizeof(chessboard); } // 32 byte
+    static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
+    static size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
 
     // Iterator support
     auto begin() noexcept { return chessboard.begin(); }
@@ -227,7 +229,13 @@ public:
         occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
     }
 
-    bool moveBB(const Coords& from, const Coords& to) noexcept {        
+    bool moveBB(const Coords& from, const Coords& to) noexcept {   
+        
+
+#ifdef DEBUG
+        auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif
+
         if (!canMoveToBB(from, to))
             return false;
 
@@ -240,6 +248,13 @@ public:
         fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
 
         this->setNextTurn();
+
+#ifdef DEBUG
+        auto chrono_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
+        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
+#endif
+
         return true;
     }
 
