@@ -138,7 +138,7 @@ U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexc
 inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
 	U64 rayBitboard = 0ULL;
 	file += deltaFile;
-  rank += deltaRank;
+  	rank += deltaRank;
 	
 /* 
 TODO pls someone test this :(

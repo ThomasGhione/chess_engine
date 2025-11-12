@@ -244,37 +244,53 @@ public:
     }
 
     bool canMoveToBB(const Coords& from, const Coords& to) const noexcept {
-        uint64_t bitMap;
+        uint64_t bitMap = 0ULL;
 
-        uint8_t fromIndex = from.toIndex();
-        uint8_t toIndex = to.toIndex();
+        const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
 
-        switch (this->get(from) & this->MASK_PIECE_TYPE) { // Mask to get piece type only
-            case PAWN:
-                bitMap = pieces::getPawnAttacks(fromIndex, (this->getColor(from) == WHITE))
-                       | pieces::getPawnForwardPushes(fromIndex, (this->getColor(from) == WHITE), bitMap);
-                break;
+        const uint8_t fromIndex = from.toIndex();
+        const uint8_t toIndex = to.toIndex();
+        
+        const uint64_t toBit = (1ULL << toIndex);
+        const uint64_t occ = this->occupancy; // current board occupancy
+
+        switch (fromType) { // piece type only
+            case PAWN: {
+                const bool isWhite = (this->getColor(from) == WHITE);
+                const uint64_t attacks = pieces::getPawnAttacks(fromIndex, isWhite);
+                const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occ);
+
+                // Diagonal moves are captures only: must land on occupied square
+                if (attacks & toBit) {
+                    return (occ & toBit) != 0ULL;
+                }
+                // Forward pushes must land on empty squares (generator already blocks through pieces)
+                if (pushes & toBit) {
+                    return (occ & toBit) == 0ULL;
+                }
+                return false;
+            }
             case KNIGHT:
                 bitMap = pieces::getKnightAttacks(fromIndex);
                 break;
             case BISHOP:
-                bitMap = pieces::getBishopAttacks(fromIndex, bitMap);
+                bitMap = pieces::getBishopAttacks(fromIndex, occ);
                 break;
             case ROOK:
-                bitMap = pieces::getRookAttacks(fromIndex, bitMap);
+                bitMap = pieces::getRookAttacks(fromIndex, occ);
                 break;
             case QUEEN:
-                bitMap = pieces::getQueenAttacks(fromIndex, bitMap);
+                bitMap = pieces::getQueenAttacks(fromIndex, occ);
                 break;
             case KING:
                 bitMap = pieces::getKingAttacks(fromIndex);
                 break;
             default:
-                break;
+                return false;
         }
 
-        // se Coords to è dentro get_Attacks allora return true:
-        return (bitMap & (1ULL << toIndex));
+        // For non-pawns, rely on generated attacks only
+        return (bitMap & toBit) != 0ULL;
     }
 
 
