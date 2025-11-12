@@ -1,4 +1,4 @@
-#include "pieces.hpp"
+#include "piece.hpp"
 
 // Se servono ottimizzazioni future: sostituire con magic bitboards.
 namespace pieces {

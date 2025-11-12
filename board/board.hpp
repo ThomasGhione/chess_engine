@@ -10,7 +10,7 @@
 #include <cstddef>
 
 #include "../coords/coords.hpp"
-#include "../piece/pieces.hpp" // bitmap utilities
+#include "../piece/piece.hpp" // bitmap utilities
 
 
 #ifdef DEBUG
