@@ -473,20 +473,16 @@ public:
                     legal = true;
                 }
                 if (!legal) return false;
-                // If in check or double check restrictions apply, simulate move to ensure king safety
-                if (inChk) {
-                    // Double-check already filtered earlier (non-king moves forbidden), but keep safety simulation
-                    Board copy = *this;
-                    // Perform move on copy
-                    copy.updateChessboard(from, to);
-                    if (isEnPassant) {
-                        int8_t dir = isWhite ? 1 : -1;
-                        Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
-                        copy.set(captured, EMPTY);
-                    }
-                    copy.updateOccupancyBB();
-                    if (copy.inCheck(movingColor)) return false; // move does not resolve check
+                // Always ensure move doesn't leave king in check (handles pins too)
+                Board copy = *this;
+                copy.updateChessboard(from, to);
+                if (isEnPassant) {
+                    int8_t dir = isWhite ? 1 : -1;
+                    Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
+                    copy.set(captured, EMPTY);
                 }
+                copy.updateOccupancyBB();
+                if (copy.inCheck(movingColor)) return false;
                 return true;
             }
             case KNIGHT:
@@ -565,13 +561,12 @@ public:
         bool baseLegal = (bitMap & toBit) != 0ULL;
         if (!baseLegal) return false;
 
-        // King move already prevented into attacked square. For other pieces while in single check, ensure move resolves check.
-        if (inChk && fromType != KING) {
-            // Simulate move and test if king still in check
+        // King move already prevented into attacked square. For any non-king move, ensure king safety (pins and check resolution)
+        if (fromType != KING) {
             Board copy = *this;
             copy.updateChessboard(from, to);
             copy.updateOccupancyBB();
-            if (copy.inCheck(movingColor)) return false; // still in check
+            if (copy.inCheck(movingColor)) return false;
         }
         return true;
     }
