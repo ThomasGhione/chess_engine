@@ -8,12 +8,12 @@ PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -DDEBUG -O2 -o "chess"
 #Directory to be added:
 PRODPATH = ./engine/*.cpp ./coords/*.cpp ./printer/*.cpp ./driver/*.cpp ./piece/*.cpp ./gamestatus/*.cpp
 
-TESTPATH = ./tests/*.cpp
+TESTPATH = ./tests/*.cpp ./coords/test/*.cpp ./board/test/*.cpp
 
 CPPANALYZE = cppcheck
 CPPCHEACKFLAGS = --enable=all --verbose --suppress=missingIncludeSystem
 
-prod: 
+prod:
 	$(CXX) $(PRODFLAGS) main.cpp $(PRODPATH)
 
 debug:
@@ -24,10 +24,9 @@ test:
 	mv outputTest tests/outputTest
 
 analyze:
-	$(CPPANALYZE) main.cpp $(PRODPATH) $(CPPCHEACKFLAGS)  
+	$(CPPANALYZE) main.cpp $(PRODPATH) $(CPPCHEACKFLAGS)
 
-cls: 
+cls:
 	rm -f chess
 	rm -f tests/outputTest
 	rm -f doc/main-doc.{aux,log,pdf,toc}
-

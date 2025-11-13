@@ -22,10 +22,7 @@ namespace chess {
 
 using board = std::array<uint32_t, 8>;
 
-
-
 class Board {
-
 public:
 
     static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
@@ -47,30 +44,6 @@ public:
 
     // ENPASSANT = 0x7  // 0111
     };
-
-private:
-    board chessboard; // 8 * 32 bit = 256 bit = 32 byte
-
-    std::vector<bool> castle = {true, true, true, true}; // KQkq
-    std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
-    // uint8_t castle = 0x0F; // 4 bit for castling rights (KQkq) // 0000 1111 = all castling rights available // 1111=0x0F
-    // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
-
-    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
-    uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
-    uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
-    uint8_t activeColor = WHITE; // Tracks the active color (white or black)
-
-
-
-    // std::unordered_map<std::tuple<piece_id, Coords>, std::vector<chess::Coords>> legalMoves; //? maybe there's a better way?
-
-    std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-
-    uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
-    
-    
 
 public:
 
@@ -770,18 +743,6 @@ public:
         return !inCheck(color) && !hasAnyLegalMove(color);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
     void fromFenToBoard(const std::string& fen) {
         std::array<uint32_t, 8> parsedBoard{};
         std::vector<bool> parsedCastle(4, false);
@@ -991,7 +952,23 @@ public:
         return fen;
     }
 
-};
+private:
+    board chessboard; // 8 * 32 bit = 256 bit = 32 byte
+
+    std::vector<bool> castle = {true, true, true, true}; // KQkq
+    std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
+    // uint8_t castle = 0x0F; // 4 bit for castling rights (KQkq) // 0000 1111 = all castling rights available // 1111=0x0F
+    // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
+
+    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
+    uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
+    uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
+    uint8_t activeColor = WHITE; // Tracks the active color (white or black)
+    std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+
+    uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
+}; // Class Board
 
 } // namespace chess
 
