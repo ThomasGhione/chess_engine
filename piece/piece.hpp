@@ -11,6 +11,8 @@ using U64 = uint64_t;
 // ==================== ATTACK MAPS (color-agnostic salvo pedone) ====================
 U64 getPawnAttacks(int16_t squareIndex, bool isWhite) noexcept;   // solo catture diagonali
 U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexcept; // avanzamenti (1 o 2 caselle se libere)
+// Returns a bitboard of pawn squares (of color isWhite) that attack the target square
+U64 getPawnAttackersTo(int16_t targetIndex, bool isWhite) noexcept;
 U64 getKnightAttacks(int16_t squareIndex) noexcept;
 U64 getKingAttacks(int16_t squareIndex) noexcept;
 

@@ -1,6 +1,11 @@
 #include "engine.hpp"
 #include "../coords/coords.hpp"
 
+#ifdef DEBUG
+#include <chrono>
+#include <iostream>
+#endif
+
 namespace engine {
 
 Engine::Engine()
@@ -158,11 +163,18 @@ void Engine::takePlayerTurn() {
             std::cout << "You cannot move to a square occupied by your own piece.\n";
             continue;
         }
-  
+#ifdef DEBUG
+        auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif  
         if (!this->board.moveBB(fromCoords, toCoords)) {
             std::cout << "Invalid move. Please try again.";
             continue;
         }
+#ifdef DEBUG
+        auto chrono_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
+        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
+#endif
       
         // After successful move, detect terminal state for next side to move
         uint8_t nextColor = this->board.getActiveColor();

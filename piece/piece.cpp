@@ -119,6 +119,19 @@ U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexc
 	return pushBitboard;
 }
 
+// For a target square, return bitboard of pawn squares (of color isWhite) that would attack the target
+U64 getPawnAttackersTo(int16_t targetIndex, bool isWhite) noexcept {
+	if (targetIndex < 0 || targetIndex >= 64) return 0ULL;
+	int16_t tf = fileOf(targetIndex), tr = rankOf(targetIndex);
+	U64 attackers = 0ULL;
+	int16_t fromRank = tr - (isWhite ? 1 : -1); // pawns that attack target are located one rank behind target depending on their color
+	if (fromRank >= 0 && fromRank < 8) {
+		if (tf - 1 >= 0) attackers |= ONE << (fromRank * 8 + (tf - 1));
+		if (tf + 1 < 8)  attackers |= ONE << (fromRank * 8 + (tf + 1));
+	}
+	return attackers;
+}
+
 // ------------------------------------------------------------
 // Sliding piece helpers
 // ------------------------------------------------------------

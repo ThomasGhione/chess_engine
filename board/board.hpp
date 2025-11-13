@@ -13,11 +13,6 @@
 #include "../piece/piece.hpp" // bitmap utilities
 
 
-#ifdef DEBUG
-#include <chrono>
-#include <iostream>
-#endif
-
 namespace chess {
 
 using board = std::array<uint32_t, 8>;
@@ -196,6 +191,27 @@ public:
 
     void updateOccupancyBB() noexcept {
         this->occupancy = this->getPiecesBitMap();
+        // Rebuild per-piece bitboards
+        pawns_bb = {0ULL, 0ULL}; knights_bb = {0ULL, 0ULL}; bishops_bb = {0ULL, 0ULL};
+        rooks_bb = {0ULL, 0ULL}; queens_bb = {0ULL, 0ULL}; kings_bb = {0ULL, 0ULL};
+        for (uint8_t idx = 0; idx < 64; ++idx) {
+            uint8_t r = idx / 8;
+            uint8_t f = idx % 8;
+            uint8_t p = this->get(r, f);
+            if ((p & MASK_PIECE_TYPE) == EMPTY) continue;
+            uint8_t color = (p & MASK_COLOR) ? 1 : 0; // BLACK=1, WHITE=0
+            uint64_t bit = (1ULL << idx);
+            uint8_t pt = p & MASK_PIECE_TYPE;
+            switch (pt) {
+                case PAWN:   pawns_bb[color] |= bit; break;
+                case KNIGHT: knights_bb[color] |= bit; break;
+                case BISHOP: bishops_bb[color] |= bit; break;
+                case ROOK:   rooks_bb[color] |= bit; break;
+                case QUEEN:  queens_bb[color] |= bit; break;
+                case KING:   kings_bb[color] |= bit; break;
+                default: break;
+            }
+        }
     }
 
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
@@ -204,9 +220,6 @@ public:
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept {   
-#ifdef DEBUG
-        auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif
         if (!canMoveToBB(from, to)) return false;
 
         const uint8_t moving = this->get(from);
@@ -233,6 +246,9 @@ public:
         // Move the piece
         this->updateChessboard(from, to);
         this->fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
+
+        // Ensure per-piece bitboards are updated to reflect the move (including EP/rook changes handled above)
+        this->updateOccupancyBB();
 
         // Castling rook move if king moved two squares on same rank
         if (movingType == KING && from.rank == to.rank) {
@@ -302,12 +318,6 @@ public:
         }
 
         this->setNextTurn();
-
-#ifdef DEBUG
-        auto chrono_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
-#endif
         return true;
     }
 
@@ -541,90 +551,25 @@ public:
     // ------------------------------------------------------------
     // Returns true if square 'targetIndex' is attacked by 'byColor'
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
+        // Use per-piece bitboards to test attacks quickly
         const uint64_t occ = this->occupancy;
-        const uint8_t tFile = static_cast<uint8_t>(targetIndex % 8);
-        const uint8_t tRank = static_cast<uint8_t>(targetIndex / 8);
-
-        auto pieceAt = [&](uint8_t idx) -> uint8_t {
-            const uint8_t r = static_cast<uint8_t>(idx / 8);
-            const uint8_t f = static_cast<uint8_t>(idx % 8);
-            return this->get(r, f);
-        };
-
-        auto isColor = [&](uint8_t p, uint8_t color) -> bool {
-            if (((p & MASK_PIECE_TYPE) == EMPTY)) return false;
-            return ((p & MASK_COLOR) == color);
-        };
-
-        // Pawn (reverse capture squares)
-        if (byColor == WHITE) {
-            if (tRank > 0) {
-                if (tFile > 0) {
-                    const uint8_t p = this->get(tRank - 1, tFile - 1);
-                    if (((p & MASK_PIECE_TYPE) == PAWN) && isColor(p, WHITE)) return true;
-                }
-                if (tFile < 7) {
-                    const uint8_t p = this->get(tRank - 1, tFile + 1);
-                    if (((p & MASK_PIECE_TYPE) == PAWN) && isColor(p, WHITE)) return true;
-                }
-            }
-        } else { // BLACK
-            if (tRank < 7) {
-                if (tFile > 0) {
-                    const uint8_t p = this->get(tRank + 1, tFile - 1);
-                    if (((p & MASK_PIECE_TYPE) == PAWN) && isColor(p, BLACK)) return true;
-                }
-                if (tFile < 7) {
-                    const uint8_t p = this->get(tRank + 1, tFile + 1);
-                    if (((p & MASK_PIECE_TYPE) == PAWN) && isColor(p, BLACK)) return true;
-                }
-            }
-        }
-
-        // Knights (reverse pattern)
-        {
-            uint64_t mask = pieces::getKnightAttacks(static_cast<int16_t>(targetIndex));
-            for (uint8_t i = 0; i < 64; ++i) {
-                if (mask & (1ULL << i)) {
-                    const uint8_t p = pieceAt(i);
-                    if (((p & MASK_PIECE_TYPE) == KNIGHT) && isColor(p, byColor)) return true;
-                }
-            }
-        }
-
-        // Kings (adjacent squares)
-        {
-            uint64_t mask = pieces::getKingAttacks(static_cast<int16_t>(targetIndex));
-            for (uint8_t i = 0; i < 64; ++i) {
-                if (mask & (1ULL << i)) {
-                    const uint8_t p = pieceAt(i);
-                    if (((p & MASK_PIECE_TYPE) == KING) && isColor(p, byColor)) return true;
-                }
-            }
-        }
-
-        // Sliding pieces: rook/queen
+        const bool byWhite = (byColor == WHITE);
+        // Pawns: any pawn of byColor that attacks target?
+        uint64_t pawnAttackers = pieces::getPawnAttackersTo(static_cast<int16_t>(targetIndex), byWhite);
+        if (pawnAttackers & (byWhite ? pawns_bb[0] : pawns_bb[1])) return true;
+        // Knights
+        if (pieces::getKnightAttacks(static_cast<int16_t>(targetIndex)) & (byWhite ? knights_bb[0] : knights_bb[1])) return true;
+        // Kings (adjacent)
+        if (pieces::getKingAttacks(static_cast<int16_t>(targetIndex)) & (byWhite ? kings_bb[0] : kings_bb[1])) return true;
+        // Sliding: rook/queen
         {
             uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(targetIndex), occ);
-            for (uint8_t i = 0; i < 64; ++i) {
-                if (mask & (1ULL << i)) {
-                    const uint8_t p = pieceAt(i);
-                    const uint8_t pt = (p & MASK_PIECE_TYPE);
-                    if ((pt == ROOK || pt == QUEEN) && isColor(p, byColor)) return true;
-                }
-            }
+            if (mask & (byWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]))) return true;
         }
-
-        // Sliding pieces: bishop/queen
+        // Sliding: bishop/queen
         {
             uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(targetIndex), occ);
-            for (uint8_t i = 0; i < 64; ++i) {
-                if (mask & (1ULL << i)) {
-                    const uint8_t p = pieceAt(i);
-                    const uint8_t pt = (p & MASK_PIECE_TYPE);
-                    if ((pt == BISHOP || pt == QUEEN) && isColor(p, byColor)) return true;
-                }
-            }
+            if (mask & (byWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]))) return true;
         }
 
         return false;
@@ -954,6 +899,14 @@ public:
 
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
+
+    // Per-piece, per-color bitboards to accelerate move generation and attack tests
+    std::array<uint64_t, 2> pawns_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> bishops_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> rooks_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> queens_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> kings_bb = {0ULL, 0ULL};
 
     std::vector<bool> castle = {true, true, true, true}; // KQkq
     std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
