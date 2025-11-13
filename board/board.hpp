@@ -398,7 +398,7 @@ public:
 
         // Detect check state and attackers for restrictions (double check logic)
         bool inChk = this->inCheck(movingColor);
-        int attackerCount = 0;
+        uint8_t attackerCount = 0;
         uint8_t kingIndex = 64; // invalid sentinel
         if (inChk) {
             // Locate king and count attackers
@@ -414,8 +414,7 @@ public:
                 // brute force count
                 for (uint8_t idx = 0; idx < 64; ++idx) {
                     uint8_t pc = this->get(idx / 8, idx % 8);
-                    if ((pc & MASK_PIECE_TYPE) == EMPTY) continue;
-                    if ((pc & MASK_COLOR) != oppColor) continue;
+                    if ((pc & MASK_PIECE_TYPE) == EMPTY || (pc & MASK_COLOR) != oppColor) continue;
                     // Attack test: reuse isSquareAttacked logic by temporarily targeting piece square? Instead generate attacks of pc and see if kingIndex reachable.
                     // Simplify: call isSquareAttacked(kingIndex, oppColor) only once -> if true attackerCount>=1.
                     // For double-check detection we approximate by scanning every potential removal: more expensive; keep simple: attackerCount= isSquareAttacked?1:0.
@@ -424,15 +423,15 @@ public:
                 // Build occupancy copy and test each enemy piece separately.
                 for (uint8_t idx = 0; idx < 64; ++idx) {
                     uint8_t pc = this->get(idx / 8, idx % 8);
-                    if ((pc & MASK_PIECE_TYPE) == EMPTY) continue;
-                    if ((pc & MASK_COLOR) != oppColor) continue;
+                    if ((pc & MASK_PIECE_TYPE) == EMPTY || (pc & MASK_COLOR) != oppColor) continue;
                     uint8_t pt = pc & MASK_PIECE_TYPE;
                     uint64_t atkMask = 0ULL;
                     switch (pt) {
                         case PAWN: {
                             bool isWhiteEnemy = (pc & MASK_COLOR) == WHITE;
                             atkMask = pieces::getPawnAttacks(idx, isWhiteEnemy);
-                            break; }
+                            break; 
+                        }
                         case KNIGHT: atkMask = pieces::getKnightAttacks(idx); break;
                         case BISHOP: atkMask = pieces::getBishopAttacks(idx, occ); break;
                         case ROOK:   atkMask = pieces::getRookAttacks(idx, occ); break;
@@ -446,9 +445,8 @@ public:
         }
 
         // Double check: only king moves allowed
-        if (inChk && attackerCount >= 2 && fromType != KING) {
-            return false;
-        }
+        if (inChk && attackerCount >= 2 && fromType != KING) return false;
+        
 
         switch (fromType) { // piece type only
             case PAWN: {
@@ -486,17 +484,13 @@ public:
                 return true;
             }
             case KNIGHT:
-                bitMap = pieces::getKnightAttacks(fromIndex);
-                break;
+                bitMap = pieces::getKnightAttacks(fromIndex); break;
             case BISHOP:
-                bitMap = pieces::getBishopAttacks(fromIndex, occ);
-                break;
+                bitMap = pieces::getBishopAttacks(fromIndex, occ); break;
             case ROOK:
-                bitMap = pieces::getRookAttacks(fromIndex, occ);
-                break;
+                bitMap = pieces::getRookAttacks(fromIndex, occ); break;
             case QUEEN:
-                bitMap = pieces::getQueenAttacks(fromIndex, occ);
-                break;
+                bitMap = pieces::getQueenAttacks(fromIndex, occ); break;
             case KING: {
                 bitMap = pieces::getKingAttacks(fromIndex);
                 // Disallow king moves into attacked destination squares
@@ -554,12 +548,10 @@ public:
                 }
                 break;
             }
-            default:
-                return false;
+            default: return false;
         }
 
-        bool baseLegal = (bitMap & toBit) != 0ULL;
-        if (!baseLegal) return false;
+        if ((bitMap & toBit) == 0ULL) return false;
 
         // King move already prevented into attacked square. For any non-king move, ensure king safety (pins and check resolution)
         if (fromType != KING) {

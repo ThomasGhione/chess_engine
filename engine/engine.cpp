@@ -42,19 +42,24 @@ void Engine::playGameVsHuman() {
 
     // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
 
-    std::cout << "It's white's turn: \n\n";
-    this->takePlayerTurn();
+  std::cout << "It's white's turn: \n\n";
+  this->takePlayerTurn();
+  if (this->isMate()) break;
 
     // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-    std::cout << "It's black's turn: \n\n";
-    this->takePlayerTurn();
+  std::cout << "It's black's turn: \n\n";
+  this->takePlayerTurn();
+  if (this->isMate()) break;
 
     // sleep(3);
   }
 }
 
 bool Engine::isMate() {
-  // return this->board.isCurrentPositionMate();
+  uint8_t toMove = this->board.getActiveColor();
+  if (this->board.isCheckmate(toMove) || this->board.isStalemate(toMove)) {
+    return true;
+  }
   return false;
 }
 
@@ -122,9 +127,20 @@ void Engine::takePlayerTurn() {
             std::cout << "Invalid move. Please try again.";
             continue;
         }
-  
+      
+        // After successful move, detect terminal state for next side to move
+        uint8_t nextColor = this->board.getActiveColor();
+        if (this->board.isCheckmate(nextColor)) {
+            std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
+            return; // exit turn early
+        }
+        if (this->board.isStalemate(nextColor)) {
+            std::cout << "\nStalemate. Game drawn.\n";
+            return;
+        }
+      
         error = false;
-   }
+  }
   
     return;
 }
