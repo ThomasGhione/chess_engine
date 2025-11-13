@@ -387,6 +387,8 @@ public:
         uint64_t bitMap = 0ULL;
 
         const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
+        const uint8_t movingColor = this->getColor(from);
+        const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
 
         const uint8_t fromIndex = from.toIndex();
         const uint8_t toIndex = to.toIndex();
@@ -394,27 +396,98 @@ public:
         const uint64_t toBit = (1ULL << toIndex);
         const uint64_t occ = this->occupancy; // current board occupancy
 
+        // Detect check state and attackers for restrictions (double check logic)
+        bool inChk = this->inCheck(movingColor);
+        int attackerCount = 0;
+        uint8_t kingIndex = 64; // invalid sentinel
+        if (inChk) {
+            // Locate king and count attackers
+            for (uint8_t idx = 0; idx < 64; ++idx) {
+                uint8_t pc = this->get(idx / 8, idx % 8);
+                if (((pc & MASK_PIECE_TYPE) == KING) && ((pc & MASK_COLOR) == movingColor)) {
+                    kingIndex = idx;
+                    break;
+                }
+            }
+            // Count attackers on king square
+            if (kingIndex < 64) {
+                // brute force count
+                for (uint8_t idx = 0; idx < 64; ++idx) {
+                    uint8_t pc = this->get(idx / 8, idx % 8);
+                    if ((pc & MASK_PIECE_TYPE) == EMPTY) continue;
+                    if ((pc & MASK_COLOR) != oppColor) continue;
+                    // Attack test: reuse isSquareAttacked logic by temporarily targeting piece square? Instead generate attacks of pc and see if kingIndex reachable.
+                    // Simplify: call isSquareAttacked(kingIndex, oppColor) only once -> if true attackerCount>=1.
+                    // For double-check detection we approximate by scanning every potential removal: more expensive; keep simple: attackerCount= isSquareAttacked?1:0.
+                }
+                // We only have boolean now; refine to proper count by enumerating piece types.
+                // Build occupancy copy and test each enemy piece separately.
+                for (uint8_t idx = 0; idx < 64; ++idx) {
+                    uint8_t pc = this->get(idx / 8, idx % 8);
+                    if ((pc & MASK_PIECE_TYPE) == EMPTY) continue;
+                    if ((pc & MASK_COLOR) != oppColor) continue;
+                    uint8_t pt = pc & MASK_PIECE_TYPE;
+                    uint64_t atkMask = 0ULL;
+                    switch (pt) {
+                        case PAWN: {
+                            bool isWhiteEnemy = (pc & MASK_COLOR) == WHITE;
+                            atkMask = pieces::getPawnAttacks(idx, isWhiteEnemy);
+                            break; }
+                        case KNIGHT: atkMask = pieces::getKnightAttacks(idx); break;
+                        case BISHOP: atkMask = pieces::getBishopAttacks(idx, occ); break;
+                        case ROOK:   atkMask = pieces::getRookAttacks(idx, occ); break;
+                        case QUEEN:  atkMask = pieces::getQueenAttacks(idx, occ); break;
+                        case KING:   atkMask = pieces::getKingAttacks(idx); break;
+                        default: break;
+                    }
+                    if (atkMask & (1ULL << kingIndex)) attackerCount++;
+                }
+            }
+        }
+
+        // Double check: only king moves allowed
+        if (inChk && attackerCount >= 2 && fromType != KING) {
+            return false;
+        }
+
         switch (fromType) { // piece type only
             case PAWN: {
                 const bool isWhite = (this->getColor(from) == WHITE);
                 const uint64_t attacks = pieces::getPawnAttacks(fromIndex, isWhite);
                 const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occ);
-
+                bool legal = false;
+                bool isEnPassant = false;
                 // En passant: diagonal into empty square matching enPassant target
                 if ((attacks & toBit) && ((occ & toBit) == 0ULL)) {
                     if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].toIndex()) {
-                        return true;
+                        legal = true;
+                        isEnPassant = true;
                     }
                 }
-                // Diagonal captures
-                if (attacks & toBit) {
-                    return (occ & toBit) != 0ULL;
+                // Diagonal captures (must be occupied)
+                if (!legal && (attacks & toBit) && ((occ & toBit) != 0ULL)) {
+                    legal = true;
                 }
-                // Forward pushes must land on empty squares (generator already blocks through pieces)
-                if (pushes & toBit) {
-                    return (occ & toBit) == 0ULL;
+                // Forward pushes (must be empty)
+                if (!legal && (pushes & toBit) && ((occ & toBit) == 0ULL)) {
+                    legal = true;
                 }
-                return false;
+                if (!legal) return false;
+                // If in check or double check restrictions apply, simulate move to ensure king safety
+                if (inChk) {
+                    // Double-check already filtered earlier (non-king moves forbidden), but keep safety simulation
+                    Board copy = *this;
+                    // Perform move on copy
+                    copy.updateChessboard(from, to);
+                    if (isEnPassant) {
+                        int8_t dir = isWhite ? 1 : -1;
+                        Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
+                        copy.set(captured, EMPTY);
+                    }
+                    copy.updateOccupancyBB();
+                    if (copy.inCheck(movingColor)) return false; // move does not resolve check
+                }
+                return true;
             }
             case KNIGHT:
                 bitMap = pieces::getKnightAttacks(fromIndex);
@@ -430,31 +503,57 @@ public:
                 break;
             case KING: {
                 bitMap = pieces::getKingAttacks(fromIndex);
+                // Disallow king moves into attacked destination squares
+                if (from.toIndex() != to.toIndex()) {
+                    const uint8_t oppColor = (this->getColor(from) == WHITE) ? BLACK : WHITE;
+                    if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor)) {
+                        // Even if it's a normal king move square, it's attacked; reject
+                        // (Castling logic handled below after this block.)
+                        // We don't early return yet if castling attempt because castling handled separately
+                        // We'll clear the bit to force failure unless castling returns true later.
+                        bitMap &= ~toBit;
+                    }
+                }
                 // Castling legality: check rights, path emptiness, and safe squares
                 if (from.rank == to.rank) {
                     const bool isWhite = (this->getColor(from) == WHITE);
                     int df = static_cast<int>(to.file) - static_cast<int>(from.file);
                     const uint8_t r = from.rank;
+                    const uint8_t kf = from.file;
+                    // Only allow castling from the initial king square (e1/e8)
+                    if (!((isWhite && r == 0 && kf == 4) || (!isWhite && r == 7 && kf == 4))) {
+                        break;
+                    }
                     if (df == 2) { // kingside
                         bool rights = isWhite ? (castle.size()>=1 && castle[0]) : (castle.size()>=3 && castle[2]);
-                        bool emptyBetween = (this->get(r, 5) == EMPTY) && (this->get(r, 6) == EMPTY);
-                        bool rookOk = ((this->get(r, 7) & MASK_PIECE_TYPE) == ROOK);
-                        uint8_t eIdx = static_cast<uint8_t>(r * 8 + 4);
-                        uint8_t fIdx = static_cast<uint8_t>(r * 8 + 5);
-                        uint8_t gIdx = static_cast<uint8_t>(r * 8 + 6);
-                        uint8_t opp = isWhite ? BLACK : WHITE;
-                        bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(fIdx, opp) && !isSquareAttacked(gIdx, opp);
-                        if (rights && emptyBetween && rookOk && safe) return true;
+                        bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf + 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf + 2)) == EMPTY);
+                        {
+                            uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf + 3));
+                            bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
+                            if (!rookOk) {
+                                // fallthrough
+                            } else {
+                                uint8_t eIdx = static_cast<uint8_t>(r * 8 + kf);
+                                uint8_t fIdx = static_cast<uint8_t>(r * 8 + (kf + 1));
+                                uint8_t gIdx = static_cast<uint8_t>(r * 8 + (kf + 2));
+                                uint8_t opp = isWhite ? BLACK : WHITE;
+                                bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(fIdx, opp) && !isSquareAttacked(gIdx, opp);
+                                if (rights && emptyBetween && rookOk && safe) return true;
+                            }
+                        }
                     } else if (df == -2) { // queenside
                         bool rights = isWhite ? (castle.size()>=2 && castle[1]) : (castle.size()>=4 && castle[3]);
-                        bool emptyBetween = (this->get(r, 1) == EMPTY) && (this->get(r, 2) == EMPTY) && (this->get(r, 3) == EMPTY);
-                        bool rookOk = ((this->get(r, 0) & MASK_PIECE_TYPE) == ROOK);
-                        uint8_t eIdx = static_cast<uint8_t>(r * 8 + 4);
-                        uint8_t dIdx = static_cast<uint8_t>(r * 8 + 3);
-                        uint8_t cIdx = static_cast<uint8_t>(r * 8 + 2);
-                        uint8_t opp = isWhite ? BLACK : WHITE;
-                        bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(dIdx, opp) && !isSquareAttacked(cIdx, opp);
-                        if (rights && emptyBetween && rookOk && safe) return true;
+                        bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf - 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 2)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 3)) == EMPTY);
+                        {
+                            uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf - 4));
+                            bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
+                            uint8_t eIdx = static_cast<uint8_t>(r * 8 + kf);
+                            uint8_t dIdx = static_cast<uint8_t>(r * 8 + (kf - 1));
+                            uint8_t cIdx = static_cast<uint8_t>(r * 8 + (kf - 2));
+                            uint8_t opp = isWhite ? BLACK : WHITE;
+                            bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(dIdx, opp) && !isSquareAttacked(cIdx, opp);
+                            if (rights && emptyBetween && rookOk && safe) return true;
+                        }
                     }
                 }
                 break;
@@ -463,8 +562,18 @@ public:
                 return false;
         }
 
-        // For non-pawns, rely on generated attacks only
-        return (bitMap & toBit) != 0ULL;
+        bool baseLegal = (bitMap & toBit) != 0ULL;
+        if (!baseLegal) return false;
+
+        // King move already prevented into attacked square. For other pieces while in single check, ensure move resolves check.
+        if (inChk && fromType != KING) {
+            // Simulate move and test if king still in check
+            Board copy = *this;
+            copy.updateChessboard(from, to);
+            copy.updateOccupancyBB();
+            if (copy.inCheck(movingColor)) return false; // still in check
+        }
+        return true;
     }
 
     // ------------------------------------------------------------
@@ -579,13 +688,6 @@ public:
     // Does the color have at least one legal move?
     bool hasAnyLegalMove(uint8_t color) const noexcept {
         const uint64_t occ = this->occupancy;
-        const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
-
-        auto pieceAt = [&](uint8_t idx) -> uint8_t {
-            const uint8_t r = static_cast<uint8_t>(idx / 8);
-            const uint8_t f = static_cast<uint8_t>(idx % 8);
-            return this->get(r, f);
-        };
 
         for (uint8_t from = 0; from < 64; ++from) {
             const uint8_t r = static_cast<uint8_t>(from / 8);

@@ -26,16 +26,6 @@ std::vector<U64> bitboardToIndices(U64 bitboard) noexcept {
 	return indices;
 }
 
-// ------------------------------------------------------------
-// Inizializzatori basici (ritornano il bit del pezzo su squareIndex)
-// ------------------------------------------------------------
-U64 initPawnBitboard(int16_t squareIndex) noexcept { return (squareIndex >=0 && squareIndex < 64) ? (ONE << squareIndex) : 0ULL; }
-U64 initKnightBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
-U64 initBishopBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
-U64 initRookBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
-U64 initQueenBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
-U64 initKingBitboard(int16_t squareIndex) noexcept { return initPawnBitboard(squareIndex); }
-
 
 // ------------------------------------------------------------
 // Knight attacks
@@ -80,10 +70,6 @@ U64 getKingAttacks(int16_t squareIndex) noexcept {
 	return attackBitboard;
 }
 
-U64 getKingCastle(int16_t squareIndex, bool isWhite, bool kingSide) noexcept {
-	// TODO implementare
-	return 0ULL;
-}
 
 // ------------------------------------------------------------
 // Pawn capture (diagonali) + forward pushes
