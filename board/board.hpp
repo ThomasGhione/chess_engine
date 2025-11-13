@@ -65,7 +65,7 @@ private:
 
     // std::unordered_map<std::tuple<piece_id, Coords>, std::vector<chess::Coords>> legalMoves; //? maybe there's a better way?
 
-    std::string startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
@@ -75,7 +75,7 @@ private:
 public:
 
     Board() noexcept {
-        fromFenToBoard(startingFen);
+        fromFenToBoard(STARTING_FEN);
     }
 
     Board(const std::array<uint32_t, 8>& chessboard) noexcept
@@ -98,12 +98,8 @@ public:
     // assert(row <= 7)
     uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
-    
-    uint8_t getByNoteCoords(const std::string& square) const noexcept { // TODO method name to "get()"
-      // Debug now
-      uint8_t col = square.at(0) - 'a';
-      uint8_t row = square.at(1) - '1';
-
+    uint8_t get(const std::string& square) const noexcept { 
+      uint8_t col = square.at(0) - 'a', row = square.at(1) - '1';
       return this->get(row, col);
     }
     
@@ -179,7 +175,7 @@ public:
     //! PER DEBUG
     static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
     static size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
-    
+
     // Iterator support
     auto begin() noexcept { return chessboard.begin(); }
     auto end() noexcept { return chessboard.end(); }
@@ -197,11 +193,6 @@ public:
         return (p1 & BLACK) == (p2 & BLACK);
     }
 
-    void updateChessboard(const Coords& from, const Coords& to) noexcept {
-        piece_id piece = static_cast<piece_id>(this->get(from));
-        this->set(to, piece);
-        this->set(from, EMPTY);
-    }
 
 
 
@@ -230,18 +221,28 @@ public:
     }
 
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-        occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
-        occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+        this->occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
+        this->occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept {   
+        
+
 #ifdef DEBUG
         auto chrono_start = std::chrono::high_resolution_clock::now();
 #endif
-        if (!canMoveToBB(from, to)) return false;
 
-        updateChessboard(from, to);
+        if (!canMoveToBB(from, to))
+            return false;
+
+        piece_id piece = static_cast<piece_id>(this->get(from));
+
+        this->set(to, piece);
+        this->set(from, EMPTY);
+
+        // updateOccupancyBB();
         fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
+
         this->setNextTurn();
 
 #ifdef DEBUG
@@ -249,6 +250,7 @@ public:
         std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
         std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
 #endif
+
         return true;
     }
 
@@ -265,6 +267,7 @@ public:
 
         switch (fromType) { // piece type only
             case PAWN: {
+            //TODO handle en passant, promotion:    
                 const bool isWhite = (this->getColor(from) == WHITE);
                 const uint64_t attacks = pieces::getPawnAttacks(fromIndex, isWhite);
                 const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occ);
@@ -292,6 +295,7 @@ public:
                 bitMap = pieces::getQueenAttacks(fromIndex, occ);
                 break;
             case KING:
+            //TODO handle castling, checks, stalemate, pins:
                 bitMap = pieces::getKingAttacks(fromIndex);
                 break;
             default:

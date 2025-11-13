@@ -80,6 +80,11 @@ U64 getKingAttacks(int16_t squareIndex) noexcept {
 	return attackBitboard;
 }
 
+U64 getKingCastle(int16_t squareIndex, bool isWhite, bool kingSide) noexcept {
+	// TODO implementare
+	return 0ULL;
+}
+
 // ------------------------------------------------------------
 // Pawn capture (diagonali) + forward pushes
 // ------------------------------------------------------------
