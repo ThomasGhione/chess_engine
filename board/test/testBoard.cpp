@@ -44,7 +44,7 @@ ut::suite boardSuite = [] {
     chess::Board b = chess::Board();
   
     
-    expect(b.get(0,0) == (chess::Board::EMPTY) );
+    expect(b.get(0,0) == (wrook) );
   };
 
   "fen_to_board-1"_test = []{
@@ -63,10 +63,10 @@ ut::suite boardSuite = [] {
                                         bpawn, bpawn, empty, bpawn, bpawn, bpawn, bpawn, bpawn,
                                         brook, empty, bbishop, bqueen, bking, bbishop, bknight, brook};
 
-    controlExpect(b, expectPos);    
+    controlExpect(b, expectPos);
   };
 
-  "fen_to_board-1"_test = []{
+  "fen_to_board-2"_test = []{
     chess::Board b = chess::Board();
     
     const std::string FEN_TEST = "r3kb1r/pp1n1ppp/1qpp4/8/2P2B2/2Q2BP1/PP2P2P/R3K2R b KQkq - 5 15";
@@ -101,7 +101,7 @@ ut::suite boardSuite = [] {
                               bpawn, bpawn, empty, bknight, empty, bpawn, bpawn, bpawn,
                               brook, empty, empty, empty, bking, bbishop, empty, brook};
 
-    controlExpect(b, expectPos); 
+    controlExpect(b, expectPos);
   };
   
   "fen_to_board-4"_test = []{
@@ -118,9 +118,9 @@ ut::suite boardSuite = [] {
                                      empty, empty, empty, wpawn, bpawn, empty, empty, empty,
                                      bpawn, bpawn, empty, bpawn, empty, empty, empty, bpawn,
                                      empty, bbishop, bpawn, bknight, bbishop, bpawn, bpawn, empty,
-                                     brook, empty, empty, empty, empty, brook, bking, empty};
+                                     brook, empty, empty, bqueen, bking, empty, empty, brook};
 
-    controlExpect(b, expectPos); 
+    controlExpect(b, expectPos);
   };
   
   "fen_to_board-5"_test = []{
@@ -139,7 +139,7 @@ ut::suite boardSuite = [] {
                                     empty, bbishop, empty, empty, empty, bpawn, empty, bpawn,
                                     brook, empty, empty, empty, empty, brook, bking, empty};
 
-    controlExpect(b, expectPos); 
+    controlExpect(b, expectPos);
   };
   "fen_to_board-6"_test = []{
     chess::Board b = chess::Board();
@@ -148,16 +148,16 @@ ut::suite boardSuite = [] {
 
     b.fromFenToBoard(FEN_TEST);
     
-    std::array<uint8_t, 64> expectPos = { empty, wking, empty, wrook, empty, empty, empty, wrook,
-                                    wpawn, wpawn, wpawn, wqueen, empty, empty, empty, empty,
-                                    empty, empty, empty, empty, empty, bpawn, wbishop, wbishop,
-                                    empty, bpawn, empty, empty, empty, empty, empty, empty,
-                                    empty, empty, bbishop, empty, bpawn, wknight, wpawn, wpawn,
-                                    bpawn, empty, bknight, empty, empty, empty, empty, empty,
-                                    empty, bbishop, bqueen, empty, empty, bpawn, bpawn, bpawn,
-                                    brook, empty, empty, empty, empty, brook, bking, empty};
+    std::array<uint8_t, 64> expectPos = { empty, empty, wrook, wqueen, wking, empty, wknight, wrook,
+                                    wpawn, wpawn, empty, wbishop, wpawn, empty, wbishop, wpawn,
+                                    empty, empty, empty, empty, empty, wpawn, wpawn, empty,
+                                    empty, empty, wpawn, bpawn, empty, empty, empty, empty,
+                                    empty, empty, empty, empty, empty, empty, empty, empty,
+                                    empty, empty, bpawn, empty, bbishop, bqueen, empty, empty,
+                                    bpawn, bpawn, empty, bknight, empty, bpawn, bpawn, bpawn,
+                                    brook, empty, empty, empty, bking, bbishop, empty, brook};
 
-    controlExpect(b, expectPos); 
+    controlExpect(b, expectPos);
   };
 
   "fromBoardToFen_starting_position"_test = []{
