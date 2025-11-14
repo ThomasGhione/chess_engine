@@ -18,7 +18,7 @@ namespace driver {
             void startGame();
             
         private:    
-            bool loadGame(bool isWithPlayer);            
+            bool loadGame(bool isWithPlayer);
             void saveGame();
 
     };

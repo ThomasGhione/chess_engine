@@ -6,7 +6,7 @@ FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fext-numeric-literals -
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -DDEBUG -O2 -o "chess"
 
 #Directory to be added:
-PRODPATH = ./engine/*.cpp ./coords/*.cpp ./printer/*.cpp ./driver/*.cpp ./piece/*.cpp ./gamestatus/*.cpp
+PRODPATH = ./engine/*.cpp ./coords/*.cpp ./printer/*.cpp ./driver/*.cpp ./piece/*.cpp ./gamestatus/*.cpp ./board/*.cpp
 
 TESTPATH = ./tests/*.cpp ./coords/test/*.cpp ./board/test/*.cpp
 
