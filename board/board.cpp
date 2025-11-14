@@ -116,12 +116,12 @@ void Board::fromFenToBoard(const std::string& fen) {
         parsedFullMove = 1;
     }
 
-    chessboard = parsedBoard;
-    castle = parsedCastle;
-    enPassant = parsedEnPassant;
-    halfMoveClock = parsedHalfMove;
-    fullMoveClock = parsedFullMove;
-    activeColor = parsedActiveColor;
+    this->chessboard = parsedBoard;
+    this->castle = parsedCastle;
+    this->enPassant = parsedEnPassant;
+    this->halfMoveClock = parsedHalfMove;
+    this->fullMoveClock = parsedFullMove;
+    this->activeColor = parsedActiveColor;
 
     this->updateOccupancyBB();
 }

@@ -175,32 +175,41 @@ public:
 
     void updateOccupancyBB() noexcept {
         this->occupancy = this->getPiecesBitMap();
-        // Rebuild per-piece bitboards
-        pawns_bb = {0ULL, 0ULL}; knights_bb = {0ULL, 0ULL}; bishops_bb = {0ULL, 0ULL};
-        rooks_bb = {0ULL, 0ULL}; queens_bb = {0ULL, 0ULL}; kings_bb = {0ULL, 0ULL};
-        for (uint8_t idx = 0; idx < 64; ++idx) {
-            uint8_t r = idx / 8;
-            uint8_t f = idx % 8;
-            uint8_t p = this->get(r, f);
-            if ((p & MASK_PIECE_TYPE) == EMPTY) continue;
-            uint8_t color = (p & MASK_COLOR) ? 1 : 0; // BLACK=1, WHITE=0
-            uint64_t bit = (1ULL << idx);
-            uint8_t pt = p & MASK_PIECE_TYPE;
-            switch (pt) {
-                case PAWN:   pawns_bb[color] |= bit; break;
-                case KNIGHT: knights_bb[color] |= bit; break;
-                case BISHOP: bishops_bb[color] |= bit; break;
-                case ROOK:   rooks_bb[color] |= bit; break;
-                case QUEEN:  queens_bb[color] |= bit; break;
-                case KING:   kings_bb[color] |= bit; break;
-                default: break;
-            }
-        }
     }
 
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
         this->occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
         this->occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+    }
+
+    void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
+        if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
+        uint8_t color = (piece & MASK_COLOR) ? 1 : 0; // BLACK=1, WHITE=0
+        uint64_t bit = (1ULL << index);
+        switch (piece & MASK_PIECE_TYPE) {
+            case PAWN:   pawns_bb[color]   |= bit; break;
+            case KNIGHT: knights_bb[color] |= bit; break;
+            case BISHOP: bishops_bb[color] |= bit; break;
+            case ROOK:   rooks_bb[color]   |= bit; break;
+            case QUEEN:  queens_bb[color]  |= bit; break;
+            case KING:   kings_bb[color]   |= bit; break;
+            default: break;
+        }
+    }
+
+    void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
+        if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
+        uint8_t color = (piece & MASK_COLOR) ? 1 : 0;
+        uint64_t mask = ~(1ULL << index);
+        switch (piece & MASK_PIECE_TYPE) {
+            case PAWN:   pawns_bb[color]   &= mask; break;
+            case KNIGHT: knights_bb[color] &= mask; break;
+            case BISHOP: bishops_bb[color] &= mask; break;
+            case ROOK:   rooks_bb[color]   &= mask; break;
+            case QUEEN:  queens_bb[color]  &= mask; break;
+            case KING:   kings_bb[color]   &= mask; break;
+            default: break;
+        }
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept {   
@@ -227,12 +236,19 @@ public:
             }
         }
 
-        // Move the piece
+        // Update bitboards: remove moving piece from origin
+        removePieceFromBitboards(moving, from.toIndex());
+        // If capture (normal), remove captured piece bitboards
+        if (destBefore != EMPTY) {
+            removePieceFromBitboards(destBefore, to.toIndex());
+        }
+
+        // Execute move on board representation
         this->updateChessboard(from, to);
         this->fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
 
-        // Ensure per-piece bitboards are updated to reflect the move (including EP/rook changes handled above)
-        this->updateOccupancyBB();
+        // Add moving piece at destination
+        addPieceToBitboards(moving, to.toIndex());
 
         // Castling rook move if king moved two squares on same rank
         if (movingType == KING && from.rank == to.rank) {
@@ -243,10 +259,12 @@ public:
                 Coords rookTo{5, to.rank};
                 uint8_t rook = this->get(rookFrom);
                 if ((rook & MASK_PIECE_TYPE) == ROOK) {
+                    removePieceFromBitboards(rook, rookFrom.toIndex());
                     this->set(rookTo, static_cast<piece_id>(rook));
                     this->set(rookFrom, EMPTY);
                     this->occupancy |= (1ULL << rookTo.toIndex());
                     this->occupancy &= ~(1ULL << rookFrom.toIndex());
+                    addPieceToBitboards(rook, rookTo.toIndex());
                 }
             } else if (df == -2) {
                 // queenside: rook a -> d
@@ -254,10 +272,12 @@ public:
                 Coords rookTo{3, to.rank};
                 uint8_t rook = this->get(rookFrom);
                 if ((rook & MASK_PIECE_TYPE) == ROOK) {
+                    removePieceFromBitboards(rook, rookFrom.toIndex());
                     this->set(rookTo, static_cast<piece_id>(rook));
                     this->set(rookFrom, EMPTY);
                     this->occupancy |= (1ULL << rookTo.toIndex());
                     this->occupancy &= ~(1ULL << rookFrom.toIndex());
+                    addPieceToBitboards(rook, rookTo.toIndex());
                 }
             }
         }
