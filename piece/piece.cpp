@@ -138,18 +138,16 @@ U64 getPawnAttackersTo(int16_t targetIndex, bool isWhite) noexcept {
 inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank, U64 occupancy) {
 	U64 rayBitboard = 0ULL;
 	file += deltaFile;
-  	rank += deltaRank;
-/* 
-TODO pls someone test this :(
-#if defined(__GNUC__) || defined(__clang__)
-    #pragma GCC unroll 8
-#elif defined(_MSC_VER)
-    #pragma loop(unroll)
-#endif
-*/
-	for (int16_t square = (rank * 8) + file; (file >= 0 && file < 8 && rank >= 0 && rank < 8) && !(occupancy & (ONE << square)); file += deltaFile, rank += deltaRank) {
-		square = (rank * 8) + file;
+	rank += deltaRank;
+
+	while (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+		const int16_t square = static_cast<int16_t>(rank * 8 + file);
 		rayBitboard |= (ONE << square);
+		if (occupancy & (ONE << square)) {
+			break; // include the blocker square, then stop
+		}
+		file += deltaFile;
+		rank += deltaRank;
 	}
 	return rayBitboard;
 }

@@ -174,7 +174,40 @@ public:
     }
 
     void updateOccupancyBB() noexcept {
-        this->occupancy = this->getPiecesBitMap();
+        // Recalculate global occupancy and all per-piece, per-color bitboards from the chessboard state.
+        this->occupancy = 0ULL;
+
+        pawns_bb[0] = pawns_bb[1] = 0ULL;
+        knights_bb[0] = knights_bb[1] = 0ULL;
+        bishops_bb[0] = bishops_bb[1] = 0ULL;
+        rooks_bb[0] = rooks_bb[1] = 0ULL;
+        queens_bb[0] = queens_bb[1] = 0ULL;
+        kings_bb[0] = kings_bb[1] = 0ULL;
+
+        for (uint8_t rank = 0; rank < 8; ++rank) {
+            for (uint8_t file = 0; file < 8; ++file) {
+                const uint8_t piece = this->get(rank, file);
+                if ((piece & MASK_PIECE_TYPE) == EMPTY) {
+                    continue;
+                }
+
+                const uint8_t index = static_cast<uint8_t>(rank * 8 + file);
+                this->occupancy |= (1ULL << index);
+
+                const uint8_t color = (piece & MASK_COLOR) ? 1 : 0; // BLACK = 1, WHITE = 0
+                const uint64_t bit = (1ULL << index);
+
+                switch (piece & MASK_PIECE_TYPE) {
+                    case PAWN:   pawns_bb[color]   |= bit; break;
+                    case KNIGHT: knights_bb[color] |= bit; break;
+                    case BISHOP: bishops_bb[color] |= bit; break;
+                    case ROOK:   rooks_bb[color]   |= bit; break;
+                    case QUEEN:  queens_bb[color]  |= bit; break;
+                    case KING:   kings_bb[color]   |= bit; break;
+                    default: break;
+                }
+            }
+        }
     }
 
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
