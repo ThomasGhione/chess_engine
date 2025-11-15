@@ -294,6 +294,20 @@ private:
 
 
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
+
+    //helper for fromFenToBoard
+    uint8_t charToPiece(char symbol);
+    bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
+    uint8_t parseActiveColor(const std::string& activeSection);
+    std::vector<bool> parseCastling(const std::string& castlingSection);
+    Coords parseEnPassant(const std::string& enPassantSection);
+    uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
+   
+    //helper fot fromBoardToFen
+    std::string boardToFenPieces() const;
+    char pieceTypeToChar(uint8_t pieceType) const;
+    std::string castlingToFen() const;
+    std::string enPassantToFen() const;
 }; // Class Board
 
 } // namespace chess
