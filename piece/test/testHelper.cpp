@@ -1,13 +1,13 @@
 #include "../../piece/piece.hpp"
-#include "../ut.hpp"
+#include "../../tests/ut.hpp"
 
 namespace ut = boost::ut;
 using namespace ut;
 
-void testerRange(int16_t start, int16_t end, int16_t expect){
+void testerRange(int16_t start, int16_t end, int16_t expect_data){
   for(int16_t data = start; data < end; data++){
-    int16_t output = pieces::fileOf(data);
-    expect(output == expect);
+    int16_t output = pieces::rankOf(data);
+    expect(output == expect_data);
   }
 }
 ut::suite helperSuite = [] {
