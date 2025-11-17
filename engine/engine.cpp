@@ -63,7 +63,7 @@ int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
         uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
         if (pieceType != chess::Board::EMPTY) {
             int64_t value = pieceValues.at(pieceType);
-            int8_t colorFactor = 2 * (piece >> 4) - 1; // +1 for white, -1 for black
+            int8_t colorFactor = piece & chess::Board::MASK_COLOR ? -1 : 1;
             delta += colorFactor * value;
         }
     }
@@ -237,12 +237,14 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
     int64_t whiteEval = 0, blackEval = 0;
     int64_t eval = whiteEval - blackEval;
-    uint8_t perspective = board.getActiveColor() == chess::Board::WHITE ? 1 : -1;
 
 
     int64_t materialDelta = getMaterialDeltaSLOW(board);
+    eval += materialDelta;
 
-	return eval * perspective;
+    // std::cout << "[DEBUG] Material delta: " << materialDelta << "\n";
+
+    return eval;
 }
 
 
