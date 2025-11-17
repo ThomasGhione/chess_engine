@@ -8,10 +8,13 @@
 
 namespace engine {
 
+uint64_t Engine::nodesSearched = 0;
+
 Engine::Engine()
     : board(chess::Board())
-    , depth(4)
+    , depth(6)
 {
+    // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
 }
 
@@ -128,6 +131,9 @@ void Engine::search(uint64_t depth) {
 }
 
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta) {
+    this->nodesSearched++;  // una posizione visitata
+
+
     const uint8_t us = b.getActiveColor();
     const bool usIsWhite = (us == chess::Board::WHITE);
 
@@ -411,15 +417,16 @@ void Engine::playGameVsEngine(bool isWhite) {
             std::cout << (whiteToMove ? "Engine (White) is thinking...\n"
                                       : "Engine (Black) is thinking...\n");
 #ifdef DEBUG
-        auto chrono_start = std::chrono::high_resolution_clock::now();
+            auto chrono_start = std::chrono::high_resolution_clock::now();
 #endif  
             // Per semplicità usiamo la profondità di default del motore
             this->search(this->depth);
 #ifdef DEBUG
-        auto chrono_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
-#endif
+            auto chrono_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
+            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
+            std::cout << "[DEBUG] Nodes searched so far: " << this->nodesSearched << "\n";
+            #endif
             // Stampa la board aggiornata dopo la mossa dell'engine
             std::string currentBoard = print::Prints::getBasicBoard(this->board);
             std::cout << currentBoard << "\n";

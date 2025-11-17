@@ -34,6 +34,8 @@ public:
 
     int64_t eval;
 
+    static uint64_t nodesSearched; 
+
     void playGameVsHuman();
     void playGameVsEngine(bool isWhite); // ciclo prinipale
   
