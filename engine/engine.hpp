@@ -6,6 +6,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <unordered_map>
 
 // Usata solo per sleep 
 // #include <unistd.h>
@@ -14,6 +15,9 @@
 #include "../printer/prints.hpp"
 #include "../board/board.hpp"
 #include "../coords/coords.hpp"
+
+#include "basebonuspenaltyvalues.hpp"
+#include "basicrules.hpp"
 
 namespace engine {
 
@@ -35,14 +39,15 @@ public:
   
 
     void search(uint64_t depth);
-    int64_t evaluate(); 
+    int64_t evaluate(const chess::Board& board); 
 
 
 private:
 
     void takePlayerTurn();
     bool isMate();
-    int64_t getMaterialDelta(chess::Board b);
+    int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
 
     //void takeEngineTurn(); // ...mossa dopo muove l'engine
 

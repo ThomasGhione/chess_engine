@@ -9,8 +9,7 @@ namespace engine {
 
     // implement B > 3P where B=bishop, P=pawn
 
-    static constexpr int64_t BISHOP_VALUE = 330;
-    static constexpr int64_t PAWN_VALUE = 100;
+
 
 /*
  *   Avoid exchanging one minor piece for three pawns.
@@ -44,7 +43,7 @@ namespace engine {
  * 
  */
 
-    int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) {
+    int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept {
         if (bishopCount == 2) {
             return 15;
         } else {

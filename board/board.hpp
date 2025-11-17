@@ -66,6 +66,11 @@ public:
       uint8_t col = square.at(0) - 'a', row = square.at(1) - '1';
       return this->get(row, col);
     }
+    uint8_t get(uint8_t index) const noexcept {
+        const uint8_t rank = static_cast<uint8_t>(index / 8);
+        const uint8_t file = static_cast<uint8_t>(index % 8);
+        return (chessboard.at(rank) >> (file * 4)) & this->MASK_PIECE;
+    }
     
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 

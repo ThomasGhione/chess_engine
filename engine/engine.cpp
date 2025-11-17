@@ -15,7 +15,7 @@ Engine::Engine()
 	search(this->depth);
 }
 
-int64_t Engine::getMaterialDelta(chess::Board b) {
+int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	constexpr auto coefficientPiece = [](uint8_t piece) {
 	    return 2 * (piece >> 4) - 1; 
@@ -41,26 +41,60 @@ int64_t Engine::getMaterialDelta(chess::Board b) {
     return delta;
 }
 
+int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
+
+    static const std::unordered_map<uint8_t, int64_t> pieceValues = {
+        {chess::Board::PAWN, PAWN_VALUE},
+        {chess::Board::KNIGHT, KNIGHT_VALUE},
+        {chess::Board::BISHOP, BISHOP_VALUE},
+        {chess::Board::ROOK, ROOK_VALUE},
+        {chess::Board::QUEEN, QUEEN_VALUE},
+        {chess::Board::KING, KING_VALUE}
+    };
+
+    int64_t delta = 0;
+    constexpr uint8_t MAX_INDEX = 64;
+
+    for (uint8_t i = 0; i < MAX_INDEX; i++) {
+        uint8_t piece = b.get(i);
+        uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
+        if (pieceType != chess::Board::EMPTY) {
+            int64_t value = pieceValues.at(pieceType);
+            int8_t colorFactor = 2 * (piece >> 4) - 1; // +1 for white, -1 for black
+            delta += colorFactor * value;
+        }
+    }
+
+    return delta;
+}
+
+
 void Engine::search(uint64_t depth) {
 	// Placeholder for search algorithm
 	// This function would implement the search logic (e.g., Minimax, Alpha-Beta pruning)
 	// to determine the best move for the engine at the given depth.
 	// For now, it does nothing.
 
+    if (depth == 0) {
+        return;
+    }
+
+    
 	
-	return;
+	search(depth - 1);
 }
 
-int evaluate() {
-	// Placeholder for evaluation function
-	// This function would analyze the board position and return a score
-	// indicating how favorable the position is for the engine.
-	// For now, it returns 0.
+int64_t Engine::evaluate(const chess::Board& board) {
 
-	return 0;
+    int64_t whiteEval = 0, blackEval = 0;
+    int64_t eval = whiteEval - blackEval;
+    uint8_t perspective = board.getActiveColor() == chess::Board::WHITE ? 1 : -1;
+
+
+    int64_t materialDelta = getMaterialDeltaSLOW(board);
+
+	return eval * perspective;
 }
-
-
 
 
 
