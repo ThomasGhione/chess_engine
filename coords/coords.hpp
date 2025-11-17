@@ -13,6 +13,7 @@ public:
     constexpr static uint8_t INVALID_COORDS = 255;
 
     Coords();
+    Coords(uint8_t index);
     Coords(uint8_t f, uint8_t r);
     Coords(const std::string& input);
     Coords(const Coords& c) = default;

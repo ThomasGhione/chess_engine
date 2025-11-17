@@ -7,6 +7,15 @@ Coords::Coords()
     , rank(INVALID_COORDS)
 {}
 
+Coords::Coords(uint8_t index)
+    : Coords()
+{
+    if (index < 64) {
+        this->file = index % 8;
+        this->rank = index / 8;
+    }
+}
+
 Coords::Coords(uint8_t f, uint8_t r)
         : Coords()
 {

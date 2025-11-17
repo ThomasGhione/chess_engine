@@ -12,7 +12,7 @@ Engine::Engine()
     : board(chess::Board())
     , depth(4)
 {
-	search(this->depth);
+    // per ora non avviamo la search automaticamente nel costruttore
 }
 
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
@@ -70,18 +70,161 @@ int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
 
 
 void Engine::search(uint64_t depth) {
-	// Placeholder for search algorithm
-	// This function would implement the search logic (e.g., Minimax, Alpha-Beta pruning)
-	// to determine the best move for the engine at the given depth.
-	// For now, it does nothing.
+    if (depth == 0) return;
+    
 
-    if (depth == 0) {
-        return;
+    std::vector<chess::Board::Move> moves;
+    generateLegalMoves(this->board, moves);
+
+    if (moves.empty()) {
+        return; // nessuna mossa legale: posizione terminale
     }
 
-    
-	
-	search(depth - 1);
+    const uint8_t us = this->board.getActiveColor();
+    const bool usIsWhite = (us == chess::Board::WHITE);
+
+    int64_t alpha = NEG_INF;
+    int64_t beta  = POS_INF;
+    int64_t bestScore = usIsWhite ? NEG_INF : POS_INF;
+    chess::Board::Move bestMove = moves.front(); // temporary initialization
+
+    for (const auto& m : moves) {
+        chess::Board copy = this->board;
+        if (!copy.moveBB(m.from, m.to)) {
+            continue;
+        }
+        int64_t score = searchPosition(copy, depth - 1, alpha, beta);
+
+        if (usIsWhite) {
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = m;
+            }
+            if (score > alpha) alpha = score;
+        } else {
+            if (score < bestScore) {
+                bestScore = score;
+                bestMove = m;
+            }
+            if (score < beta) beta = score;
+        }
+    }
+
+    // Stampa la mossa scelta dall'engine in notazione semplice (es: e2e4)
+    auto toAlgebraic = [](const chess::Coords& c) {
+        char fileChar = static_cast<char>('a' + c.file);
+        char rankChar = static_cast<char>('1' + c.rank);
+        std::string s;
+        s.push_back(fileChar);
+        s.push_back(rankChar);
+        return s;
+    };
+
+    std::string moveStr = toAlgebraic(bestMove.from) + toAlgebraic(bestMove.to);
+    std::cout << "Engine plays: " << moveStr << " (score: " << bestScore << ")\n";
+
+    // Esegui sulla board principale la mossa migliore trovata
+    (void)this->board.moveBB(bestMove.from, bestMove.to);
+}
+
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta) {
+    const uint8_t us = b.getActiveColor();
+    const bool usIsWhite = (us == chess::Board::WHITE);
+
+    if (depth == 0 || b.isCheckmate(us) || b.isStalemate(us)) {
+        return evaluate(b);
+    }
+
+    std::vector<chess::Board::Move> moves;
+    generateLegalMoves(b, moves);
+    if (moves.empty()) {
+        return evaluate(b);
+    }
+
+    int64_t best = usIsWhite ? NEG_INF : POS_INF;
+
+    for (const auto& m : moves) {
+        chess::Board copy = b;
+        if (!copy.moveBB(m.from, m.to)) continue;
+
+        int64_t score = searchPosition(copy, depth - 1, alpha, beta);
+
+        if (usIsWhite) {
+            if (score > best) best = score;
+            if (score > alpha) alpha = score;
+        } else {
+            if (score < best) best = score;
+            if (score < beta) beta = score;
+        }
+
+        if (alpha >= beta) break; // alpha-beta cutoff
+    }
+
+    return best;
+}
+
+void Engine::generateLegalMoves(const chess::Board& b,
+                                std::vector<chess::Board::Move>& moves) const {
+    moves.clear();
+
+    const uint8_t color = b.getActiveColor();
+    const bool isWhite = (color == chess::Board::WHITE);
+
+    // occupancy globale per sliding e pawn pushes
+    uint64_t occ = b.getPiecesBitMap();
+
+    for (uint8_t from = 0; from < 64; ++from) {
+        const uint8_t piece = b.get(from);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t piece_type = (piece & chess::Board::MASK_PIECE_TYPE);
+        uint64_t mask = 0ULL;
+
+        switch (piece_type) {
+            case chess::Board::PAWN: {
+                uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
+                uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
+                mask = attacks | pushes;
+                break;
+            }
+            case chess::Board::KNIGHT:
+                mask = pieces::getKnightAttacks(static_cast<int16_t>(from));
+                break;
+            case chess::Board::BISHOP:
+                mask = pieces::getBishopAttacks(static_cast<int16_t>(from), occ);
+                break;
+            case chess::Board::ROOK:
+                mask = pieces::getRookAttacks(static_cast<int16_t>(from), occ);
+                break;
+            case chess::Board::QUEEN:
+                mask = pieces::getQueenAttacks(static_cast<int16_t>(from), occ);
+                break;
+            case chess::Board::KING:
+                mask = pieces::getKingAttacks(static_cast<int16_t>(from));
+                break;
+            default:
+                continue;
+        }
+
+        // Itera sui bit di mask (destinazioni pseudo-legali)
+        while (mask) {
+            uint64_t lsb = mask & -mask;
+            uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+            mask &= (mask - 1);
+
+            const uint8_t dst = b.get(to);
+            if (dst != chess::Board::EMPTY && (dst & chess::Board::MASK_COLOR) == color) continue;
+
+            chess::Coords fromC{from};
+            chess::Coords toC{to};
+
+            // Filtra con la logica completa (pin, scacco, en passant, arrocco, ecc.)
+            if (!b.canMoveToBB(fromC, toC)) continue;
+
+            moves.push_back(chess::Board::Move{fromC, toC});
+        }
+    }
 }
 
 int64_t Engine::evaluate(const chess::Board& board) {
@@ -249,15 +392,52 @@ void Engine::saveGame() {
 
 
 void Engine::playGameVsEngine(bool isWhite) {
-    std::string output = "In questo momento non è possibile giocare come ";
-    if (isWhite) {
-        output += "bianco";
-    } else {
-        output += "nero";
+    // Gioco engine vs umano.
+    // Se isWhite == true, il giocatore umano gioca il bianco, altrimenti il nero.
+
+    while (!this->isMate()) {
+        const uint8_t toMove = this->board.getActiveColor();
+        const bool whiteToMove = (toMove == chess::Board::WHITE);
+
+        const bool humanToMove = (isWhite && whiteToMove) || (!isWhite && !whiteToMove);
+
+        if (humanToMove) {
+            // Turno dell'umano
+            std::cout << (whiteToMove ? "It's your (White) turn:\n\n"
+                                      : "It's your (Black) turn:\n\n");
+            this->takePlayerTurn();
+        } else {
+            // Turno dell'engine
+            std::cout << (whiteToMove ? "Engine (White) is thinking...\n"
+                                      : "Engine (Black) is thinking...\n");
+#ifdef DEBUG
+        auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif  
+            // Per semplicità usiamo la profondità di default del motore
+            this->search(this->depth);
+#ifdef DEBUG
+        auto chrono_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
+        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
+#endif
+            // Stampa la board aggiornata dopo la mossa dell'engine
+            std::string currentBoard = print::Prints::getBasicBoard(this->board);
+            std::cout << currentBoard << "\n";
+        }
+
+        // Dopo ogni mossa controlla stato terminale
+        if (this->isMate()) {
+            uint8_t nextColor = this->board.getActiveColor();
+            if (this->board.isCheckmate(nextColor)) {
+                std::cout << "\nCheckmate! "
+                          << (nextColor == chess::Board::WHITE ? "Black" : "White")
+                          << " wins.\n";
+            } else if (this->board.isStalemate(nextColor)) {
+                std::cout << "\nStalemate. Game drawn.\n";
+            }
+            break;
+        }
     }
-    output += " sarà una futura possibilità.\n";
-  
-    std::cout << output;
 }
 
 /*

@@ -44,6 +44,13 @@ public:
 
 private:
 
+    // Ricerca ricorsiva (alpha-beta) su una posizione
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta);
+
+    // Genera tutte le mosse legali per la posizione corrente di b
+    void generateLegalMoves(const chess::Board& b,
+                            std::vector<chess::Board::Move>& moves) const;
+
     void takePlayerTurn();
     bool isMate();
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
@@ -51,6 +58,14 @@ private:
 
     //void takeEngineTurn(); // ...mossa dopo muove l'engine
 
+/*
+    int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
+    int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;
+*/
+
+
+    constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
+    constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
 };
 
 } 

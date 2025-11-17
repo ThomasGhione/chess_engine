@@ -40,6 +40,13 @@ public:
     // ENPASSANT = 0x7  // 0111
     };
 
+
+    struct Move {
+        Coords from;
+        Coords to;
+    };
+
+
     Board() noexcept {
         fromFenToBoard(STARTING_FEN);
     }

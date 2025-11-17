@@ -17,7 +17,7 @@ namespace engine {
  *   N > 3P
  *  (for simplicity, we treat bishops and knights equally here)
  */
-
+/*
     // Returns a penalty score for unfavorable exchanges
     //TODO TEST THIS
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount) {
@@ -33,7 +33,7 @@ namespace engine {
         return unfavorableExchanges * (BISHOP_VALUE - 3 * PAWN_VALUE);
     }
  
-
+*/
 
 
 /*
@@ -42,7 +42,7 @@ namespace engine {
  * B > N
  * 
  */
-
+/*
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept {
         if (bishopCount == 2) {
             return 15;
@@ -52,6 +52,7 @@ namespace engine {
 
     }
 
+    */
 }
 
 #endif // ENGINE_BASICRULES_HPP
