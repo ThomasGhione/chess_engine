@@ -12,5 +12,5 @@ int main() {
 
     Driver driver = Driver(menu, engine);
 
-    driver.startGame(); 
+    driver.startGame();
 }

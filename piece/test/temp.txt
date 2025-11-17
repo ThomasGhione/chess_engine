@@ -1,7 +1,5 @@
 # Ordine con cui scivere i test
 
-FileOf
-RankOf
 GetKnightAttaks
 GetKinkAttaks
 GetPawnAttaks
