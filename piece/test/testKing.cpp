@@ -33,4 +33,26 @@ ut::suite kingSuite = [] {
     
     expect(expect_output == output);
   };
+
+  "getKingAttacks corner a8"_test =[]{
+    uint64_t output = pieces::getKingAttacks(coordToIndex2("a8")); 
+    
+    uint64_t expect_output = 0;
+    expect_output |= (1 << coordToIndex2("a7"));
+    expect_output |= (1 << coordToIndex2("b8"));
+    expect_output |= (1 << coordToIndex2("b7"));
+    
+    expect(expect_output == output);
+  };
+  
+  "getKingAttacks corner h8"_test =[]{
+    uint64_t output = pieces::getKingAttacks(coordToIndex2("h8")); 
+    
+    uint64_t expect_output = 0;
+    expect_output |= (1 << coordToIndex2("h7"));
+    expect_output |= (1 << coordToIndex2("g8"));
+    expect_output |= (1 << coordToIndex2("g7"));
+    
+    expect(expect_output == output);
+  };
 }; // kingSuite
