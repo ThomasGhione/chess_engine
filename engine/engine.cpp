@@ -215,7 +215,7 @@ void Engine::generateLegalMoves(const chess::Board& b,
 
         // Itera sui bit di mask (destinazioni pseudo-legali)
         while (mask) {
-            uint64_t lsb = mask & -mask;
+            // uint64_t lsb = mask & -mask;
             uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
             mask &= (mask - 1);
 
@@ -235,15 +235,26 @@ void Engine::generateLegalMoves(const chess::Board& b,
 
 int64_t Engine::evaluate(const chess::Board& board) {
 
-    int64_t whiteEval = 0, blackEval = 0;
-    int64_t eval = whiteEval - blackEval;
+    // EVALUATION CHECKMATE
+    const uint8_t sideToMove = board.getActiveColor();
+    if (board.isCheckmate(sideToMove)) {
+        return (sideToMove == chess::Board::BLACK) ? POS_INF : NEG_INF;
+    }
+    const uint8_t otherSide = (sideToMove == chess::Board::WHITE)
+                                ? chess::Board::BLACK
+                                : chess::Board::WHITE;
+    if (board.isCheckmate(otherSide)) {
+        return (otherSide == chess::Board::BLACK) ? POS_INF : NEG_INF;
+    }
 
 
+    int64_t whiteEval = 0, blackEval = 0, eval = 0;
+    
     int64_t materialDelta = getMaterialDeltaSLOW(board);
+
     eval += materialDelta;
-
-    // std::cout << "[DEBUG] Material delta: " << materialDelta << "\n";
-
+    
+    eval += (whiteEval - blackEval);
     return eval;
 }
 
