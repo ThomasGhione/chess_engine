@@ -31,7 +31,17 @@ ut::suite helperSuite = [] {
   };
   // ** std::vector<U64> bitboardToIndices(U64 bb) **
   "index of bit-board"_test =[]{
-    
+    uint64_t controlled_bit = 1;
+    for(int i = 0; i < 64; i++){
+      auto v = pieces::bitboardToIndices(controlled_bit);
+      
+      auto it = find(v.begin(), v.end(), i);
+      
+      expect(it != v.end());
+
+      // Fai uno shift di un bit
+      controlled_bit = controlled_bit << 1;
+    }
   };
 
 
