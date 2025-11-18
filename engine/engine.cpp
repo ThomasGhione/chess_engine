@@ -353,7 +353,7 @@ void Engine::generateLegalMoves(const chess::Board& b,
 
 int64_t Engine::evaluate(const chess::Board& board) {
 
-    // EVALUATION CHECKMATE
+    // 1) EVALUATION CHECKMATE
     const uint8_t sideToMove = board.getActiveColor();
     if (board.isCheckmate(sideToMove)) {
         return (sideToMove == chess::Board::BLACK) ? POS_INF : NEG_INF;
@@ -366,14 +366,67 @@ int64_t Engine::evaluate(const chess::Board& board) {
     }
 
 
-    int64_t whiteEval = 0, blackEval = 0, eval = 0;
+    int64_t eval = 0;
 
     int64_t materialDelta = getMaterialDeltaSLOW(board);
-#ifdef DEBUG
-// std::cout << "[DEBUG] getMaterialDelta = " << materialDelta << "\n";
-#endif
-
     eval += materialDelta;
+
+    
+    // 2) IS THIS AN ENDGAME?
+
+    // count pieces (not including pawns, kings)
+    int nonPawnNonKingPieces = 0;
+    for (uint8_t i = 0; i < 64; ++i) {
+        uint8_t piece = board.get(i);
+        uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
+        if (pieceType == chess::Board::EMPTY ||
+            pieceType == chess::Board::PAWN ||
+            pieceType == chess::Board::KING) {
+            continue;
+        }
+        ++nonPawnNonKingPieces;
+    }
+    bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
+
+    // 3) BONUS POSITION TABLE
+    for (uint8_t i = 0; i < 64; ++i) {
+        uint8_t piece = board.get(i);
+        uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+        if (pieceType == chess::Board::EMPTY) continue;
+
+        int64_t posValue = 0;
+
+        switch (pieceType) {
+            case chess::Board::PAWN:
+                posValue = isEndgame ? PAWN_END_GAME_VALUES_TABLE[i] 
+                                     : PAWN_VALUES_TABLE[i];
+                break;
+            case chess::Board::KNIGHT:
+                posValue = KNIGHT_VALUES_TABLE[i];
+                break;
+            case chess::Board::BISHOP:
+                posValue = BISHOP_VALUES_TABLE[i];
+                break;
+            case chess::Board::ROOK:
+                posValue = ROOK_VALUES_TABLE[i];
+                break;
+            case chess::Board::QUEEN:
+                posValue = QUEEN_VALUES_TABLE[i];
+                break;
+            case chess::Board::KING:
+                posValue = isEndgame ? KING_END_GAME_VALUES_TABLE[i] 
+                                     : KING_MIDDLE_GAME_VALUES_TABLE[i];
+                break;
+        }
+
+        eval += (pieceColor == chess::Board::WHITE) ? posValue : -posValue;
+    }
+
+
+
+    int64_t whiteEval = 0, blackEval = 0;
     
     eval += (whiteEval - blackEval);
     return eval;

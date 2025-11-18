@@ -135,6 +135,25 @@ ut::suite engineSuite = [] {
     //std::cout << "Average Depth 6 search time over " << runs << " runs: " << avgDuration << " ms\n";
     expect(avgDuration < 2000);
   };
+
+  "calculate 10mln nodes"_test = []{
+    engine::Engine e = engine::Engine();
+    e.depth = 6;
+
+    constexpr uint64_t targetNodes = 10'000'000;
+    e.nodesSearched = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    while (e.nodesSearched < targetNodes) {
+        e.search(e.depth);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    // Attesa che la ricerca di 10 milioni di nodi venga completata in meno di 60 secondi
+    printf("10 million nodes searched in %lu ms\n", duration);
+    expect(duration < 60000);
+  };
 };
 // 16 2573
 // 2214 577912

@@ -18,6 +18,7 @@
 
 #include "basebonuspenaltyvalues.hpp"
 #include "basicrules.hpp"
+#include "piecevaluetables.hpp"
 
 namespace engine {
 
