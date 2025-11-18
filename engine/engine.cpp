@@ -84,11 +84,12 @@ void Engine::search(uint64_t depth) {
     }
 
     const uint8_t us = this->board.getActiveColor();
-    const bool usIsWhite = (us == chess::Board::WHITE);
 
+    // Alpha-beta is always from the side-to-move point of view:
+    // White tries to maximise the score, Black to minimise it.
     int64_t alpha = NEG_INF;
     int64_t beta  = POS_INF;
-    int64_t bestScore = usIsWhite ? NEG_INF : POS_INF;
+    int64_t bestScore = (us == chess::Board::WHITE) ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = moves.front(); // temporary initialization
 
     for (const auto& m : moves) {
@@ -98,13 +99,15 @@ void Engine::search(uint64_t depth) {
         }
         int64_t score = searchPosition(copy, depth - 1, alpha, beta);
 
-        if (usIsWhite) {
+        if (us == chess::Board::WHITE) {
+            // White is the maximizing player
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = m;
             }
             if (score > alpha) alpha = score;
         } else {
+            // Black is the minimizing player
             if (score < bestScore) {
                 bestScore = score;
                 bestMove = m;
@@ -169,15 +172,15 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     return best;
 }
 
-void Engine::generateLegalMoves(const chess::Board& b,
-                                std::vector<chess::Board::Move>& moves) const {
+// Vecchia versione basata su scan 0..63
+void Engine::generateLegalMoves_old(const chess::Board& b,
+                                    std::vector<chess::Board::Move>& moves) const {
     moves.clear();
 
     const uint8_t color = b.getActiveColor();
     const bool isWhite = (color == chess::Board::WHITE);
 
-    // occupancy globale per sliding e pawn pushes
-    uint64_t occ = b.getPiecesBitMap();
+    const uint64_t occ = b.getPiecesBitMap();
 
     for (uint8_t from = 0; from < 64; ++from) {
         const uint8_t piece = b.get(from);
@@ -189,8 +192,8 @@ void Engine::generateLegalMoves(const chess::Board& b,
 
         switch (piece_type) {
             case chess::Board::PAWN: {
-                uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
-                uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
+                const uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
+                const uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
                 mask = attacks | pushes;
                 break;
             }
@@ -213,10 +216,8 @@ void Engine::generateLegalMoves(const chess::Board& b,
                 continue;
         }
 
-        // Itera sui bit di mask (destinazioni pseudo-legali)
         while (mask) {
-            // uint64_t lsb = mask & -mask;
-            uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+            const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
             mask &= (mask - 1);
 
             const uint8_t dst = b.get(to);
@@ -225,12 +226,129 @@ void Engine::generateLegalMoves(const chess::Board& b,
             chess::Coords fromC{from};
             chess::Coords toC{to};
 
-            // Filtra con la logica completa (pin, scacco, en passant, arrocco, ecc.)
             if (!b.canMoveToBB(fromC, toC)) continue;
 
             moves.push_back(chess::Board::Move{fromC, toC});
         }
     }
+
+#ifdef DEBUG
+    // std::cout << "[DEBUG] generateLegalMoves_old found " << moves.size() << " moves.\n";
+#endif
+}
+
+// Nuova versione bitboard-based per tipo
+void Engine::generateLegalMoves(const chess::Board& b,
+                                std::vector<chess::Board::Move>& moves) const {
+    moves.clear();
+
+    const uint8_t color = b.getActiveColor();
+    const bool isWhite = (color == chess::Board::WHITE);
+
+    const uint64_t occ = b.getPiecesBitMap();
+
+    // Bitboard dei nostri pezzi (solo caselle occupate dal nostro colore)
+    uint64_t ownOcc = 0ULL;
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+        ownOcc |= (1ULL << idx);
+    }
+
+    auto addMovesFromMask = [&](uint8_t from, uint64_t mask) {
+        mask &= ~ownOcc;
+
+        while (mask) {
+            const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+            mask &= (mask - 1);
+
+            chess::Coords fromC{from};
+            chess::Coords toC{to};
+
+            if (!b.canMoveToBB(fromC, toC)) continue;
+
+            moves.push_back(chess::Board::Move{fromC, toC});
+        }
+    };
+
+    // Pawns
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::PAWN) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+
+        const uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
+        const uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
+
+        addMovesFromMask(from, attacks | pushes);
+    }
+
+    // Knights
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::KNIGHT) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+        const uint64_t mask = pieces::getKnightAttacks(static_cast<int16_t>(from));
+
+        addMovesFromMask(from, mask);
+    }
+
+    // Bishops
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::BISHOP) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+        const uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(from), occ);
+
+        addMovesFromMask(from, mask);
+    }
+
+    // Rooks
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::ROOK) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+        const uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(from), occ);
+
+        addMovesFromMask(from, mask);
+    }
+
+    // Queens
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::QUEEN) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+        const uint64_t mask = pieces::getQueenAttacks(static_cast<int16_t>(from), occ);
+
+        addMovesFromMask(from, mask);
+    }
+
+    // Kings
+    for (uint8_t idx = 0; idx < 64; ++idx) {
+        uint8_t piece = b.get(idx);
+        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::KING) continue;
+        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+
+        const uint8_t from = idx;
+        const uint64_t mask = pieces::getKingAttacks(static_cast<int16_t>(from));
+
+        addMovesFromMask(from, mask);
+    }
+
+#ifdef DEBUG
+    // std::cout << "[DEBUG] generateLegalMoves_new found " << moves.size() << " moves.\n";
+#endif
 }
 
 int64_t Engine::evaluate(const chess::Board& board) {
@@ -249,15 +367,18 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
 
     int64_t whiteEval = 0, blackEval = 0, eval = 0;
-    
+
     int64_t materialDelta = getMaterialDeltaSLOW(board);
+#ifdef DEBUG
+// std::cout << "[DEBUG] getMaterialDelta = " << materialDelta << "\n";
+#endif
 
     eval += materialDelta;
     
     eval += (whiteEval - blackEval);
     return eval;
 }
-
+// 4365
 
 
 
@@ -439,7 +560,7 @@ void Engine::playGameVsEngine(bool isWhite) {
             std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
             std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
             std::cout << "[DEBUG] Nodes searched so far: " << this->nodesSearched << "\n";
-            #endif
+#endif
             // Stampa la board aggiornata dopo la mossa dell'engine
             std::string currentBoard = print::Prints::getBasicBoard(this->board);
             std::cout << currentBoard << "\n";

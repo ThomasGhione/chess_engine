@@ -49,9 +49,13 @@ private:
     // Ricerca ricorsiva (alpha-beta) su una posizione
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta);
 
-    // Genera tutte le mosse legali per la posizione corrente di b
+    // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
     void generateLegalMoves(const chess::Board& b,
                             std::vector<chess::Board::Move>& moves) const;
+
+    // Versione "vecchia" di move generation, utile per confronti/debug
+    void generateLegalMoves_old(const chess::Board& b,
+                                std::vector<chess::Board::Move>& moves) const;
 
     void takePlayerTurn();
     bool isMate();
