@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
+#include <algorithm>
 
 // Usata solo per sleep 
 // #include <unistd.h>
@@ -73,6 +74,22 @@ private:
 
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
+
+
+    struct ScoredMove {
+        chess::Board::Move move;
+        int64_t score;
+    };
+
+    const std::unordered_map<uint8_t, int64_t> pieceValues = {
+        {chess::Board::EMPTY, 0},
+        {chess::Board::PAWN, PAWN_VALUE},
+        {chess::Board::KNIGHT, KNIGHT_VALUE},
+        {chess::Board::BISHOP, BISHOP_VALUE},
+        {chess::Board::ROOK, ROOK_VALUE},
+        {chess::Board::QUEEN, QUEEN_VALUE},
+        {chess::Board::KING, KING_VALUE}
+    };
 };
 
 } 

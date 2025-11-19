@@ -46,15 +46,6 @@ int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
 
-    static const std::unordered_map<uint8_t, int64_t> pieceValues = {
-        {chess::Board::PAWN, PAWN_VALUE},
-        {chess::Board::KNIGHT, KNIGHT_VALUE},
-        {chess::Board::BISHOP, BISHOP_VALUE},
-        {chess::Board::ROOK, ROOK_VALUE},
-        {chess::Board::QUEEN, QUEEN_VALUE},
-        {chess::Board::KING, KING_VALUE}
-    };
-
     int64_t delta = 0;
     constexpr uint8_t MAX_INDEX = 64;
 
@@ -144,15 +135,63 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return evaluate(b);
     }
 
+    bool inCheck = b.inCheck(us);
+    if (inCheck && depth > 0) depth++; // extend search if in check
+    
+    
     std::vector<chess::Board::Move> moves;
     generateLegalMoves(b, moves);
     if (moves.empty()) {
         return evaluate(b);
     }
 
+
+    std::vector<ScoredMove> orderedScoredMoves;
+    orderedScoredMoves.reserve(moves.size());
+    for (const auto& m : moves) {
+        int64_t score = 0;
+
+        uint8_t fromPiece = b.get(m.from);
+        uint8_t toPiece = b.get(m.to);
+        uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+
+        // MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+        if (toPieceType != chess::Board::EMPTY) {
+            int64_t victimValue = pieceValues.at(toPieceType);
+            int64_t attackerValue = pieceValues.at(fromPieceType);
+            score += (victimValue * 10 - attackerValue); // MVV-LVA    
+        }
+
+        if (fromPieceType == chess::Board::PAWN) {
+            // Bonus per le promozioni
+            if ((usIsWhite && m.to.rank == 7) || (!usIsWhite && m.to.rank == 0)) {
+                score += pieceValues.at(chess::Board::QUEEN);
+            }
+        }
+
+        // TODO: da rivedere, non sempre dare uno scacco e' la mossa migliore
+        chess::Board checkBoard = b;
+        if (checkBoard.moveBB(m.from, m.to)) {
+            uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
+            if (checkBoard.inCheck(opponent)) {
+                score += 50;
+            }
+        }
+
+        orderedScoredMoves.push_back(ScoredMove{m, score});
+    }
+
+    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
+              [usIsWhite](const ScoredMove& a, const ScoredMove& b) {
+                  return usIsWhite ? (a.score > b.score) : (a.score < b.score);
+    });
+
+
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
 
-    for (const auto& m : moves) {
+    for (const auto& scoredMove : orderedScoredMoves) {
+        const auto& m = scoredMove.move;
         chess::Board copy = b;
         if (!copy.moveBB(m.from, m.to)) continue;
 

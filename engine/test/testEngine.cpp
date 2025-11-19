@@ -92,7 +92,7 @@ ut::suite engineSuite = [] {
     expect(duration < 25);
   };
 
-  /*
+  
   "performance searchPosition depth 6"_test = []{
     engine::Engine e = engine::Engine();
     e.depth = 6;
@@ -155,7 +155,7 @@ ut::suite engineSuite = [] {
     printf("10 million nodes searched in %lu ms\n", duration);
     expect(duration < 60000);
   };
-  */
+  
 };
 // 16 2573
 // 2214 577912
