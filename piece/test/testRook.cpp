@@ -1,7 +1,16 @@
 #include "../../tests/ut.hpp"
+#include "../../piece/piece.hpp"
+#include "../../coords/coords.hpp"
+
+#include <iostream>
 
 namespace ut = boost::ut;
 using namespace ut;
+
+uint64_t coordToIndex3(std::string coord){
+  chess::Coords c(coord);
+  return c.toIndex();
+}
 
 ut::suite rookSuite = [] {
   "Rook"_test = []{
@@ -21,4 +30,49 @@ ut::suite rookSuite = [] {
     // a4 b4 c4 d4 f4 g4 h4
     // a5 b5 c5 d5 e5 g5 h5
   };
+
+  "getRookAttacks corner a1"_test = []{
+    uint64_t output = pieces::getRookAttacks(coordToIndex3("a1"), 0ULL); 
+    
+    uint64_t expect_output = 0;
+    expect_output |= (1ULL << coordToIndex3("a2"));
+    expect_output |= (1ULL << coordToIndex3("a3"));
+    expect_output |= (1ULL << coordToIndex3("a4"));
+    expect_output |= (1ULL << coordToIndex3("a5"));
+    expect_output |= (1ULL << coordToIndex3("a6"));
+    expect_output |= (1ULL << coordToIndex3("a7"));
+    expect_output |= (1ULL << coordToIndex3("a8"));
+    expect_output |= (1ULL << coordToIndex3("b1"));
+    expect_output |= (1ULL << coordToIndex3("c1"));
+    expect_output |= (1ULL << coordToIndex3("d1"));
+    expect_output |= (1ULL << coordToIndex3("e1"));
+    expect_output |= (1ULL << coordToIndex3("f1"));
+    expect_output |= (1ULL << coordToIndex3("g1"));
+    expect_output |= (1ULL << coordToIndex3("h1"));
+    
+    expect(expect_output == output);
+  };
+
+  "getRookAttacks corner e4"_test = []{
+    uint64_t output = pieces::getRookAttacks(coordToIndex3("e4"), 0ULL); 
+    
+    uint64_t expect_output = 0;
+    expect_output |= (1ULL << coordToIndex3("e3"));
+    expect_output |= (1ULL << coordToIndex3("e2"));
+    expect_output |= (1ULL << coordToIndex3("e1"));
+    expect_output |= (1ULL << coordToIndex3("e5"));
+    expect_output |= (1ULL << coordToIndex3("e6"));
+    expect_output |= (1ULL << coordToIndex3("e7"));
+    expect_output |= (1ULL << coordToIndex3("e8"));
+    expect_output |= (1ULL << coordToIndex3("d4"));
+    expect_output |= (1ULL << coordToIndex3("c4"));
+    expect_output |= (1ULL << coordToIndex3("b4"));
+    expect_output |= (1ULL << coordToIndex3("a4"));
+    expect_output |= (1ULL << coordToIndex3("f4"));
+    expect_output |= (1ULL << coordToIndex3("g4"));
+    expect_output |= (1ULL << coordToIndex3("h4"));
+    
+    expect(expect_output == output);
+  };
+
 }; // rookSuite
