@@ -33,5 +33,6 @@ ask_question "Hai controllato di aver fatto ${bold}git pull${offbold}? y/N\n"
 ask_question "Il codice compila ${red}senza errori${offcolor} di compilazioni? y/N\n"
 ask_question "Il codice passa i ${yellow}test${offcolor}? y/N\n"
 ask_question "Hai ${green}commentato${offcolor} il nuovo codice? y/N\n"
+ask_question "Hai eseguito il comando ${bold}make cls${offbold}? y/N\n"
 
 printf "🧙🏼 Il concilio ha parlato, puoi fare il commit!"
