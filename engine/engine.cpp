@@ -88,7 +88,7 @@ void Engine::search(uint64_t depth) {
         if (!copy.moveBB(m.from, m.to)) {
             continue;
         }
-        int64_t score = searchPosition(copy, depth - 1, alpha, beta);
+        int64_t score = searchPosition(copy, depth - 1, alpha, beta, 1);
 
         if (us == chess::Board::WHITE) {
             // White is the maximizing player
@@ -124,7 +124,7 @@ void Engine::search(uint64_t depth) {
     (void)this->board.moveBB(bestMove.from, bestMove.to);
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta) {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
     this->nodesSearched++;  // una posizione visitata
 
 
@@ -163,6 +163,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             score += (victimValue * 10 - attackerValue); // MVV-LVA    
         }
 
+        const bool isCapture = (toPieceType != chess::Board::EMPTY);
+
         if (fromPieceType == chess::Board::PAWN) {
             // Bonus per le promozioni
             if ((usIsWhite && m.to.rank == 7) || (!usIsWhite && m.to.rank == 0)) {
@@ -177,6 +179,25 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             if (checkBoard.inCheck(opponent)) {
                 score += 50;
             }
+        }
+
+        // Killer move bonus for non-captures
+        if (!isCapture && ply < MAX_PLY) {
+            const auto& km1 = killerMoves[0][ply];
+            const auto& km2 = killerMoves[1][ply];
+            if (m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
+                m.to.file == km1.to.file && m.to.rank == km1.to.rank) {
+                score += 100000;
+            } else if (m.from.file == km2.from.file && m.from.rank == km2.from.rank &&
+                       m.to.file == km2.to.file && m.to.rank == km2.to.rank) {
+                score += 90000;
+            }
+
+            // History heuristic bonus (only for non-captures)
+            int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+            int fromIndex = m.from.rank * 8 + m.from.file;
+            int toIndex   = m.to.rank   * 8 + m.to.file;
+            score += history[colorIndex][fromIndex][toIndex];
         }
 
         orderedScoredMoves.push_back(ScoredMove{m, score});
@@ -195,7 +216,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         chess::Board copy = b;
         if (!copy.moveBB(m.from, m.to)) continue;
 
-        int64_t score = searchPosition(copy, depth - 1, alpha, beta);
+        int64_t score = searchPosition(copy, depth - 1, alpha, beta, ply + 1);
 
         if (usIsWhite) {
             if (score > best) best = score;
@@ -205,7 +226,34 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             if (score < beta) beta = score;
         }
 
-        if (alpha >= beta) break; // alpha-beta cutoff
+        // Beta cutoff: update killer moves and history for non-captures
+        if (alpha >= beta) {
+            if (ply < MAX_PLY) {
+                uint8_t fromPiece = b.get(m.from);
+                uint8_t toPiece   = b.get(m.to);
+                uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+                const bool isCapture = (toPieceType != chess::Board::EMPTY);
+
+                if (!isCapture) {
+                    // Killer moves
+                    auto& km1 = killerMoves[0][ply];
+                    auto& km2 = killerMoves[1][ply];
+                    if (!(m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
+                          m.to.file   == km1.to.file   && m.to.rank   == km1.to.rank)) {
+                        km2 = km1;
+                        km1 = m;
+                    }
+
+                    // History heuristic
+                    int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+                    int fromIndex = m.from.rank * 8 + m.from.file;
+                    int toIndex   = m.to.rank   * 8 + m.to.file;
+                    int bonus = static_cast<int>((depth + 1) * (depth + 1));
+                    history[colorIndex][fromIndex][toIndex] += bonus;
+                }
+            }
+            break; // alpha-beta cutoff
+        }
     }
 
     return best;

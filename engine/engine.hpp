@@ -49,7 +49,7 @@ public:
 private:
 
     // Ricerca ricorsiva (alpha-beta) su una posizione
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta);
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
     void generateLegalMoves(const chess::Board& b,
@@ -80,6 +80,14 @@ private:
         chess::Board::Move move;
         int64_t score;
     };
+
+    // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
+    static constexpr int MAX_PLY = 64;
+    chess::Board::Move killerMoves[2][MAX_PLY] {};
+
+    // History heuristic: bonus for non-capture moves that often cause cutoffs
+    // history[colorIndex][fromIndex][toIndex]
+    int history[2][64][64] = {};
 
     const std::unordered_map<uint8_t, int64_t> pieceValues = {
         {chess::Board::EMPTY, 0},
