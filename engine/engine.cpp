@@ -283,19 +283,19 @@ void Engine::generateLegalMoves(const chess::Board& b,
 
     const uint8_t color = b.getActiveColor();
     const bool isWhite = (color == chess::Board::WHITE);
-
+    // Usa occupancy e bitboard per tipo/colore dalla Board
     const uint64_t occ = b.getPiecesBitMap();
 
-    // Bitboard dei nostri pezzi (solo caselle occupate dal nostro colore)
-    uint64_t ownOcc = 0ULL;
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
-        ownOcc |= (1ULL << idx);
-    }
+    uint64_t ownPawns   = (color == chess::Board::WHITE) ? b.pawns_bb[0]   : b.pawns_bb[1];
+    uint64_t ownKnights = (color == chess::Board::WHITE) ? b.knights_bb[0] : b.knights_bb[1];
+    uint64_t ownBishops = (color == chess::Board::WHITE) ? b.bishops_bb[0] : b.bishops_bb[1];
+    uint64_t ownRooks   = (color == chess::Board::WHITE) ? b.rooks_bb[0]   : b.rooks_bb[1];
+    uint64_t ownQueens  = (color == chess::Board::WHITE) ? b.queens_bb[0]  : b.queens_bb[1];
+    uint64_t ownKings   = (color == chess::Board::WHITE) ? b.kings_bb[0]   : b.kings_bb[1];
 
     auto addMovesFromMask = [&](uint8_t from, uint64_t mask) {
+        // Rimuovi le caselle occupate dai nostri pezzi
+        uint64_t ownOcc = ownPawns | ownKnights | ownBishops | ownRooks | ownQueens | ownKings;
         mask &= ~ownOcc;
 
         while (mask) {
@@ -312,12 +312,9 @@ void Engine::generateLegalMoves(const chess::Board& b,
     };
 
     // Pawns
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::PAWN) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
-
-        const uint8_t from = idx;
+    while (ownPawns) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownPawns));
+        ownPawns &= (ownPawns - 1);
 
         const uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
         const uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
@@ -326,62 +323,47 @@ void Engine::generateLegalMoves(const chess::Board& b,
     }
 
     // Knights
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::KNIGHT) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+    while (ownKnights) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownKnights));
+        ownKnights &= (ownKnights - 1);
 
-        const uint8_t from = idx;
         const uint64_t mask = pieces::getKnightAttacks(static_cast<int16_t>(from));
-
         addMovesFromMask(from, mask);
     }
 
     // Bishops
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::BISHOP) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+    while (ownBishops) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownBishops));
+        ownBishops &= (ownBishops - 1);
 
-        const uint8_t from = idx;
         const uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(from), occ);
-
         addMovesFromMask(from, mask);
     }
 
     // Rooks
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::ROOK) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+    while (ownRooks) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownRooks));
+        ownRooks &= (ownRooks - 1);
 
-        const uint8_t from = idx;
         const uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(from), occ);
-
         addMovesFromMask(from, mask);
     }
 
     // Queens
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::QUEEN) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+    while (ownQueens) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownQueens));
+        ownQueens &= (ownQueens - 1);
 
-        const uint8_t from = idx;
         const uint64_t mask = pieces::getQueenAttacks(static_cast<int16_t>(from), occ);
-
         addMovesFromMask(from, mask);
     }
 
     // Kings
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        uint8_t piece = b.get(idx);
-        if ((piece & chess::Board::MASK_PIECE_TYPE) != chess::Board::KING) continue;
-        if ((piece & chess::Board::MASK_COLOR) != color) continue;
+    while (ownKings) {
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownKings));
+        ownKings &= (ownKings - 1);
 
-        const uint8_t from = idx;
         const uint64_t mask = pieces::getKingAttacks(static_cast<int16_t>(from));
-
         addMovesFromMask(from, mask);
     }
 

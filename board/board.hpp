@@ -285,6 +285,7 @@ public:
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
 
+public:
     // Per-piece, per-color bitboards to accelerate move generation and attack tests
     std::array<uint64_t, 2> pawns_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
@@ -292,6 +293,9 @@ private:
     std::array<uint64_t, 2> rooks_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> queens_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> kings_bb = {0ULL, 0ULL};
+
+private:
+    
 
     std::vector<bool> castle = {true, true, true, true}; // KQkq
     std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
