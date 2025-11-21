@@ -38,12 +38,15 @@ public:
 
     static uint64_t nodesSearched; 
 
-    void playGameVsHuman();
-    void playGameVsEngine(bool isWhite); // ciclo prinipale
+    //void playGameVsHuman();
+    //void playGameVsEngine(bool isWhite); // ciclo prinipale
   
 
     void search(uint64_t depth);
     int64_t evaluate(const chess::Board& board); 
+    
+    // TODO It will be in private later when State0 is finished
+    bool isMate();
 
 
 private:
@@ -60,7 +63,6 @@ private:
                                 std::vector<chess::Board::Move>& moves) const;
 
     void takePlayerTurn();
-    bool isMate();
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
     int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
 

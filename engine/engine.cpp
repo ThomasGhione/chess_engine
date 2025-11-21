@@ -502,39 +502,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
 }
 // 4365
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void Engine::playGameVsHuman() {
-	while(!this->isMate()) {
-	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
-
-	    // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-
-	std::cout << "It's white's turn: \n\n";
-	this->takePlayerTurn();
-	if (this->isMate()) break;
-
-	    // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-	std::cout << "It's black's turn: \n\n";
-	this->takePlayerTurn();
-	if (this->isMate()) break;
-
-	    // sleep(3);
-	}
-}
-
 bool Engine::isMate() {
     uint8_t toMove = this->board.getActiveColor();
     if (this->board.isCheckmate(toMove) || this->board.isStalemate(toMove)) {
@@ -544,182 +511,15 @@ bool Engine::isMate() {
 }
 
 
-void Engine::takePlayerTurn() {
-    std::string playerInput;
-
-    bool isWhiteTurn = (this->board.getActiveColor() == chess::Board::WHITE);
-    std::string currentBoard = print::Prints::getBasicBoard(this->board);
-
-    bool error = true;
-    while (error) {
-        std::cout << currentBoard << "\n";
-
-        std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
-        std::cin >> playerInput;
-
-        //! TODO Check if player wants to save or quit
-
-        /*
-        if (playerInput == "s") {
-            this->saveGame();
-            return;
-        }
-
-        if (playerInput == "q") {
-            this->quitGame();
-            return;
-        }
-        */
-
-        if (playerInput.length() != 4) {
-            std::cout << "Invalid move length. Please enter your move in the format 'e2e4'.\n";
-            continue;
-        }
-
-        chess::Coords fromCoords(playerInput.substr(0, 2));
-        chess::Coords toCoords(playerInput.substr(2, 2));
-  
-        if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-            std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
-            continue;
-        }
-  
-        uint8_t piece = this->board.get(fromCoords);
-  
-
-        if (piece == chess::Board::EMPTY) {
-            std::cout << "There is no piece at the source square. Please enter a valid move.\n";
-            continue;
-        }
-
-        if (isWhiteTurn != (this->board.getColor(fromCoords) == chess::Board::WHITE)) {
-            std::cout << "It's not your turn to move that piece. Please enter a valid move.\n";
-            continue;
-        }
-
-        // TODO: check whether it's redundant or not
-        if (this->board.isSameColor(fromCoords, toCoords)) {
-            std::cout << "You cannot move to a square occupied by your own piece.\n";
-            continue;
-        }
-#ifdef DEBUG
-        auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif  
-        if (!this->board.moveBB(fromCoords, toCoords)) {
-            std::cout << "Invalid move. Please try again.";
-            continue;
-        }
-#ifdef DEBUG
-        auto chrono_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-        std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
-#endif
-      
-        // After successful move, detect terminal state for next side to move
-        uint8_t nextColor = this->board.getActiveColor();
-        if (this->board.isCheckmate(nextColor)) {
-            std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
-            return; // exit turn early
-        }
-        if (this->board.isStalemate(nextColor)) {
-            std::cout << "\nStalemate. Game drawn.\n";
-            return;
-        }
-      
-        error = false;
-  }
-  
-    return;
-}
-
-/*
-void Engine::saveGame() {
-    if (std::filesystem::exists("save.txt")) {
-        char ans;
-        
-        std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
-        std::cin >> ans;
-        if (ans == 'Y' || ans == 'y') {
-          std::filesystem::remove("saves/save.txt");
-        }
-        else {
-            return;
-        }   
-    }
-    
-    std::ofstream SaveFile("saves/save.txt");
-    SaveFile << board.getCurrentFen(); 
-    SaveFile.close();
-} */
 
 
-void Engine::playGameVsEngine(bool isWhite) {
-    // Gioco engine vs umano.
-    // Se isWhite == true, il giocatore umano gioca il bianco, altrimenti il nero.
 
-    while (!this->isMate()) {
-        const uint8_t toMove = this->board.getActiveColor();
-        const bool whiteToMove = (toMove == chess::Board::WHITE);
 
-        const bool humanToMove = (isWhite && whiteToMove) || (!isWhite && !whiteToMove);
 
-        if (humanToMove) {
-            // Turno dell'umano
-            std::cout << (whiteToMove ? "It's your (White) turn:\n\n"
-                                      : "It's your (Black) turn:\n\n");
-            this->takePlayerTurn();
-        } else {
-            // Turno dell'engine
-            std::cout << (whiteToMove ? "Engine (White) is thinking...\n"
-                                      : "Engine (Black) is thinking...\n");
-#ifdef DEBUG
-            auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif  
-            // Per semplicità usiamo la profondità di default del motore
-            this->search(this->depth);
-#ifdef DEBUG
-            auto chrono_end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
-            std::cout << "[DEBUG] Nodes searched so far: " << this->nodesSearched << "\n";
-#endif
-            // Stampa la board aggiornata dopo la mossa dell'engine
-            std::string currentBoard = print::Prints::getBasicBoard(this->board);
-            std::cout << currentBoard << "\n";
-        }
 
-        // Dopo ogni mossa controlla stato terminale
-        if (this->isMate()) {
-            uint8_t nextColor = this->board.getActiveColor();
-            if (this->board.isCheckmate(nextColor)) {
-                std::cout << "\nCheckmate! "
-                          << (nextColor == chess::Board::WHITE ? "Black" : "White")
-                          << " wins.\n";
-            } else if (this->board.isStalemate(nextColor)) {
-                std::cout << "\nStalemate. Game drawn.\n";
-            }
-            break;
-        }
-    }
-}
 
-/*
-void Engine::playGameVsEngine(bool isWhite) {
-    while (!isMate()) {
-    if(isWhite) {
-      std::cout << "It's your turn: ";
-      takePlayerTurn();
-      std::cout << "Engine's thinking... ";
-      takeEngineTurn();
-    }else{
-      std::cout << "Engine's thinking... ";
-      takeEngineTurn();
-      std::cout << "It's your turn: ";
-      takePlayerTurn();
-    }
-  }
 
-}
-*/
+
+
 
 } // namespace engine

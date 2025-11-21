@@ -21,6 +21,10 @@ namespace driver {
             bool loadGame(bool isWithPlayer);
             void saveGame();
 
+            void playGameVsHuman();
+            void takePlayerTurn();
+            void playGameVsEngine(bool isWhite);
+
     };
 }
 
