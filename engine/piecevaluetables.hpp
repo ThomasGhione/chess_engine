@@ -108,6 +108,18 @@ namespace engine {
         }
         return mirroredTable;
     }
+
+    constexpr int64_t mirrorSquareIndex(int64_t index, const std::array<int64_t, 64>& table) {
+        std::array<int64_t, 64> mirroredTable = mirrorTable(table);
+        return mirroredTable[index];
+    }
+
+    constexpr int64_t mirrorIndex(int64_t index) {
+        int64_t rank = index / 8;
+        int64_t file = index % 8;
+        int64_t mirroredRank = 7 - rank;
+        return mirroredRank * 8 + file;
+    }
 }
 
 #endif // ENGINE_PIECEVALUETABLES_HPP

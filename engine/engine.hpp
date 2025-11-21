@@ -38,10 +38,6 @@ public:
 
     static uint64_t nodesSearched; 
 
-    //void playGameVsHuman();
-    //void playGameVsEngine(bool isWhite); // ciclo prinipale
-  
-
     void search(uint64_t depth);
     int64_t evaluate(const chess::Board& board); 
     
@@ -51,22 +47,27 @@ public:
 
 private:
 
+    struct ScoredMove {
+        chess::Board::Move move;
+        int64_t score;
+    };
+
+    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
+                 chess::Board::Move& bestMove, const chess::Board::Move& m);
+    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
+
     // Ricerca ricorsiva (alpha-beta) su una posizione
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
-    void generateLegalMoves(const chess::Board& b,
-                            std::vector<chess::Board::Move>& moves) const;
+    std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
+    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite);
 
-    // Versione "vecchia" di move generation, utile per confronti/debug
-    void generateLegalMoves_old(const chess::Board& b,
-                                std::vector<chess::Board::Move>& moves) const;
 
-    void takePlayerTurn();
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
     int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
 
-    //void takeEngineTurn(); // ...mossa dopo muove l'engine
+    int64_t evaluateCheckmate(const chess::Board& board);
 
 /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
@@ -77,11 +78,6 @@ private:
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
 
-
-    struct ScoredMove {
-        chess::Board::Move move;
-        int64_t score;
-    };
 
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     static constexpr int MAX_PLY = 64;

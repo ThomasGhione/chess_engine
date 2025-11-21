@@ -173,15 +173,13 @@ public:
 
     uint64_t getPiecesBitMap() const noexcept {
         uint64_t bitMap = 0;
-        for (uint8_t rank = 0; rank < 8; ++rank) {
-            for (uint8_t file = 0; file < 8; ++file) {
-                uint8_t piece = this->get(rank, file);
-                if (piece != EMPTY) {
-                    uint8_t index = rank * 8 + file;
-                    bitMap |= (1ULL << index);
-                }
-            }
+
+        for (uint8_t i = 0; i < 64; ++i) {
+            if (this->get(i) == EMPTY) continue;
+            
+            bitMap |= (1ULL << i);
         }
+        
         return bitMap;
     }
 

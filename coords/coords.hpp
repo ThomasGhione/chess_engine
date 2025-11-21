@@ -32,6 +32,9 @@ public:
 
     std::string toString() const;
     uint8_t toIndex() const noexcept;
+
+    static std::string toAlgebric(const Coords& c) noexcept;
 }; // class Coords
 } // namespace chess
 #endif
+    

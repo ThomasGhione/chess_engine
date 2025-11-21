@@ -106,4 +106,13 @@ uint8_t Coords::toIndex() const noexcept {
 }
 
 
+std::string Coords::toAlgebric(const Coords& c) noexcept {
+    char fileChar = static_cast<char>('a' + c.file);
+    char rankChar = static_cast<char>('1' + c.rank);
+    std::string s;
+    s.push_back(fileChar);
+    s.push_back(rankChar);
+    return s;
+}
+
 }

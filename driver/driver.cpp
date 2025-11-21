@@ -20,10 +20,10 @@ namespace driver {
                     uint8_t colorChoice = menu.playWithEngineMenu();
                     switch (colorChoice) {
                         case '1':
-                            this->playGameVsEngine(true);
+                            this->playGameVsEngine(true); // TODO stampare il risultato finale
                             break;
                         case '2':
-                            this->playGameVsEngine(false);
+                            this->playGameVsEngine(false); // TODO stampare il risultato finale
                             break;
                         case '3':
                             loadGame(false);
@@ -123,6 +123,20 @@ namespace driver {
         SaveFile << engine.board.getCurrentFen();
         SaveFile.close();
     */
+    }
+
+
+    void Driver::printFinalResult() {
+        if (this->engine.isMate()) {
+            uint8_t nextColor = this->engine.board.getActiveColor();
+            if (this->engine.board.isCheckmate(nextColor)) {
+                std::cout << "\nCheckmate! "
+                            << (nextColor == chess::Board::WHITE ? "Black" : "White")
+                            << " wins.\n";
+            } else if (this->engine.board.isStalemate(nextColor)) {
+                std::cout << "\nStalemate. Game drawn.\n";
+            }
+        } 
     }
 
 
@@ -262,53 +276,51 @@ namespace driver {
     } */
 
 
-    void Driver::playGameVsEngine(bool isWhite) {
-        // Gioco engine vs umano.
-        // Se isWhite == true, il giocatore umano gioca il bianco, altrimenti il nero.
+    void Driver::playGameVsEngine(bool isHumanWhite) {
+        isHumanWhite ? this->HumanFirst() : this->EngineFirst();
+    }
 
+    void Driver::EngineFirst() {
         while (!engine.isMate()) {
-            const uint8_t toMove = engine.board.getActiveColor();
-            const bool whiteToMove = (toMove == chess::Board::WHITE);
+            std::cout << "Engine's thinking... \n";
+            
+#ifdef DEBUG
+            auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif              
+            engine.search(engine.depth);
+#ifdef DEBUG
+            auto chrono_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
+            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
+            std::cout << "[DEBUG] Nodes searched so far: " << engine.nodesSearched << "\n";
+#endif
 
-            const bool humanToMove = (isWhite && whiteToMove) || (!isWhite && !whiteToMove);
+            if (engine.isMate()) break;
 
-            if (humanToMove) {
-                // Turno dell'umano
-                std::cout << (whiteToMove ? "It's your (White) turn:\n\n"
-                                          : "It's your (Black) turn:\n\n");
-                this->takePlayerTurn();
-            } else {
-                // Turno dell'engine
-                std::cout << (whiteToMove ? "Engine (White) is thinking...\n"
-                                          : "Engine (Black) is thinking...\n");
-    #ifdef DEBUG
-                auto chrono_start = std::chrono::high_resolution_clock::now();
-    #endif  
-                // Per semplicità usiamo la profondità di default del motore
-                engine.search(engine.depth);
-    #ifdef DEBUG
-                auto chrono_end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-                std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
-                std::cout << "[DEBUG] Nodes searched so far: " << engine.nodesSearched << "\n";
-    #endif
-                // Stampa la board aggiornata dopo la mossa dell'engine
-                //std::string currentBoard = print::Prints::getBasicBoard(engine.board);
-                //std::cout << currentBoard << "\n";
-            }
+            std::cout << "It's your turn: \n\n";
+            this->takePlayerTurn();
+        }
+    }
 
-            // Dopo ogni mossa controlla stato terminale
-            if (engine.isMate()) {
-                uint8_t nextColor = engine.board.getActiveColor();
-                if (engine.board.isCheckmate(nextColor)) {
-                    std::cout << "\nCheckmate! "
-                              << (nextColor == chess::Board::WHITE ? "Black" : "White")
-                              << " wins.\n";
-                } else if (engine.board.isStalemate(nextColor)) {
-                    std::cout << "\nStalemate. Game drawn.\n";
-                }
-                break;
-            }
+    void Driver::HumanFirst() {
+        while (!engine.isMate()) {
+            std::cout << "It's your turn: \n\n";
+            this->takePlayerTurn();
+
+            if (engine.isMate()) break;
+
+            std::cout << "Engine's thinking... \n";
+            
+#ifdef DEBUG
+            auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif    
+            engine.search(engine.depth);
+#ifdef DEBUG
+            auto chrono_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
+            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
+            std::cout << "[DEBUG] Nodes searched so far: " << engine.nodesSearched << "\n";
+#endif
         }
     }
 

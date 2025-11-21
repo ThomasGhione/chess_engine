@@ -23,8 +23,12 @@ namespace driver {
 
             void playGameVsHuman();
             void takePlayerTurn();
-            void playGameVsEngine(bool isWhite);
 
+            void playGameVsEngine(bool isWhite);
+            void EngineFirst();
+            void HumanFirst();
+
+            void printFinalResult(); // TODO implement this!!!
     };
 }
 
