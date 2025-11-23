@@ -23,28 +23,28 @@ Engine::Engine()
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	static constexpr auto coefficientPiece = [](uint8_t piece) {
-	    return 2 * (piece & chess::Board::MASK_COLOR) - 1; 
-  	};
+	    return -2 *static_cast<int64_t>(piece >> 3) + 1;
+  };
 
-	static constexpr auto pieceValue = [](int8_t x) {
-    	return static_cast<int64_t>(x * (-1267.0/60.0 +
-        	x * (3445.0/72.0 +
-        	x * (-881.0/24.0 +
-        	x * (937.0/72.0 +
-        	x * (-87.0/40.0 +
-        	x * (5.0/36.0))))))
-        );
-	};
+  static constexpr auto pieceValue = [](uint8_t x) {
+    return static_cast<int64_t>( (x * (-134220 +
+      x * (304540 +
+      x * (-240405 +
+      x * (87775 +
+      x * (-15075 +
+      x * 985)))))) / 36.0);
+  };
 
-  	int64_t delta = 0;
-  	static constexpr uint8_t MAX_INDEX = 64;
-    // #pragma omp parallel for reduction(+:delta)
-    for (uint8_t i = 0; i < MAX_INDEX; i++) {
-    	uint8_t piece = b.get(i);
-    	delta += coefficientPiece(piece & chess::Board::MASK_PIECE_TYPE) * pieceValue(piece);
-    }
+  int64_t delta = 0;
+  static constexpr uint8_t MAX_INDEX = 64;
+  //#pragma omp parallel for reduction(+:delta)
+  for (uint8_t i = 0; i < MAX_INDEX; i++) {
+    uint8_t piece = b.get(i);
 
-    return delta;
+    delta += coefficientPiece(piece & chess::Board::MASK_COLOR) * pieceValue(piece & chess::Board::MASK_PIECE_TYPE);
+  }
+  
+  return delta;
 }
 
 int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
@@ -378,7 +378,7 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
     int64_t eval = 0;
 
-    int64_t materialDelta = getMaterialDeltaSLOW(board);
+    int64_t materialDelta = getMaterialDelta(board);
     eval += materialDelta;
 
     
