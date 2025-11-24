@@ -280,6 +280,15 @@ public:
 
     std::string fromBoardToFen() const;
 
+    // Ritorna la casa di en-passant per il colore dato, se esiste.
+    // Se non esiste, ritorna una Coords "vuota" (rank e file -1).
+    Coords getEnPassant(uint8_t color) const noexcept {
+        if (color > 1) {
+            return Coords{Coords::INVALID_COORDS, Coords::INVALID_COORDS};
+        }
+        return enPassant[color];
+    }
+
 private:
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
 
@@ -300,7 +309,7 @@ private:
     // uint8_t castle = 0x0F; // 4 bit for castling rights (KQkq) // 0000 1111 = all castling rights available // 1111=0x0F
     // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
 
-    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // WHITE and BLACK
+    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // en-passant square per WHITE e BLACK
     uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
     uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
     uint8_t activeColor = WHITE; // Tracks the active color (white or black)

@@ -20,6 +20,7 @@
 #include "basebonuspenaltyvalues.hpp"
 #include "basicrules.hpp"
 #include "piecevaluetables.hpp"
+#include "tt.hpp"
 
 namespace engine {
 
@@ -35,6 +36,9 @@ public:
     uint64_t depth;
 
     int64_t eval;
+
+    // Puntatore alla transposition table globale
+    TTEntry* ttTable;
 
     static uint64_t nodesSearched; 
 

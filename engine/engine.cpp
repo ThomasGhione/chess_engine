@@ -18,6 +18,14 @@ Engine::Engine()
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
+    // Collega la TT globale e inizializzala a valori noti
+    ttTable = globalTT();
+    for (std::size_t i = 0; i < TTEntry::TABLE_SIZE; ++i) {
+        ttTable[i].key   = 0;
+        ttTable[i].depth = 0;
+        ttTable[i].score = 0;
+        ttTable[i].flag  = TTEntry::EXACT;
+    }
 }
 
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
@@ -146,14 +154,27 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     bool inCheck = b.inCheck(us);
     if (inCheck && depth > 0) depth++; // extend search if in check
-    
-    
+
+    // Prova a usare la transposition table solo per depth >= 2
+    const uint64_t hashKey = computeHashKey(b);
+    if (depth >= 2) {
+        const int32_t alpha32 = static_cast<int32_t>( 
+            std::max<int64_t>(alpha, std::numeric_limits<int32_t>::min() + 1));
+        const int32_t beta32  = static_cast<int32_t>(
+            std::min<int64_t>(beta,  std::numeric_limits<int32_t>::max() - 1));
+        int32_t ttScore = 0;
+        if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
+            return static_cast<int64_t>(ttScore);
+        }
+    }
+
     std::vector<chess::Board::Move> moves = this->generateLegalMoves(b);
     if (moves.empty()) return this->evaluate(b);
     std::vector<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
 
 
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
+    const int64_t alphaOrig = alpha;
 
     // #pragma omp parallel for schedule(dynamic) // TODO check whether schedule(dynamic) works or not
     for (const auto& scoredMove : orderedScoredMoves) {
@@ -161,7 +182,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         chess::Board copy = b;
         if (!copy.moveBB(m.from, m.to)) continue;
 
-        int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, ply + 1);
+    int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, ply + 1);
 
         this->updateMinMax(usIsWhite, score, alpha, beta, best);
         
@@ -194,6 +215,27 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             break; // alpha-beta cutoff
         }
         
+    }
+
+    // Determina il tipo di nodo per la TT e salva solo per depth >= 2
+    if (depth >= 2) {
+        uint8_t flag = TTEntry::EXACT;
+        if (best <= alphaOrig) {
+            flag = TTEntry::UPPERBOUND;   // fail-low
+        } else if (best >= beta) {
+            flag = TTEntry::LOWERBOUND;   // fail-high
+        }
+
+        const int32_t storedScore = static_cast<int32_t>(
+            std::max<int64_t>(
+                std::min<int64_t>(best, std::numeric_limits<int32_t>::max() - 1),
+                std::numeric_limits<int32_t>::min() + 1));
+
+        storeTTEntry(this->ttTable,
+                     hashKey,
+                     static_cast<uint16_t>(depth),
+                     storedScore,
+                     flag);
     }
 
     return best;
@@ -448,7 +490,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     eval += (whiteEval - blackEval);
     return eval;
 }
-// 4365
 
 bool Engine::isMate() {
     uint8_t toMove = this->board.getActiveColor();
