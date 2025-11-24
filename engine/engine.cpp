@@ -12,6 +12,13 @@ namespace engine {
 
 uint64_t Engine::nodesSearched = 0;
 
+#ifdef DEBUG
+uint64_t Engine::ttProbes = 0;
+uint64_t Engine::ttHits = 0;
+uint64_t Engine::ttExactHits = 0;
+uint64_t Engine::ttCutoffHits = 0;
+#endif
+
 Engine::Engine()
     : board(chess::Board())
     , depth(6)
@@ -167,6 +174,10 @@ void Engine::search(uint64_t depth) {
 
     this->nodesSearched = 0; // reset the nodes searched counter
 
+#ifdef DEBUG
+    ttProbes = ttHits = ttExactHits = ttCutoffHits = 0;
+#endif
+
     // Alpha-beta is always from the side-to-move point of view:
     // White tries to maximise the score, Black to minimise it.
     int64_t alpha = NEG_INF;
@@ -191,6 +202,13 @@ void Engine::search(uint64_t depth) {
     // TODO spostare in driver
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
     std::cout << "Engine plays: " << moveStr << " (score: " << bestScore << ")\n";
+
+#ifdef DEBUG
+    std::cout << "[DEBUG] TT probes: " << ttProbes
+              << ", hits: " << ttHits
+              << ", exact hits (approx): " << ttExactHits
+              << ", cutoff hits: " << ttCutoffHits << "\n";
+#endif
 }
 
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
@@ -209,12 +227,20 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Prova a usare la transposition table solo per depth >= 2
     const uint64_t hashKey = computeHashKey(b);
     if (depth >= 2) {
+#ifdef DEBUG
+        ++ttProbes;
+#endif
         const int32_t alpha32 = static_cast<int32_t>( 
             std::max<int64_t>(alpha, std::numeric_limits<int32_t>::min() + 1));
         const int32_t beta32  = static_cast<int32_t>(
             std::min<int64_t>(beta,  std::numeric_limits<int32_t>::max() - 1));
         int32_t ttScore = 0;
         if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
+#ifdef DEBUG
+            ++ttHits;
+            ++ttExactHits;   // approssimazione: contiamo tutti gli hit come exact
+            ++ttCutoffHits;  // per questo nodo, l'hit TT evita di cercare i figli
+#endif
             return static_cast<int64_t>(ttScore);
         }
     }

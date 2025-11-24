@@ -23,7 +23,7 @@ struct TTEntry {
         UPPERBOUND = 2
     };
 
-    static constexpr std::size_t TABLE_SIZE = 1u << 20; // 2^20 entries (16 MB circa)
+    static constexpr std::size_t TABLE_SIZE = 1u << 22; // 2^22 entries (~64 MB circa)
 
     TTEntry() = default;
     TTEntry(uint64_t k, uint16_t d, int32_t s, uint8_t f)
