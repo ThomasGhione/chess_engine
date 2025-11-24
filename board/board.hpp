@@ -172,27 +172,20 @@ public:
     //! GET MOVE BY BITBOARD
 
     uint64_t getPiecesBitMap() const noexcept {
-        uint64_t bitMap = 0;
-
-        for (uint8_t i = 0; i < 64; ++i) {
-            if (this->get(i) == EMPTY) continue;
-            
-            bitMap |= (1ULL << i);
-        }
-        
-        return bitMap;
+        // Occupancy bitboard already tracks all non-empty squares.
+        return occupancy;
     }
 
     void updateOccupancyBB() noexcept {
         // Recalculate global occupancy and all per-piece, per-color bitboards from the chessboard state.
         this->occupancy = 0ULL;
 
-        pawns_bb[0] = pawns_bb[1] = 0ULL;
-        knights_bb[0] = knights_bb[1] = 0ULL;
-        bishops_bb[0] = bishops_bb[1] = 0ULL;
-        rooks_bb[0] = rooks_bb[1] = 0ULL;
-        queens_bb[0] = queens_bb[1] = 0ULL;
-        kings_bb[0] = kings_bb[1] = 0ULL;
+    pawns_bb[0] = pawns_bb[1] = 0ULL;
+    knights_bb[0] = knights_bb[1] = 0ULL;
+    bishops_bb[0] = bishops_bb[1] = 0ULL;
+    rooks_bb[0] = rooks_bb[1] = 0ULL;
+    queens_bb[0] = queens_bb[1] = 0ULL;
+    kings_bb[0] = kings_bb[1] = 0ULL;
 
         for (uint8_t rank = 0; rank < 8; ++rank) {
             for (uint8_t file = 0; file < 8; ++file) {
@@ -317,6 +310,8 @@ private:
 
 
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
+    uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
+    uint8_t blackKingIndex = 64;
 
     //helper for fromFenToBoard
     uint8_t charToPiece(char symbol);

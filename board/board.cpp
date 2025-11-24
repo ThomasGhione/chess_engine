@@ -393,45 +393,48 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
     uint8_t attackerCount = 0;
     uint8_t kingIndex = 64; // invalid sentinel
     if (inChk) {
-        // Locate king and count attackers
-        for (uint8_t idx = 0; idx < 64; ++idx) {
-            uint8_t pc = this->get(idx / 8, idx % 8);
-            if (((pc & MASK_PIECE_TYPE) == KING) && ((pc & MASK_COLOR) == movingColor)) {
-                kingIndex = idx;
-                break;
+        // Use the king bitboard to find king index quickly
+        const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
+        if (kingBB) {
+            kingIndex = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+
+            const bool oppIsWhite = (oppColor == WHITE);
+
+            // Pawns attacking king square
+            {
+                uint64_t pawnsAtt = pieces::getPawnAttackersTo(static_cast<int16_t>(kingIndex), oppIsWhite) &
+                                    (oppIsWhite ? pawns_bb[0] : pawns_bb[1]);
+                attackerCount += static_cast<uint8_t>(__builtin_popcountll(pawnsAtt));
             }
-        }
-        // Count attackers on king square
-        if (kingIndex < 64) {
-            // brute force count
-            for (uint8_t idx = 0; idx < 64; ++idx) {
-                uint8_t pc = this->get(idx / 8, idx % 8);
-                if ((pc & MASK_PIECE_TYPE) == EMPTY || (pc & MASK_COLOR) != oppColor) continue;
-                // Attack test: reuse isSquareAttacked logic by temporarily targeting piece square? Instead generate attacks of pc and see if kingIndex reachable.
-                // Simplify: call isSquareAttacked(kingIndex, oppColor) only once -> if true attackerCount>=1.
-                // For double-check detection we approximate by scanning every potential removal: more expensive; keep simple: attackerCount= isSquareAttacked?1:0.
+
+            // Knights
+            {
+                uint64_t knightsAtt = pieces::getKnightAttacks(static_cast<int16_t>(kingIndex)) &
+                                      (oppIsWhite ? knights_bb[0] : knights_bb[1]);
+                attackerCount += static_cast<uint8_t>(__builtin_popcountll(knightsAtt));
             }
-            // We only have boolean now; refine to proper count by enumerating piece types.
-            // Build occupancy copy and test each enemy piece separately.
-            for (uint8_t idx = 0; idx < 64; ++idx) {
-                uint8_t pc = this->get(idx / 8, idx % 8);
-                if ((pc & MASK_PIECE_TYPE) == EMPTY || (pc & MASK_COLOR) != oppColor) continue;
-                uint8_t pt = pc & MASK_PIECE_TYPE;
-                uint64_t atkMask = 0ULL;
-                switch (pt) {
-                    case PAWN: {
-                        bool isWhiteEnemy = (pc & MASK_COLOR) == WHITE;
-                        atkMask = pieces::getPawnAttacks(idx, isWhiteEnemy);
-                        break; 
-                    }
-                    case KNIGHT: atkMask = pieces::getKnightAttacks(idx); break;
-                    case BISHOP: atkMask = pieces::getBishopAttacks(idx, occ); break;
-                    case ROOK:   atkMask = pieces::getRookAttacks(idx, occ); break;
-                    case QUEEN:  atkMask = pieces::getQueenAttacks(idx, occ); break;
-                    case KING:   atkMask = pieces::getKingAttacks(idx); break;
-                    default: break;
-                }
-                if (atkMask & (1ULL << kingIndex)) attackerCount++;
+
+            // Kings (adjacent)
+            {
+                uint64_t kingsAtt = pieces::getKingAttacks(static_cast<int16_t>(kingIndex)) &
+                                    (oppIsWhite ? kings_bb[0] : kings_bb[1]);
+                attackerCount += static_cast<uint8_t>(__builtin_popcountll(kingsAtt));
+            }
+
+            // Sliding rook/queen (orthogonal)
+            {
+                uint64_t rookMask = pieces::getRookAttacks(static_cast<int16_t>(kingIndex), occ);
+                uint64_t rq = oppIsWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]);
+                uint64_t rookAtt = rookMask & rq;
+                attackerCount += static_cast<uint8_t>(__builtin_popcountll(rookAtt));
+            }
+
+            // Sliding bishop/queen (diagonal)
+            {
+                uint64_t bishopMask = pieces::getBishopAttacks(static_cast<int16_t>(kingIndex), occ);
+                uint64_t bq = oppIsWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]);
+                uint64_t bishopAtt = bishopMask & bq;
+                attackerCount += static_cast<uint8_t>(__builtin_popcountll(bishopAtt));
             }
         }
     }
@@ -586,90 +589,80 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
 
 // Is the given color currently in check?
 bool Board::inCheck(uint8_t color) const noexcept {
-    // Find king square
-    for (uint8_t idx = 0; idx < 64; ++idx) {
-        const uint8_t r = static_cast<uint8_t>(idx / 8);
-        const uint8_t f = static_cast<uint8_t>(idx % 8);
-        const uint8_t p = this->get(r, f);
-        if (((p & MASK_PIECE_TYPE) == KING) && ((p & MASK_COLOR) == color)) {
-            const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
-            return isSquareAttacked(idx, opp);
-        }
+    // Find king square using king bitboards
+    const uint64_t kingBB = (color == WHITE) ? kings_bb[0] : kings_bb[1];
+    if (!kingBB) {
+        return false; // no king found (invalid position) -> treat as not in check
     }
-    return false; // no king found (invalid position) -> treat as not in check
+
+    const uint8_t kingIndex = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
+    return isSquareAttacked(kingIndex, opp);
 }
 
 
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const uint64_t occ = this->occupancy;
 
-    for (uint8_t from = 0; from < 64; ++from) {
-        const uint8_t r = static_cast<uint8_t>(from / 8);
-        const uint8_t f = static_cast<uint8_t>(from % 8);
-        const uint8_t p = this->get(r, f);
-        if ((p & MASK_PIECE_TYPE) == EMPTY) continue;
-        if ((p & MASK_COLOR) != color) continue;
+    const bool isWhite = (color == WHITE);
+    const int side = isWhite ? 0 : 1;
 
-        const uint8_t pt = (p & MASK_PIECE_TYPE);
-        uint64_t movesMask = 0ULL;
+    // Helper lambda to test moves for a given piece type bitboard
+    auto tryMovesFromBitboard = [&](uint64_t piecesBB, auto genMovesForSquare) -> bool {
+        uint64_t bb = piecesBB;
+        while (bb) {
+            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(bb));
+            bb &= (bb - 1);
 
-        switch (pt) {
-            case PAWN: {
-                const bool isWhite = (color == WHITE);
-                const uint64_t attacks = pieces::getPawnAttacks(from, isWhite);
-                const uint64_t pushes  = pieces::getPawnForwardPushes(from, isWhite, occ);
-                movesMask = attacks | pushes;
-                break;
+            const uint8_t r = static_cast<uint8_t>(from / 8);
+            const uint8_t f = static_cast<uint8_t>(from % 8);
+
+            uint64_t movesMask = genMovesForSquare(from, occ);
+
+            uint64_t mask = movesMask;
+            while (mask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+                mask &= (mask - 1);
+
+                const uint8_t tr = static_cast<uint8_t>(to / 8);
+                const uint8_t tf = static_cast<uint8_t>(to % 8);
+                const uint8_t dst = this->get(tr, tf);
+                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+
+                // Handle promotions for pawns via generator specialization
+                Board copy = *this;
+                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
+                if (!copy.inCheck(color)) return true;
             }
-            case KNIGHT:
-                movesMask = pieces::getKnightAttacks(from);
-                break;
-            case BISHOP:
-                movesMask = pieces::getBishopAttacks(from, occ);
-                break;
-            case ROOK:
-                movesMask = pieces::getRookAttacks(from, occ);
-                break;
-            case QUEEN:
-                movesMask = pieces::getQueenAttacks(from, occ);
-                break;
-            case KING:
-                movesMask = pieces::getKingAttacks(from);
-                // Also consider castling squares if legal per canMoveToBB
-                {
-                    const uint8_t rK = r;
-                    const uint8_t fK = f;
-                    // kingside
-                    if (fK + 2 <= 7) {
-                        Coords toKs{static_cast<uint8_t>(fK + 2), rK};
-                        if (this->canMoveToBB(Coords{fK, rK}, toKs)) {
-                            movesMask |= (1ULL << toKs.toIndex());
-                        }
-                    }
-                    // queenside
-                    if (fK >= 2) {
-                        Coords toQs{static_cast<uint8_t>(fK - 2), rK};
-                        if (this->canMoveToBB(Coords{fK, rK}, toQs)) {
-                            movesMask |= (1ULL << toQs.toIndex());
-                        }
-                    }
-                }
-                break;
-            default:
-                continue;
         }
+        return false;
+    };
 
-        for (uint8_t to = 0; to < 64; ++to) {
-            if ((movesMask & (1ULL << to)) == 0ULL) continue;
-            const uint8_t tr = static_cast<uint8_t>(to / 8);
-            const uint8_t tf = static_cast<uint8_t>(to % 8);
-            const uint8_t dst = this->get(tr, tf);
-            // Skip own-occupied destination
-            if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+    // PAWNS: handle attacks, pushes, promotions, and en-passant via canMoveToBB
+    {
+        uint64_t pawns = pawns_bb[side];
+        while (pawns) {
+            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(pawns));
+            pawns &= (pawns - 1);
 
-            // Try the move on a copy and verify king safety
-            if (pt == PAWN) {
-                const bool isPromotion = (color == WHITE ? (tr == 7) : (tr == 0));
+            const uint8_t r = static_cast<uint8_t>(from / 8);
+            const uint8_t f = static_cast<uint8_t>(from % 8);
+
+            const uint64_t attacks = pieces::getPawnAttacks(from, isWhite);
+            const uint64_t pushes  = pieces::getPawnForwardPushes(from, isWhite, occ);
+            uint64_t movesMask = attacks | pushes;
+
+            uint64_t mask = movesMask;
+            while (mask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+                mask &= (mask - 1);
+
+                const uint8_t tr = static_cast<uint8_t>(to / 8);
+                const uint8_t tf = static_cast<uint8_t>(to % 8);
+                const uint8_t dst = this->get(tr, tf);
+                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+
+                const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
                     const char promos[4] = {'q','r','b','n'};
                     for (char ch : promos) {
@@ -677,15 +670,77 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                         if (!copy.moveBB(Coords{f, r}, Coords{tf, tr}, ch)) continue;
                         if (!copy.inCheck(color)) return true;
                     }
-                    continue; // no promotion resulted in legal move
+                    continue;
+                }
+
+                Board copy = *this;
+                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
+                if (!copy.inCheck(color)) return true;
+            }
+        }
+    }
+
+    // KNIGHTS
+    if (tryMovesFromBitboard(knights_bb[side], [&](uint8_t sq, uint64_t occBB) {
+            return pieces::getKnightAttacks(sq);
+        })) return true;
+
+    // BISHOPS
+    if (tryMovesFromBitboard(bishops_bb[side], [&](uint8_t sq, uint64_t occBB) {
+            return pieces::getBishopAttacks(sq, occBB);
+        })) return true;
+
+    // ROOKS
+    if (tryMovesFromBitboard(rooks_bb[side], [&](uint8_t sq, uint64_t occBB) {
+            return pieces::getRookAttacks(sq, occBB);
+        })) return true;
+
+    // QUEENS
+    if (tryMovesFromBitboard(queens_bb[side], [&](uint8_t sq, uint64_t occBB) {
+            return pieces::getQueenAttacks(sq, occBB);
+        })) return true;
+
+    // KINGS (including castling via canMoveToBB)
+    {
+        uint64_t kings = kings_bb[side];
+        if (kings) {
+            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
+            const uint8_t r = static_cast<uint8_t>(from / 8);
+            const uint8_t f = static_cast<uint8_t>(from % 8);
+
+            uint64_t movesMask = pieces::getKingAttacks(from);
+
+            // Castling squares: rely on canMoveToBB for legality
+            if (f + 2 <= 7) {
+                Coords toKs{static_cast<uint8_t>(f + 2), r};
+                if (this->canMoveToBB(Coords{f, r}, toKs)) {
+                    movesMask |= (1ULL << toKs.toIndex());
+                }
+            }
+            if (f >= 2) {
+                Coords toQs{static_cast<uint8_t>(f - 2), r};
+                if (this->canMoveToBB(Coords{f, r}, toQs)) {
+                    movesMask |= (1ULL << toQs.toIndex());
                 }
             }
 
-            Board copy = *this;
-            if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
-            if (!copy.inCheck(color)) return true;
+            uint64_t mask = movesMask;
+            while (mask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+                mask &= (mask - 1);
+
+                const uint8_t tr = static_cast<uint8_t>(to / 8);
+                const uint8_t tf = static_cast<uint8_t>(to % 8);
+                const uint8_t dst = this->get(tr, tf);
+                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+
+                Board copy = *this;
+                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
+                if (!copy.inCheck(color)) return true;
+            }
         }
     }
+
     return false;
 }
 
