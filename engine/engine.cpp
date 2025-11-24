@@ -28,6 +28,57 @@ Engine::Engine()
     }
 }
 
+int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
+    int64_t delta = 0;
+
+    // White pieces: color index 0
+    // Black pieces: color index 1
+
+    // Pawns
+    {
+        int w = __builtin_popcountll(b.pawns_bb[0]);
+        int bl = __builtin_popcountll(b.pawns_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::PAWN);
+    }
+
+    // Knights
+    {
+        int w = __builtin_popcountll(b.knights_bb[0]);
+        int bl = __builtin_popcountll(b.knights_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::KNIGHT);
+    }
+
+    // Bishops
+    {
+        int w = __builtin_popcountll(b.bishops_bb[0]);
+        int bl = __builtin_popcountll(b.bishops_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::BISHOP);
+    }
+
+    // Rooks
+    {
+        int w = __builtin_popcountll(b.rooks_bb[0]);
+        int bl = __builtin_popcountll(b.rooks_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::ROOK);
+    }
+
+    // Queens
+    {
+        int w = __builtin_popcountll(b.queens_bb[0]);
+        int bl = __builtin_popcountll(b.queens_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::QUEEN);
+    }
+
+    // Kings
+    {
+        int w = __builtin_popcountll(b.kings_bb[0]);
+        int bl = __builtin_popcountll(b.kings_bb[1]);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::KING);
+    }
+
+    return delta;
+}
+
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	static constexpr auto coefficientPiece = [](uint8_t piece) {
@@ -420,7 +471,7 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
     int64_t eval = 0;
 
-    int64_t materialDelta = getMaterialDelta(board);
+    int64_t materialDelta = getMaterialDeltaFAST(board);
     eval += materialDelta;
 
     

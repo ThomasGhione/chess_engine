@@ -129,7 +129,7 @@ inline uint64_t computeHashKey(const chess::Board& board) {
     // En-passant: usiamo il getter leggero per il side to move corrente.
     const uint8_t stm = board.getActiveColor();
     const chess::Coords epSquare = board.getEnPassant((stm == chess::Board::WHITE) ? 0 : 1);
-    if (epSquare.file >= 0 && epSquare.file < 8 && epSquare.rank >= 0 && epSquare.rank < 8) {
+    if (chess::Coords::isInBounds(epSquare)) {
         int file = epSquare.file;
         hashKey ^= detail::ZOBRIST.enPassant[file];
     }

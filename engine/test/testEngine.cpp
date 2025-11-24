@@ -73,6 +73,45 @@ ut::suite engineSuite = [] {
     // Attesa isMate: false
   };
 
+  "getMaterialDelta FAST vs NORMAL vs SLOW"_test = []{
+    engine::Engine e = engine::Engine();
+
+    // Creare board con fen:
+    // r1bqkbnr/pppppppp/2n5/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2
+
+    chess::Board testBoard("r1bqkbnr/pppppppp/2n5/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2");
+    
+    int64_t deltaFast = 0;
+    auto start1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100000; ++i) {
+      deltaFast += e.getMaterialDeltaFAST(testBoard);
+    }
+    auto end1 = std::chrono::high_resolution_clock::now();
+    auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count();
+    std::cout << "Fast material delta calculated in " << duration1 << " ms\n";
+    
+    int64_t deltaNormal = 0;
+    auto start2 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100000; ++i) {
+      deltaNormal += e.getMaterialDelta(testBoard);
+    }
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
+    std::cout << "Normal material delta calculated in " << duration2 << " ms\n";
+
+    int64_t deltaSlow = 0;
+    auto start3 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100000; ++i) {
+      deltaSlow += e.getMaterialDeltaSLOW(testBoard);
+    }
+    auto end3 = std::chrono::high_resolution_clock::now();
+    auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end3 - start3).count();
+    std::cout << "Slow material delta calculated in " << duration3 << " ms\n";
+
+    expect(deltaFast < deltaNormal);
+    expect(deltaNormal < deltaSlow);
+  };
+
 
 
   "performance searchPosition depth 4"_test = []{

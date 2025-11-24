@@ -48,7 +48,9 @@ public:
     // TODO It will be in private later when State0 is finished
     bool isMate();
 
-
+    int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
+    int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
 private:
 
     struct ScoredMove {
@@ -68,8 +70,6 @@ private:
     std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite);
 
 
-    int64_t getMaterialDelta(const chess::Board& b) noexcept;
-    int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
 
     int64_t evaluateCheckmate(const chess::Board& board);
 
