@@ -503,62 +503,102 @@ int64_t Engine::evaluate(const chess::Board& board) {
     
     // 2) IS THIS AN ENDGAME?
 
-    // count pieces (not including pawns, kings)
-    int nonPawnNonKingPieces = 0;
-    // #pragma omp parallel for reduction(+:nonPawnNonKingPieces)
-    for (uint8_t i = 0; i < 64; ++i) {
-        uint8_t piece = board.get(i);
-        uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-        if (pieceType == chess::Board::EMPTY ||
-            pieceType == chess::Board::PAWN ||
-            pieceType == chess::Board::KING) {
-            continue;
-        }
-        ++nonPawnNonKingPieces;
-    }
+    // count pieces (not including pawns, kings) using bitboards
+    int nonPawnNonKingPieces =
+        __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1]) +
+        __builtin_popcountll(board.bishops_bb[0] | board.bishops_bb[1]) +
+        __builtin_popcountll(board.rooks_bb[0]   | board.rooks_bb[1]) +
+        __builtin_popcountll(board.queens_bb[0]  | board.queens_bb[1]);
+
     bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
 
-    // 3) BONUS POSITION TABLE
-    // #pragma omp parallel for reduction(+:eval)
-    for (uint8_t i = 0; i < 64; ++i) {
-        uint8_t piece = board.get(i);
-        uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+    // 3) BONUS POSITION TABLE (bitboard-based per piece type)
 
-        if (pieceType == chess::Board::EMPTY) continue;
+    auto addPsqtFor = [&](uint64_t bbWhite, uint64_t bbBlack,
+                           auto valueSelectorWhite,
+                           auto valueSelectorBlack) {
+        // White pieces
+        uint64_t bb = bbWhite;
+        while (bb) {
+            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+            bb &= (bb - 1);
 
-        int64_t posValue = 0;
-        
-        uint8_t newIdx = i;
-        if (pieceColor == chess::Board::BLACK) {
-            newIdx = mirrorIndex(i);
+            uint8_t idx = sq;
+            int64_t posValue = valueSelectorWhite(idx);
+            eval += posValue; // white adds
         }
 
-        switch (pieceType) {
-            case chess::Board::PAWN:
-                posValue = isEndgame ? PAWN_END_GAME_VALUES_TABLE[newIdx] 
-                                     : PAWN_VALUES_TABLE[newIdx];
-                break;
-            case chess::Board::KNIGHT:
-                posValue = KNIGHT_VALUES_TABLE[newIdx];
-                break;
-            case chess::Board::BISHOP:
-                posValue = BISHOP_VALUES_TABLE[newIdx];
-                break;
-            case chess::Board::ROOK:
-                posValue = ROOK_VALUES_TABLE[newIdx];
-                break;
-            case chess::Board::QUEEN:
-                posValue = QUEEN_VALUES_TABLE[newIdx];
-                break;
-            case chess::Board::KING:
-                posValue = isEndgame ? KING_END_GAME_VALUES_TABLE[newIdx] 
-                                     : KING_MIDDLE_GAME_VALUES_TABLE[newIdx];
-                break;
-        }
+        // Black pieces
+        bb = bbBlack;
+        while (bb) {
+            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+            bb &= (bb - 1);
 
-        eval += (pieceColor == chess::Board::WHITE) ? posValue : -posValue;
-    }
+            uint8_t idx = mirrorIndex(sq);
+            int64_t posValue = valueSelectorBlack(idx);
+            eval -= posValue; // black subtracts
+        }
+    };
+
+    // Pawns
+    addPsqtFor(
+        board.pawns_bb[0],
+        board.pawns_bb[1],
+        [&](uint8_t idx) {
+            return isEndgame ? PAWN_END_GAME_VALUES_TABLE[idx]
+                             : PAWN_VALUES_TABLE[idx];
+        },
+        [&](uint8_t idx) {
+            return isEndgame ? PAWN_END_GAME_VALUES_TABLE[idx]
+                             : PAWN_VALUES_TABLE[idx];
+        }
+    );
+
+    // Knights
+    addPsqtFor(
+        board.knights_bb[0],
+        board.knights_bb[1],
+        [&](uint8_t idx) { return KNIGHT_VALUES_TABLE[idx]; },
+        [&](uint8_t idx) { return KNIGHT_VALUES_TABLE[idx]; }
+    );
+
+    // Bishops
+    addPsqtFor(
+        board.bishops_bb[0],
+        board.bishops_bb[1],
+        [&](uint8_t idx) { return BISHOP_VALUES_TABLE[idx]; },
+        [&](uint8_t idx) { return BISHOP_VALUES_TABLE[idx]; }
+    );
+
+    // Rooks
+    addPsqtFor(
+        board.rooks_bb[0],
+        board.rooks_bb[1],
+        [&](uint8_t idx) { return ROOK_VALUES_TABLE[idx]; },
+        [&](uint8_t idx) { return ROOK_VALUES_TABLE[idx]; }
+    );
+
+    // Queens
+    addPsqtFor(
+        board.queens_bb[0],
+        board.queens_bb[1],
+        [&](uint8_t idx) { return QUEEN_VALUES_TABLE[idx]; },
+        [&](uint8_t idx) { return QUEEN_VALUES_TABLE[idx]; }
+    );
+
+    // Kings
+    addPsqtFor(
+        board.kings_bb[0],
+        board.kings_bb[1],
+        [&](uint8_t idx) {
+            return isEndgame ? KING_END_GAME_VALUES_TABLE[idx]
+                             : KING_MIDDLE_GAME_VALUES_TABLE[idx];
+        },
+        [&](uint8_t idx) {
+            return isEndgame ? KING_END_GAME_VALUES_TABLE[idx]
+                             : KING_MIDDLE_GAME_VALUES_TABLE[idx];
+        }
+    );
 
 
 
