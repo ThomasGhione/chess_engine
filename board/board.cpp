@@ -770,4 +770,268 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     return false;
 }
 
+
+
+
+
+// ------------------------------------------------------------
+// INCREMENTAL DO/UNDO MOVE (NO LEGALITY CHECKS)
+// ------------------------------------------------------------
+
+void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept {
+    const Coords& from = m.from;
+    const Coords& to   = m.to;
+
+    const uint8_t fromIndex = from.toIndex();
+    const uint8_t toIndex   = to.toIndex();
+
+    const uint8_t moving      = this->get(from);
+    const uint8_t movingType  = moving & MASK_PIECE_TYPE;
+    const uint8_t movingColor = moving & MASK_COLOR;
+    const uint8_t destBefore  = this->get(to);
+
+    // Snapshot del game state
+    st.prevActiveColor   = activeColor;
+    st.prevHalfMoveClock = halfMoveClock;
+    st.prevFullMoveClock = fullMoveClock;
+    st.prevEnPassant[0]  = enPassant[0];
+    st.prevEnPassant[1]  = enPassant[1];
+    st.prevCastle        = castle;
+    st.prevHasMoved      = hasMoved;
+
+    // Info pezzo/mossa
+    st.fromPiece              = moving;
+    st.capturedPiece          = destBefore;
+    st.promotionPieceType     = 0;
+    st.wasEnPassantCapture    = false;
+    st.enPassantCapturedIndex = 0;
+    st.wasCastling            = false;
+    st.rookFromIndex          = 0;
+    st.rookToIndex            = 0;
+
+    // Cache opzionale re
+    st.prevWhiteKingIndex = kings_bb[0] ? static_cast<uint8_t>(__builtin_ctzll(kings_bb[0])) : 64;
+    st.prevBlackKingIndex = kings_bb[1] ? static_cast<uint8_t>(__builtin_ctzll(kings_bb[1])) : 64;
+
+    // Reset en passant di default (potrà essere reimpostato per un doppio passo)
+    enPassant[0] = Coords{};
+    enPassant[1] = Coords{};
+
+    // --- EN PASSANT CAPTURE ---
+    if (movingType == PAWN) {
+        if (from.file != to.file && destBefore == EMPTY &&
+            Coords::isInBounds(st.prevEnPassant[0]) &&
+            toIndex == st.prevEnPassant[0].toIndex()) {
+
+            st.wasEnPassantCapture = true;
+
+            const bool isWhite = (movingColor == WHITE);
+            const int8_t forwardDir = isWhite ? 1 : -1;
+            Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
+            const uint8_t capturedPiece = this->get(captured);
+            st.capturedPiece = capturedPiece;
+
+            const uint8_t capIndex = captured.toIndex();
+            st.enPassantCapturedIndex = capIndex;
+
+            this->set(captured, EMPTY);
+            this->occupancy &= ~(1ULL << capIndex);
+            this->removePieceFromBitboards(capturedPiece, capIndex);
+        }
+    }
+
+    // --- NORMAL CAPTURE SU DESTINAZIONE ---
+    if (destBefore != EMPTY && !st.wasEnPassantCapture) {
+        this->removePieceFromBitboards(destBefore, toIndex);
+    }
+
+    // --- SPOSTAMENTO PEZZO ---
+    this->updateChessboard(from, to);
+    this->fastUpdateOccupancyBB(fromIndex, toIndex);
+    this->removePieceFromBitboards(moving, fromIndex);
+    this->addPieceToBitboards(moving, toIndex);
+
+    // --- ARROCCO: spostamento torre ---
+    if (movingType == KING && from.rank == to.rank) {
+        int df = static_cast<int>(to.file) - static_cast<int>(from.file);
+        if (df == 2 || df == -2) {
+            st.wasCastling = true;
+
+            uint8_t rookFromIndex;
+            uint8_t rookToIndex;
+
+            if (df == 2) {
+                // arrocco corto: re e1->g1 / e8->g8, torre h->f
+                rookFromIndex = Coords{7, to.rank}.toIndex();
+                rookToIndex   = Coords{5, to.rank}.toIndex();
+            } else {
+                // arrocco lungo: re e1->c1 / e8->c8, torre a->d
+                rookFromIndex = Coords{0, to.rank}.toIndex();
+                rookToIndex   = Coords{3, to.rank}.toIndex();
+            }
+
+            st.rookFromIndex = rookFromIndex;
+            st.rookToIndex   = rookToIndex;
+
+            Coords rookFrom{static_cast<uint8_t>(rookFromIndex % 8), static_cast<uint8_t>(rookFromIndex / 8)};
+            Coords rookTo  {static_cast<uint8_t>(rookToIndex   % 8), static_cast<uint8_t>(rookToIndex   / 8)};
+
+            const uint8_t rook = this->get(rookFrom);
+            if ((rook & MASK_PIECE_TYPE) == ROOK) {
+                this->set(rookTo, static_cast<piece_id>(rook));
+                this->set(rookFrom, EMPTY);
+                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+                this->removePieceFromBitboards(rook, rookFromIndex);
+                this->addPieceToBitboards(rook, rookToIndex);
+            }
+        }
+    }
+
+    // --- UPDATE DIRITTI DI ARROCCO / hasMoved ---
+    auto disableWhiteKingside  = [&]{ if (castle.size() >= 1) castle[0] = false; };
+    auto disableWhiteQueenside = [&]{ if (castle.size() >= 2) castle[1] = false; };
+    auto disableBlackKingside  = [&]{ if (castle.size() >= 3) castle[2] = false; };
+    auto disableBlackQueenside = [&]{ if (castle.size() >= 4) castle[3] = false; };
+
+    if (movingType == KING) {
+        if (movingColor == WHITE) {
+            disableWhiteKingside();
+            disableWhiteQueenside();
+            if (hasMoved.size() >= 1) hasMoved[0] = true; // white king
+        } else {
+            disableBlackKingside();
+            disableBlackQueenside();
+            if (hasMoved.size() >= 4) hasMoved[3] = true; // black king
+        }
+    }
+    if (movingType == ROOK) {
+        if (movingColor == WHITE) {
+            if (from.rank == 0 && from.file == 0) {
+                disableWhiteQueenside();
+                if (hasMoved.size() >= 2) hasMoved[1] = true; // white a1 rook
+            }
+            if (from.rank == 0 && from.file == 7) {
+                disableWhiteKingside();
+                if (hasMoved.size() >= 3) hasMoved[2] = true; // white h1 rook
+            }
+        } else {
+            if (from.rank == 7 && from.file == 0) {
+                disableBlackQueenside();
+                if (hasMoved.size() >= 5) hasMoved[4] = true; // black a8 rook
+            }
+            if (from.rank == 7 && from.file == 7) {
+                disableBlackKingside();
+                if (hasMoved.size() >= 6) hasMoved[5] = true; // black h8 rook
+            }
+        }
+    }
+    if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
+        if ((destBefore & MASK_COLOR) == WHITE) {
+            if (to.rank == 0 && to.file == 0) disableWhiteQueenside();
+            if (to.rank == 0 && to.file == 7) disableWhiteKingside();
+        } else {
+            if (to.rank == 7 && to.file == 0) disableBlackQueenside();
+            if (to.rank == 7 && to.file == 7) disableBlackKingside();
+        }
+    }
+
+    // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
+    if (movingType == PAWN) {
+        int dr = static_cast<int>(to.rank) - static_cast<int>(from.rank);
+        if (dr == 2 || dr == -2) {
+            uint8_t midRank = static_cast<uint8_t>((from.rank + to.rank) / 2);
+            enPassant[0] = Coords{from.file, midRank};
+        }
+    }
+
+    // --- PROMOZIONE ---
+    if (movingType == PAWN) {
+        if ((movingColor == WHITE && to.rank == 7) ||
+            (movingColor == BLACK && to.rank == 0)) {
+
+            uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
+            if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') {
+                promo = 'q';
+            }
+            st.promotionPieceType = promo;
+            (void)this->promote(to, static_cast<char>(promo));
+        }
+    }
+
+    // --- CLOCKS E SIDE TO MOVE ---
+    if (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture) {
+        halfMoveClock = 0;
+    } else if (halfMoveClock < 255) {
+        ++halfMoveClock;
+    }
+    if (activeColor == BLACK && fullMoveClock < 255) {
+        ++fullMoveClock;
+    }
+    activeColor = (activeColor == WHITE) ? BLACK : WHITE;
+}
+
+void Board::undoMove(const Move& m, const MoveState& st) noexcept {
+    const Coords& from = m.from;
+    const Coords& to   = m.to;
+
+    const uint8_t fromIndex = from.toIndex();
+    const uint8_t toIndex   = to.toIndex();
+
+    uint8_t pieceOnTo = this->get(to);
+    uint8_t pieceType = pieceOnTo & MASK_PIECE_TYPE;
+
+    // --- ANNULLA PROMOZIONE: pezzo promosso torna pedone ---
+    if (st.promotionPieceType != 0 && pieceType != PAWN) {
+        const uint8_t color = pieceOnTo & MASK_COLOR;
+        const uint8_t pawnPiece = static_cast<uint8_t>(PAWN | color);
+        this->removePieceFromBitboards(pieceOnTo, toIndex);
+        this->addPieceToBitboards(pawnPiece, toIndex);
+        this->set(to, static_cast<piece_id>(pawnPiece));
+        pieceOnTo = pawnPiece;
+        pieceType = PAWN;
+    }
+
+    // --- SPOSTA IL PEZZO INDIETRO (to -> from) ---
+    this->updateChessboard(to, from);
+    this->fastUpdateOccupancyBB(toIndex, fromIndex);
+    this->removePieceFromBitboards(pieceOnTo, toIndex);
+    this->addPieceToBitboards(pieceOnTo, fromIndex);
+
+    // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
+    if (st.wasEnPassantCapture) {
+        const uint8_t capIndex = st.enPassantCapturedIndex;
+        Coords capSq{static_cast<uint8_t>(capIndex % 8), static_cast<uint8_t>(capIndex / 8)};
+        this->set(capSq, static_cast<piece_id>(st.capturedPiece));
+        this->occupancy |= (1ULL << capIndex);
+        this->addPieceToBitboards(st.capturedPiece, capIndex);
+    } else if (st.capturedPiece != EMPTY) {
+        this->set(to, static_cast<piece_id>(st.capturedPiece));
+        this->occupancy |= (1ULL << toIndex);
+        this->addPieceToBitboards(st.capturedPiece, toIndex);
+    }
+
+    // --- ANNULLA SPOSTAMENTO TORRE IN ARROCCO ---
+    if (st.wasCastling) {
+        const uint8_t rookFromIndex = st.rookFromIndex;
+        const uint8_t rookToIndex   = st.rookToIndex;
+        Coords rookFrom{static_cast<uint8_t>(rookFromIndex % 8), static_cast<uint8_t>(rookFromIndex / 8)};
+        Coords rookTo  {static_cast<uint8_t>(rookToIndex   % 8), static_cast<uint8_t>(rookToIndex   / 8)};
+        const uint8_t rook = this->get(rookTo);
+        this->set(rookFrom, static_cast<piece_id>(rook));
+        this->set(rookTo, EMPTY);
+        this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
+        this->removePieceFromBitboards(rook, rookToIndex);
+        this->addPieceToBitboards(rook, rookFromIndex);
+    }
+
+    // --- RIPRISTINA GAME STATE ---
+    activeColor   = st.prevActiveColor;
+    halfMoveClock = st.prevHalfMoveClock;
+    fullMoveClock = st.prevFullMoveClock;
+    enPassant[0]  = st.prevEnPassant[0];
+    enPassant[1]  = st.prevEnPassant[1];
+    castle        = st.prevCastle;
+    hasMoved      = st.prevHasMoved;
+}
+
 }; // namespace chess

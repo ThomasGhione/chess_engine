@@ -200,7 +200,8 @@ void Engine::search(uint64_t depth) {
     chess::Board::Move bestMove = moves.front(); // temporary initialization
 
     for (const auto& m : moves) {
-        chess::Board copy = this->board;
+        // Applica la mossa direttamente sulla board principale usando doMove/undoMove
+        chess::Board::MoveState state;
 
         uint8_t piece = this->board.get(m.from);
         uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
@@ -215,16 +216,21 @@ void Engine::search(uint64_t depth) {
 
         if (isPromotionCandidate) {
             // Engine always promotes to queen for now
-            moveOk = copy.moveBB(m.from, m.to, 'q');
+            this->board.doMove(m, state, 'q');
+            moveOk = true; // doMove non fa legality check; generateLegalMoves garantisce pseudo-legalità
         } else {
-            moveOk = copy.moveBB(m.from, m.to);
+            this->board.doMove(m, state);
+            moveOk = true;
         }
 
         if (!moveOk) {
             continue;
         }
         constexpr int currPly = 1;
-        int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, currPly);
+        int64_t score = this->searchPosition(this->board, depth - 1, alpha, beta, currPly);
+
+        // Ripristina la board allo stato precedente
+        this->board.undoMove(m, state);
 
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
     }
@@ -392,12 +398,28 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // #pragma omp parallel for schedule(dynamic) // TODO check whether schedule(dynamic) works or not
     for (const auto& scoredMove : orderedScoredMoves) {
-        
+
         ++moveIndex;
-        
+
         const auto& m = scoredMove.move;
-        chess::Board copy = b;
-        if (!copy.moveBB(m.from, m.to)) continue;
+
+        // Applica la mossa in-place con doMove/undoMove
+        chess::Board::MoveState state;
+
+        uint8_t piece = b.get(m.from);
+        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+        const bool isPromotionCandidate =
+            (pieceType == chess::Board::PAWN) &&
+            ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
+             (pieceColor == chess::Board::BLACK && m.to.rank == 0));
+
+        if (isPromotionCandidate) {
+            b.doMove(m, state, 'q');
+        } else {
+            b.doMove(m, state);
+        }
 
         int64_t childDepth = depth - 1;
         if (childDepth < 0) childDepth = 0;
@@ -407,9 +429,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             continue;
         }
 
-        int64_t score = this->searchPosition(copy, childDepth, alpha, beta, ply + 1);
+    int64_t score = this->searchPosition(b, childDepth, alpha, beta, ply + 1);
 
-        this->updateMinMax(usIsWhite, score, alpha, beta, best);
+    this->updateMinMax(usIsWhite, score, alpha, beta, best);
+
+    // Annulla la mossa prima di passare alla successiva
+    b.undoMove(m, state);
         
         // TODO wrap in a function
         // Beta cutoff: update killer moves and history for non-captures
