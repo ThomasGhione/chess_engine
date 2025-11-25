@@ -94,24 +94,36 @@ inline constexpr ZobristTables ZOBRIST = makeZobristTables();
 inline uint64_t computeHashKey(const chess::Board& board) {
     uint64_t hashKey = 0ULL;
 
-    // Pezzi su 64 caselle usando Board::get(sq)
-    for (uint8_t sq = 0; sq < 64; ++sq) {
-        uint8_t raw = board.get(sq);
-        if (raw == chess::Board::EMPTY) continue;
+    // Pezzi usando direttamente le bitboard per tipo/colore
 
-        uint8_t type  = raw & chess::Board::MASK_PIECE_TYPE;
-        uint8_t color = raw & chess::Board::MASK_COLOR;
-
+    auto xorPiecesFromBB = [&](uint64_t bb, uint8_t type, uint8_t color) {
         // Mappa (type,color) → indice 0..15
-        uint8_t idx = 0;
-        if (color == chess::Board::WHITE) {
-            idx = type;            // 1..6 per i pezzi bianchi
-        } else { // BLACK
-            idx = 8 + type;        // 9..14 per i pezzi neri
-        }
+        const uint8_t idx = (color == chess::Board::WHITE)
+                                ? type          // 1..6 per bianchi
+                                : static_cast<uint8_t>(8 + type); // 9..14 per neri
 
-        hashKey ^= detail::ZOBRIST.piece[idx][sq];
-    }
+        while (bb) {
+            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+            bb &= (bb - 1);
+            hashKey ^= detail::ZOBRIST.piece[idx][sq];
+        }
+    };
+
+    // White pieces (color index 0)
+    xorPiecesFromBB(board.pawns_bb[0],   chess::Board::PAWN,   chess::Board::WHITE);
+    xorPiecesFromBB(board.knights_bb[0], chess::Board::KNIGHT, chess::Board::WHITE);
+    xorPiecesFromBB(board.bishops_bb[0], chess::Board::BISHOP, chess::Board::WHITE);
+    xorPiecesFromBB(board.rooks_bb[0],   chess::Board::ROOK,   chess::Board::WHITE);
+    xorPiecesFromBB(board.queens_bb[0],  chess::Board::QUEEN,  chess::Board::WHITE);
+    xorPiecesFromBB(board.kings_bb[0],   chess::Board::KING,   chess::Board::WHITE);
+
+    // Black pieces (color index 1)
+    xorPiecesFromBB(board.pawns_bb[1],   chess::Board::PAWN,   chess::Board::BLACK);
+    xorPiecesFromBB(board.knights_bb[1], chess::Board::KNIGHT, chess::Board::BLACK);
+    xorPiecesFromBB(board.bishops_bb[1], chess::Board::BISHOP, chess::Board::BLACK);
+    xorPiecesFromBB(board.rooks_bb[1],   chess::Board::ROOK,   chess::Board::BLACK);
+    xorPiecesFromBB(board.queens_bb[1],  chess::Board::QUEEN,  chess::Board::BLACK);
+    xorPiecesFromBB(board.kings_bb[1],   chess::Board::KING,   chess::Board::BLACK);
 
     // Side to move: XOR se tocca al nero
     if (board.getActiveColor() == chess::Board::BLACK) {

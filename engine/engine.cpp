@@ -253,13 +253,52 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     const int64_t alphaOrig = alpha;
 
+    const int totalMoves = static_cast<int>(orderedScoredMoves.size());
+    int latePruneStart = totalMoves + 1; // default: nessun late move pruning
+
+    if (totalMoves > 10) {
+        int lastSixth = totalMoves / 6; // ultimo ~16.67%
+        if (lastSixth < 1) lastSixth = 1;
+        latePruneStart = totalMoves - lastSixth; // da qui in poi siamo nell'ultimo sesto
+    }
+
+    int moveIndex = 0;
+
     // #pragma omp parallel for schedule(dynamic) // TODO check whether schedule(dynamic) works or not
     for (const auto& scoredMove : orderedScoredMoves) {
+        
+        ++moveIndex;
+        
         const auto& m = scoredMove.move;
         chess::Board copy = b;
         if (!copy.moveBB(m.from, m.to)) continue;
 
-    int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, ply + 1);
+        int64_t childDepth = depth - 1;
+        if (childDepth < 0) childDepth = 0;
+
+        // Late move pruning adattivo sulla coda delle mosse
+        if (depth <= 2 &&                    // applica solo a depth basse
+            moveIndex >= latePruneStart &&   // solo nell'ultimo sesto delle mosse
+            !inCheck) {                      // non siamo gia' in scacco nella posizione corrente
+
+            uint8_t toPiece = b.get(m.to);
+            uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+            const bool isCapture = (toPieceType != chess::Board::EMPTY);
+
+            bool givesCheck = false;
+            chess::Board checkBoard = b;
+            if (checkBoard.moveBB(m.from, m.to)) {
+                uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
+                givesCheck = checkBoard.inCheck(opponent);
+            }
+
+            // se non e' cattura ne' scacco, e siamo in coda -> prune
+            if (!isCapture && !givesCheck) {
+                continue;
+            }
+        }
+
+        int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, ply + 1);
 
         this->updateMinMax(usIsWhite, score, alpha, beta, best);
         
@@ -470,6 +509,21 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
             int fromIndex = m.from.rank * 8 + m.from.file;
             int toIndex   = m.to.rank   * 8 + m.to.file;
             score += history[colorIndex][fromIndex][toIndex];
+        }
+
+        // Penalizza fortemente le mosse di Re che non siano arrocco
+        if (fromPieceType == chess::Board::KING) {
+            // Heuristica semplice: considera arrocco se la mossa sposta il re di 2 colonne
+            const int fileDelta = std::abs(m.to.file - m.from.file);
+            const bool isCastlingLike = (fileDelta == 2);
+
+            // TODO non penalizzare sempre: stare attenti a sacrifici o tattiche varie!!
+            if (!isCastlingLike) { // Grossa penalità per spostare il re senza arroccare
+                score -= 20000; // valore molto grande, così tutte le altre mosse lo superano
+            }
+            else { // TODO: NON SEMPRE ARROCCARE E' LA MOSSA MIGLIORE
+                score += 5000; // piccolo bonus per l'arrocco
+            }
         }
 
         orderedScoredMoves.push_back(ScoredMove{m, score});
