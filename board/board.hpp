@@ -177,30 +177,45 @@ public:
     }
 
     void updateOccupancyBB() noexcept {
-        // Recalculate global occupancy and all per-piece, per-color bitboards from the chessboard state.
-        this->occupancy = 0ULL;
-
-    pawns_bb[0] = pawns_bb[1] = 0ULL;
-    knights_bb[0] = knights_bb[1] = 0ULL;
-    bishops_bb[0] = bishops_bb[1] = 0ULL;
-    rooks_bb[0] = rooks_bb[1] = 0ULL;
-    queens_bb[0] = queens_bb[1] = 0ULL;
-    kings_bb[0] = kings_bb[1] = 0ULL;
+        // Reset
+        occupancy = 0ULL;
+        pawns_bb[0]   = pawns_bb[1]   = 0ULL;
+        knights_bb[0] = knights_bb[1] = 0ULL;
+        bishops_bb[0] = bishops_bb[1] = 0ULL;
+        rooks_bb[0]   = rooks_bb[1]   = 0ULL;
+        queens_bb[0]  = queens_bb[1]  = 0ULL;
+        kings_bb[0]   = kings_bb[1]   = 0ULL;
 
         for (uint8_t rank = 0; rank < 8; ++rank) {
+            const uint32_t row = chessboard[rank];
+
+            // Costruiamo un bitboard di occupazione per questa riga:
+            // per ogni nibble != EMPTY, mettiamo un 1 nel bit corrispondente (0..7)
+            uint8_t rowMask = 0;
             for (uint8_t file = 0; file < 8; ++file) {
-                const uint8_t piece = this->get(rank, file);
-                if ((piece & MASK_PIECE_TYPE) == EMPTY) {
-                    continue;
+                const uint8_t piece = static_cast<uint8_t>((row >> (file * 4)) & MASK_PIECE);
+                if ((piece & MASK_PIECE_TYPE) != EMPTY) {
+                    rowMask |= static_cast<uint8_t>(1u << file);
                 }
+            }
 
-                const uint8_t index = static_cast<uint8_t>(rank * 8 + file);
-                this->occupancy |= (1ULL << index);
+            // Ora iteriamo solo sui bit a 1 di rowMask
+            while (rowMask) {
+                const uint8_t lsbFile = static_cast<uint8_t>(__builtin_ctz(rowMask)); // 0..7
+                rowMask &= static_cast<uint8_t>(rowMask - 1); // clear lsb
 
-                const uint8_t color = (piece & MASK_COLOR) ? 1 : 0; // BLACK = 1, WHITE = 0
-                const uint64_t bit = (1ULL << index);
+                const uint8_t index = static_cast<uint8_t>(rank * 8 + lsbFile);
+                const uint64_t bit  = (1ULL << index);
 
-                switch (piece & MASK_PIECE_TYPE) {
+                // Recupera il pezzo vero direttamente da row
+                const uint8_t piece =
+                    static_cast<uint8_t>((row >> (lsbFile * 4)) & MASK_PIECE);
+                const uint8_t type  = piece & MASK_PIECE_TYPE;
+                const uint8_t color = (piece & MASK_COLOR) ? 1u : 0u;
+
+                occupancy |= bit;
+
+                switch (type) {
                     case PAWN:   pawns_bb[color]   |= bit; break;
                     case KNIGHT: knights_bb[color] |= bit; break;
                     case BISHOP: bishops_bb[color] |= bit; break;
