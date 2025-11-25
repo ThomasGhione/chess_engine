@@ -1,15 +1,6 @@
 #include "engine.hpp"
-#include "../coords/coords.hpp"
-
-#include <omp.h>
-
-#ifdef DEBUG
-#include <chrono>
-#include <iostream>
-#endif
 
 namespace engine {
-
 uint64_t Engine::nodesSearched = 0;
 
 #ifdef DEBUG
@@ -99,7 +90,7 @@ int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
 
     return delta;
 }
-
+/*
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	static constexpr auto coefficientPiece = [](uint8_t piece) {
@@ -143,8 +134,7 @@ int64_t Engine::getMaterialDeltaSLOW(const chess::Board& b) noexcept {
     }
 
     return delta;
-}
-
+}*/
 
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) {
@@ -175,89 +165,92 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
+chess::Board::Move Engine::getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite){
+  // Alpha-beta is always from the side-to-move point of view:
+  // White tries to maximise the score, Black to minimise it.
+  int64_t alpha = this->NEG_INF;
+  int64_t beta  = this->POS_INF;
+  int64_t bestScore = (searchBestMoveForWhite) ? NEG_INF : POS_INF;
+
+  chess::Board::Move bestMove = moves.front(); // temporary initialization
+  for (const auto& m : moves) {
+    chess::Board::MoveState state;
+
+    uint8_t piece = this->board.get(m.from);
+    uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+    uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+    bool moveOk = false;
+
+    const bool isPromotionCandidate =
+        (pieceType == chess::Board::PAWN) &&
+        ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
+          (pieceColor == chess::Board::BLACK && m.to.rank == 0));
+
+    if (isPromotionCandidate) {
+        // Engine always promotes to queen for now
+        this->board.doMove(m, state, 'q');
+        moveOk = true; // doMove non fa legality check; generateLegalMoves garantisce pseudo-legalità
+    } else {
+        this->board.doMove(m, state);
+        moveOk = true;
+    }
+
+    if (!moveOk) {
+        continue;
+    }
+    constexpr int currPly = 1;
+    int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+
+    // Ripristina la board allo stato precedente
+    this->board.undoMove(m, state);
+
+    this->updateMinMax(searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove, m);
+  }
+
+  // Debug update info
+  this->eval = bestScore;
+
+  return bestMove;
+}
+
+void Engine::doMoveInBoard(chess::Board::Move bestMove){
+  // Esegui sulla board principale la mossa migliore trovata (gestendo promozioni)
+
+  uint8_t piece = this->board.get(bestMove.from);
+  uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+  uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+  const bool isPromotionCandidate =
+      (pieceType == chess::Board::PAWN) &&
+      ((pieceColor == chess::Board::WHITE && bestMove.to.rank == 7) ||
+        (pieceColor == chess::Board::BLACK && bestMove.to.rank == 0));
+
+  if (isPromotionCandidate) {
+      (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
+  } else {
+      (void)this->board.moveBB(bestMove.from, bestMove.to);
+  }
+}
+
 void Engine::search(uint64_t depth) {
     if (depth == 0) return;
 
     std::vector<chess::Board::Move> moves = this->generateLegalMoves(this->board);
-
     if (moves.empty()) return;
-    
 
-    const uint8_t us = this->board.getActiveColor();
-    const bool usIsWhite = (us == chess::Board::WHITE);
+    // Reset the nodes searched counter
+    this->nodesSearched = 0; 
 
-    this->nodesSearched = 0; // reset the nodes searched counter
+    const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
+    chess::Board::Move bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+
+    this->doMoveInBoard(bestMove);
 
 #ifdef DEBUG
-    ttProbes = ttHits = ttExactHits = ttCutoffHits = 0;
-#endif
-
-    // Alpha-beta is always from the side-to-move point of view:
-    // White tries to maximise the score, Black to minimise it.
-    int64_t alpha = NEG_INF;
-    int64_t beta  = POS_INF;
-    int64_t bestScore = (usIsWhite) ? NEG_INF : POS_INF;
-    chess::Board::Move bestMove = moves.front(); // temporary initialization
-
-    for (const auto& m : moves) {
-        // Applica la mossa direttamente sulla board principale usando doMove/undoMove
-        chess::Board::MoveState state;
-
-        uint8_t piece = this->board.get(m.from);
-        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
-        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-
-        bool moveOk = false;
-
-        const bool isPromotionCandidate =
-            (pieceType == chess::Board::PAWN) &&
-            ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
-             (pieceColor == chess::Board::BLACK && m.to.rank == 0));
-
-        if (isPromotionCandidate) {
-            // Engine always promotes to queen for now
-            this->board.doMove(m, state, 'q');
-            moveOk = true; // doMove non fa legality check; generateLegalMoves garantisce pseudo-legalità
-        } else {
-            this->board.doMove(m, state);
-            moveOk = true;
-        }
-
-        if (!moveOk) {
-            continue;
-        }
-        constexpr int currPly = 1;
-        int64_t score = this->searchPosition(this->board, depth - 1, alpha, beta, currPly);
-
-        // Ripristina la board allo stato precedente
-        this->board.undoMove(m, state);
-
-        this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
-    }
-
-    // Esegui sulla board principale la mossa migliore trovata (gestendo promozioni)
-    {
-        uint8_t piece = this->board.get(bestMove.from);
-        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
-        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-
-        const bool isPromotionCandidate =
-            (pieceType == chess::Board::PAWN) &&
-            ((pieceColor == chess::Board::WHITE && bestMove.to.rank == 7) ||
-             (pieceColor == chess::Board::BLACK && bestMove.to.rank == 0));
-
-        if (isPromotionCandidate) {
-            (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
-        } else {
-            (void)this->board.moveBB(bestMove.from, bestMove.to);
-        }
-    }
-
-    // TODO spostare in driver
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
-    std::cout << "Engine plays: " << moveStr << " (score: " << bestScore << ")\n";
+    std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
 
-#ifdef DEBUG
     std::cout << "[DEBUG] TT probes: " << ttProbes
               << ", hits: " << ttHits
               << ", exact hits (approx): " << ttExactHits
@@ -350,22 +343,74 @@ inline void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b,
 
 } // namespace anonimo
 
+
+bool Engine::hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate){
+  const uint8_t activeColor = b.getActiveColor();
+  if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
+      return this->evaluate(b);
+  }
+
+  bool inCheck = b.inCheck(activeColor);
+  if (inCheck && depth > 0) depth++; // extend search if in check
+
+  // Prova a usare la transposition table solo per depth >= 2
+  const uint64_t hashKey = computeHashKey(b);
+  if (depth >= 2) {
+
+#ifdef DEBUG
+      ++ttProbes;
+#endif
+      const int32_t alpha32 = static_cast<int32_t>( 
+          std::max<int64_t>(alpha, std::numeric_limits<int32_t>::min() + 1));
+      const int32_t beta32  = static_cast<int32_t>(
+          std::min<int64_t>(beta,  std::numeric_limits<int32_t>::max() - 1));
+      int32_t ttScore = 0;
+      if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
+#ifdef DEBUG
+          ++ttHits;
+          ++ttExactHits;   // approssimazione: contiamo tutti gli hit come exact
+          ++ttCutoffHits;  // per questo nodo, l'hit TT evita di cercare i figli
+#endif
+          return static_cast<int64_t>(ttScore);
+      }
+  }
+}
+
+std::vector<ScoredMove> Engine::getOrderedScoreMoveForCurrentPosition(chess::Board& b){
+  const bool usIsWhite = (b.getActiveColor() == chess::Board::WHITE);
+
+  std::vector<chess::Board::Move> moves = this->generateLegalMoves(b);
+  if (moves.empty()) return this->evaluate(b);
+
+  return this->sortLegalMoves(moves, ply, b, usIsWhite);
+}
+
+int64_t Engine::cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
+  // Una posizione visitata
+  this->nodesSearched++;  
+
+  int64_t evaluate;
+  if(this->hasSearchStop(depth, b, evaluate)) return evaluate;
+
+  std::vector<ScoredMove> orderedScoredMoves = this->getOrderedScoreMoveForCurrentPosition(b);
+}
+  
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
-    this->nodesSearched++;  // una posizione visitata
+    // Una posizione visitata
+    this->nodesSearched++;  
 
-    const uint8_t us = b.getActiveColor();
-    const bool usIsWhite = (us == chess::Board::WHITE);
-
-    if (depth == 0 || b.isCheckmate(us) || b.isStalemate(us)) {
+    const uint8_t activeColor = b.getActiveColor();
+    if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
         return this->evaluate(b);
     }
 
-    bool inCheck = b.inCheck(us);
+    bool inCheck = b.inCheck(activeColor);
     if (inCheck && depth > 0) depth++; // extend search if in check
 
     // Prova a usare la transposition table solo per depth >= 2
     const uint64_t hashKey = computeHashKey(b);
     if (depth >= 2) {
+
 #ifdef DEBUG
         ++ttProbes;
 #endif
@@ -384,6 +429,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
+    const bool usIsWhite = (activeColor == chess::Board::WHITE);
     std::vector<chess::Board::Move> moves = this->generateLegalMoves(b);
     if (moves.empty()) return this->evaluate(b);
     std::vector<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
@@ -394,58 +440,58 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     const int totalMoves = static_cast<int>(orderedScoredMoves.size());
 
-    int moveIndex = 0;
+  int moveIndex = 0;
 
-    // #pragma omp parallel for schedule(dynamic) // TODO check whether schedule(dynamic) works or not
-    for (const auto& scoredMove : orderedScoredMoves) {
+  // #pragma omp parallel for schedule(dynamic) // TODO check whether schedule(dynamic) works or not
+  for (const auto& scoredMove : orderedScoredMoves) {
 
-        ++moveIndex;
+      ++moveIndex;
 
-        const auto& m = scoredMove.move;
+      const auto& m = scoredMove.move;
 
-        // Late move pruning adattivo sulla coda delle mosse
-        if (shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
-            continue;
-        }
+      // Late move pruning adattivo sulla coda delle mosse
+      if (shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
+          continue;
+      }
 
-        // Applica la mossa in-place con doMove/undoMove
-        chess::Board::MoveState state;
+      // Applica la mossa in-place con doMove/undoMove
+      chess::Board::MoveState state;
 
-        uint8_t piece = b.get(m.from);
-        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
-        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+      uint8_t piece = b.get(m.from);
+      uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+      uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
-        const bool isPromotionCandidate =
-            (pieceType == chess::Board::PAWN) &&
-            ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
-             (pieceColor == chess::Board::BLACK && m.to.rank == 0));
+      const bool isPromotionCandidate =
+          (pieceType == chess::Board::PAWN) &&
+          ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
+            (pieceColor == chess::Board::BLACK && m.to.rank == 0));
 
-        if (isPromotionCandidate) {
-            b.doMove(m, state, 'q');
-        } else {
-            b.doMove(m, state);
-        }
+      if (isPromotionCandidate) {
+          b.doMove(m, state, 'q');
+      } else {
+          b.doMove(m, state);
+      }
 
-        int64_t childDepth = depth - 1;
-        if (childDepth < 0) childDepth = 0;
+      int64_t childDepth = depth - 1;
+      if (childDepth < 0) childDepth = 0;
 
-        int64_t score = this->searchPosition(b, childDepth, alpha, beta, ply + 1);
-        
-        this->updateMinMax(usIsWhite, score, alpha, beta, best);
-        
-        // Annulla la mossa prima di passare alla successiva
-        b.undoMove(m, state);
-        
-        // TODO wrap in a function
-        // Beta cutoff: update killer moves and history for non-captures
-        if (alpha >= beta) {
-            updateKillerAndHistoryOnBetaCutoff(b, m, depth, ply, us,
-                                               alpha, beta,
-                                               history, killerMoves);
-            break; // alpha-beta cutoff
-        }
-        
-    }
+      int64_t score = this->searchPosition(b, childDepth, alpha, beta, ply + 1);
+      
+      this->updateMinMax(usIsWhite, score, alpha, beta, best);
+      
+      // Annulla la mossa prima di passare alla successiva
+      b.undoMove(m, state);
+      
+      // TODO wrap in a function
+      // Beta cutoff: update killer moves and history for non-captures
+      if (alpha >= beta) {
+          updateKillerAndHistoryOnBetaCutoff(b, m, depth, ply, activeColor,
+                                              alpha, beta,
+                                              history, killerMoves);
+          break; // alpha-beta cutoff
+      }
+      
+  }
 
     // Determina il tipo di nodo per la TT e salva solo per depth >= 2
     if (depth >= 2) {

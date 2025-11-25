@@ -8,6 +8,12 @@
 #include <fstream>
 #include <unordered_map>
 #include <algorithm>
+#include <omp.h>
+
+#ifdef DEBUG
+#include <chrono>
+#include <iostream>
+#endif
 
 // Usata solo per sleep 
 // #include <unistd.h>
@@ -70,11 +76,18 @@ private:
         int64_t score;
     };
 
+
+    void doMoveInBoard(chess::Board::Move bestMove);
+    chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
 
     // Ricerca ricorsiva (alpha-beta) su una posizione
+
+    bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
+    std::vector<ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
+    int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
