@@ -403,6 +403,11 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
         const auto& m = scoredMove.move;
 
+        // Late move pruning adattivo sulla coda delle mosse
+        if (shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
+            continue;
+        }
+
         // Applica la mossa in-place con doMove/undoMove
         chess::Board::MoveState state;
 
@@ -424,17 +429,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         int64_t childDepth = depth - 1;
         if (childDepth < 0) childDepth = 0;
 
-        // Late move pruning adattivo sulla coda delle mosse
-        if (shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
-            continue;
-        }
-
-    int64_t score = this->searchPosition(b, childDepth, alpha, beta, ply + 1);
-
-    this->updateMinMax(usIsWhite, score, alpha, beta, best);
-
-    // Annulla la mossa prima di passare alla successiva
-    b.undoMove(m, state);
+        int64_t score = this->searchPosition(b, childDepth, alpha, beta, ply + 1);
+        
+        this->updateMinMax(usIsWhite, score, alpha, beta, best);
+        
+        // Annulla la mossa prima di passare alla successiva
+        b.undoMove(m, state);
         
         // TODO wrap in a function
         // Beta cutoff: update killer moves and history for non-captures
