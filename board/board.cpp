@@ -211,13 +211,10 @@ std::string Board::fromBoardToFen() const {
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
     if (!canMoveToBB(from, to)) return false;
 
-    const uint8_t moving      = this->get(from);
-    const uint8_t movingType  = moving & this->MASK_PIECE_TYPE;
+    const uint8_t moving = this->get(from);
+    const uint8_t movingType = moving & this->MASK_PIECE_TYPE;
     const uint8_t movingColor = moving & this->MASK_COLOR;
-    const uint8_t destBefore  = this->get(to);
-
-    const uint8_t fromIndex = from.toIndex();
-    const uint8_t toIndex   = to.toIndex();
+    const uint8_t destBefore = this->get(to);
 
     // Clear en passant by default; may set again after a double push
     Coords prevEp = enPassant[0];
@@ -226,35 +223,21 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
-        if (from.file != to.file && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.toIndex())) {
+        if (from.file != to.file && destBefore == EMPTY && Coords::isInBounds(prevEp) && (to.toIndex() == prevEp.toIndex())) {
             const bool isWhite = (movingColor == WHITE);
             int8_t forwardDir = isWhite ? 1 : -1;
             Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
-            const uint8_t capturedPiece = this->get(captured);
-
-            // Remove captured pawn from board, occupancy and bitboards
             this->set(captured, EMPTY);
-            const uint8_t capIndex = captured.toIndex();
-            this->occupancy &= ~(1ULL << capIndex);
-            this->removePieceFromBitboards(capturedPiece, capIndex);
+            this->occupancy &= ~(1ULL << captured.toIndex());
         }
     }
 
-    // Handle capture on destination square (normal captures)
-    if (destBefore != EMPTY) {
-        this->removePieceFromBitboards(destBefore, toIndex);
-        // occupancy bit for 'to' will be re-set below via fastUpdateOccupancyBB
-    }
-
-    // Move the piece in chessboard representation
+    // Move the piece
     this->updateChessboard(from, to);
+    this->fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
 
-    // Update occupancy bitboard for from/to squares
-    this->fastUpdateOccupancyBB(fromIndex, toIndex);
-
-    // Update per-piece bitboards for the moving piece
-    this->removePieceFromBitboards(moving, fromIndex);
-    this->addPieceToBitboards(moving, toIndex);
+    // Ensure per-piece bitboards are updated to reflect the move (including EP/rook changes handled above)
+    this->updateOccupancyBB();
 
     // Castling rook move if king moved two squares on same rank
     if (movingType == KING && from.rank == to.rank) {
@@ -263,34 +246,23 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             // kingside: rook h -> f
             Coords rookFrom{7, to.rank};
             Coords rookTo{5, to.rank};
-            const uint8_t rook = this->get(rookFrom);
+            uint8_t rook = this->get(rookFrom);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                const uint8_t rookFromIndex = rookFrom.toIndex();
-                const uint8_t rookToIndex   = rookTo.toIndex();
-
                 this->set(rookTo, static_cast<piece_id>(rook));
                 this->set(rookFrom, EMPTY);
-
-                // Update occupancy and rook bitboards incrementally
-                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-                this->removePieceFromBitboards(rook, rookFromIndex);
-                this->addPieceToBitboards(rook, rookToIndex);
+                this->occupancy |= (1ULL << rookTo.toIndex());
+                this->occupancy &= ~(1ULL << rookFrom.toIndex());
             }
         } else if (df == -2) {
             // queenside: rook a -> d
             Coords rookFrom{0, to.rank};
             Coords rookTo{3, to.rank};
-            const uint8_t rook = this->get(rookFrom);
+            uint8_t rook = this->get(rookFrom);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                const uint8_t rookFromIndex = rookFrom.toIndex();
-                const uint8_t rookToIndex   = rookTo.toIndex();
-
                 this->set(rookTo, static_cast<piece_id>(rook));
                 this->set(rookFrom, EMPTY);
-
-                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-                this->removePieceFromBitboards(rook, rookFromIndex);
-                this->addPieceToBitboards(rook, rookToIndex);
+                this->occupancy |= (1ULL << rookTo.toIndex());
+                this->occupancy &= ~(1ULL << rookFrom.toIndex());
             }
         }
     }

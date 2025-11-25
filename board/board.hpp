@@ -46,6 +46,38 @@ public:
         Coords to;
     };
 
+    struct MoveState {
+        // Game state before the move
+        uint8_t  prevActiveColor{};
+        uint16_t prevHalfMoveClock{};
+        uint16_t prevFullMoveClock{};
+
+        // En passant and castling rights
+        std::array<Coords, 2> prevEnPassant{};
+        std::vector<bool>     prevCastle{};
+        std::vector<bool>     prevHasMoved{};
+
+        // Piece information related to the move
+        uint8_t capturedPiece{};        // piece captured on destination or via en-passant (0 if none)
+        uint8_t fromPiece{};            // original piece on "from" before the move (useful for promotions)
+        uint8_t promotionPieceType{};   // non-zero if the move is a promotion (PAWN=0 -> no promotion)
+
+        bool    wasEnPassantCapture{};  // true if the move was an en-passant capture
+        uint8_t enPassantCapturedIndex{}; // index (0..63) of the pawn captured en-passant
+
+        bool    wasCastling{};          // true if the move was a castling move
+        uint8_t rookFromIndex{};        // rook start square index in castling
+        uint8_t rookToIndex{};          // rook destination square index in castling
+
+        // Optional cached king indices (if used elsewhere)
+        uint8_t prevWhiteKingIndex{64};
+        uint8_t prevBlackKingIndex{64};
+    };
+
+    struct UndoInfo {
+        MoveState state;
+    };
+
 
     Board() noexcept {
         fromFenToBoard(STARTING_FEN);
@@ -269,6 +301,10 @@ public:
     bool promote(const Coords& at, char choice) noexcept;
     // Overload: execute move and, if a pawn reaches last rank, promote using provided choice
     bool moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept;
+
+    // Incremental make/unmake move (no legality checks, no Board copy)
+    void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
+    void undoMove(const Move& m, const MoveState& state) noexcept;
     bool canMoveToBB(const Coords& from, const Coords& to) const noexcept;
     // ------------------------------------------------------------
     // CHECK / CHECKMATE / STALEMATE UTILITIES
