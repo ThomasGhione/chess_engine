@@ -35,6 +35,20 @@ Engine::Engine()
     }
 }
 
+// -----------------------------------------------------------------------------
+// Local helper constants for move ordering / pruning (can be tuned centrally)
+// -----------------------------------------------------------------------------
+
+namespace {
+
+constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
+constexpr int64_t KILLER1_BONUS               = 100000;   // bonus killer move primaria
+constexpr int64_t KILLER2_BONUS               = 90000;    // bonus killer move secondaria
+constexpr int64_t KING_NON_CASTLING_PENALTY   = 20000;    // penalita' per muovere il re senza arroccare
+constexpr int64_t CASTLING_BONUS              = 5000;     // piccolo bonus per arroccare
+
+} // namespace anonimo
+
 int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
     int64_t delta = 0;
 
@@ -211,6 +225,91 @@ void Engine::search(uint64_t depth) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Local helpers for searchPosition (TT handling, pruning, killer/history, etc.)
+// -----------------------------------------------------------------------------
+
+namespace {
+
+inline bool shouldPruneLateMove(const chess::Board& b,
+                                const chess::Board::Move& m,
+                                int64_t depth,
+                                bool inCheck,
+                                bool usIsWhite,
+                                int moveIndex,
+                                int totalMoves) {
+    // Nessun late move pruning se poche mosse
+    if (totalMoves <= 10) return false;
+
+    // Applica solo a depth basse
+    if (depth > 2) return false;
+
+    // Non potare se siamo gia' in scacco
+    if (inCheck) return false;
+
+    // Calcola inizio dell'ultimo "sesto" di mosse (circa ~16.7%)
+    int lastSixth = totalMoves / 6;
+    if (lastSixth < 1) lastSixth = 1;
+    int latePruneStart = totalMoves - lastSixth;
+
+    if (moveIndex < latePruneStart) return false; // non siamo in coda
+
+    // Non potare catture e mosse che danno scacco
+    uint8_t toPiece = b.get(m.to);
+    uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+    const bool isCapture = (toPieceType != chess::Board::EMPTY);
+    if (isCapture) return false;
+
+    bool givesCheck = false;
+    chess::Board checkBoard = b;
+    if (checkBoard.moveBB(m.from, m.to)) {
+        uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
+        givesCheck = checkBoard.inCheck(opponent);
+    }
+
+    if (givesCheck) return false;
+
+    // Mosse silenziose in coda a depth bassa: prune
+    return true;
+}
+
+inline void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b,
+                                               const chess::Board::Move& m,
+                                               int64_t depth,
+                                               int ply,
+                                               uint8_t us,
+                                               int64_t alpha,
+                                               int64_t beta,
+                                               int (&history)[2][64][64],
+                                               chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) {
+    if (alpha < beta) return; // nessun beta-cutoff
+
+    if (ply >= Engine::MAX_PLY) return;
+
+    uint8_t toPiece = b.get(m.to);
+    uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+    const bool isCapture = (toPieceType != chess::Board::EMPTY);
+    if (isCapture) return; // killer/history solo per non-catture
+
+    // Killer moves
+    auto& km1 = killerMoves[0][ply];
+    auto& km2 = killerMoves[1][ply];
+    if (!(m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
+          m.to.file   == km1.to.file   && m.to.rank   == km1.to.rank)) {
+        km2 = km1;
+        km1 = m;
+    }
+
+    // History heuristic
+    int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+    int fromIndex = m.from.rank * 8 + m.from.file;
+    int toIndex   = m.to.rank   * 8 + m.to.file;
+    int bonus = static_cast<int>((depth + 1) * (depth + 1));
+    history[colorIndex][fromIndex][toIndex] += bonus;
+}
+
+} // namespace anonimo
+
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
     this->nodesSearched++;  // una posizione visitata
 
@@ -254,13 +353,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t alphaOrig = alpha;
 
     const int totalMoves = static_cast<int>(orderedScoredMoves.size());
-    int latePruneStart = totalMoves + 1; // default: nessun late move pruning
-
-    if (totalMoves > 10) {
-        int lastSixth = totalMoves / 6; // ultimo ~16.67%
-        if (lastSixth < 1) lastSixth = 1;
-        latePruneStart = totalMoves - lastSixth; // da qui in poi siamo nell'ultimo sesto
-    }
 
     int moveIndex = 0;
 
@@ -277,57 +369,20 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         if (childDepth < 0) childDepth = 0;
 
         // Late move pruning adattivo sulla coda delle mosse
-        if (depth <= 2 &&                    // applica solo a depth basse
-            moveIndex >= latePruneStart &&   // solo nell'ultimo sesto delle mosse
-            !inCheck) {                      // non siamo gia' in scacco nella posizione corrente
-
-            uint8_t toPiece = b.get(m.to);
-            uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
-            const bool isCapture = (toPieceType != chess::Board::EMPTY);
-
-            bool givesCheck = false;
-            chess::Board checkBoard = b;
-            if (checkBoard.moveBB(m.from, m.to)) {
-                uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
-                givesCheck = checkBoard.inCheck(opponent);
-            }
-
-            // se non e' cattura ne' scacco, e siamo in coda -> prune
-            if (!isCapture && !givesCheck) {
-                continue;
-            }
+        if (shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
+            continue;
         }
 
-        int64_t score = this->searchPosition(copy, depth - 1, alpha, beta, ply + 1);
+        int64_t score = this->searchPosition(copy, childDepth, alpha, beta, ply + 1);
 
         this->updateMinMax(usIsWhite, score, alpha, beta, best);
         
         // TODO wrap in a function
         // Beta cutoff: update killer moves and history for non-captures
         if (alpha >= beta) {
-            if (ply < MAX_PLY) {
-                uint8_t toPiece   = b.get(m.to);
-                uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
-                const bool isCapture = (toPieceType != chess::Board::EMPTY);
-
-                if (!isCapture) {
-                    // Killer moves
-                    auto& km1 = killerMoves[0][ply];
-                    auto& km2 = killerMoves[1][ply];
-                    if (!(m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
-                          m.to.file   == km1.to.file   && m.to.rank   == km1.to.rank)) {
-                        km2 = km1;
-                        km1 = m;
-                    }
-
-                    // History heuristic
-                    int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-                    int fromIndex = m.from.rank * 8 + m.from.file;
-                    int toIndex   = m.to.rank   * 8 + m.to.file;
-                    int bonus = static_cast<int>((depth + 1) * (depth + 1));
-                    history[colorIndex][fromIndex][toIndex] += bonus;
-                }
-            }
+            updateKillerAndHistoryOnBetaCutoff(b, m, depth, ply, us,
+                                               alpha, beta,
+                                               history, killerMoves);
             break; // alpha-beta cutoff
         }
         
@@ -488,7 +543,7 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
         if (checkBoard.moveBB(m.from, m.to)) {
             uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
             if (checkBoard.inCheck(opponent)) {
-                score += 50;
+                score += CHECK_BONUS;
             }
         }
 
@@ -498,10 +553,10 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
             const auto& km2 = killerMoves[1][ply];
             if (m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
                 m.to.file == km1.to.file && m.to.rank == km1.to.rank) {
-                score += 100000;
+                score += KILLER1_BONUS;
             } else if (m.from.file == km2.from.file && m.from.rank == km2.from.rank &&
                        m.to.file == km2.to.file && m.to.rank == km2.to.rank) {
-                score += 90000;
+                score += KILLER2_BONUS;
             }
 
             // History heuristic bonus (only for non-captures)
@@ -519,10 +574,10 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
 
             // TODO non penalizzare sempre: stare attenti a sacrifici o tattiche varie!!
             if (!isCastlingLike) { // Grossa penalità per spostare il re senza arroccare
-                score -= 20000; // valore molto grande, così tutte le altre mosse lo superano
+                score -= KING_NON_CASTLING_PENALTY;
             }
             else { // TODO: NON SEMPRE ARROCCARE E' LA MOSSA MIGLIORE
-                score += 5000; // piccolo bonus per l'arrocco
+                score += CASTLING_BONUS;
             }
         }
 

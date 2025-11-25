@@ -59,6 +59,10 @@ public:
     int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
     int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
+
+
+    static constexpr int MAX_PLY = 64;
+    
 private:
 
     struct ScoredMove {
@@ -92,7 +96,7 @@ private:
 
 
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
-    static constexpr int MAX_PLY = 64;
+    
     chess::Board::Move killerMoves[2][MAX_PLY] {};
 
     // History heuristic: bonus for non-capture moves that often cause cutoffs

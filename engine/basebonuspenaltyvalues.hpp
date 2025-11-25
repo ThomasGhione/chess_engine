@@ -45,7 +45,7 @@ inline constexpr int64_t ROOK_ON_SEVENTH_BONUS = 40; // per ogni torre sulla set
 inline constexpr int64_t ATTACKED_QUEEN_PENALTY = -30;
 
 // KING
-inline constexpr int64_t CASTLING_BONUS = 30;
+// inline constexpr int64_t CASTLING_BONUS = 30;
 inline constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 5; // per ogni pedone che supporta il re
 inline constexpr int64_t KING_SAFETY_PENALTY = -50; // per ogni pezzo avversario vicino al re
 inline constexpr int64_t KING_ACTIVITY_BONUS = 10; // per ogni pezzo amico vicino al re in fase finale
