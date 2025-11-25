@@ -607,29 +607,29 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const bool isWhite = (color == WHITE);
     const int side = isWhite ? 0 : 1;
 
+    // Precompute our own occupancy mask once
+    const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
+                            rooks_bb[side] | queens_bb[side]  | kings_bb[side];
+
     // Helper lambda to test moves for a given piece type bitboard
     auto tryMovesFromBitboard = [&](uint64_t piecesBB, auto genMovesForSquare) -> bool {
-        uint64_t bb = piecesBB;
-        while (bb) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(bb));
-            bb &= (bb - 1);
+        while (piecesBB) {
+            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(piecesBB));
+            piecesBB &= (piecesBB - 1);
 
-            const uint8_t r = static_cast<uint8_t>(from / 8);
-            const uint8_t f = static_cast<uint8_t>(from % 8);
+            const uint8_t r = static_cast<uint8_t>(from >> 3);
+            const uint8_t f = static_cast<uint8_t>(from & 7);
 
-            uint64_t movesMask = genMovesForSquare(from, occ);
+            // Generate pseudo-legal moves and clear own-occupied squares once
+            uint64_t movesMask = genMovesForSquare(from, occ) & ~ownOcc;
 
-            uint64_t mask = movesMask;
-            while (mask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
-                mask &= (mask - 1);
+            while (movesMask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
+                movesMask &= (movesMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to / 8);
-                const uint8_t tf = static_cast<uint8_t>(to % 8);
-                const uint8_t dst = this->get(tr, tf);
-                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+                const uint8_t tr = static_cast<uint8_t>(to >> 3);
+                const uint8_t tf = static_cast<uint8_t>(to & 7);
 
-                // Handle promotions for pawns via generator specialization
                 Board copy = *this;
                 if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
                 if (!copy.inCheck(color)) return true;
@@ -638,29 +638,57 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         return false;
     };
 
-    // PAWNS: handle attacks, pushes, promotions, and en-passant via canMoveToBB
+    // PAWNS: handle pushes, captures, promotions (incl. en-passant) via bitboards
     {
         uint64_t pawns = pawns_bb[side];
+        // Enemy occupancy mask (for real captures); en-passant è gestito da moveBB
+        const uint64_t enemyOcc = side == 0
+            ? (pawns_bb[1] | knights_bb[1] | bishops_bb[1] | rooks_bb[1] | queens_bb[1] | kings_bb[1])
+            : (pawns_bb[0] | knights_bb[0] | bishops_bb[0] | rooks_bb[0] | queens_bb[0] | kings_bb[0]);
+
         while (pawns) {
             const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(pawns));
             pawns &= (pawns - 1);
 
-            const uint8_t r = static_cast<uint8_t>(from / 8);
-            const uint8_t f = static_cast<uint8_t>(from % 8);
+            const uint8_t r = static_cast<uint8_t>(from >> 3);
+            const uint8_t f = static_cast<uint8_t>(from & 7);
 
             const uint64_t attacks = pieces::getPawnAttacks(from, isWhite);
             const uint64_t pushes  = pieces::getPawnForwardPushes(from, isWhite, occ);
-            uint64_t movesMask = attacks | pushes;
 
-            uint64_t mask = movesMask;
-            while (mask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
-                mask &= (mask - 1);
+            // PUSHS (sempre su case vuote)
+            uint64_t pushMask = pushes;
+            while (pushMask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(pushMask));
+                pushMask &= (pushMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to / 8);
-                const uint8_t tf = static_cast<uint8_t>(to % 8);
-                const uint8_t dst = this->get(tr, tf);
-                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+                const uint8_t tr = static_cast<uint8_t>(to >> 3);
+                const uint8_t tf = static_cast<uint8_t>(to & 7);
+
+                const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
+                if (isPromotion) {
+                    const char promos[4] = {'q','r','b','n'};
+                    for (char ch : promos) {
+                        Board copy = *this;
+                        if (!copy.moveBB(Coords{f, r}, Coords{tf, tr}, ch)) continue;
+                        if (!copy.inCheck(color)) return true;
+                    }
+                    continue;
+                }
+
+                Board copy = *this;
+                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
+                if (!copy.inCheck(color)) return true;
+            }
+
+            // CAPTURES (reali + en-passant, filtrate a livello di Board::moveBB)
+            uint64_t captureMask = attacks & (enemyOcc | ~occ); // include possibili EP su case "vuote"
+            while (captureMask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(captureMask));
+                captureMask &= (captureMask - 1);
+
+                const uint8_t tr = static_cast<uint8_t>(to >> 3);
+                const uint8_t tf = static_cast<uint8_t>(to & 7);
 
                 const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
@@ -705,12 +733,13 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         uint64_t kings = kings_bb[side];
         if (kings) {
             const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
-            const uint8_t r = static_cast<uint8_t>(from / 8);
-            const uint8_t f = static_cast<uint8_t>(from % 8);
+            const uint8_t r = static_cast<uint8_t>(from >> 3);
+            const uint8_t f = static_cast<uint8_t>(from & 7);
 
-            uint64_t movesMask = pieces::getKingAttacks(from);
+            // Pseudo-legal king moves, already excluding our own pieces
+            uint64_t movesMask = pieces::getKingAttacks(from) & ~ownOcc;
 
-            // Castling squares: rely on canMoveToBB for legality
+            // Castling squares: rely on canMoveToBB for full legality (including checks)
             if (f + 2 <= 7) {
                 Coords toKs{static_cast<uint8_t>(f + 2), r};
                 if (this->canMoveToBB(Coords{f, r}, toKs)) {
@@ -724,15 +753,12 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                 }
             }
 
-            uint64_t mask = movesMask;
-            while (mask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
-                mask &= (mask - 1);
+            while (movesMask) {
+                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
+                movesMask &= (movesMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to / 8);
-                const uint8_t tf = static_cast<uint8_t>(to % 8);
-                const uint8_t dst = this->get(tr, tf);
-                if ((dst != EMPTY) && ((dst & MASK_COLOR) == color)) continue;
+                const uint8_t tr = static_cast<uint8_t>(to >> 3);
+                const uint8_t tf = static_cast<uint8_t>(to & 7);
 
                 Board copy = *this;
                 if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
