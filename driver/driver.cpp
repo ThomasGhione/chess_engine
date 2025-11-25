@@ -191,8 +191,8 @@ namespace driver {
             }
             */
 
-            if (playerInput.length() != 4) {
-                std::cout << "Invalid move length. Please enter your move in the format 'e2e4'.\n";
+            if (playerInput.length() != 4 && playerInput.length() != 5) {
+                std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
                 continue;
             }
 
@@ -227,7 +227,37 @@ namespace driver {
             auto chrono_start = std::chrono::high_resolution_clock::now();
     #endif  
 
-            if (!engine.board.moveBB(fromCoords, toCoords)) {
+            const uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+            const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+            bool moveOk = false;
+
+            // Optional promotion character (5th char): e7e8q, e2e1N, ...
+            char promoChar = 'q';
+            if (playerInput.length() == 5) {
+                promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+                if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') {
+                    std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
+                    continue;
+                }
+            }
+
+            const bool isPromotionCandidate =
+                (pieceType == chess::Board::PAWN) &&
+                ((pieceColor == chess::Board::WHITE && toCoords.rank == 7) ||
+                 (pieceColor == chess::Board::BLACK && toCoords.rank == 0));
+
+            if (isPromotionCandidate) {
+                // If user didn't specify, default to queen
+                if (playerInput.length() == 4) {
+                    promoChar = 'q';
+                }
+                moveOk = engine.board.moveBB(fromCoords, toCoords, promoChar);
+            } else {
+                moveOk = engine.board.moveBB(fromCoords, toCoords);
+            }
+
+            if (!moveOk) {
                 std::cout << "Invalid move. Please try again.";
                 continue;
             }

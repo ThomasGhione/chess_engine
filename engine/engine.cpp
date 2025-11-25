@@ -201,7 +201,26 @@ void Engine::search(uint64_t depth) {
 
     for (const auto& m : moves) {
         chess::Board copy = this->board;
-        if (!copy.moveBB(m.from, m.to)) {
+
+        uint8_t piece = this->board.get(m.from);
+        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+        bool moveOk = false;
+
+        const bool isPromotionCandidate =
+            (pieceType == chess::Board::PAWN) &&
+            ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
+             (pieceColor == chess::Board::BLACK && m.to.rank == 0));
+
+        if (isPromotionCandidate) {
+            // Engine always promotes to queen for now
+            moveOk = copy.moveBB(m.from, m.to, 'q');
+        } else {
+            moveOk = copy.moveBB(m.from, m.to);
+        }
+
+        if (!moveOk) {
             continue;
         }
         constexpr int currPly = 1;
@@ -210,8 +229,23 @@ void Engine::search(uint64_t depth) {
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
     }
 
-    // Esegui sulla board principale la mossa migliore trovata
-    (void)this->board.moveBB(bestMove.from, bestMove.to);
+    // Esegui sulla board principale la mossa migliore trovata (gestendo promozioni)
+    {
+        uint8_t piece = this->board.get(bestMove.from);
+        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+        const bool isPromotionCandidate =
+            (pieceType == chess::Board::PAWN) &&
+            ((pieceColor == chess::Board::WHITE && bestMove.to.rank == 7) ||
+             (pieceColor == chess::Board::BLACK && bestMove.to.rank == 0));
+
+        if (isPromotionCandidate) {
+            (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
+        } else {
+            (void)this->board.moveBB(bestMove.from, bestMove.to);
+        }
+    }
 
     // TODO spostare in driver
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
