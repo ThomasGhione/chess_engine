@@ -68,13 +68,12 @@ public:
 
 
     static constexpr int MAX_PLY = 64;
-    
-private:
 
     struct ScoredMove {
         chess::Board::Move move;
         int64_t score;
     };
+private:
 
 
     void doMoveInBoard(chess::Board::Move bestMove);
@@ -83,18 +82,33 @@ private:
                  chess::Board::Move& bestMove, const chess::Board::Move& m);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
 
-    // Ricerca ricorsiva (alpha-beta) su una posizione
+    inline bool shouldPruneLateMove(const chess::Board& b,
+                                const chess::Board::Move& m,
+                                int64_t depth,
+                                bool inCheck,
+                                bool usIsWhite,
+                                int moveIndex,
+                                int totalMoves);
 
+    inline void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b,
+                                               const chess::Board::Move& m,
+                                               int64_t depth,
+                                               int ply,
+                                               uint8_t us,
+                                               int64_t alpha,
+                                               int64_t beta,
+                                               int (&history)[2][64][64],
+                                               chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]);
+
+    void savePositionToTT();
     bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
-    std::vector<ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
+    std::vector<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
     int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
     std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
     std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite);
-
-
 
     int64_t evaluateCheckmate(const chess::Board& board);
 
@@ -125,8 +139,8 @@ private:
         {chess::Board::QUEEN, QUEEN_VALUE},
         {chess::Board::KING, KING_VALUE}
     };
-};
+}; //class Engine final
 
-} 
+} // namespace engine
 
 #endif
