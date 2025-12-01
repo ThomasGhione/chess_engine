@@ -426,7 +426,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
     return moves;
 }
 
-std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite) {
+std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) {
     std::vector<ScoredMove> orderedScoredMoves;
     orderedScoredMoves.reserve(moves.size());
     for (const auto& m : moves) {
@@ -454,13 +454,32 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
         }
 
         // TODO: da rivedere, non sempre dare uno scacco e' la mossa migliore
-        chess::Board checkBoard = b;
-        if (checkBoard.moveBB(m.from, m.to)) {
-            uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
-            if (checkBoard.inCheck(opponent)) {
-                score += CHECK_BONUS;
-            }
+        // in caso di scacco, aggiungi un bonus allo score
+        chess::Board::MoveState tmpState;
+        
+        uint8_t piece = b.get(m.from);
+        uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
+        uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+
+        const bool isPromotionCandidate =
+            (pieceType == chess::Board::PAWN) &&
+            ((pieceColor == chess::Board::WHITE && m.to.rank == 7) ||
+                (pieceColor == chess::Board::BLACK && m.to.rank == 0));
+
+        if (isPromotionCandidate) {
+            b.doMove(m, tmpState, 'q');
+        } else {
+            b.doMove(m, tmpState);
         }
+
+        uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
+        if (b.inCheck(opponent)) {
+            score += CHECK_BONUS;
+        }
+
+        b.undoMove(m, tmpState);
+        
+        
 
         // Killer move bonus for non-captures
         if (!isCapture && ply < MAX_PLY) {

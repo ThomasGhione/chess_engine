@@ -90,7 +90,7 @@ private:
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
     std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
-    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite);
+    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
 
     int64_t evaluateCheckmate(const chess::Board& board);
 /*
