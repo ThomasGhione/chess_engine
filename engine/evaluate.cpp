@@ -11,42 +11,42 @@ int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
     {
         int w = __builtin_popcountll(b.pawns_bb[0]);
         int bl = __builtin_popcountll(b.pawns_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::PAWN);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::PAWN)->second;
     }
 
     // Knights
     {
         int w = __builtin_popcountll(b.knights_bb[0]);
         int bl = __builtin_popcountll(b.knights_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::KNIGHT);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::KNIGHT)->second;
     }
 
     // Bishops
     {
         int w = __builtin_popcountll(b.bishops_bb[0]);
         int bl = __builtin_popcountll(b.bishops_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::BISHOP);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::BISHOP)->second;
     }
 
     // Rooks
     {
         int w = __builtin_popcountll(b.rooks_bb[0]);
         int bl = __builtin_popcountll(b.rooks_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::ROOK);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::ROOK)->second;
     }
 
     // Queens
     {
         int w = __builtin_popcountll(b.queens_bb[0]);
         int bl = __builtin_popcountll(b.queens_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::QUEEN);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::QUEEN)->second;
     }
 
     // Kings
     {
         int w = __builtin_popcountll(b.kings_bb[0]);
         int bl = __builtin_popcountll(b.kings_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.at(chess::Board::KING);
+        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::KING)->second;
     }
 
     return delta;
@@ -70,20 +70,24 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
     
     // 2) IS THIS AN ENDGAME?
-
-    // count pieces (not including pawns, kings) using bitboards
-    int nonPawnNonKingPieces =
-        __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1]) +
-        __builtin_popcountll(board.bishops_bb[0] | board.bishops_bb[1]) +
-        __builtin_popcountll(board.rooks_bb[0]   | board.rooks_bb[1]) +
-        __builtin_popcountll(board.queens_bb[0]  | board.queens_bb[1]);
-
+    // 2.1) counting major pieces...
+    uint64_t allKnights = board.knights_bb[0] | board.knights_bb[1];
+    uint64_t allBishops = board.bishops_bb[0] | board.bishops_bb[1];
+    uint64_t allRooks   = board.rooks_bb[0]   | board.rooks_bb[1];
+    uint64_t allQueens  = board.queens_bb[0]  | board.queens_bb[1];
+    uint64_t minorMajors = allKnights | allBishops | allRooks | allQueens;
+    int nonPawnNonKingPieces = __builtin_popcountll(minorMajors);
+    // 2.2) finally decide if it's endgame
     bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
 
     // 3) BONUS POSITION TABLE (bitboard-based per piece type)
 
     auto addPsqtFor = [&](uint64_t bbWhite, uint64_t bbBlack,
                            auto valueSelectorWhite) {
+        
+        // Nessun pezzo di questo tipo: niente da fare
+        if (!(bbWhite | bbBlack)) return;
+
         // White pieces
         uint64_t bb = bbWhite;
         while (bb) {

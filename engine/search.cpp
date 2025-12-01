@@ -260,7 +260,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
       const auto& m = scoredMove.move;
 
       // Late move pruning adattivo sulla coda delle mosse
-      // if (this->shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
+      // if (ply >= 3 && this->shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
       //     continue;
       // }
 

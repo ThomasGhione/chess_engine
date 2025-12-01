@@ -36,10 +36,10 @@ bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move&
     // Non potare se siamo gia' in scacco
     if (inCheck) return false;
 
-    // Calcola inizio dell'ultimo "sesto" di mosse (circa ~16.7%)
-    int lastSixth = totalMoves / 6;
-    if (lastSixth < 1) lastSixth = 1;
-    int latePruneStart = totalMoves - lastSixth;
+    // Calcola inizio dell'ultimo "decimo" di mosse (circa 10%)
+    int lastTenth = totalMoves / 10;
+    if (lastTenth < 1) lastTenth = 1;
+    int latePruneStart = totalMoves - lastTenth;
 
     if (moveIndex < latePruneStart) return false; // non siamo in coda
 
