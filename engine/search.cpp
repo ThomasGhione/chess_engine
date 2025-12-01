@@ -110,7 +110,10 @@ void Engine::search(uint64_t depth) {
     if (depth == 0) return;
 
     std::vector<chess::Board::Move> moves = this->generateLegalMoves(this->board);
-    if (moves.empty()) return;
+    if (moves.empty()) {
+        this->eval = this->evaluate(this->board);
+        return;
+    }
 
     // Reset the nodes searched counter
     this->nodesSearched = 0; 
@@ -203,7 +206,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     this->nodesSearched++;  
 
     const uint8_t activeColor = b.getActiveColor();
-    if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
+
+    if (depth == 0) {
+        return this->evaluate(b);
+    }
+
+    if (b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
         return this->evaluate(b);
     }
 
@@ -212,14 +220,14 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // Prova a usare la transposition table solo per depth >= 2
     const uint64_t hashKey = computeHashKey(b);
-    if (depth >= 2) {
+    if (depth >= 1) {
 #ifdef DEBUG
         ++ttProbes;
 #endif
         const int32_t alpha32 = static_cast<int32_t>( 
-            std::max<int64_t>(alpha, std::numeric_limits<int32_t>::min() + 1));
+            std::max<int64_t>(alpha - 50, std::numeric_limits<int32_t>::min() + 1));
         const int32_t beta32  = static_cast<int32_t>(
-            std::min<int64_t>(beta,  std::numeric_limits<int32_t>::max() - 1));
+            std::min<int64_t>(beta + 50,  std::numeric_limits<int32_t>::max() - 1));
         int32_t ttScore = 0;
         if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
 #ifdef DEBUG
