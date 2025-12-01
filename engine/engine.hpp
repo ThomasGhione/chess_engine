@@ -64,8 +64,6 @@ public:
 
     int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
-    int64_t getMaterialDeltaSLOW(const chess::Board& b) noexcept;
-
 
     static constexpr int MAX_PLY = 64;
 

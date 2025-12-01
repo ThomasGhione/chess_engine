@@ -99,17 +99,8 @@ ut::suite engineSuite = [] {
     auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
     printf("Normal material delta calculated in: %lu\n", duration2);
 
-    int64_t deltaSlow = 0;
-    auto start3 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 100000; ++i) {
-      deltaSlow += e.getMaterialDeltaSLOW(testBoard);
-    }
-    auto end3 = std::chrono::high_resolution_clock::now();
-    auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end3 - start3).count();
-    printf("Slow material delta calculated in: %lu\n", duration3);
-
+    
     expect(duration1 < duration2);
-    expect(duration2 < duration3);
   };
 
 

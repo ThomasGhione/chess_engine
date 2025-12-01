@@ -181,7 +181,7 @@ bool Engine::isMate() {
     return false;
 }
 
-/*
+
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	static constexpr auto coefficientPiece = [](uint8_t piece) {
@@ -208,5 +208,5 @@ int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
   
   return delta;
 }
-*/
+
 }; // namespace engine
