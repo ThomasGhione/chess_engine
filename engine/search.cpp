@@ -130,7 +130,7 @@ void Engine::search(uint64_t depth) {
               << ", cutoff hits: " << ttCutoffHits << "\n";
 #endif
 }
-
+/*
 bool Engine::hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate){
   const uint8_t activeColor = b.getActiveColor();
   if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
@@ -196,7 +196,7 @@ int64_t Engine::cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alph
   this->savePositionToTT();
 
   return evaluateBestMove;
-}
+}*/
   
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
     // Una posizione visitata
@@ -213,7 +213,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Prova a usare la transposition table solo per depth >= 2
     const uint64_t hashKey = computeHashKey(b);
     if (depth >= 2) {
-/*
 #ifdef DEBUG
         ++ttProbes;
 #endif
@@ -230,7 +229,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 #endif
             return static_cast<int64_t>(ttScore);
         }
-*/
     }
 
     const bool usIsWhite = (activeColor == chess::Board::WHITE);

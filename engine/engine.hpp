@@ -74,36 +74,20 @@ public:
         int64_t score;
     };
 private:
-
-
     void doMoveInBoard(chess::Board::Move bestMove);
     chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
 
-    inline bool shouldPruneLateMove(const chess::Board& b,
-                                const chess::Board::Move& m,
-                                int64_t depth,
-                                bool inCheck,
-                                bool usIsWhite,
-                                int moveIndex,
-                                int totalMoves);
+    bool shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves);
 
-    inline void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b,
-                                               const chess::Board::Move& m,
-                                               int64_t depth,
-                                               int ply,
-                                               uint8_t us,
-                                               int64_t alpha,
-                                               int64_t beta,
-                                               int (&history)[2][64][64],
-                                               chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]);
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]);
 
-    void savePositionToTT();
-    bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
-    std::vector<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
-    int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
+    //void savePositionToTT();
+    //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
+    //std::vector<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
+    //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
@@ -111,19 +95,14 @@ private:
     std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, const chess::Board& b, bool usIsWhite);
 
     int64_t evaluateCheckmate(const chess::Board& board);
-
 /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;
 */
-
-
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
 
-
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
-    
     chess::Board::Move killerMoves[2][MAX_PLY] {};
 
     // History heuristic: bonus for non-capture moves that often cause cutoffs
