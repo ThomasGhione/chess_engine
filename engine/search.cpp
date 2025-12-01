@@ -252,9 +252,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
       const auto& m = scoredMove.move;
 
       // Late move pruning adattivo sulla coda delle mosse
-      if (this->shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
-          continue;
-      }
+      // if (this->shouldPruneLateMove(b, m, depth, inCheck, usIsWhite, moveIndex, totalMoves)) {
+      //     continue;
+      // }
 
       // Applica la mossa in-place con doMove/undoMove
       chess::Board::MoveState state;
@@ -295,26 +295,27 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
       
   }
 
-    // Determina il tipo di nodo per la TT e salva solo per depth >= 2
-    if (depth >= 2) {
-        uint8_t flag = TTEntry::EXACT;
-        if (best <= alphaOrig) {
-            flag = TTEntry::UPPERBOUND;   // fail-low
-        } else if (best >= beta) {
-            flag = TTEntry::LOWERBOUND;   // fail-high
-        }
-
-        const int32_t storedScore = static_cast<int32_t>(
-            std::max<int64_t>(
-                std::min<int64_t>(best, std::numeric_limits<int32_t>::max() - 1),
-                std::numeric_limits<int32_t>::min() + 1));
-
-        storeTTEntry(this->ttTable,
-                     hashKey,
-                     static_cast<uint16_t>(depth),
-                     storedScore,
-                     flag);
+    // Determina il tipo di nodo per la TT e salva 
+    // per ora salva SEMPRE, e' testato che e' meglio salvare sempre rispetto a depth >= 2
+    // test del 12/01/2025
+    uint8_t flag = TTEntry::EXACT;
+    if (best <= alphaOrig) {
+        flag = TTEntry::UPPERBOUND;   // fail-low
+    } else if (best >= beta) {
+        flag = TTEntry::LOWERBOUND;   // fail-high
     }
+
+    const int32_t storedScore = static_cast<int32_t>(
+        std::max<int64_t>(
+            std::min<int64_t>(best, std::numeric_limits<int32_t>::max() - 1),
+            std::numeric_limits<int32_t>::min() + 1));
+
+    storeTTEntry(this->ttTable,
+                hashKey,
+                static_cast<uint16_t>(depth),
+                storedScore,
+                flag);
+    
 
     return best;
 }
@@ -325,16 +326,16 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
     std::vector<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
-    const bool isWhite = (color == chess::Board::WHITE);
+    const bool isBlack = (color == chess::Board::BLACK);
     // Usa occupancy e bitboard per tipo/colore dalla Board
     const uint64_t occ = b.getPiecesBitMap();
 
-    uint64_t ownPawns   = (color == chess::Board::WHITE) ? b.pawns_bb[0]   : b.pawns_bb[1];
-    uint64_t ownKnights = (color == chess::Board::WHITE) ? b.knights_bb[0] : b.knights_bb[1];
-    uint64_t ownBishops = (color == chess::Board::WHITE) ? b.bishops_bb[0] : b.bishops_bb[1];
-    uint64_t ownRooks   = (color == chess::Board::WHITE) ? b.rooks_bb[0]   : b.rooks_bb[1];
-    uint64_t ownQueens  = (color == chess::Board::WHITE) ? b.queens_bb[0]  : b.queens_bb[1];
-    uint64_t ownKings   = (color == chess::Board::WHITE) ? b.kings_bb[0]   : b.kings_bb[1];
+    uint64_t ownPawns   = b.pawns_bb[isBlack];
+    uint64_t ownKnights = b.knights_bb[isBlack];
+    uint64_t ownBishops = b.bishops_bb[isBlack];
+    uint64_t ownRooks   = b.rooks_bb[isBlack];
+    uint64_t ownQueens  = b.queens_bb[isBlack];
+    uint64_t ownKings   = b.kings_bb[isBlack];
 
     auto addMovesFromMask = [&](uint8_t from, uint64_t mask) {
         // Rimuovi le caselle occupate dai nostri pezzi
@@ -359,8 +360,8 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
         const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(ownPawns));
         ownPawns &= (ownPawns - 1);
 
-        const uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), isWhite);
-        const uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), isWhite, occ);
+        const uint64_t attacks = pieces::getPawnAttacks(static_cast<int16_t>(from), !isBlack);
+        const uint64_t pushes  = pieces::getPawnForwardPushes(static_cast<int16_t>(from), !isBlack, occ);
 
         addMovesFromMask(from, attacks | pushes);
     }

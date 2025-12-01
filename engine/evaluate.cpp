@@ -83,8 +83,7 @@ int64_t Engine::evaluate(const chess::Board& board) {
     // 3) BONUS POSITION TABLE (bitboard-based per piece type)
 
     auto addPsqtFor = [&](uint64_t bbWhite, uint64_t bbBlack,
-                           auto valueSelectorWhite,
-                           auto valueSelectorBlack) {
+                           auto valueSelectorWhite) {
         // White pieces
         uint64_t bb = bbWhite;
         while (bb) {
@@ -103,7 +102,7 @@ int64_t Engine::evaluate(const chess::Board& board) {
             bb &= (bb - 1);
 
             uint8_t idx = mirrorIndex(sq);
-            int64_t posValue = valueSelectorBlack(idx);
+            int64_t posValue = valueSelectorWhite(idx);
             eval -= posValue; // black subtracts
         }
     };
@@ -115,10 +114,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
         [&](uint8_t idx) {
             return isEndgame ? PAWN_END_GAME_VALUES_TABLE[idx]
                              : PAWN_VALUES_TABLE[idx];
-        },
-        [&](uint8_t idx) {
-            return isEndgame ? PAWN_END_GAME_VALUES_TABLE[idx]
-                             : PAWN_VALUES_TABLE[idx];
         }
     );
 
@@ -126,7 +121,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     addPsqtFor(
         board.knights_bb[0],
         board.knights_bb[1],
-        [&](uint8_t idx) { return KNIGHT_VALUES_TABLE[idx]; },
         [&](uint8_t idx) { return KNIGHT_VALUES_TABLE[idx]; }
     );
 
@@ -134,7 +128,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     addPsqtFor(
         board.bishops_bb[0],
         board.bishops_bb[1],
-        [&](uint8_t idx) { return BISHOP_VALUES_TABLE[idx]; },
         [&](uint8_t idx) { return BISHOP_VALUES_TABLE[idx]; }
     );
 
@@ -142,7 +135,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     addPsqtFor(
         board.rooks_bb[0],
         board.rooks_bb[1],
-        [&](uint8_t idx) { return ROOK_VALUES_TABLE[idx]; },
         [&](uint8_t idx) { return ROOK_VALUES_TABLE[idx]; }
     );
 
@@ -150,7 +142,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     addPsqtFor(
         board.queens_bb[0],
         board.queens_bb[1],
-        [&](uint8_t idx) { return QUEEN_VALUES_TABLE[idx]; },
         [&](uint8_t idx) { return QUEEN_VALUES_TABLE[idx]; }
     );
 
@@ -158,10 +149,6 @@ int64_t Engine::evaluate(const chess::Board& board) {
     addPsqtFor(
         board.kings_bb[0],
         board.kings_bb[1],
-        [&](uint8_t idx) {
-            return isEndgame ? KING_END_GAME_VALUES_TABLE[idx]
-                             : KING_MIDDLE_GAME_VALUES_TABLE[idx];
-        },
         [&](uint8_t idx) {
             return isEndgame ? KING_END_GAME_VALUES_TABLE[idx]
                              : KING_MIDDLE_GAME_VALUES_TABLE[idx];
