@@ -225,9 +225,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         ++ttProbes;
 #endif
         const int32_t alpha32 = static_cast<int32_t>( 
-            std::max<int64_t>(alpha - 50, std::numeric_limits<int32_t>::min() + 1));
+            std::max<int64_t>(alpha - TTEntry::ADJUSTMENT, NEG_INF_32 + 1));
         const int32_t beta32  = static_cast<int32_t>(
-            std::min<int64_t>(beta + 50,  std::numeric_limits<int32_t>::max() - 1));
+            std::min<int64_t>(beta + TTEntry::ADJUSTMENT,  POS_INF_32 - 1));
         int32_t ttScore = 0;
         if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
 #ifdef DEBUG

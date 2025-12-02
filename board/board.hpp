@@ -99,16 +99,21 @@ public:
     }
    
     //! GETTERS
-    uint8_t get(Coords coords) const noexcept { return (chessboard.at(coords.rank) >> (coords.file * 4)) & this->MASK_PIECE; }
-    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard.at(row) >> (col * 4)) & this->MASK_PIECE; }
+    uint8_t get(Coords coords) const noexcept {
+        return static_cast<uint8_t>((chessboard[coords.rank] >> (coords.file * 4)) & MASK_PIECE);
+    }
+
+    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept {
+        return static_cast<uint8_t>((chessboard[row] >> (col * 4)) & MASK_PIECE);
+    }
     uint8_t get(const std::string& square) const noexcept { 
-      uint8_t col = square.at(0) - 'a', row = square.at(1) - '1';
+      uint8_t col = square[0] - 'a', row = square[1] - '1';
       return this->get(row, col);
     }
     uint8_t get(uint8_t index) const noexcept {
         const uint8_t rank = static_cast<uint8_t>(index / 8);
         const uint8_t file = static_cast<uint8_t>(index % 8);
-        return (chessboard.at(rank) >> (file * 4)) & this->MASK_PIECE;
+        return this->get(rank, file);
     }
     
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
@@ -120,32 +125,30 @@ public:
 
     // Both ways to get color of piece at position
     uint8_t getColor(const Coords& pos) const noexcept {
-        const piece_id rawPiece = static_cast<piece_id>((chessboard.at(pos.rank) >> (pos.file * 4)) & MASK_PIECE); // this->get(pos);
+        const uint8_t rawPiece = this->get(pos);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
         }
-        return (rawPiece & MASK_COLOR) != 0 ? BLACK : WHITE;
+        return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
     uint8_t getColor(uint8_t index) const noexcept {
-        const uint8_t rank = static_cast<uint8_t>(index / 8);
-        const uint8_t file = static_cast<uint8_t>(index % 8);
-        const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
+        const uint8_t rawPiece = this->get(index);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
         }
-        return (rawPiece & MASK_COLOR) != 0 ? BLACK : WHITE;
+        return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
     //! SETTERS
     void set(Coords coords, piece_id value) noexcept {
         const uint8_t shift = coords.file * 4;
-        chessboard.at(coords.rank) = (chessboard.at(coords.rank) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
+        chessboard[coords.rank] = (chessboard[coords.rank] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
     void set(uint8_t row, uint8_t col, piece_id value) noexcept {
         const uint8_t shift = col * 4;
-        chessboard.at(row) = (chessboard.at(row) & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
+        chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
     void setNextTurn() noexcept {
@@ -162,8 +165,8 @@ public:
     //! Operator overloads
     uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
     uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    uint8_t operator[](uint8_t index) const noexcept { return this->get(index % 8, index / 8); } // assert index 0-63 r
-    uint8_t operator[](uint8_t index) noexcept { return this->get(index % 8, index / 8); }
+    uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
+    uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
     bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
     bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 

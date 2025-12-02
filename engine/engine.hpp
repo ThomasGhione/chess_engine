@@ -99,6 +99,8 @@ private:
 */
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
+    constexpr static int32_t NEG_INF_32 = std::numeric_limits<int32_t>::min();
+    constexpr static int32_t POS_INF_32 = std::numeric_limits<int32_t>::max();
 
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};

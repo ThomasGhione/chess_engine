@@ -24,10 +24,13 @@ struct TTEntry {
     };
 
     static constexpr std::size_t TABLE_SIZE = 1u << 22; // 2^22 entries (~64 MB circa)
+    static constexpr int32_t ADJUSTMENT = 50; 
 
     TTEntry() = default;
     TTEntry(uint64_t k, uint16_t d, int32_t s, uint8_t f)
         : key(k), depth(d), score(s), flag(f) {}
+
+    
 };
 
 // Transposition table globale: una sola tabella condivisa da tutto il motore.
