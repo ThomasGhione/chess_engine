@@ -254,7 +254,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     const int64_t alphaOrig = alpha;
 
-    const int totalMoves = static_cast<int>(orderedScoredMoves.size());
+    // const int totalMoves = static_cast<int>(orderedScoredMoves.size());
 
   int moveIndex = 0;
 

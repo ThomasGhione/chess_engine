@@ -10,7 +10,7 @@ namespace engine {
 
 // Ottimizzazione: entry compatta da 12 byte (più cache-friendly)
 // key16(2) + score(2) + depth(1) + age(1) + flag(1) + padding(1) = 8 byte minimo
-// Usiamo key32 per ridurre collisioni: key32(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 byte
+// Usiamo key per ridurre collisioni: key(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 byte
 struct TTEntry {
     uint64_t key = 0;   // 64 bit della Zobrist key 
     int16_t  score = 0;   // score in centipawns (range ±32k sufficiente con mate detection)
@@ -26,7 +26,7 @@ struct TTEntry {
     };
 
     // Bucket-based TT: 4 entries per bucket per ridurre collisioni (cache line = 64 byte, bucket = 48 byte)
-    static constexpr std::size_t BUCKET_COUNT = 1u << 22; // 2^22 buckets = 16M entries (~192 MB)
+    static constexpr std::size_t BUCKET_COUNT = 1u << 22; // 2^22 buckets = 16M entries (256 MB)
     static constexpr std::size_t ENTRIES_PER_BUCKET = 4;
     static constexpr std::size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
     
@@ -180,7 +180,6 @@ inline void storeTTEntry(TTEntry* ttTable,
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
     TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
     
-    const uint64_t key32 = static_cast<uint64_t>(key);
     const uint8_t generation = getCurrentGeneration();
 
     TTEntry* replaceEntry = &bucket[0];
@@ -230,8 +229,6 @@ inline bool probeTT(const TTEntry* ttTable,
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
     const TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
     
-    const uint64_t key64 = static_cast<uint64_t>(key);
-
     // Cerca in tutte le entry del bucket
     for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
         const TTEntry& entry = bucket[i];
