@@ -99,41 +99,41 @@ public:
     }
    
     //! GETTERS
-    constexpr uint8_t get(Coords coords) const noexcept {
-        return static_cast<uint8_t>((chessboard[coords.rank] >> (coords.file * 4)) & MASK_PIECE);
+    inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
+        return static_cast<uint8_t>((chessboard[row] >> (col << 2)) & MASK_PIECE);
+    }    
+    inline uint8_t get(Coords coords) const noexcept {
+        return this->get(coords.rank, coords.file);
     }
-
-    constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept {
-        return static_cast<uint8_t>((chessboard[row] >> (col * 4)) & MASK_PIECE);
-    }
-    constexpr uint8_t get(const std::string& square) const noexcept { 
-      uint8_t col = square[0] - 'a', row = square[1] - '1';
-      return this->get(row, col);
-    }
-    constexpr uint8_t get(uint8_t index) const noexcept {
-        const uint8_t rank = static_cast<uint8_t>(index / 8);
-        const uint8_t file = static_cast<uint8_t>(index % 8);
+    inline uint8_t get(uint8_t index) const noexcept {
+        const uint8_t rank = index >> 3;  // index / 8
+        const uint8_t file = index & 7;   // index % 8
         return this->get(rank, file);
+    }
+    uint8_t get(const std::string& square) const noexcept { 
+        const uint8_t col = square[0] - 'a';
+        const uint8_t row = square[1] - '1';
+        return this->get(row, col);
     }
     
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
     // TODO check whether Castle and HasMoved getters works fine :D
-    constexpr uint8_t getActiveColor() const noexcept { return this->activeColor; }
+    uint8_t getActiveColor() const noexcept { return this->activeColor; }
 
     // Castling rights (KQkq) and hasMoved flags stored as bitmasks in uint8_t
     // castle bits: 0=white king side (K), 1=white queen side (Q), 2=black king side (k), 3=black queen side (q)
-    constexpr bool getCastle(uint8_t index) const noexcept {
-        return (castle & (1u << index)) != 0u;
+    bool getCastle(uint8_t index) const noexcept {
+        return (castle & (1u << index));
     }
 
     // hasMoved bits: K, Ra, Rh, k, ra, rh  (use same ordering as old vector<bool>)
-    constexpr bool getHasMoved(uint8_t index) const noexcept {
-        return (hasMoved & (1u << index)) != 0u;
+    bool getHasMoved(uint8_t index) const noexcept {
+        return (hasMoved & (1u << index));
     }
 
     // Both ways to get color of piece at position
-    constexpr uint8_t getColor(const Coords& pos) const noexcept {
+    uint8_t getColor(const Coords& pos) const noexcept {
         const uint8_t rawPiece = this->get(pos);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
@@ -141,7 +141,7 @@ public:
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
-    constexpr uint8_t getColor(uint8_t index) const noexcept {
+    uint8_t getColor(uint8_t index) const noexcept {
         const uint8_t rawPiece = this->get(index);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
@@ -150,17 +150,17 @@ public:
     }
 
     //! SETTERS
-    constexpr void set(Coords coords, piece_id value) noexcept {
+    void set(Coords coords, piece_id value) noexcept {
         const uint8_t shift = coords.file * 4;
         chessboard[coords.rank] = (chessboard[coords.rank] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    constexpr void set(uint8_t row, uint8_t col, piece_id value) noexcept {
+    void set(uint8_t row, uint8_t col, piece_id value) noexcept {
         const uint8_t shift = col * 4;
         chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    constexpr void setNextTurn() noexcept {
+    void setNextTurn() noexcept {
         // this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
         if (this->activeColor == WHITE) {
             this->activeColor = BLACK;
@@ -172,17 +172,17 @@ public:
     }
 
     //! Operator overloads
-    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
-    constexpr uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
-    constexpr uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
-    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
-    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+    uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
+    uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
+    uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
+    uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
+    bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
+    bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 
 
     //! PER DEBUG
     static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
-    static size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
+    static constexpr size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
 
     // Iterator support
     auto begin() noexcept { return chessboard.begin(); }
@@ -194,7 +194,7 @@ public:
 
 
     // Piece movement logic
-    constexpr bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
+    bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
         uint8_t p1 = this->get(pos1);
         uint8_t p2 = this->get(pos2);
         if (p1 == EMPTY || p2 == EMPTY) return false;
@@ -202,7 +202,7 @@ public:
     }
 
 
-    constexpr void updateChessboard(const Coords& from, const Coords& to) noexcept {
+    void updateChessboard(const Coords& from, const Coords& to) noexcept {
         piece_id piece = static_cast<piece_id>(this->get(from));
         this->set(to, piece);
         this->set(from, EMPTY);

@@ -871,94 +871,84 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     // --- ARROCCO: spostamento torre ---
     if (movingType == KING && from.rank == to.rank) {
-        int df = static_cast<int>(to.file) - static_cast<int>(from.file);
+        const int8_t df = static_cast<int8_t>(to.file - from.file);
         if (df == 2 || df == -2) {
             st.wasCastling = true;
 
-            uint8_t rookFromIndex;
-            uint8_t rookToIndex;
-
-            if (df == 2) {
-                // arrocco corto: re e1->g1 / e8->g8, torre h->f
-                rookFromIndex = Coords{7, to.rank}.toIndex();
-                rookToIndex   = Coords{5, to.rank}.toIndex();
-            } else {
-                // arrocco lungo: re e1->c1 / e8->c8, torre a->d
-                rookFromIndex = Coords{0, to.rank}.toIndex();
-                rookToIndex   = Coords{3, to.rank}.toIndex();
-            }
+            // Compute rook indices directly without intermediate Coords
+            const uint8_t rookFromFile = (df == 2) ? 7 : 0;
+            const uint8_t rookToFile   = (df == 2) ? 5 : 3;
+            const uint8_t rookFromIndex = (to.rank << 3) | rookFromFile;
+            const uint8_t rookToIndex   = (to.rank << 3) | rookToFile;
 
             st.rookFromIndex = rookFromIndex;
             st.rookToIndex   = rookToIndex;
 
-            Coords rookFrom{static_cast<uint8_t>(rookFromIndex % 8), static_cast<uint8_t>(rookFromIndex / 8)};
-            Coords rookTo  {static_cast<uint8_t>(rookToIndex   % 8), static_cast<uint8_t>(rookToIndex   / 8)};
-
-            const uint8_t rook = this->get(rookFrom);
-            if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(rookTo, static_cast<piece_id>(rook));
-                this->set(rookFrom, EMPTY);
-                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-                this->removePieceFromBitboards(rook, rookFromIndex);
-                this->addPieceToBitboards(rook, rookToIndex);
-            }
+            const uint8_t rook = this->get(to.rank, rookFromFile);
+            this->set(to.rank, rookToFile, static_cast<piece_id>(rook));
+            this->set(to.rank, rookFromFile, EMPTY);
+            this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+            this->removePieceFromBitboards(rook, rookFromIndex);
+            this->addPieceToBitboards(rook, rookToIndex);
         }
     }
 
     // --- UPDATE DIRITTI DI ARROCCO / hasMoved ---
-    auto disableWhiteKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 0)); };
-    auto disableWhiteQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 1)); };
-    auto disableBlackKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 2)); };
-    auto disableBlackQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 3)); };
-
     if (movingType == KING) {
-        if (movingColor == WHITE) {
-            disableWhiteKingside();
-            disableWhiteQueenside();
-            hasMoved |= (1u << 0); // white king
-        } else {
-            disableBlackKingside();
-            disableBlackQueenside();
-            hasMoved |= (1u << 3); // black king
-        }
-    }
-    if (movingType == ROOK) {
-        if (movingColor == WHITE) {
-            if (from.rank == 0 && from.file == 0) {
-                disableWhiteQueenside();
-                hasMoved |= (1u << 1); // white a1 rook
-            }
-            if (from.rank == 0 && from.file == 7) {
-                disableWhiteKingside();
-                hasMoved |= (1u << 2); // white h1 rook
-            }
-        } else {
-            if (from.rank == 7 && from.file == 0) {
-                disableBlackQueenside();
-                hasMoved |= (1u << 4); // black a8 rook
-            }
-            if (from.rank == 7 && from.file == 7) {
-                disableBlackKingside();
-                hasMoved |= (1u << 5); // black h8 rook
+        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3
+        const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
+        castle &= static_cast<uint8_t>(~castleMask);
+        hasMoved |= kingBit;
+    } else if (movingType == ROOK) {
+        const bool isInitialSquare = (movingColor == WHITE)
+            ? (from.rank == 0 && (from.file == 0 || from.file == 7))
+            : (from.rank == 7 && (from.file == 0 || from.file == 7));
+        
+        if (isInitialSquare) {
+            if (movingColor == WHITE) {
+                if (from.file == 0) {
+                    castle &= static_cast<uint8_t>(~(1u << 1)); // white queenside
+                    hasMoved |= (1u << 1);
+                } else {
+                    castle &= static_cast<uint8_t>(~(1u << 0)); // white kingside
+                    hasMoved |= (1u << 2);
+                }
+            } else {
+                if (from.file == 0) {
+                    castle &= static_cast<uint8_t>(~(1u << 3)); // black queenside
+                    hasMoved |= (1u << 4);
+                } else {
+                    castle &= static_cast<uint8_t>(~(1u << 2)); // black kingside
+                    hasMoved |= (1u << 5);
+                }
             }
         }
     }
-    if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
-        if ((destBefore & MASK_COLOR) == WHITE) {
-            if (to.rank == 0 && to.file == 0) disableWhiteQueenside();
-            if (to.rank == 0 && to.file == 7) disableWhiteKingside();
-        } else {
-            if (to.rank == 7 && to.file == 0) disableBlackQueenside();
-            if (to.rank == 7 && to.file == 7) disableBlackKingside();
+    
+    // Captured rook on initial square disables corresponding castling
+    if (destBefore != EMPTY && (destBefore & MASK_PIECE_TYPE) == ROOK) {
+        const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
+            ? (to.rank == 0 && (to.file == 0 || to.file == 7))
+            : (to.rank == 7 && (to.file == 0 || to.file == 7));
+        
+        if (isInitialSquare) {
+            if ((destBefore & MASK_COLOR) == WHITE) {
+                castle &= (to.file == 0) 
+                    ? static_cast<uint8_t>(~(1u << 1))  // white queenside
+                    : static_cast<uint8_t>(~(1u << 0)); // white kingside
+            } else {
+                castle &= (to.file == 0)
+                    ? static_cast<uint8_t>(~(1u << 3))  // black queenside
+                    : static_cast<uint8_t>(~(1u << 2)); // black kingside
+            }
         }
     }
 
     // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
     if (movingType == PAWN) {
-        int dr = static_cast<int>(to.rank) - static_cast<int>(from.rank);
+        const int8_t dr = static_cast<int8_t>(to.rank - from.rank);
         if (dr == 2 || dr == -2) {
-            uint8_t midRank = static_cast<uint8_t>((from.rank + to.rank) / 2);
-            enPassant[0] = Coords{from.file, midRank};
+            enPassant[0] = Coords{from.file, static_cast<uint8_t>((from.rank + to.rank) >> 1)};
         }
     }
 
@@ -1018,8 +1008,9 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
     if (st.wasEnPassantCapture) {
         const uint8_t capIndex = st.enPassantCapturedIndex;
-        Coords capSq{static_cast<uint8_t>(capIndex % 8), static_cast<uint8_t>(capIndex / 8)};
-        this->set(capSq, static_cast<piece_id>(st.capturedPiece));
+        const uint8_t capRank = capIndex >> 3;
+        const uint8_t capFile = capIndex & 7;
+        this->set(capRank, capFile, static_cast<piece_id>(st.capturedPiece));
         this->occupancy |= (1ULL << capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
@@ -1032,11 +1023,13 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     if (st.wasCastling) {
         const uint8_t rookFromIndex = st.rookFromIndex;
         const uint8_t rookToIndex   = st.rookToIndex;
-        Coords rookFrom{static_cast<uint8_t>(rookFromIndex % 8), static_cast<uint8_t>(rookFromIndex / 8)};
-        Coords rookTo  {static_cast<uint8_t>(rookToIndex   % 8), static_cast<uint8_t>(rookToIndex   / 8)};
-        const uint8_t rook = this->get(rookTo);
-        this->set(rookFrom, static_cast<piece_id>(rook));
-        this->set(rookTo, EMPTY);
+        const uint8_t rank = rookFromIndex >> 3;
+        const uint8_t rookFromFile = rookFromIndex & 7;
+        const uint8_t rookToFile   = rookToIndex & 7;
+        
+        const uint8_t rook = this->get(rank, rookToFile);
+        this->set(rank, rookFromFile, static_cast<piece_id>(rook));
+        this->set(rank, rookToFile, EMPTY);
         this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
         this->removePieceFromBitboards(rook, rookToIndex);
         this->addPieceToBitboards(rook, rookFromIndex);
