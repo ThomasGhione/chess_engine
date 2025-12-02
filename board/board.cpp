@@ -54,19 +54,20 @@ uint8_t Board::parseActiveColor(const std::string& activeSection) {
     return WHITE;
 }
 std::vector<bool> Board::parseCastling(const std::string& castlingSection) {
-    std::vector<bool> castle(4, false);
-    if (castlingSection == "-") return castle;
+    // Legacy helper kept for compatibility but no longer used for internal storage.
+    std::vector<bool> castleVec(4, false);
+    if (castlingSection == "-") return castleVec;
 
     for (char c : castlingSection) {
         switch (c) {
-            case 'K': castle[0] = true; break;
-            case 'Q': castle[1] = true; break;
-            case 'k': castle[2] = true; break;
-            case 'q': castle[3] = true; break;
+            case 'K': castleVec[0] = true; break;
+            case 'Q': castleVec[1] = true; break;
+            case 'k': castleVec[2] = true; break;
+            case 'q': castleVec[3] = true; break;
             default: break; // carattere ignoto: ignoriamo
         }
     }
-    return castle;
+    return castleVec;
 }
 // Reads the en passant target square section of the FEN
 Coords Board::parseEnPassant(const std::string& enPassantSection) {
@@ -109,7 +110,20 @@ void Board::fromFenToBoard(const std::string& fen) {
 
     this->chessboard = parsedBoard;
     this->activeColor = parseActiveColor(activeSection);
-    this->castle = parseCastling(castlingSection);
+
+    // Initialize castling bitmask (KQkq) from FEN
+    castle = 0x00;
+    if (castlingSection != "-") {
+        for (char c : castlingSection) {
+            switch (c) {
+                case 'K': castle |= (1u << 0); break; // white king side
+                case 'Q': castle |= (1u << 1); break; // white queen side
+                case 'k': castle |= (1u << 2); break; // black king side
+                case 'q': castle |= (1u << 3); break; // black queen side
+                default: break;
+            }
+        }
+    }
 
     
     this->enPassant = {parseEnPassant(enPassantSection), Coords{}};
@@ -167,10 +181,10 @@ char Board::pieceTypeToChar(uint8_t pieceType) const {
 // Converts castling rights into the FEN castling string
 std::string Board::castlingToFen() const {
     std::string castlingStr;
-    if (castle[0]) castlingStr.push_back('K');
-    if (castle[1]) castlingStr.push_back('Q');
-    if (castle[2]) castlingStr.push_back('k');
-    if (castle[3]) castlingStr.push_back('q');
+    if (castle & (1u << 0)) castlingStr.push_back('K');
+    if (castle & (1u << 1)) castlingStr.push_back('Q');
+    if (castle & (1u << 2)) castlingStr.push_back('k');
+    if (castle & (1u << 3)) castlingStr.push_back('q');
     return castlingStr.empty() ? "-" : castlingStr;
 }
 // Converts en passant target square into FEN notation
@@ -268,41 +282,41 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     }
 
     // Update castling rights for king/rook moves or rook captures on original squares
-    auto disableWhiteKingside = [&]{ if (castle.size()>=1) castle[0] = false; };
-    auto disableWhiteQueenside = [&]{ if (castle.size()>=2) castle[1] = false; };
-    auto disableBlackKingside = [&]{ if (castle.size()>=3) castle[2] = false; };
-    auto disableBlackQueenside = [&]{ if (castle.size()>=4) castle[3] = false; };
+    auto disableWhiteKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 0)); };
+    auto disableWhiteQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 1)); };
+    auto disableBlackKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 2)); };
+    auto disableBlackQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 3)); };
 
     if (movingType == KING) {
         if (movingColor == WHITE) { 
             disableWhiteKingside(); 
             disableWhiteQueenside(); 
-            if (hasMoved.size()>=1) hasMoved[0] = true;
+            hasMoved |= (1u << 0); // white king
         }
         else { 
             disableBlackKingside(); 
             disableBlackQueenside(); 
-            if (hasMoved.size()>=4) hasMoved[3] = true;
-         }
+            hasMoved |= (1u << 3); // black king
+        }
     }
     if (movingType == ROOK) {
         if (movingColor == WHITE) {
             if (from.rank == 0 && from.file == 0) { 
                 disableWhiteQueenside();
-                if (hasMoved.size()>=2) hasMoved[1] = true;
+                hasMoved |= (1u << 1); // white a1 rook
             }
             if (from.rank == 0 && from.file == 7) { 
                 disableWhiteKingside();
-                if (hasMoved.size()>=3) hasMoved[2] = true;
+                hasMoved |= (1u << 2); // white h1 rook
             }
         } else {
             if (from.rank == 7 && from.file == 0) { 
                 disableBlackQueenside();
-                if (hasMoved.size()>=5) hasMoved[4] = true;
+                hasMoved |= (1u << 4); // black a8 rook
             }
             if (from.rank == 7 && from.file == 7) { 
                 disableBlackKingside();
-                if (hasMoved.size()>=6) hasMoved[5] = true;
+                hasMoved |= (1u << 5); // black h8 rook
             }
         }
     }
@@ -510,7 +524,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                     break;
                 }
                 if (df == 2) { // kingside
-                    bool rights = isWhite ? (castle.size()>=1 && castle[0]) : (castle.size()>=3 && castle[2]);
+                    bool rights = isWhite
+                        ? ((castle & (1u << 0)) != 0u) // white O-O
+                        : ((castle & (1u << 2)) != 0u); // black O-O
                     bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf + 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf + 2)) == EMPTY);
                     {
                         uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf + 3));
@@ -527,7 +543,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                         }
                     }
                 } else if (df == -2) { // queenside
-                    bool rights = isWhite ? (castle.size()>=2 && castle[1]) : (castle.size()>=4 && castle[3]);
+                    bool rights = isWhite
+                        ? ((castle & (1u << 1)) != 0u) // white O-O-O
+                        : ((castle & (1u << 3)) != 0u); // black O-O-O
                     bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf - 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 2)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 3)) == EMPTY);
                     {
                         uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf - 4));
@@ -888,40 +906,40 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- UPDATE DIRITTI DI ARROCCO / hasMoved ---
-    auto disableWhiteKingside  = [&]{ if (castle.size() >= 1) castle[0] = false; };
-    auto disableWhiteQueenside = [&]{ if (castle.size() >= 2) castle[1] = false; };
-    auto disableBlackKingside  = [&]{ if (castle.size() >= 3) castle[2] = false; };
-    auto disableBlackQueenside = [&]{ if (castle.size() >= 4) castle[3] = false; };
+    auto disableWhiteKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 0)); };
+    auto disableWhiteQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 1)); };
+    auto disableBlackKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 2)); };
+    auto disableBlackQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 3)); };
 
     if (movingType == KING) {
         if (movingColor == WHITE) {
             disableWhiteKingside();
             disableWhiteQueenside();
-            if (hasMoved.size() >= 1) hasMoved[0] = true; // white king
+            hasMoved |= (1u << 0); // white king
         } else {
             disableBlackKingside();
             disableBlackQueenside();
-            if (hasMoved.size() >= 4) hasMoved[3] = true; // black king
+            hasMoved |= (1u << 3); // black king
         }
     }
     if (movingType == ROOK) {
         if (movingColor == WHITE) {
             if (from.rank == 0 && from.file == 0) {
                 disableWhiteQueenside();
-                if (hasMoved.size() >= 2) hasMoved[1] = true; // white a1 rook
+                hasMoved |= (1u << 1); // white a1 rook
             }
             if (from.rank == 0 && from.file == 7) {
                 disableWhiteKingside();
-                if (hasMoved.size() >= 3) hasMoved[2] = true; // white h1 rook
+                hasMoved |= (1u << 2); // white h1 rook
             }
         } else {
             if (from.rank == 7 && from.file == 0) {
                 disableBlackQueenside();
-                if (hasMoved.size() >= 5) hasMoved[4] = true; // black a8 rook
+                hasMoved |= (1u << 4); // black a8 rook
             }
             if (from.rank == 7 && from.file == 7) {
                 disableBlackKingside();
-                if (hasMoved.size() >= 6) hasMoved[5] = true; // black h8 rook
+                hasMoved |= (1u << 5); // black h8 rook
             }
         }
     }

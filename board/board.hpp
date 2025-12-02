@@ -54,8 +54,8 @@ public:
 
         // En passant and castling rights
         std::array<Coords, 2> prevEnPassant{};
-        std::vector<bool>     prevCastle{};
-        std::vector<bool>     prevHasMoved{};
+        uint8_t               prevCastle{};   // bitmask copy of castle
+        uint8_t               prevHasMoved{}; // bitmask copy of hasMoved
 
         // Piece information related to the move
         uint8_t capturedPiece{};        // piece captured on destination or via en-passant (0 if none)
@@ -99,18 +99,18 @@ public:
     }
    
     //! GETTERS
-    uint8_t get(Coords coords) const noexcept {
+    constexpr uint8_t get(Coords coords) const noexcept {
         return static_cast<uint8_t>((chessboard[coords.rank] >> (coords.file * 4)) & MASK_PIECE);
     }
 
     constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept {
         return static_cast<uint8_t>((chessboard[row] >> (col * 4)) & MASK_PIECE);
     }
-    uint8_t get(const std::string& square) const noexcept { 
+    constexpr uint8_t get(const std::string& square) const noexcept { 
       uint8_t col = square[0] - 'a', row = square[1] - '1';
       return this->get(row, col);
     }
-    uint8_t get(uint8_t index) const noexcept {
+    constexpr uint8_t get(uint8_t index) const noexcept {
         const uint8_t rank = static_cast<uint8_t>(index / 8);
         const uint8_t file = static_cast<uint8_t>(index % 8);
         return this->get(rank, file);
@@ -119,12 +119,21 @@ public:
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
     // TODO check whether Castle and HasMoved getters works fine :D
-    uint8_t getActiveColor() const noexcept { return this->activeColor; }
-    bool getCastle(const uint8_t index) const noexcept { return this->castle.at(index); }
-    bool getHasMoved(const uint8_t index) const noexcept { return this->hasMoved.at(index); }
+    constexpr uint8_t getActiveColor() const noexcept { return this->activeColor; }
+
+    // Castling rights (KQkq) and hasMoved flags stored as bitmasks in uint8_t
+    // castle bits: 0=white king side (K), 1=white queen side (Q), 2=black king side (k), 3=black queen side (q)
+    constexpr bool getCastle(uint8_t index) const noexcept {
+        return (castle & (1u << index)) != 0u;
+    }
+
+    // hasMoved bits: K, Ra, Rh, k, ra, rh  (use same ordering as old vector<bool>)
+    constexpr bool getHasMoved(uint8_t index) const noexcept {
+        return (hasMoved & (1u << index)) != 0u;
+    }
 
     // Both ways to get color of piece at position
-    uint8_t getColor(const Coords& pos) const noexcept {
+    constexpr uint8_t getColor(const Coords& pos) const noexcept {
         const uint8_t rawPiece = this->get(pos);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
@@ -132,7 +141,7 @@ public:
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
-    uint8_t getColor(uint8_t index) const noexcept {
+    constexpr uint8_t getColor(uint8_t index) const noexcept {
         const uint8_t rawPiece = this->get(index);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
             return EMPTY;
@@ -141,17 +150,17 @@ public:
     }
 
     //! SETTERS
-    void set(Coords coords, piece_id value) noexcept {
+    constexpr void set(Coords coords, piece_id value) noexcept {
         const uint8_t shift = coords.file * 4;
         chessboard[coords.rank] = (chessboard[coords.rank] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    void set(uint8_t row, uint8_t col, piece_id value) noexcept {
+    constexpr void set(uint8_t row, uint8_t col, piece_id value) noexcept {
         const uint8_t shift = col * 4;
         chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
-    void setNextTurn() noexcept {
+    constexpr void setNextTurn() noexcept {
         // this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
         if (this->activeColor == WHITE) {
             this->activeColor = BLACK;
@@ -163,12 +172,12 @@ public:
     }
 
     //! Operator overloads
-    uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
-    uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
-    uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
-    bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
-    bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
+    constexpr uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
+    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
+    constexpr uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
+    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
+    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 
 
     //! PER DEBUG
@@ -185,7 +194,7 @@ public:
 
 
     // Piece movement logic
-    bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
+    constexpr bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
         uint8_t p1 = this->get(pos1);
         uint8_t p2 = this->get(pos2);
         if (p1 == EMPTY || p2 == EMPTY) return false;
@@ -193,7 +202,7 @@ public:
     }
 
 
-    void updateChessboard(const Coords& from, const Coords& to) noexcept {
+    constexpr void updateChessboard(const Coords& from, const Coords& to) noexcept {
         piece_id piece = static_cast<piece_id>(this->get(from));
         this->set(to, piece);
         this->set(from, EMPTY);
@@ -212,53 +221,36 @@ public:
     }
 
     void updateOccupancyBB() noexcept {
-        // Reset
-        occupancy = 0ULL;
-        pawns_bb[0]   = pawns_bb[1]   = 0ULL;
-        knights_bb[0] = knights_bb[1] = 0ULL;
-        bishops_bb[0] = bishops_bb[1] = 0ULL;
-        rooks_bb[0]   = rooks_bb[1]   = 0ULL;
-        queens_bb[0]  = queens_bb[1]  = 0ULL;
-        kings_bb[0]   = kings_bb[1]   = 0ULL;
+        // Reset all bitboards
+        occupancy       = 0ULL;
+        pawns_bb[0]     = pawns_bb[1]     = 0ULL;
+        knights_bb[0]   = knights_bb[1]   = 0ULL;
+        bishops_bb[0]   = bishops_bb[1]   = 0ULL;
+        rooks_bb[0]     = rooks_bb[1]     = 0ULL;
+        queens_bb[0]    = queens_bb[1]    = 0ULL;
+        kings_bb[0]     = kings_bb[1]     = 0ULL;
 
-        for (uint8_t rank = 0; rank < 8; ++rank) {
-            const uint32_t row = chessboard[rank];
-
-            // Costruiamo un bitboard di occupazione per questa riga:
-            // per ogni nibble != EMPTY, mettiamo un 1 nel bit corrispondente (0..7)
-            uint8_t rowMask = 0;
-            for (uint8_t file = 0; file < 8; ++file) {
-                const uint8_t piece = static_cast<uint8_t>((row >> (file * 4)) & MASK_PIECE);
-                if ((piece & MASK_PIECE_TYPE) != EMPTY) {
-                    rowMask |= static_cast<uint8_t>(1u << file);
-                }
+        // Single pass over all 64 squares using the fast index-based getter
+        for (uint8_t index = 0; index < 64; ++index) {
+            const uint8_t piece = this->get(index);
+            const uint8_t type  = piece & MASK_PIECE_TYPE;
+            if (type == EMPTY) {
+                continue;
             }
 
-            // Ora iteriamo solo sui bit a 1 di rowMask
-            while (rowMask) {
-                const uint8_t lsbFile = static_cast<uint8_t>(__builtin_ctz(rowMask)); // 0..7
-                rowMask &= static_cast<uint8_t>(rowMask - 1); // clear lsb
+            const uint64_t bit = (1ULL << index);
+            const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
 
-                const uint8_t index = static_cast<uint8_t>(rank * 8 + lsbFile);
-                const uint64_t bit  = (1ULL << index);
+            occupancy |= bit;
 
-                // Recupera il pezzo vero direttamente da row
-                const uint8_t piece =
-                    static_cast<uint8_t>((row >> (lsbFile * 4)) & MASK_PIECE);
-                const uint8_t type  = piece & MASK_PIECE_TYPE;
-                const uint8_t color = (piece & MASK_COLOR) ? 1u : 0u;
-
-                occupancy |= bit;
-
-                switch (type) {
-                    case PAWN:   pawns_bb[color]   |= bit; break;
-                    case KNIGHT: knights_bb[color] |= bit; break;
-                    case BISHOP: bishops_bb[color] |= bit; break;
-                    case ROOK:   rooks_bb[color]   |= bit; break;
-                    case QUEEN:  queens_bb[color]  |= bit; break;
-                    case KING:   kings_bb[color]   |= bit; break;
-                    default: break;
-                }
+            switch (type) {
+                case PAWN:   pawns_bb[color]   |= bit; break;
+                case KNIGHT: knights_bb[color] |= bit; break;
+                case BISHOP: bishops_bb[color] |= bit; break;
+                case ROOK:   rooks_bb[color]   |= bit; break;
+                case QUEEN:  queens_bb[color]  |= bit; break;
+                case KING:   kings_bb[color]   |= bit; break;
+                default: break;
             }
         }
     }
@@ -270,7 +262,7 @@ public:
 
     void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
         if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
-        uint8_t color = (piece & MASK_COLOR) ? 1 : 0; // BLACK=1, WHITE=0
+        uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
         uint64_t bit = (1ULL << index);
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   |= bit; break;
@@ -285,7 +277,7 @@ public:
 
     void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
         if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
-        uint8_t color = (piece & MASK_COLOR) ? 1 : 0;
+        uint8_t color = (piece & MASK_COLOR) != 0;
         uint64_t mask = ~(1ULL << index);
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   &= mask; break;
@@ -349,17 +341,15 @@ public:
     std::array<uint64_t, 2> kings_bb = {0ULL, 0ULL};
 
 private:
-    
 
-    std::vector<bool> castle = {true, true, true, true}; // KQkq
-    std::vector<bool> hasMoved = {false, false, false, false, false, false}; // K Ra Rh, k ra rh
-    // uint8_t castle = 0x0F; // 4 bit for castling rights (KQkq) // 0000 1111 = all castling rights available // 1111=0x0F
-    // uint8_t hasMoved = 0; // 3 bits to track king and rooks, 1 bit for spacing (K Ra Rh, k ra rh) = 0111 0111
-
+    uint8_t castle = 0x0F; // castle: 4 bits (KQkq) -> 0000 1111 = all castling rights available
+    uint8_t hasMoved = 0x00; // hasMoved: 6 bits (K, Ra, Rh, k, ra, rh)
     std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // en-passant square per WHITE e BLACK
+    
     uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
     uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
     uint8_t activeColor = WHITE; // Tracks the active color (white or black)
+    
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
