@@ -19,7 +19,7 @@ Engine::Engine()
     // Collega la TT globale e inizializzala a valori noti
     ttTable = globalTT();
     for (std::size_t i = 0; i < TTEntry::TABLE_SIZE; ++i) {
-        ttTable[i].key   = 0;
+        ttTable[i].key = 0;
         ttTable[i].depth = 0;
         ttTable[i].score = 0;
         ttTable[i].flag  = TTEntry::EXACT;

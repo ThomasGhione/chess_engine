@@ -173,14 +173,14 @@ void Engine::savePositionToTT(int64_t best, ){
         flag = TTEntry::LOWERBOUND;   // fail-high
     }
 
-    const int32_t storedScore = static_cast<int32_t>(
+    const int16_t storedScore = static_cast<int16_t>(
         std::max<int64_t>(
-            std::min<int64_t>(best, std::numeric_limits<int32_t>::max() - 1),
-            std::numeric_limits<int32_t>::min() + 1));
+            std::min<int64_t>(best, INT16_MAX - 1),
+            INT16_MIN + 1));
 
     storeTTEntry(this->ttTable,
                  hashKey,
-                 static_cast<uint16_t>(depth),
+                 static_cast<uint8_t>(depth),
                  storedScore,
                  flag);
 }
@@ -220,16 +220,22 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // Prova a usare la transposition table solo per depth >= 2
     const uint64_t hashKey = computeHashKey(b);
+    
+    // Prefetch TT bucket per ridurre cache miss
+    if (depth >= 1) {
+        prefetchTT(hashKey);
+    }
+    
     if (depth >= 1) {
 #ifdef DEBUG
         ++ttProbes;
 #endif
-        const int32_t alpha32 = static_cast<int32_t>( 
-            std::max<int64_t>(alpha - TTEntry::ADJUSTMENT, NEG_INF_32 + 1));
-        const int32_t beta32  = static_cast<int32_t>(
-            std::min<int64_t>(beta + TTEntry::ADJUSTMENT,  POS_INF_32 - 1));
-        int32_t ttScore = 0;
-        if (probeTT(this->ttTable, hashKey, static_cast<uint16_t>(depth), alpha32, beta32, ttScore)) {
+        const int16_t alpha16 = static_cast<int16_t>( 
+            std::max<int64_t>(alpha - TTEntry::ADJUSTMENT, INT16_MIN + 1));
+        const int16_t beta16  = static_cast<int16_t>(
+            std::min<int64_t>(beta + TTEntry::ADJUSTMENT,  INT16_MAX - 1));
+        int16_t ttScore = 0;
+        if (probeTT(this->ttTable, hashKey, static_cast<uint8_t>(depth), alpha16, beta16, ttScore)) {
 #ifdef DEBUG
             ++ttHits;
             ++ttExactHits;   // approssimazione: contiamo tutti gli hit come exact
@@ -313,14 +319,14 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         flag = TTEntry::LOWERBOUND;   // fail-high
     }
 
-    const int32_t storedScore = static_cast<int32_t>(
+    const int16_t storedScore = static_cast<int16_t>(
         std::max<int64_t>(
-            std::min<int64_t>(best, std::numeric_limits<int32_t>::max() - 1),
-            std::numeric_limits<int32_t>::min() + 1));
+            std::min<int64_t>(best, INT16_MAX - 1),
+            INT16_MIN + 1));
 
     storeTTEntry(this->ttTable,
                 hashKey,
-                static_cast<uint16_t>(depth),
+                static_cast<uint8_t>(depth),
                 storedScore,
                 flag);
     

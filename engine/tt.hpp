@@ -8,14 +8,16 @@
 
 namespace engine {
 
-// Singola entry della transposition table.
-// 16 byte: key(8) + depth(2) + score(4) + flag(1) + padding(1)
+// Ottimizzazione: entry compatta da 12 byte (più cache-friendly)
+// key16(2) + score(2) + depth(1) + age(1) + flag(1) + padding(1) = 8 byte minimo
+// Usiamo key32 per ridurre collisioni: key32(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 byte
 struct TTEntry {
-    uint64_t key   = 0;   // Zobrist key completo
-    uint16_t depth = 0;   // profondità alla quale è stato calcolato lo score
-    int32_t  score = 0;   // valutazione (tipicamente centipawn o mate score)
+    uint64_t key = 0;   // 64 bit della Zobrist key 
+    int16_t  score = 0;   // score in centipawns (range ±32k sufficiente con mate detection)
+    uint8_t  depth = 0;   // profondità (0-255 sufficiente)
+    uint8_t  age   = 0;   // generation/age per replacement policy
     uint8_t  flag  = 0;   // EXACT / LOWERBOUND / UPPERBOUND
-    uint8_t  padding = 0; // per allineare a 16 byte (facoltativo)
+    uint8_t  padding[3] = {0, 0, 0}; // align a 16 byte
 
     enum Flag : uint8_t {
         EXACT      = 0,
@@ -23,20 +25,39 @@ struct TTEntry {
         UPPERBOUND = 2
     };
 
-    static constexpr std::size_t TABLE_SIZE = 1u << 22; // 2^22 entries (~64 MB circa)
+    // Bucket-based TT: 4 entries per bucket per ridurre collisioni (cache line = 64 byte, bucket = 48 byte)
+    static constexpr std::size_t BUCKET_COUNT = 1u << 22; // 2^22 buckets = 16M entries (~192 MB)
+    static constexpr std::size_t ENTRIES_PER_BUCKET = 4;
+    static constexpr std::size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
+    
     static constexpr int32_t ADJUSTMENT = 50; 
 
     TTEntry() = default;
-    TTEntry(uint64_t k, uint16_t d, int32_t s, uint8_t f)
-        : key(k), depth(d), score(s), flag(f) {}
-
-    
+    TTEntry(uint64_t k, uint8_t d, int16_t s, uint8_t f, uint8_t a)
+        : key(k), score(s), depth(d), age(a), flag(f) {}
 };
 
-// Transposition table globale: una sola tabella condivisa da tutto il motore.
+// Transposition table globale + age/generation counter
+struct TTGlobal {
+    TTEntry table[TTEntry::TABLE_SIZE];
+    uint8_t generation = 0;
+};
+
+inline TTGlobal& globalTTData() {
+    static TTGlobal data;
+    return data;
+}
+
 inline TTEntry* globalTT() {
-    static TTEntry table[TTEntry::TABLE_SIZE];
-    return table;
+    return globalTTData().table;
+}
+
+inline void incrementTTGeneration() {
+    ++globalTTData().generation;
+}
+
+inline uint8_t getCurrentGeneration() {
+    return globalTTData().generation;
 }
 
 // Zobrist: 16 pezzi x 64 caselle + side-to-move, castling, en-passant.
@@ -98,111 +119,150 @@ inline uint64_t computeHashKey(const chess::Board& board) {
     uint64_t hashKey = 0ULL;
 
     // Pezzi usando direttamente le bitboard per tipo/colore
-
-    auto xorPiecesFromBB = [&](uint64_t bb, uint8_t type, uint8_t color) {
-        // Mappa (type,color) → indice 0..15
-        const uint8_t idx = (color == chess::Board::WHITE)
-                                ? type          // 1..6 per bianchi
-                                : static_cast<uint8_t>(8 + type); // 9..14 per neri
-
+    auto xorPiecesFromBB = [&](uint64_t bb, uint8_t idx) {
         while (bb) {
-            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+            const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
             bb &= (bb - 1);
             hashKey ^= detail::ZOBRIST.piece[idx][sq];
         }
     };
 
-    // White pieces (color index 0)
-    xorPiecesFromBB(board.pawns_bb[0],   chess::Board::PAWN,   chess::Board::WHITE);
-    xorPiecesFromBB(board.knights_bb[0], chess::Board::KNIGHT, chess::Board::WHITE);
-    xorPiecesFromBB(board.bishops_bb[0], chess::Board::BISHOP, chess::Board::WHITE);
-    xorPiecesFromBB(board.rooks_bb[0],   chess::Board::ROOK,   chess::Board::WHITE);
-    xorPiecesFromBB(board.queens_bb[0],  chess::Board::QUEEN,  chess::Board::WHITE);
-    xorPiecesFromBB(board.kings_bb[0],   chess::Board::KING,   chess::Board::WHITE);
+    // White pieces (color index 0) - indici 1..6
+    xorPiecesFromBB(board.pawns_bb[0],   1);
+    xorPiecesFromBB(board.knights_bb[0], 2);
+    xorPiecesFromBB(board.bishops_bb[0], 3);
+    xorPiecesFromBB(board.rooks_bb[0],   4);
+    xorPiecesFromBB(board.queens_bb[0],  5);
+    xorPiecesFromBB(board.kings_bb[0],   6);
 
-    // Black pieces (color index 1)
-    xorPiecesFromBB(board.pawns_bb[1],   chess::Board::PAWN,   chess::Board::BLACK);
-    xorPiecesFromBB(board.knights_bb[1], chess::Board::KNIGHT, chess::Board::BLACK);
-    xorPiecesFromBB(board.bishops_bb[1], chess::Board::BISHOP, chess::Board::BLACK);
-    xorPiecesFromBB(board.rooks_bb[1],   chess::Board::ROOK,   chess::Board::BLACK);
-    xorPiecesFromBB(board.queens_bb[1],  chess::Board::QUEEN,  chess::Board::BLACK);
-    xorPiecesFromBB(board.kings_bb[1],   chess::Board::KING,   chess::Board::BLACK);
+    // Black pieces (color index 1) - indici 9..14
+    xorPiecesFromBB(board.pawns_bb[1],   9);
+    xorPiecesFromBB(board.knights_bb[1], 10);
+    xorPiecesFromBB(board.bishops_bb[1], 11);
+    xorPiecesFromBB(board.rooks_bb[1],   12);
+    xorPiecesFromBB(board.queens_bb[1],  13);
+    xorPiecesFromBB(board.kings_bb[1],   14);
 
-    // Side to move: XOR se tocca al nero
-    if (board.getActiveColor() == chess::Board::BLACK) {
-        hashKey ^= detail::ZOBRIST.sideToMove;
-    }
+    // Side to move: XOR se tocca al nero (branchless)
+    const uint64_t stmMask = static_cast<uint64_t>(-(board.getActiveColor() == chess::Board::BLACK));
+    hashKey ^= detail::ZOBRIST.sideToMove & stmMask;
 
-    // Castling rights: vettore<bool> size 4 -> bitmask 0..15 (KQkq)
-    uint8_t castlingMask = 0;
-    if (board.getCastle(0)) castlingMask |= 1u << 0; // K
-    if (board.getCastle(1)) castlingMask |= 1u << 1; // Q
-    if (board.getCastle(2)) castlingMask |= 1u << 2; // k
-    if (board.getCastle(3)) castlingMask |= 1u << 3; // q
+    // Castling rights: usa direttamente il bitmask castle (0-15)
+    const uint8_t castlingMask = 
+        (board.getCastle(0) ? 1u : 0u) |
+        (board.getCastle(1) ? 2u : 0u) |
+        (board.getCastle(2) ? 4u : 0u) |
+        (board.getCastle(3) ? 8u : 0u);
     hashKey ^= detail::ZOBRIST.castling[castlingMask];
 
-    // En-passant: usiamo il getter leggero per il side to move corrente.
-    const uint8_t stm = board.getActiveColor();
-    const chess::Coords epSquare = board.getEnPassant((stm == chess::Board::WHITE) ? 0 : 1);
-    if (chess::Coords::isInBounds(epSquare)) {
-        int file = epSquare.file;
-        hashKey ^= detail::ZOBRIST.enPassant[file];
-    }
+    // En-passant: usa il getter leggero per il side to move corrente
+    const chess::Coords epSquare = board.getEnPassant((board.getActiveColor() == chess::Board::WHITE) ? 0 : 1);
+    const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(chess::Coords::isInBounds(epSquare)));
+    hashKey ^= detail::ZOBRIST.enPassant[epSquare.file] & epMask;
 
     return hashKey;
 }
 
-// Store semplice: rimpiazza se stessa chiave o se il nuovo depth è >= del vecchio.
-inline void storeTTEntry(TTEntry* ttTable,
-                         uint64_t key,
-                         uint16_t depth,
-                         int32_t score,
-                         uint8_t flag) {
-
-    const std::size_t index = static_cast<std::size_t>(key) & (TTEntry::TABLE_SIZE - 1);
-    TTEntry& entry = ttTable[index];
-
-    if (entry.key == key || depth >= entry.depth) {
-        entry.key   = key;
-        entry.depth = depth;
-        entry.score = score;
-        entry.flag  = flag;
-    }
+// Prefetch TT bucket per ridurre cache miss (chiamare prima di probe/store)
+inline void prefetchTT(uint64_t key) {
+    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
+    const TTEntry* bucket = &globalTT()[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
+    __builtin_prefetch(bucket, 0, 3); // Read prefetch, high temporal locality
 }
 
-// Probe minimale della TT.
+// Store con replacement policy: depth-preferred + age-based
+inline void storeTTEntry(TTEntry* ttTable,
+                         uint64_t key,
+                         uint8_t depth,
+                         int16_t score,
+                         uint8_t flag) {
+
+    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
+    TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
+    
+    const uint64_t key32 = static_cast<uint64_t>(key);
+    const uint8_t generation = getCurrentGeneration();
+
+    TTEntry* replaceEntry = &bucket[0];
+    int bestReplaceScore = -1000000;
+
+    // Cerca entry esistente o la migliore da sostituire
+    for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
+        TTEntry& entry = bucket[i];
+        
+        // Se stessa key, aggiorna sempre (depth-preferred)
+        if (entry.key == key) {
+            if (depth >= entry.depth || flag == TTEntry::EXACT) {
+                entry.depth = depth;
+                entry.score = score;
+                entry.flag  = flag;
+                entry.age   = generation;
+            }
+            return;
+        }
+
+        // Calcola replacement score: preferisci entry vecchie o con depth bassa
+        const int ageDiff = static_cast<int>(generation - entry.age) & 0xFF;
+        const int replaceScore = (ageDiff * 256) - static_cast<int>(entry.depth) * 4;
+        
+        if (replaceScore > bestReplaceScore) {
+            bestReplaceScore = replaceScore;
+            replaceEntry = &entry;
+        }
+    }
+
+    // Sostituisci la migliore entry trovata
+    replaceEntry->key = key;
+    replaceEntry->depth = depth;
+    replaceEntry->score = score;
+    replaceEntry->flag  = flag;
+    replaceEntry->age   = generation;
+}
+
+// Probe ottimizzato con bucket search
 inline bool probeTT(const TTEntry* ttTable,
                     uint64_t key,
-                    uint16_t depth,
-                    int32_t alpha,
-                    int32_t beta,
-                    int32_t& outScore) {
+                    uint8_t depth,
+                    int16_t alpha,
+                    int16_t beta,
+                    int16_t& outScore) {
 
-    const std::size_t index = static_cast<std::size_t>(key) & (TTEntry::TABLE_SIZE - 1);
-    const TTEntry& entry = ttTable[index];
+    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
+    const TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
+    
+    const uint64_t key64 = static_cast<uint64_t>(key);
 
-    if (entry.key != key) return false;      // chiave diversa o cella vuota
-    if (entry.depth < depth) return false;   // profondità insufficiente
+    // Cerca in tutte le entry del bucket
+    for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
+        const TTEntry& entry = bucket[i];
+        
+        if (entry.key != key) continue;      // chiave diversa
+        if (entry.depth < depth) continue;        // profondità insufficiente
 
-    switch (entry.flag) {
-        case TTEntry::EXACT:
-            outScore = entry.score;
-            return true;
-        case TTEntry::LOWERBOUND:
-            if (entry.score >= beta) {
-                outScore = entry.score;
+        const int16_t score = entry.score;
+        
+        switch (entry.flag) {
+            case TTEntry::EXACT:
+                outScore = score;
                 return true;
-            }
-            break;
-        case TTEntry::UPPERBOUND:
-            if (entry.score <= alpha) {
-                outScore = entry.score;
-                return true;
-            }
-            break;
-        default:
-            break;
+            case TTEntry::LOWERBOUND:
+                if (score >= beta) {
+                    outScore = score;
+                    return true;
+                }
+                break;
+            case TTEntry::UPPERBOUND:
+                if (score <= alpha) {
+                    outScore = score;
+                    return true;
+                }
+                break;
+        }
+        
+        // Entry trovata ma non utilizzabile per cutoff
+        return false;
     }
+    
     return false;
 }
 
