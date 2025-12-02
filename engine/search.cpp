@@ -1,3 +1,4 @@
+/*
 #include "engine.hpp"
 
 namespace engine {
@@ -133,7 +134,9 @@ void Engine::search(uint64_t depth) {
               << ", cutoff hits: " << ttCutoffHits << "\n";
 #endif
 }
-/*
+
+// Inizio punto dei commenti 
+
 bool Engine::hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate){
   const uint8_t activeColor = b.getActiveColor();
   if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
@@ -199,8 +202,10 @@ int64_t Engine::cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alph
   this->savePositionToTT();
 
   return evaluateBestMove;
-}*/
-  
+}
+
+// Fine punto dei commenti
+
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
     // Una posizione visitata
     this->nodesSearched++;  
@@ -532,3 +537,4 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
     return orderedScoredMoves;
 }
 }; //namespace engine
+*/

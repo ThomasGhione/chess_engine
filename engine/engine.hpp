@@ -72,6 +72,28 @@ public:
         int64_t score;
     };
 private:
+    // Helper structures to reduce parameter passing
+    struct SearchContext {
+        int64_t depth;
+        int64_t alpha;
+        int64_t beta;
+        int ply;
+        uint8_t activeColor;
+    };
+
+    struct AlphaBeta {
+        int64_t alpha;
+        int64_t beta;
+    };
+
+    struct TTSaveInfo {
+        uint64_t hashKey;
+        int64_t depth;
+        int64_t score;
+        int64_t alphaOrig;
+        int64_t beta;
+    };
+
     void doMoveInBoard(chess::Board::Move bestMove);
     chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
@@ -81,6 +103,26 @@ private:
     bool shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves);
 
     void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]);
+
+    // Helper methods for search
+    bool handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score);
+    ScoredMove searchMoves(chess::Board& b, const std::vector<ScoredMove>& orderedScoredMoves,
+                          bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds);
+    bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score);
+    void saveTTEntry(const TTSaveInfo& info);
+
+    // Helper methods for move execution
+    void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state);
+    void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
+                          int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
+                          chess::Board::Move& bestMove);
+
+    // Helper methods for move scoring
+    void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score);
+    void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score);
+    void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
+    void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
+    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, int64_t& score);
 
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
