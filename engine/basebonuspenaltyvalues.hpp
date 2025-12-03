@@ -53,6 +53,15 @@ inline constexpr int64_t KING_ACTIVITY_BONUS = 10; // per ogni pezzo amico vicin
 // GAME PHASE
 inline constexpr int64_t PHASE_FINAL_THRESHOLD = 14; // soglia per considerare la fase finale (numero totale di pezzi minori e regine)
 
+
+constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
+constexpr int64_t KILLER1_BONUS               = 100000;   // bonus killer move primaria
+constexpr int64_t KILLER2_BONUS               = 90000;    // bonus killer move secondaria
+constexpr int64_t KING_NON_CASTLING_PENALTY   = 110;    // penalita' per muovere il re senza arroccare
+constexpr int64_t CASTLING_BONUS              = 165;     // piccolo bonus per arroccare
+
+
+
 }
 
 #endif // ENGINE_BASEBONUSPENALTYVALUES_HPP

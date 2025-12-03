@@ -2,12 +2,6 @@
 
 namespace engine {
 
-constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
-constexpr int64_t KILLER1_BONUS               = 100000;   // bonus killer move primaria
-constexpr int64_t KILLER2_BONUS               = 90000;    // bonus killer move secondaria
-constexpr int64_t KING_NON_CASTLING_PENALTY   = 20000;    // penalita' per muovere il re senza arroccare
-constexpr int64_t CASTLING_BONUS              = 5000;     // piccolo bonus per arroccare
-
 // Helper function to check if a move is a pawn promotion candidate
 bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) {
     uint8_t piece = board.get(move.from);
@@ -186,8 +180,7 @@ void Engine::search(uint64_t depth) {
 
     std::cout << "[DEBUG] TT probes: " << ttProbes
               << ", hits: " << ttHits
-              << ", exact hits (approx): " << ttExactHits
-              << ", cutoff hits: " << ttCutoffHits << "\n";
+              << "\n";
 #endif
 }
 
@@ -255,7 +248,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
             destinations &= (destinations - 1);
 
             if (b.canMoveToBB(chess::Coords{from}, chess::Coords{to})) {
-                moves.push_back(chess::Board::Move{chess::Coords{from}, chess::Coords{to}});
+                moves.emplace_back(chess::Board::Move{chess::Coords{from}, chess::Coords{to}});
             }
         }
     };
@@ -325,9 +318,7 @@ void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, b
 void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) {
     chess::Board::MoveState tmpState;
     b.doMove(const_cast<chess::Board::Move&>(m), tmpState, isPromotionMove(b, m) ? 'q' : 0);
-
-    uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
-    if (b.inCheck(opponent)) {
+    if (b.inCheck(!usIsWhite)) {
         score += CHECK_BONUS;
     }
     b.undoMove(const_cast<chess::Board::Move&>(m), tmpState);
@@ -355,13 +346,16 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 }
 
 // Helper to add king move heuristic bonus/penalty
-void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, int64_t& score) {
+void Engine::addKingMoveBonus(chess::Board& b, const chess::Board::Move& m, uint8_t pieceType, int64_t& score) {
     if (pieceType != chess::Board::KING) return;
 
+
     int fileDelta = std::abs(m.to.file - m.from.file);
-    if (fileDelta != 2) {
+
+    // if not opening and not in check and not castling:
+    if (b.getFullMoveClock() < 10 && !b.inCheck(b.getActiveColor()) && fileDelta != 2) {
         score -= KING_NON_CASTLING_PENALTY;
-    } else {
+    } else { 
         score += CASTLING_BONUS;
     }
 }
@@ -389,16 +383,16 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
             this->addKillerAndHistoryBonus(m, ply, usIsWhite, score);
         }
 
-        this->addKingMoveBonus(m, fromPieceType, score);
+        this->addKingMoveBonus(b, m, fromPieceType, score);
 
-        orderedScoredMoves.push_back(ScoredMove{m, score});
+        orderedScoredMoves.emplace_back(ScoredMove{m, score});
     }
 
     // Sort moves: higher score first for white, lower score first for black
     std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
-              [usIsWhite](const ScoredMove& a, const ScoredMove& b) {
-                  return usIsWhite ? (a.score > b.score) : (a.score < b.score);
-              });
+                [usIsWhite](const ScoredMove& a, const ScoredMove& b) {
+                    return usIsWhite ? (a.score > b.score) : (a.score < b.score);
+                });
 
     return orderedScoredMoves;
 }

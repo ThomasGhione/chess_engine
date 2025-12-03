@@ -158,6 +158,39 @@ int64_t Engine::evaluate(const chess::Board& board) {
                              : KING_MIDDLE_GAME_VALUES_TABLE[idx];
         }
     );
+
+    // 4) Castling bonus in evaluation (not just move ordering)
+    // Apply bonus only if king and rook squares match a castled configuration.
+    auto addCastlingEvalBonus = [&](bool isWhite){
+        const uint64_t kings = board.kings_bb[!isWhite];
+        const uint64_t rooks = board.rooks_bb[!isWhite];
+        if (!kings) return;
+        const int kingSq = __builtin_ctzll(kings);
+
+        // Indices for castled configurations
+        // White: king g1 (6) with rook f1 (5) OR king c1 (2) with rook d1 (3)
+        // Black: king g8 (62) with rook f8 (61) OR king c8 (58) with rook d8 (59)
+        auto hasRookOn = [&](int idx){ return (rooks & (1ULL << idx)) != 0ULL; };
+
+        bool castled = false;
+        if (isWhite) {
+            if (kingSq == 6 && hasRookOn(5)) castled = true;        // O-O
+            else if (kingSq == 2 && hasRookOn(3)) castled = true;   // O-O-O
+        } else {
+            if (kingSq == 62 && hasRookOn(61)) castled = true;      // O-O
+            else if (kingSq == 58 && hasRookOn(59)) castled = true; // O-O-O
+        }
+
+        if (castled) eval += isWhite ? CASTLING_BONUS : -CASTLING_BONUS;
+    };
+
+    addCastlingEvalBonus(true);
+    addCastlingEvalBonus(false);
+    
+    // 5) King moves without castling should be penalized
+    // (This requires tracking move history; skipping for now.)
+    
+
     //int64_t whiteEval = 0, blackEval = 0;
     //eval += (whiteEval - blackEval);
 

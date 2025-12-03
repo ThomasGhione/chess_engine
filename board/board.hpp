@@ -149,6 +149,9 @@ public:
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
+    uint16_t getHalfMoveClock() const noexcept { return halfMoveClock; }
+    uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
+
     //! SETTERS
     void set(Coords coords, piece_id value) noexcept {
         const uint8_t shift = coords.file * 4;

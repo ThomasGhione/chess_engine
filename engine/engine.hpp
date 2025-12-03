@@ -122,7 +122,7 @@ private:
     void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score);
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
-    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, int64_t& score);
+    void addKingMoveBonus(chess::Board& b, const chess::Board::Move& m, uint8_t pieceType, int64_t& score);
 
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
