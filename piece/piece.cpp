@@ -35,13 +35,9 @@ U64 getKnightAttacks(int16_t squareIndex) noexcept {
 
 	int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 
-	constexpr int16_t OFF[8][2] = {
-		{1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2}
-	};
-
 	U64 attackBitboard = 0ULL;
 	
-    for (auto &offset : OFF) {
+    for (auto &offset : KNIGHT_OFFSET) {
 		int16_t newFile = file + offset[0], newRank = rank + offset[1];
 		if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
 			attackBitboard |= ONE << (newRank * 8 + newFile);
@@ -56,17 +52,15 @@ U64 getKingAttacks(int16_t squareIndex) noexcept {
 	if (squareIndex < 0 || squareIndex >= 64) return 0ULL;
 	
     int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
+
 	U64 attackBitboard = 0ULL;
 
-	for (int16_t deltaFile = -1; deltaFile <= 1; ++deltaFile) {
-		for (int16_t deltaRank = -1; deltaRank <= 1; ++deltaRank) {
-			if (deltaFile == 0 && deltaRank == 0)
-				continue;
-			int16_t newFile = file + deltaFile, newRank = rank + deltaRank;
-			if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
-				attackBitboard |= ONE << (newRank * 8 + newFile);
-		}
+	for (auto &offset : KING_OFFSET) {
+		int16_t newFile = file + offset[0], newRank = rank + offset[1];
+		if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
+			attackBitboard |= ONE << (newRank * 8 + newFile);
 	}
+
 	return attackBitboard;
 }
 
@@ -142,8 +136,9 @@ inline U64 ray(int16_t file, int16_t rank, int16_t deltaFile, int16_t deltaRank,
 
 	while (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
 		const int16_t square = static_cast<int16_t>(rank * 8 + file);
-		rayBitboard |= (ONE << square);
-		if (occupancy & (ONE << square)) {
+		const U64 mask = (ONE << (rank * 8 + file));
+		rayBitboard |= mask;
+		if (occupancy & mask) {
 			break; // include the blocker square, then stop
 		}
 		file += deltaFile;
