@@ -495,11 +495,11 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 
             // Simulate per-piece bitboards for both sides
             uint64_t ourPawns    = pawns_bb[side];
-            uint64_t ourKnights  = knights_bb[side];
-            uint64_t ourBishops  = bishops_bb[side];
-            uint64_t ourRooks    = rooks_bb[side];
-            uint64_t ourQueens   = queens_bb[side];
-            uint64_t ourKings    = kings_bb[side];
+            // uint64_t ourKnights  = knights_bb[side];
+            // uint64_t ourBishops  = bishops_bb[side];
+            // uint64_t ourRooks    = rooks_bb[side];
+            // uint64_t ourQueens   = queens_bb[side];
+            // uint64_t ourKings    = kings_bb[side];
 
             uint64_t oppPawns    = pawns_bb[oppSide];
             uint64_t oppKnights  = knights_bb[oppSide];
@@ -671,12 +671,12 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         occNew |=  toMask;
 
         // Local copies of our and opponent bitboards
-        uint64_t ourPawns    = pawns_bb[side];
+        // uint64_t ourPawns    = pawns_bb[side];
         uint64_t ourKnights  = knights_bb[side];
         uint64_t ourBishops  = bishops_bb[side];
         uint64_t ourRooks    = rooks_bb[side];
         uint64_t ourQueens   = queens_bb[side];
-        uint64_t ourKings    = kings_bb[side];
+        // uint64_t ourKings    = kings_bb[side];
 
         uint64_t oppPawns    = pawns_bb[oppSide];
         uint64_t oppKnights  = knights_bb[oppSide];
@@ -832,9 +832,8 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                 const uint8_t tr = static_cast<uint8_t>(to >> 3);
                 const uint8_t tf = static_cast<uint8_t>(to & 7);
 
-                Board copy = *this;
-                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
-                if (!copy.inCheck(color)) return true;
+                // Use canMoveToBB which already checks legality (pseudo-legal + king safety)
+                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
         }
         return false;
@@ -869,18 +868,15 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
                 const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
-                    const char promos[4] = {'q','r','b','n'};
-                    for (char ch : promos) {
-                        Board copy = *this;
-                        if (!copy.moveBB(Coords{f, r}, Coords{tf, tr}, ch)) continue;
-                        if (!copy.inCheck(color)) return true;
-                    }
+                    // For promotions, if the pawn move itself is legal (checked by canMoveToBB),
+                    // then all promotion choices (Q/R/B/N) are legal since the choice of promoted
+                    // piece doesn't affect the legality of the move itself.
+                    if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
                     continue;
                 }
 
-                Board copy = *this;
-                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
-                if (!copy.inCheck(color)) return true;
+                // Use canMoveToBB for non-promotion pawn pushes
+                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
 
             // CAPTURES (reali + en-passant, filtrate a livello di Board::moveBB)
@@ -894,24 +890,20 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
                 const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
-                    const char promos[4] = {'q','r','b','n'};
-                    for (char ch : promos) {
-                        Board copy = *this;
-                        if (!copy.moveBB(Coords{f, r}, Coords{tf, tr}, ch)) continue;
-                        if (!copy.inCheck(color)) return true;
-                    }
+                    // For promotions, if the pawn move itself is legal (checked by canMoveToBB),
+                    // then all promotion choices (Q/R/B/N) are legal.
+                    if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
                     continue;
                 }
 
-                Board copy = *this;
-                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
-                if (!copy.inCheck(color)) return true;
+                // Use canMoveToBB for non-promotion pawn captures
+                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
         }
     }
 
     // KNIGHTS
-    if (tryMovesFromBitboard(knights_bb[side], [&](uint8_t sq, uint64_t occBB) {
+    if (tryMovesFromBitboard(knights_bb[side], [&](uint8_t sq, uint64_t /*occBB*/) {
             return pieces::getKnightAttacks(sq);
         })) return true;
 
@@ -962,9 +954,8 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                 const uint8_t tr = static_cast<uint8_t>(to >> 3);
                 const uint8_t tf = static_cast<uint8_t>(to & 7);
 
-                Board copy = *this;
-                if (!copy.moveBB(Coords{f, r}, Coords{tf, tr})) continue;
-                if (!copy.inCheck(color)) return true;
+                // Use canMoveToBB for king moves (including castling already checked above)
+                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
         }
     }
