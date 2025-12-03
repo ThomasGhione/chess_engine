@@ -1,0 +1,40 @@
+#ifndef COORDS
+#define COORDS
+
+#include <string>
+#include <cstdint>
+
+namespace chess {
+class Coords {
+public:
+    uint8_t file; // column
+    uint8_t rank; // row
+
+    constexpr static uint8_t INVALID_COORDS = 255;
+
+    Coords();
+    Coords(uint8_t index);
+    Coords(uint8_t f, uint8_t r);
+    Coords(const std::string& input);
+    Coords(const Coords& c) = default;
+
+    bool operator==(const Coords &other) const;
+    bool operator!=(const Coords &other) const;
+    Coords& operator=(const Coords &other);
+
+    bool update(const Coords& other);
+    bool update(const uint8_t f, const uint8_t r);
+
+    static bool isValid(uint8_t x) noexcept;
+    static bool isLetter(char c) noexcept;
+    static bool isNumber(char c) noexcept;
+    static bool isInBounds(const Coords& coords) noexcept;
+
+    std::string toString() const;
+    uint8_t toIndex() const noexcept;
+
+    static std::string toAlgebric(const Coords& c) noexcept;
+}; // class Coords
+} // namespace chess
+#endif
+    

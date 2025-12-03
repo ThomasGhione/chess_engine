@@ -1,0 +1,52 @@
+\subsection{Board}
+\paragraph{Descrizione classe:}
+Rappresenta la foto di una scacchiera in questo momento.
+
+\paragraph{Costruttori}
+Sono presenti due costruttori:
+
+\begin{enumerate}
+  \item Costruttore vuoto: Genera la posizione classica degli scacchi.
+  \item (std::string): Costruttore che prende un FEN
+  costruendo la relativa posizione.
+\end{enumerate}
+
+\paragraph{Attributi:}
+\begin{lstlisting}
+  bitmap board
+\end{lstlisting}
+
+La bitmap contiene in totale 3 informazioni:
+\begin{enumerate}
+  \item Indice, che viene trasformato in coordinate
+  \item Tipo del pezzo tramite 3 bit
+  \item Colore del pezzo tramite 1 bit
+\end{enumerate}
+
+\immediate\write18{convert img/piecebit.drawio.svg img/piecebit.png}
+\includegraphics[scale=0.6]{./img/piecebit.png}
+
+La posizione \textit{board} 0 rappresenta la casella: a8.
+Procedendo con l'indice di \textit{board}, iniziando dalla
+casella \textit{a8} (casa in alto a sinistra nella scacchiera),
+si procede da da sinistra verso destra e dell'alto verso il basso.
+
+Riposto alcune corrispondenze per spiegare ulteriormente:
+\begin{itemize}
+  \item Indice 7: h8
+  \item Indice 9: b7
+  \item Indice 18: c6
+  \item Indice 37: f4
+\end{itemize}
+
+\paragraph{Metodi:}
+Ancora in fase di definizione.
+
+\paragraph{Decisioni progettuali}
+Sapendo che altrove nel progetto si creeranno diverse
+istanze di \textit{Board} abbiamo cercato di renderla il
+più possibile leggera a livello di memoria.
+L'attuale decisione ultima è quella descritta della bit-board.
+Questa soluzione permette di avere una board contenuta in \textit{32 byte}.
+($4 bit * 64 caselle = 256 bit / 8 byte/bit = 32 byte$)
+Il resto dei metodi ove possibile è statico per non avere peso sulla singola istanza.

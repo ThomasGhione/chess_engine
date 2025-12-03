@@ -1,0 +1,19 @@
+# Ordine con cui scivere i test
+
+GetKnightAttaks
+GetKinkAttaks
+GetPawnAttaks
+GetPawnForwardPushes
+Ray
+GetBishopAttack
+GetRookAttack
+GetQueen
+CanMoveTo (BKinkAttaks
+GetPawnAttaks
+GetPawnForwardPushes
+Ray
+GetBishopAttack
+GetRookAttack
+GetQueen
+CanMoveTo (Board)
+MoveBB

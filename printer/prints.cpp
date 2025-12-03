@@ -1,0 +1,142 @@
+#include "prints.hpp"
+
+namespace print {
+
+using namespace chess;
+
+std::string Prints::getPrintableBoard(const std::string& FEN){
+  return "Scacchiera: " + FEN;
+}
+
+// Versione alternativa più compatta se preferisci
+std::string Prints::getBasicBoard(const Board& board) {
+    std::string result = "  a b c d e f g h\n";
+    for (int row = 7; row >= 0; --row) {
+        result += std::to_string(row + 1) + " ";
+        for (int col = 0; col < 8; ++col) {
+            uint8_t piece = board.get(row, col);
+            char symbol = '.';
+
+            if (piece != Board::EMPTY) {
+                bool is_black = piece & Board::BLACK;
+                piece &= 0x7;
+                
+                switch (piece) {
+                    case Board::PAWN:   symbol = is_black ? 'p' : 'P'; break;
+                    case Board::KNIGHT: symbol = is_black ? 'n' : 'N'; break;
+                    case Board::BISHOP: symbol = is_black ? 'b' : 'B'; break;
+                    case Board::ROOK:   symbol = is_black ? 'r' : 'R'; break;
+                    case Board::QUEEN:  symbol = is_black ? 'q' : 'Q'; break;
+                    case Board::KING:   symbol = is_black ? 'k' : 'K'; break;
+                    default:     symbol = '?';
+                }
+            }
+            result += symbol;
+            result += ' ';
+        }
+        result += " " + std::to_string(row + 1) + "\n";
+    }
+    result += "  a b c d e f g h\n";
+    return result;
+}
+std::string Prints::getBitBoard(const pieces::U64& bitboard){
+    std::string res;
+    constexpr auto size = 8 * (8 * 2 + 1);
+    res.reserve(size);
+    uint64_t mask, square;
+    for (int rank = 7; rank >= 0; --rank) {
+        for (int file = 0; file < 8; ++file) {
+            square = rank * 8 + file;
+            mask = 1ULL << square;
+            res.append((bitboard & mask) ? "1 " : ". ");
+        }
+        res.append("\n");
+    }
+    return res;
+}
+
+}
+/*
+std::string Prints::getPlayer(const bool isWhiteTurn) {
+    return (isWhiteTurn) ? "WHITE" : "BLACK";
+}
+
+std::string Prints::getPiece(const chess::Piece& piece) {
+  if (piece.isWhite) {
+    switch (piece.id) {
+        case 1: return "P";
+        case 2: return "N";
+        case 3: return "B";
+        case 4: return "R";
+        case 5: return "Q";
+        case 6: return "K";
+        default: return "?";
+    }
+  }
+  switch (piece.id) {
+      case 1: return "p";
+      case 2: return "n";
+      case 3: return "b";
+      case 4: return "r";
+      case 5: return "q";
+      case 6: return "k";
+      default: return "?";
+  }
+}
+
+std::string Prints::getPieceOrEmpty(const chess::Board& board, const chess::Coords& coords) {
+    if (board[coords.file * 8 + coords.rank].id != EMPTY) {
+        return getPiece(board[coords.file * 8 + coords.rank]);
+    }
+    return ((coords.rank + coords.file) % 2) ? "█" : " "; // default: case (EMPTY)
+}
+
+void Prints::getBoard(const chess::Board& board) { // white square unicode: \u2588
+
+    #ifdef DEBUG
+        auto start = chrono::steady_clock::now();
+    #endif
+
+    std::cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "; // TODO: implement last move
+    for (int rank = 7; rank >= 0; --rank) {
+        if (rank % 2 == 1) {
+            std::cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
+            for (uint8_t file = 0; file < 8; file += 2){
+                std::cout << "██" << getPieceOrEmpty(board, {file, static_cast<uint8_t>(rank)}) 
+                  << "██  " << getPieceOrEmpty(board, {static_cast<uint8_t>(file+1), static_cast<uint8_t>(rank)}) << "  ";
+            }
+            std::cout << "    " << rank+1 << "\n     █████     █████     █████     █████     \n";
+        }
+        else {
+            std::cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
+            for (uint8_t file = 0; file < 8; file += 2)
+                std::cout << "  " << getPieceOrEmpty(board, {static_cast<uint8_t>(rank), file}) 
+                  << "  ██" << getPieceOrEmpty(board, {static_cast<uint8_t>(rank), static_cast<uint8_t>(file+1)}) << "██";
+            std::cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";            
+        }
+        cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << board.getFullMoveClock() << "\n\n";
+    }
+    cout << "\n\n       A    B    C    D    E    F    G    H      LAST MOVE: "
+         << getPiece(gs.lastMove.id) << ' ' << gs.lastMove.file << gs.lastMove.rank << ' ' << gs.lastMove.movesTo.file << gs.lastMove.movesTo.rank << "\n\n\n";
+    for (int rank = ML - 1; rank >= 0; --rank) {
+        if (rank % 2 == 1) {
+            cout << "     █████     █████     █████     █████     \n" << rank + 1 << "    ";
+            for (int file = 0; file < ML; file += 2)
+                cout << "██" << getPieceOrEmpty(gs.chessboard, rank, file) << "██  " << getPieceOrEmpty(gs.chessboard, rank, file+1) << "  ";
+            cout << "    " << rank + 1 << "\n     █████     █████     █████     █████     \n";
+        }
+        else {
+            cout << "          █████     █████     █████     █████\n" << rank + 1 << "    ";
+            for (int file = 0; file < ML; file += 2)
+                cout << "  " << getPieceOrEmpty(gs.chessboard, rank, file) << "  ██" << getPieceOrEmpty(gs.chessboard, rank, file+1) << "██";
+            cout << "    " << rank + 1 << "\n          █████     █████     █████     █████\n";
+        }
+    }
+    cout << "\n\n       A    B    C    D    E    F    G    H      TURN: " << gs.turns << "\n\n";
+    #ifdef DEBUG
+        auto end = chrono::steady_clock::now();
+        auto diff = end - start;
+        cout << "\nTime to print: " << chrono::duration <double, milli> (diff).count() << " ms\n";
+    #endif
+}
+*/
