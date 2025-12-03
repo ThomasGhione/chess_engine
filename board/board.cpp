@@ -335,7 +335,7 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     if (movingType == PAWN) {
         int dr = static_cast<int>(to.rank) - static_cast<int>(from.rank);
         if (dr == 2 || dr == -2) {
-            uint8_t midRank = static_cast<uint8_t>((from.rank + to.rank) / 2);
+            uint8_t midRank = (from.rank + to.rank) / 2;
             enPassant[0] = Coords{from.file, midRank};
         }
     }
@@ -410,45 +410,45 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         // Use the king bitboard to find king index quickly
         const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
         if (kingBB) {
-            kingIndex = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+            kingIndex = __builtin_ctzll(kingBB);
 
             const bool oppIsWhite = (oppColor == WHITE);
 
             // Pawns attacking king square
             {
-                uint64_t pawnsAtt = pieces::PAWN_ATTACKERS_TO[oppIsWhite][static_cast<int16_t>(kingIndex)] &
+                uint64_t pawnsAtt = pieces::PAWN_ATTACKERS_TO[oppIsWhite][kingIndex] &
                                     (oppIsWhite ? pawns_bb[0] : pawns_bb[1]);
-                attackerCount += static_cast<uint8_t>(__builtin_popcountll(pawnsAtt));
+                attackerCount += __builtin_popcountll(pawnsAtt);
             }
 
             // Knights
             {
-                uint64_t knightsAtt = pieces::KNIGHT_ATTACKS[static_cast<int16_t>(kingIndex)] &
+                uint64_t knightsAtt = pieces::KNIGHT_ATTACKS[kingIndex] &
                                       (oppIsWhite ? knights_bb[0] : knights_bb[1]);
-                attackerCount += static_cast<uint8_t>(__builtin_popcountll(knightsAtt));
+                attackerCount += __builtin_popcountll(knightsAtt);
             }
 
             // Kings (adjacent)
             {
-                uint64_t kingsAtt = pieces::KING_ATTACKS[static_cast<int16_t>(kingIndex)] &
+                uint64_t kingsAtt = pieces::KING_ATTACKS[kingIndex] &
                                     (oppIsWhite ? kings_bb[0] : kings_bb[1]);
-                attackerCount += static_cast<uint8_t>(__builtin_popcountll(kingsAtt));
+                attackerCount += __builtin_popcountll(kingsAtt);
             }
 
             // Sliding rook/queen (orthogonal)
             {
-                uint64_t rookMask = pieces::getRookAttacks(static_cast<int16_t>(kingIndex), occ);
+                uint64_t rookMask = pieces::getRookAttacks(kingIndex, occ);
                 uint64_t rq = oppIsWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]);
                 uint64_t rookAtt = rookMask & rq;
-                attackerCount += static_cast<uint8_t>(__builtin_popcountll(rookAtt));
+                attackerCount += __builtin_popcountll(rookAtt);
             }
 
             // Sliding bishop/queen (diagonal)
             {
-                uint64_t bishopMask = pieces::getBishopAttacks(static_cast<int16_t>(kingIndex), occ);
+                uint64_t bishopMask = pieces::getBishopAttacks(kingIndex, occ);
                 uint64_t bq = oppIsWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]);
                 uint64_t bishopAtt = bishopMask & bq;
-                attackerCount += static_cast<uint8_t>(__builtin_popcountll(bishopAtt));
+                attackerCount += __builtin_popcountll(bishopAtt);
             }
         }
     }
@@ -546,7 +546,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             // King square (unchanged for pawn moves)
             const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
             if (!kingBB) return false; // invalid position: treat as illegal
-            const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+            const uint8_t kingSq = __builtin_ctzll(kingBB);
 
             // Check if king is attacked in the new position
             const bool oppIsWhite = (oppColor == WHITE);
@@ -612,16 +612,16 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                     bool rights = isWhite
                         ? ((castle & (1u << 0)) != 0u) // white O-O
                         : ((castle & (1u << 2)) != 0u); // black O-O
-                    bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf + 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf + 2)) == EMPTY);
+                    bool emptyBetween = (this->get(r, (kf + 1)) == EMPTY) && (this->get(r, (kf + 2)) == EMPTY);
                     {
-                        uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf + 3));
+                        uint8_t rookPiece = this->get(r, (kf + 3));
                         bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
                         if (!rookOk) {
                             // fallthrough
                         } else {
-                            uint8_t eIdx = static_cast<uint8_t>(r * 8 + kf);
-                            uint8_t fIdx = static_cast<uint8_t>(r * 8 + (kf + 1));
-                            uint8_t gIdx = static_cast<uint8_t>(r * 8 + (kf + 2));
+                            uint8_t eIdx = (r * 8 + kf);
+                            uint8_t fIdx = (r * 8 + (kf + 1));
+                            uint8_t gIdx = (r * 8 + (kf + 2));
                             uint8_t opp = isWhite ? BLACK : WHITE;
                             bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(fIdx, opp) && !isSquareAttacked(gIdx, opp);
                             if (rights && emptyBetween && rookOk && safe) return true;
@@ -631,13 +631,13 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                     bool rights = isWhite
                         ? ((castle & (1u << 1)) != 0u) // white O-O-O
                         : ((castle & (1u << 3)) != 0u); // black O-O-O
-                    bool emptyBetween = (this->get(r, static_cast<uint8_t>(kf - 1)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 2)) == EMPTY) && (this->get(r, static_cast<uint8_t>(kf - 3)) == EMPTY);
+                    bool emptyBetween = (this->get(r, (kf - 1)) == EMPTY) && (this->get(r, (kf - 2)) == EMPTY) && (this->get(r, (kf - 3)) == EMPTY);
                     {
-                        uint8_t rookPiece = this->get(r, static_cast<uint8_t>(kf - 4));
+                        uint8_t rookPiece = this->get(r, (kf - 4));
                         bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
-                        uint8_t eIdx = static_cast<uint8_t>(r * 8 + kf);
-                        uint8_t dIdx = static_cast<uint8_t>(r * 8 + (kf - 1));
-                        uint8_t cIdx = static_cast<uint8_t>(r * 8 + (kf - 2));
+                        uint8_t eIdx = (r * 8 + kf);
+                        uint8_t dIdx = (r * 8 + (kf - 1));
+                        uint8_t cIdx = (r * 8 + (kf - 2));
                         uint8_t opp = isWhite ? BLACK : WHITE;
                         bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(dIdx, opp) && !isSquareAttacked(cIdx, opp);
                         if (rights && emptyBetween && rookOk && safe) return true;
@@ -727,7 +727,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         // King square (unchanged because king is not moving here)
         const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
         if (!kingBB) return false; // invalid position: treat as illegal
-        const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+        const uint8_t kingSq = __builtin_ctzll(kingBB);
 
         // Check if king is attacked in the new position using updated occupancy/bitboards
         const bool oppIsWhite = (oppColor == WHITE);
@@ -797,7 +797,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
         return false; // no king found (invalid position) -> treat as not in check
     }
 
-    const uint8_t kingIndex = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t kingIndex = __builtin_ctzll(kingBB);
     const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
     return isSquareAttacked(kingIndex, opp);
 }
@@ -816,21 +816,21 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     // Helper lambda to test moves for a given piece type bitboard
     auto tryMovesFromBitboard = [&](uint64_t piecesBB, auto genMovesForSquare) -> bool {
         while (piecesBB) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(piecesBB));
+            const uint8_t from = __builtin_ctzll(piecesBB);
             piecesBB &= (piecesBB - 1);
 
-            const uint8_t r = static_cast<uint8_t>(from >> 3);
-            const uint8_t f = static_cast<uint8_t>(from & 7);
+            const uint8_t r = from >> 3;
+            const uint8_t f = from & 7;
 
             // Generate pseudo-legal moves and clear own-occupied squares once
             uint64_t movesMask = genMovesForSquare(from, occ) & ~ownOcc;
 
             while (movesMask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
+                const uint8_t to = __builtin_ctzll(movesMask);
                 movesMask &= (movesMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to >> 3);
-                const uint8_t tf = static_cast<uint8_t>(to & 7);
+                const uint8_t tr = to >> 3;
+                const uint8_t tf = to & 7;
 
                 // Use canMoveToBB which already checks legality (pseudo-legal + king safety)
                 if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
@@ -848,11 +848,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             : (pawns_bb[0] | knights_bb[0] | bishops_bb[0] | rooks_bb[0] | queens_bb[0] | kings_bb[0]);
 
         while (pawns) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(pawns));
+            const uint8_t from = __builtin_ctzll(pawns);
             pawns &= (pawns - 1);
 
-            const uint8_t r = static_cast<uint8_t>(from >> 3);
-            const uint8_t f = static_cast<uint8_t>(from & 7);
+            const uint8_t r = from >> 3;
+            const uint8_t f = from & 7;
 
             const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from];
             const uint64_t pushes  = pieces::getPawnForwardPushes(from, isWhite, occupancy);
@@ -860,11 +860,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             // PUSHS (sempre su case vuote)
             uint64_t pushMask = pushes;
             while (pushMask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(pushMask));
+                const uint8_t to = __builtin_ctzll(pushMask);
                 pushMask &= (pushMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to >> 3);
-                const uint8_t tf = static_cast<uint8_t>(to & 7);
+                const uint8_t tr = to >> 3;
+                const uint8_t tf = to & 7;
 
                 const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
@@ -882,11 +882,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             // CAPTURES (reali + en-passant, filtrate a livello di Board::moveBB)
             uint64_t captureMask = attacks & (enemyOcc | ~occ); // include possibili EP su case "vuote"
             while (captureMask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(captureMask));
+                const uint8_t to = __builtin_ctzll(captureMask);
                 captureMask &= (captureMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to >> 3);
-                const uint8_t tf = static_cast<uint8_t>(to & 7);
+                const uint8_t tr = to >> 3;
+                const uint8_t tf = to & 7;
 
                 const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
                 if (isPromotion) {
@@ -926,9 +926,9 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     {
         uint64_t kings = kings_bb[side];
         if (kings) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
-            const uint8_t r = static_cast<uint8_t>(from >> 3);
-            const uint8_t f = static_cast<uint8_t>(from & 7);
+            const uint8_t from = __builtin_ctzll(kings);
+            const uint8_t r = (from >> 3);
+            const uint8_t f = (from & 7);
 
             // Pseudo-legal king moves, already excluding our own pieces
             uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
@@ -948,11 +948,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             }
 
             while (movesMask) {
-                const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
+                const uint8_t to = __builtin_ctzll(movesMask);
                 movesMask &= (movesMask - 1);
 
-                const uint8_t tr = static_cast<uint8_t>(to >> 3);
-                const uint8_t tf = static_cast<uint8_t>(to & 7);
+                const uint8_t tr = (to >> 3);
+                const uint8_t tf = (to & 7);
 
                 // Use canMoveToBB for king moves (including castling already checked above)
                 if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
@@ -1003,8 +1003,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.rookToIndex            = 0;
 
     // Cache opzionale re
-    st.prevWhiteKingIndex = kings_bb[0] ? static_cast<uint8_t>(__builtin_ctzll(kings_bb[0])) : 64;
-    st.prevBlackKingIndex = kings_bb[1] ? static_cast<uint8_t>(__builtin_ctzll(kings_bb[1])) : 64;
+    st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
+    st.prevBlackKingIndex = kings_bb[1] ? __builtin_ctzll(kings_bb[1]) : 64;
 
     // Reset en passant di default (potrà essere reimpostato per un doppio passo)
     enPassant[0] = Coords{};
@@ -1072,7 +1072,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     if (movingType == KING) {
         const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3
         const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
-        castle &= static_cast<uint8_t>(~castleMask);
+        castle &= ~castleMask;
         hasMoved |= kingBit;
     } else if (movingType == ROOK) {
         const bool isInitialSquare = (movingColor == WHITE)
@@ -1082,18 +1082,18 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         if (isInitialSquare) {
             if (movingColor == WHITE) {
                 if (from.file == 0) {
-                    castle &= static_cast<uint8_t>(~(1u << 1)); // white queenside
+                    castle &= ~(1u << 1); // white queenside
                     hasMoved |= (1u << 1);
                 } else {
-                    castle &= static_cast<uint8_t>(~(1u << 0)); // white kingside
+                    castle &= ~(1u << 0); // white kingside
                     hasMoved |= (1u << 2);
                 }
             } else {
                 if (from.file == 0) {
-                    castle &= static_cast<uint8_t>(~(1u << 3)); // black queenside
+                    castle &= ~(1u << 3); // black queenside
                     hasMoved |= (1u << 4);
                 } else {
-                    castle &= static_cast<uint8_t>(~(1u << 2)); // black kingside
+                    castle &= ~(1u << 2); // black kingside
                     hasMoved |= (1u << 5);
                 }
             }
@@ -1109,12 +1109,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         if (isInitialSquare) {
             if ((destBefore & MASK_COLOR) == WHITE) {
                 castle &= (to.file == 0) 
-                    ? static_cast<uint8_t>(~(1u << 1))  // white queenside
-                    : static_cast<uint8_t>(~(1u << 0)); // white kingside
+                    ? ~(1u << 1)  // white queenside
+                    : ~(1u << 0); // white kingside
             } else {
                 castle &= (to.file == 0)
-                    ? static_cast<uint8_t>(~(1u << 3))  // black queenside
-                    : static_cast<uint8_t>(~(1u << 2)); // black kingside
+                    ? ~(1u << 3)  // black queenside
+                    : ~(1u << 2); // black kingside
             }
         }
     }
@@ -1166,7 +1166,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     // --- ANNULLA PROMOZIONE: pezzo promosso torna pedone ---
     if (st.promotionPieceType != 0 && pieceType != PAWN) {
         const uint8_t color = pieceOnTo & MASK_COLOR;
-        const uint8_t pawnPiece = static_cast<uint8_t>(PAWN | color);
+        const uint8_t pawnPiece = (PAWN | color);
         this->removePieceFromBitboards(pieceOnTo, toIndex);
         this->addPieceToBitboards(pawnPiece, toIndex);
         this->set(to, static_cast<piece_id>(pawnPiece));

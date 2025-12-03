@@ -321,8 +321,8 @@ namespace driver {
 #ifdef DEBUG
             auto chrono_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
-            std::cout << "[DEBUG] Nodes searched so far: " << engine.nodesSearched << "\n";
+            std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
+            std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
 #endif
 
             if (engine.isMate()) break;
@@ -348,8 +348,8 @@ namespace driver {
 #ifdef DEBUG
             auto chrono_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] Engine search took " << elapsed.count() << " ms.\n";
-            std::cout << "[DEBUG] Nodes searched so far: " << engine.nodesSearched << "\n";
+            std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
+            std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
 #endif
         }
     }

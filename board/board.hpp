@@ -100,7 +100,7 @@ public:
    
     //! GETTERS
     inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
-        return static_cast<uint8_t>((chessboard[row] >> (col << 2)) & MASK_PIECE);
+        return (chessboard[row] >> (col << 2)) & MASK_PIECE;
     }    
     inline uint8_t get(Coords coords) const noexcept {
         return this->get(coords.rank, coords.file);

@@ -46,8 +46,18 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves.front().move;
 
+    // const auto totalMoves = orderedScoredMoves.size();
+    //int moveIndex = 0;
+
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
+        
+        //++moveIndex;
+        // Late move pruning adattivo sulla coda delle mosse
+        //if (ctx.ply >= 3 && this->shouldPruneLateMove(b, m, ctx.depth, b.inCheck(ctx.activeColor), usIsWhite, moveIndex, totalMoves)) {
+        //    continue;
+        //}
+        
         chess::Board::MoveState state;
 
         // Execute move (handling promotions)
@@ -364,6 +374,8 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
     std::vector<ScoredMove> orderedScoredMoves;
     orderedScoredMoves.reserve(moves.size());
 
+
+    
     for (const auto& m : moves) {
         int64_t score = 0;
 

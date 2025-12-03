@@ -31,7 +31,7 @@ bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move&
     if (totalMoves <= 10) return false;
 
     // Applica solo a depth basse
-    if (depth > 2) return false;
+    if (depth > 1) return false;
 
     // Non potare se siamo gia' in scacco
     if (inCheck) return false;
