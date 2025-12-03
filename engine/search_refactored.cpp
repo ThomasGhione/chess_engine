@@ -271,12 +271,12 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
 
     // Generate moves for all piece types
     generateForPieceType(pieceBitboards[0], [&](uint8_t from) {  // Pawns
-        return pieces::getPawnAttacks(static_cast<int16_t>(from), !isBlack) |
+        return pieces::PAWN_ATTACKS[!isBlack][static_cast<int16_t>(from)] |
                pieces::getPawnForwardPushes(static_cast<int16_t>(from), !isBlack, occ);
     });
 
     generateForPieceType(pieceBitboards[1], [](uint8_t from) {  // Knights
-        return pieces::getKnightAttacks(static_cast<int16_t>(from));
+        return pieces::KNIGHT_ATTACKS[static_cast<int16_t>(from)];
     });
 
     generateForPieceType(pieceBitboards[2], [occ](uint8_t from) {  // Bishops
@@ -292,7 +292,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
     });
 
     generateForPieceType(pieceBitboards[5], [](uint8_t from) {  // Kings
-        return pieces::getKingAttacks(static_cast<int16_t>(from));
+        return pieces::KING_ATTACKS[static_cast<int16_t>(from)];
     });
 
     return moves;
