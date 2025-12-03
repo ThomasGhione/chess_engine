@@ -2,11 +2,6 @@
 
 namespace chess {
 
-Coords::Coords()
-    : file(INVALID_COORDS)
-    , rank(INVALID_COORDS)
-{}
-
 Coords::Coords(uint8_t index)
     : Coords()
 {

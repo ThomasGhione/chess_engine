@@ -5,14 +5,18 @@
 #include <cstdint>
 
 namespace chess {
+
 class Coords {
+
 public:
-    uint8_t file; // column
-    uint8_t rank; // row
 
     constexpr static uint8_t INVALID_COORDS = 255;
 
-    Coords();
+    uint8_t file = INVALID_COORDS; // column
+    uint8_t rank = INVALID_COORDS; // row
+
+
+    Coords() = default;
     Coords(uint8_t index);
     Coords(uint8_t f, uint8_t r);
     Coords(const std::string& input);
@@ -35,6 +39,7 @@ public:
 
     static std::string toAlgebric(const Coords& c) noexcept;
 }; // class Coords
+
 } // namespace chess
 #endif
     

@@ -182,4 +182,38 @@ ut::suite engineSuite = [] {
   };
   */
 
+  "is engine generating & sorting castling rights correctly"_test = []{
+    engine::Engine e = engine::Engine("8/6pp/6p1/6pk/2p1p1p1/1pPpPpPp/1P1P1P1P/3NK2R w K - 0 1");
+    e.depth = 1;
+
+    auto moves = e.generateLegalMoves(e.board);
+    expect(moves.size() == 4) 
+      << "Expected 4 legal moves, got " << moves.size() << '\n';  // Only king-side castling and king moves are legal
+
+
+    int castleMoveIndex = -1;
+
+    castleMoveIndex = std::distance(moves.begin(), 
+      std::find_if(moves.begin(), moves.end(), [](const chess::Board::Move& m) {
+        return (m.from == chess::Coords("e1") && m.to == chess::Coords("g1"));
+      })
+    );
+
+    auto sortedMoves = e.sortLegalMoves(moves, 0, e.board, true);
+    expect(sortedMoves[0].move.from == chess::Coords("e1") && sortedMoves[0].move.to == chess::Coords("g1"))
+      << "Expected castling move to be prioritized, but got move from " << sortedMoves[0].move.from.toString() << sortedMoves[0].move.to.toString() << '\n'
+      << "with score " << sortedMoves[0].score << '\n'
+      << "Castling move at index:" << castleMoveIndex << '\n';
+    
+    for (auto idx : {0, 1, 2, 3}) {
+      printf("Move %d: from %s to %s with score %lld\n", idx + 1,
+             sortedMoves[idx].move.from.toString().c_str(),
+             sortedMoves[idx].move.to.toString().c_str(),
+             sortedMoves[idx].score);
+    }
+    
+  };
+
+  
+
 };

@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <algorithm>
+#include <string>
 #include <omp.h>
 
 #ifdef DEBUG
@@ -34,6 +35,7 @@ class Engine final {
 
 public:
     Engine();
+    Engine(std::string fen);
 
     chess::Board board;
     bool isPlayerWhite;
@@ -71,6 +73,14 @@ public:
         chess::Board::Move move;
         int64_t score;
     };
+
+
+
+
+    // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
+    std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
+    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
+
 private:
     // Helper structures to reduce parameter passing
     struct SearchContext {
@@ -130,10 +140,7 @@ private:
     //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
 
-    // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
-    std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
-    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
-
+    
     int64_t evaluateCheckmate(const chess::Board& board);
 /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);

@@ -983,28 +983,26 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = this->get(to);
 
-    // Snapshot del game state
-    st.prevActiveColor   = activeColor;
-    st.prevHalfMoveClock = halfMoveClock;
-    st.prevFullMoveClock = fullMoveClock;
-    st.prevEnPassant[0]  = enPassant[0];
-    st.prevEnPassant[1]  = enPassant[1];
-    st.prevCastle        = castle;
-    st.prevHasMoved      = hasMoved;
-
-    // Info pezzo/mossa
-    st.fromPiece              = moving;
-    st.capturedPiece          = destBefore;
-    st.promotionPieceType     = 0;
-    st.wasEnPassantCapture    = false;
-    st.enPassantCapturedIndex = 0;
-    st.wasCastling            = false;
-    st.rookFromIndex          = 0;
-    st.rookToIndex            = 0;
+    st = MoveState{
+        .prevActiveColor         = activeColor,
+        .prevHalfMoveClock       = halfMoveClock,
+        .prevFullMoveClock       = fullMoveClock,
+        .prevEnPassant           = {enPassant[0], enPassant[1]},
+        .prevCastle              = castle,
+        .prevHasMoved            = hasMoved,
+        .capturedPiece           = destBefore,
+        .fromPiece               = moving,
+        .promotionPieceType      = 0,
+        .wasEnPassantCapture     = false,
+        .enPassantCapturedIndex  = 0,
+        .wasCastling             = false,
+        .rookFromIndex           = 0,
+        .rookToIndex             = 0
+    };
 
     // Cache opzionale re
-    st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
-    st.prevBlackKingIndex = kings_bb[1] ? __builtin_ctzll(kings_bb[1]) : 64;
+    //st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
+    //st.prevBlackKingIndex = kings_bb[1] ? __builtin_ctzll(kings_bb[1]) : 64;
 
     // Reset en passant di default (potrà essere reimpostato per un doppio passo)
     enPassant[0] = Coords{};
