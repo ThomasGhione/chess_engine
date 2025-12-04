@@ -205,8 +205,8 @@ ut::suite engineSuite = [] {
       << "with score " << sortedMoves[0].score << '\n'
       << "Castling move at index:" << castleMoveIndex << '\n';
     
-    for (auto idx : {0, 1, 2, 3}) {
-      printf("Move %d: from %s to %s with score %lld\n", idx + 1,
+    for (auto idx : {0, 1, 2, 3, 4}) {
+      printf("Move %d: from %s to %s with score %ld\n", idx + 1,
              sortedMoves[idx].move.from.toString().c_str(),
              sortedMoves[idx].move.to.toString().c_str(),
              sortedMoves[idx].score);

@@ -294,9 +294,45 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
         return pieces::getQueenAttacks(static_cast<int16_t>(from), occ);
     });
 
-    generateForPieceType(pieceBitboards[5], [](uint8_t from) {  // Kings
-        return pieces::KING_ATTACKS[static_cast<int16_t>(from)];
-    });
+    // KING MOVES (including CASTLING)
+    {
+        uint64_t kings = pieceBitboards[5];
+        if (kings) {
+            uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
+            const uint8_t f = from & 7;
+            const uint8_t r = from >> 3;
+            const uint8_t oppColor = (color == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
+
+            // Normal king moves: only consider non-attacked squares
+            uint64_t movesMask = pieces::KING_ATTACKS[static_cast<int16_t>(from)] & ~ownOccupancy;
+            
+            while (movesMask) {
+                uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
+                movesMask &= (movesMask - 1);
+                
+                // King cannot move into attacked square
+                if (!b.isSquareAttacked(to, oppColor)) {
+                    moves.emplace_back(chess::Board::Move{chess::Coords{f, r}, chess::Coords{to}});
+                }
+            }
+
+            // CASTLING: check kingside (e.g., e1→g1 for white)
+            if (f + 2 <= 7) {
+                chess::Coords toKs{static_cast<uint8_t>(f + 2), r};
+                if (b.canMoveToBB(chess::Coords{f, r}, toKs)) {
+                    moves.emplace_back(chess::Board::Move{chess::Coords{f, r}, toKs});
+                }
+            }
+
+            // CASTLING: check queenside (e.g., e1→c1 for white)
+            if (f >= 2) {
+                chess::Coords toQs{static_cast<uint8_t>(f - 2), r};
+                if (b.canMoveToBB(chess::Coords{f, r}, toQs)) {
+                    moves.emplace_back(chess::Board::Move{chess::Coords{f, r}, toQs});
+                }
+            }
+        }
+    }
 
     return moves;
 }
