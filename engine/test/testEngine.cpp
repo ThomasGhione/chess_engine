@@ -184,7 +184,7 @@ ut::suite engineSuite = [] {
 
   "is engine generating & sorting castling rights correctly"_test = []{
     engine::Engine e = engine::Engine("8/6pp/6p1/6pk/2p1p1p1/1pPpPpPp/1P1P1P1P/3NK2R w K - 0 1");
-    e.depth = 1;
+    e.depth = 3;
 
     auto moves = e.generateLegalMoves(e.board);
     expect(moves.size() == 4) 
@@ -214,6 +214,16 @@ ut::suite engineSuite = [] {
     
   };
 
-  
+  "is engine generating pin correctly"_test = []{
+    engine::Engine e = engine::Engine("8/r5p1/5npk/6p1/6P1/6PR/6PK/8 b - - 0 1");
+    e.depth = 2;
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    expect(moves.size() == 1) // Only knight move is legal
+      << "Expected 1 legal move, got " << moves.size() << '\n'
+      << moves[0].from.toString() << moves[0].to.toString() << '\n'
+      << moves[1].from.toString() << moves[1].to.toString() << '\n';
+  };
 
 };
