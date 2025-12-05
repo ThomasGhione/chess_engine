@@ -311,7 +311,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
                 movesMask &= (movesMask - 1);
                 
                 // King cannot move into attacked square
-                if (!b.isSquareAttacked(to, oppColor)) {
+                if (!b.isSquareAttacked(to, oppColor, from)) {
                     moves.emplace_back(chess::Board::Move{chess::Coords{f, r}, chess::Coords{to}});
                 }
             }

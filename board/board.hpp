@@ -309,6 +309,8 @@ public:
     // ------------------------------------------------------------
     // Returns true if square 'targetIndex' is attacked by 'byColor'
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
+    // Version that excludes a specific square from occupancy (for king move validation)
+    bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
     // Is the given color currently in check?
     bool inCheck(uint8_t color) const noexcept;
     // Does the color have at least one legal move?

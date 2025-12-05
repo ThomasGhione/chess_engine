@@ -789,6 +789,33 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
     return false;
 }
 
+// Version that excludes a square from occupancy - useful for king moves
+bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
+    // Exclude the specified square from occupancy when checking attacks
+    const uint64_t occ = this->occupancy & ~(1ULL << excludeSquare);
+    const bool byWhite = (byColor == WHITE);
+    
+    // Pawns: any pawn of byColor that attacks target?
+    uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[byWhite][static_cast<int16_t>(targetIndex)];
+    if (pawnAttackers & (byWhite ? pawns_bb[0] : pawns_bb[1])) return true;
+    // Knights
+    if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? knights_bb[0] : knights_bb[1])) return true;
+    // Kings (adjacent)
+    if (pieces::KING_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? kings_bb[0] : kings_bb[1])) return true;
+    // Sliding: rook/queen (with modified occupancy)
+    {
+        uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(targetIndex), occ);
+        if (mask & (byWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]))) return true;
+    }
+    // Sliding: bishop/queen (with modified occupancy)
+    {
+        uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(targetIndex), occ);
+        if (mask & (byWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]))) return true;
+    }
+    
+    return false;
+}
+
 // Is the given color currently in check?
 bool Board::inCheck(uint8_t color) const noexcept {
     // Find king square using king bitboards
