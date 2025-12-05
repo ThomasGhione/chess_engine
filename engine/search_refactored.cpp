@@ -482,21 +482,25 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
     std::vector<ScoredMove> orderedScoredMoves;
     orderedScoredMoves.reserve(moves.size());
 
+    // Pre-fetch killer moves per questo ply (evita accessi ripetuti)
+    const auto& km1 = (ply < MAX_PLY) ? killerMoves[0][ply] : killerMoves[0][0];
+    const auto& km2 = (ply < MAX_PLY) ? killerMoves[1][ply] : killerMoves[1][0];
+    const int colorIndex = usIsWhite ? 0 : 1;
+    const bool validPly = (ply < MAX_PLY);
 
-    
     for (const auto& m : moves) {
         int64_t score = 0;
 
-        uint8_t fromPiece = b.get(m.from);
-        uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        uint8_t toPiece = b.get(m.to);
-        uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+        const uint8_t fromPiece = b.get(m.from);
+        const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        const uint8_t toPiece = b.get(m.to);
+        const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
         const bool isCapture = (toPieceType != chess::Board::EMPTY);
 
         // Calculate score components
         this->addMVVLVABonus(m, b, score);
         this->addPromotionBonus(m, fromPieceType, usIsWhite, score);
-        this->addCheckBonus(m, b, usIsWhite, score);
+        // this->addCheckBonus(m, b, usIsWhite, score);
 
         // Killer move and history heuristic: only for non-captures
         if (!isCapture) {
@@ -508,10 +512,11 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
         orderedScoredMoves.emplace_back(ScoredMove{m, score});
     }
 
-    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
-                [](const ScoredMove& a, const ScoredMove& b) {
-                    return (a.score > b.score);
-                });
+    // Sort: mosse con score più alto prima
+    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(), 
+            [](const ScoredMove& a, const ScoredMove& b) {
+                return a.score > b.score;
+    });
 
     return orderedScoredMoves;
 }
