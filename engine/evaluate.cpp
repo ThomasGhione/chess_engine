@@ -11,42 +11,42 @@ int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
     {
         int w = __builtin_popcountll(b.pawns_bb[0]);
         int bl = __builtin_popcountll(b.pawns_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::PAWN)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::PAWN];
     }
 
     // Knights
     {
         int w = __builtin_popcountll(b.knights_bb[0]);
         int bl = __builtin_popcountll(b.knights_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::KNIGHT)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::KNIGHT];
     }
 
     // Bishops
     {
         int w = __builtin_popcountll(b.bishops_bb[0]);
         int bl = __builtin_popcountll(b.bishops_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::BISHOP)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::BISHOP];
     }
 
     // Rooks
     {
         int w = __builtin_popcountll(b.rooks_bb[0]);
         int bl = __builtin_popcountll(b.rooks_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::ROOK)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::ROOK];
     }
 
     // Queens
     {
         int w = __builtin_popcountll(b.queens_bb[0]);
         int bl = __builtin_popcountll(b.queens_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::QUEEN)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::QUEEN];
     }
 
     // Kings
     {
         int w = __builtin_popcountll(b.kings_bb[0]);
         int bl = __builtin_popcountll(b.kings_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * pieceValues.find(chess::Board::KING)->second;
+        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::KING];
     }
 
     return delta;

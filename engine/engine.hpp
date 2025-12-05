@@ -158,15 +158,18 @@ private:
     // history[colorIndex][fromIndex][toIndex]
     int history[2][64][64] = {};
 
-    const std::unordered_map<uint8_t, int64_t> pieceValues = {
-        {chess::Board::EMPTY, 0},
-        {chess::Board::PAWN, PAWN_VALUE},
-        {chess::Board::KNIGHT, KNIGHT_VALUE},
-        {chess::Board::BISHOP, BISHOP_VALUE},
-        {chess::Board::ROOK, ROOK_VALUE},
-        {chess::Board::QUEEN, QUEEN_VALUE},
-        {chess::Board::KING, KING_VALUE}
+    // Lookup array per valori pezzi (più veloce di unordered_map)
+    static constexpr int64_t PIECE_VALUES[8] = {
+        0,      // EMPTY = 0
+        PAWN_VALUE,    // PAWN = 1
+        KNIGHT_VALUE,    // KNIGHT = 2
+        BISHOP_VALUE,    // BISHOP = 3
+        ROOK_VALUE,    // ROOK = 4
+        QUEEN_VALUE,    // QUEEN = 5
+        KING_VALUE,  // KING = 6
+        0       // unused = 7
     };
+
 }; //class Engine final
 
 } // namespace engine

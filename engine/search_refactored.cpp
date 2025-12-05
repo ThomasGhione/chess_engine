@@ -417,8 +417,8 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
     if (toPieceType != chess::Board::EMPTY) {
         uint8_t fromPiece = b.get(m.from);
         uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        int64_t victimValue = pieceValues.at(toPieceType);
-        int64_t attackerValue = pieceValues.at(fromPieceType);
+        int64_t victimValue = PIECE_VALUES[toPieceType];
+        int64_t attackerValue = PIECE_VALUES[fromPieceType];
         score += (victimValue * 10 - attackerValue);
     }
 }
@@ -427,7 +427,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) {
     if (pieceType == chess::Board::PAWN) {
         if ((usIsWhite && m.to.rank == 7) || (!usIsWhite && m.to.rank == 0)) {
-            score += pieceValues.at(chess::Board::QUEEN);
+            score += PIECE_VALUES[chess::Board::QUEEN];
         }
     }
 }
@@ -483,10 +483,10 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
     orderedScoredMoves.reserve(moves.size());
 
     // Pre-fetch killer moves per questo ply (evita accessi ripetuti)
-    const auto& km1 = (ply < MAX_PLY) ? killerMoves[0][ply] : killerMoves[0][0];
-    const auto& km2 = (ply < MAX_PLY) ? killerMoves[1][ply] : killerMoves[1][0];
-    const int colorIndex = usIsWhite ? 0 : 1;
-    const bool validPly = (ply < MAX_PLY);
+    // const auto& km1 = (ply < MAX_PLY) ? killerMoves[0][ply] : killerMoves[0][0];
+    // const auto& km2 = (ply < MAX_PLY) ? killerMoves[1][ply] : killerMoves[1][0];
+    // const int colorIndex = usIsWhite ? 0 : 1;
+    // const bool validPly = (ply < MAX_PLY);
 
     for (const auto& m : moves) {
         int64_t score = 0;
