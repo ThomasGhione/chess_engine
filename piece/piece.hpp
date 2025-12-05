@@ -22,8 +22,7 @@ constexpr int16_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0}
 inline constexpr U64 getPawnAttacks(const int16_t squareIndex, const bool isWhite) noexcept {
 	int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 attackBitboard = 0ULL;
-	int16_t forwardDir = isWhite ? 1 : -1;
-	int16_t newRank = rank + forwardDir;
+	int16_t newRank = rank + (isWhite ? 1 : -1);
 	
 	if (newRank >= 0 && newRank < 8) {
 		if (file - 1 >= 0) {

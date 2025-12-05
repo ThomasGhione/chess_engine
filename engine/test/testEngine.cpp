@@ -87,7 +87,7 @@ ut::suite engineSuite = [] {
       deltaFast += e.getMaterialDeltaFAST(testBoard);
     }
     auto end1 = std::chrono::high_resolution_clock::now();
-    auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count();
+    auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1).count();
     printf("Fast material delta calculated in: %lu\n", duration1);
 
     int64_t deltaNormal = 0;
@@ -96,7 +96,7 @@ ut::suite engineSuite = [] {
       deltaNormal += e.getMaterialDelta(testBoard);
     }
     auto end2 = std::chrono::high_resolution_clock::now();
-    auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
+    auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
     printf("Normal material delta calculated in: %lu\n", duration2);
 
     
