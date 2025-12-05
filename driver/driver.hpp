@@ -20,6 +20,7 @@ namespace driver {
         private:    
             bool loadGame(bool isWithPlayer);
             void saveGame();
+            void quit(std::string input);
 
             void playGameVsHuman();
             void takePlayerTurn();

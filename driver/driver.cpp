@@ -10,14 +10,23 @@ namespace driver {
         , engine(e) 
     {}
 
+    void Driver::quit(std::string input){
+        if(input=="Q"||input=="q"){
+            std::cout << "Thank you for playing! See you next time." << std::endl;
+            exit(EXIT_SUCCESS);
+        }
+    } 
+
     void Driver::startGame() {
         while (true) {
             uint8_t mainMenuChoice = menu.mainMenu();
+            Driver::quit(std::string(1, mainMenuChoice));
 
             switch (mainMenuChoice) {
                 
                 case '1': {
                     uint8_t colorChoice = menu.playWithEngineMenu();
+                    Driver::quit(std::string(1, colorChoice));
                     switch (colorChoice) {
                         case '1':
                             this->playGameVsEngine(true); // TODO stampare il risultato finale
@@ -40,6 +49,8 @@ namespace driver {
 
                 case '2': {
                     uint8_t twoPlayerChoice = menu.playWithPlayerMenu();
+                    Driver::quit(std::string(1, twoPlayerChoice));
+
                     switch (twoPlayerChoice) {
                         case '1':
                             this->playGameVsHuman();
@@ -56,11 +67,6 @@ namespace driver {
                     }
                     break;
                 }
-                
-                case '3':
-                    std::cout << "\nThank you for playing! Goodbye!\n";
-                    exit(EXIT_SUCCESS);
-                    break;
 
                 default:
                     std::cout << "Invalid option. Please select a valid option.\n";
@@ -184,12 +190,8 @@ namespace driver {
                 this->saveGame();
                 return;
             }
-
-            if (playerInput == "q") {
-                this->quitGame();
-                return;
-            }
             */
+           Driver::quit(playerInput);
 
             if (playerInput.length() != 4 && playerInput.length() != 5) {
                 std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
