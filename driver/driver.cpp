@@ -9,15 +9,25 @@ namespace driver {
         : menu(m)
         , engine(e) 
     {}
+    
+    void Driver::quit(char input) {
+        if (input == 'q' || input=='Q') {
+            exit(EXIT_SUCCESS);
+    }
+}
+
 
     void Driver::startGame() {
         while (true) {
             uint8_t mainMenuChoice = menu.mainMenu();
+            Driver::quit(mainMenuChoice);
 
             switch (mainMenuChoice) {
                 
                 case '1': {
                     uint8_t colorChoice = menu.playWithEngineMenu();
+                    Driver::quit(colorChoice);
+
                     switch (colorChoice) {
                         case '1':
                             this->playGameVsEngine(true); // TODO stampare il risultato finale
@@ -40,6 +50,8 @@ namespace driver {
 
                 case '2': {
                     uint8_t twoPlayerChoice = menu.playWithPlayerMenu();
+                    Driver::quit(twoPlayerChoice);
+
                     switch (twoPlayerChoice) {
                         case '1':
                             this->playGameVsHuman();
@@ -185,10 +197,8 @@ namespace driver {
                 return;
             }
 
-            if (playerInput == "q") {
-                this->quitGame();
-                return;
-            }
+            Driver::quit(playerInput);
+            
             */
 
             if (playerInput.length() != 4 && playerInput.length() != 5) {
