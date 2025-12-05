@@ -4,8 +4,8 @@
 namespace engine {
 
 constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
-constexpr int64_t KILLER1_BONUS               = 100000;   // bonus killer move primaria
-constexpr int64_t KILLER2_BONUS               = 90000;    // bonus killer move secondaria
+constexpr int64_t KILLER1_BONUS               = 200;   // bonus killer move primaria
+constexpr int64_t KILLER2_BONUS               = 190;    // bonus killer move secondaria
 constexpr int64_t KING_NON_CASTLING_PENALTY   = 20000;    // penalita' per muovere il re senza arroccare
 constexpr int64_t CASTLING_BONUS              = 5000;     // piccolo bonus per arroccare
 

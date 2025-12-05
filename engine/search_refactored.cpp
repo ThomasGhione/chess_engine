@@ -508,10 +508,9 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
         orderedScoredMoves.emplace_back(ScoredMove{m, score});
     }
 
-    // Sort moves: higher score first for white, lower score first for black
     std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
-                [usIsWhite](const ScoredMove& a, const ScoredMove& b) {
-                    return usIsWhite ? (a.score > b.score) : (a.score < b.score);
+                [](const ScoredMove& a, const ScoredMove& b) {
+                    return (a.score > b.score);
                 });
 
     return orderedScoredMoves;
