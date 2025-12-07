@@ -185,7 +185,7 @@ public:
 
     //! PER DEBUG
     static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
-    static constexpr size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
+    // static constexpr size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
 
     // Iterator support
     auto begin() noexcept { return chessboard.begin(); }
@@ -338,6 +338,7 @@ private:
 
 public:
     // Per-piece, per-color bitboards to accelerate move generation and attack tests
+    //??? 0 = WHITE, 1 = BLACK
     std::array<uint64_t, 2> pawns_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> bishops_bb = {0ULL, 0ULL};

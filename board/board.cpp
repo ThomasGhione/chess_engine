@@ -549,22 +549,23 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
     // Use per-piece bitboards to test attacks quickly
     const uint64_t occ = this->occupancy;
     const bool byWhite = (byColor == WHITE);
+    const uint8_t sideIndex = static_cast<uint8_t>(!byWhite);
     // Pawns: any pawn of byColor that attacks target?
     uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[byWhite][static_cast<int16_t>(targetIndex)];
-    if (pawnAttackers & (byWhite ? pawns_bb[0] : pawns_bb[1])) return true;
+    if (pawnAttackers & (pawns_bb[sideIndex])) return true;
     // Knights
-    if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? knights_bb[0] : knights_bb[1])) return true;
+    if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(targetIndex)] & (knights_bb[sideIndex])) return true;
     // Kings (adjacent)
-    if (pieces::KING_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? kings_bb[0] : kings_bb[1])) return true;
+    if (pieces::KING_ATTACKS[static_cast<int16_t>(targetIndex)] & (kings_bb[sideIndex])) return true;
     // Sliding: rook/queen
     {
         uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(targetIndex), occ);
-        if (mask & (byWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]))) return true;
+        if (mask & (rooks_bb[sideIndex] | queens_bb[sideIndex])) return true;
     }
     // Sliding: bishop/queen
     {
         uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(targetIndex), occ);
-        if (mask & (byWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]))) return true;
+        if (mask & (bishops_bb[sideIndex] | queens_bb[sideIndex])) return true;
     }
     
     return false;
@@ -575,25 +576,26 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
     // Exclude the specified square from occupancy when checking attacks
     const uint64_t occ = this->occupancy & ~(1ULL << excludeSquare);
     const bool byWhite = (byColor == WHITE);
-    
+    const uint8_t sideIndex = static_cast<uint8_t>(!byWhite);
+
     // Pawns: any pawn of byColor that attacks target?
     uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[byWhite][static_cast<int16_t>(targetIndex)];
-    if (pawnAttackers & (byWhite ? pawns_bb[0] : pawns_bb[1])) return true;
+    if (pawnAttackers & pawns_bb[sideIndex]) return true;
     // Knights
-    if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? knights_bb[0] : knights_bb[1])) return true;
+    if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(targetIndex)] & knights_bb[sideIndex]) return true;
     // Kings (adjacent)
-    if (pieces::KING_ATTACKS[static_cast<int16_t>(targetIndex)] & (byWhite ? kings_bb[0] : kings_bb[1])) return true;
+    if (pieces::KING_ATTACKS[static_cast<int16_t>(targetIndex)] & kings_bb[sideIndex]) return true;
     // Sliding: rook/queen (with modified occupancy)
     {
         uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(targetIndex), occ);
-        if (mask & (byWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]))) return true;
+        if (mask & (rooks_bb[sideIndex] | queens_bb[sideIndex])) return true;
     }
     // Sliding: bishop/queen (with modified occupancy)
     {
         uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(targetIndex), occ);
-        if (mask & (byWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]))) return true;
+        if (mask & (bishops_bb[sideIndex] | queens_bb[sideIndex])) return true;
     }
-    
+
     return false;
 }
 

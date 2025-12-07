@@ -226,4 +226,39 @@ ut::suite engineSuite = [] {
       << moves[1].from.toString() << moves[1].to.toString() << '\n';
   };
 
+  "critical position 1"_test = []{
+    engine::Engine e = engine::Engine("r3kbnr/pppbpppp/4q3/8/1n6/P1NPB3/1PP1NPPP/R2QKB1R b KQkq - 0 1");
+    e.depth = 6;
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    // for (const auto& m : moves) {
+    //   printf("Legal move from %s to %s\n", m.from.toString().c_str(), m.to.toString().c_str());
+    // }
+
+    e.evaluate(e.board);
+    printf("Evaluation: %ld\n", e.eval);
+
+    expect(moves.size() == 46) // Expected number of legal moves
+      << "Expected 46 legal moves, got " << moves.size() << '\n';
+  };
+
+  "critical position 2"_test = []{
+    engine::Engine e = engine::Engine("r3kbnr/pppbpppp/4q3/8/8/P1NPB3/1Pn1NPPP/R2QKB1R w KQkq - 0 1");
+    e.depth = 6;
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+    printf("Evaluation: %ld\n", e.eval);
+
+    // for (const auto& m : moves) {
+    //   printf("Legal move from %s to %s\n", m.from.toString().c_str(), m.to.toString().c_str());
+    // }
+
+
+    expect(moves.size() == 2) // Expected number of legal moves
+      << "Expected 2 legal moves, got " << moves.size() << '\n';
+  };
+  
 };
