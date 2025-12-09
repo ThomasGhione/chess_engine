@@ -123,15 +123,16 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = []{
     return table;
 }();
 
-inline constexpr std::array<std::array<uint16_t, 64>, 2> PAWN_ATTACKERS_TO = []{
-	std::array<std::array<uint16_t, 64>, 2> table{};
+inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKERS_TO = []{
+    std::array<std::array<uint64_t, 64>, 2> table{};
 
-	for (int sq = 0; sq < 64; ++sq) {
-		table[1][sq] = getPawnAttackersTo(sq, true);
-		table[0][sq] = getPawnAttackersTo(sq, false);
-	}
+    for (int sq = 0; sq < 64; ++sq) {
+        // 0 = white, 1 = black
+        table[0][sq] = getPawnAttackersTo(sq, /*isWhite=*/true);
+        table[1][sq] = getPawnAttackersTo(sq, /*isWhite=*/false);
+    }
 
-	return table;
+    return table;
 }();
 
 inline constexpr std::array<uint64_t, 64> KNIGHT_ATTACKS = []{
