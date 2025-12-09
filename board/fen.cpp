@@ -193,8 +193,10 @@ std::string Board::enPassantToFen() const {
     for (const auto& candidate : enPassant) {
         if (Coords::isInBounds(candidate)) {
             std::string ep;
-            ep.push_back(static_cast<char>('a' + candidate.file));
-            ep.push_back(static_cast<char>('1' + candidate.rank));
+            // file: 0-7 → 'a'-'h'
+            ep.push_back(static_cast<char>('a' + candidate.file()));
+            // rank: 0-7 → '8'-'1' (Board convention: rank 0 = row 8)
+            ep.push_back(static_cast<char>('8' - candidate.rank()));
             return ep;
         }
     }

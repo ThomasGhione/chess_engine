@@ -18,10 +18,10 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
-        if (from.file != to.file && destBefore == EMPTY && Coords::isInBounds(prevEp) && (to.toIndex() == prevEp.toIndex())) {
+        if (from.file() != to.file() && destBefore == EMPTY && Coords::isInBounds(prevEp) && (to.toIndex() == prevEp.toIndex())) {
             const bool isWhite = (movingColor == WHITE);
             int8_t forwardDir = isWhite ? 1 : -1;
-            Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
+            Coords captured{to.file(), static_cast<uint8_t>(to.rank() - forwardDir)};
             this->set(captured, EMPTY);
             this->occupancy &= ~(1ULL << captured.toIndex());
         }
@@ -35,12 +35,12 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     this->updateOccupancyBB();
 
     // Castling rook move if king moved two squares on same rank
-    if (movingType == KING && from.rank == to.rank) {
-        int df = static_cast<int>(to.file) - static_cast<int>(from.file);
+    if (movingType == KING && from.rank() == to.rank()) {
+        int df = static_cast<int>(to.file()) - static_cast<int>(from.file());
         if (df == 2) {
             // kingside: rook h -> f
-            Coords rookFrom{7, to.rank};
-            Coords rookTo{5, to.rank};
+            Coords rookFrom{7, to.rank()};
+            Coords rookTo{5, to.rank()};
             uint8_t rook = this->get(rookFrom);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
                 this->set(rookTo, static_cast<piece_id>(rook));
@@ -50,8 +50,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             }
         } else if (df == -2) {
             // queenside: rook a -> d
-            Coords rookFrom{0, to.rank};
-            Coords rookTo{3, to.rank};
+            Coords rookFrom{0, to.rank()};
+            Coords rookTo{3, to.rank()};
             uint8_t rook = this->get(rookFrom);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
                 this->set(rookTo, static_cast<piece_id>(rook));
@@ -82,20 +82,20 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     }
     if (movingType == ROOK) {
         if (movingColor == WHITE) {
-            if (from.rank == 0 && from.file == 0) { 
+            if (from.rank() == 0 && from.file() == 0) {
                 disableWhiteQueenside();
                 hasMoved |= (1u << 1); // white a1 rook
             }
-            if (from.rank == 0 && from.file == 7) { 
+            if (from.rank() == 0 && from.file() == 7) {
                 disableWhiteKingside();
                 hasMoved |= (1u << 2); // white h1 rook
             }
         } else {
-            if (from.rank == 7 && from.file == 0) { 
+            if (from.rank() == 7 && from.file() == 0) {
                 disableBlackQueenside();
                 hasMoved |= (1u << 4); // black a8 rook
             }
-            if (from.rank == 7 && from.file == 7) { 
+            if (from.rank() == 7 && from.file() == 7) {
                 disableBlackKingside();
                 hasMoved |= (1u << 5); // black h8 rook
             }
@@ -104,20 +104,20 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     // If a rook was captured on its starting square, disable that side's castling
     if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
         if ((destBefore & MASK_COLOR) == WHITE) {
-            if (to.rank == 0 && to.file == 0) disableWhiteQueenside();
-            if (to.rank == 0 && to.file == 7) disableWhiteKingside();
+            if (to.rank() == 0 && to.file() == 0) disableWhiteQueenside();
+            if (to.rank() == 0 && to.file() == 7) disableWhiteKingside();
         } else {
-            if (to.rank == 7 && to.file == 0) disableBlackQueenside();
-            if (to.rank == 7 && to.file == 7) disableBlackKingside();
+            if (to.rank() == 7 && to.file() == 0) disableBlackQueenside();
+            if (to.rank() == 7 && to.file() == 7) disableBlackKingside();
         }
     }
 
     // Set en passant target if the move was a double pawn push
     if (movingType == PAWN) {
-        int dr = static_cast<int>(to.rank) - static_cast<int>(from.rank);
+        int dr = static_cast<int>(to.rank()) - static_cast<int>(from.rank());
         if (dr == 2 || dr == -2) {
-            uint8_t midRank = (from.rank + to.rank) / 2;
-            enPassant[0] = Coords{from.file, midRank};
+            uint8_t midRank = (from.rank() + to.rank()) / 2;
+            enPassant[0] = Coords{from.file(), midRank};
         }
     }
 
@@ -133,7 +133,7 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     if (type != PAWN) return false; // must be a pawn
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
     // Verify pawn is on last rank according to color
-    if ((color == WHITE && at.rank != 7) || (color == BLACK && at.rank != 0)) return false;
+    if ((color == WHITE && at.rank() != 7) || (color == BLACK && at.rank() != 0)) return false;
 
     choice = static_cast<char>(std::tolower(static_cast<unsigned char>(choice)));
     uint8_t newType = QUEEN; // default promotion
@@ -163,7 +163,7 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
 
     // If it was a pawn and landed on last rank, promote with given choice
     if (fromType == PAWN) {
-        if ((fromColor == WHITE && to.rank == 7) || (fromColor == BLACK && to.rank == 0)) {
+        if ((fromColor == WHITE && to.rank() == 7) || (fromColor == BLACK && to.rank() == 0)) {
             (void)this->promote(to, promotionChoice);
         }
     }
@@ -298,7 +298,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             if (isEnPassant) {
                 const bool isWhitePawn = isWhite;
                 const int8_t dir = isWhitePawn ? 1 : -1;
-                Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
+                Coords captured{to.file(), static_cast<uint8_t>(to.rank() - dir)};
                 const uint8_t capIndex = captured.toIndex();
                 const uint64_t capMask = (1ULL << capIndex);
 
@@ -383,11 +383,11 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                 }
             }
             // Castling legality: check rights, path emptiness, and safe squares
-            if (from.rank == to.rank) {
+            if (from.rank() == to.rank()) {
                 const bool isWhite = (this->getColor(from) == WHITE);
-                int df = static_cast<int>(to.file) - static_cast<int>(from.file);
-                const uint8_t r = from.rank;
-                const uint8_t kf = from.file;
+                int df = static_cast<int>(to.file()) - static_cast<int>(from.file());
+                const uint8_t r = from.rank();
+                const uint8_t kf = from.file();
                 // Only allow castling from the initial king square (e1/e8)
                 if (!((isWhite && r == 0 && kf == 4) || (!isWhite && r == 7 && kf == 4))) {
                     break;
@@ -815,7 +815,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     // --- EN PASSANT CAPTURE ---
     if (movingType == PAWN) {
-        if (from.file != to.file && destBefore == EMPTY &&
+        if (from.file() != to.file() && destBefore == EMPTY &&
             Coords::isInBounds(st.prevEnPassant[0]) &&
             toIndex == st.prevEnPassant[0].toIndex()) {
 
@@ -823,7 +823,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
             const bool isWhite = (movingColor == WHITE);
             const int8_t forwardDir = isWhite ? 1 : -1;
-            Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
+            Coords captured{to.file(), static_cast<uint8_t>(to.rank() - forwardDir)};
             const uint8_t capturedPiece = this->get(captured);
             st.capturedPiece = capturedPiece;
 
@@ -848,23 +848,23 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     this->addPieceToBitboards(moving, toIndex);
 
     // --- ARROCCO: spostamento torre ---
-    if (movingType == KING && from.rank == to.rank) {
-        const int8_t df = static_cast<int8_t>(to.file - from.file);
+    if (movingType == KING && from.rank() == to.rank()) {
+        const int8_t df = static_cast<int8_t>(to.file() - from.file());
         if (df == 2 || df == -2) {
             st.wasCastling = true;
 
             // Compute rook indices directly without intermediate Coords
             const uint8_t rookFromFile = (df == 2) ? 7 : 0;
             const uint8_t rookToFile   = (df == 2) ? 5 : 3;
-            const uint8_t rookFromIndex = (to.rank << 3) | rookFromFile;
-            const uint8_t rookToIndex   = (to.rank << 3) | rookToFile;
+            const uint8_t rookFromIndex = (to.rank() << 3) | rookFromFile;
+            const uint8_t rookToIndex   = (to.rank() << 3) | rookToFile;
 
             st.rookFromIndex = rookFromIndex;
             st.rookToIndex   = rookToIndex;
 
-            const uint8_t rook = this->get(to.rank, rookFromFile);
-            this->set(to.rank, rookToFile, static_cast<piece_id>(rook));
-            this->set(to.rank, rookFromFile, EMPTY);
+            const uint8_t rook = this->get(to.rank(), rookFromFile);
+            this->set(to.rank(), rookToFile, static_cast<piece_id>(rook));
+            this->set(to.rank(), rookFromFile, EMPTY);
             this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             this->removePieceFromBitboards(rook, rookFromIndex);
             this->addPieceToBitboards(rook, rookToIndex);
@@ -879,12 +879,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         hasMoved |= kingBit;
     } else if (movingType == ROOK) {
         const bool isInitialSquare = (movingColor == WHITE)
-            ? (from.rank == 0 && (from.file == 0 || from.file == 7))
-            : (from.rank == 7 && (from.file == 0 || from.file == 7));
+            ? (from.rank() == 0 && (from.file() == 0 || from.file() == 7))
+            : (from.rank() == 7 && (from.file() == 0 || from.file() == 7));
         
         if (isInitialSquare) {
             if (movingColor == WHITE) {
-                if (from.file == 0) {
+                if (from.file() == 0) {
                     castle &= ~(1u << 1); // white queenside
                     hasMoved |= (1u << 1);
                 } else {
@@ -892,7 +892,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
                     hasMoved |= (1u << 2);
                 }
             } else {
-                if (from.file == 0) {
+                if (from.file() == 0) {
                     castle &= ~(1u << 3); // black queenside
                     hasMoved |= (1u << 4);
                 } else {
@@ -906,16 +906,16 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     // Captured rook on initial square disables corresponding castling
     if (destBefore != EMPTY && (destBefore & MASK_PIECE_TYPE) == ROOK) {
         const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
-            ? (to.rank == 0 && (to.file == 0 || to.file == 7))
-            : (to.rank == 7 && (to.file == 0 || to.file == 7));
+            ? (to.rank() == 0 && (to.file() == 0 || to.file() == 7))
+            : (to.rank() == 7 && (to.file() == 0 || to.file() == 7));
         
         if (isInitialSquare) {
             if ((destBefore & MASK_COLOR) == WHITE) {
-                castle &= (to.file == 0) 
+                castle &= (to.file() == 0) 
                     ? ~(1u << 1)  // white queenside
                     : ~(1u << 0); // white kingside
             } else {
-                castle &= (to.file == 0)
+                castle &= (to.file() == 0)
                     ? ~(1u << 3)  // black queenside
                     : ~(1u << 2); // black kingside
             }
@@ -924,16 +924,16 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
     if (movingType == PAWN) {
-        const int8_t dr = static_cast<int8_t>(to.rank - from.rank);
+        const int8_t dr = static_cast<int8_t>(to.rank() - from.rank());
         if (dr == 2 || dr == -2) {
-            enPassant[0] = Coords{from.file, static_cast<uint8_t>((from.rank + to.rank) >> 1)};
+            enPassant[0] = Coords{from.file(), static_cast<uint8_t>((from.rank() + to.rank()) >> 1)};
         }
     }
 
     // --- PROMOZIONE ---
     if (movingType == PAWN) {
-        if ((movingColor == WHITE && to.rank == 7) ||
-            (movingColor == BLACK && to.rank == 0)) {
+        if ((movingColor == WHITE && to.rank() == 7) ||
+            (movingColor == BLACK && to.rank() == 0)) {
 
             uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
             if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') {

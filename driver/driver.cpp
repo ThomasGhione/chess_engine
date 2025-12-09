@@ -174,10 +174,10 @@ namespace driver {
         std::string playerInput;
 
         bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
-        std::string currentBoard = print::Prints::getBasicBoard(engine.board);
 
         bool error = true;
         while (error) {
+            std::string currentBoard = print::Prints::getBasicBoard(engine.board);
             std::cout << currentBoard << "\n";
 
             std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
@@ -207,7 +207,13 @@ namespace driver {
             }
         
             uint8_t piece = engine.board.get(fromCoords);
-        
+
+            std::cout << "[DEBUG] fromCoords: " << fromCoords.toString() << " (index=" << (int)fromCoords.index()
+                      << ", rank=" << (int)fromCoords.rank() << ", file=" << (int)fromCoords.file() << ")\n";
+            std::cout << "[DEBUG] piece at from: " << (int)piece << "\n";
+            std::cout << "[DEBUG] activeColor: " << (int)engine.board.getActiveColor() << " (WHITE=0, BLACK=8)\n";
+            std::cout << "[DEBUG] isWhiteTurn: " << (isWhiteTurn ? "true" : "false") << "\n";
+            std::cout << "[DEBUG] getColor(from): " << (int)engine.board.getColor(fromCoords) << "\n";
 
             if (piece == chess::Board::EMPTY) {
                 std::cout << "There is no piece at the source square. Please enter a valid move.\n";
@@ -246,8 +252,8 @@ namespace driver {
 
             const bool isPromotionCandidate =
                 (pieceType == chess::Board::PAWN) &&
-                ((pieceColor == chess::Board::WHITE && toCoords.rank == 7) ||
-                 (pieceColor == chess::Board::BLACK && toCoords.rank == 0));
+                ((pieceColor == chess::Board::WHITE && toCoords.rank() == 7) ||
+                 (pieceColor == chess::Board::BLACK && toCoords.rank() == 0));
 
             if (isPromotionCandidate) {
                 // If user didn't specify, default to queen
@@ -259,8 +265,10 @@ namespace driver {
                 moveOk = engine.board.moveBB(fromCoords, toCoords);
             }
 
+            std::cout << "[DEBUG] moveOk = " << (moveOk ? "true" : "false") << "\n";
+
             if (!moveOk) {
-                std::cout << "Invalid move. Please try again.";
+                std::cout << "Invalid move. Please try again.\n";
                 continue;
             }
 
@@ -269,7 +277,12 @@ namespace driver {
             std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
             std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
     #endif
-        
+
+            // Print the updated board after successful move
+            std::cout << "[DEBUG] About to print updated board...\n";
+            std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+            std::cout << "[DEBUG] Board printed successfully.\n";
+
             // After successful move, detect terminal state for next side to move
             uint8_t nextColor = engine.board.getActiveColor();
             if (engine.board.isCheckmate(nextColor)) {
@@ -280,7 +293,7 @@ namespace driver {
                 std::cout << "\nStalemate. Game drawn.\n";
                 return;
             }
-        
+
             error = false;
 }
 

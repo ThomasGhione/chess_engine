@@ -1,0 +1,199 @@
+
+Compiling main.cpp...
+Compiling engine/engine.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c main.cpp -o main.o
+
+Compiling engine/search.cpp...
+Compiling engine/evaluate.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c engine/engine.cpp -o engine/engine.o
+g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c engine/evaluate.cpp -o engine/evaluate.o
+g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c engine/search.cpp -o engine/search.o
+
+Compiling engine/tt_helpers.cpp...
+Compiling printer/menu.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c engine/tt_helpers.cpp -o engine/tt_helpers.o
+g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c printer/menu.cpp -o printer/menu.o
+
+Compiling printer/prints.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c printer/prints.cpp -o printer/prints.o
+
+Compiling driver/driver.cpp...
+Compiling piece/piece.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c driver/driver.cpp -o driver/driver.o
+
+Compiling gamestatus/gamestatus.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c piece/piece.cpp -o piece/piece.o
+g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c gamestatus/gamestatus.cpp -o gamestatus/gamestatus.o
+
+Compiling board/board.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c board/board.cpp -o board/board.o
+
+Compiling board/fen.cpp...g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -c board/fen.cpp -o board/fen.o
+board/board.cpp: In member function ‘bool chess::Board::moveBB(const chess::Coords&, const chess::Coords&, char)’:
+board/board.cpp:166:39: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  166 |         if ((fromColor == WHITE && to.rank == 7) || (fromColor == BLACK && to.rank == 0)) {
+      |                                    ~~~^~~~
+      |                                           ()
+board/board.cpp:166:79: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  166 |         if ((fromColor == WHITE && to.rank == 7) || (fromColor == BLACK && to.rank == 0)) {
+      |                                                                            ~~~^~~~
+      |                                                                                   ()
+board/board.cpp: In member function ‘bool chess::Board::canMoveToBB(const chess::Coords&, const chess::Coords&) const’:
+board/board.cpp:301:66: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  301 |                 Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
+      |                                                               ~~~^~~~
+      |                                                                      ()
+board/board.cpp:301:77: error: no matching function for call to ‘chess::Coords::Coords(<brace-enclosed initializer list>)’
+  301 |                 Coords captured{to.file, static_cast<uint8_t>(to.rank - dir)};
+      |                                                                             ^
+In file included from board/board.hpp:12,
+                 from board/board.cpp:1:
+board/../coords/coords.hpp:55:15: note: candidate: ‘constexpr chess::Coords::Coords(const chess::Coords&)’
+   55 |     constexpr Coords(const Coords& other) noexcept = default;
+      |               ^~~~~~
+board/../coords/coords.hpp:55:15: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:35:5: note: candidate: ‘chess::Coords::Coords(const std::string&)’
+   35 |     Coords(const std::string& input) noexcept : index_(INVALID_COORDS) {
+      |     ^~~~~~
+board/../coords/coords.hpp:35:5: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:30:15: note: candidate: ‘constexpr chess::Coords::Coords(uint8_t, uint8_t)’
+   30 |     constexpr Coords(uint8_t f, uint8_t r) noexcept
+      |               ^~~~~~
+board/../coords/coords.hpp:30:30: note:   no known conversion for argument 1 from ‘<unresolved overloaded function type>’ to ‘uint8_t’ {aka ‘unsigned char’}
+   30 |     constexpr Coords(uint8_t f, uint8_t r) noexcept
+      |                      ~~~~~~~~^
+board/../coords/coords.hpp:25:24: note: candidate: ‘constexpr chess::Coords::Coords(uint8_t)’
+   25 |     constexpr explicit Coords(uint8_t idx) noexcept
+      |                        ^~~~~~
+board/../coords/coords.hpp:25:24: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:21:15: note: candidate: ‘constexpr chess::Coords::Coords()’
+   21 |     constexpr Coords() noexcept = default;
+      |               ^~~~~~
+board/../coords/coords.hpp:21:15: note:   candidate expects 0 arguments, 2 provided
+board/board.cpp:386:22: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  386 |             if (from.rank == to.rank) {
+      |                 ~~~~~^~~~
+      |                          ()
+board/board.cpp:386:33: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  386 |             if (from.rank == to.rank) {
+      |                              ~~~^~~~
+      |                                     ()
+board/board.cpp:388:26: error: invalid ‘static_cast’ from type ‘<unresolved overloaded function type>’ to type ‘int’
+  388 |                 int df = static_cast<int>(to.file) - static_cast<int>(from.file);
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~
+board/board.cpp:388:54: error: invalid ‘static_cast’ from type ‘<unresolved overloaded function type>’ to type ‘int’
+  388 |                 int df = static_cast<int>(to.file) - static_cast<int>(from.file);
+      |                                                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+board/board.cpp:389:40: error: cannot convert ‘chess::Coords::rank’ from type ‘uint8_t (chess::Coords::)() const noexcept’ {aka ‘unsigned char (chess::Coords::)() const noexcept’} to type ‘const uint8_t’ {aka ‘const unsigned char’}
+  389 |                 const uint8_t r = from.rank;
+      |                                        ^~~~
+board/board.cpp:390:41: error: cannot convert ‘chess::Coords::file’ from type ‘uint8_t (chess::Coords::)() const noexcept’ {aka ‘unsigned char (chess::Coords::)() const noexcept’} to type ‘const uint8_t’ {aka ‘const unsigned char’}
+  390 |                 const uint8_t kf = from.file;
+      |                                         ^~~~
+board/board.cpp: In member function ‘void chess::Board::doMove(const Move&, MoveState&, char)’:
+board/board.cpp:818:18: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  818 |         if (from.file != to.file && destBefore == EMPTY &&
+      |             ~~~~~^~~~
+      |                      ()
+board/board.cpp:818:29: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  818 |         if (from.file != to.file && destBefore == EMPTY &&
+      |                          ~~~^~~~
+      |                                 ()
+board/board.cpp:826:62: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  826 |             Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
+      |                                                           ~~~^~~~
+      |                                                                  ()
+board/board.cpp:826:80: error: no matching function for call to ‘chess::Coords::Coords(<brace-enclosed initializer list>)’
+  826 |             Coords captured{to.file, static_cast<uint8_t>(to.rank - forwardDir)};
+      |                                                                                ^
+board/../coords/coords.hpp:55:15: note: candidate: ‘constexpr chess::Coords::Coords(const chess::Coords&)’
+   55 |     constexpr Coords(const Coords& other) noexcept = default;
+      |               ^~~~~~
+board/../coords/coords.hpp:55:15: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:35:5: note: candidate: ‘chess::Coords::Coords(const std::string&)’
+   35 |     Coords(const std::string& input) noexcept : index_(INVALID_COORDS) {
+      |     ^~~~~~
+board/../coords/coords.hpp:35:5: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:30:15: note: candidate: ‘constexpr chess::Coords::Coords(uint8_t, uint8_t)’
+   30 |     constexpr Coords(uint8_t f, uint8_t r) noexcept
+      |               ^~~~~~
+board/../coords/coords.hpp:30:30: note:   no known conversion for argument 1 from ‘<unresolved overloaded function type>’ to ‘uint8_t’ {aka ‘unsigned char’}
+   30 |     constexpr Coords(uint8_t f, uint8_t r) noexcept
+      |                      ~~~~~~~~^
+board/../coords/coords.hpp:25:24: note: candidate: ‘constexpr chess::Coords::Coords(uint8_t)’
+   25 |     constexpr explicit Coords(uint8_t idx) noexcept
+      |                        ^~~~~~
+board/../coords/coords.hpp:25:24: note:   candidate expects 1 argument, 2 provided
+board/../coords/coords.hpp:21:15: note: candidate: ‘constexpr chess::Coords::Coords()’
+   21 |     constexpr Coords() noexcept = default;
+      |               ^~~~~~
+board/../coords/coords.hpp:21:15: note:   candidate expects 0 arguments, 2 provided
+board/board.cpp:851:36: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  851 |     if (movingType == KING && from.rank == to.rank) {
+      |                               ~~~~~^~~~
+      |                                        ()
+board/board.cpp:851:47: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  851 |     if (movingType == KING && from.rank == to.rank) {
+      |                                            ~~~^~~~
+      |                                                   ()
+board/board.cpp:852:50: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  852 |         const int8_t df = static_cast<int8_t>(to.file - from.file);
+      |                                               ~~~^~~~
+      |                                                      ()
+board/board.cpp:852:62: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  852 |         const int8_t df = static_cast<int8_t>(to.file - from.file);
+      |                                                         ~~~~~^~~~
+      |                                                                  ()
+board/board.cpp:859:47: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  859 |             const uint8_t rookFromIndex = (to.rank << 3) | rookFromFile;
+      |                                            ~~~^~~~
+      |                                                   ()
+board/board.cpp:860:47: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  860 |             const uint8_t rookToIndex   = (to.rank << 3) | rookToFile;
+      |                                            ~~~^~~~
+      |                                                   ()
+board/board.cpp:865:47: error: invalid use of non-static member function ‘constexpr uint8_t chess::Coords::rank() const’
+  865 |             const uint8_t rook = this->get(to.rank, rookFromFile);
+      |                                            ~~~^~~~
+board/../coords/coords.hpp:67:23: note: declared here
+   67 |     constexpr uint8_t rank() const noexcept {
+      |                       ^~~~
+board/board.cpp:866:26: error: invalid use of non-static member function ‘constexpr uint8_t chess::Coords::rank() const’
+  866 |             this->set(to.rank, rookToFile, static_cast<piece_id>(rook));
+      |                       ~~~^~~~
+board/../coords/coords.hpp:67:23: note: declared here
+   67 |     constexpr uint8_t rank() const noexcept {
+      |                       ^~~~
+board/board.cpp:867:26: error: invalid use of non-static member function ‘constexpr uint8_t chess::Coords::rank() const’
+  867 |             this->set(to.rank, rookFromFile, EMPTY);
+      |                       ~~~^~~~
+board/../coords/coords.hpp:67:23: note: declared here
+   67 |     constexpr uint8_t rank() const noexcept {
+      |                       ^~~~
+board/board.cpp:882:21: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  882 |             ? (from.rank == 0 && (from.file == 0 || from.file == 7))
+      |                ~~~~~^~~~
+      |                         ()
+board/board.cpp:882:40: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  882 |             ? (from.rank == 0 && (from.file == 0 || from.file == 7))
+      |                                   ~~~~~^~~~
+      |                                            ()
+board/board.cpp:882:58: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  882 |             ? (from.rank == 0 && (from.file == 0 || from.file == 7))
+      |                                                     ~~~~~^~~~
+      |                                                              ()
+board/board.cpp:883:21: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  883 |             : (from.rank == 7 && (from.file == 0 || from.file == 7));
+      |                ~~~~~^~~~
+      |                         ()
+board/board.cpp:883:40: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  883 |             : (from.rank == 7 && (from.file == 0 || from.file == 7));
+      |                                   ~~~~~^~~~
+      |                                            ()
+board/board.cpp:883:58: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  883 |             : (from.rank == 7 && (from.file == 0 || from.file == 7));
+      |                                                     ~~~~~^~~~
+      |                                                              ()
+board/board.cpp:887:26: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  887 |                 if (from.file == 0) {
+      |                     ~~~~~^~~~
+      |                              ()
+board/board.cpp:895:26: error: invalid use of member function ‘constexpr uint8_t chess::Coords::file() const’ (did you forget the ‘()’ ?)
+  895 |                 if (from.file == 0) {
+      |                     ~~~~~^~~~
+      |                              ()
+board/board.cpp:909:19: error: invalid use of member function ‘constexpr uint8_t chess::Coords::rank() const’ (did you forget the ‘()’ ?)
+  909 |             ? (to.rank == 0 && (to.file == 0 || to.file == 7

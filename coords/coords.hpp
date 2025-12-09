@@ -3,81 +3,168 @@
 
 #include <string>
 #include <cstdint>
+#include <cctype>
 
 namespace chess {
 class Coords {
+private:
+    // Storage efficiente: solo 1 byte invece di 2
+    // Convenzione Board: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
+    uint8_t index_ = INVALID_COORDS;
+
 public:
     constexpr static uint8_t INVALID_COORDS = 255;
 
-    uint8_t file = INVALID_COORDS; // column
-    uint8_t rank = INVALID_COORDS; // row
+    // ============== COSTRUTTORI ==============
 
-    // constructors
+    // Costruttore di default: coordinate invalide
     constexpr Coords() noexcept = default;
-    constexpr Coords(uint8_t index) noexcept : Coords() {
-        if (index < 64) {
-            file = index & 7;
-            rank = index >> 3;
-        }
-    }
 
-    constexpr Coords(uint8_t f, uint8_t r) noexcept : Coords() {
-        if (isValid(f)) file = f;
-        if (isValid(r)) rank = r;
-    }
+    // Costruttore da index (0-63)
+    // Usa validazione inline per efficienza
+    constexpr explicit Coords(uint8_t idx) noexcept
+        : index_(idx < 64 ? idx : INVALID_COORDS) {}
 
-    Coords(const std::string& input) noexcept : Coords() {
+    // Costruttore da file e rank (0-7 ciascuno)
+    // Formula: index = rank * 8 + file
+    constexpr Coords(uint8_t f, uint8_t r) noexcept
+        : index_((f < 8 && r < 8) ? static_cast<uint8_t>(r * 8 + f) : INVALID_COORDS) {}
+
+    // Costruttore da stringa notazione algebrica (es. "e4", "a8")
+    // NON constexpr perché usa std::tolower che non è constexpr
+    Coords(const std::string& input) noexcept : index_(INVALID_COORDS) {
         if (input.length() != 2) return;
-        char f = std::tolower(input[0]);
-        if (isLetter(f)) file = f - 'a';
-        if (isNumber(input[1])) rank = input[1] - '1';
+
+        char fileChar = std::tolower(input[0]);
+        char rankChar = input[1];
+
+        if (!isLetter(fileChar) || !isNumber(rankChar)) return;
+
+        // Converti notazione algebrica a index interno
+        // file: 'a'=0, 'b'=1, ..., 'h'=7
+        uint8_t f = static_cast<uint8_t>(fileChar - 'a');
+
+        // rank: '8'=0, '7'=1, ..., '1'=7 (convenzione a8=0, h1=63)
+        // Formula: rank_interno = '8' - rankChar
+        uint8_t r = static_cast<uint8_t>('8' - rankChar);
+
+        this->index_ = r * 8 + f;
     }
 
-    constexpr Coords(const Coords& c) noexcept = default;
+    // Copy constructor (default va bene)
+    constexpr Coords(const Coords& other) noexcept = default;
 
-    // operator overloads
-    constexpr bool operator==(const Coords &other) const noexcept { return (file == other.file) && (rank == other.rank);}
-    constexpr bool operator!=(const Coords &other) const noexcept { return !(*this == other);}
-    constexpr Coords& operator=(const Coords &other) noexcept {
-        file = other.file;
-        rank = other.rank;
-        return *this;
+    // ============== METODI DI ACCESSO PUBBLICI ==============
+
+    // Restituisce la colonna (0-7: a-h)
+    // Usa bit-mask per performance ottimale (equivale a index % 8)
+    constexpr uint8_t file() const noexcept {
+        return this->index_ & 7;
     }
 
-    // setters / updaters
-    constexpr bool update(const Coords& other) noexcept{ return update(other.file, other.rank); } 
-    constexpr bool update(const uint8_t f, const uint8_t r) noexcept{
-        if (!isValid(f) || !isValid(r)) return false;
-        file = f;
-        rank = r;
+    // Restituisce la riga (0-7: dove 0=riga8, 7=riga1 per convenzione Board)
+    // Usa bit-shift per performance ottimale (equivale a index / 8)
+    constexpr uint8_t rank() const noexcept {
+        return this->index_ >> 3;
+    }
+
+    // Restituisce l'index interno (0-63 o INVALID_COORDS)
+    constexpr uint8_t index() const noexcept {
+        return this->index_;
+    }
+
+    // Verifica se le coordinate sono valide
+    constexpr bool isValid() const noexcept {
+        return this->index_ < 64;
+    }
+
+    // ============== OPERATOR OVERLOADS ==============
+
+    constexpr bool operator==(const Coords& other) const noexcept {
+        return this->index_ == other.index_;
+    }
+
+    constexpr bool operator!=(const Coords& other) const noexcept {
+        return this->index_ != other.index_;
+    }
+
+    constexpr Coords& operator=(const Coords& other) noexcept = default;
+
+    // ============== SETTERS / UPDATERS ==============
+
+    // Aggiorna da un altro oggetto Coords
+    constexpr bool update(const Coords& other) noexcept {
+        if (!other.isValid()) return false;
+        this->index_ = other.index_;
         return true;
     }
 
-    // utility static methods
-    static constexpr bool isValid(uint8_t x) noexcept { return (x < 8); }
-    static constexpr bool isLetter(char c) noexcept { return ((c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H')); }
-    static constexpr bool isNumber(char c) noexcept { return (c >= '1') && (c <= '8'); }
-    static constexpr bool isInBounds(const Coords& coords) noexcept { return (isValid(coords.file) && isValid(coords.rank)); }
+    // Aggiorna da file e rank
+    constexpr bool update(uint8_t f, uint8_t r) noexcept {
+        if (f >= 8 || r >= 8) return false;
+        this->index_ = r * 8 + f;
+        return true;
+    }
 
-    // conversion methods
+    // Aggiorna da index
+    constexpr bool update(uint8_t idx) noexcept {
+        if (idx >= 64) return false;
+        this->index_ = idx;
+        return true;
+    }
+
+    // ============== UTILITY STATIC METHODS ==============
+
+    // Verifica se un valore è nel range 0-7
+    static constexpr bool isValid(uint8_t x) noexcept {
+        return x < 8;
+    }
+
+    // Verifica se un carattere è una lettera di colonna valida
+    static constexpr bool isLetter(char c) noexcept {
+        return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H');
+    }
+
+    // Verifica se un carattere è un numero di riga valido
+    static constexpr bool isNumber(char c) noexcept {
+        return c >= '1' && c <= '8';
+    }
+
+    // Verifica se un oggetto Coords ha coordinate valide
+    static constexpr bool isInBounds(const Coords& coords) noexcept {
+        return coords.isValid();
+    }
+
+    // ============== CONVERSION METHODS ==============
+
+    // Converti a stringa notazione algebrica (es. "e4")
     std::string toString() const noexcept {
-        std::string result(2, ' ');
-        if (isInBounds(*this)) {
-            result[0] = static_cast<char>('a' + file);
-            result[1] = static_cast<char>('1' + rank);
-        } else {
-            result = "??";
+        if (!this->isValid()) {
+            return "??";
         }
+
+        std::string result(2, ' ');
+        uint8_t f = this->file();
+        uint8_t r = this->rank();
+
+        // file: 0-7 → 'a'-'h'
+        result[0] = static_cast<char>('a' + f);
+
+        // rank: 0-7 → '8'-'1' (convenzione a8=0, h1=63)
+        result[1] = static_cast<char>('8' - r);
+
         return result;
     }
-    constexpr uint8_t toIndex() const noexcept { return static_cast<uint8_t>(rank * 8 + file); }
+
+    // Converti a index (deprecato, usa index() invece)
+    // Mantenuto per compatibilità
+    constexpr uint8_t toIndex() const noexcept {
+        return this->index_;
+    }
+
+    // Metodo statico per conversione a notazione algebrica
     static std::string toAlgebric(const Coords& c) noexcept {
-        char fileChar = static_cast<char>('a' + c.file);
-        char rankChar = static_cast<char>('1' + c.rank);
-        std::string s;
-        s.push_back(fileChar);
-        s.push_back(rankChar);
-        return s;
+        return c.toString();
     }
 
 }; // class Coords

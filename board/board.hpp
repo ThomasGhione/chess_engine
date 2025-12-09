@@ -101,14 +101,18 @@ public:
     //! GETTERS
     inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
         return (chessboard[row] >> (col << 2)) & MASK_PIECE;
-    }    
+    }
     inline uint8_t get(Coords coords) const noexcept {
-        return this->get(coords.rank, coords.file);
+        // Coords usa convenzione a8=0 (rank 0 = riga 8)
+        // Board storage usa a1=0 (chessboard[0] = riga 1)
+        // Conversione: internal_row = 7 - coords.rank()
+        return this->get(7 - coords.rank(), coords.file());
     }
     inline uint8_t get(uint8_t index) const noexcept {
-        const uint8_t rank = index >> 3;  // index / 8
+        const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
         const uint8_t file = index & 7;   // index % 8
-        return this->get(rank, file);
+        // Converti da Coords convention a Board storage
+        return this->get(7 - rank, file);
     }
     uint8_t get(const std::string& square) const noexcept { 
         const uint8_t col = square[0] - 'a';
@@ -154,8 +158,10 @@ public:
 
     //! SETTERS
     void set(Coords coords, piece_id value) noexcept {
-        const uint8_t shift = coords.file * 4;
-        chessboard[coords.rank] = (chessboard[coords.rank] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
+        // Converti da Coords convention a Board storage
+        const uint8_t internal_row = 7 - coords.rank();
+        const uint8_t shift = coords.file() * 4;
+        chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
     void set(uint8_t row, uint8_t col, piece_id value) noexcept {

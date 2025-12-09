@@ -7,8 +7,8 @@ bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move 
     if (ply < 0 || ply >= Engine::MAX_PLY) return false;
     for (int k = 0; k < 2; ++k) {
         const auto& km = killerMoves[k][ply];
-        if (m.from.file == km.from.file && m.from.rank == km.from.rank &&
-            m.to.file == km.to.file && m.to.rank == km.to.rank) {
+        if (m.from.file() == km.from.file() && m.from.rank() == km.from.rank() &&
+            m.to.file() == km.to.file() && m.to.rank() == km.to.rank()) {
             return true;
         }
     }
@@ -22,8 +22,8 @@ bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) 
     uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
     return (pieceType == chess::Board::PAWN) &&
-           ((pieceColor == chess::Board::WHITE && move.to.rank == 7) ||
-            (pieceColor == chess::Board::BLACK && move.to.rank == 0));
+           ((pieceColor == chess::Board::WHITE && move.to.rank() == 7) ||
+            (pieceColor == chess::Board::BLACK && move.to.rank() == 0));
 }
 
 // Helper to handle terminal nodes and transposition table lookups
@@ -354,7 +354,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
     // -----------------------------
     // 2) PRE-CALCOLO STATO DI CHECK
     // -----------------------------
-    const bool inCheck = b.inCheck(color);
+    //const bool inCheck = b.inCheck(color);
 
     // Se non sei in check, puoi muovere tutti i pezzi normalmente; 
     // se sei in double‑check, solo re (già gestito sopra: nessun altro pezzo salverà la posizione),
@@ -483,7 +483,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 // Helper to add promotion bonus
 void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) {
     if (pieceType == chess::Board::PAWN) {
-        if ((usIsWhite && m.to.rank == 7) || (!usIsWhite && m.to.rank == 0)) {
+        if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
             score += PIECE_VALUES[chess::Board::QUEEN];
         }
     }
@@ -506,17 +506,17 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
     const auto& km1 = killerMoves[0][ply];
     const auto& km2 = killerMoves[1][ply];
 
-    if (m.from.file == km1.from.file && m.from.rank == km1.from.rank &&
-        m.to.file == km1.to.file && m.to.rank == km1.to.rank) {
+    if (m.from.file() == km1.from.file() && m.from.rank() == km1.from.rank() &&
+        m.to.file() == km1.to.file() && m.to.rank() == km1.to.rank()) {
         score += KILLER1_BONUS;
-    } else if (m.from.file == km2.from.file && m.from.rank == km2.from.rank &&
-               m.to.file == km2.to.file && m.to.rank == km2.to.rank) {
+    } else if (m.from.file() == km2.from.file() && m.from.rank() == km2.from.rank() &&
+               m.to.file() == km2.to.file() && m.to.rank() == km2.to.rank()) {
         score += KILLER2_BONUS;
     }
 
     int colorIndex = usIsWhite ? 0 : 1;
-    int fromIndex = m.from.rank * 8 + m.from.file;
-    int toIndex = m.to.rank * 8 + m.to.file;
+    int fromIndex = m.from.rank() * 8 + m.from.file();
+    int toIndex = m.to.rank() * 8 + m.to.file();
     score += history[colorIndex][fromIndex][toIndex];
 }
 
@@ -525,7 +525,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) {
     if (pieceType != chess::Board::KING) return;
 
-    const int fileDelta = std::abs(m.to.file - m.from.file);
+    const int fileDelta = std::abs(m.to.file() - m.from.file());
     const bool isCastling = (fileDelta == 2);
 
     // Penalizza mosse del re in apertura se non sotto scacco e non arrocco
