@@ -373,7 +373,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             // Disallow king moves into attacked destination squares
             if (from.toIndex() != to.toIndex()) {
                 const uint8_t oppColor = (this->getColor(from) == WHITE) ? BLACK : WHITE;
-                if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor)) {
+                // CRITICAL: usa excludeSquare per evitare ray-blocking del re stesso
+                if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor, fromIndex)) {
                     // Even if it's a normal king move square, it's attacked; reject
                     // (Castling logic handled below after this block.)
                     // We don't early return yet if castling attempt because castling handled separately
