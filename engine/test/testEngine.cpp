@@ -239,8 +239,13 @@ ut::suite engineSuite = [] {
     e.evaluate(e.board);
     printf("Evaluation: %ld\n", e.eval);
 
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
     expect(moves.size() == 46) // Expected number of legal moves
       << "Expected 46 legal moves, got " << moves.size() << '\n';
+
+    expect(bestMove.from != chess::Coords("b4") && bestMove.to != chess::Coords("c2"))
+      << "Expected bestMove not to be b4 c2, got" << bestMove.from.toString() << bestMove.to.toString() << '\n';
   };
 
   "critical position 2"_test = []{

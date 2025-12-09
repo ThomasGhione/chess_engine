@@ -81,6 +81,8 @@ public:
     std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
     std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
 
+    chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
+
 private:
     // Helper structures to reduce parameter passing
     struct SearchContext {
@@ -105,7 +107,6 @@ private:
     };
 
     void doMoveInBoard(chess::Board::Move bestMove);
-    chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m);
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
