@@ -626,48 +626,98 @@ bool Board::inCheck(uint8_t color) const noexcept {
 
 
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
-    const uint64_t occ = this->occupancy;
+    const int side = (color == WHITE) ? 0 : 1;
+    const int oppSide = side ^ 1;
 
-    const bool isWhite = (color == WHITE);
-    const int side = isWhite ? 0 : 1;
-
-    // Precompute our own occupancy mask once
+    // Precompute occupancy masks once (avoid repeated bitboard ORs)
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
                             rooks_bb[side] | queens_bb[side]  | kings_bb[side];
+    const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
+                              rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
-    // Helper lambda to test moves for a given piece type bitboard
+    // OPTIMIZATION: If in check, try king moves first (most likely escape)
+    const bool inChk = this->inCheck(color);
+    
+    // KINGS - check FIRST if in check (likely only legal moves), otherwise check after knights
+    if (inChk) {
+        const uint64_t kings = kings_bb[side];
+        if (kings) {
+            const uint8_t from = __builtin_ctzll(kings);
+            const uint8_t r = from >> 3;
+            const uint8_t f = from & 7;
+
+            // Normal king moves (most common escape from check)
+            uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
+            while (movesMask) {
+                const uint8_t to = __builtin_ctzll(movesMask);
+                movesMask &= (movesMask - 1);
+
+                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                    return true;
+                }
+            }
+
+            // Castling not possible when in check, skip it
+        }
+    }
+
+    // Helper lambda: test moves for a piece type bitboard (non-pawn, non-king)
     auto tryMovesFromBitboard = [&](uint64_t piecesBB, auto genMovesForSquare) -> bool {
         while (piecesBB) {
             const uint8_t from = __builtin_ctzll(piecesBB);
             piecesBB &= (piecesBB - 1);
 
-            const uint8_t r = from >> 3;
-            const uint8_t f = from & 7;
-
-            // Generate pseudo-legal moves and clear own-occupied squares once
-            uint64_t movesMask = genMovesForSquare(from, occ) & ~ownOcc;
+            uint64_t movesMask = genMovesForSquare(from, this->occupancy) & ~ownOcc;
 
             while (movesMask) {
                 const uint8_t to = __builtin_ctzll(movesMask);
                 movesMask &= (movesMask - 1);
 
-                const uint8_t tr = to >> 3;
-                const uint8_t tf = to & 7;
-
-                // Use canMoveToBB which already checks legality (pseudo-legal + king safety)
-                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
+                if (this->canMoveToBB(Coords{static_cast<uint8_t>(from & 7), static_cast<uint8_t>(from >> 3)},
+                                      Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                    return true;
+                }
             }
         }
         return false;
     };
 
-    // PAWNS: handle pushes, captures, promotions (incl. en-passant) via bitboards
+    // KNIGHTS (fastest non-king piece: no occupancy needed, simple lookup)
+    if (tryMovesFromBitboard(knights_bb[side], [](uint8_t sq, uint64_t) {
+            return pieces::KNIGHT_ATTACKS[sq];
+        })) return true;
+
+    // KINGS (if not in check, test normally with castling)
+    if (!inChk) {
+        const uint64_t kings = kings_bb[side];
+        if (kings) {
+            const uint8_t from = __builtin_ctzll(kings);
+            const uint8_t r = from >> 3;
+            const uint8_t f = from & 7;
+
+            // Normal king moves
+            uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
+            while (movesMask) {
+                const uint8_t to = __builtin_ctzll(movesMask);
+                movesMask &= (movesMask - 1);
+
+                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                    return true;
+                }
+            }
+
+            // Castling (only if king on starting square and not in check)
+            if (r == (side == 0 ? 0 : 7) && f == 4) {
+                if (this->canMoveToBB(Coords{f, r}, Coords{6, r})) return true;  // kingside
+                if (this->canMoveToBB(Coords{f, r}, Coords{2, r})) return true;  // queenside
+            }
+        }
+    }
+
+    // PAWNS (most common piece, often many moves - but check after knights/king since cheaper)
     {
+        const bool isWhite = (side == 0);
         uint64_t pawns = pawns_bb[side];
-        // Enemy occupancy mask (for real captures); en-passant è gestito da moveBB
-        const uint64_t enemyOcc = side == 0
-            ? (pawns_bb[1] | knights_bb[1] | bishops_bb[1] | rooks_bb[1] | queens_bb[1] | kings_bb[1])
-            : (pawns_bb[0] | knights_bb[0] | bishops_bb[0] | rooks_bb[0] | queens_bb[0] | kings_bb[0]);
 
         while (pawns) {
             const uint8_t from = __builtin_ctzll(pawns);
@@ -676,111 +726,44 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             const uint8_t r = from >> 3;
             const uint8_t f = from & 7;
 
-            const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from];
-            const uint64_t pushes  = pieces::getPawnForwardPushes(from, isWhite, occupancy);
-
-            // PUSHS (sempre su case vuote)
-            uint64_t pushMask = pushes;
+            // Pushes
+            uint64_t pushMask = pieces::getPawnForwardPushes(from, isWhite, this->occupancy);
             while (pushMask) {
                 const uint8_t to = __builtin_ctzll(pushMask);
                 pushMask &= (pushMask - 1);
 
-                const uint8_t tr = to >> 3;
-                const uint8_t tf = to & 7;
-
-                const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
-                if (isPromotion) {
-                    // For promotions, if the pawn move itself is legal (checked by canMoveToBB),
-                    // then all promotion choices (Q/R/B/N) are legal since the choice of promoted
-                    // piece doesn't affect the legality of the move itself.
-                    if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
-                    continue;
+                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                    return true;
                 }
-
-                // Use canMoveToBB for non-promotion pawn pushes
-                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
 
-            // CAPTURES (reali + en-passant, filtrate a livello di Board::moveBB)
-            uint64_t captureMask = attacks & (enemyOcc | ~occ); // include possibili EP su case "vuote"
+            // Captures (include en-passant via canMoveToBB validation)
+            uint64_t captureMask = pieces::PAWN_ATTACKS[isWhite][from] & (enemyOcc | ~this->occupancy);
             while (captureMask) {
                 const uint8_t to = __builtin_ctzll(captureMask);
                 captureMask &= (captureMask - 1);
 
-                const uint8_t tr = to >> 3;
-                const uint8_t tf = to & 7;
-
-                const bool isPromotion = isWhite ? (tr == 7) : (tr == 0);
-                if (isPromotion) {
-                    // For promotions, if the pawn move itself is legal (checked by canMoveToBB),
-                    // then all promotion choices (Q/R/B/N) are legal.
-                    if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
-                    continue;
+                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                    return true;
                 }
-
-                // Use canMoveToBB for non-promotion pawn captures
-                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
             }
         }
     }
 
-    // KNIGHTS
-    if (tryMovesFromBitboard(knights_bb[side], [&](uint8_t sq, uint64_t /*occBB*/) {
-            return pieces::KNIGHT_ATTACKS[sq];
-        })) return true;
-
     // BISHOPS
-    if (tryMovesFromBitboard(bishops_bb[side], [&](uint8_t sq, uint64_t occBB) {
+    if (tryMovesFromBitboard(bishops_bb[side], [](uint8_t sq, uint64_t occBB) {
             return pieces::getBishopAttacks(sq, occBB);
         })) return true;
 
     // ROOKS
-    if (tryMovesFromBitboard(rooks_bb[side], [&](uint8_t sq, uint64_t occBB) {
+    if (tryMovesFromBitboard(rooks_bb[side], [](uint8_t sq, uint64_t occBB) {
             return pieces::getRookAttacks(sq, occBB);
         })) return true;
 
-    // QUEENS
-    if (tryMovesFromBitboard(queens_bb[side], [&](uint8_t sq, uint64_t occBB) {
+    // QUEENS (last: usually expensive to compute)
+    if (tryMovesFromBitboard(queens_bb[side], [](uint8_t sq, uint64_t occBB) {
             return pieces::getQueenAttacks(sq, occBB);
         })) return true;
-
-    // KINGS (including castling via canMoveToBB)
-    {
-        uint64_t kings = kings_bb[side];
-        if (kings) {
-            const uint8_t from = __builtin_ctzll(kings);
-            const uint8_t r = (from >> 3);
-            const uint8_t f = (from & 7);
-
-            // Pseudo-legal king moves, already excluding our own pieces
-            uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
-
-            // Castling squares: rely on canMoveToBB for full legality (including checks)
-            if (f + 2 <= 7) {
-                Coords toKs{static_cast<uint8_t>(f + 2), r};
-                if (this->canMoveToBB(Coords{f, r}, toKs)) {
-                    movesMask |= (1ULL << toKs.toIndex());
-                }
-            }
-            if (f >= 2) {
-                Coords toQs{static_cast<uint8_t>(f - 2), r};
-                if (this->canMoveToBB(Coords{f, r}, toQs)) {
-                    movesMask |= (1ULL << toQs.toIndex());
-                }
-            }
-
-            while (movesMask) {
-                const uint8_t to = __builtin_ctzll(movesMask);
-                movesMask &= (movesMask - 1);
-
-                const uint8_t tr = (to >> 3);
-                const uint8_t tf = (to & 7);
-
-                // Use canMoveToBB for king moves (including castling already checked above)
-                if (this->canMoveToBB(Coords{f, r}, Coords{tf, tr})) return true;
-            }
-        }
-    }
 
     return false;
 }
