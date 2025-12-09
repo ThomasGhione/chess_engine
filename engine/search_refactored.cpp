@@ -96,21 +96,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
 
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                           chess::Board::Move& bestMove, const chess::Board::Move& m) {
-  if (usIsWhite) {
-      // White is the maximizing player
-      if (score > bestScore) {
-          bestScore = score;
-          bestMove = m;
-      }
-      if (score > alpha) alpha = score;
-      return;
-  }
-  // Black is the minimizing player
-  if (score < bestScore) {
-      bestScore = score;
-      bestMove = m;
-  }
-  if (score < beta) beta = score;
+    if (usIsWhite) {
+        // White is the maximizing player
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = m;
+        }
+        if (score > alpha) alpha = score;
+        return;
+    }
+    // Black is the minimizing player
+    if (score < bestScore) {
+        bestScore = score;
+        bestMove = m;
+    }
+    if (score < beta) beta = score;
 }
 
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) {
@@ -123,7 +123,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
-chess::Board::Move Engine::getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite) {
+chess::Board::Move Engine::getBestMove(const std::vector<chess::Board::Move>& moves, bool searchBestMoveForWhite) {
     // Alpha-beta pruning: White maximizes, Black minimizes
     int64_t alpha = this->NEG_INF;
     int64_t beta = this->POS_INF;
@@ -242,6 +242,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 // Generate all legal moves using bitboard representation (optimized, but safe)
 std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b) const {
     std::vector<chess::Board::Move> moves;
+    moves.reserve(40); // Pre-allocate per ridurre riallocazioni
 
     const uint8_t color    = b.getActiveColor();
     const bool    isBlack  = (color == chess::Board::BLACK);
@@ -315,8 +316,6 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
     // - se in check, comunque generiamo pseudo‑mosse, ma filtriamo con canMoveToBB.
     // - un vero double-check verrà automaticamente scartato da canMoveToBB per i pezzi non‑re.
     // Quindi non servono euristiche complicate qui: teniamo la versione semplice ma con filtri bitboard.
-
-    moves.reserve(inCheck ? 16 : 40); // riduce riallocazioni
 
 
     // -----------------------------
@@ -475,16 +474,17 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 }
 
 // Helper to add king move heuristic bonus/penalty
-void Engine::addKingMoveBonus(chess::Board& b, const chess::Board::Move& m, uint8_t pieceType, int64_t& score) {
+// NOTA: inCheck precalcolato fuori dal loop per evitare chiamate ripetute
+void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) {
     if (pieceType != chess::Board::KING) return;
 
+    const int fileDelta = std::abs(m.to.file - m.from.file);
+    const bool isCastling = (fileDelta == 2);
 
-    int fileDelta = std::abs(m.to.file - m.from.file);
-
-    // if not opening and not in check and not castling:
-    if (b.getFullMoveClock() < 10 && !b.inCheck(b.getActiveColor()) && fileDelta != 2) {
+    // Penalizza mosse del re in apertura se non sotto scacco e non arrocco
+    if (fullMoveClock < 10 && !inCheck && !isCastling) {
         score -= KING_NON_CASTLING_PENALTY;
-    } else { 
+    } else if (isCastling) { 
         score += CASTLING_BONUS;
     }
 }
@@ -493,11 +493,9 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
     std::vector<ScoredMove> orderedScoredMoves;
     orderedScoredMoves.reserve(moves.size());
 
-    // Pre-fetch killer moves per questo ply (evita accessi ripetuti)
-    // const auto& km1 = (ply < MAX_PLY) ? killerMoves[0][ply] : killerMoves[0][0];
-    // const auto& km2 = (ply < MAX_PLY) ? killerMoves[1][ply] : killerMoves[1][0];
-    // const int colorIndex = usIsWhite ? 0 : 1;
-    // const bool validPly = (ply < MAX_PLY);
+    // Pre-calcola valori costosi UNA VOLTA fuori dal loop
+    const bool inCheck = b.inCheck(b.getActiveColor());
+    const int fullMoveClock = b.getFullMoveClock();
 
     for (const auto& m : moves) {
         int64_t score = 0;
@@ -518,7 +516,7 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::
             this->addKillerAndHistoryBonus(m, ply, usIsWhite, score);
         }
 
-        this->addKingMoveBonus(b, m, fromPieceType, score);
+        this->addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
 
         orderedScoredMoves.emplace_back(ScoredMove{m, score});
     }

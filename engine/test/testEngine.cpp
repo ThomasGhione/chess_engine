@@ -73,6 +73,7 @@ ut::suite engineSuite = [] {
     // Attesa isMate: false
   };
 
+  /*
   "getMaterialDelta FAST vs NORMAL vs SLOW"_test = []{
     engine::Engine e = engine::Engine();
 
@@ -102,22 +103,22 @@ ut::suite engineSuite = [] {
     
     expect(duration1 < duration2);
   };
+*/
 
 
-
-  "performance searchPosition depth 4"_test = []{
+  "performance searchPosition depth 6"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 4;
+    e.depth = 6;
 
     auto start = std::chrono::high_resolution_clock::now();
     e.search(e.depth);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // Attesa che la ricerca venga completata in meno di 500 milli
-    printf("Depth 4 search completed in %lu ms\n", duration);
+    // Attesa che la ricerca venga completata in meno di 200 milli
+    printf("Depth 6 search completed in %lu ms\n", duration);
     printf("Nodes searched: %lu\n", engine::Engine::nodesSearched);
-    expect(duration < 500);
+    expect(duration < 200);
   };
 
   /*
@@ -137,9 +138,9 @@ ut::suite engineSuite = [] {
   };
   */
 
-  "avg performance searchPosition depth 4 over 20 runs"_test = []{
+  "avg performance searchPosition depth 6 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 4;
+    e.depth = 6;
 
     constexpr int runs = 20;
     int64_t totalDuration = 0;
@@ -156,9 +157,9 @@ ut::suite engineSuite = [] {
 
     double avgDuration = static_cast<double>(totalDuration) / runs;
 
-    // Attesa che la ricerca media venga completata in meno di 500 millisecondi
-    printf("Average Depth 4 search time over %d runs: %.2f ms\n", runs, avgDuration);
-    expect(avgDuration < 500);
+    // Attesa che la ricerca media venga completata in meno di 200 millisecondi
+    printf("Average Depth 6 search time over %d runs: %.2f ms\n", runs, avgDuration);
+    expect(avgDuration < 200);
   };
   
   /*

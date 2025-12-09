@@ -81,7 +81,7 @@ public:
     std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
     std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
 
-    chess::Board::Move getBestMove(std::vector<chess::Board::Move> moves, bool searchBestMoveForWhite);
+    chess::Board::Move getBestMove(const std::vector<chess::Board::Move>& moves, bool searchBestMoveForWhite);
 
 private:
     // Helper structures to reduce parameter passing
@@ -133,7 +133,7 @@ private:
     void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score);
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
-    void addKingMoveBonus(chess::Board& b, const chess::Board::Move& m, uint8_t pieceType, int64_t& score);
+    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score);
 
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
