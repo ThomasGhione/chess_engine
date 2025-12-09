@@ -1,6 +1,19 @@
 #include "engine.hpp"
 
 namespace engine {
+    
+// Helper per LMR: verifica se la mossa è un killer move per il ply corrente
+bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const {
+    if (ply < 0 || ply >= Engine::MAX_PLY) return false;
+    for (int k = 0; k < 2; ++k) {
+        const auto& km = killerMoves[k][ply];
+        if (m.from.file == km.from.file && m.from.rank == km.from.rank &&
+            m.to.file == km.to.file && m.to.rank == km.to.rank) {
+            return true;
+        }
+    }
+    return false;
+}
 
 // Helper function to check if a move is a pawn promotion candidate
 bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) {
@@ -52,18 +65,9 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves.front().move;
 
-    // const auto totalMoves = orderedScoredMoves.size();
-    //int moveIndex = 0;
-
+    int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
-        
-        //++moveIndex;
-        // Late move pruning adattivo sulla coda delle mosse
-        //if (ctx.ply >= 3 && this->shouldPruneLateMove(b, m, ctx.depth, b.inCheck(ctx.activeColor), usIsWhite, moveIndex, totalMoves)) {
-        //    continue;
-        //}
-        
         chess::Board::MoveState state;
 
         // Execute move (handling promotions)
@@ -73,9 +77,25 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
             b.doMove(m, state);
         }
 
-        // Recursively evaluate position
+        // LMR: riduci la profondità per le mosse "late" non critiche
         int64_t childDepth = std::max(static_cast<int64_t>(0), ctx.depth - 1);
-        int64_t score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+        bool canReduce = (ctx.depth > 2)
+            && (moveIndex > 1)
+            && !isPromotionMove(b, m)
+            && (b.get(m.to) == chess::Board::EMPTY) // non-capture
+            && !this->isKillerMove(m, killerMoves, ctx.ply);
+
+        int64_t score = 0;
+        if (canReduce) {
+            int64_t reducedDepth = std::max(static_cast<int64_t>(0), childDepth - 1);
+            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+            // Se la mossa ridotta taglia, ricerchi a profondità piena
+            if (score > bounds.alpha && score < bounds.beta) {
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+            }
+        } else {
+            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+        }
 
         // Undo move
         b.undoMove(m, state);
@@ -89,6 +109,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
                                                   bounds.alpha, bounds.beta, history, killerMoves);
             break;
         }
+        ++moveIndex;
     }
 
     return ScoredMove{bestMove, best};
@@ -218,6 +239,32 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     const uint8_t activeColor = b.getActiveColor();
+
+    // --- Null Move Pruning DISABILITATO ---
+    // Reintrodurre quando avremo: hash move, better move ordering, e tactical position detection
+    // Il problema: senza hash move, taglia anche rami con catture ovvie
+    /*
+    auto hasNonPawnMaterial = [&]() {
+        const int side = (activeColor == chess::Board::WHITE) ? 0 : 1;
+        int material = __builtin_popcountll(b.knights_bb[side]) +
+                       __builtin_popcountll(b.bishops_bb[side]) +
+                       __builtin_popcountll(b.rooks_bb[side]) +
+                       __builtin_popcountll(b.queens_bb[side]);
+        return material > 0;
+    };
+
+    if (depth >= 3 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
+        const int R = (depth >= 6) ? 3 : 2;
+        b.setNextTurn();
+        int64_t nullScore = -this->searchPosition(b, depth - 1 - R, -beta, -alpha, ply + 1);
+        b.setPrevTurn();
+        if (nullScore >= beta) {
+            return beta;
+        }
+    }
+    */
+
+
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
     std::vector<chess::Board::Move> moves = this->generateLegalMoves(b);
     if (moves.empty()) return this->evaluate(b);

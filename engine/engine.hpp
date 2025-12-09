@@ -134,12 +134,13 @@ private:
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score);
-
+    
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
     //std::vector<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
     //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
+    bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const;
 
     
     int64_t evaluateCheckmate(const chess::Board& board);

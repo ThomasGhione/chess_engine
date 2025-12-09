@@ -174,6 +174,20 @@ public:
         this->halfMoveClock++;
     }
 
+    void setPrevTurn() noexcept {
+        if (this->activeColor == BLACK) {
+            this->activeColor = WHITE;
+        } else {
+            this->activeColor = BLACK;
+            if (this->fullMoveClock > 1) {
+                this->fullMoveClock--;
+            }
+        }
+        if (this->halfMoveClock > 0) {
+            this->halfMoveClock--;
+        }
+    }
+
     //! Operator overloads
     uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
     uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
