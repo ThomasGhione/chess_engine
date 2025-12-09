@@ -236,8 +236,8 @@ ut::suite engineSuite = [] {
     //   printf("Legal move from %s to %s\n", m.from.toString().c_str(), m.to.toString().c_str());
     // }
 
-    e.evaluate(e.board);
-    printf("Evaluation: %ld\n", e.eval);
+    int64_t evaluation = e.evaluate(e.board);
+    printf("Evaluation: %ld\n", evaluation);
 
     chess::Board::Move bestMove = e.getBestMove(moves, false);
 
@@ -254,8 +254,8 @@ ut::suite engineSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
 
-    e.evaluate(e.board);
-    printf("Evaluation: %ld\n", e.eval);
+    int64_t evaluation = e.evaluate(e.board);
+    printf("Evaluation: %ld\n", evaluation);
 
     // for (const auto& m : moves) {
     //   printf("Legal move from %s to %s\n", m.from.toString().c_str(), m.to.toString().c_str());

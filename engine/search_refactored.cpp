@@ -15,17 +15,23 @@ bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) 
 
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) {
+    
     const uint8_t activeColor = b.getActiveColor();
 
-    // Terminal node checks: depth 0, checkmate, stalemate
-    if (depth == 0 || b.isCheckmate(activeColor) || b.isStalemate(activeColor)) {
+    // NOTA: isCheckmate/isStalemate sono gestiti implicitamente quando generateLegalMoves()
+    // ritorna vuoto in searchPosition, quindi non serve controllarli qui.
+    if (depth <= 0) {
         score = this->evaluate(b);
         return true;
     }
 
-    // Check extension: search deeper if in check
-    bool inCheck = b.inCheck(activeColor);
-    if (inCheck && depth > 0) depth++;
+    // Check extension: search deeper if in check, ma con limite per evitare esplosione
+    // Limitiamo a depth massima di 10 per evitare stack overflow e segfault
+    constexpr int64_t MAX_EXTENDED_DEPTH = 10;
+    const bool inCheck = b.inCheck(activeColor);
+    if (inCheck && depth > 0 && depth < MAX_EXTENDED_DEPTH) {
+        depth++;
+    }
 
     // Transposition table lookup
     const uint64_t hashKey = computeHashKey(b);
@@ -196,6 +202,11 @@ void Engine::search(uint64_t depth) {
 
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
     this->nodesSearched++;
+
+    // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
+    if (ply >= MAX_PLY - 1) {
+        return this->evaluate(b);
+    }
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
