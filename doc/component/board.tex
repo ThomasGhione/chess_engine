@@ -1,52 +1,165 @@
 \subsection{Board}
 \paragraph{Descrizione classe:}
-Rappresenta la foto di una scacchiera in questo momento.
+Rappresenta una posizione scacchistica completa in un dato momento, includendo la disposizione dei pezzi
+e tutte le informazioni di stato necessarie (turno, diritti di arrocco, en passant, contatori di mosse).
 
 \paragraph{Costruttori}
-Sono presenti due costruttori:
+Sono presenti tre costruttori principali:
 
 \begin{enumerate}
-  \item Costruttore vuoto: Genera la posizione classica degli scacchi.
-  \item (std::string): Costruttore che prende un FEN
-  costruendo la relativa posizione.
+  \item \texttt{Board()}: Costruttore vuoto che genera la posizione iniziale standard degli scacchi.
+  \item \texttt{Board(const std::array<uint32\_t, 8>\& chessboard)}: Costruisce una board da un array.
+  \item \texttt{Board(const std::string\& fen)}: Costruttore che prende una stringa FEN\footnote{Forsyth-Edwards Notation}
+        costruendo la relativa posizione.
 \end{enumerate}
 
-\paragraph{Attributi:}
-\begin{lstlisting}
-  bitmap board
+\paragraph{Rappresentazione dei dati:}
+
+\subparagraph{Struttura principale:}
+\begin{lstlisting}[language=C++]
+std::array<uint32_t, 8> chessboard;  // 8 righe
 \end{lstlisting}
 
-La bitmap contiene in totale 3 informazioni:
+Ogni \texttt{uint32\_t} rappresenta una riga della scacchiera (8 pezzi × 4 bit = 32 bit).
+I 4 bit per pezzo codificano:
+
 \begin{enumerate}
-  \item Indice, che viene trasformato in coordinate
-  \item Tipo del pezzo tramite 3 bit
-  \item Colore del pezzo tramite 1 bit
+  \item \textbf{3 bit per il tipo} di pezzo (EMPTY=0, PAWN=1, KNIGHT=2, BISHOP=3, ROOK=4, QUEEN=5, KING=6)
+  \item \textbf{1 bit per il colore} (WHITE=0, BLACK=1 - rappresentato dal bit più significativo 0x8)
 \end{enumerate}
 
 \immediate\write18{convert img/piecebit.drawio.svg img/piecebit.png}
 \includegraphics[scale=0.6]{./img/piecebit.png}
 
-La posizione \textit{board} 0 rappresenta la casella: a8.
-Procedendo con l'indice di \textit{board}, iniziando dalla
-casella \textit{a8} (casa in alto a sinistra nella scacchiera),
-si procede da da sinistra verso destra e dell'alto verso il basso.
+\subparagraph{Mappatura indici:}
+La posizione con indice 0 rappresenta la casella \texttt{a8} (angolo in alto a sinistra).
+Gli indici procedono da sinistra a destra e dall'alto verso il basso:
 
-Riposto alcune corrispondenze per spiegare ulteriormente:
 \begin{itemize}
-  \item Indice 7: h8
-  \item Indice 9: b7
-  \item Indice 18: c6
-  \item Indice 37: f4
+  \item Indice 0-7: Ottava traversa (a8, b8, ..., h8)
+  \item Indice 8-15: Settima traversa (a7, b7, ..., h7)
+  \item Indice 56-63: Prima traversa (a1, b1, ..., h1)
 \end{itemize}
 
-\paragraph{Metodi:}
-Ancora in fase di definizione.
+Esempi specifici:
+\begin{itemize}
+  \item Indice 0: a8 \quad\quad Indice 7: h8
+  \item Indice 8: a7 \quad\quad Indice 9: b7
+  \item Indice 18: c6 \quad\quad Indice 37: f4
+  \item Indice 56: a1 \quad\quad Indice 63: h1
+\end{itemize}
 
-\paragraph{Decisioni progettuali}
-Sapendo che altrove nel progetto si creeranno diverse
-istanze di \textit{Board} abbiamo cercato di renderla il
-più possibile leggera a livello di memoria.
-L'attuale decisione ultima è quella descritta della bit-board.
-Questa soluzione permette di avere una board contenuta in \textit{32 byte}.
-($4 bit * 64 caselle = 256 bit / 8 byte/bit = 32 byte$)
-Il resto dei metodi ove possibile è statico per non avere peso sulla singola istanza.
+\subparagraph{Bitboards di occupazione:}
+Per ottimizzare calcoli di mosse e attacchi, la classe mantiene anche:
+\begin{lstlisting}[language=C++]
+uint64_t whitePiecesBB;  // Bitboard pezzi bianchi
+uint64_t blackPiecesBB;  // Bitboard pezzi neri
+uint64_t occupancyBB;    // Bitboard tutte le case occupate
+\end{lstlisting}
+
+Questi vengono aggiornati tramite \texttt{updateOccupancyBB()} ogni volta che la posizione cambia.
+
+\paragraph{Stato della partita:}
+\begin{lstlisting}[language=C++]
+uint8_t activeColor;           // WHITE o BLACK
+uint8_t castle;                // Bitmask diritti arrocco
+std::array<Coords, 2> enPassant; // Case en passant possibili
+uint16_t halfMoveClock;        // Contatore fifty-move rule
+uint16_t fullMoveClock;        // Numero mossa corrente
+uint8_t hasMoved;              // Bitmask pezzi che si sono mossi
+\end{lstlisting}
+
+Il campo \texttt{castle} usa una bitmask a 4 bit:
+\begin{itemize}
+  \item Bit 0: Arrocco corto bianco (O-O)
+  \item Bit 1: Arrocco lungo bianco (O-O-O)
+  \item Bit 2: Arrocco corto nero
+  \item Bit 3: Arrocco lungo nero
+\end{itemize}
+
+\paragraph{Metodi principali:}
+
+\subparagraph{Gestione mosse:}
+\begin{itemize}
+  \item \texttt{movePiece(const Move\& move, uint8\_t promotionType = 0)}: Esegue una mossa,
+        gestendo casi speciali (arrocco, en passant, promozione). Restituisce \texttt{MoveState} per l'undo.
+  \item \texttt{unmovePiece(const MoveState\& state)}: Annulla l'ultima mossa ripristinando lo stato precedente.
+  \item \texttt{canMoveTo(const Coords\& from, const Coords\& to)}: Verifica se una mossa è legale.
+\end{itemize}
+
+\subparagraph{Generazione mosse:}
+\begin{itemize}
+  \item \texttt{getPieceMovesBB(uint8\_t index)}: Restituisce bitboard delle destinazioni pseudo-legali per un pezzo.
+  \item \texttt{hasAnyLegalMove()}: Verifica velocemente se esistono mosse legali (per mate/stalemate detection).
+\end{itemize}
+
+\subparagraph{Analisi posizione:}
+\begin{itemize}
+  \item \texttt{isSquareAttacked(uint8\_t square, bool byWhite)}: Verifica se una casa è attaccata.
+  \item \texttt{isInCheck(bool isWhite)}: Verifica se un giocatore è sotto scacco.
+  \item \texttt{getPieceIndex(uint8\_t pieceType, bool isWhite)}: Trova l'indice di un pezzo (usato per i re).
+\end{itemize}
+
+\subparagraph{Conversioni:}
+\begin{itemize}
+  \item \texttt{fromFenToBoard(const std::string\& fen)}: Carica posizione da stringa FEN.
+  \item \texttt{toFen()}: Esporta posizione in formato FEN.
+\end{itemize}
+
+\paragraph{Strutture dati ausiliarie:}
+
+\subparagraph{Move:}
+\begin{lstlisting}[language=C++]
+struct Move {
+    Coords from;
+    Coords to;
+};
+\end{lstlisting}
+
+\subparagraph{MoveState:}
+Struttura che salva tutto lo stato necessario per l'undo di una mossa:
+\begin{itemize}
+  \item Stato di gioco (turno, clock, diritti arrocco, en passant)
+  \item Informazioni sul pezzo mosso e catturato
+  \item Flag per casi speciali (castling, en passant capture, promotion)
+  \item Indici rook per castling
+  \item Indici re precedenti
+\end{itemize}
+
+\paragraph{Decisioni progettuali:}
+
+\subparagraph{Efficienza memoria:}
+Ogni istanza di Board occupa memoria limitata:
+\begin{itemize}
+  \item Chessboard: 32 bytes (8 × uint32\_t)
+  \item Occupancy bitboards: 24 bytes (3 × uint64\_t)
+  \item Stato: ~20 bytes (flag, contatori, coordinate)
+  \item \textbf{Totale}: ~80 bytes per posizione
+\end{itemize}
+
+Questo è cruciale poiché l'engine crea migliaia di Board durante la ricerca.
+
+\subparagraph{Rappresentazione ibrida:}
+La scelta di usare sia array di uint32\_t che bitboard offre vantaggi:
+\begin{itemize}
+  \item \textbf{Array}: Accesso diretto O(1) al pezzo in una casa specifica
+  \item \textbf{Bitboard}: Operazioni batch veloci su set di case (AND, OR, XOR, popcount)
+\end{itemize}
+
+\subparagraph{Move/Unmove pattern:}
+Il metodo \texttt{movePiece} restituisce un \texttt{MoveState} che contiene tutto lo stato necessario
+per l'undo. Questo permette all'engine di esplorare l'albero di mosse senza bisogno di copiare
+l'intera board:
+\begin{lstlisting}[language=C++]
+MoveState state = board.movePiece(move);
+// ... valuta posizione ...
+board.unmovePiece(state);
+\end{lstlisting}
+
+\subparagraph{Costanti e maschere:}
+La classe definisce costanti statiche per manipolare i 4 bit di ogni pezzo:
+\begin{lstlisting}[language=C++]
+static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
+static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
+static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
+\end{lstlisting}

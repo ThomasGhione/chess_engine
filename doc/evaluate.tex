@@ -1,25 +1,238 @@
 \section{Funzione di valutazione}
 
-Uno degli aspetti chiave di una motore è
-avere una funzione che valuti una posizione.
+Uno degli aspetti chiave di un motore scacchistico è
+avere una funzione che valuti staticamente una posizione senza esplorarla.
 
-$$ val(\mathbb{R}^{9}) \longrightarrow \mathbb{R}$$
+\subsection{Definizione matematica}
 
-Scomponiamo questa funzione per capire i suoi campi.
+$$ \text{evaluate}: \text{Board} \longrightarrow \mathbb{Z} $$
 
+\subsubsection{Input:}
+L'input è un oggetto \texttt{Board} contenente:
 \begin{itemize}
-\item L'input è rappresentato da le otto
-righe della scacchiera e un ultimo dato che rappresenta
-delle informazioni supplementari:
-Casella del possibile presa al varco, numero mosse, ecc...
-
-\item L'output della funzione rappresenta un numero che
-idealmente dovrebbe specchiare la situazione sulla scacchiera.
-Un numero negativo indica un vantaggio al possessore dei pezzi neri.
-Un numero positivo indica un vantaggio per il possessore dei pezzi bianchi.
-Il numero 0 dovrebbe essere una posizione uguale.
+\item Le otto righe della scacchiera (disposizione pezzi)
+\item Informazioni supplementari: en passant, diritti di arrocco, turno, contatori mosse
 \end{itemize}
 
-\subsection{Criteri di valutazione per una posizione}
+\subsubsection{Output:}
+Un numero intero (centipawns) che rappresenta la valutazione della posizione:
+\begin{itemize}
+\item \textbf{Valore positivo}: Vantaggio per il bianco
+\item \textbf{Valore negativo}: Vantaggio per il nero
+\item \textbf{Zero}: Posizione equilibrata
+\item \textbf{$\pm\infty$}: Scacco matto (vittoria/sconfitta)
+\end{itemize}
+
+Scala tipica: 100 centipawns = valore di un pedone.
+
+\subsection{Implementazione della funzione}
+
+La funzione \texttt{Engine::evaluate(const chess::Board\& board)} implementa
+la valutazione attraverso diversi componenti:
+
+\subsubsection{1. Riconoscimento scacco matto}
+
+\begin{lstlisting}[language=C++]
+if (board.isCheckmate(board.getActiveColor())) {
+    return evaluateCheckmate(board);
+}
+\end{lstlisting}
+
+Se la posizione è scacco matto, restituisce immediatamente:
+\begin{itemize}
+\item \texttt{POS\_INF} se il bianco ha vinto (nero è matto)
+\item \texttt{NEG\_INF} se il nero ha vinto (bianco è matto)
+\end{itemize}
+
+\subsubsection{2. Delta materiale}
+
+Calcolo del vantaggio materiale usando la funzione \texttt{getMaterialDeltaFAST()}:
+
+\begin{lstlisting}[language=C++]
+int64_t materialDelta = getMaterialDeltaFAST(board);
+eval += materialDelta;
+\end{lstlisting}
+
+\textbf{Valori dei pezzi} (definiti in \texttt{basicrules.hpp}):
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Pezzo} & \textbf{Valore (centipawns)} \\
+\hline
+Pedone   & 100 \\
+Cavallo  & 320 \\
+Alfiere  & 330 \\
+Torre    & 500 \\
+Regina   & 900 \\
+Re       & 20000 (valore nominale) \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{Implementazione efficiente}:
+\begin{lstlisting}[language=C++]
+int w = __builtin_popcountll(b.pawns_bb[0]);
+int bl = __builtin_popcountll(b.pawns_bb[1]);
+delta += (w - bl) * PIECE_VALUES[PAWN];
+\end{lstlisting}
+
+Usa \texttt{popcount} hardware per contare pezzi nei bitboard in tempo O(1).
+
+\subsubsection{3. Riconoscimento fase di gioco}
+
+La valutazione distingue tra \textbf{mediogioco} ed \textbf{endgame}:
+
+\begin{lstlisting}[language=C++]
+int nonPawnNonKingPieces = __builtin_popcountll(minorMajors);
+bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
+\end{lstlisting}
+
+Conta pezzi pesanti (cavalli, alfieri, torri, regine):
+\begin{itemize}
+\item Se $\leq$ \texttt{PHASE\_FINAL\_THRESHOLD}: è endgame
+\item Altrimenti: è mediogioco/apertura
+\end{itemize}
+
+Questo influenza:
+\begin{itemize}
+\item Piece-Square Tables del re (centralizzazione in endgame)
+\item Piece-Square Tables dei pedoni (valore diverso in endgame)
+\end{itemize}
+
+\subsubsection{4. Piece-Square Tables (PSQT)}
+
+Bonus/penalty in base alla posizione di ogni pezzo sulla scacchiera.
+
+\textbf{Tavole disponibili} (in \texttt{piecevaluetables.hpp}):
+\begin{itemize}
+\item \texttt{PAWN\_VALUES\_TABLE}: Pedoni nel mediogioco
+\item \texttt{PAWN\_END\_GAME\_VALUES\_TABLE}: Pedoni nell'endgame
+\item \texttt{KNIGHT\_VALUES\_TABLE}: Cavalli (preferiscono il centro)
+\item \texttt{BISHOP\_VALUES\_TABLE}: Alfieri (preferiscono diagonali lunghe)
+\item \texttt{ROOK\_VALUES\_TABLE}: Torri (preferiscono colonne aperte)
+\item \texttt{QUEEN\_VALUES\_TABLE}: Regina (centro/mobilità)
+\item \texttt{KING\_MIDDLE\_GAME\_VALUES\_TABLE}: Re nel mediogioco (preferisce angoli)
+\item \texttt{KING\_END\_GAME\_VALUES\_TABLE}: Re nell'endgame (preferisce centro)
+\end{itemize}
+
+\textbf{Algoritmo}:
+\begin{lstlisting}[language=C++]
+auto addPsqtFor = [&](uint64_t bbWhite, uint64_t bbBlack,
+                       auto valueSelectorWhite) {
+    // Iterazione sui pezzi bianchi
+    uint64_t bb = bbWhite;
+    while (bb) {
+        uint8_t sq = __builtin_ctzll(bb);  // trova bit meno significativo
+        bb &= (bb - 1);                    // rimuovi quel bit
+        eval += valueSelectorWhite(sq);
+    }
+
+    // Iterazione sui pezzi neri (con indice specchiato)
+    bb = bbBlack;
+    while (bb) {
+        uint8_t sq = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        uint8_t idx = mirrorIndex(sq);
+        eval -= valueSelectorWhite(idx);
+    }
+};
+\end{lstlisting}
+
+\textbf{Mirror index}: I neri sono valutati come se fossero dalla loro prospettiva.
+La funzione \texttt{mirrorIndex(sq)} riflette la casa verticalmente: $\text{mirror}(sq) = 56 - (sq \% 8) + (sq / 8)$.
+
+\subsubsection{5. Bonus arrocco}
+
+\begin{lstlisting}[language=C++]
+if (castled) eval += isWhite ? CASTLING_BONUS : -CASTLING_BONUS;
+\end{lstlisting}
+
+Rileva configurazioni di pezzi che indicano arrocco completato:
+\begin{itemize}
+\item \textbf{Bianco O-O}: Re su g1, torre su f1
+\item \textbf{Bianco O-O-O}: Re su c1, torre su d1
+\item \textbf{Nero O-O}: Re su g8, torre su f8
+\item \textbf{Nero O-O-O}: Re su c8, torre su d8
+\end{itemize}
+
+Valore: \texttt{CASTLING\_BONUS} (definito in \texttt{basebonuspenaltyvalues.hpp}).
+
+\subsection{Criteri di valutazione implementati}
+
+\begin{enumerate}
+\item \textbf{Materiale}: Differenza in valore dei pezzi
+\item \textbf{Posizione pezzi}: Piece-Square Tables (centralizzazione, controllo)
+\item \textbf{Fase di gioco}: Adattamento apertura/mediogioco vs endgame
+\item \textbf{Sicurezza del re}: Re protetto (angolo) nel mediogioco, attivo (centro) nell'endgame
+\item \textbf{Arrocco}: Bonus per arrocco completato
+\item \textbf{Struttura pedonale}: Pedoni avanzati valgono di più (via PSQT)
+\end{enumerate}
+
+\subsection{Criteri non ancora implementati (TODO)}
+
+Dalla sezione \texttt{todo.tex}, fattori da considerare in future iterazioni:
+
+\subsubsection{Generale:}
+\begin{itemize}
+\item Mobilità pezzi (numero mosse disponibili)
+\item King's safety (pedoni davanti al re)
+\item Pawn islands (gruppi di pedoni separati)
+\item Pedoni doppi/tripli (penalità)
+\item Pedoni passati (bonus)
+\item Pedoni in prossimità di promozione (7° e 2° traversa)
+\item Pezzi inchiodati (pinned pieces)
+\item Occupazione delle ali
+\item Alfieri in fianchetto
+\item Coppia alfieri (bishop pair bonus)
+\item Torri su colonne aperte/semi-aperte
+\end{itemize}
+
+\subsubsection{Endgame specifico:}
+\begin{itemize}
+\item Pedoni passati supportati da altri pedoni
+\item Opposizione del re
+\item Zugzwang
+\item Regola del quadrato per pedoni
+\end{itemize}
+
+\subsection{Performance della valutazione}
+
+La funzione \texttt{evaluate()} è chiamata milioni di volte durante la ricerca, quindi
+l'efficienza è critica.
+
+\textbf{Ottimizzazioni implementate}:
+\begin{itemize}
+\item \textbf{Bitboard operations}: Uso di popcount e ctz hardware
+\item \textbf{Lambda inline}: Il compilatore può espandere le lambda inline
+\item \textbf{Lookup tables}: PSQT pre-calcolate, nessun calcolo a runtime
+\item \textbf{Early exit}: Scacco matto rilevato immediatamente
+\item \textbf{Cache-friendly}: Bitboard contigui in memoria
+\end{itemize}
+
+\textbf{Tempo tipico}: ~50-100 ns per valutazione su hardware moderno.
+
+\subsection{Funzione alternativa: getMaterialDelta()}
+
+Esiste una versione alternativa del calcolo materiale:
+
+\begin{lstlisting}[language=C++]
+int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
+    // Usa un polinomio per calcolare valori pezzi
+    auto pieceValue = [](uint8_t x) {
+        return (x * (-134220 + x * (304540 + ...))) / 36.0;
+    };
+    // ...
+}
+\end{lstlisting}
+
+\textbf{Differenza}:
+\begin{itemize}
+\item Itera su tutte le 64 case invece di usare bitboard
+\item Usa un polinomio interpolante per calcolare valori
+\item Più lenta di \texttt{getMaterialDeltaFAST()}
+\item Mantenuta per compatibilità o testing
+\end{itemize}
+
+\textbf{Versione usata attualmente}: \texttt{getMaterialDeltaFAST()} per performance ottimali.
 
 
