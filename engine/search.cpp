@@ -285,182 +285,176 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     return best;
 }
 
-// Generate all legal moves using bitboard representation (optimized, but safe)
-std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b) const {
+__attribute__((always_inline))
+inline void addMovesFromMask_fast(
+    const chess::Board& b,
+    std::vector<chess::Board::Move>& moves,
+    const uint8_t from,
+    uint64_t mask,
+    const uint64_t ownOcc
+) {
+    mask &= ~ownOcc;
+
+    const chess::Coords fromC{from};
+
+    while (mask) {
+        const uint8_t to = __builtin_ctzll(mask);
+        mask &= (mask - 1);
+
+        chess::Coords toC{to};
+
+        if (__builtin_expect(b.canMoveToBB(fromC, toC), 1)) {
+            moves.emplace_back(chess::Board::Move{fromC, toC});
+        }
+    }
+}
+
+std::vector<chess::Board::Move>
+Engine::generateLegalMoves(const chess::Board& b) const 
+{
     std::vector<chess::Board::Move> moves;
-    moves.reserve(40); // Pre-allocate per ridurre riallocazioni
+    moves.reserve(40);
 
     const uint8_t color    = b.getActiveColor();
     const bool    isBlack  = (color == chess::Board::BLACK);
     const uint8_t oppColor = isBlack ? chess::Board::WHITE : chess::Board::BLACK;
+
     const uint64_t occ     = b.getPiecesBitMap();
 
-    // Per‑piece bitboards per il side to move
-    uint64_t pawns   = b.pawns_bb[isBlack];
-    uint64_t knights = b.knights_bb[isBlack];
-    uint64_t bishops = b.bishops_bb[isBlack];
-    uint64_t rooks   = b.rooks_bb[isBlack];
-    uint64_t queens  = b.queens_bb[isBlack];
-    uint64_t kings   = b.kings_bb[isBlack];
+    const uint64_t pawns   = b.pawns_bb[isBlack];
+    const uint64_t knights = b.knights_bb[isBlack];
+    const uint64_t bishops = b.bishops_bb[isBlack];
+    const uint64_t rooks   = b.rooks_bb[isBlack];
+    const uint64_t queens  = b.queens_bb[isBlack];
+    const uint64_t kings   = b.kings_bb[isBlack];
 
-    const uint64_t ownOccupancy =
-        pawns | knights | bishops | rooks | queens | kings;
+    const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
 
-    // -----------------------------
-    // 1) KING MOVES (sempre sicure) 
-    // -----------------------------
-    if (kings) {
-        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
-        const uint8_t f    = from & 7;
-        const uint8_t r    = from >> 3;
 
-        // Normali mosse del re: escludi pezzi propri e case attaccate
-        uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOccupancy;
 
-        while (movesMask) {
-            const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(movesMask));
-            movesMask &= (movesMask - 1);
+    // --------------------------------------------------------------------
+    // 1) KING
+    // --------------------------------------------------------------------
+    if (__builtin_expect(kings != 0, 1)) {
 
-            // Usa la versione con excludeSquare per evitare il bug del ray-blocking
-            if (!b.isSquareAttacked(to, oppColor, from)) {
+        const uint8_t kingIndex = __builtin_ctzll(kings);
+        const chess::Coords kingPos{kingIndex};
+        uint64_t kmask = pieces::KING_ATTACKS[kingIndex] & ~ownOcc;
+
+        while (kmask) {
+            const uint8_t to = __builtin_ctzll(kmask);
+            kmask &= (kmask - 1);
+
+            if (!b.isSquareAttacked(to, oppColor, kingIndex)) {
                 moves.emplace_back(chess::Board::Move{
-                    chess::Coords{from}, chess::Coords{to}
+                    kingPos, chess::Coords{to}
                 });
             }
         }
 
-        // Castling: lasciamo tutti i controlli complessi a canMoveToBB
-        // (diritti, path libero, case non attaccate, ecc.)
-        if (f + 2 <= 7) {
-            chess::Coords toKs{static_cast<uint8_t>(f + 2), r};
-            if (b.canMoveToBB(chess::Coords{from}, toKs)) {
-                moves.emplace_back(chess::Board::Move{
-                    chess::Coords{from}, toKs
-                });
-            }
-        }
+        // Castling
+        const uint8_t expected = isBlack ? 4 : 60;
 
-        if (f >= 2) {
-            chess::Coords toQs{static_cast<uint8_t>(f - 2), r};
-            if (b.canMoveToBB(chess::Coords{from}, toQs)) {
-                moves.emplace_back(chess::Board::Move{
-                    chess::Coords{from}, toQs
-                });
-            }
+        if (kingIndex == expected) {
+            // Ks
+            chess::Coords toKs{uint8_t(expected + 2)};
+            if (b.canMoveToBB(kingPos, toKs))
+                moves.emplace_back(chess::Board::Move{kingPos, toKs});
+
+            // Qs
+            chess::Coords toQs{uint8_t(expected - 2)};
+            if (b.canMoveToBB(kingPos, toQs))
+                moves.emplace_back(chess::Board::Move{kingPos, toQs});
         }
     }
 
-    // -----------------------------
-    // 2) PRE-CALCOLO STATO DI CHECK
-    // -----------------------------
-    //const bool inCheck = b.inCheck(color);
-
-    // Se non sei in check, puoi muovere tutti i pezzi normalmente; 
-    // se sei in double‑check, solo re (già gestito sopra: nessun altro pezzo salverà la posizione),
-    // quindi possiamo saltare la generazione degli altri pezzi se in double check.
-    // Per evitare duplicare logica, usiamo una approssimazione sicura:
-    // - se in check, comunque generiamo pseudo‑mosse, ma filtriamo con canMoveToBB.
-    // - un vero double-check verrà automaticamente scartato da canMoveToBB per i pezzi non‑re.
-    // Quindi non servono euristiche complicate qui: teniamo la versione semplice ma con filtri bitboard.
 
 
-    // -----------------------------
-    // 3) HELPER PER AGGIUNGERE MOSSE
-    // -----------------------------
-
-    auto addMovesFromMask = [&](uint8_t from, uint64_t mask) {
-        mask &= ~ownOccupancy; // rimuovi case occupate da nostri pezzi
-
-        while (mask) {
-            const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
-            mask &= (mask - 1);
-            if (b.canMoveToBB(chess::Coords{from}, chess::Coords{to})) {
-                moves.emplace_back(chess::Board::Move{chess::Coords{from}, chess::Coords{to}});
-            }
-        }
-    };
-
-    // -----------------------------
-    // 4) PAWNS
-    // -----------------------------
+    // --------------------------------------------------------------------
+    // 2) PAWNS
+    // --------------------------------------------------------------------
     {
-        uint64_t tmp = pawns;
-        while (tmp) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(tmp));
-            tmp &= (tmp - 1);
+        uint64_t bb = pawns;
+        while (bb) {
+            const uint8_t from = __builtin_ctzll(bb);
+            bb &= (bb - 1);
 
-            // Attacchi + spinte in avanti -> pseudo move mask
-            const uint64_t attacks =
-                pieces::PAWN_ATTACKS[!isBlack][from];
-            const uint64_t pushes =
+            uint64_t mask =
+                pieces::PAWN_ATTACKS[!isBlack][from] |
                 pieces::getPawnForwardPushes(from, !isBlack, occ);
 
-            uint64_t mask = attacks | pushes;
-
-            // NOTA: en passant è già gestito dentro canMoveToBB,
-            // quindi lasciare anche qui la casa target è OK.
-            addMovesFromMask(from, mask);
+            addMovesFromMask_fast(b, moves, from, mask, ownOcc);
         }
     }
 
-    // -----------------------------
-    // 5) KNIGHTS
-    // -----------------------------
+
+    // --------------------------------------------------------------------
+    // 3) KNIGHTS
+    // --------------------------------------------------------------------
     {
-        uint64_t tmp = knights;
-        while (tmp) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(tmp));
-            tmp &= (tmp - 1);
+        uint64_t bb = knights;
+        while (bb) {
+            const uint8_t from = __builtin_ctzll(bb);
+            bb &= (bb - 1);
 
-            const uint64_t mask = pieces::KNIGHT_ATTACKS[from];
-            addMovesFromMask(from, mask);
+            addMovesFromMask_fast(b, moves, from,
+                pieces::KNIGHT_ATTACKS[from], ownOcc);
         }
     }
 
-    // -----------------------------
-    // 6) BISHOPS
-    // -----------------------------
+
+    // --------------------------------------------------------------------
+    // 4) BISHOPS
+    // --------------------------------------------------------------------
     {
-        uint64_t tmp = bishops;
-        while (tmp) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(tmp));
-            tmp &= (tmp - 1);
+        uint64_t bb = bishops;
+        while (bb) {
+            const uint8_t from = __builtin_ctzll(bb);
+            bb &= (bb - 1);
 
-            const uint64_t mask = pieces::getBishopAttacks(from, occ);
-            addMovesFromMask(from, mask);
+            addMovesFromMask_fast(
+                b, moves, from,
+                pieces::getBishopAttacks(from, occ),
+                ownOcc
+            );
         }
     }
 
-    // -----------------------------
-    // 7) ROOKS
-    // -----------------------------
+
+    // --------------------------------------------------------------------
+    // 5) ROOKS
+    // --------------------------------------------------------------------
     {
-        uint64_t tmp = rooks;
-        while (tmp) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(tmp));
-            tmp &= (tmp - 1);
+        uint64_t bb = rooks;
+        while (bb) {
+            const uint8_t from = __builtin_ctzll(bb);
+            bb &= (bb - 1);
 
-            const uint64_t mask = pieces::getRookAttacks(from, occ);
-            addMovesFromMask(from, mask);
+            addMovesFromMask_fast(
+                b, moves, from,
+                pieces::getRookAttacks(from, occ),
+                ownOcc
+            );
         }
     }
 
-    // -----------------------------
-    // 8) QUEENS
-    // -----------------------------
+
+    // --------------------------------------------------------------------
+    // 6) QUEENS
+    // --------------------------------------------------------------------
     {
-        uint64_t tmp = queens;
-        while (tmp) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(tmp));
-            tmp &= (tmp - 1);
+        uint64_t bb = queens;
+        while (bb) {
+            const uint8_t from = __builtin_ctzll(bb);
+            bb &= (bb - 1);
 
-            const uint64_t mask = pieces::getQueenAttacks(from, occ);
-            addMovesFromMask(from, mask);
+            addMovesFromMask_fast(
+                b, moves, from,
+                pieces::getQueenAttacks(from, occ),
+                ownOcc
+            );
         }
     }
-
-    // Se vuoi, puoi usare `inCheck` per micro‑ottimizzazioni future (es. pruning di alcune mosse),
-    // ma per ora manteniamo la logica semplice e 100% corretta.
 
     return moves;
 }
@@ -533,44 +527,56 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
     }
 }
 
-std::vector<Engine::ScoredMove> Engine::sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) {
+std::vector<Engine::ScoredMove> Engine::sortLegalMoves(
+    const std::vector<chess::Board::Move>& moves,
+    int ply,
+    chess::Board& b,
+    bool usIsWhite)
+{
+    const size_t n = moves.size();
     std::vector<ScoredMove> orderedScoredMoves;
-    orderedScoredMoves.reserve(moves.size());
+    orderedScoredMoves.reserve(n); // pre-allocazione
 
-    // Pre-calcola valori costosi UNA VOLTA fuori dal loop
+    // Pre-calcolo variabili costose fuori dal loop
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
 
-    for (const auto& m : moves) {
+    // Cache alcune maschere per pezzi (tipo & tipo pezzo) per evitare doppie chiamate
+    orderedScoredMoves.reserve(n);
+
+    for (size_t i = 0; i < n; ++i) {
+        const auto& m = moves[i]; // const reference per evitare copia
         int64_t score = 0;
 
         const uint8_t fromPiece = b.get(m.from);
         const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+
         const uint8_t toPiece = b.get(m.to);
         const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
         const bool isCapture = (toPieceType != chess::Board::EMPTY);
 
-        // Calculate score components
-        this->addMVVLVABonus(m, b, score);
-        this->addPromotionBonus(m, fromPieceType, usIsWhite, score);
-        // this->addCheckBonus(m, b, usIsWhite, score);
+        // Add bonus
+        addMVVLVABonus(m, b, score);                  // catture
+        addPromotionBonus(m, fromPieceType, usIsWhite, score); // promozioni
 
-        // Killer move and history heuristic: only for non-captures
         if (!isCapture) {
-            this->addKillerAndHistoryBonus(m, ply, usIsWhite, score);
+            addKillerAndHistoryBonus(m, ply, usIsWhite, score); // killer/history
         }
 
-        this->addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
+        addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
 
-        orderedScoredMoves.emplace_back(ScoredMove{m, score});
+        // Emplace direttamente senza copia aggiuntiva
+        orderedScoredMoves.emplace_back(m, score);
     }
 
-    // Sort: mosse con score più alto prima
-    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(), 
-            [](const ScoredMove& a, const ScoredMove& b) {
-                return a.score > b.score;
-    });
+    // Ordina usando lambda inline e [niente copie]
+    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
+        [](const ScoredMove& a, const ScoredMove& b) noexcept {
+            return a.score > b.score;
+        });
 
     return orderedScoredMoves;
 }
+
+
 }; //namespace engine
