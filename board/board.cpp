@@ -868,9 +868,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             st.rookFromIndex = rookFromIndex;
             st.rookToIndex   = rookToIndex;
 
-            const uint8_t rook = this->get(to.rank(), rookFromFile);
-            this->set(to.rank(), rookToFile, static_cast<piece_id>(rook));
-            this->set(to.rank(), rookFromFile, EMPTY);
+            // Use Coords to ensure proper coordinate conversion
+            Coords rookFrom{rookFromFile, to.rank()};
+            Coords rookTo{rookToFile, to.rank()};
+            const uint8_t rook = this->get(rookFrom);
+            this->set(rookTo, static_cast<piece_id>(rook));
+            this->set(rookFrom, EMPTY);
             this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             this->removePieceFromBitboards(rook, rookFromIndex);
             this->addPieceToBitboards(rook, rookToIndex);
@@ -995,9 +998,9 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
     if (st.wasEnPassantCapture) {
         const uint8_t capIndex = st.enPassantCapturedIndex;
-        const uint8_t capRank = capIndex >> 3;
-        const uint8_t capFile = capIndex & 7;
-        this->set(capRank, capFile, static_cast<piece_id>(st.capturedPiece));
+        // Use Coords to ensure proper coordinate conversion
+        Coords capCoords(capIndex);
+        this->set(capCoords, static_cast<piece_id>(st.capturedPiece));
         this->occupancy |= (1ULL << capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
@@ -1010,13 +1013,14 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     if (st.wasCastling) {
         const uint8_t rookFromIndex = st.rookFromIndex;
         const uint8_t rookToIndex   = st.rookToIndex;
-        const uint8_t rank = rookFromIndex >> 3;
-        const uint8_t rookFromFile = rookFromIndex & 7;
-        const uint8_t rookToFile   = rookToIndex & 7;
         
-        const uint8_t rook = this->get(rank, rookToFile);
-        this->set(rank, rookFromFile, static_cast<piece_id>(rook));
-        this->set(rank, rookToFile, EMPTY);
+        // Use Coords to ensure proper coordinate conversion
+        Coords rookFrom(rookFromIndex);
+        Coords rookTo(rookToIndex);
+        
+        const uint8_t rook = this->get(rookTo);
+        this->set(rookFrom, static_cast<piece_id>(rook));
+        this->set(rookTo, EMPTY);
         this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
         this->removePieceFromBitboards(rook, rookToIndex);
         this->addPieceToBitboards(rook, rookFromIndex);
