@@ -122,10 +122,11 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Set en passant target if the move was a double pawn push
     if (movingType == PAWN) {
-        int dr = static_cast<int>(to.rank()) - static_cast<int>(from.rank());
+        // Optimize: use index arithmetic instead of rank() calls
+        const int dr = static_cast<int>(toIndex >> 3) - static_cast<int>(fromIndex >> 3);
         if (dr == 2 || dr == -2) {
-            uint8_t midRank = (from.rank() + to.rank()) / 2;
-            enPassant[0] = Coords{from.file(), midRank};
+            const uint8_t midIndex = (fromIndex + toIndex) >> 1; // Average of indices
+            enPassant[0] = Coords{midIndex};
         }
     }
 
@@ -142,7 +143,8 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
     // Verify pawn is on last rank according to color
     // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-    if ((color == WHITE && at.rank() != 0) || (color == BLACK && at.rank() != 7)) return false;
+    const uint8_t rank = at.index >> 3; // Extract rank from index directly
+    if ((color == WHITE && rank != 0) || (color == BLACK && rank != 7)) return false;
 
     choice = static_cast<char>(std::tolower(static_cast<unsigned char>(choice)));
     uint8_t newType = QUEEN; // default promotion
@@ -173,7 +175,8 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
     // If it was a pawn and landed on last rank, promote with given choice
     if (fromType == PAWN) {
         // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-        if ((fromColor == WHITE && to.rank() == 0) || (fromColor == BLACK && to.rank() == 7)) {
+        const uint8_t toRank = to.index >> 3; // Extract rank from index
+        if ((fromColor == WHITE && toRank == 0) || (fromColor == BLACK && toRank == 7)) {
             (void)this->promote(to, promotionChoice);
         }
     }
@@ -187,8 +190,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
     const uint8_t movingColor = this->getColor(from);
     const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
 
-    const uint8_t fromIndex = from.toIndex();
-    const uint8_t toIndex = to.toIndex();
+    const uint8_t fromIndex = from.index; // Direct access to index field
+    const uint8_t toIndex = to.index;     // Direct access to index field
     
     const uint64_t toBit = (1ULL << toIndex);
     const uint64_t occ = this->occupancy; // current board occupancy
@@ -199,15 +202,15 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
     uint8_t kingIndex = 64; // invalid sentinel
     if (inChk) {
         // Use the king bitboard to find king index quickly
-        const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
+        const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+        const uint64_t kingBB = kings_bb[side]; // Array index (0=WHITE, 1=BLACK)
         if (kingBB) {
-            kingIndex = __builtin_ctzll(kingBB);
+            kingIndex = __builtin_ctzll(kingBB); // Count trailing zeros = find LSB
 
-            const bool oppIsWhite = (oppColor == WHITE);
+            const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
             
             // Pawns
             {
-                const uint8_t oppSide = oppIsWhite ? 0 : 1;
                 uint64_t pawnsAtt = pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] &
                                     pawns_bb[oppSide];
                 attackerCount += __builtin_popcountll(pawnsAtt);
@@ -216,21 +219,21 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             // Knights
             {
                 uint64_t knightsAtt = pieces::KNIGHT_ATTACKS[kingIndex] &
-                                      (oppIsWhite ? knights_bb[0] : knights_bb[1]);
+                                      knights_bb[oppSide];
                 attackerCount += __builtin_popcountll(knightsAtt);
             }
 
             // Kings (adjacent)
             {
                 uint64_t kingsAtt = pieces::KING_ATTACKS[kingIndex] &
-                                    (oppIsWhite ? kings_bb[0] : kings_bb[1]);
+                                    kings_bb[oppSide];
                 attackerCount += __builtin_popcountll(kingsAtt);
             }
 
             // Sliding rook/queen (orthogonal)
             {
                 uint64_t rookMask = pieces::getRookAttacks(kingIndex, occ);
-                uint64_t rq = oppIsWhite ? (rooks_bb[0] | queens_bb[0]) : (rooks_bb[1] | queens_bb[1]);
+                uint64_t rq = rooks_bb[oppSide] | queens_bb[oppSide];
                 uint64_t rookAtt = rookMask & rq;
                 attackerCount += __builtin_popcountll(rookAtt);
             }
@@ -238,7 +241,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             // Sliding bishop/queen (diagonal)
             {
                 uint64_t bishopMask = pieces::getBishopAttacks(kingIndex, occ);
-                uint64_t bq = oppIsWhite ? (bishops_bb[0] | queens_bb[0]) : (bishops_bb[1] | queens_bb[1]);
+                uint64_t bq = bishops_bb[oppSide] | queens_bb[oppSide];
                 uint64_t bishopAtt = bishopMask & bq;
                 attackerCount += __builtin_popcountll(bishopAtt);
             }
@@ -258,7 +261,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             bool isEnPassant = false;
             // En passant: diagonal into empty square matching enPassant target
             if ((attacks & toBit) && ((occ & toBit) == 0ULL)) {
-                if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].toIndex()) {
+                if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].index) {
                     legal = true;
                     isEnPassant = true;
                 }
@@ -275,7 +278,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 
             // Simulate pawn move (including en-passant) using bitboards/occupancy only
             // to ensure king safety without copying the entire Board.
-            const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+            const uint8_t side = (movingColor == WHITE) ? 0 : 1; // Convert to array index
             const uint8_t oppSide = side ^ 1;
 
             // New occupancy after the move
@@ -308,8 +311,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             if (isEnPassant) {
                 const bool isWhitePawn = isWhite;
                 const int8_t dir = isWhitePawn ? 1 : -1;
-                Coords captured{to.file(), static_cast<uint8_t>(to.rank() - dir)};
-                const uint8_t capIndex = captured.toIndex();
+                // Optimize: calculate captured index directly from toIndex
+                const uint8_t capIndex = toIndex + (dir << 3); // dir * 8
                 const uint64_t capMask = (1ULL << capIndex);
 
                 // Remove captured enemy pawn from occupancy and its pawn bitboard
@@ -336,13 +339,13 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             }
 
             // King square (unchanged for pawn moves)
-            const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
+            // const uint8_t side = (movingColor == WHITE) ? 0 : 1; // Convert to array index
+            const uint64_t kingBB = kings_bb[side]; // Array index
             if (!kingBB) return false; // invalid position: treat as illegal
             const uint8_t kingSq = __builtin_ctzll(kingBB);
 
             // Check if king is attacked in the new position
-            const bool oppIsWhite = (oppColor == WHITE);
-            const uint8_t oppSideForPawns = oppIsWhite ? 0 : 1;
+            const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1; // Array index
 
             // Pawn attackers
             uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[oppSideForPawns][static_cast<int16_t>(kingSq)];
@@ -381,8 +384,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         case KING: {
             bitMap = pieces::KING_ATTACKS[fromIndex];
             // Disallow king moves into attacked destination squares
-            if (from.toIndex() != to.toIndex()) {
-                const uint8_t oppColor = (this->getColor(from) == WHITE) ? BLACK : WHITE;
+            if (fromIndex != toIndex) { // Optimize: direct index comparison
+                const uint8_t oppColor = movingColor == WHITE ? BLACK : WHITE; // Toggle color
                 // CRITICAL: usa excludeSquare per evitare ray-blocking del re stesso
                 if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor, fromIndex)) {
                     // Even if it's a normal king move square, it's attacked; reject
@@ -393,31 +396,33 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                 }
             }
             // Castling legality: check rights, path emptiness, and safe squares
-            if (from.rank() == to.rank()) {
-                const bool isWhite = (this->getColor(from) == WHITE);
-                int df = static_cast<int>(to.file()) - static_cast<int>(from.file());
-                const uint8_t r = from.rank();
-                const uint8_t kf = from.file();
+            const uint8_t fromRank = fromIndex >> 3; // Extract rank
+            const uint8_t toRank = toIndex >> 3;
+            if (fromRank == toRank) { // Same rank check
+                const bool isWhite = (movingColor == WHITE);
+                const int df = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7); // file diff
+                const uint8_t kf = fromIndex & 7; // king file
                 // Only allow castling from the initial king square (e1=rank 7 for white, e8=rank 0 for black)
-                if (!((isWhite && r == 7 && kf == 4) || (!isWhite && r == 0 && kf == 4))) {
+                if (!((isWhite && fromRank == 7 && kf == 4) || (!isWhite && fromRank == 0 && kf == 4))) {
                     break;
                 }
                 if (df == 2) { // kingside
                     bool rights = isWhite
                         ? ((castle & (1u << 0)) != 0u) // white O-O
                         : ((castle & (1u << 2)) != 0u); // black O-O
-                    bool emptyBetween = (this->get(Coords{kf + 1, r}) == EMPTY) && (this->get(Coords{kf + 2, r}) == EMPTY);
+                    // Optimize: calculate indices directly from rank and file offsets
+                    const uint8_t f1Idx = fromIndex + 1; // kf+1
+                    const uint8_t f2Idx = fromIndex + 2; // kf+2
+                    const uint8_t rookIdx = fromIndex + 3; // kf+3
+                    bool emptyBetween = (this->get(f1Idx) == EMPTY) && (this->get(f2Idx) == EMPTY);
                     {
-                        uint8_t rookPiece = this->get(Coords{kf + 3, r});
+                        uint8_t rookPiece = this->get(rookIdx);
                         bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
                         if (!rookOk) {
                             // fallthrough
                         } else {
-                            uint8_t eIdx = (r * 8 + kf);
-                            uint8_t fIdx = (r * 8 + (kf + 1));
-                            uint8_t gIdx = (r * 8 + (kf + 2));
                             uint8_t opp = isWhite ? BLACK : WHITE;
-                            bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(fIdx, opp) && !isSquareAttacked(gIdx, opp);
+                            bool safe = !isSquareAttacked(fromIndex, opp) && !isSquareAttacked(f1Idx, opp) && !isSquareAttacked(f2Idx, opp);
                             if (rights && emptyBetween && rookOk && safe) return true;
                         }
                     }
@@ -425,15 +430,17 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                     bool rights = isWhite
                         ? ((castle & (1u << 1)) != 0u) // white O-O-O
                         : ((castle & (1u << 3)) != 0u); // black O-O-O
-                    bool emptyBetween = (this->get(Coords{kf - 1, r}) == EMPTY) && (this->get(Coords{kf - 2, r}) == EMPTY) && (this->get(Coords{kf - 3, r}) == EMPTY);
+                    // Optimize: calculate indices directly
+                    const uint8_t d1Idx = fromIndex - 1; // kf-1
+                    const uint8_t d2Idx = fromIndex - 2; // kf-2
+                    const uint8_t d3Idx = fromIndex - 3; // kf-3
+                    const uint8_t rookIdx = fromIndex - 4; // kf-4
+                    bool emptyBetween = (this->get(d1Idx) == EMPTY) && (this->get(d2Idx) == EMPTY) && (this->get(d3Idx) == EMPTY);
                     {
-                        uint8_t rookPiece = this->get(Coords{kf - 4, r});
+                        uint8_t rookPiece = this->get(rookIdx);
                         bool rookOk = ((rookPiece & MASK_PIECE_TYPE) == ROOK) && ((rookPiece & MASK_COLOR) == (isWhite ? WHITE : BLACK));
-                        uint8_t eIdx = (r * 8 + kf);
-                        uint8_t dIdx = (r * 8 + (kf - 1));
-                        uint8_t cIdx = (r * 8 + (kf - 2));
                         uint8_t opp = isWhite ? BLACK : WHITE;
-                        bool safe = !isSquareAttacked(eIdx, opp) && !isSquareAttacked(dIdx, opp) && !isSquareAttacked(cIdx, opp);
+                        bool safe = !isSquareAttacked(fromIndex, opp) && !isSquareAttacked(d1Idx, opp) && !isSquareAttacked(d2Idx, opp);
                         if (rights && emptyBetween && rookOk && safe) return true;
                     }
                 }
@@ -453,7 +460,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 
     // For any non-king, non-pawn move, ensure king safety (pins and check resolution)
     if (fromType != KING && fromType != PAWN) {
-        const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+        const uint8_t side = (movingColor == WHITE) ? 0 : 1; // Convert to array index
         const uint8_t oppSide = side ^ 1;
 
         const uint64_t fromMask = (1ULL << fromIndex);
@@ -519,15 +526,15 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         }
 
         // King square (unchanged because king is not moving here)
-        const uint64_t kingBB = (movingColor == WHITE) ? kings_bb[0] : kings_bb[1];
+        // const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+        const uint64_t kingBB = kings_bb[side]; // Array index
         if (!kingBB) return false; // invalid position: treat as illegal
         const uint8_t kingSq = __builtin_ctzll(kingBB);
 
         // Check if king is attacked in the new position using updated occupancy/bitboards
-        const bool oppIsWhite = (oppColor == WHITE);
+        const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1; // Array index
 
         // Pawn attackers
-        const uint8_t oppSideForPawns = oppIsWhite ? 0 : 1;
         uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[oppSideForPawns][static_cast<int16_t>(kingSq)];
         if (pawnAttackers & oppPawns) return false;
 
@@ -562,8 +569,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
     // Use per-piece bitboards to test attacks quickly
     const uint64_t occ = this->occupancy;
-    const bool byWhite = (byColor == WHITE);
-    const uint8_t sideIndex = byWhite ? 0 : 1;
+    const uint8_t sideIndex = (byColor == WHITE) ? 0 : 1; // Convert to array index
     
     // Pawns: any pawn of byColor that attacks target?
     uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[sideIndex][targetIndex];
@@ -593,8 +599,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
     const uint64_t occ = this->occupancy & ~(1ULL << excludeSquare);
-    const bool byWhite = (byColor == WHITE);
-    const uint8_t sideIndex = byWhite ? 0 : 1;
+    const uint8_t sideIndex = (byColor == WHITE) ? 0 : 1; // Convert to array index
 
     // Pawns: any pawn of byColor that attacks target?
     uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[sideIndex][targetIndex];
@@ -623,8 +628,9 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 
 // Is the given color currently in check?
 bool Board::inCheck(uint8_t color) const noexcept {
-    // Find king square using king bitboards
-    const uint64_t kingBB = kings_bb[color == BLACK];
+    // Find king square using king bitboards (convert to array index)
+    const uint8_t side = (color == WHITE) ? 0 : 1;
+    const uint64_t kingBB = kings_bb[side];
     if (!kingBB) {
         return false; // no king found (invalid position) -> treat as not in check
     }
