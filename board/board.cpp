@@ -6,8 +6,8 @@ namespace chess {
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
     if (!canMoveToBB(from, to)) return false;
 
-    const uint8_t fromIndex = from.index();
-    const uint8_t toIndex = to.index();
+    const uint8_t fromIndex = from.index;
+    const uint8_t toIndex = to.index;
     const uint8_t moving = this->get(from);
     const uint8_t movingType = moving & this->MASK_PIECE_TYPE;
     const uint8_t movingColor = moving & this->MASK_COLOR;
@@ -21,13 +21,13 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
         // Check if pawn moved diagonally (different file): (fromIndex & 7) != (toIndex & 7)
-        if ((fromIndex & 7) != (toIndex & 7) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index())) {
+        if ((fromIndex & 7) != (toIndex & 7) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index)) {
             const bool isWhite = (movingColor == WHITE);
             // Coords convention: white moves toward rank 0, black toward rank 7
             const int8_t forwardDir = isWhite ? -1 : 1;
             // Captured pawn is one rank behind the destination
             const uint8_t capturedIndex = toIndex + (forwardDir << 3); // forwardDir * 8
-            this->set(Coords(capturedIndex), EMPTY);
+            this->set(capturedIndex, EMPTY);
             this->occupancy &= ~(1ULL << capturedIndex);
         }
     }
@@ -49,8 +49,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             const uint8_t rookToIndex = toIndex - 1;   // f = g - 1, simplified to toIndex - 1
             const uint8_t rook = this->get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
-                this->set(Coords(rookFromIndex), EMPTY);
+                this->set(rookToIndex, static_cast<piece_id>(rook));
+                this->set(rookFromIndex, EMPTY);
                 this->occupancy |= (1ULL << rookToIndex);
                 this->occupancy &= ~(1ULL << rookFromIndex);
             }
@@ -60,8 +60,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             const uint8_t rookToIndex = toIndex + 1;   // d = c + 1, simplified to toIndex + 1
             const uint8_t rook = this->get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
-                this->set(Coords(rookFromIndex), EMPTY);
+                this->set(rookToIndex, static_cast<piece_id>(rook));
+                this->set(rookFromIndex, EMPTY);
                 this->occupancy |= (1ULL << rookToIndex);
                 this->occupancy &= ~(1ULL << rookFromIndex);
             }
@@ -875,8 +875,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
             // Use index-based get/set for efficiency (get(index) does Coords conversion internally)
             const uint8_t rook = this->get(rookFromIndex);
-            this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
-            this->set(Coords(rookFromIndex), EMPTY);
+            this->set(rookToIndex, static_cast<piece_id>(rook));
+            this->set(rookFromIndex, EMPTY);
             this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             this->removePieceFromBitboards(rook, rookFromIndex);
             this->addPieceToBitboards(rook, rookToIndex);
@@ -1001,8 +1001,8 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
     if (st.wasEnPassantCapture) {
         const uint8_t capIndex = st.enPassantCapturedIndex;
-        // Use Coords constructor from index for proper coordinate conversion
-        this->set(Coords(capIndex), static_cast<piece_id>(st.capturedPiece));
+        // Use index-based set for efficiency
+        this->set(capIndex, static_cast<piece_id>(st.capturedPiece));
         this->occupancy |= (1ULL << capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
@@ -1018,8 +1018,8 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         
         // Use index-based operations for efficiency
         const uint8_t rook = this->get(rookToIndex);
-        this->set(Coords(rookFromIndex), static_cast<piece_id>(rook));
-        this->set(Coords(rookToIndex), EMPTY);
+        this->set(rookFromIndex, static_cast<piece_id>(rook));
+        this->set(rookToIndex, EMPTY);
         this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
         this->removePieceFromBitboards(rook, rookToIndex);
         this->addPieceToBitboards(rook, rookFromIndex);

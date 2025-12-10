@@ -7,13 +7,13 @@
 
 namespace chess {
 class Coords {
-private:
-    // Storage efficiente: solo 1 byte invece di 2
-    // Convenzione Board: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
-    uint8_t index_ = INVALID_COORDS;
-
 public:
     constexpr static uint8_t INVALID_COORDS = 255;
+
+    // Storage efficiente: solo 1 byte invece di 2
+    // Convenzione Board: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
+
+    uint8_t index = INVALID_COORDS;
 
     // ============== COSTRUTTORI ==============
 
@@ -23,16 +23,16 @@ public:
     // Costruttore da index (0-63)
     // Usa validazione inline per efficienza
     constexpr explicit Coords(uint8_t idx) noexcept
-        : index_(idx < 64 ? idx : INVALID_COORDS) {}
+        : index(idx < 64 ? idx : INVALID_COORDS) {}
 
     // Costruttore da file e rank (0-7 ciascuno)
     // Formula: index = rank * 8 + file
     constexpr Coords(uint8_t f, uint8_t r) noexcept
-        : index_((f < 8 && r < 8) ? static_cast<uint8_t>(r * 8 + f) : INVALID_COORDS) {}
+        : index((f < 8 && r < 8) ? static_cast<uint8_t>(r * 8 + f) : INVALID_COORDS) {}
 
     // Costruttore da stringa notazione algebrica (es. "e4", "a8")
     // NON constexpr perché usa std::tolower che non è constexpr
-    Coords(const std::string& input) noexcept : index_(INVALID_COORDS) {
+    Coords(const std::string& input) noexcept : index(INVALID_COORDS) {
         if (input.length() != 2) return;
 
         char fileChar = std::tolower(input[0]);
@@ -48,7 +48,7 @@ public:
         // Formula: rank_interno = '8' - rankChar
         uint8_t r = static_cast<uint8_t>('8' - rankChar);
 
-        this->index_ = r * 8 + f;
+        this->index = r * 8 + f;
     }
 
     // Copy constructor (default va bene)
@@ -59,33 +59,28 @@ public:
     // Restituisce la colonna (0-7: a-h)
     // Usa bit-mask per performance ottimale (equivale a index % 8)
     constexpr uint8_t file() const noexcept {
-        return this->index_ & 7;
+        return this->index & 7;
     }
 
     // Restituisce la riga (0-7: dove 0=riga8, 7=riga1 per convenzione Board)
     // Usa bit-shift per performance ottimale (equivale a index / 8)
     constexpr uint8_t rank() const noexcept {
-        return this->index_ >> 3;
-    }
-
-    // Restituisce l'index interno (0-63 o INVALID_COORDS)
-    constexpr uint8_t index() const noexcept {
-        return this->index_;
+        return this->index >> 3;
     }
 
     // Verifica se le coordinate sono valide
     constexpr bool isValid() const noexcept {
-        return this->index_ < 64;
+        return this->index < 64;
     }
 
     // ============== OPERATOR OVERLOADS ==============
 
     constexpr bool operator==(const Coords& other) const noexcept {
-        return this->index_ == other.index_;
+        return this->index == other.index;
     }
 
     constexpr bool operator!=(const Coords& other) const noexcept {
-        return this->index_ != other.index_;
+        return this->index != other.index;
     }
 
     constexpr Coords& operator=(const Coords& other) noexcept = default;
@@ -95,21 +90,21 @@ public:
     // Aggiorna da un altro oggetto Coords
     constexpr bool update(const Coords& other) noexcept {
         if (!other.isValid()) return false;
-        this->index_ = other.index_;
+        this->index = other.index;
         return true;
     }
 
     // Aggiorna da file e rank
     constexpr bool update(uint8_t f, uint8_t r) noexcept {
         if (f >= 8 || r >= 8) return false;
-        this->index_ = r * 8 + f;
+        this->index = r * 8 + f;
         return true;
     }
 
     // Aggiorna da index
     constexpr bool update(uint8_t idx) noexcept {
         if (idx >= 64) return false;
-        this->index_ = idx;
+        this->index = idx;
         return true;
     }
 
@@ -159,7 +154,7 @@ public:
     // Converti a index (deprecato, usa index() invece)
     // Mantenuto per compatibilità
     constexpr uint8_t toIndex() const noexcept {
-        return this->index_;
+        return this->index;
     }
 
     // Metodo statico per conversione a notazione algebrica

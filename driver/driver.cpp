@@ -208,12 +208,14 @@ namespace driver {
         
             uint8_t piece = engine.board.get(fromCoords);
 
-            std::cout << "[DEBUG] fromCoords: " << fromCoords.toString() << " (index=" << (int)fromCoords.index()
+            /*
+            std::cout << "[DEBUG] fromCoords: " << fromCoords.toString() << " (index=" << (int)fromCoords.index
                       << ", rank=" << (int)fromCoords.rank() << ", file=" << (int)fromCoords.file() << ")\n";
             std::cout << "[DEBUG] piece at from: " << (int)piece << "\n";
             std::cout << "[DEBUG] activeColor: " << (int)engine.board.getActiveColor() << " (WHITE=0, BLACK=8)\n";
             std::cout << "[DEBUG] isWhiteTurn: " << (isWhiteTurn ? "true" : "false") << "\n";
             std::cout << "[DEBUG] getColor(from): " << (int)engine.board.getColor(fromCoords) << "\n";
+            */
 
             if (piece == chess::Board::EMPTY) {
                 std::cout << "There is no piece at the source square. Please enter a valid move.\n";

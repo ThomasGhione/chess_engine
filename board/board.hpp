@@ -99,21 +99,25 @@ public:
     }
    
     //! GETTERS
-    inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
-        return (chessboard[row] >> (col << 2)) & MASK_PIECE;
-    }
-    inline uint8_t get(Coords coords) const noexcept {
-        // Coords usa convenzione a8=0 (rank 0 = riga 8)
-        // Board storage usa a1=0 (chessboard[0] = riga 1)
-        // Conversione: internal_row = 7 - coords.rank()
-        return this->get(7 - coords.rank(), coords.file());
-    }
+    // Primary getter: works directly with index (most efficient)
     inline uint8_t get(uint8_t index) const noexcept {
         const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
         const uint8_t file = index & 7;   // index % 8
-        // Converti da Coords convention a Board storage
-        return this->get(7 - rank, file);
+        // Convert from Coords convention to Board storage
+        return (chessboard[7 - rank] >> (file << 2)) & MASK_PIECE;
     }
+    
+    // Convenience getter: from Coords object
+    inline uint8_t get(Coords coords) const noexcept {
+        return this->get(coords.index);
+    }
+    
+    // Direct storage access getter (bypasses Coords convention)
+    inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
+        return (chessboard[row] >> (col << 2)) & MASK_PIECE;
+    }
+    
+    // String notation getter
     uint8_t get(const std::string& square) const noexcept { 
         const uint8_t col = square[0] - 'a';
         const uint8_t row = square[1] - '1';
@@ -157,15 +161,23 @@ public:
     uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
 
     //! SETTERS
-    void set(Coords coords, piece_id value) noexcept {
-        // Converti da Coords convention a Board storage
-        const uint8_t internal_row = 7 - coords.rank();
-        const uint8_t shift = coords.file() * 4;
+    // Primary setter: works directly with index (most efficient)
+    inline void set(uint8_t index, piece_id value) noexcept {
+        const uint8_t rank = index >> 3;
+        const uint8_t file = index & 7;
+        const uint8_t internal_row = 7 - rank;
+        const uint8_t shift = file << 2; // file * 4
         chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
+    
+    // Convenience setter: from Coords object
+    void set(Coords coords, piece_id value) noexcept {
+        this->set(coords.index, value);
+    }
 
+    // Direct storage access setter (bypasses Coords convention)
     void set(uint8_t row, uint8_t col, piece_id value) noexcept {
-        const uint8_t shift = col * 4;
+        const uint8_t shift = col << 2; // col * 4
         chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
 
@@ -253,27 +265,33 @@ public:
         queens_bb[0]    = queens_bb[1]    = 0ULL;
         kings_bb[0]     = kings_bb[1]     = 0ULL;
 
-        // Single pass over all 64 squares using the fast index-based getter
-        for (uint8_t index = 0; index < 64; ++index) {
-            const uint8_t piece = this->get(index);
-            const uint8_t type  = piece & MASK_PIECE_TYPE;
-            if (type == EMPTY) {
-                continue;
-            }
+        // Optimized: iterate through board storage directly to avoid coordinate conversions
+        // chessboard[0] = row 1, chessboard[7] = row 8
+        // Coords index: rank 7 = row 1, rank 0 = row 8
+        for (uint8_t internal_row = 0; internal_row < 8; ++internal_row) {
+            const uint32_t row_data = chessboard[internal_row];
+            const uint8_t base_index = (7 - internal_row) << 3; // rank * 8, precalculated
+            
+            for (uint8_t file = 0; file < 8; ++file) {
+                const uint8_t piece = (row_data >> (file << 2)) & MASK_PIECE;
+                
+                if (piece == EMPTY) continue;
+                
+                const uint8_t index = base_index | file;
+                const uint64_t bit = 1ULL << index;
+                const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
 
-            const uint64_t bit = (1ULL << index);
-            const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
+                occupancy |= bit;
 
-            occupancy |= bit;
-
-            switch (type) {
-                case PAWN:   pawns_bb[color]   |= bit; break;
-                case KNIGHT: knights_bb[color] |= bit; break;
-                case BISHOP: bishops_bb[color] |= bit; break;
-                case ROOK:   rooks_bb[color]   |= bit; break;
-                case QUEEN:  queens_bb[color]  |= bit; break;
-                case KING:   kings_bb[color]   |= bit; break;
-                default: break;
+                // Use lookup table approach: array of pointers indexed by piece type
+                switch (piece & MASK_PIECE_TYPE) {
+                    case PAWN:   pawns_bb[color]   |= bit; break;
+                    case KNIGHT: knights_bb[color] |= bit; break;
+                    case BISHOP: bishops_bb[color] |= bit; break;
+                    case ROOK:   rooks_bb[color]   |= bit; break;
+                    case QUEEN:  queens_bb[color]  |= bit; break;
+                    case KING:   kings_bb[color]   |= bit; break;
+                }
             }
         }
     }
