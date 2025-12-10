@@ -22,7 +22,9 @@ constexpr int16_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0}
 inline constexpr U64 getPawnAttacks(const int16_t squareIndex, const bool isWhite) noexcept {
 	int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 attackBitboard = 0ULL;
-	int16_t newRank = rank + (isWhite ? 1 : -1);
+	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
+	// White pawns attack "forward" (rank decreases), Black pawns attack "backward" (rank increases)
+	int16_t newRank = rank + (isWhite ? -1 : 1);
 	
 	if (newRank >= 0 && newRank < 8) {
 		if (file - 1 >= 0) {
@@ -38,14 +40,17 @@ inline constexpr U64 getPawnAttacks(const int16_t squareIndex, const bool isWhit
 inline constexpr U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64 occupancy) noexcept {
 	int16_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 pushBitboard = 0ULL;
-	int16_t forwardDir = isWhite ? 1 : -1;
+	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
+	// White pawns move "up" (rank decreases), Black pawns move "down" (rank increases)
+	int16_t forwardDir = isWhite ? -1 : 1;
 	int16_t oneStepRank = rank + forwardDir;
     
 	if (oneStepRank >= 0 && oneStepRank < 8) {
 		int16_t oneStepSquare = (oneStepRank * 8) + file;
 		if ((occupancy & (ONE << oneStepSquare)) == 0) {
 			pushBitboard |= (ONE << oneStepSquare);
-			int16_t startRank = isWhite ? 1 : 6;
+			// White pawns start at rank 6 (row 2), Black pawns start at rank 1 (row 7)
+			int16_t startRank = isWhite ? 6 : 1;
 			if (rank == startRank) {
 				int16_t twoStepRank = rank + 2 * forwardDir;
 				if (twoStepRank >= 0 && twoStepRank < 8) {
@@ -64,7 +69,9 @@ inline constexpr U64 getPawnForwardPushes(int16_t squareIndex, bool isWhite, U64
 inline constexpr U64 getPawnAttackersTo(int16_t targetIndex, bool isWhite) noexcept {
 	int16_t tf = fileOf(targetIndex), tr = rankOf(targetIndex);
 	U64 attackers = 0ULL;
-	int16_t fromRank = tr - (isWhite ? 1 : -1); // pawns that attack target are located one rank behind target depending on their color
+	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
+	// White pawns attack from rank+1 (one rank "lower" numerically), Black pawns attack from rank-1
+	int16_t fromRank = tr + (isWhite ? 1 : -1);
 	if (fromRank >= 0 && fromRank < 8) {
 		if (tf - 1 >= 0) attackers |= ONE << (fromRank * 8 + (tf - 1));
 		if (tf + 1 < 8)  attackers |= ONE << (fromRank * 8 + (tf + 1));
