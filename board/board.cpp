@@ -6,6 +6,8 @@ namespace chess {
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
     if (!canMoveToBB(from, to)) return false;
 
+    const uint8_t fromIndex = from.index();
+    const uint8_t toIndex = to.index();
     const uint8_t moving = this->get(from);
     const uint8_t movingType = moving & this->MASK_PIECE_TYPE;
     const uint8_t movingColor = moving & this->MASK_COLOR;
@@ -18,47 +20,50 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
-        if (from.file() != to.file() && destBefore == EMPTY && Coords::isInBounds(prevEp) && (to.toIndex() == prevEp.toIndex())) {
+        // Check if pawn moved diagonally (different file): (fromIndex & 7) != (toIndex & 7)
+        if ((fromIndex & 7) != (toIndex & 7) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index())) {
             const bool isWhite = (movingColor == WHITE);
             // Coords convention: white moves toward rank 0, black toward rank 7
-            int8_t forwardDir = isWhite ? -1 : 1;
-            Coords captured{to.file(), static_cast<uint8_t>(to.rank() - forwardDir)};
-            this->set(captured, EMPTY);
-            this->occupancy &= ~(1ULL << captured.toIndex());
+            const int8_t forwardDir = isWhite ? -1 : 1;
+            // Captured pawn is one rank behind the destination
+            const uint8_t capturedIndex = toIndex + (forwardDir << 3); // forwardDir * 8
+            this->set(Coords(capturedIndex), EMPTY);
+            this->occupancy &= ~(1ULL << capturedIndex);
         }
     }
 
     // Move the piece
     this->updateChessboard(from, to);
-    this->fastUpdateOccupancyBB(from.toIndex(), to.toIndex());
+    this->fastUpdateOccupancyBB(fromIndex, toIndex);
 
     // Ensure per-piece bitboards are updated to reflect the move (including EP/rook changes handled above)
     this->updateOccupancyBB();
 
     // Castling rook move if king moved two squares on same rank
-    if (movingType == KING && from.rank() == to.rank()) {
-        int df = static_cast<int>(to.file()) - static_cast<int>(from.file());
+    // Check if same rank: (fromIndex >> 3) == (toIndex >> 3)
+    if (movingType == KING && (fromIndex >> 3) == (toIndex >> 3)) {
+        const int df = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7);
         if (df == 2) {
             // kingside: rook h -> f
-            Coords rookFrom{7, to.rank()};
-            Coords rookTo{5, to.rank()};
-            uint8_t rook = this->get(rookFrom);
+            const uint8_t rookFromIndex = toIndex + 1; // h = f + 2, simplified to toIndex + 1
+            const uint8_t rookToIndex = toIndex - 1;   // f = g - 1, simplified to toIndex - 1
+            const uint8_t rook = this->get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(rookTo, static_cast<piece_id>(rook));
-                this->set(rookFrom, EMPTY);
-                this->occupancy |= (1ULL << rookTo.toIndex());
-                this->occupancy &= ~(1ULL << rookFrom.toIndex());
+                this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
+                this->set(Coords(rookFromIndex), EMPTY);
+                this->occupancy |= (1ULL << rookToIndex);
+                this->occupancy &= ~(1ULL << rookFromIndex);
             }
         } else if (df == -2) {
             // queenside: rook a -> d
-            Coords rookFrom{0, to.rank()};
-            Coords rookTo{3, to.rank()};
-            uint8_t rook = this->get(rookFrom);
+            const uint8_t rookFromIndex = toIndex - 2; // a = c - 2, simplified to toIndex - 2
+            const uint8_t rookToIndex = toIndex + 1;   // d = c + 1, simplified to toIndex + 1
+            const uint8_t rook = this->get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(rookTo, static_cast<piece_id>(rook));
-                this->set(rookFrom, EMPTY);
-                this->occupancy |= (1ULL << rookTo.toIndex());
-                this->occupancy &= ~(1ULL << rookFrom.toIndex());
+                this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
+                this->set(Coords(rookFromIndex), EMPTY);
+                this->occupancy |= (1ULL << rookToIndex);
+                this->occupancy &= ~(1ULL << rookFromIndex);
             }
         }
     }
@@ -83,35 +88,35 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     }
     if (movingType == ROOK) {
         if (movingColor == WHITE) {
-            // White rooks at rank 7 (row 1): a1 = (7,0), h1 = (7,7)
-            if (from.rank() == 7 && from.file() == 0) {
+            // White rooks at rank 7 (row 1): a1 = index 56, h1 = index 63
+            if (fromIndex == 56) { // a1
                 disableWhiteQueenside();
-                hasMoved |= (1u << 1); // white a1 rook
+                hasMoved |= (1u << 1);
             }
-            if (from.rank() == 7 && from.file() == 7) {
+            if (fromIndex == 63) { // h1
                 disableWhiteKingside();
-                hasMoved |= (1u << 2); // white h1 rook
+                hasMoved |= (1u << 2);
             }
         } else {
-            // Black rooks at rank 0 (row 8): a8 = (0,0), h8 = (0,7)
-            if (from.rank() == 0 && from.file() == 0) {
+            // Black rooks at rank 0 (row 8): a8 = index 0, h8 = index 7
+            if (fromIndex == 0) { // a8
                 disableBlackQueenside();
-                hasMoved |= (1u << 4); // black a8 rook
+                hasMoved |= (1u << 4);
             }
-            if (from.rank() == 0 && from.file() == 7) {
+            if (fromIndex == 7) { // h8
                 disableBlackKingside();
-                hasMoved |= (1u << 5); // black h8 rook
+                hasMoved |= (1u << 5);
             }
         }
     }
     // If a rook was captured on its starting square, disable that side's castling
     if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
         if ((destBefore & MASK_COLOR) == WHITE) {
-            if (to.rank() == 7 && to.file() == 0) disableWhiteQueenside();
-            if (to.rank() == 7 && to.file() == 7) disableWhiteKingside();
+            if (toIndex == 56) disableWhiteQueenside(); // a1
+            if (toIndex == 63) disableWhiteKingside();  // h1
         } else {
-            if (to.rank() == 0 && to.file() == 0) disableBlackQueenside();
-            if (to.rank() == 0 && to.file() == 7) disableBlackKingside();
+            if (toIndex == 0) disableBlackQueenside();  // a8
+            if (toIndex == 7) disableBlackKingside();   // h8
         }
     }
 
@@ -859,7 +864,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         if (df == 2 || df == -2) {
             st.wasCastling = true;
 
-            // Compute rook indices directly without intermediate Coords
+            // Compute rook indices directly
             const uint8_t rookFromFile = (df == 2) ? 7 : 0;
             const uint8_t rookToFile   = (df == 2) ? 5 : 3;
             const uint8_t rookFromIndex = (to.rank() << 3) | rookFromFile;
@@ -868,12 +873,10 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             st.rookFromIndex = rookFromIndex;
             st.rookToIndex   = rookToIndex;
 
-            // Use Coords to ensure proper coordinate conversion
-            Coords rookFrom{rookFromFile, to.rank()};
-            Coords rookTo{rookToFile, to.rank()};
-            const uint8_t rook = this->get(rookFrom);
-            this->set(rookTo, static_cast<piece_id>(rook));
-            this->set(rookFrom, EMPTY);
+            // Use index-based get/set for efficiency (get(index) does Coords conversion internally)
+            const uint8_t rook = this->get(rookFromIndex);
+            this->set(Coords(rookToIndex), static_cast<piece_id>(rook));
+            this->set(Coords(rookFromIndex), EMPTY);
             this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             this->removePieceFromBitboards(rook, rookFromIndex);
             this->addPieceToBitboards(rook, rookToIndex);
@@ -998,9 +1001,8 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
     if (st.wasEnPassantCapture) {
         const uint8_t capIndex = st.enPassantCapturedIndex;
-        // Use Coords to ensure proper coordinate conversion
-        Coords capCoords(capIndex);
-        this->set(capCoords, static_cast<piece_id>(st.capturedPiece));
+        // Use Coords constructor from index for proper coordinate conversion
+        this->set(Coords(capIndex), static_cast<piece_id>(st.capturedPiece));
         this->occupancy |= (1ULL << capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
@@ -1014,13 +1016,10 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         const uint8_t rookFromIndex = st.rookFromIndex;
         const uint8_t rookToIndex   = st.rookToIndex;
         
-        // Use Coords to ensure proper coordinate conversion
-        Coords rookFrom(rookFromIndex);
-        Coords rookTo(rookToIndex);
-        
-        const uint8_t rook = this->get(rookTo);
-        this->set(rookFrom, static_cast<piece_id>(rook));
-        this->set(rookTo, EMPTY);
+        // Use index-based operations for efficiency
+        const uint8_t rook = this->get(rookToIndex);
+        this->set(Coords(rookFromIndex), static_cast<piece_id>(rook));
+        this->set(Coords(rookToIndex), EMPTY);
         this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
         this->removePieceFromBitboards(rook, rookToIndex);
         this->addPieceToBitboards(rook, rookFromIndex);
