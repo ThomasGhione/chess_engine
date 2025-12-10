@@ -7,8 +7,7 @@ bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move 
     if (ply < 0 || ply >= Engine::MAX_PLY) return false;
     for (int k = 0; k < 2; ++k) {
         const auto& km = killerMoves[k][ply];
-        if (m.from.file() == km.from.file() && m.from.rank() == km.from.rank() &&
-            m.to.file() == km.to.file() && m.to.rank() == km.to.rank()) {
+        if (m.from.index == km.from.index && m.to.index == km.to.index) {
             return true;
         }
     }
@@ -325,7 +324,7 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
             // Usa la versione con excludeSquare per evitare il bug del ray-blocking
             if (!b.isSquareAttacked(to, oppColor, from)) {
                 moves.emplace_back(chess::Board::Move{
-                    chess::Coords{f, r}, chess::Coords{to}
+                    chess::Coords{from}, chess::Coords{to}
                 });
             }
         }
@@ -334,18 +333,18 @@ std::vector<chess::Board::Move> Engine::generateLegalMoves(const chess::Board& b
         // (diritti, path libero, case non attaccate, ecc.)
         if (f + 2 <= 7) {
             chess::Coords toKs{static_cast<uint8_t>(f + 2), r};
-            if (b.canMoveToBB(chess::Coords{f, r}, toKs)) {
+            if (b.canMoveToBB(chess::Coords{from}, toKs)) {
                 moves.emplace_back(chess::Board::Move{
-                    chess::Coords{f, r}, toKs
+                    chess::Coords{from}, toKs
                 });
             }
         }
 
         if (f >= 2) {
             chess::Coords toQs{static_cast<uint8_t>(f - 2), r};
-            if (b.canMoveToBB(chess::Coords{f, r}, toQs)) {
+            if (b.canMoveToBB(chess::Coords{from}, toQs)) {
                 moves.emplace_back(chess::Board::Move{
-                    chess::Coords{f, r}, toQs
+                    chess::Coords{from}, toQs
                 });
             }
         }
@@ -506,17 +505,15 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
     const auto& km1 = killerMoves[0][ply];
     const auto& km2 = killerMoves[1][ply];
 
-    if (m.from.file() == km1.from.file() && m.from.rank() == km1.from.rank() &&
-        m.to.file() == km1.to.file() && m.to.rank() == km1.to.rank()) {
+    if (m.from.index == km1.from.index && m.to.index == km1.to.index) {
         score += KILLER1_BONUS;
-    } else if (m.from.file() == km2.from.file() && m.from.rank() == km2.from.rank() &&
-               m.to.file() == km2.to.file() && m.to.rank() == km2.to.rank()) {
+    } else if (m.from.index == km2.from.index && m.to.index == km2.to.index) {
         score += KILLER2_BONUS;
     }
 
     int colorIndex = usIsWhite ? 0 : 1;
-    int fromIndex = m.from.rank() * 8 + m.from.file();
-    int toIndex = m.to.rank() * 8 + m.to.file();
+    int fromIndex = m.from.index;
+    int toIndex = m.to.index;
     score += history[colorIndex][fromIndex][toIndex];
 }
 
@@ -525,7 +522,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) {
     if (pieceType != chess::Board::KING) return;
 
-    const int fileDelta = std::abs(m.to.file() - m.from.file());
+    const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
     const bool isCastling = (fileDelta == 2);
 
     // Penalizza mosse del re in apertura se non sotto scacco e non arrocco

@@ -88,19 +88,20 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     const bool isCapture = (toPieceType != chess::Board::EMPTY);
     if (isCapture) return; // killer/history solo per non-catture
 
+    int fromIndex = m.from.index;
+    int toIndex   = m.to.index;
+
     // Killer moves
     auto& km1 = killerMoves[0][ply];
     auto& km2 = killerMoves[1][ply];
-    if (!(m.from.file() == km1.from.file() && m.from.rank() == km1.from.rank() &&
-          m.to.file()   == km1.to.file()   && m.to.rank()   == km1.to.rank())) {
+    if (!(fromIndex == km1.from.index && toIndex  == km1.to.index)) {
         km2 = km1;
         km1 = m;
     }
 
     // History heuristic
     int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-    int fromIndex = m.from.rank() * 8 + m.from.file();
-    int toIndex   = m.to.rank()   * 8 + m.to.file();
+
     int bonus = static_cast<int>((depth + 1) * (depth + 1));
     history[colorIndex][fromIndex][toIndex] += bonus;
 }

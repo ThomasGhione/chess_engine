@@ -504,8 +504,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                 ourQueens &= ~fromMask;
                 ourQueens |=  toMask;
                 break;
-            default:
-                break;
         }
 
         // If this is a capture, remove the captured enemy from its bitboard
@@ -520,7 +518,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
                     case ROOK:   oppRooks   &= ~toMask; break;
                     case QUEEN:  oppQueens  &= ~toMask; break;
                     case KING:   oppKings   &= ~toMask; break;
-                    default: break;
                 }
             }
         }
@@ -689,8 +686,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                 const uint8_t to = __builtin_ctzll(movesMask);
                 movesMask &= (movesMask - 1);
 
-                if (this->canMoveToBB(Coords{static_cast<uint8_t>(from & 7), static_cast<uint8_t>(from >> 3)},
-                                      Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                if (this->canMoveToBB(Coords{from}, Coords{to})) {
                     return true;
                 }
             }
@@ -707,25 +703,27 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     if (!inChk) {
         const uint64_t kings = kings_bb[side];
         if (kings) {
-            const uint8_t from = __builtin_ctzll(kings);
-            const uint8_t r = from >> 3;
-            const uint8_t f = from & 7;
+            const uint8_t kingIndex = __builtin_ctzll(kings);
+            const Coords kingPos{kingIndex};
 
             // Normal king moves
-            uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
+            uint64_t movesMask = pieces::KING_ATTACKS[kingIndex] & ~ownOcc;
             while (movesMask) {
-                const uint8_t to = __builtin_ctzll(movesMask);
+                const uint8_t toIndex = __builtin_ctzll(movesMask);
                 movesMask &= (movesMask - 1);
 
-                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                if (this->canMoveToBB(kingPos, Coords{toIndex})) {
                     return true;
                 }
             }
 
             // Castling (only if king on starting square and not in check)
-            if (r == (side == 0 ? 0 : 7) && f == 4) {
-                if (this->canMoveToBB(Coords{f, r}, Coords{6, r})) return true;  // kingside
-                if (this->canMoveToBB(Coords{f, r}, Coords{2, r})) return true;  // queenside
+            // WHITE king at e1 (index 60), BLACK king at e8 (index 4)
+            // TODO do we also need to check also castling rights and path safety?
+            const uint8_t expectedKingIndex = (side == 0) ? 60 : 4;
+            if (kingIndex == expectedKingIndex) {
+                if (this->canMoveToBB(kingPos, Coords{static_cast<uint8_t>(expectedKingIndex + 2)})) return true;  // kingside
+                if (this->canMoveToBB(kingPos, Coords{static_cast<uint8_t>(expectedKingIndex - 2)})) return true;  // queenside
             }
         }
     }
@@ -738,17 +736,14 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (pawns) {
             const uint8_t from = __builtin_ctzll(pawns);
             pawns &= (pawns - 1);
-
-            const uint8_t r = from >> 3;
-            const uint8_t f = from & 7;
-
+            
             // Pushes
             uint64_t pushMask = pieces::getPawnForwardPushes(from, isWhite, this->occupancy);
             while (pushMask) {
                 const uint8_t to = __builtin_ctzll(pushMask);
                 pushMask &= (pushMask - 1);
 
-                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                if (this->canMoveToBB(Coords{from}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
                     return true;
                 }
             }
@@ -759,7 +754,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                 const uint8_t to = __builtin_ctzll(captureMask);
                 captureMask &= (captureMask - 1);
 
-                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
+                if (this->canMoveToBB(Coords{from}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
                     return true;
                 }
             }
