@@ -212,12 +212,14 @@ void Engine::search(uint64_t depth) {
     this->doMoveInBoard(bestMove);
 
 #ifdef DEBUG
+/*
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
 
     std::cout << "[DEBUG] TT probes: " << ttProbes
               << ", hits: " << ttHits
               << "\n";
+*/
 #endif
 }
 

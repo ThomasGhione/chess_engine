@@ -162,31 +162,39 @@ int64_t Engine::evaluate(const chess::Board& board) {
 
     // 4) Castling bonus in evaluation (not just move ordering)
     // Apply bonus only if king and rook squares match a castled configuration.
+    // NOTE: board indexing convention:
+    //   rank 8 (top)  : 0..7   -> a8 = 0,  b8 = 1, ..., h8 = 7
+    //   rank 1 (bottom): 56..63 -> a1 = 56, b1 = 57, ..., h1 = 63
+    // Therefore:
+    //   White: g1 = 62, f1 = 61, c1 = 58, d1 = 59
+    //   Black: g8 = 6,  f8 = 5,  c8 = 2,  d8 = 3
     auto addCastlingEvalBonus = [&](bool isWhite){
-        const uint64_t kings = board.kings_bb[!isWhite];
-        const uint64_t rooks = board.rooks_bb[!isWhite];
+        const int sideIndex = isWhite ? 0 : 1;
+        const uint64_t kings = board.kings_bb[sideIndex];
+        const uint64_t rooks = board.rooks_bb[sideIndex];
         if (!kings) return;
         const int kingSq = __builtin_ctzll(kings);
 
-        // Indices for castled configurations
-        // White: king g1 (6) with rook f1 (5) OR king c1 (2) with rook d1 (3)
-        // Black: king g8 (62) with rook f8 (61) OR king c8 (58) with rook d8 (59)
         auto hasRookOn = [&](int idx){ return (rooks & (1ULL << idx)) != 0ULL; };
 
         bool castled = false;
         if (isWhite) {
-            if (kingSq == 6 && hasRookOn(5)) castled = true;        // O-O
-            else if (kingSq == 2 && hasRookOn(3)) castled = true;   // O-O-O
+            // White castled kingside: Kg1 (62) with Rf1 (61)
+            if (kingSq == 62 && hasRookOn(61)) castled = true;        // O-O
+            // White castled queenside: Kc1 (58) with Rd1 (59)
+            else if (kingSq == 58 && hasRookOn(59)) castled = true;   // O-O-O
         } else {
-            if (kingSq == 62 && hasRookOn(61)) castled = true;      // O-O
-            else if (kingSq == 58 && hasRookOn(59)) castled = true; // O-O-O
+            // Black castled kingside: Kg8 (6) with Rf8 (5)
+            if (kingSq == 6 && hasRookOn(5)) castled = true;          // O-O
+            // Black castled queenside: Kc8 (2) with Rd8 (3)
+            else if (kingSq == 2 && hasRookOn(3)) castled = true;     // O-O-O
         }
 
         if (castled) eval += isWhite ? CASTLING_BONUS : -CASTLING_BONUS;
     };
 
-    addCastlingEvalBonus(true);
-    addCastlingEvalBonus(false);
+    addCastlingEvalBonus(true);   // reward castled white king
+    addCastlingEvalBonus(false);  // reward castled black king (negative for white)
     
     // 5) King moves without castling should be penalized
     // (This requires tracking move history; skipping for now.)
