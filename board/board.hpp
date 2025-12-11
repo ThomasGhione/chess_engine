@@ -349,6 +349,8 @@ public:
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     // Version that excludes a specific square from occupancy (for king move validation)
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
+    // Optimized: check if ALL squares in mask are safe (not attacked) - for castling
+    bool isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept;
     // Is the given color currently in check?
     bool inCheck(uint8_t color) const noexcept;
     // Does the color have at least one legal move?
