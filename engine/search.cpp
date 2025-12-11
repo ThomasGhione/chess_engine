@@ -157,6 +157,7 @@ chess::Board::Move Engine::getBestMove(const std::vector<chess::Board::Move>& mo
 
         this->executeMove(m, state);
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+        
         this->undoAndUpdateMove(m, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
     }
 
@@ -317,22 +318,25 @@ Engine::generateLegalMoves(const chess::Board& b) const
     moves.reserve(40);
 
     const uint8_t color    = b.getActiveColor();
-    const bool    isBlack  = (color == chess::Board::BLACK);
-    const uint8_t oppColor = isBlack ? chess::Board::WHITE : chess::Board::BLACK;
+    const int side         = (color == chess::Board::WHITE) ? 0 : 1;
+    const uint8_t oppColor = (color == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
 
     const uint64_t occ     = b.getPiecesBitMap();
 
-    const uint64_t pawns   = b.pawns_bb[isBlack];
-    const uint64_t knights = b.knights_bb[isBlack];
-    const uint64_t bishops = b.bishops_bb[isBlack];
-    const uint64_t rooks   = b.rooks_bb[isBlack];
-    const uint64_t queens  = b.queens_bb[isBlack];
-    const uint64_t kings   = b.kings_bb[isBlack];
+    const uint64_t pawns   = b.pawns_bb[side];
+    const uint64_t knights = b.knights_bb[side];
+    const uint64_t bishops = b.bishops_bb[side];
+    const uint64_t rooks   = b.rooks_bb[side];
+    const uint64_t queens  = b.queens_bb[side];
+    const uint64_t kings   = b.kings_bb[side];
 
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
 
     // Pre-calculate inCheck once for all moves
     const bool inCheck = b.inCheck(color);
+    
+    // For pawn move generation
+    const bool isWhite = (side == 0);
 
 
 
@@ -356,19 +360,30 @@ Engine::generateLegalMoves(const chess::Board& b) const
             }
         }
 
-        // Castling
-        const uint8_t expected = isBlack ? 4 : 60;
-
-        if (kingIndex == expected) {
-            // Ks
-            chess::Coords toKs{uint8_t(expected + 2)};
-            if (b.canMoveToBB(kingPos, toKs, inCheck))
-                moves.emplace_back(chess::Board::Move{kingPos, toKs});
-
-            // Qs
-            chess::Coords toQs{uint8_t(expected - 2)};
-            if (b.canMoveToBB(kingPos, toQs, inCheck))
-                moves.emplace_back(chess::Board::Move{kingPos, toQs});
+        // Castling: usa direttamente la posizione attuale del re
+        {
+            // lato bianco: re deve essere su e1; lato nero: su e8
+            // ma questo controllo lo fa già canMoveToBB guardando fromIndex/rank/file.
+            const uint8_t kingFile = kingIndex & 7;
+            const uint8_t toRank   = kingIndex >> 3;
+        
+            // Tentativo arrocco corto: file + 2
+            if (kingFile <= 5) {
+                const uint8_t toKsIndex = kingIndex + 2;
+                chess::Coords toKs{toKsIndex};
+                if (b.canMoveToBB(kingPos, toKs, inCheck)) {
+                    moves.emplace_back(chess::Board::Move{kingPos, toKs});
+                }
+            }
+        
+            // Tentativo arrocco lungo: file - 2
+            if (kingFile >= 2) {
+                const uint8_t toQsIndex = kingIndex - 2;
+                chess::Coords toQs{toQsIndex};
+                if (b.canMoveToBB(kingPos, toQs, inCheck)) {
+                    moves.emplace_back(chess::Board::Move{kingPos, toQs});
+                }
+            }
         }
     }
 
@@ -384,8 +399,8 @@ Engine::generateLegalMoves(const chess::Board& b) const
             bb &= (bb - 1);
 
             uint64_t mask =
-                pieces::PAWN_ATTACKS[!isBlack][from] |
-                pieces::getPawnForwardPushes(from, !isBlack, occ);
+                pieces::PAWN_ATTACKS[isWhite][from] |
+                pieces::getPawnForwardPushes(from, isWhite, occ);
 
             addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
         }

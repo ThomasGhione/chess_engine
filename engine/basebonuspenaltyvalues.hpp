@@ -57,8 +57,8 @@ inline static constexpr int64_t PHASE_FINAL_THRESHOLD = 14; // soglia per consid
 static constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
 static constexpr int64_t KILLER1_BONUS               = 200;   // bonus killer move primaria
 static constexpr int64_t KILLER2_BONUS               = 190;    // bonus killer move secondaria
-static constexpr int64_t KING_NON_CASTLING_PENALTY   = 110;    // penalita' per muovere il re senza arroccare
-static constexpr int64_t CASTLING_BONUS              = 165;     // piccolo bonus per arroccare
+static constexpr int64_t KING_NON_CASTLING_PENALTY   = 150;    // penalita' per muovere il re senza arroccare
+static constexpr int64_t CASTLING_BONUS              = 300;     // BONUS ARROCCO (molto alto per priorita')
 
 
 

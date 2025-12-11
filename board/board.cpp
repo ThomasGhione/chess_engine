@@ -1,4 +1,7 @@
 #include "board.hpp"
+#ifdef DEBUG
+#include <iostream>
+#endif
 
 namespace chess {
 
@@ -401,17 +404,18 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
                     const bool rights = isWhite
                         ? ((castle & (1u << 1)) != 0u) // white O-O-O
                         : ((castle & (1u << 3)) != 0u); // black O-O-O
+
                     // Optimize: calculate indices directly
                     const uint8_t d1Idx = fromIndex - 1; // kf-1
                     const uint8_t d2Idx = fromIndex - 2; // kf-2
                     const uint8_t d3Idx = fromIndex - 3; // kf-3
                     const uint8_t rookIdx = fromIndex - 4; // kf-4
                     const bool emptyBetween = (this->get(d1Idx) == EMPTY) && (this->get(d2Idx) == EMPTY) && (this->get(d3Idx) == EMPTY);
-                    
+
                     // Use bitboard to check rook presence
                     const uint8_t side = isWhite ? 0 : 1;
                     const bool rookOk = (rooks_bb[side] & (1ULL << rookIdx)) != 0;
-                    
+
                     if (rights && emptyBetween && rookOk) {
                         const uint8_t opp = isWhite ? BLACK : WHITE;
                         // Check all 3 squares at once (fromIndex, d1Idx, d2Idx)
