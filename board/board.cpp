@@ -204,47 +204,27 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         // Use the king bitboard to find king index quickly
         const uint8_t side = (movingColor == WHITE) ? 0 : 1;
         const uint64_t kingBB = kings_bb[side]; // Array index (0=WHITE, 1=BLACK)
-        if (kingBB) {
+
+        if (kingBB) [[likely]] {
             kingIndex = __builtin_ctzll(kingBB); // Count trailing zeros = find LSB
 
             const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
             
             // Pawns
-            {
-                uint64_t pawnsAtt = pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] &
-                                    pawns_bb[oppSide];
-                attackerCount += __builtin_popcountll(pawnsAtt);
-            }
-
+            attackerCount += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
+            
             // Knights
-            {
-                uint64_t knightsAtt = pieces::KNIGHT_ATTACKS[kingIndex] &
-                                      knights_bb[oppSide];
-                attackerCount += __builtin_popcountll(knightsAtt);
-            }
+            attackerCount += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
 
             // Kings (adjacent)
-            {
-                uint64_t kingsAtt = pieces::KING_ATTACKS[kingIndex] &
-                                    kings_bb[oppSide];
-                attackerCount += __builtin_popcountll(kingsAtt);
-            }
+            attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
 
             // Sliding rook/queen (orthogonal)
-            {
-                uint64_t rookMask = pieces::getRookAttacks(kingIndex, occ);
-                uint64_t rq = rooks_bb[oppSide] | queens_bb[oppSide];
-                uint64_t rookAtt = rookMask & rq;
-                attackerCount += __builtin_popcountll(rookAtt);
-            }
-
+            attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occ)) & 
+                                                  (rooks_bb[oppSide] | queens_bb[oppSide]));
             // Sliding bishop/queen (diagonal)
-            {
-                uint64_t bishopMask = pieces::getBishopAttacks(kingIndex, occ);
-                uint64_t bq = bishops_bb[oppSide] | queens_bb[oppSide];
-                uint64_t bishopAtt = bishopMask & bq;
-                attackerCount += __builtin_popcountll(bishopAtt);
-            }
+            attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occ)) & 
+                                                  (bishops_bb[oppSide] | queens_bb[oppSide]));
         }
     }
 
@@ -341,35 +321,26 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
             // King square (unchanged for pawn moves)
             // const uint8_t side = (movingColor == WHITE) ? 0 : 1; // Convert to array index
             const uint64_t kingBB = kings_bb[side]; // Array index
-            if (!kingBB) return false; // invalid position: treat as illegal
+            if (!kingBB) [[unlikely]] return false; // invalid position: treat as illegal
             const uint8_t kingSq = __builtin_ctzll(kingBB);
 
             // Check if king is attacked in the new position
             const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1; // Array index
 
             // Pawn attackers
-            uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[oppSideForPawns][static_cast<int16_t>(kingSq)];
-            if (pawnAttackers & oppPawns) return false;
+            if (pieces::PAWN_ATTACKERS_TO[oppSideForPawns][kingSq] & oppPawns) return false;
 
             // Knights
-            if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(kingSq)] & oppKnights) return false;
+            if (pieces::KNIGHT_ATTACKS[kingSq] & oppKnights) return false;
 
             // Kings (adjacent)
-            if (pieces::KING_ATTACKS[static_cast<int16_t>(kingSq)] & oppKings) return false;
+            if (pieces::KING_ATTACKS[kingSq] & oppKings) return false;
 
             // Sliding rook/queen (orthogonal)
-            {
-                uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(kingSq), occNew);
-                uint64_t rq = oppRooks | oppQueens;
-                if (mask & rq) return false;
-            }
+            if (pieces::getRookAttacks(kingSq, occNew) & (oppRooks | oppQueens)) return false;
 
             // Sliding bishop/queen (diagonal)
-            {
-                uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(kingSq), occNew);
-                uint64_t bq = oppBishops | oppQueens;
-                if (mask & bq) return false;
-            }
+            if (pieces::getBishopAttacks(kingSq, occNew) & (oppBishops | oppQueens)) return false;
 
             return true;
         }
@@ -452,11 +423,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 
     if ((bitMap & toBit) == 0ULL) return false;
 
-    // Destination must not contain a friendly piece (safety guard; usually filtered earlier).
-    const uint8_t destPiece = this->get(to);
-    if (destPiece != EMPTY && ((destPiece & MASK_COLOR) == movingColor)) {
-        return false;
-    }
 
     // For any non-king, non-pawn move, ensure king safety (pins and check resolution)
     if (fromType != KING && fromType != PAWN) {
@@ -471,14 +437,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         occNew &= ~fromMask;
         occNew |=  toMask;
 
-        // Local copies of our and opponent bitboards
-        // uint64_t ourPawns    = pawns_bb[side];
-        uint64_t ourKnights  = knights_bb[side];
-        uint64_t ourBishops  = bishops_bb[side];
-        uint64_t ourRooks    = rooks_bb[side];
-        uint64_t ourQueens   = queens_bb[side];
-        // uint64_t ourKings    = kings_bb[side];
-
         uint64_t oppPawns    = pawns_bb[oppSide];
         uint64_t oppKnights  = knights_bb[oppSide];
         uint64_t oppBishops  = bishops_bb[oppSide];
@@ -486,74 +444,47 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
         uint64_t oppQueens   = queens_bb[oppSide];
         uint64_t oppKings    = kings_bb[oppSide];
 
-        // Move our piece in its corresponding bitboard
-        switch (fromType) {
-            case KNIGHT:
-                ourKnights &= ~fromMask;
-                ourKnights |=  toMask;
-                break;
-            case BISHOP:
-                ourBishops &= ~fromMask;
-                ourBishops |=  toMask;
-                break;
-            case ROOK:
-                ourRooks &= ~fromMask;
-                ourRooks |=  toMask;
-                break;
-            case QUEEN:
-                ourQueens &= ~fromMask;
-                ourQueens |=  toMask;
-                break;
-        }
 
         // If this is a capture, remove the captured enemy from its bitboard
-        if (destPiece != EMPTY) {
-            const uint8_t destColor = destPiece & MASK_COLOR;
-            if (destColor == oppColor) {
-                const uint8_t destType = destPiece & MASK_PIECE_TYPE;
-                switch (destType) {
-                    case PAWN:   oppPawns   &= ~toMask; break;
-                    case KNIGHT: oppKnights &= ~toMask; break;
-                    case BISHOP: oppBishops &= ~toMask; break;
-                    case ROOK:   oppRooks   &= ~toMask; break;
-                    case QUEEN:  oppQueens  &= ~toMask; break;
-                    case KING:   oppKings   &= ~toMask; break;
-                }
+        const uint8_t destPiece = this->get(to);
+        const uint8_t destColor = destPiece & MASK_COLOR;
+        if (destColor == oppColor) {
+            const uint8_t destType = destPiece & MASK_PIECE_TYPE;
+            switch (destType) {
+                case PAWN:   oppPawns   &= ~toMask; break;
+                case KNIGHT: oppKnights &= ~toMask; break;
+                case BISHOP: oppBishops &= ~toMask; break;
+                case ROOK:   oppRooks   &= ~toMask; break;
+                case QUEEN:  oppQueens  &= ~toMask; break;
+                case KING:   oppKings   &= ~toMask; break;
             }
         }
+        
 
         // King square (unchanged because king is not moving here)
         // const uint8_t side = (movingColor == WHITE) ? 0 : 1;
         const uint64_t kingBB = kings_bb[side]; // Array index
-        if (!kingBB) return false; // invalid position: treat as illegal
+        if (!kingBB) [[unlikely]] return false; // invalid position: treat as illegal
         const uint8_t kingSq = __builtin_ctzll(kingBB);
 
         // Check if king is attacked in the new position using updated occupancy/bitboards
         const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1; // Array index
 
         // Pawn attackers
-        uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[oppSideForPawns][static_cast<int16_t>(kingSq)];
+        uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[oppSideForPawns][kingSq];
         if (pawnAttackers & oppPawns) return false;
 
         // Knights
-        if (pieces::KNIGHT_ATTACKS[static_cast<int16_t>(kingSq)] & oppKnights) return false;
+        if (pieces::KNIGHT_ATTACKS[kingSq] & oppKnights) return false;
 
         // Kings (adjacent)
-        if (pieces::KING_ATTACKS[static_cast<int16_t>(kingSq)] & oppKings) return false;
+        if (pieces::KING_ATTACKS[kingSq] & oppKings) return false;
 
         // Sliding rook/queen (orthogonal)
-        {
-            uint64_t mask = pieces::getRookAttacks(static_cast<int16_t>(kingSq), occNew);
-            uint64_t rq = oppRooks | oppQueens;
-            if (mask & rq) return false;
-        }
+        if (pieces::getRookAttacks(kingSq, occNew) & (oppRooks | oppQueens)) return false;
 
         // Sliding bishop/queen (diagonal)
-        {
-            uint64_t mask = pieces::getBishopAttacks(static_cast<int16_t>(kingSq), occNew);
-            uint64_t bq = oppBishops | oppQueens;
-            if (mask & bq) return false;
-        }
+        if (pieces::getBishopAttacks(kingSq, occNew) & (oppBishops | oppQueens)) return false;
     }
 
     return true;
@@ -564,73 +495,62 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
 // ------------------------------------------------------------
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
-    // Use per-piece bitboards to test attacks quickly
-    const uint64_t occ = this->occupancy;
-    const uint8_t sideIndex = (byColor == WHITE) ? 0 : 1; // Convert to array index
-    
-    // Pawns: any pawn of byColor that attacks target?
-    uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[sideIndex][targetIndex];
-    if (pawnAttackers & (pawns_bb[sideIndex])) return true;
-    
+    const uint64_t occ = occupancy;
+    const int side = (byColor == WHITE) ? 0 : 1;
+
+    // Pawns: raramente attaccano, hint branch predictor
+    if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
+
     // Knights
-    if (pieces::KNIGHT_ATTACKS[targetIndex] & (knights_bb[sideIndex])) return true;
-    
-    // Kings (adjacent)
-    if (pieces::KING_ATTACKS[targetIndex] & (kings_bb[sideIndex])) return true;
-    
-    // Sliding: rook/queen
-    {
-        uint64_t mask = pieces::getRookAttacks(targetIndex, occ);
-        if (mask & (rooks_bb[sideIndex] | queens_bb[sideIndex])) return true;
-    }
-    
-    // Sliding: bishop/queen
-    {
-        uint64_t mask = pieces::getBishopAttacks(targetIndex, occ);
-        if (mask & (bishops_bb[sideIndex] | queens_bb[sideIndex])) return true;
-    }
-    
-    return false;
+    if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
+
+    // Kings
+    if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
+
+    // Sliding pieces combined check
+    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occ);
+    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occ);
+
+    const uint64_t slidingAttackers = ((rooks_bb[side] | queens_bb[side]) & rookMask)
+                                    | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
+
+    return slidingAttackers;
 }
+
 
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const uint64_t occ = this->occupancy & ~(1ULL << excludeSquare);
-    const uint8_t sideIndex = (byColor == WHITE) ? 0 : 1; // Convert to array index
+    const uint64_t occMinus = occupancy & ~(1ULL << excludeSquare);
+    const int side = (byColor == WHITE) ? 0 : 1;
 
-    // Pawns: any pawn of byColor that attacks target?
-    uint64_t pawnAttackers = pieces::PAWN_ATTACKERS_TO[sideIndex][targetIndex];
-    if (pawnAttackers & pawns_bb[sideIndex]) return true;
+    // Early exit: pawn attacks
+    if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
 
-    // Knights
-    if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[sideIndex]) return true;
+    // Knight attacks
+    if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
 
-    // Kings (adjacent)
-    if (pieces::KING_ATTACKS[targetIndex] & kings_bb[sideIndex]) return true;
+    // King attacks
+    if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
-    // Sliding: rook/queen (with modified occupancy)
-    {
-        uint64_t mask = pieces::getRookAttacks(targetIndex, occ);
-        if (mask & (rooks_bb[sideIndex] | queens_bb[sideIndex])) return true;
-    }
+    // Sliding pieces combined check
+    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occMinus);
+    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occMinus);
 
-    // Sliding: bishop/queen (with modified occupancy)
-    {
-        uint64_t mask = pieces::getBishopAttacks(targetIndex, occ);
-        if (mask & (bishops_bb[sideIndex] | queens_bb[sideIndex])) return true;
-    }
+    const uint64_t slidingAttackers = ((rooks_bb[side] | queens_bb[side]) & rookMask)
+                                    | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
 
-    return false;
+    return slidingAttackers;
 }
+
 
 // Is the given color currently in check?
 bool Board::inCheck(uint8_t color) const noexcept {
     // Find king square using king bitboards (convert to array index)
     const uint8_t side = (color == WHITE) ? 0 : 1;
     const uint64_t kingBB = kings_bb[side];
-    if (!kingBB) {
-        return false; // no king found (invalid position) -> treat as not in check
-    }
+
+    if (!kingBB) [[unlikely]] return false; // no king found (invalid position) -> treat as not in check
+    
 
     const uint8_t kingIndex = __builtin_ctzll(kingBB);
     const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
@@ -642,139 +562,96 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const int side = (color == WHITE) ? 0 : 1;
     const int oppSide = side ^ 1;
 
-    // Precompute occupancy masks once (avoid repeated bitboard ORs)
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
-                            rooks_bb[side] | queens_bb[side]  | kings_bb[side];
+                             rooks_bb[side] | queens_bb[side]  | kings_bb[side];
     const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
                               rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
-    // OPTIMIZATION: If in check, try king moves first (most likely escape)
     const bool inChk = this->inCheck(color);
-    
-    // KINGS - check FIRST if in check (likely only legal moves), otherwise check after knights
+
+    // --- KING first if in check (likely escape) ---
     if (inChk) {
-        const uint64_t kings = kings_bb[side];
-        if (kings) {
-            const uint8_t from = __builtin_ctzll(kings);
-            const uint8_t r = from >> 3;
-            const uint8_t f = from & 7;
-
-            // Normal king moves (most common escape from check)
-            uint64_t movesMask = pieces::KING_ATTACKS[from] & ~ownOcc;
-            while (movesMask) {
-                const uint8_t to = __builtin_ctzll(movesMask);
-                movesMask &= (movesMask - 1);
-
-                if (this->canMoveToBB(Coords{f, r}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
-                    return true;
-                }
+        uint64_t kings = kings_bb[side];
+        if (kings) [[likely]] {
+            uint8_t king = __builtin_ctzll(kings);
+            uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
+            while (moves) {
+                uint8_t to = __builtin_ctzll(moves);
+                moves &= moves - 1;
+                if (this->canMoveToBB(Coords{king}, Coords{to})) return true;
             }
-
-            // Castling not possible when in check, skip it
         }
     }
 
-    // Helper lambda: test moves for a piece type bitboard (non-pawn, non-king)
-    auto tryMovesFromBitboard = [&](uint64_t piecesBB, auto genMovesForSquare) -> bool {
+    // Inline lambda for piece moves
+    auto tryMoves = [&](uint64_t piecesBB, auto genMoves) -> bool {
         while (piecesBB) {
-            const uint8_t from = __builtin_ctzll(piecesBB);
-            piecesBB &= (piecesBB - 1);
+            uint8_t from = __builtin_ctzll(piecesBB);
+            piecesBB &= piecesBB - 1;
 
-            uint64_t movesMask = genMovesForSquare(from, this->occupancy) & ~ownOcc;
-
+            uint64_t movesMask = genMoves(from, this->occupancy) & ~ownOcc;
             while (movesMask) {
-                const uint8_t to = __builtin_ctzll(movesMask);
-                movesMask &= (movesMask - 1);
-
-                if (this->canMoveToBB(Coords{from}, Coords{to})) {
-                    return true;
-                }
+                uint8_t to = __builtin_ctzll(movesMask);
+                movesMask &= movesMask - 1;
+                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
             }
         }
         return false;
     };
 
-    // KNIGHTS (fastest non-king piece: no occupancy needed, simple lookup)
-    if (tryMovesFromBitboard(knights_bb[side], [](uint8_t sq, uint64_t) {
-            return pieces::KNIGHT_ATTACKS[sq];
-        })) return true;
+    // KNIGHTS (cheap, no occupancy dependency)
+    if (tryMoves(knights_bb[side], [](uint8_t sq, uint64_t){ return pieces::KNIGHT_ATTACKS[sq]; })) return true;
 
-    // KINGS (if not in check, test normally with castling)
+    // KING normal moves + castling
     if (!inChk) {
-        const uint64_t kings = kings_bb[side];
+        uint64_t kings = kings_bb[side];
         if (kings) {
-            const uint8_t kingIndex = __builtin_ctzll(kings);
-            const Coords kingPos{kingIndex};
-
-            // Normal king moves
-            uint64_t movesMask = pieces::KING_ATTACKS[kingIndex] & ~ownOcc;
-            while (movesMask) {
-                const uint8_t toIndex = __builtin_ctzll(movesMask);
-                movesMask &= (movesMask - 1);
-
-                if (this->canMoveToBB(kingPos, Coords{toIndex})) {
-                    return true;
-                }
+            uint8_t king = __builtin_ctzll(kings);
+            uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
+            while (moves) {
+                uint8_t to = __builtin_ctzll(moves);
+                moves &= moves - 1;
+                if (this->canMoveToBB(Coords{king}, Coords{to})) return true;
             }
-
-            // Castling (only if king on starting square and not in check)
-            // WHITE king at e1 (index 60), BLACK king at e8 (index 4)
-            // TODO do we also need to check also castling rights and path safety?
-            const uint8_t expectedKingIndex = (side == 0) ? 60 : 4;
-            if (kingIndex == expectedKingIndex) {
-                if (this->canMoveToBB(kingPos, Coords{static_cast<uint8_t>(expectedKingIndex + 2)})) return true;  // kingside
-                if (this->canMoveToBB(kingPos, Coords{static_cast<uint8_t>(expectedKingIndex - 2)})) return true;  // queenside
+            // Castling
+            const uint8_t eIndex = (side == 0) ? 60 : 4;
+            if (king == eIndex) {
+                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)})) return true;
+                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)})) return true;
             }
         }
     }
 
-    // PAWNS (most common piece, often many moves - but check after knights/king since cheaper)
+    // PAWNS (push + capture)
     {
-        const bool isWhite = (side == 0);
+        bool isWhite = (side == 0);
         uint64_t pawns = pawns_bb[side];
-
         while (pawns) {
-            const uint8_t from = __builtin_ctzll(pawns);
-            pawns &= (pawns - 1);
-            
-            // Pushes
-            uint64_t pushMask = pieces::getPawnForwardPushes(from, isWhite, this->occupancy);
-            while (pushMask) {
-                const uint8_t to = __builtin_ctzll(pushMask);
-                pushMask &= (pushMask - 1);
+            uint8_t from = __builtin_ctzll(pawns);
+            pawns &= pawns - 1;
 
-                if (this->canMoveToBB(Coords{from}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
-                    return true;
-                }
+            // Forward pushes
+            uint64_t push = pieces::getPawnForwardPushes(from, isWhite, this->occupancy) & ~ownOcc;
+            while (push) {
+                uint8_t to = __builtin_ctzll(push);
+                push &= push - 1;
+                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
             }
 
-            // Captures (include en-passant via canMoveToBB validation)
-            uint64_t captureMask = pieces::PAWN_ATTACKS[isWhite][from] & (enemyOcc | ~this->occupancy);
-            while (captureMask) {
-                const uint8_t to = __builtin_ctzll(captureMask);
-                captureMask &= (captureMask - 1);
-
-                if (this->canMoveToBB(Coords{from}, Coords{static_cast<uint8_t>(to & 7), static_cast<uint8_t>(to >> 3)})) {
-                    return true;
-                }
+            // Captures
+            uint64_t caps = pieces::PAWN_ATTACKS[isWhite][from] & (enemyOcc);
+            while (caps) {
+                uint8_t to = __builtin_ctzll(caps);
+                caps &= caps - 1;
+                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
             }
         }
     }
 
-    // BISHOPS
-    if (tryMovesFromBitboard(bishops_bb[side], [](uint8_t sq, uint64_t occBB) {
-            return pieces::getBishopAttacks(sq, occBB);
-        })) return true;
-
-    // ROOKS
-    if (tryMovesFromBitboard(rooks_bb[side], [](uint8_t sq, uint64_t occBB) {
-            return pieces::getRookAttacks(sq, occBB);
-        })) return true;
-
-    // QUEENS (last: usually expensive to compute)
-    if (tryMovesFromBitboard(queens_bb[side], [](uint8_t sq, uint64_t occBB) {
-            return pieces::getQueenAttacks(sq, occBB);
-        })) return true;
+    // Sliding pieces (bishops, rooks, queens)
+    if (tryMoves(bishops_bb[side], [](uint8_t sq, uint64_t occ){ return pieces::getBishopAttacks(sq, occ); })) return true;
+    if (tryMoves(rooks_bb[side],   [](uint8_t sq, uint64_t occ){ return pieces::getRookAttacks(sq, occ); })) return true;
+    if (tryMoves(queens_bb[side],  [](uint8_t sq, uint64_t occ){ return pieces::getQueenAttacks(sq, occ); })) return true;
 
     return false;
 }

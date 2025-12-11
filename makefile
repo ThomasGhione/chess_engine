@@ -8,8 +8,8 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 
 # Variabili compilatore
 CXX = g++
-TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto -fext-numeric-literals -g
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto
+TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8
 
 # Nome file finali
 NAME_APP = chess

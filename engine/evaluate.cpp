@@ -1,6 +1,7 @@
 #include "engine.hpp"
 
 namespace engine {
+    
 int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
     int64_t delta = 0;
 
@@ -59,7 +60,7 @@ int64_t Engine::evaluateCheckmate(const chess::Board& board) {
 int64_t Engine::evaluate(const chess::Board& board) {
 
     // 1) EVALUATION CHECKMATE
-    if (board.isCheckmate(board.getActiveColor())) {
+    if (board.isCheckmate(board.getActiveColor())) [[unlikely]] {
         return this->evaluateCheckmate(board);
     }
 
@@ -71,11 +72,11 @@ int64_t Engine::evaluate(const chess::Board& board) {
     
     // 2) IS THIS AN ENDGAME?
     // 2.1) counting major pieces...
-    uint64_t allKnights = board.knights_bb[0] | board.knights_bb[1];
-    uint64_t allBishops = board.bishops_bb[0] | board.bishops_bb[1];
-    uint64_t allRooks   = board.rooks_bb[0]   | board.rooks_bb[1];
-    uint64_t allQueens  = board.queens_bb[0]  | board.queens_bb[1];
-    uint64_t minorMajors = allKnights | allBishops | allRooks | allQueens;
+    const uint64_t allKnights = board.knights_bb[0] | board.knights_bb[1];
+    const uint64_t allBishops = board.bishops_bb[0] | board.bishops_bb[1];
+    const uint64_t allRooks   = board.rooks_bb[0]   | board.rooks_bb[1];
+    const uint64_t allQueens  = board.queens_bb[0]  | board.queens_bb[1];
+    const uint64_t minorMajors = allKnights | allBishops | allRooks | allQueens;
     int nonPawnNonKingPieces = __builtin_popcountll(minorMajors);
     // 2.2) finally decide if it's endgame
     bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
@@ -86,7 +87,7 @@ int64_t Engine::evaluate(const chess::Board& board) {
                            auto valueSelectorWhite) {
         
         // Nessun pezzo di questo tipo: niente da fare
-        if (!(bbWhite | bbBlack)) return;
+        if (!(bbWhite | bbBlack)) [[unlikely]] return;
 
         // White pieces
         uint64_t bb = bbWhite;

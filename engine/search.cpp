@@ -303,7 +303,7 @@ inline void addMovesFromMask_fast(
 
         chess::Coords toC{to};
 
-        if (__builtin_expect(b.canMoveToBB(fromC, toC), 1)) {
+        if (b.canMoveToBB(fromC, toC)) [[likely]] {
             moves.emplace_back(chess::Board::Move{fromC, toC});
         }
     }
@@ -335,7 +335,7 @@ Engine::generateLegalMoves(const chess::Board& b) const
     // --------------------------------------------------------------------
     // 1) KING
     // --------------------------------------------------------------------
-    if (__builtin_expect(kings != 0, 1)) {
+    if (kings) [[likely]] {
 
         const uint8_t kingIndex = __builtin_ctzll(kings);
         const chess::Coords kingPos{kingIndex};
