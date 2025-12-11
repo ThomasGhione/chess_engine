@@ -4,13 +4,15 @@ namespace chess {
 
 
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
-    if (!canMoveToBB(from, to)) return false;
+    const uint8_t moving = this->get(from);
+    const uint8_t movingColor = moving & this->MASK_COLOR;
+    const bool inCheck = this->inCheck(movingColor);
+    
+    if (!canMoveToBB(from, to, inCheck)) return false;
 
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
-    const uint8_t moving = this->get(from);
     const uint8_t movingType = moving & this->MASK_PIECE_TYPE;
-    const uint8_t movingColor = moving & this->MASK_COLOR;
     const uint8_t destBefore = this->get(to);
 
     // Clear en passant by default; may set again after a double push
@@ -183,7 +185,7 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
     return true;
 }
 
-bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
+bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {
     uint64_t bitMap = 0ULL;
 
     const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
@@ -197,7 +199,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to) const noexcept {
     const uint64_t occ = this->occupancy; // current board occupancy
 
     // Detect check state and attackers for restrictions (double check logic)
-    bool inChk = this->inCheck(movingColor);
     uint8_t attackerCount = 0;
     uint8_t kingIndex = 64; // invalid sentinel
     if (inChk) {
@@ -564,8 +565,6 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
                              rooks_bb[side] | queens_bb[side]  | kings_bb[side];
-    const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
-                              rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
     const bool inChk = this->inCheck(color);
 
@@ -578,7 +577,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             while (moves) {
                 uint8_t to = __builtin_ctzll(moves);
                 moves &= moves - 1;
-                if (this->canMoveToBB(Coords{king}, Coords{to})) return true;
+                if (this->canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
             }
         }
     }
@@ -593,7 +592,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             while (movesMask) {
                 uint8_t to = __builtin_ctzll(movesMask);
                 movesMask &= movesMask - 1;
-                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
+                if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
             }
         }
         return false;
@@ -611,13 +610,13 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             while (moves) {
                 uint8_t to = __builtin_ctzll(moves);
                 moves &= moves - 1;
-                if (this->canMoveToBB(Coords{king}, Coords{to})) return true;
+                if (this->canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
             }
             // Castling
             const uint8_t eIndex = (side == 0) ? 60 : 4;
             if (king == eIndex) {
-                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)})) return true;
-                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)})) return true;
+                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
+                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
             }
         }
     }
@@ -635,15 +634,18 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             while (push) {
                 uint8_t to = __builtin_ctzll(push);
                 push &= push - 1;
-                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
+                if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
             }
 
             // Captures
+            const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
+                                      rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
+
             uint64_t caps = pieces::PAWN_ATTACKS[isWhite][from] & (enemyOcc);
             while (caps) {
                 uint8_t to = __builtin_ctzll(caps);
                 caps &= caps - 1;
-                if (this->canMoveToBB(Coords{from}, Coords{to})) return true;
+                if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
             }
         }
     }

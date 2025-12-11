@@ -341,7 +341,7 @@ public:
     // Incremental make/unmake move (no legality checks, no Board copy)
     void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
     void undoMove(const Move& m, const MoveState& state) noexcept;
-    bool canMoveToBB(const Coords& from, const Coords& to) const noexcept;
+    bool canMoveToBB(const Coords& from, const Coords& to, bool inCheck) const noexcept;
     // ------------------------------------------------------------
     // CHECK / CHECKMATE / STALEMATE UTILITIES
     // ------------------------------------------------------------

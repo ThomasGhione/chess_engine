@@ -291,7 +291,8 @@ inline void addMovesFromMask_fast(
     std::vector<chess::Board::Move>& moves,
     const uint8_t from,
     uint64_t mask,
-    const uint64_t ownOcc
+    const uint64_t ownOcc,
+    const bool inCheck
 ) {
     mask &= ~ownOcc;
 
@@ -303,7 +304,7 @@ inline void addMovesFromMask_fast(
 
         chess::Coords toC{to};
 
-        if (b.canMoveToBB(fromC, toC)) [[likely]] {
+        if (b.canMoveToBB(fromC, toC, inCheck)) [[likely]] {
             moves.emplace_back(chess::Board::Move{fromC, toC});
         }
     }
@@ -329,6 +330,9 @@ Engine::generateLegalMoves(const chess::Board& b) const
     const uint64_t kings   = b.kings_bb[isBlack];
 
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
+
+    // Pre-calculate inCheck once for all moves
+    const bool inCheck = b.inCheck(color);
 
 
 
@@ -358,12 +362,12 @@ Engine::generateLegalMoves(const chess::Board& b) const
         if (kingIndex == expected) {
             // Ks
             chess::Coords toKs{uint8_t(expected + 2)};
-            if (b.canMoveToBB(kingPos, toKs))
+            if (b.canMoveToBB(kingPos, toKs, inCheck))
                 moves.emplace_back(chess::Board::Move{kingPos, toKs});
 
             // Qs
             chess::Coords toQs{uint8_t(expected - 2)};
-            if (b.canMoveToBB(kingPos, toQs))
+            if (b.canMoveToBB(kingPos, toQs, inCheck))
                 moves.emplace_back(chess::Board::Move{kingPos, toQs});
         }
     }
@@ -383,7 +387,7 @@ Engine::generateLegalMoves(const chess::Board& b) const
                 pieces::PAWN_ATTACKS[!isBlack][from] |
                 pieces::getPawnForwardPushes(from, !isBlack, occ);
 
-            addMovesFromMask_fast(b, moves, from, mask, ownOcc);
+            addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
         }
     }
 
@@ -398,7 +402,7 @@ Engine::generateLegalMoves(const chess::Board& b) const
             bb &= (bb - 1);
 
             addMovesFromMask_fast(b, moves, from,
-                pieces::KNIGHT_ATTACKS[from], ownOcc);
+                pieces::KNIGHT_ATTACKS[from], ownOcc, inCheck);
         }
     }
 
@@ -415,7 +419,8 @@ Engine::generateLegalMoves(const chess::Board& b) const
             addMovesFromMask_fast(
                 b, moves, from,
                 pieces::getBishopAttacks(from, occ),
-                ownOcc
+                ownOcc,
+                inCheck
             );
         }
     }
@@ -433,7 +438,8 @@ Engine::generateLegalMoves(const chess::Board& b) const
             addMovesFromMask_fast(
                 b, moves, from,
                 pieces::getRookAttacks(from, occ),
-                ownOcc
+                ownOcc,
+                inCheck
             );
         }
     }
@@ -451,7 +457,8 @@ Engine::generateLegalMoves(const chess::Board& b) const
             addMovesFromMask_fast(
                 b, moves, from,
                 pieces::getQueenAttacks(from, occ),
-                ownOcc
+                ownOcc,
+                inCheck
             );
         }
     }
