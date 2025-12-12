@@ -59,7 +59,7 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
 }
 
 // Helper to search through all moves and find best move with its score
-Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<ScoredMove>& orderedScoredMoves,
+Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                                        bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) {
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves.front().move;
@@ -159,7 +159,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
-chess::Board::Move Engine::getBestMove(const std::vector<chess::Board::Move>& moves, bool searchBestMoveForWhite) {
+chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) {
     // Alpha-beta pruning: White maximizes, Black minimizes
     int64_t alpha = this->NEG_INF;
     int64_t beta = this->POS_INF;
@@ -213,8 +213,8 @@ void Engine::doMoveInBoard(chess::Board::Move bestMove) {
 void Engine::search(uint64_t depth) {
     if (depth == 0) return;
 
-    std::vector<chess::Board::Move> moves = this->generateLegalMoves(this->board);
-    if (moves.empty()) {
+    MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
+    if (moves.is_empty()) {
         this->eval = this->evaluate(this->board);
         return;
     }
@@ -284,10 +284,10 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
 
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
-    std::vector<chess::Board::Move> moves = this->generateLegalMoves(b);
-    if (moves.empty()) return this->evaluate(b);
+    MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
+    if (moves.is_empty()) return this->evaluate(b);
 
-    std::vector<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
+    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
     const int64_t alphaOrig = bounds.alpha;
 
     // Build search context
@@ -307,7 +307,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 __attribute__((always_inline))
 inline void addMovesFromMask_fast(
     const chess::Board& b,
-    std::vector<chess::Board::Move>& moves,
+    MoveList<chess::Board::Move>& moves,
     const uint8_t from,
     uint64_t mask,
     const uint64_t ownOcc,
@@ -329,11 +329,11 @@ inline void addMovesFromMask_fast(
     }
 }
 
-std::vector<chess::Board::Move>
+MoveList<chess::Board::Move>
 Engine::generateLegalMoves(const chess::Board& b) const 
 {
-    std::vector<chess::Board::Move> moves;
-    moves.reserve(40);
+    MoveList<chess::Board::Move> moves;
+    // moves.reserve(40);
 
     const uint8_t color    = b.getActiveColor();
     const int side         = (color == chess::Board::WHITE) ? 0 : 1;
@@ -682,24 +682,24 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 }
 
 
-std::vector<Engine::ScoredMove> Engine::sortLegalMoves(
-    const std::vector<chess::Board::Move>& moves,
+MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
+    const MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
     bool usIsWhite)
 {
-    const size_t n = moves.size();
-    std::vector<ScoredMove> orderedScoredMoves;
-    orderedScoredMoves.reserve(n); // pre-allocazione
+    // const size_t n = moves.size();
+    MoveList<ScoredMove> orderedScoredMoves;
+    // orderedScoredMoves.reserve(n); // pre-allocazione
 
     // Pre-calcolo variabili costose fuori dal loop
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
 
     // Cache alcune maschere per pezzi (tipo & tipo pezzo) per evitare doppie chiamate
-    orderedScoredMoves.reserve(n);
+    // orderedScoredMoves.reserve(n);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < moves.size; ++i) {
         const auto& m = moves[i]; // const reference per evitare copia
         int64_t score = 0;
 

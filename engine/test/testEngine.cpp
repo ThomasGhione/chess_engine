@@ -188,8 +188,8 @@ ut::suite engineSuite = [] {
     e.depth = 3;
 
     auto moves = e.generateLegalMoves(e.board);
-    expect(moves.size() == 4) 
-      << "Expected 4 legal moves, got " << moves.size() << '\n';  // Only king-side castling and king moves are legal
+    expect(moves.size == 4) 
+      << "Expected 4 legal moves, got " << moves.size << '\n';  // Only king-side castling and king moves are legal
 
 
     int castleMoveIndex = -1;
@@ -221,8 +221,8 @@ ut::suite engineSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
 
-    expect(moves.size() == 1) // Only knight move is legal
-      << "Expected 1 legal move, got " << moves.size() << '\n'
+    expect(moves.size == 1) // Only knight move is legal
+      << "Expected 1 legal move, got " << moves.size << '\n'
       << moves[0].from.toString() << moves[0].to.toString() << '\n'
       << moves[1].from.toString() << moves[1].to.toString() << '\n';
   };
@@ -242,8 +242,8 @@ ut::suite engineSuite = [] {
 
     chess::Board::Move bestMove = e.getBestMove(moves, false);
 
-    expect(moves.size() == 46) // Expected number of legal moves
-      << "Expected 46 legal moves, got " << moves.size() << '\n';
+    expect(moves.size == 46) // Expected number of legal moves
+      << "Expected 46 legal moves, got " << moves.size << '\n';
 
     expect(bestMove.from != chess::Coords("b4") && bestMove.to != chess::Coords("c2"))
       << "Expected bestMove not to be b4 c2, got" << bestMove.from.toString() << bestMove.to.toString() << '\n';
@@ -263,8 +263,8 @@ ut::suite engineSuite = [] {
     // }
 
 
-    expect(moves.size() == 2) // Expected number of legal moves
-      << "Expected 2 legal moves, got " << moves.size() << '\n';
+    expect(moves.size == 2) // Expected number of legal moves
+      << "Expected 2 legal moves, got " << moves.size << '\n';
   };
   
 };

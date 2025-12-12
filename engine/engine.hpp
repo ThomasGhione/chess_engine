@@ -28,6 +28,7 @@
 #include "basicrules.hpp"
 #include "piecevaluetables.hpp"
 #include "tt.hpp"
+#include "movelist.hpp"
 
 namespace engine {
 
@@ -78,10 +79,10 @@ public:
 
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
-    std::vector<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
-    std::vector<ScoredMove> sortLegalMoves(const std::vector<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
+    MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
+    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
 
-    chess::Board::Move getBestMove(const std::vector<chess::Board::Move>& moves, bool searchBestMoveForWhite);
+    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite);
 
 private:
     // Helper structures to reduce parameter passing
@@ -117,7 +118,7 @@ private:
 
     // Helper methods for search
     bool handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score);
-    ScoredMove searchMoves(chess::Board& b, const std::vector<ScoredMove>& orderedScoredMoves,
+    ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                           bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds);
     bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score);
     void saveTTEntry(const TTSaveInfo& info);
@@ -135,10 +136,10 @@ private:
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score);
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const;
-    
+
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
-    //std::vector<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
+    //MoveList<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
     //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const;
