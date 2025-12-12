@@ -266,8 +266,6 @@ namespace driver {
                 moveOk = engine.board.moveBB(fromCoords, toCoords);
             }
 
-            std::cout << "[DEBUG] moveOk = " << (moveOk ? "true" : "false") << "\n";
-
             if (!moveOk) {
                 std::cout << "Invalid move. Please try again.\n";
                 continue;

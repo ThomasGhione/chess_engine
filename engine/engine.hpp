@@ -134,6 +134,7 @@ private:
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score);
+    int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const;
     
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);

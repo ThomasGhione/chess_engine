@@ -76,6 +76,22 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const std::vector<Scored
             b.doMove(m, state);
         }
 
+        /*
+        // Futility pruning: skip obviously losing captures at low depth
+        // Use SEE to detect bad captures (losing material)
+        const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+        const bool isCapture = (toPieceType != chess::Board::EMPTY);
+        
+        if (ctx.depth <= 2 && isCapture && moveIndex > 0) {
+            int64_t see = staticExchangeEvaluation(b, m);
+            // If we lose more than a pawn's worth of material, skip this capture at shallow depth
+            if (see < -100) {
+                b.undoMove(m, state);
+                ++moveIndex;
+                continue;
+            }
+        } */
+
         // LMR: riduci la profondità per le mosse "late" non critiche
         int64_t childDepth = std::max(static_cast<int64_t>(0), ctx.depth - 1);
         bool canReduce = (ctx.depth > 2)
@@ -485,17 +501,23 @@ Engine::generateLegalMoves(const chess::Board& b) const
 
 // Helper to add MVV-LVA bonus for captures
 void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) {
-    uint8_t toPiece = b.get(m.to);
-    uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
 
-    if (toPieceType != chess::Board::EMPTY) {
-        uint8_t fromPiece = b.get(m.from);
-        uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        int64_t victimValue = PIECE_VALUES[toPieceType];
-        int64_t attackerValue = PIECE_VALUES[fromPieceType];
-        score += (victimValue * 10 - attackerValue);
+    const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
+    const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
+
+    if (toPieceType != chess::Board::EMPTY) [[likely]] {
+        score += MVV_LVA_TABLE[toPieceType][fromPieceType];
+        return;
+    }
+
+    // En passant (only pawn moving diagonally to empty square)
+    if (fromPieceType == chess::Board::PAWN) [[unlikely]] {
+        if ((m.from.index & 7) != (m.to.index & 7)) {
+            score += MVV_LVA_TABLE[chess::Board::PAWN][chess::Board::PAWN];
+        }
     }
 }
+
 
 // Helper to add promotion bonus
 void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) {
@@ -551,6 +573,115 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
     }
 }
 
+// Static Exchange Evaluation (SEE)
+// Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
+int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const {
+    const uint8_t toSq = m.to.index;
+    const uint8_t fromSq = m.from.index;
+
+    // Valori dei pezzi (EMPTY=0, PAWN=1, ..., KING=6)
+    constexpr int64_t pieceVals[7] = {0, 100, 320, 330, 500, 900, 20000};
+
+    // Trova tutti gli attaccanti alla casella target
+    auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) -> uint64_t {
+        uint64_t attackers = 0ULL;
+        
+        // Pawns
+        attackers |= b.pawns_bb[side] & pieces::PAWN_ATTACKERS_TO[side][sq];
+        
+        // Knights
+        attackers |= b.knights_bb[side] & pieces::KNIGHT_ATTACKS[sq];
+        
+        // Kings
+        attackers |= b.kings_bb[side] & pieces::KING_ATTACKS[sq];
+        
+        // Bishops and Queens (diagonal)
+        uint64_t diagSliders = b.bishops_bb[side] | b.queens_bb[side];
+        if (diagSliders) {
+            uint64_t bishopAtks = pieces::getBishopAttacks(sq, occ);
+            attackers |= diagSliders & bishopAtks;
+        }
+        
+        // Rooks and Queens (orthogonal)
+        uint64_t orthSliders = b.rooks_bb[side] | b.queens_bb[side];
+        if (orthSliders) {
+            uint64_t rookAtks = pieces::getRookAttacks(sq, occ);
+            attackers |= orthSliders & rookAtks;
+        }
+        
+        return attackers;
+    };
+
+    // Trova l'attaccante meno prezioso
+    auto getLeastValuableAttacker = [&](uint64_t attackers, const chess::Board& board) -> uint8_t {
+        // Ordine: pawn, knight, bishop, rook, queen, king
+        const uint64_t pieceTypes[6] = {
+            attackers & board.pawns_bb[0] | board.pawns_bb[1],
+            attackers & board.knights_bb[0] | board.knights_bb[1],
+            attackers & board.bishops_bb[0] | board.bishops_bb[1],
+            attackers & board.rooks_bb[0] | board.rooks_bb[1],
+            attackers & board.queens_bb[0] | board.queens_bb[1],
+            attackers & board.kings_bb[0] | board.kings_bb[1]
+        };
+        
+        for (uint64_t bb : pieceTypes) {
+            if (bb) return __builtin_ctzll(bb);
+        }
+        return 64; // nessun attaccante
+    };
+
+    const int sideActive = b.getActiveColor() == chess::Board::WHITE ? 0 : 1;
+    const int sidePassive = sideActive ^ 1;
+
+    // Valore del pezzo catturato inizialmente
+    uint8_t capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
+    if (capturedType == chess::Board::EMPTY) {
+        // En passant: cattura un pedone
+        capturedType = chess::Board::PAWN;
+    }
+
+    int64_t gain[32];
+    gain[0] = pieceVals[capturedType];
+
+    // Simula scambio
+    uint64_t occ = b.getPiecesBitMap();
+    uint64_t fromBB = 1ULL << fromSq;
+    occ ^= fromBB; // rimuovi il pezzo che fa la prima cattura
+    
+    uint8_t attackerType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+    int depth = 1;
+    int side = sidePassive; // il prossimo a catturare è l'avversario
+
+    while (depth < 32) {
+        // Trova attaccanti del lato corrente
+        uint64_t attackers = getAttackersTo(toSq, occ, side);
+        if (!attackers) break;
+
+        // Prendi l'attaccante meno prezioso
+        uint8_t attacker = getLeastValuableAttacker(attackers, b);
+        if (attacker == 64) break;
+
+        // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
+        gain[depth] = pieceVals[attackerType] - gain[depth - 1];
+        
+        // Rimuovi l'attaccante dall'occupancy
+        occ ^= (1ULL << attacker);
+        attackerType = b.get(attacker) & chess::Board::MASK_PIECE_TYPE;
+        
+        // Cambia lato
+        side ^= 1;
+        depth++;
+    }
+
+    // Negamax: propaga il miglior risultato all'indietro
+    while (--depth > 0) {
+        gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+    }
+
+    return gain[0];
+}
+
+
 std::vector<Engine::ScoredMove> Engine::sortLegalMoves(
     const std::vector<chess::Board::Move>& moves,
     int ply,
@@ -579,14 +710,18 @@ std::vector<Engine::ScoredMove> Engine::sortLegalMoves(
         const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
         const bool isCapture = (toPieceType != chess::Board::EMPTY);
 
-        // Add bonus
-        addMVVLVABonus(m, b, score);                  // catture
-        addPromotionBonus(m, fromPieceType, usIsWhite, score); // promozioni
+        // Add MVV-LVA bonus for captures (including en passant)
+        addMVVLVABonus(m, b, score);
+        
+        // Add promotion bonus
+        addPromotionBonus(m, fromPieceType, usIsWhite, score);
 
+        // For non-captures: use killer moves and history heuristic
         if (!isCapture) {
-            addKillerAndHistoryBonus(m, ply, usIsWhite, score); // killer/history
+            addKillerAndHistoryBonus(m, ply, usIsWhite, score);
         }
 
+        // King move penalties/bonuses (castling, early king moves)
         addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
 
         // Emplace direttamente senza copia aggiuntiva
