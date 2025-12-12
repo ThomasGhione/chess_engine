@@ -62,23 +62,23 @@ all: prod
 # Produzione parallela
 # Nota: Piu' veloce dopo la prima volta ma lascia i file .o
 prod: $(NAME_APP)
-	@printf "\n✅ Build completato: $(NAME_APP)"
+	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
 
 # Produzione sequenziale
 # Nota: Non e' piu' lento ma non genera i file .o
 prod_sequential:
 	$(CXX) $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
-	@printf "\n✅ Build completato: $(NAME_APP)"
+	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
 
 # Comando per generare eseguibile per il debug
 # Aggiunge il flag -g per mettere le informazioni di debug
 debug: PRODFLAGS += -g
 debug: $(NAME_APP)
-	@printf "\n✅ Build debug completato: $(NAME_APP)"
+	@printf "\n✅ Build debug completato: $(NAME_APP)\n\n"
 
 # Comando per generare eseguibile per il debug
 test: $(TEST_APP)
-	@printf "\n✅ Test compilato: $(TEST_APP)"
+	@printf "\n✅ Test compilato: $(TEST_APP)\n\n"
 
 # Generazione file finale 'chess'
 $(NAME_APP): $(ALL_OBJS)
@@ -105,7 +105,7 @@ cls:
 	@printf "\nCleaning..."
 	rm -f $(NAME_APP) $(TEST_APP) $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	rm -f doc/main-doc.{aux,log,pdf,toc}
-	@printf "\n✅ Clean completato"
+	@printf "\n✅ Clean completato\n\n"
 
 # Helper per vedere i comandi
 help:

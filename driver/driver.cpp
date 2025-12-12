@@ -191,7 +191,6 @@ namespace driver {
                 return;
             }
             */
-           Driver::quit(playerInput);
 
             if (playerInput.length() != 4 && playerInput.length() != 5) {
                 std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
@@ -254,8 +253,8 @@ namespace driver {
 
             const bool isPromotionCandidate =
                 (pieceType == chess::Board::PAWN) &&
-                ((pieceColor == chess::Board::WHITE && toCoords.rank() == 7) ||
-                 (pieceColor == chess::Board::BLACK && toCoords.rank() == 0));
+                ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
+                 (pieceColor == chess::Board::BLACK && toCoords.rank() == 7));
 
             if (isPromotionCandidate) {
                 // If user didn't specify, default to queen
@@ -297,7 +296,7 @@ namespace driver {
             }
 
             error = false;
-}
+        }  
 
         return;
     }
