@@ -729,10 +729,22 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     }
 
     // Ordina usando lambda inline e [niente copie]
-    std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
-        [](const ScoredMove& a, const ScoredMove& b) noexcept {
-            return a.score > b.score;
-        });
+    //std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
+    //    [](const ScoredMove& a, const ScoredMove& b) noexcept {
+    //        return a.score > b.score;
+    //});
+    orderedScoredMoves.sort();
+
+    // Debug: verifica che l'ordinamento sia corretto (decrescente)
+    #ifdef DEBUG
+    //for (size_t i = 1; i < orderedScoredMoves.size; ++i) {
+    //    if (orderedScoredMoves[i-1].score < orderedScoredMoves[i].score) {
+    //        std::cerr << "SORT BUG: at index " << i 
+    //                  << ", score[" << (i-1) << "]=" << orderedScoredMoves[i-1].score
+    //                  << " < score[" << i << "]=" << orderedScoredMoves[i].score << "\n";
+    //    }
+    //}
+    #endif
 
     return orderedScoredMoves;
 }
