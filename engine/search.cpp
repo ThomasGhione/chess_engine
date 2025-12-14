@@ -168,13 +168,95 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     chess::Board::Move bestMove = moves.front();
     constexpr int currPly = 1;
 
-    for (const auto& m : moves) {
-        chess::Board::MoveState state;
+    // YBWC: Young Brothers Wait Concept
+    // First move (PV) searched sequentially with full window
+    // Remaining moves can be searched in parallel with narrower windows
+    const bool useYBWC = (moves.size >= 8 && this->depth >= 5);
 
-        this->executeMove(m, state);
-        int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
-        
-        this->undoAndUpdateMove(m, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
+    if (!useYBWC || moves.size < 2) {
+        // Sequential search for few moves or shallow depth
+        for (const auto& m : moves) {
+            chess::Board::MoveState state;
+
+            this->executeMove(m, state);
+            int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+            
+            this->undoAndUpdateMove(m, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
+        }
+    } else {
+        // YBWC: First move sequentially (establish PV and update alpha/beta)
+        {
+            const auto& firstMove = moves[0];
+            chess::Board::MoveState state;
+            
+            this->executeMove(firstMove, state);
+            int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+            this->undoAndUpdateMove(firstMove, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
+        }
+
+        // Remaining moves in parallel with current alpha/beta bounds
+        // Each thread searches with SHARED alpha/beta (read-only after first move)
+        if (moves.size > 1) {
+            const int64_t sharedAlpha = alpha;
+            const int64_t sharedBeta = beta;
+            
+            #pragma omp parallel
+            {
+                // Each thread has local board and local best
+                chess::Board localBoard = this->board;
+                int64_t localBestScore = searchBestMoveForWhite ? NEG_INF : POS_INF;
+                chess::Board::Move localBestMove = bestMove;
+                
+                // Dynamic scheduling: moves with similar scores get better load balancing
+                #pragma omp for schedule(dynamic, 1) nowait
+                for (int i = 1; i < static_cast<int>(moves.size); ++i) {
+                    const auto& m = moves[i];
+                    chess::Board::MoveState state;
+                    
+                    if (isPromotionMove(localBoard, m)) {
+                        localBoard.doMove(m, state, 'q');
+                    } else {
+                        localBoard.doMove(m, state);
+                    }
+                    
+                    // Search with shared bounds (no updates during parallel phase)
+                    int64_t score = this->searchPosition(localBoard, this->depth - 1, sharedAlpha, sharedBeta, currPly);
+                    
+                    localBoard.undoMove(m, state);
+                    
+                    // Update local best
+                    if (searchBestMoveForWhite) {
+                        if (score > localBestScore) {
+                            localBestScore = score;
+                            localBestMove = m;
+                        }
+                    } else {
+                        if (score < localBestScore) {
+                            localBestScore = score;
+                            localBestMove = m;
+                        }
+                    }
+                }
+                
+                // Merge results from all threads atomically
+                #pragma omp critical
+                {
+                    if (searchBestMoveForWhite) {
+                        if (localBestScore > bestScore) {
+                            bestScore = localBestScore;
+                            bestMove = localBestMove;
+                            // Note: we don't update alpha here - YBWC keeps window fixed
+                        }
+                    } else {
+                        if (localBestScore < bestScore) {
+                            bestScore = localBestScore;
+                            bestMove = localBestMove;
+                            // Note: we don't update beta here - YBWC keeps window fixed
+                        }
+                    }
+                }
+            }
+        }
     }
 
     this->eval = bestScore;
@@ -184,10 +266,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 // Helper to execute a move, handling promotions
 void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) {
     if (isPromotionMove(this->board, m)) {
-        this->board.doMove(const_cast<chess::Board::Move&>(m), state, 'q');
+        this->board.doMove(m, state, 'q');
         return;
     }
-    this->board.doMove(const_cast<chess::Board::Move&>(m), state);
+    this->board.doMove(m, state);
 }
 
 // Helper to undo move and update best move/alpha-beta bounds
@@ -195,7 +277,7 @@ void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveSt
                                int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
                                chess::Board::Move& bestMove) {
     // Undo move before processing next one
-    this->board.undoMove(const_cast<chess::Board::Move&>(m), state);
+    this->board.undoMove(m, state);
 
     // Update best move and alpha-beta bounds
     this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
@@ -531,11 +613,11 @@ void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, b
 // Helper to add check bonus
 void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) {
     chess::Board::MoveState tmpState;
-    b.doMove(const_cast<chess::Board::Move&>(m), tmpState, isPromotionMove(b, m) ? 'q' : 0);
+    b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
     if (b.inCheck(!usIsWhite)) {
         score += CHECK_BONUS;
     }
-    b.undoMove(const_cast<chess::Board::Move&>(m), tmpState);
+    b.undoMove(m, tmpState);
 }
 
 // Helper to add killer move and history heuristic bonuses
