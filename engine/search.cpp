@@ -245,16 +245,22 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                         if (localBestScore > bestScore) {
                             bestScore = localBestScore;
                             bestMove = localBestMove;
-                            // Note: we don't update alpha here - YBWC keeps window fixed
                         }
                     } else {
                         if (localBestScore < bestScore) {
                             bestScore = localBestScore;
                             bestMove = localBestMove;
-                            // Note: we don't update beta here - YBWC keeps window fixed
                         }
                     }
                 }
+            }
+            
+            // After parallel phase: update alpha/beta with final best score
+            // This is needed for TT storage and consistency with sequential search
+            if (searchBestMoveForWhite) {
+                if (bestScore > alpha) alpha = bestScore;
+            } else {
+                if (bestScore < beta) beta = bestScore;
             }
         }
     }
