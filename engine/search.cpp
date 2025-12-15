@@ -3,7 +3,7 @@
 namespace engine {
     
 // Helper per LMR: verifica se la mossa è un killer move per il ply corrente
-bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const {
+bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
     if (ply < 0 || ply >= Engine::MAX_PLY) return false;
     for (int k = 0; k < 2; ++k) {
         const auto& km = killerMoves[k][ply];
@@ -15,7 +15,7 @@ bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move 
 }
 
 // Helper function to check if a move is a pawn promotion candidate
-bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) {
+bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
     uint8_t piece = board.get(move.from);
     uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
     uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
@@ -26,7 +26,7 @@ bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) 
 }
 
 // Helper to handle terminal nodes and transposition table lookups
-bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) {
+bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) noexcept {
     
     const uint8_t activeColor = b.getActiveColor();
 
@@ -60,7 +60,7 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
 
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) {
+                                       bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept {
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves.front().move;
 
@@ -131,7 +131,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 }
 
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
-                          chess::Board::Move& bestMove, const chess::Board::Move& m) {
+                          chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept {
     if (usIsWhite) {
         // White is the maximizing player
         if (score > bestScore) {
@@ -149,7 +149,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
-void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) {
+void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
     if (usIsWhite) {
         if (score > best) best = score;
         if (score > alpha) alpha = score;
@@ -159,7 +159,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
-chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) {
+chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept {
     // Alpha-beta pruning: White maximizes, Black minimizes
     int64_t alpha = this->NEG_INF;
     int64_t beta = this->POS_INF;
@@ -270,7 +270,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 }
 
 // Helper to execute a move, handling promotions
-void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) {
+void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     if (isPromotionMove(this->board, m)) {
         this->board.doMove(m, state, 'q');
         return;
@@ -281,7 +281,7 @@ void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& s
 // Helper to undo move and update best move/alpha-beta bounds
 void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
                                int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
-                               chess::Board::Move& bestMove) {
+                               chess::Board::Move& bestMove) noexcept {
     // Undo move before processing next one
     this->board.undoMove(m, state);
 
@@ -289,7 +289,7 @@ void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveSt
     this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
 }
 
-void Engine::doMoveInBoard(chess::Board::Move bestMove) {
+void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
     // Execute the best move found, handling promotions
     if (isPromotionMove(this->board, bestMove)) {
         (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
@@ -298,7 +298,7 @@ void Engine::doMoveInBoard(chess::Board::Move bestMove) {
     (void)this->board.moveBB(bestMove.from, bestMove.to);
 }
 
-void Engine::search(uint64_t depth) {
+void Engine::search(uint64_t depth) noexcept {
     if (depth == 0) return;
 
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
@@ -327,7 +327,7 @@ void Engine::search(uint64_t depth) {
 #endif
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) noexcept {
     this->nodesSearched++;
 
     // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
@@ -418,7 +418,7 @@ inline void addMovesFromMask_fast(
 }
 
 MoveList<chess::Board::Move>
-Engine::generateLegalMoves(const chess::Board& b) const 
+Engine::generateLegalMoves(const chess::Board& b) const noexcept
 {
     MoveList<chess::Board::Move> moves;
     // moves.reserve(40);
@@ -588,7 +588,7 @@ Engine::generateLegalMoves(const chess::Board& b) const
 }
 
 // Helper to add MVV-LVA bonus for captures
-void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) {
+void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept {
 
     const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
     const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
@@ -608,7 +608,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 
 
 // Helper to add promotion bonus
-void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) {
+void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept {
     if (pieceType == chess::Board::PAWN) {
         if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
             score += PIECE_VALUES[chess::Board::QUEEN];
@@ -617,7 +617,7 @@ void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, b
 }
 
 // Helper to add check bonus
-void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) {
+void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept {
     chess::Board::MoveState tmpState;
     b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
     if (b.inCheck(!usIsWhite)) {
@@ -627,7 +627,7 @@ void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool us
 }
 
 // Helper to add killer move and history heuristic bonuses
-void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) {
+void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) noexcept {
     if (ply >= MAX_PLY) return;
 
     const auto& km1 = killerMoves[0][ply];
@@ -647,7 +647,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 
 // Helper to add king move heuristic bonus/penalty
 // NOTA: inCheck precalcolato fuori dal loop per evitare chiamate ripetute
-void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) {
+void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept {
     if (pieceType != chess::Board::KING) return;
 
     const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
@@ -663,7 +663,7 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
 
 // Static Exchange Evaluation (SEE)
 // Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
-int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const {
+int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
@@ -774,7 +774,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     const MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
-    bool usIsWhite)
+    bool usIsWhite) noexcept
 {
     // const size_t n = moves.size();
     MoveList<ScoredMove> orderedScoredMoves;

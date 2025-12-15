@@ -32,7 +32,7 @@ Engine::Engine(std::string fen)
     std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
 }
 
-bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves){
+bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
     // Nessun late move pruning se poche mosse
     if (totalMoves <= 10) return false;
 
@@ -68,7 +68,7 @@ bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move&
     return true;
 }
 
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept {
     if (alpha < beta) return; // nessun beta-cutoff
 
     if (ply >= Engine::MAX_PLY) return;

@@ -3,7 +3,7 @@
 namespace engine {
 
 // Helper to probe transposition table and return cached score if valid
-bool Engine::probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) {
+bool Engine::probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept {
     if (depth < 1) return false;
 
 #ifdef DEBUG
@@ -29,7 +29,7 @@ bool Engine::probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& boun
 }
 
 // Helper to store position in transposition table
-void Engine::saveTTEntry(const TTSaveInfo& info) {
+void Engine::saveTTEntry(const TTSaveInfo& info) noexcept {
     uint8_t flag = TTEntry::EXACT;
     if (info.score <= info.alphaOrig) {
         flag = TTEntry::UPPERBOUND;  // fail-low

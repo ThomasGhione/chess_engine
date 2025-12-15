@@ -60,11 +60,11 @@ public:
     static uint64_t ttCutoffHits;
 #endif
 
-    void search(uint64_t depth);
-    int64_t evaluate(const chess::Board& board); 
+    void search(uint64_t depth) noexcept;
+    int64_t evaluate(const chess::Board& board) noexcept; 
     
     // TODO It will be in private later when State0 is finished
-    bool isMate();
+    bool isMate() noexcept;
 
     int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
     int64_t getMaterialDelta(const chess::Board& b) noexcept;
@@ -80,10 +80,10 @@ public:
 
 
     // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
-    MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const;
-    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite);
+    MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
+    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) noexcept;
 
-    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite);
+    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
 
 private:
     // Helper structures to reduce parameter passing
@@ -108,45 +108,45 @@ private:
         int64_t beta;
     };
 
-    void doMoveInBoard(chess::Board::Move bestMove);
+    void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
-                 chess::Board::Move& bestMove, const chess::Board::Move& m);
-    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best);
+                 chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
+    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept;
 
-    bool shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves);
+    bool shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept;
 
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]);
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept;
 
     // Helper methods for search
-    bool handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score);
+    bool handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                          bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds);
-    bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score);
-    void saveTTEntry(const TTSaveInfo& info);
+                          bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept;
+    bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept;
+    void saveTTEntry(const TTSaveInfo& info) noexcept;
 
     // Helper methods for move execution
-    void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state);
+    void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
     void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
                           int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
-                          chess::Board::Move& bestMove);
+                          chess::Board::Move& bestMove) noexcept;
 
     // Helper methods for move scoring
-    void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score);
-    void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score);
-    void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score);
-    void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score);
-    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score);
-    int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const;
+    void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;
+    void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept;
+    void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept;
+    void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) noexcept;
+    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept;
+    int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
     //void savePositionToTT();
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
     //MoveList<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
     //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
-    bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const;
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) noexcept;
+    bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
 
     
-    int64_t evaluateCheckmate(const chess::Board& board);
+    int64_t evaluateCheckmate(const chess::Board& board) noexcept;
 /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;

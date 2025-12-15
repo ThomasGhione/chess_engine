@@ -2,211 +2,70 @@
 
 namespace engine {
     
-int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
-    int64_t delta = 0;
-
-    // White pieces: color index 0
-    // Black pieces: color index 1
-
-    // Pawns
-    {
-        int w = __builtin_popcountll(b.pawns_bb[0]);
-        int bl = __builtin_popcountll(b.pawns_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::PAWN];
-    }
-
-    // Knights
-    {
-        int w = __builtin_popcountll(b.knights_bb[0]);
-        int bl = __builtin_popcountll(b.knights_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::KNIGHT];
-    }
-
-    // Bishops
-    {
-        int w = __builtin_popcountll(b.bishops_bb[0]);
-        int bl = __builtin_popcountll(b.bishops_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::BISHOP];
-    }
-
-    // Rooks
-    {
-        int w = __builtin_popcountll(b.rooks_bb[0]);
-        int bl = __builtin_popcountll(b.rooks_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::ROOK];
-    }
-
-    // Queens
-    {
-        int w = __builtin_popcountll(b.queens_bb[0]);
-        int bl = __builtin_popcountll(b.queens_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::QUEEN];
-    }
-
-    // Kings
-    {
-        int w = __builtin_popcountll(b.kings_bb[0]);
-        int bl = __builtin_popcountll(b.kings_bb[1]);
-        delta += static_cast<int64_t>(w - bl) * PIECE_VALUES[chess::Board::KING];
-    }
-
-    return delta;
+inline int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
+    return static_cast<int64_t>(
+          (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
+        + (__builtin_popcountll(b.knights_bb[0]) - __builtin_popcountll(b.knights_bb[1])) * PIECE_VALUES[chess::Board::KNIGHT]
+        + (__builtin_popcountll(b.bishops_bb[0]) - __builtin_popcountll(b.bishops_bb[1])) * PIECE_VALUES[chess::Board::BISHOP]
+        + (__builtin_popcountll(b.rooks_bb[0])   - __builtin_popcountll(b.rooks_bb[1]))   * PIECE_VALUES[chess::Board::ROOK]
+        + (__builtin_popcountll(b.queens_bb[0])  - __builtin_popcountll(b.queens_bb[1]))  * PIECE_VALUES[chess::Board::QUEEN]
+        + (__builtin_popcountll(b.kings_bb[0])   - __builtin_popcountll(b.kings_bb[1]))   * PIECE_VALUES[chess::Board::KING]);
 }
 
-int64_t Engine::evaluateCheckmate(const chess::Board& board) {
+
+int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
 }
 
-int64_t Engine::evaluate(const chess::Board& board) {
+inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
+    // White pieces: use index as-is
+    while (bbWhite) {
+        uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbWhite));
+        bbWhite &= (bbWhite - 1);
+        eval += table[sq];
+    }
+    // Black pieces: mirror index vertically
+    while (bbBlack) {
+        uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbBlack));
+        bbBlack &= (bbBlack - 1);
+        uint8_t idx = mirrorIndex(sq);
+        eval -= table[idx];
+    }
+}
 
-    // 1) EVALUATION CHECKMATE
+int64_t Engine::evaluate(const chess::Board& board) noexcept {
     if (board.isCheckmate(board.getActiveColor())) [[unlikely]] {
-        return this->evaluateCheckmate(board);
+        return evaluateCheckmate(board);
     }
 
-    int64_t eval = 0;
+    int64_t eval = getMaterialDeltaFAST(board);
 
-    int64_t materialDelta = getMaterialDeltaFAST(board);
-    eval += materialDelta;
-
-    
-    // 2) IS THIS AN ENDGAME?
-    // 2.1) counting major pieces...
-    const uint64_t allKnights = board.knights_bb[0] | board.knights_bb[1];
-    const uint64_t allBishops = board.bishops_bb[0] | board.bishops_bb[1];
-    const uint64_t allRooks   = board.rooks_bb[0]   | board.rooks_bb[1];
-    const uint64_t allQueens  = board.queens_bb[0]  | board.queens_bb[1];
-    const uint64_t minorMajors = allKnights | allBishops | allRooks | allQueens;
-    int nonPawnNonKingPieces = __builtin_popcountll(minorMajors);
-    // 2.2) finally decide if it's endgame
-    bool isEndgame = (nonPawnNonKingPieces <= PHASE_FINAL_THRESHOLD);
-
-    // 3) BONUS POSITION TABLE (bitboard-based per piece type)
-
-    auto addPsqtFor = [&](uint64_t bbWhite, uint64_t bbBlack,
-                           auto valueSelectorWhite) {
-        
-        // Nessun pezzo di questo tipo: niente da fare
-        if (!(bbWhite | bbBlack)) [[unlikely]] return;
-
-        // White pieces
-        uint64_t bb = bbWhite;
-        while (bb) {
-            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
-            bb &= (bb - 1);
-
-            uint8_t idx = sq;
-            int64_t posValue = valueSelectorWhite(idx);
-            eval += posValue; // white adds
-        }
-
-        // Black pieces
-        bb = bbBlack;
-        while (bb) {
-            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
-            bb &= (bb - 1);
-
-            uint8_t idx = mirrorIndex(sq);
-            int64_t posValue = valueSelectorWhite(idx);
-            eval -= posValue; // black subtracts
-        }
-    };
+    // Endgame flag
+    int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
+                                             board.bishops_bb[0] | board.bishops_bb[1] |
+                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
+                                             board.queens_bb[0]  | board.queens_bb[1]);
+    bool isEndgame = (nonPawnMajors <= PHASE_FINAL_THRESHOLD);
 
     // Pawns
-    addPsqtFor(
-        board.pawns_bb[0],
-        board.pawns_bb[1],
-        [&](uint8_t idx) {
-            return isEndgame ? PAWN_END_GAME_VALUES_TABLE[idx]
-                             : PAWN_VALUES_TABLE[idx];
-        }
-    );
+    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+    // Knights, Bishops, Rooks, Queens, Kings
+    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
-    // Knights
-    addPsqtFor(
-        board.knights_bb[0],
-        board.knights_bb[1],
-        [&](uint8_t idx) { return KNIGHT_VALUES_TABLE[idx]; }
-    );
-
-    // Bishops
-    addPsqtFor(
-        board.bishops_bb[0],
-        board.bishops_bb[1],
-        [&](uint8_t idx) { return BISHOP_VALUES_TABLE[idx]; }
-    );
-
-    // Rooks
-    addPsqtFor(
-        board.rooks_bb[0],
-        board.rooks_bb[1],
-        [&](uint8_t idx) { return ROOK_VALUES_TABLE[idx]; }
-    );
-
-    // Queens
-    addPsqtFor(
-        board.queens_bb[0],
-        board.queens_bb[1],
-        [&](uint8_t idx) { return QUEEN_VALUES_TABLE[idx]; }
-    );
-
-    // Kings
-    addPsqtFor(
-        board.kings_bb[0],
-        board.kings_bb[1],
-        [&](uint8_t idx) {
-            return isEndgame ? KING_END_GAME_VALUES_TABLE[idx]
-                             : KING_MIDDLE_GAME_VALUES_TABLE[idx];
-        }
-    );
-
-    // 4) Castling bonus in evaluation (not just move ordering)
-    // Apply bonus only if king and rook squares match a castled configuration.
-    // NOTE: board indexing convention:
-    //   rank 8 (top)  : 0..7   -> a8 = 0,  b8 = 1, ..., h8 = 7
-    //   rank 1 (bottom): 56..63 -> a1 = 56, b1 = 57, ..., h1 = 63
-    // Therefore:
-    //   White: g1 = 62, f1 = 61, c1 = 58, d1 = 59
-    //   Black: g8 = 6,  f8 = 5,  c8 = 2,  d8 = 3
-    auto addCastlingEvalBonus = [&](bool isWhite){
-        const int sideIndex = isWhite ? 0 : 1;
-        const uint64_t kings = board.kings_bb[sideIndex];
-        const uint64_t rooks = board.rooks_bb[sideIndex];
-        if (!kings) return;
-        const int kingSq = __builtin_ctzll(kings);
-
-        auto hasRookOn = [&](int idx){ return (rooks & (1ULL << idx)) != 0ULL; };
-
-        bool castled = false;
-        if (isWhite) {
-            // White castled kingside: Kg1 (62) with Rf1 (61)
-            if (kingSq == 62 && hasRookOn(61)) castled = true;        // O-O
-            // White castled queenside: Kc1 (58) with Rd1 (59)
-            else if (kingSq == 58 && hasRookOn(59)) castled = true;   // O-O-O
-        } else {
-            // Black castled kingside: Kg8 (6) with Rf8 (5)
-            if (kingSq == 6 && hasRookOn(5)) castled = true;          // O-O
-            // Black castled queenside: Kc8 (2) with Rd8 (3)
-            else if (kingSq == 2 && hasRookOn(3)) castled = true;     // O-O-O
-        }
-
-        if (castled) eval += isWhite ? CASTLING_BONUS : -CASTLING_BONUS;
-    };
-
-    addCastlingEvalBonus(true);   // reward castled white king
-    addCastlingEvalBonus(false);  // reward castled black king (negative for white)
-    
-    // 5) King moves without castling should be penalized
-    // (This requires tracking move history; skipping for now.)
-    
-
-    //int64_t whiteEval = 0, blackEval = 0;
-    //eval += (whiteEval - blackEval);
+    // Castling bonus (bitmask)
+    if ((board.kings_bb[0] & ((1ULL << 62)|(1ULL << 58))) && 
+        (board.rooks_bb[0] & ((1ULL << 61)|(1ULL << 59)))) eval += CASTLING_BONUS;
+    if ((board.kings_bb[1] & ((1ULL << 6)|(1ULL << 2))) && 
+        (board.rooks_bb[1] & ((1ULL << 5)|(1ULL << 3)))) eval -= CASTLING_BONUS;
 
     return eval;
 }
 
-bool Engine::isMate() {
+bool Engine::isMate() noexcept{
     uint8_t toMove = this->board.getActiveColor();
     if (this->board.isCheckmate(toMove) || this->board.isStalemate(toMove)) {
         return true;
@@ -218,16 +77,17 @@ bool Engine::isMate() {
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
 
 	static constexpr auto coefficientPiece = [](uint8_t piece) {
-	    return -2 *static_cast<int64_t>(piece >> 3) + 1;
+	    return -2 * static_cast<int64_t>(piece >> 3) + 1;
   };
 
   static constexpr auto pieceValue = [](uint8_t x) {
-    return static_cast<int64_t>( (x * (-134220 +
-      x * (304540 +
-      x * (-240405 +
-      x * (87775 +
-      x * (-15075 +
-      x * 985)))))) / 36.0);
+    const int64_t x64 = static_cast<int64_t>(x);  // Cast PRIMA delle moltiplicazioni
+    return (x64 * (-134220 +
+      x64 * (304540 +
+      x64 * (-240405 +
+      x64 * (87775 +
+      x64 * (-15075 +
+      x64 * 985)))))) / 36;
   };
 
   int64_t delta = 0;
