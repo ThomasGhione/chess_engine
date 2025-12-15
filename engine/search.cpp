@@ -400,8 +400,9 @@ inline void addMovesFromMask_fast(
     uint64_t mask,
     const uint64_t ownOcc,
     const bool inCheck
-) {
+) noexcept {
     mask &= ~ownOcc;
+    if (!mask) [[unlikely]] return; // Early exit se nessuna mossa
 
     const chess::Coords fromC{from};
 
@@ -409,26 +410,20 @@ inline void addMovesFromMask_fast(
         const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
 
-        chess::Coords toC{to};
-
-        if (b.canMoveToBB(fromC, toC, inCheck)) [[likely]] {
-            moves.emplace_back(chess::Board::Move{fromC, toC});
+        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) [[likely]] {
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
     }
 }
 
 MoveList<chess::Board::Move>
-Engine::generateLegalMoves(const chess::Board& b) const noexcept
-{
+Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     MoveList<chess::Board::Move> moves;
-    // moves.reserve(40);
 
     const uint8_t color    = b.getActiveColor();
     const int side         = (color == chess::Board::WHITE) ? 0 : 1;
-    const uint8_t oppColor = (color == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
 
     const uint64_t occ     = b.getPiecesBitMap();
-
     const uint64_t pawns   = b.pawns_bb[side];
     const uint64_t knights = b.knights_bb[side];
     const uint64_t bishops = b.bishops_bb[side];
@@ -437,20 +432,11 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept
     const uint64_t kings   = b.kings_bb[side];
 
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
-
-    // Pre-calculate inCheck once for all moves
     const bool inCheck = b.inCheck(color);
-    
-    // For pawn move generation
     const bool isWhite = (side == 0);
 
-
-
-    // --------------------------------------------------------------------
-    // 1) KING
-    // --------------------------------------------------------------------
+    // ---------------- KING MOVES ----------------
     if (kings) [[likely]] {
-
         const uint8_t kingIndex = __builtin_ctzll(kings);
         const chess::Coords kingPos{kingIndex};
         uint64_t kmask = pieces::KING_ATTACKS[kingIndex] & ~ownOcc;
@@ -458,131 +444,48 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept
         while (kmask) {
             const uint8_t to = __builtin_ctzll(kmask);
             kmask &= (kmask - 1);
-
-            if (!b.isSquareAttacked(to, oppColor, kingIndex)) {
-                moves.emplace_back(chess::Board::Move{
-                    kingPos, chess::Coords{to}
-                });
+            const chess::Coords toPos{to};
+            // CRITICAL: King moves MUST be validated (attack checks)
+            if (b.canMoveToBB(kingPos, toPos, inCheck)) [[likely]] {
+                moves.emplace_back(chess::Board::Move{kingPos, toPos});
             }
         }
 
-        // Castling: usa direttamente la posizione attuale del re
-        {
-            // lato bianco: re deve essere su e1; lato nero: su e8
-            // ma questo controllo lo fa già canMoveToBB guardando fromIndex/rank/file.
-            const uint8_t kingFile = kingIndex & 7;
-            // const uint8_t toRank   = kingIndex >> 3;
-        
-            // Tentativo arrocco corto: file + 2
-            if (kingFile <= 5) {
-                const uint8_t toKsIndex = kingIndex + 2;
-                chess::Coords toKs{toKsIndex};
-                if (b.canMoveToBB(kingPos, toKs, inCheck)) {
-                    moves.emplace_back(chess::Board::Move{kingPos, toKs});
-                }
-            }
-        
-            // Tentativo arrocco lungo: file - 2
-            if (kingFile >= 2) {
-                const uint8_t toQsIndex = kingIndex - 2;
-                chess::Coords toQs{toQsIndex};
-                if (b.canMoveToBB(kingPos, toQs, inCheck)) {
-                    moves.emplace_back(chess::Board::Move{kingPos, toQs});
-                }
-            }
-        }
+        const uint8_t kingFile = kingIndex & 7;
+        // Castling: branchless-ish
+        if (kingFile <= 5 && b.canMoveToBB(kingPos, chess::Coords{static_cast<uint8_t>(kingIndex+2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{kingPos, chess::Coords{static_cast<uint8_t>(kingIndex+2)}});
+        if (kingFile >= 2 && b.canMoveToBB(kingPos, chess::Coords{static_cast<uint8_t>(kingIndex-2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{kingPos, chess::Coords{static_cast<uint8_t>(kingIndex-2)}});
     }
 
-
-
-    // --------------------------------------------------------------------
-    // 2) PAWNS
-    // --------------------------------------------------------------------
-    {
-        uint64_t bb = pawns;
+    // ---------------- GENERIC PIECES ----------------
+    auto addMoves = [&](uint64_t bb, auto attackGen) noexcept {
         while (bb) {
             const uint8_t from = __builtin_ctzll(bb);
             bb &= (bb - 1);
-
-            uint64_t mask =
-                pieces::PAWN_ATTACKS[isWhite][from] |
-                pieces::getPawnForwardPushes(from, isWhite, occ);
-
+            const uint64_t mask = attackGen(from, occ) & ~ownOcc;
             addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
         }
+    };
+
+    // Pawns: attack + forward pushes
+    uint64_t pawnsBB = pawns;
+    while (pawnsBB) {
+        const uint8_t from = __builtin_ctzll(pawnsBB);
+        pawnsBB &= (pawnsBB - 1);
+        uint64_t mask = pieces::PAWN_ATTACKS[isWhite][from] | pieces::getPawnForwardPushes(from, isWhite, occ);
+        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
-
-    // --------------------------------------------------------------------
-    // 3) KNIGHTS
-    // --------------------------------------------------------------------
-    {
-        uint64_t bb = knights;
-        while (bb) {
-            const uint8_t from = __builtin_ctzll(bb);
-            bb &= (bb - 1);
-
-            addMovesFromMask_fast(b, moves, from,
-                pieces::KNIGHT_ATTACKS[from], ownOcc, inCheck);
-        }
-    }
-
-
-    // --------------------------------------------------------------------
-    // 4) BISHOPS
-    // --------------------------------------------------------------------
-    {
-        uint64_t bb = bishops;
-        while (bb) {
-            const uint8_t from = __builtin_ctzll(bb);
-            bb &= (bb - 1);
-
-            addMovesFromMask_fast(
-                b, moves, from,
-                pieces::getBishopAttacks(from, occ),
-                ownOcc,
-                inCheck
-            );
-        }
-    }
-
-
-    // --------------------------------------------------------------------
-    // 5) ROOKS
-    // --------------------------------------------------------------------
-    {
-        uint64_t bb = rooks;
-        while (bb) {
-            const uint8_t from = __builtin_ctzll(bb);
-            bb &= (bb - 1);
-
-            addMovesFromMask_fast(
-                b, moves, from,
-                pieces::getRookAttacks(from, occ),
-                ownOcc,
-                inCheck
-            );
-        }
-    }
-
-
-    // --------------------------------------------------------------------
-    // 6) QUEENS
-    // --------------------------------------------------------------------
-    {
-        uint64_t bb = queens;
-        while (bb) {
-            const uint8_t from = __builtin_ctzll(bb);
-            bb &= (bb - 1);
-
-            addMovesFromMask_fast(
-                b, moves, from,
-                pieces::getQueenAttacks(from, occ),
-                ownOcc,
-                inCheck
-            );
-        }
-    }
+    // Knights
+    addMoves(knights, [](uint8_t from, uint64_t) { return pieces::KNIGHT_ATTACKS[from]; });
+    // Bishops
+    addMoves(bishops, [](uint8_t from, uint64_t occ) { return pieces::getBishopAttacks(from, occ); });
+    // Rooks
+    addMoves(rooks, [](uint8_t from, uint64_t occ) { return pieces::getRookAttacks(from, occ); });
+    // Queens
+    addMoves(queens, [](uint8_t from, uint64_t occ) { return pieces::getQueenAttacks(from, occ); });
 
     return moves;
 }
