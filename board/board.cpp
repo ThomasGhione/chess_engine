@@ -327,23 +327,12 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
             if (!kingBB) [[unlikely]] return false; // invalid position: treat as illegal
             const uint8_t kingSq = __builtin_ctzll(kingBB);
 
-            // Check if king is attacked in the new position
-            const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1; // Array index
-
-            // Pawn attackers
-            if (pieces::PAWN_ATTACKERS_TO[oppSideForPawns][kingSq] & oppPawnsMask) return false;
-
-            // Knights
-            if (pieces::KNIGHT_ATTACKS[kingSq] & oppKnightsMask) return false;
-
-            // Kings (adjacent)
-            if (pieces::KING_ATTACKS[kingSq] & oppKingsMask) return false;
-
-            // Sliding rook/queen (orthogonal)
-            if (pieces::getRookAttacks(kingSq, occNew) & (oppRooksMask | oppQueensMask)) return false;
-
-            // Sliding bishop/queen (diagonal)
-            if (pieces::getBishopAttacks(kingSq, occNew) & (oppBishopsMask | oppQueensMask)) return false;
+            // Check if king is attacked in the new position using helper
+            if (isKingAttackedCustom(kingSq, oppColor, occNew,
+                                     oppPawnsMask, oppKnightsMask, oppBishopsMask,
+                                     oppRooksMask, oppQueensMask, oppKingsMask)) {
+                return false;
+            }
 
             return true;
         }
@@ -461,16 +450,12 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
         const uint64_t oppBishopsMask = (isCapture && destType == BISHOP) ? (bishops_bb[oppSide] & ~toMask) : bishops_bb[oppSide];
         const uint64_t oppQueensMask  = (isCapture && destType == QUEEN)  ? (queens_bb[oppSide] & ~toMask)  : queens_bb[oppSide];
         
-        // Check if king is attacked in the new position (single branch per piece type)
-        const uint8_t oppSideForPawns = (oppColor == WHITE) ? 0 : 1;
-        
-        if (pieces::PAWN_ATTACKERS_TO[oppSideForPawns][kingSq] & oppPawnsMask) return false;
-        if (pieces::KNIGHT_ATTACKS[kingSq] & oppKnightsMask) return false;
-        if (pieces::KING_ATTACKS[kingSq] & oppKingsMask) return false;
-        
-        // Sliding pieces: combine rooks+queens, bishops+queens
-        if (pieces::getRookAttacks(kingSq, occNew) & (oppRooksMask | oppQueensMask)) return false;
-        if (pieces::getBishopAttacks(kingSq, occNew) & (oppBishopsMask | oppQueensMask)) return false;
+        // Check if king is attacked in the new position using helper
+        if (isKingAttackedCustom(kingSq, oppColor, occNew,
+                                 oppPawnsMask, oppKnightsMask, oppBishopsMask,
+                                 oppRooksMask, oppQueensMask, oppKingsMask)) {
+            return false;
+        }
     }
 
     return true;
@@ -481,51 +466,45 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 // ------------------------------------------------------------
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
-    const uint64_t occ = occupancy;
     const int side = (byColor == WHITE) ? 0 : 1;
 
-    // Pawns: raramente attaccano, hint branch predictor
+    // Fast path: check non-sliding pieces first (cheaper)
     if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
-
-    // Knights
     if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
-
-    // Kings
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
-    // Sliding pieces combined check
+    // Early exit: if no sliding pieces of this color, no attack possible
+    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) [[likely]] return false;
+
+    // Sliding pieces check (expensive)
+    const uint64_t occ = occupancy;
     const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occ);
     const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occ);
 
-    const uint64_t slidingAttackers = ((rooks_bb[side] | queens_bb[side]) & rookMask)
-                                    | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
-
-    return slidingAttackers;
+    return ((rooks_bb[side] | queens_bb[side]) & rookMask)
+         | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
 }
 
 
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const uint64_t occMinus = occupancy & ~(1ULL << excludeSquare);
     const int side = (byColor == WHITE) ? 0 : 1;
 
-    // Early exit: pawn attacks
+    // Fast path: check non-sliding pieces first
     if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
-
-    // Knight attacks
     if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
-
-    // King attacks
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
-    // Sliding pieces combined check
+    // Early exit: if no sliding pieces, no attack possible
+    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) [[likely]] return false;
+
+    // Sliding pieces with modified occupancy
+    const uint64_t occMinus = occupancy & ~(1ULL << excludeSquare);
     const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occMinus);
     const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occMinus);
 
-    const uint64_t slidingAttackers = ((rooks_bb[side] | queens_bb[side]) & rookMask)
-                                    | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
-
-    return slidingAttackers;
+    return ((rooks_bb[side] | queens_bb[side]) & rookMask)
+         | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
 }
 
 
@@ -558,6 +537,27 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
     return true; // All squares safe
 }
 
+// Helper: check if king at kingSq is attacked using custom bitboards
+// Used internally to avoid code duplication when simulating moves
+bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
+                                 uint64_t pawns, uint64_t knights, uint64_t bishops,
+                                 uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept {
+    const uint8_t side = (byColor == WHITE) ? 0 : 1;
+    
+    // Fast path: non-sliding pieces
+    if (pieces::PAWN_ATTACKERS_TO[side][kingSq] & pawns) return true;
+    if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
+    if (pieces::KING_ATTACKS[kingSq] & kings) return true;
+    
+    // Early exit: if no sliding pieces, no attack possible
+    if (!(rooks | bishops | queens)) [[likely]] return false;
+    
+    // Sliding pieces
+    if (pieces::getRookAttacks(kingSq, occ) & (rooks | queens)) return true;
+    if (pieces::getBishopAttacks(kingSq, occ) & (bishops | queens)) return true;
+    
+    return false;
+}
 
 // Is the given color currently in check?
 bool Board::inCheck(uint8_t color) const noexcept {

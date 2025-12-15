@@ -265,33 +265,25 @@ public:
         queens_bb[0]    = queens_bb[1]    = 0ULL;
         kings_bb[0]     = kings_bb[1]     = 0ULL;
 
-        // Optimized: iterate through board storage directly to avoid coordinate conversions
-        // chessboard[0] = row 1, chessboard[7] = row 8
-        // Coords index: rank 7 = row 1, rank 0 = row 8
-        for (uint8_t internal_row = 0; internal_row < 8; ++internal_row) {
-            const uint32_t row_data = chessboard[internal_row];
-            const uint8_t base_index = (7 - internal_row) << 3; // rank * 8, precalculated
+        // Single loop: iterate all 64 squares directly
+        // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
+        for (uint8_t index = 0; index < 64; ++index) {
+            const uint8_t piece = this->get(index);
             
-            for (uint8_t file = 0; file < 8; ++file) {
-                const uint8_t piece = (row_data >> (file << 2)) & MASK_PIECE;
-                
-                if (piece == EMPTY) continue;
-                
-                const uint8_t index = base_index | file;
-                const uint64_t bit = 1ULL << index;
-                const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
+            if (piece == EMPTY) [[likely]] continue;
+            
+            const uint64_t bit = 1ULL << index;
+            const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
 
-                occupancy |= bit;
+            occupancy |= bit;
 
-                // Use lookup table approach: array of pointers indexed by piece type
-                switch (piece & MASK_PIECE_TYPE) {
-                    case PAWN:   pawns_bb[color]   |= bit; break;
-                    case KNIGHT: knights_bb[color] |= bit; break;
-                    case BISHOP: bishops_bb[color] |= bit; break;
-                    case ROOK:   rooks_bb[color]   |= bit; break;
-                    case QUEEN:  queens_bb[color]  |= bit; break;
-                    case KING:   kings_bb[color]   |= bit; break;
-                }
+            switch (piece & MASK_PIECE_TYPE) {
+                case PAWN:   pawns_bb[color]   |= bit; break;
+                case KNIGHT: knights_bb[color] |= bit; break;
+                case BISHOP: bishops_bb[color] |= bit; break;
+                case ROOK:   rooks_bb[color]   |= bit; break;
+                case QUEEN:  queens_bb[color]  |= bit; break;
+                case KING:   kings_bb[color]   |= bit; break;
             }
         }
     }
@@ -302,9 +294,9 @@ public:
     }
 
     void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
-        if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
-        uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
-        uint64_t bit = (1ULL << index);
+        if (piece == EMPTY) return;
+        const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
+        const uint64_t bit = (1ULL << index);
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   |= bit; break;
             case KNIGHT: knights_bb[color] |= bit; break;
@@ -317,9 +309,9 @@ public:
     }
 
     void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
-        if ((piece & MASK_PIECE_TYPE) == EMPTY) return;
-        uint8_t color = (piece & MASK_COLOR) != 0;
-        uint64_t mask = ~(1ULL << index);
+        if (piece == EMPTY) return;
+        const uint8_t color = (piece & MASK_COLOR) != 0;
+        const uint64_t mask = ~(1ULL << index);
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   &= mask; break;
             case KNIGHT: knights_bb[color] &= mask; break;
@@ -402,6 +394,11 @@ private:
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
     uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
     uint8_t blackKingIndex = 64;
+
+    // Helper: check if king at kingSq is attacked by byColor using custom bitboards
+    bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
+                              uint64_t pawns, uint64_t knights, uint64_t bishops,
+                              uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept;
 
     //helper for fromFenToBoard
     uint8_t charToPiece(char symbol);

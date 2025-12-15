@@ -18,6 +18,95 @@ inline constexpr int8_t rankOf(int8_t sq) noexcept { return static_cast<int8_t>(
 constexpr int8_t KNIGHT_OFFSET[8][2] = { {1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2} };
 constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1},{0,1} };
 
+enum Direction : uint8_t {
+    N=0, S, E, W,
+    NE, NW, SE, SW,
+    DIRECTION_COUNT
+};
+
+// ===================================================
+// RAY MASK PRECALCULATION
+// ===================================================
+constexpr U64 generateRayMask(int8_t square, Direction dir) {
+    int8_t file = fileOf(square);
+    int8_t rank = rankOf(square);
+    int8_t df = 0, dr = 0;
+
+    switch(dir) {
+        case N:  df=0; dr=1; break;
+        case S:  df=0; dr=-1; break;
+        case E:  df=1; dr=0; break;
+        case W:  df=-1; dr=0; break;
+        case NE: df=1; dr=1; break;
+        case NW: df=-1; dr=1; break;
+        case SE: df=1; dr=-1; break;
+        case SW: df=-1; dr=-1; break;
+        default: break;
+    }
+
+    U64 mask = 0ULL;
+    file += df; rank += dr;
+    while(file>=0 && file<8 && rank>=0 && rank<8) {
+        mask |= (ONE << (rank*8 + file));
+        file += df; rank += dr;
+    }
+    return mask;
+}
+
+inline constexpr auto generateAllRayMasks() {
+    std::array<std::array<U64, DIRECTION_COUNT>, 64> table{};
+    for(int sq=0;sq<64;sq++)
+        for(int dir=0;dir<DIRECTION_COUNT;dir++)
+            table[sq][dir] = generateRayMask(sq, static_cast<Direction>(dir));
+    return table;
+}
+
+inline constexpr auto RAY_MASK = generateAllRayMasks();
+
+// ===================================================
+// BRANCHLESS O(1) RAY
+// ===================================================
+inline constexpr U64 ray(int8_t square, Direction dir, U64 occupancy) noexcept {
+    U64 mask = RAY_MASK[square][dir];
+    U64 blockers = mask & occupancy;
+    if (!blockers) return mask;
+
+    // trova il blocker più vicino in base alla direzione
+    int8_t blockerSq;
+    switch (dir) {
+        // Per direzioni verso l'alto/destra: primo blocker (LSB)
+        case N: case NE: case NW: case E:
+            blockerSq = __builtin_ctzll(blockers);
+            // Include blocker, rimuovi tutto oltre
+            return mask & ((1ULL << (blockerSq + 1)) - 1ULL);
+        
+        // Per direzioni verso il basso/sinistra: ultimo blocker (MSB)
+        case S: case SE: case SW: case W:
+            blockerSq = 63 - __builtin_clzll(blockers);
+            // Include blocker, rimuovi tutto prima
+            return mask & ~((1ULL << blockerSq) - 1ULL);
+        
+        default: 
+            return 0ULL;
+    }
+}
+
+// ===================================================
+// PIECE ATTACKS
+// ===================================================
+inline constexpr U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
+    return ray(sq, NE, occ) | ray(sq, NW, occ) | ray(sq, SE, occ) | ray(sq, SW, occ);
+}
+
+inline constexpr U64 getRookAttacks(int8_t sq, U64 occ) noexcept {
+    return ray(sq, N, occ) | ray(sq, S, occ) | ray(sq, E, occ) | ray(sq, W, occ);
+}
+
+inline constexpr U64 getQueenAttacks(int8_t sq, U64 occ) noexcept {
+    return getBishopAttacks(sq, occ) | getRookAttacks(sq, occ);
+}
+
+
 // ==================== ATTACK MAPS (color-agnostic salvo pedone) ====================
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
 	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
@@ -38,30 +127,21 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 }
 
 inline constexpr U64 getPawnForwardPushes(int8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
-	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
-	U64 pushBitboard = 0ULL;
-	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
-	// White pawns move "up" (rank decreases), Black pawns move "down" (rank increases)
-	int8_t forwardDir = isWhite ? -1 : 1;
-	int8_t oneStepRank = rank + forwardDir;
-    
-	if (oneStepRank >= 0 && oneStepRank < 8) {
-		int8_t oneStepSquare = (oneStepRank * 8) + file;
-		if ((occupancy & (ONE << oneStepSquare)) == 0) {
-			pushBitboard |= (ONE << oneStepSquare);
-			// White pawns start at rank 6 (row 2), Black pawns start at rank 1 (row 7)
-			int8_t startRank = isWhite ? 6 : 1;
-			if (rank == startRank) {
-				int8_t twoStepRank = rank + 2 * forwardDir;
-				if (twoStepRank >= 0 && twoStepRank < 8) {
-					int8_t twoStepSquare = twoStepRank * 8 + file;
-					if ((occupancy & (ONE << twoStepSquare)) == 0)
-						pushBitboard |= (ONE << twoStepSquare);
-				}
-			}
-		}
-	}
-	return pushBitboard;
+	// Coords convention: rank 0 = row 8, rank 7 = row 1
+	// White pawns move "up" (rank decreases: shift right), Black pawns move "down" (rank increases: shift left)
+	const U64 pawnBit = ONE << squareIndex;
+	const int8_t rank = rankOf(squareIndex);
+	
+	// One step forward
+	const U64 oneStep = isWhite ? (pawnBit >> 8) : (pawnBit << 8);
+	const U64 oneStepPush = oneStep & ~occupancy;
+	
+	// Two step forward (only from starting rank and if one step is empty)
+	const int8_t startRank = isWhite ? 6 : 1;
+	const U64 twoStep = isWhite ? (oneStepPush >> 8) : (oneStepPush << 8);
+	const U64 twoStepPush = (rank == startRank) ? (twoStep & ~occupancy) : 0ULL;
+	
+	return oneStepPush | twoStepPush;
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square
@@ -110,13 +190,9 @@ inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
 	return attackBitboard;
 }
 
-// Sliding (naive, si ferma sul primo blocco)
-U64 getBishopAttacks(int8_t squareIndex, U64 occupancy) noexcept;
-U64 getRookAttacks(int8_t squareIndex, U64 occupancy) noexcept;
-U64 getQueenAttacks(int8_t squareIndex, U64 occupancy) noexcept;
 
 // ==================== UTILS ====================
-inline U64 ray(int8_t file, int8_t rank, int8_t deltaFile, int8_t deltaRank, U64 occupancy);
+// inline U64 ray(int8_t file, int8_t rank, int8_t deltaFile, int8_t deltaRank, U64 occupancy);
 
 
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = []{
