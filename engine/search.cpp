@@ -471,7 +471,7 @@ Engine::generateLegalMoves(const chess::Board& b) const
             // lato bianco: re deve essere su e1; lato nero: su e8
             // ma questo controllo lo fa già canMoveToBB guardando fromIndex/rank/file.
             const uint8_t kingFile = kingIndex & 7;
-            const uint8_t toRank   = kingIndex >> 3;
+            // const uint8_t toRank   = kingIndex >> 3;
         
             // Tentativo arrocco corto: file + 2
             if (kingFile <= 5) {
@@ -704,12 +704,12 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     auto getLeastValuableAttacker = [&](uint64_t attackers, const chess::Board& board) -> uint8_t {
         // Ordine: pawn, knight, bishop, rook, queen, king
         const uint64_t pieceTypes[6] = {
-            attackers & board.pawns_bb[0] | board.pawns_bb[1],
-            attackers & board.knights_bb[0] | board.knights_bb[1],
-            attackers & board.bishops_bb[0] | board.bishops_bb[1],
-            attackers & board.rooks_bb[0] | board.rooks_bb[1],
-            attackers & board.queens_bb[0] | board.queens_bb[1],
-            attackers & board.kings_bb[0] | board.kings_bb[1]
+            attackers & (board.pawns_bb[0] | board.pawns_bb[1]),
+            attackers & (board.knights_bb[0] | board.knights_bb[1]),
+            attackers & (board.bishops_bb[0] | board.bishops_bb[1]),
+            attackers & (board.rooks_bb[0] | board.rooks_bb[1]),
+            attackers & (board.queens_bb[0] | board.queens_bb[1]),
+            attackers & (board.kings_bb[0] | board.kings_bb[1])
         };
         
         for (uint64_t bb : pieceTypes) {
@@ -787,7 +787,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     // Cache alcune maschere per pezzi (tipo & tipo pezzo) per evitare doppie chiamate
     // orderedScoredMoves.reserve(n);
 
-    for (size_t i = 0; i < moves.size; ++i) {
+    for (int i = 0; i < moves.size; ++i) {
         const auto& m = moves[i]; // const reference per evitare copia
         int64_t score = 0;
 

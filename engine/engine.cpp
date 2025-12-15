@@ -16,14 +16,9 @@ Engine::Engine()
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
-    // Collega la TT globale e inizializzala a valori noti
+    // Collega la TT globale e inizializzala a INVALID
     ttTable = globalTT();
-    for (std::size_t i = 0; i < TTEntry::TABLE_SIZE; ++i) {
-        ttTable[i].key = 0;
-        ttTable[i].depth = 0;
-        ttTable[i].score = 0;
-        ttTable[i].flag  = TTEntry::EXACT;
-    }
+    std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
 }
 
 Engine::Engine(std::string fen)
@@ -32,14 +27,9 @@ Engine::Engine(std::string fen)
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
-    // Collega la TT globale e inizializzala a valori noti
+    // Collega la TT globale e inizializzala a INVALID
     ttTable = globalTT();
-    for (std::size_t i = 0; i < TTEntry::TABLE_SIZE; ++i) {
-        ttTable[i].key = 0;
-        ttTable[i].depth = 0;
-        ttTable[i].score = 0;
-        ttTable[i].flag  = TTEntry::EXACT;
-    }
+    std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
 }
 
 bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves){

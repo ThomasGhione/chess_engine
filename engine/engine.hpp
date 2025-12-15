@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <string>
+#include <cstring>
 #include <omp.h>
 
 #ifdef DEBUG

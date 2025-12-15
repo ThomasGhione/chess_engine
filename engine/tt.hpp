@@ -12,17 +12,18 @@ namespace engine {
 // key16(2) + score(2) + depth(1) + age(1) + flag(1) + padding(1) = 8 byte minimo
 // Usiamo key per ridurre collisioni: key(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 byte
 struct TTEntry {
-    uint64_t key = 0;   // 64 bit della Zobrist key 
-    int16_t  score = 0;   // score in centipawns (range ±32k sufficiente con mate detection)
-    uint8_t  depth = 0;   // profondità (0-255 sufficiente)
-    uint8_t  age   = 0;   // generation/age per replacement policy
-    uint8_t  flag  = 0;   // EXACT / LOWERBOUND / UPPERBOUND
-    uint8_t  padding[3] = {0, 0, 0}; // align a 16 byte
+    uint64_t key;   // 64 bit della Zobrist key 
+    int16_t  score;   // score in centipawns (range ±32k sufficiente con mate detection)
+    uint8_t  depth;   // profondità (0-255 sufficiente)
+    uint8_t  age  ;   // generation/age per replacement policy
+    uint8_t  flag;   // INVALID / EXACT / LOWERBOUND / UPPERBOUND
+    uint8_t  padding[3]; // align a 16 byte
 
     enum Flag : uint8_t {
-        EXACT      = 0,
-        LOWERBOUND = 1,
-        UPPERBOUND = 2
+        INVALID = 0,  // Entry vuota/non valida
+        EXACT,
+        LOWERBOUND,
+        UPPERBOUND
     };
 
     // Bucket-based TT: 4 entries per bucket per ridurre collisioni (cache line = 64 byte, bucket = 48 byte)
@@ -32,9 +33,9 @@ struct TTEntry {
     
     static constexpr int32_t ADJUSTMENT = 50; 
 
-    TTEntry() = default;
-    TTEntry(uint64_t k, uint8_t d, int16_t s, uint8_t f, uint8_t a)
-        : key(k), score(s), depth(d), age(a), flag(f) {}
+    //TTEntry() = default;
+    //TTEntry(uint64_t k, uint8_t d, int16_t s, uint8_t f, uint8_t a)
+    //    : key(k), score(s), depth(d), age(a), flag(f) {}
 };
 
 // Transposition table globale + age/generation counter
@@ -233,8 +234,9 @@ inline bool probeTT(const TTEntry* ttTable,
     for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
         const TTEntry& entry = bucket[i];
         
-        if (entry.key != key) continue;      // chiave diversa
-        if (entry.depth < depth) continue;        // profondità insufficiente
+        if (entry.flag == TTEntry::INVALID) continue;  // entry vuota, salta
+        if (entry.key != key) continue;                // chiave diversa
+        if (entry.depth < depth) continue;             // profondità insufficiente
 
         const int16_t score = entry.score;
         
