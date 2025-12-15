@@ -4,6 +4,7 @@
 #include "engine.hpp"
 #include <utility>  // per std::forward
 #include <concepts> // per concepts C++20
+#include <algorithm> // per std::partial_sort
 
 // Concept: T deve avere un membro .score di tipo int64_t
 template<typename T>
@@ -66,7 +67,7 @@ struct MoveList {
     inline void sort() noexcept requires HasScore<T> {
         if (size <= 1) return; // nothing to sort
         
-        for (int i = 1; i < static_cast<int>(size); ++i) {
+        for (int i = 1; i < size; ++i) {
             T key = data[i];
             int j = i - 1;
 

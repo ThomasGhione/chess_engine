@@ -106,6 +106,7 @@ private:
         int64_t score;
         int64_t alphaOrig;
         int64_t beta;
+        uint16_t bestMove; // Add best move to save info
     };
 
     void doMoveInBoard(chess::Board::Move bestMove) noexcept;
@@ -123,6 +124,7 @@ private:
                           bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept;
     bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept;
     void saveTTEntry(const TTSaveInfo& info) noexcept;
+    bool getHashMove(const chess::Board& b, chess::Board::Move& outMove) noexcept; // Get hash move from TT
 
     // Helper methods for move execution
     void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;

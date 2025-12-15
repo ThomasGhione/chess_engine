@@ -62,7 +62,7 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                                        bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept {
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
-    chess::Board::Move bestMove = orderedScoredMoves.front().move;
+    chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
@@ -75,6 +75,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         } else {
             b.doMove(m, state);
         }
+
+        // Check if move gives check (AFTER executing the move)
+        const uint8_t oppColor = (ctx.activeColor == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
+        const bool givesCheck = b.inCheck(oppColor);
 
         /*
         // Futility pruning: skip obviously losing captures at low depth
@@ -93,18 +97,26 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         } */
 
         // LMR: riduci la profondità per le mosse "late" non critiche
-        int64_t childDepth = std::max(static_cast<int64_t>(0), ctx.depth - 1);
-        bool canReduce = (ctx.depth > 2)
+        const int64_t childDepth = ctx.depth - 1;
+        const bool canReduce = (ctx.depth > 2)
             && (moveIndex > 1)
             && !isPromotionMove(b, m)
             && (b.get(m.to) == chess::Board::EMPTY) // non-capture
+            && !givesCheck // NON ridurre se la mossa dà scacco!
             && !this->isKillerMove(m, killerMoves, ctx.ply);
 
         int64_t score = 0;
         if (canReduce) {
-            int64_t reducedDepth = std::max(static_cast<int64_t>(0), childDepth - 1);
+            // Riduzione adattiva: più profondo cerchiamo, più riduciamo
+            // Formula: R = 1 + floor(log2(depth)) + floor(log2(moveIndex))
+            int64_t reduction = 1;
+            if (ctx.depth >= 6) reduction += 1; // +1 se depth >= 6
+            if (moveIndex >= 4) reduction += 1; // +1 se è molto late (>= 4a mossa)
+            
+            const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
-            // Se la mossa ridotta taglia, ricerchi a profondità piena
+            
+            // Re-search a profondità piena se la mossa ridotta è promettente
             if (score > bounds.alpha && score < bounds.beta) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
             }
@@ -165,7 +177,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     int64_t beta = this->POS_INF;
     int64_t bestScore = searchBestMoveForWhite ? NEG_INF : POS_INF;
 
-    chess::Board::Move bestMove = moves.front();
+    chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
 
     // YBWC: Young Brothers Wait Concept
@@ -173,7 +185,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     // Remaining moves can be searched in parallel with narrower windows
     const bool useYBWC = (moves.size >= 8 && this->depth >= 5);
 
-    if (!useYBWC || moves.size < 2) {
+    if (!useYBWC) {
         // Sequential search for few moves or shallow depth
         for (const auto& m : moves) {
             chess::Board::MoveState state;
@@ -209,13 +221,13 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                 
                 // Dynamic scheduling: moves with similar scores get better load balancing
                 #pragma omp for schedule(dynamic, 1) nowait
-                for (int i = 1; i < static_cast<int>(moves.size); ++i) {
+                for (int i = 1; i < moves.size; ++i) {
                     const auto& m = moves[i];
                     chess::Board::MoveState state;
                     
-                    if (isPromotionMove(localBoard, m)) {
+                    if (isPromotionMove(localBoard, m)) [[unlikely]] {
                         localBoard.doMove(m, state, 'q');
-                    } else {
+                    } else [[likely]] {
                         localBoard.doMove(m, state);
                     }
                     
@@ -387,7 +399,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // Save position to transposition table
     const uint64_t hashKey = computeHashKey(b);
-    TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta};
+    TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta, 0};
     this->saveTTEntry(ttInfo);
     return best;
 }
@@ -570,9 +582,6 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
-    // Valori dei pezzi (EMPTY=0, PAWN=1, ..., KING=6)
-    constexpr int64_t pieceVals[7] = {0, 100, 320, 330, 500, 900, 20000};
-
     // Trova tutti gli attaccanti alla casella target
     auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) -> uint64_t {
         uint64_t attackers = 0ULL;
@@ -632,7 +641,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     }
 
     int64_t gain[32];
-    gain[0] = pieceVals[capturedType];
+    gain[0] = PIECE_VALUES[capturedType];
 
     // Simula scambio
     uint64_t occ = b.getPiecesBitMap();
@@ -653,7 +662,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         if (attacker == 64) break;
 
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
-        gain[depth] = pieceVals[attackerType] - gain[depth - 1];
+        gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
         
         // Rimuovi l'attaccante dall'occupancy
         occ ^= (1ULL << attacker);
@@ -679,19 +688,14 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     chess::Board& b,
     bool usIsWhite) noexcept
 {
-    // const size_t n = moves.size();
     MoveList<ScoredMove> orderedScoredMoves;
-    // orderedScoredMoves.reserve(n); // pre-allocazione
 
     // Pre-calcolo variabili costose fuori dal loop
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
 
-    // Cache alcune maschere per pezzi (tipo & tipo pezzo) per evitare doppie chiamate
-    // orderedScoredMoves.reserve(n);
-
     for (int i = 0; i < moves.size; ++i) {
-        const auto& m = moves[i]; // const reference per evitare copia
+        const auto& m = moves[i];
         int64_t score = 0;
 
         const uint8_t fromPiece = b.get(m.from);
@@ -703,6 +707,16 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // Add MVV-LVA bonus for captures (including en passant)
         addMVVLVABonus(m, b, score);
+
+        // Penalizza catture perdenti con SEE
+        // Se SEE < 0, la cattura perde materiale → ordina dopo
+        if (isCapture) [[likely]] {
+            const int64_t see = staticExchangeEvaluation(b, m);
+            if (see < 0) [[unlikely]] {
+                // Cattura perdente: penalità proporzionale alla perdita
+                score += see; // see è negativo, quindi abbassa lo score
+            }
+        }
         
         // Add promotion bonus
         addPromotionBonus(m, fromPieceType, usIsWhite, score);
@@ -715,27 +729,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         // King move penalties/bonuses (castling, early king moves)
         addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
 
-        // Emplace direttamente senza copia aggiuntiva
         orderedScoredMoves.emplace_back(m, score);
     }
 
-    // Ordina usando lambda inline e [niente copie]
-    //std::sort(orderedScoredMoves.begin(), orderedScoredMoves.end(),
-    //    [](const ScoredMove& a, const ScoredMove& b) noexcept {
-    //        return a.score > b.score;
-    //});
     orderedScoredMoves.sort();
-
-    // Debug: verifica che l'ordinamento sia corretto (decrescente)
-    #ifdef DEBUG
-    //for (size_t i = 1; i < orderedScoredMoves.size; ++i) {
-    //    if (orderedScoredMoves[i-1].score < orderedScoredMoves[i].score) {
-    //        std::cerr << "SORT BUG: at index " << i 
-    //                  << ", score[" << (i-1) << "]=" << orderedScoredMoves[i-1].score
-    //                  << " < score[" << i << "]=" << orderedScoredMoves[i].score << "\n";
-    //    }
-    //}
-    #endif
 
     return orderedScoredMoves;
 }
