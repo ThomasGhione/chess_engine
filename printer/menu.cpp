@@ -74,13 +74,9 @@ namespace print {
 
     void Menu::clearScreen() {
         #ifdef _WIN32
-            auto output = system("cls");
+            system("cls");
         #else
-            auto output = system("clear");
+            system("clear");
         #endif
-
-        if(output == 0){
-          std::cout << "Ci sono stati degli errori nel tentare di pulire lo schermo.\n";
-        }
     }
 }

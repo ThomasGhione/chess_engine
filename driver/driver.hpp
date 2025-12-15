@@ -21,15 +21,15 @@ namespace driver {
             bool loadGame(bool isWithPlayer);
             void saveGame();
             void quit(std::string input);
+            void endGame();
 
+            void playerTurn();
+            void engineTurn();
+            
             void playGameVsHuman();
-            void takePlayerTurn();
-
             void playGameVsEngine(bool isWhite);
             void EngineFirst();
             void HumanFirst();
-
-            void printFinalResult(); // TODO implement this!!!
     };
 }
 

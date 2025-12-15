@@ -29,10 +29,10 @@ namespace driver {
                     Driver::quit(std::string(1, colorChoice));
                     switch (colorChoice) {
                         case '1':
-                            this->playGameVsEngine(true); // TODO stampare il risultato finale
+                            this->playGameVsEngine(true);
                             break;
                         case '2':
-                            this->playGameVsEngine(false); // TODO stampare il risultato finale
+                            this->playGameVsEngine(false);
                             break;
                         case '3':
                             loadGame(false);
@@ -132,7 +132,7 @@ namespace driver {
     }
 
 
-    void Driver::printFinalResult() {
+    void Driver::endGame() {
         if (this->engine.isMate()) {
             uint8_t nextColor = this->engine.board.getActiveColor();
             if (this->engine.board.isCheckmate(nextColor)) {
@@ -142,6 +142,8 @@ namespace driver {
             } else if (this->engine.board.isStalemate(nextColor)) {
                 std::cout << "\nStalemate. Game drawn.\n";
             }
+            std::cout << "Press any key to return to the menu...";
+            std::cin.get();
         } 
     }
 
@@ -149,28 +151,39 @@ namespace driver {
     void Driver::playGameVsHuman() {
     	while(!engine.isMate()) {
     	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
+            this->playerTurn();
+            if (engine.isMate()) { endGame(); return; }
 
-    	    // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-
-            std::cout << "It's white's turn: \n\n";
-            
-            this->takePlayerTurn();
-            
-            if (engine.isMate()) break;
-
-            // std::cout << print::Prints::getPrintableBoard( this->board.getCurrentPositionFen() ) << std::endl;
-            std::cout << "It's black's turn: \n\n";
-            
-            this->takePlayerTurn();
-
-            if (engine.isMate()) break;
+            this->playerTurn();
+            if (engine.isMate()) { endGame(); return; }
     	}
     }
 
+    void Driver::playGameVsEngine(bool isHumanWhite) {
+        if (isHumanWhite) {
+            while (!engine.isMate()) {
+                this->playerTurn();
+                if (engine.isMate()) { endGame(); return; }
+                
+                this->engineTurn();
+                if (engine.isMate()) { endGame(); return; }
+            }
+        } 
+        else {
+            while (!engine.isMate()) {
+                this->engineTurn();
+                if (engine.isMate()) { endGame(); return; }
+
+                this->playerTurn();
+                if (engine.isMate()) { endGame(); return; }
+            } 
+        }
+    }
 
 
+    void Driver::playerTurn() {
+        engine.board.getActiveColor() == chess::Board::WHITE ? std::cout << "\nWhite's turn.\n\n" : std::cout << "\nBlack's turn.\n\n";
 
-    void Driver::takePlayerTurn() {
         std::string playerInput;
 
         bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
@@ -299,6 +312,20 @@ namespace driver {
         return;
     }
 
+    void Driver::engineTurn() {
+        std::cout << "Engine's thinking... \n";
+#ifdef DEBUG
+                auto chrono_start = std::chrono::high_resolution_clock::now();
+#endif
+        engine.search(engine.depth);
+#ifdef DEBUG
+                auto chrono_end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
+                std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
+                std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
+#endif
+    }
+
     /*
     void Engine::saveGame() {
         if (std::filesystem::exists("save.txt")) {
@@ -320,10 +347,9 @@ namespace driver {
     } */
 
 
-    void Driver::playGameVsEngine(bool isHumanWhite) {
-        isHumanWhite ? this->HumanFirst() : this->EngineFirst();
-    }
 
+
+    /*
     void Driver::EngineFirst() {
         while (!engine.isMate()) {
             std::cout << "Engine's thinking... \n";
@@ -342,14 +368,16 @@ namespace driver {
             if (engine.isMate()) break;
 
             std::cout << "It's your turn: \n\n";
-            this->takePlayerTurn();
+            this->playerTurn();
         }
     }
+    */
 
+    /*
     void Driver::HumanFirst() {
         while (!engine.isMate()) {
             std::cout << "It's your turn: \n\n";
-            this->takePlayerTurn();
+            this->playerTurn();
 
             if (engine.isMate()) break;
 
@@ -367,20 +395,21 @@ namespace driver {
 #endif
         }
     }
+    */
 
     /*
     void Engine::playGameVsEngine(bool isWhite) {
         while (!isMate()) {
         if(isWhite) {
           std::cout << "It's your turn: ";
-          takePlayerTurn();
+          playerTurn();
           std::cout << "Engine's thinking... ";
           takeEngineTurn();
         }else{
           std::cout << "Engine's thinking... ";
           takeEngineTurn();
           std::cout << "It's your turn: ";
-          takePlayerTurn();
+          playerTurn();
         }
       }
 
