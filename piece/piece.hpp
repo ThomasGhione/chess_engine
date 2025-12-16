@@ -126,22 +126,72 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 	return attackBitboard;
 }
 
+
+// Lookup table per target squares dei pawn pushes (senza considerare occupancy)
+// table[isWhite][square] = bitboard con 1-step e 2-step target squares
+// Nota: a runtime devi ancora controllare occupancy per validare le mosse
+inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
+    std::array<std::array<uint64_t, 64>, 2> table{};
+
+    for (int sq = 0; sq < 64; ++sq) {
+        int8_t rank = rankOf(sq);
+        int8_t file = fileOf(sq);
+        
+        // White pawns (isWhite=1, index 1)
+        if (rank > 0) { // Can move up (rank decreases)
+            uint64_t oneStep = ONE << ((rank - 1) * 8 + file);
+            table[1][sq] = oneStep;
+            
+            // Two-step from starting rank (rank 6 = row 2)
+            if (rank == 6 && rank >= 2) {
+                uint64_t twoStep = ONE << ((rank - 2) * 8 + file);
+                table[1][sq] |= twoStep;
+            }
+        }
+        
+        // Black pawns (isWhite=0, index 0)
+        if (rank < 7) { // Can move down (rank increases)
+            uint64_t oneStep = ONE << ((rank + 1) * 8 + file);
+            table[0][sq] = oneStep;
+            
+            // Two-step from starting rank (rank 1 = row 7)
+            if (rank == 1 && rank <= 5) {
+                uint64_t twoStep = ONE << ((rank + 2) * 8 + file);
+                table[0][sq] |= twoStep;
+            }
+        }
+    }
+
+    return table;
+}();
+
 inline constexpr U64 getPawnForwardPushes(int8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
-	// Coords convention: rank 0 = row 8, rank 7 = row 1
-	// White pawns move "up" (rank decreases: shift right), Black pawns move "down" (rank increases: shift left)
-	const U64 pawnBit = ONE << squareIndex;
+	// Usa lookup table per target squares, poi filtra con occupancy
+	// PAWN_PUSH_TARGETS[isWhite][sq] contiene 1-step e possibile 2-step
+	const int colorIndex = isWhite ? 1 : 0;
+	U64 targets = PAWN_PUSH_TARGETS[colorIndex][squareIndex];
+	
+	if (!targets) [[unlikely]] return 0ULL; // No valid pushes (promotion rank già gestito)
+	
+	// One-step square: sempre il primo bit
 	const int8_t rank = rankOf(squareIndex);
+	const int8_t file = fileOf(squareIndex);
+	const int8_t oneStepRank = rank + (isWhite ? -1 : 1);
+	const U64 oneStepBit = ONE << (oneStepRank * 8 + file);
 	
-	// One step forward
-	const U64 oneStep = isWhite ? (pawnBit >> 8) : (pawnBit << 8);
-	const U64 oneStepPush = oneStep & ~occupancy;
+	// Se one-step è bloccato, nessuna mossa possibile
+	if (occupancy & oneStepBit) return 0ULL;
 	
-	// Two step forward (only from starting rank and if one step is empty)
-	const int8_t startRank = isWhite ? 6 : 1;
-	const U64 twoStep = isWhite ? (oneStepPush >> 8) : (oneStepPush << 8);
-	const U64 twoStepPush = (rank == startRank) ? (twoStep & ~occupancy) : 0ULL;
+	// Filtra targets con occupancy: rimuovi square occupate
+	U64 result = oneStepBit; // one-step è sempre valido se arriviamo qui
 	
-	return oneStepPush | twoStepPush;
+	// Two-step: solo se presenti in targets E one-step era libero E two-step è libero
+	const U64 twoStepBit = targets & ~oneStepBit;
+	if (twoStepBit && !(occupancy & twoStepBit)) {
+		result |= twoStepBit;
+	}
+	
+	return result;
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square
@@ -217,6 +267,8 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKERS_TO = []{
 
     return table;
 }();
+
+
 
 inline constexpr std::array<uint64_t, 64> KNIGHT_ATTACKS = []{
     std::array<uint64_t, 64> table{};

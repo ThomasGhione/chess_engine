@@ -19,8 +19,6 @@ bool Engine::probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& boun
     if (probeTT(this->ttTable, hashKey, static_cast<uint8_t>(depth), alpha16, beta16, ttScore)) {
 #ifdef DEBUG
         ++ttHits;
-        ++ttExactHits;
-        ++ttCutoffHits;
 #endif
         score = static_cast<int64_t>(ttScore);
         return true;

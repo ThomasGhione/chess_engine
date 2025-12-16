@@ -6,8 +6,6 @@ uint64_t Engine::nodesSearched = 0;
 #ifdef DEBUG
 uint64_t Engine::ttProbes = 0;
 uint64_t Engine::ttHits = 0;
-uint64_t Engine::ttExactHits = 0;
-uint64_t Engine::ttCutoffHits = 0;
 #endif
 
 Engine::Engine()

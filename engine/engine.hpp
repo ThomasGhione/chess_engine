@@ -56,8 +56,6 @@ public:
     // Transposition table statistics (only in debug builds)
     static uint64_t ttProbes;
     static uint64_t ttHits;
-    static uint64_t ttExactHits;
-    static uint64_t ttCutoffHits;
 #endif
 
     void search(uint64_t depth) noexcept;

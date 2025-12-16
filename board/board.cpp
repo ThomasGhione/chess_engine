@@ -199,7 +199,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     const uint8_t toIndex = to.index;
     
     const uint64_t toBit = (1ULL << toIndex);
-    const uint64_t occ = this->occupancy;
 
     // Pre-calculate destination piece info (used multiple times)
     const uint8_t destPiece = this->get(to);
@@ -232,10 +231,10 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
             attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
 
             // Sliding rook/queen (orthogonal)
-            attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occ)) & 
+            attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occupancy)) & 
                                                   (rooks_bb[oppSide] | queens_bb[oppSide]));
             // Sliding bishop/queen (diagonal)
-            attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occ)) & 
+            attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occupancy)) & 
                                                   (bishops_bb[oppSide] | queens_bb[oppSide]));
         }
     }
@@ -248,22 +247,22 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
         case PAWN: {
             const bool isWhite = (this->getColor(from) == WHITE);
             const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
-            const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occ);
+            const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy);
             bool legal = false;
             bool isEnPassant = false;
             // En passant: diagonal into empty square matching enPassant target
-            if ((attacks & toBit) && ((occ & toBit) == 0ULL)) {
+            if ((attacks & toBit) && ((occupancy & toBit) == 0ULL)) {
                 if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].index) {
                     legal = true;
                     isEnPassant = true;
                 }
             }
             // Diagonal captures (must be occupied)
-            if (!legal && (attacks & toBit) && ((occ & toBit) != 0ULL)) {
+            if (!legal && (attacks & toBit) && ((occupancy & toBit) != 0ULL)) {
                 legal = true;
             }
             // Forward pushes (must be empty)
-            if (!legal && (pushes & toBit) && ((occ & toBit) == 0ULL)) {
+            if (!legal && (pushes & toBit) && ((occupancy & toBit) == 0ULL)) {
                 legal = true;
             }
             if (!legal) return false;
@@ -274,7 +273,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
             const uint8_t oppSide = side ^ 1;
 
             // New occupancy after the move
-            uint64_t occNew = occ;
+            uint64_t occNew = occupancy;
             const uint64_t fromMask = (1ULL << fromIndex);
             const uint64_t toMask   = (1ULL << toIndex);
             occNew &= ~fromMask;
@@ -339,11 +338,11 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
         case KNIGHT:
             bitMap = pieces::KNIGHT_ATTACKS[fromIndex]; break;
         case BISHOP:
-            bitMap = pieces::getBishopAttacks(fromIndex, occ); break;
+            bitMap = pieces::getBishopAttacks(fromIndex, occupancy); break;
         case ROOK:
-            bitMap = pieces::getRookAttacks(fromIndex, occ); break;
+            bitMap = pieces::getRookAttacks(fromIndex, occupancy); break;
         case QUEEN:
-            bitMap = pieces::getQueenAttacks(fromIndex, occ); break;
+            bitMap = pieces::getQueenAttacks(fromIndex, occupancy); break;
         case KING: {
             bitMap = pieces::KING_ATTACKS[fromIndex];
             // Disallow king moves into attacked destination squares
@@ -430,7 +429,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
         const uint64_t toMask   = (1ULL << toIndex);
 
         // New occupancy after the move
-        uint64_t occNew = occ;
+        uint64_t occNew = occupancy;
         occNew &= ~fromMask;
         occNew |=  toMask;
 
@@ -477,9 +476,8 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
     if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) [[likely]] return false;
 
     // Sliding pieces check (expensive)
-    const uint64_t occ = occupancy;
-    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occ);
-    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occ);
+    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occupancy);
+    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occupancy);
 
     return ((rooks_bb[side] | queens_bb[side]) & rookMask)
          | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
@@ -512,7 +510,6 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 // Returns true if all squares are safe, false if ANY square is attacked
 // Used for castling to avoid 3 separate isSquareAttacked calls
 bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
-    const uint64_t occ = occupancy;
     const int side = (byColor == WHITE) ? 0 : 1;
     
     // Check each square in the mask
@@ -525,8 +522,8 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
         if (pieces::KNIGHT_ATTACKS[sq] & knights_bb[side]) return false;
         if (pieces::KING_ATTACKS[sq] & kings_bb[side]) return false;
         
-        const uint64_t rookMask   = pieces::getRookAttacks(sq, occ);
-        const uint64_t bishopMask = pieces::getBishopAttacks(sq, occ);
+        const uint64_t rookMask   = pieces::getRookAttacks(sq, occupancy);
+        const uint64_t bishopMask = pieces::getBishopAttacks(sq, occupancy);
         
         if (((rooks_bb[side] | queens_bb[side]) & rookMask) | 
             ((bishops_bb[side] | queens_bb[side]) & bishopMask)) {

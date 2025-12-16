@@ -206,13 +206,24 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             this->undoAndUpdateMove(firstMove, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
         }
 
+        // Decide a reasonable number of threads for the parallel region.
+        // Use at most one thread per remaining move (moves.size()-1) and cap
+        // to omp_get_max_threads() to avoid oversubscription. We pass the
+        // resulting value via the num_threads clause to keep the setting
+        // local to this parallel region (avoids global side-effects).
         // Remaining moves in parallel with current alpha/beta bounds
         // Each thread searches with SHARED alpha/beta (read-only after first move)
         if (moves.size > 1) {
             const int64_t sharedAlpha = alpha;
             const int64_t sharedBeta = beta;
-            
-            #pragma omp parallel
+
+            int maxThreads = omp_get_max_threads();
+            int remainingMoves = moves.size - 1; // excluding PV
+            int numThreads = maxThreads;
+            if (remainingMoves > 0 && remainingMoves < numThreads) numThreads = remainingMoves;
+            if (numThreads < 1) numThreads = 1;
+
+            #pragma omp parallel num_threads(numThreads)
             {
                 // Each thread has local board and local best
                 chess::Board localBoard = this->board;
@@ -328,10 +339,10 @@ void Engine::search(uint64_t depth) noexcept {
     this->doMoveInBoard(bestMove);
 
 #ifdef DEBUG
-/*
+
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
-
+/*
     std::cout << "[DEBUG] TT probes: " << ttProbes
               << ", hits: " << ttHits
               << "\n";
