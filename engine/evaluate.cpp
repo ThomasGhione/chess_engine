@@ -17,6 +17,10 @@ int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
 }
 
+
+namespace {
+
+__attribute__((always_inline))
 inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
     // White pieces: use index as-is
     while (bbWhite) {
@@ -33,12 +37,354 @@ inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, in
     }
 }
 
+__attribute__((always_inline))
+inline int poplsbIndex(uint64_t& bb) noexcept {
+    const int sq = __builtin_ctzll(bb);
+    bb &= (bb - 1);
+    return sq;
+}
+
+__attribute__((always_inline))
+inline uint64_t fileMask(int file) noexcept {
+    return 0x0101010101010101ULL << file;
+}
+
+__attribute__((always_inline))
+inline uint64_t adjacentFilesMask(int file) noexcept {
+    uint64_t m = 0;
+    if (file > 0) m |= fileMask(file - 1);
+    if (file < 7) m |= fileMask(file + 1);
+    return m;
+}
+
+inline int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    // NOTE: this is intentionally cheap. The previous implementation had bugs:
+    // - doubled pawn detection used (1ULL << file) which is not a file mask
+    // - isolated pawn checked against the wrong side's pawn set
+    // - passed pawn mask was invalid/overflow-prone
+    int64_t score = 0;
+
+    // Doubled pawns: count per-file pawn excess over 1.
+    for (int f = 0; f < 8; ++f) {
+        const uint64_t fm = fileMask(f);
+        const int wCount = __builtin_popcountll(whitePawns & fm);
+        const int bCount = __builtin_popcountll(blackPawns & fm);
+        if (wCount > 1) score += (wCount - 1) * DOUBLED_PAWN_PENALTY;
+        if (bCount > 1) score -= (bCount - 1) * DOUBLED_PAWN_PENALTY;
+    }
+
+    // Isolated pawns: no friendly pawns on adjacent files.
+    uint64_t wp = whitePawns;
+    while (wp) {
+        const int sq = poplsbIndex(wp);
+        const int file = sq & 7;
+        if ((whitePawns & adjacentFilesMask(file)) == 0) score += ISOLATED_PAWN_PENALTY;
+    }
+    uint64_t bp = blackPawns;
+    while (bp) {
+        const int sq = poplsbIndex(bp);
+        const int file = sq & 7;
+        if ((blackPawns & adjacentFilesMask(file)) == 0) score -= ISOLATED_PAWN_PENALTY;
+    }
+
+    // Passed pawns: no enemy pawn in same/adjacent file ahead.
+    // This is simplified but correct and safe.
+    wp = whitePawns;
+    while (wp) {
+        const int sq = poplsbIndex(wp);
+        const int file = sq & 7;
+        const uint64_t lanes = fileMask(file) | adjacentFilesMask(file);
+        // Squares in front of sq for white are ranks > current rank.
+        const int rank = sq >> 3;
+        const uint64_t inFront = 0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8);
+        if ((blackPawns & lanes & inFront) == 0) score += PASSED_PAWN_BONUS;
+    }
+    bp = blackPawns;
+    while (bp) {
+        const int sq = poplsbIndex(bp);
+        const int file = sq & 7;
+        const uint64_t lanes = fileMask(file) | adjacentFilesMask(file);
+        // Squares in front of sq for black are ranks < current rank.
+        const int rank = sq >> 3;
+        const uint64_t inFront = (rank == 0) ? 0ULL : ((1ULL << (rank * 8)) - 1ULL);
+        if ((whitePawns & lanes & inFront) == 0) score -= PASSED_PAWN_BONUS;
+    }
+
+    return score;
+}
+
+inline int64_t evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    int64_t score = 0;
+
+    uint64_t wp = whitePawns;
+    while (wp) {
+        const int sq = poplsbIndex(wp);
+        const int rank = sq >> 3;
+        score += (rank - 1) * 6;
+    }
+
+    uint64_t bp = blackPawns;
+    while (bp) {
+        const int sq = poplsbIndex(bp);
+        const int rank = 7 - (sq >> 3);
+        score -= (rank - 1) * 6;
+    }
+
+    return score;
+}
+
+
+inline int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    int64_t score = 0;
+
+    auto evalSide = [&](uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns, int sign) {
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            const int file = sq & 7;
+            const int rank = sq >> 3;
+            const uint64_t fm = fileMask(file);
+
+            const bool ownPawnOnFile = (ownPawns & fm);
+            const bool oppPawnOnFile = (oppPawns & fm);
+
+            if (!ownPawnOnFile && !oppPawnOnFile)
+                score += sign * OPEN_FILE_ROOK_BONUS;
+            else if (!ownPawnOnFile && oppPawnOnFile)
+                score += sign * SEMI_OPEN_FILE_ROOK_BONUS;
+
+            // 7th rank (white = rank 6, black = rank 1)
+            if ((sign == 1 && rank == 6) || (sign == -1 && rank == 1))
+                score += sign * ROOK_ON_SEVENTH_BONUS;
+        }
+    };
+
+    evalSide(whiteRooks, whitePawns, blackPawns, +1);
+    evalSide(blackRooks, blackPawns, whitePawns, -1);
+
+    return score;
+}
+
+
+inline int64_t evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcept {
+    int64_t score = 0;
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        uint64_t knights = b.knights_bb[side];
+        uint64_t bishops  = b.bishops_bb[side];
+        uint64_t rooks    = b.rooks_bb[side];
+        uint64_t queens   = b.queens_bb[side];
+
+        while (knights) {
+            const int sq = poplsbIndex(knights);
+            score += sign * __builtin_popcountll(pieces::KNIGHT_ATTACKS[sq] & ~occ);
+        }
+        while (bishops) {
+            const int sq = poplsbIndex(bishops);
+            score += sign * __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
+        }
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            score += sign * __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
+        }
+        while (queens) {
+            const int sq = poplsbIndex(queens);
+            score += sign * __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
+        }
+    }
+    return score / 2; // normalizzazione
+}
+
+inline int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept {
+    // piccolo bonus al side to move
+    constexpr int64_t INIT_BONUS_MG = 12;
+    constexpr int64_t INIT_BONUS_EG = 4;
+
+    const int64_t bonus = isEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+    return (b.getActiveColor() == chess::Board::WHITE) ? bonus : -bonus;
+}
+
+inline int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept {
+    int64_t score = 0;
+    while (bishops) {
+        const int sq = poplsbIndex(bishops);
+        const bool bishopOnDark = ((sq ^ (sq >> 3)) & 1);
+
+        // Pedoni sullo stesso colore
+        uint64_t sameColorPawns = 0;
+        uint64_t p = pawns;
+        while (p) {
+            const int psq = poplsbIndex(p);
+            const bool pawnOnDark = ((psq ^ (psq >> 3)) & 1);
+            if (pawnOnDark == bishopOnDark)
+                sameColorPawns++;
+        }
+
+        score -= sameColorPawns * 5; // tuning safe
+    }
+    return (side == 0) ? score : -score;
+}
+
+
+inline int64_t evaluateEarlyQueenFast(const chess::Board& b, int nonPawnMajors) noexcept {
+    // Applica solo se siamo chiaramente in opening
+    if (nonPawnMajors > 10) return 0;
+
+    int64_t score = 0;
+
+    // White queen
+    if (b.queens_bb[0] && !(b.queens_bb[0] & (1ULL << 59))) {
+        score += ATTACKED_QUEEN_PENALTY; // già negativo
+    }
+
+    // Black queen
+    if (b.queens_bb[1] && !(b.queens_bb[1] & (1ULL << 3))) {
+        score -= ATTACKED_QUEEN_PENALTY;
+    }
+
+    return score;
+}
+
+inline int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+
+        uint64_t minors = b.knights_bb[side] | b.bishops_bb[side];
+        uint64_t rooks  = b.rooks_bb[side];
+
+        while (minors) {
+            const int sq = poplsbIndex(minors);
+            const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq] | pieces::getBishopAttacks(sq, occ)) & ~occ);
+            if (mobility <= 1) score -= sign * 25;
+        }
+
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
+            if (mobility <= 2) score -= sign * 20;
+        }
+    }
+
+    return score;
+}
+
+
+inline int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
+    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * 5;
+}
+
+inline int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    // Cheap pawn-shield evaluation. Avoid undefined shifts around edges.
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const uint64_t kingBB = b.kings_bb[side];
+        if (!kingBB) [[unlikely]] continue;
+        const int sq = __builtin_ctzll(kingBB);
+        const int sign = (side == 0) ? 1 : -1;
+
+        uint64_t shieldSquares = 0ULL;
+        if (side == 0) {
+            // White king: pawns in front are towards lower indices (south)
+            if (sq >= 8) shieldSquares |= (1ULL << (sq - 8));
+            if (sq >= 7 && (sq & 7) != 7) shieldSquares |= (1ULL << (sq - 7));
+            if (sq >= 9 && (sq & 7) != 0) shieldSquares |= (1ULL << (sq - 9));
+            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * 10;
+        } else {
+            // Black king: pawns in front are towards higher indices (north)
+            if (sq <= 55) shieldSquares |= (1ULL << (sq + 8));
+            if (sq <= 56 && (sq & 7) != 0) shieldSquares |= (1ULL << (sq + 7));
+            if (sq <= 54 && (sq & 7) != 7) shieldSquares |= (1ULL << (sq + 9));
+            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * 10;
+        }
+    }
+
+    return score;
+}
+
+inline int manhattan(int a, int b) noexcept {
+    return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
+}
+
+inline int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t kingBB = b.kings_bb[side];
+        if (!kingBB) [[unlikely]] continue;
+
+        const int ksq = __builtin_ctzll(kingBB);
+
+        // ENDGAME: king activity
+        if (isEndgame) {
+            uint64_t friends =
+                b.pawns_bb[side]   |
+                b.knights_bb[side] |
+                b.bishops_bb[side] |
+                b.rooks_bb[side]   |
+                b.queens_bb[side];
+
+            while (friends) {
+                const int sq = poplsbIndex(friends);
+                if (manhattan(ksq, sq) <= 2)
+                    score += sign * KING_ACTIVITY_BONUS;
+            }
+        }
+
+        // MIDGAME: enemy proximity penalty
+        uint64_t enemies =
+            b.pawns_bb[side ^ 1]   |
+            b.knights_bb[side ^ 1] |
+            b.bishops_bb[side ^ 1] |
+            b.rooks_bb[side ^ 1]   |
+            b.queens_bb[side ^ 1];
+
+        while (enemies) {
+            const int sq = poplsbIndex(enemies);
+            if (manhattan(ksq, sq) <= 2)
+                score += sign * KING_SAFETY_PENALTY;
+        }
+    }
+
+    return score;
+}
+
+inline int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept {
+    constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const uint64_t kbb = b.kings_bb[side];
+        if (!kbb) [[unlikely]] continue;
+
+        const int sq = __builtin_ctzll(kbb);
+        int best = 99;
+        for (int c : CENTER)
+            best = std::min(best, manhattan(sq, c));
+
+        score += (side == 0 ? -best : best) * 10;
+    }
+    return score;
+}
+
+
+} // namespace
+
+
+
 int64_t Engine::evaluate(const chess::Board& board) noexcept {
     if (board.isCheckmate(board.getActiveColor())) [[unlikely]] {
         return evaluateCheckmate(board);
     }
 
     int64_t eval = getMaterialDeltaFAST(board);
+
+    const uint64_t occ = board.getPiecesBitMap();
+    const uint64_t whitePawns = board.pawns_bb[0];
+    const uint64_t blackPawns = board.pawns_bb[1];
 
     // Endgame flag
     int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
@@ -47,25 +393,56 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
                                              board.queens_bb[0]  | board.queens_bb[1]);
     bool isEndgame = (nonPawnMajors <= PHASE_FINAL_THRESHOLD);
 
-    // Pawns
+    // Positional evaluation using piece-square tables
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
-    // Knights, Bishops, Rooks, Queens, Kings
     addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
     addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
     addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
     addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
+
+    // OPENING SPECIFIC EVALUATIONS
+
+    if (board.getFullMoveClock() < 8) {
+        eval += evaluateEarlyQueenFast(board, nonPawnMajors);
+    }
+    else {
+        eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);
+        eval += evaluateBadBishopFast(board.bishops_bb[1], blackPawns, 1);
+    }
+
+    // MIDDLEGAME & ENDGAME EVALUATIONS
+    
+    eval += evaluatePawnStructureFast(whitePawns, blackPawns);
+    eval += evaluateMobilityFast(board, occ);
+    eval += evaluateInitiativeFast(board, isEndgame);
+    eval += evaluateTrappedPiecesFast(board, occ);
+    eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+    eval += evaluateKingActivityFast(board, isEndgame);
+    
+
+    if (!isEndgame) { // MIDDLEGAME SPECIFIC EVALUATIONS
+        eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
+        eval += evaluateCentralControlFast(whitePawns, blackPawns);
+    }
+    else { // ENDGAME SPECIFIC EVALUATIONS
+        eval += evaluatePassedPawnScalingFast(whitePawns, blackPawns);
+        eval += evaluateEndgameKingActivityFast(board);
+    }
+
     // Castling bonus (bitmask)
-    if ((board.kings_bb[0] & ((1ULL << 62)|(1ULL << 58))) && 
-        (board.rooks_bb[0] & ((1ULL << 61)|(1ULL << 59)))) eval += CASTLING_BONUS;
-    if ((board.kings_bb[1] & ((1ULL << 6)|(1ULL << 2))) && 
-        (board.rooks_bb[1] & ((1ULL << 5)|(1ULL << 3)))) eval -= CASTLING_BONUS;
+    if ((board.kings_bb[0] & ((1ULL << 62) | (1ULL << 58))) && 
+        (board.rooks_bb[0] & ((1ULL << 61) | (1ULL << 59)))) eval += CASTLING_BONUS;
+    if ((board.kings_bb[1] & ((1ULL << 6) | (1ULL << 2))) && 
+        (board.rooks_bb[1] & ((1ULL << 5) | (1ULL << 3)))) eval -= CASTLING_BONUS;
+
+
 
     return eval;
 }
 
-bool Engine::isMate() noexcept{
+bool Engine::isMate() noexcept {
     uint8_t toMove = this->board.getActiveColor();
     if (this->board.isCheckmate(toMove) || this->board.isStalemate(toMove)) {
         return true;

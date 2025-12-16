@@ -28,7 +28,7 @@ bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) 
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) noexcept {
     
-    const uint8_t activeColor = b.getActiveColor();
+    // const uint8_t activeColor = b.getActiveColor();
 
     // NOTA: isCheckmate/isStalemate sono gestiti implicitamente quando generateLegalMoves()
     // ritorna vuoto in searchPosition, quindi non serve controllarli qui.
@@ -39,11 +39,11 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
 
     // Check extension: search deeper if in check, ma con limite per evitare esplosione
     // Limitiamo a depth massima di 10 per evitare stack overflow e segfault
-    constexpr int64_t MAX_EXTENDED_DEPTH = 10;
-    const bool inCheck = b.inCheck(activeColor);
-    if (inCheck && depth > 0 && depth < MAX_EXTENDED_DEPTH) {
-        depth++;
-    }
+    // constexpr int64_t MAX_EXTENDED_DEPTH = 10;
+    // const bool inCheck = b.inCheck(activeColor);
+    // if (inCheck && depth > 0 && depth < MAX_EXTENDED_DEPTH) {
+    //     depth++;
+    // }
 
     // Transposition table lookup
     const uint64_t hashKey = computeHashKey(b);
