@@ -51,7 +51,7 @@ inline static constexpr int64_t KING_SAFETY_PENALTY = -50; // per ogni pezzo avv
 inline static constexpr int64_t KING_ACTIVITY_BONUS = 10; // per ogni pezzo amico vicino al re in fase finale
 
 // GAME PHASE
-inline static constexpr int64_t PHASE_FINAL_THRESHOLD = 14; // soglia per considerare la fase finale (numero totale di pezzi minori e regine)
+inline static constexpr int64_t PHASE_FINAL_THRESHOLD = 10; // soglia per considerare la fase finale (numero totale di pezzi minori e regine)
 
 
 static constexpr int64_t CHECK_BONUS                 = 50;       // bonus per dare scacco
