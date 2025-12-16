@@ -60,6 +60,7 @@ public:
 
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
+    int64_t evaluateFast(const chess::Board& board, bool isEndgameHint = false) noexcept;
     
     // TODO It will be in private later when State0 is finished
     bool isMate() noexcept;

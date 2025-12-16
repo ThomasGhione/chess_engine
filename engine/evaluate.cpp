@@ -46,7 +46,18 @@ inline int poplsbIndex(uint64_t& bb) noexcept {
 
 __attribute__((always_inline))
 inline uint64_t fileMask(int file) noexcept {
-    return 0x0101010101010101ULL << file;
+    // Table-driven: avoids a variable shift on the hot path.
+    static constexpr uint64_t FILE_MASKS[8] = {
+        0x0101010101010101ULL,
+        0x0202020202020202ULL,
+        0x0404040404040404ULL,
+        0x0808080808080808ULL,
+        0x1010101010101010ULL,
+        0x2020202020202020ULL,
+        0x4040404040404040ULL,
+        0x8080808080808080ULL,
+    };
+    return FILE_MASKS[file];
 }
 
 __attribute__((always_inline))
@@ -204,22 +215,26 @@ inline int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noe
 }
 
 inline int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept {
+    // Old version was O(#bishops * #pawns) due to scanning pawns for each bishop.
+    // Keep it O(#bishops + #pawns) by counting pawns on light/dark once.
+    uint64_t pawnDark = 0;
+    uint64_t pawnLight = 0;
+    {
+        uint64_t p = pawns;
+        while (p) {
+            const int psq = poplsbIndex(p);
+            const bool isDark = ((psq ^ (psq >> 3)) & 1);
+            if (isDark) pawnDark++;
+            else pawnLight++;
+        }
+    }
+
     int64_t score = 0;
     while (bishops) {
         const int sq = poplsbIndex(bishops);
         const bool bishopOnDark = ((sq ^ (sq >> 3)) & 1);
-
-        // Pedoni sullo stesso colore
-        uint64_t sameColorPawns = 0;
-        uint64_t p = pawns;
-        while (p) {
-            const int psq = poplsbIndex(p);
-            const bool pawnOnDark = ((psq ^ (psq >> 3)) & 1);
-            if (pawnOnDark == bishopOnDark)
-                sameColorPawns++;
-        }
-
-        score -= sameColorPawns * 5; // tuning safe
+        const uint64_t sameColorPawns = bishopOnDark ? pawnDark : pawnLight;
+        score -= static_cast<int64_t>(sameColorPawns) * 5; // tuning safe
     }
     return (side == 0) ? score : -score;
 }
@@ -413,7 +428,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     }
 
     // MIDDLEGAME & ENDGAME EVALUATIONS
-    
+    // NOTE: mobility + trapped pieces are among the most expensive parts (sliding attacks).
+    // Keep them, but we'll also add a separate fast path below for callers that want max speed.
     eval += evaluatePawnStructureFast(whitePawns, blackPawns);
     eval += evaluateMobilityFast(board, occ);
     eval += evaluateInitiativeFast(board, isEndgame);
