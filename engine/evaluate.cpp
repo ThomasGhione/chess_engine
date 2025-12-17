@@ -67,10 +67,6 @@ inline uint64_t adjacentFilesMask(int file) noexcept {
 
 
 int64_t Engine::evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
-    // NOTE: this is intentionally cheap. The previous implementation had bugs:
-    // - doubled pawn detection used (1ULL << file) which is not a file mask
-    // - isolated pawn checked against the wrong side's pawn set
-    // - passed pawn mask was invalid/overflow-prone
     int64_t score = 0;
 
     // Doubled pawns: count per-file pawn excess over 1.
@@ -167,21 +163,8 @@ int64_t Engine::evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint
 
 
 int64_t Engine::evaluateMobilityFast(const AttackData data[2]) noexcept {
-    int64_t score = 0;
-
-    // WHITE
-    score += data[0].knightMobility;
-    score += data[0].bishopMobility;
-    score += data[0].rookMobility;
-    score += data[0].queenMobility;
-
-    // BLACK
-    score -= data[1].knightMobility;
-    score -= data[1].bishopMobility;
-    score -= data[1].rookMobility;
-    score -= data[1].queenMobility;
-
-    return score / 2; // normalizzazione
+    return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
+          - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
 }
 
 int64_t Engine::evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept {

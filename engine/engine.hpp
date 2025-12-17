@@ -176,10 +176,10 @@ private:
         uint64_t rookAttacks;
         uint64_t queenAttacks;
 
-        int knightMobility;
-        int bishopMobility;
-        int rookMobility;
-        int queenMobility;
+        int64_t knightMobility;
+        int64_t bishopMobility;
+        int64_t rookMobility;
+        int64_t queenMobility;
     };
 
     // Helper function to compute attack data once
@@ -200,7 +200,6 @@ private:
     // history[colorIndex][fromIndex][toIndex]
     int history[2][64][64] = {};
 
-    // Lookup array per valori pezzi (più veloce di unordered_map)
     static constexpr int64_t PIECE_VALUES[8] = {
         0,      // EMPTY = 0
         PAWN_VALUE,    // PAWN = 1

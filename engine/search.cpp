@@ -372,8 +372,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // --- Null Move Pruning DISABILITATO ---
     // Reintrodurre quando avremo: hash move, better move ordering, e tactical position detection
     // Il problema: senza hash move, taglia anche rami con catture ovvie
-    /*
-    auto hasNonPawnMaterial = [&]() {
+    /*auto hasNonPawnMaterial = [&]() {
         const int side = (activeColor == chess::Board::WHITE) ? 0 : 1;
         int material = __builtin_popcountll(b.knights_bb[side]) +
                        __builtin_popcountll(b.bishops_bb[side]) +
@@ -382,16 +381,16 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return material > 0;
     };
 
-    if (depth >= 3 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
-        const int R = (depth >= 6) ? 3 : 2;
+    if (depth >= 6 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
+        const int R = (depth >= 6) ? 6 : 5;
         b.setNextTurn();
         int64_t nullScore = -this->searchPosition(b, depth - 1 - R, -beta, -alpha, ply + 1);
         b.setPrevTurn();
         if (nullScore >= beta) {
             return beta;
         }
-    }
-    */
+    }*/
+
 
 
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
