@@ -571,10 +571,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
 
 
     // OPENING SPECIFIC EVALUATIONS
-    if (board.getFullMoveClock() < 6) {
-        eval += evaluateEarlyKingFast(board);
-        eval += evaluateEarlyRookFast(board);
-    }
+    // if (board.getFullMoveClock() < 6) {
+    //     eval += evaluateEarlyKingFast(board);
+    //     eval += evaluateEarlyRookFast(board);
+    // }
     if (board.getFullMoveClock() < 8) {
         eval += evaluateEarlyQueenFast(board);
     }
