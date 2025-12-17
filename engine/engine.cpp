@@ -10,7 +10,7 @@ uint64_t Engine::ttHits = 0;
 
 Engine::Engine()
     : board(chess::Board())
-    , depth(8)
+    , depth(6)
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
@@ -21,7 +21,7 @@ Engine::Engine()
 
 Engine::Engine(std::string fen)
     : board(chess::Board(fen))
-    , depth(8)
+    , depth(6)
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore

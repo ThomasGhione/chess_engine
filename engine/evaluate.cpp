@@ -204,7 +204,7 @@ int64_t Engine::evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side
 int64_t Engine::evaluateEarlyKingFast(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    static constexpr int64_t EARLY_KING_PENALTY = -200;
+    static constexpr int64_t EARLY_KING_PENALTY = -30;
 
     if (b.kings_bb[0] && !(b.kings_bb[0] & (1ULL << 60)) && !(b.kings_bb[0] & (1ULL << 62))) {
         score += EARLY_KING_PENALTY; // già negativo
@@ -220,7 +220,7 @@ int64_t Engine::evaluateEarlyKingFast(const chess::Board& b) noexcept {
 int64_t Engine::evaluateEarlyRookFast(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    static constexpr int64_t ATTACKED_ROOK_PENALTY = -40;
+    static constexpr int64_t ATTACKED_ROOK_PENALTY = -20;
 
     // White rooks
     if (b.rooks_bb[0] && !(b.rooks_bb[0] & (1ULL << 56)) && !(b.rooks_bb[0] & (1ULL << 63))) {
@@ -571,10 +571,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
 
 
     // OPENING SPECIFIC EVALUATIONS
-    // if (board.getFullMoveClock() < 6) {
-    //     eval += evaluateEarlyKingFast(board);
-    //     eval += evaluateEarlyRookFast(board);
-    // }
+    if (board.getFullMoveClock() < 6) {
+        eval += evaluateEarlyKingFast(board);
+        eval += evaluateEarlyRookFast(board);
+    }
     if (board.getFullMoveClock() < 8) {
         eval += evaluateEarlyQueenFast(board);
     }
@@ -586,15 +586,15 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // MIDDLEGAME & ENDGAME EVALUATIONS
     // Compute attack data once and reuse across multiple evaluation functions
     AttackData attackData[2];
-    this->computeAttackData(attackData, board, occ);
+    computeAttackData(attackData, board, occ);
 
     eval += evaluatePawnStructureFast(whitePawns, blackPawns, isEndgame);
-    eval += this->evaluateMobilityFast(attackData);
+    eval += evaluateMobilityFast(attackData);
     eval += evaluateInitiativeFast(board, isEndgame);
-    eval += this->evaluateTrappedPiecesFast(board, occ);
+    eval += evaluateTrappedPiecesFast(board, occ);
     eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
     eval += evaluateKingActivityFast(board, isEndgame);
-    eval += this->evaluateHangingPiecesFast(board, attackData);
+    eval += evaluateHangingPiecesFast(board, attackData);
 
     if (!isEndgame) { // MIDDLEGAME SPECIFIC EVALUATIONS
         eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
