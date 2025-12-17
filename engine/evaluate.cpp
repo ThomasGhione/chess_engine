@@ -241,19 +241,16 @@ inline int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side)
 
 
 inline int64_t evaluateEarlyQueenFast(const chess::Board& b, int nonPawnMajors) noexcept {
-    // Applica solo se siamo chiaramente in opening
-    if (nonPawnMajors > 10) return 0;
-
     int64_t score = 0;
 
     // White queen
     if (b.queens_bb[0] && !(b.queens_bb[0] & (1ULL << 59))) {
-        score += ATTACKED_QUEEN_PENALTY; // già negativo
+        score += ATTACKED_QUEEN_PENALTY * 8; // già negativo
     }
 
     // Black queen
     if (b.queens_bb[1] && !(b.queens_bb[1] & (1ULL << 3))) {
-        score -= ATTACKED_QUEEN_PENALTY;
+        score -= ATTACKED_QUEEN_PENALTY * 8;
     }
 
     return score;
@@ -265,25 +262,90 @@ inline int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) no
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
 
-        uint64_t minors = b.knights_bb[side] | b.bishops_bb[side];
+        uint64_t knights = b.knights_bb[side];
+        uint64_t bishops = b.bishops_bb[side];
         uint64_t rooks  = b.rooks_bb[side];
+        uint64_t queens = b.queens_bb[side];
 
-        while (minors) {
-            const int sq = poplsbIndex(minors);
-            const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq] | pieces::getBishopAttacks(sq, occ)) & ~occ);
-            if (mobility <= 1) score -= sign * 25;
+        while (knights) {
+            constexpr int64_t LOW_MOBILITY_KNIGHT_VALUE_PENALTY = 10;
+            constexpr int64_t PINNED_KNIGHT_VALUE_PENALTY = 60;
+            const int sq = poplsbIndex(knights);
+            const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
+            if (mobility == 0) score -= sign * PINNED_KNIGHT_VALUE_PENALTY;
+            if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_VALUE_PENALTY;
+        }
+
+        while (bishops) {
+            constexpr int64_t LOW_MOBILITY_BISHOP_VALUE_PENALTY = 20;
+            constexpr int64_t PINNED_BISHOP_VALUE_PENALTY = 40;
+            const int sq = poplsbIndex(bishops);
+            const int mobility = __builtin_popcountll((pieces::getBishopAttacks(sq, occ)) & ~occ);
+            if (mobility == 0) score -= sign * PINNED_BISHOP_VALUE_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_VALUE_PENALTY;
         }
 
         while (rooks) {
+            constexpr int64_t LOW_MOBILITY_ROOK_VALUE_PENALTY = 30;
+            constexpr int64_t PINNED_ROOK_VALUE_PENALTY = 30;
             const int sq = poplsbIndex(rooks);
             const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
-            if (mobility <= 2) score -= sign * 20;
+            if (mobility == 0) score -= sign * PINNED_ROOK_VALUE_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_VALUE_PENALTY;
+        }
+
+        while (queens) {
+            constexpr int64_t LOW_MOBILITY_QUEEN_VALUE_PENALTY = 60;
+            constexpr int64_t PINNED_QUEEN_VALUE_PENALTY = 200;
+            const int sq = poplsbIndex(queens);
+            const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
+            if (mobility == 0) score -= sign * PINNED_QUEEN_VALUE_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_VALUE_PENALTY;
         }
     }
 
     return score;
 }
 
+inline int64_t evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t enemyOcc = (side == 0) ? b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] :
+                                      b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0];
+        const uint64_t friendlyOcc = (side == 0) ? b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] :
+                                        b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1];
+
+        // Iterate over all piece types
+        auto evaluatePiece = [&](uint64_t pieces, auto getAttacks, int64_t penalty) {
+            while (pieces) {
+                const int sq = poplsbIndex(pieces);
+                const uint64_t attacks = getAttacks(sq, occ);
+                const bool isAttacked = attacks & enemyOcc;
+                const bool isDefended = attacks & friendlyOcc;
+
+                if (isAttacked && !isDefended) {
+                    score -= sign * penalty;
+                }
+            }
+        };
+
+        evaluatePiece(b.pawns_bb[side], [side](int sq, uint64_t) {
+            return pieces::PAWN_ATTACKS[side][sq];
+        }, 20); // Example penalty for pawns
+
+        evaluatePiece(b.knights_bb[side], [](int sq, uint64_t) {
+            return pieces::KNIGHT_ATTACKS[sq];
+        }, 50); // Example penalty for knights
+
+        evaluatePiece(b.bishops_bb[side], pieces::getBishopAttacks, 40); // Example penalty for bishops
+        evaluatePiece(b.rooks_bb[side], pieces::getRookAttacks, 60); // Example penalty for rooks
+        evaluatePiece(b.queens_bb[side], pieces::getQueenAttacks, 100); // Example penalty for queens
+    }
+
+    return score;
+}
 
 inline int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
@@ -300,6 +362,10 @@ inline int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns
         const int sq = __builtin_ctzll(kingBB);
         const int sign = (side == 0) ? 1 : -1;
 
+        // TODO: se non ha arroccato, NON muovere pedoni dell'arrocco
+        if (!((side == 0 && (sq == 62 || sq == 58)) || (side == 1 && (sq == 6 || sq == 2)))) {
+            score -= sign * 20; // penalità fissa se non arroccato
+        }
         uint64_t shieldSquares = 0ULL;
         if (side == 0) {
             // White king: pawns in front are towards lower indices (south)
@@ -366,6 +432,29 @@ inline int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) n
 
     return score;
 }
+
+inline int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept {
+    constexpr int64_t KING_EXPOSED_PENALTY = -120;
+
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t kingBB = b.kings_bb[side];
+        if (!kingBB) [[unlikely]] continue;
+
+        const int sq = __builtin_ctzll(kingBB);
+        const int rank = sq >> 3;
+
+        // White re sopra 2a traversa o Black sotto 7a
+        if ((side == 0 && rank < 6) || (side == 1 && rank > 1)) {
+            score += sign * KING_EXPOSED_PENALTY;
+        }
+    }
+
+    return score;
+}
+
 
 inline int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept {
     constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
@@ -436,17 +525,20 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     eval += evaluateTrappedPiecesFast(board, occ);
     eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
     eval += evaluateKingActivityFast(board, isEndgame);
-    
+    eval += evaluateHangingPiecesFast(board, occ);
 
     if (!isEndgame) { // MIDDLEGAME SPECIFIC EVALUATIONS
         eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
         eval += evaluateCentralControlFast(whitePawns, blackPawns);
+        eval += evaluateBadKingPositionFast(board);
     }
     else { // ENDGAME SPECIFIC EVALUATIONS
         eval += evaluatePassedPawnScalingFast(whitePawns, blackPawns);
         eval += evaluateEndgameKingActivityFast(board);
+        
     }
 
+    // TODO cambiare in una funzione
     // Castling bonus (bitmask)
     if ((board.kings_bb[0] & ((1ULL << 62) | (1ULL << 58))) && 
         (board.rooks_bb[0] & ((1ULL << 61) | (1ULL << 59)))) eval += CASTLING_BONUS;
