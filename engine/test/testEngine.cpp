@@ -210,20 +210,14 @@ ut::suite engineSuite = [] {
     auto start4 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateHangingPiecesFast(e.board, e.board.getPiecesBitMap());
     auto end4 = std::chrono::high_resolution_clock::now();
-    auto duration4 = std::chrono::duration_cast<std::chrono::milliseconds>(end4 - start4).count();  
-    printf("Hanging pieces evaluation took %lu ms\n", duration4);
+    auto duration4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end4 - start4).count();  
+    printf("Hanging pieces evaluation took %lu ns\n", duration4);
 
     auto start5 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateTrappedPiecesFast(e.board, e.board.getPiecesBitMap());
     auto end5 = std::chrono::high_resolution_clock::now();
     auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end5 - start5).count();
     printf("Trapped pieces evaluation took %lu ns\n", duration5);
-
-    auto start6 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateMobilityFast(e.board, e.board.getPiecesBitMap());
-    auto end6 = std::chrono::high_resolution_clock::now();
-    auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end6 - start6).count();
-    printf("Mobility evaluation took %lu ns\n", duration6);
 
     auto start7 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateRooksFast(e.board.rooks_bb[0], e.board.rooks_bb[1], whitePawns, blackPawns);

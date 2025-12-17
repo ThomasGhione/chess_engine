@@ -311,36 +311,100 @@ int64_t Engine::evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) n
 
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
-        const uint64_t enemyOcc = (side == 0) ? b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] :
-                                      b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0];
-        const uint64_t friendlyOcc = (side == 0) ? b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] :
-                                        b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1];
+        const int opp  = side ^ 1;
 
-        // Iterate over all piece types
-        auto evaluatePiece = [&](uint64_t pieces, auto getAttacks, int64_t penalty) {
-            while (pieces) {
-                const int sq = poplsbIndex(pieces);
-                const uint64_t attacks = getAttacks(sq, occ);
-                const bool isAttacked = attacks & enemyOcc;
-                const bool isDefended = attacks & friendlyOcc;
+        // -------------------------------------------------
+        // 1) ALL ENEMY ATTACKS (cheap first)
+        // -------------------------------------------------
+        uint64_t enemyAttacks = 0ULL;
 
-                if (isAttacked && !isDefended) {
-                    score -= sign * penalty;
-                }
-            }
-        };
+        // Pawns
+        uint64_t pawns = b.pawns_bb[opp];
+        while (pawns) {
+            const int sq = poplsbIndex(pawns);
+            enemyAttacks |= pieces::PAWN_ATTACKS[opp][sq];
+        }
 
-        evaluatePiece(b.pawns_bb[side], [side](int sq, uint64_t) {
-            return pieces::PAWN_ATTACKS[side][sq];
-        }, 20); // Example penalty for pawns
+        // Knights
+        uint64_t knights = b.knights_bb[opp];
+        while (knights) {
+            enemyAttacks |= pieces::KNIGHT_ATTACKS[poplsbIndex(knights)];
+        }
 
-        evaluatePiece(b.knights_bb[side], [](int sq, uint64_t) {
-            return pieces::KNIGHT_ATTACKS[sq];
-        }, 50); // Example penalty for knights
+        // Bishops
+        uint64_t bishops = b.bishops_bb[opp];
+        while (bishops) {
+            const int sq = poplsbIndex(bishops);
+            enemyAttacks |= pieces::getBishopAttacks(sq, occ);
+        }
 
-        evaluatePiece(b.bishops_bb[side], pieces::getBishopAttacks, 40); // Example penalty for bishops
-        evaluatePiece(b.rooks_bb[side], pieces::getRookAttacks, 60); // Example penalty for rooks
-        evaluatePiece(b.queens_bb[side], pieces::getQueenAttacks, 100); // Example penalty for queens
+        // Rooks
+        uint64_t rooks = b.rooks_bb[opp];
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            enemyAttacks |= pieces::getRookAttacks(sq, occ);
+        }
+
+        // Queens
+        uint64_t queens = b.queens_bb[opp];
+        while (queens) {
+            const int sq = poplsbIndex(queens);
+            enemyAttacks |= pieces::getQueenAttacks(sq, occ);
+        }
+
+        // -------------------------------------------------
+        // 2) ALL FRIENDLY DEFENSES
+        // -------------------------------------------------
+        uint64_t friendlyDef = 0ULL;
+
+        pawns = b.pawns_bb[side];
+        while (pawns) {
+            const int sq = poplsbIndex(pawns);
+            friendlyDef |= pieces::PAWN_ATTACKS[side][sq];
+        }
+
+        knights = b.knights_bb[side];
+        while (knights) {
+            friendlyDef |= pieces::KNIGHT_ATTACKS[poplsbIndex(knights)];
+        }
+
+        bishops = b.bishops_bb[side];
+        while (bishops) {
+            const int sq = poplsbIndex(bishops);
+            friendlyDef |= pieces::getBishopAttacks(sq, occ);
+        }
+
+        rooks = b.rooks_bb[side];
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            friendlyDef |= pieces::getRookAttacks(sq, occ);
+        }
+
+        queens = b.queens_bb[side];
+        while (queens) {
+            const int sq = poplsbIndex(queens);
+            friendlyDef |= pieces::getQueenAttacks(sq, occ);
+        }
+
+        // -------------------------------------------------
+        // 3) HANGING PIECES (branchless-ish)
+        // -------------------------------------------------
+        uint64_t hanging;
+
+        hanging = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
+        score -= sign * __builtin_popcountll(hanging) * 20;
+
+        hanging = b.knights_bb[side] & enemyAttacks & ~friendlyDef;
+        score -= sign * __builtin_popcountll(hanging) * 50;
+
+        hanging = b.bishops_bb[side] & enemyAttacks & ~friendlyDef;
+        score -= sign * __builtin_popcountll(hanging) * 40;
+
+        hanging = b.rooks_bb[side] & enemyAttacks & ~friendlyDef;
+        score -= sign * __builtin_popcountll(hanging) * 60;
+
+        hanging = b.queens_bb[side] & enemyAttacks & ~friendlyDef;
+        score -= sign * __builtin_popcountll(hanging) * 100;
     }
 
     return score;
