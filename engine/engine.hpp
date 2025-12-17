@@ -162,8 +162,11 @@ public:
     int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept;
     int64_t evaluateEarlyKingFast(const chess::Board& b) noexcept;
     int64_t evaluateEarlyRookFast(const chess::Board& b) noexcept;
+    int64_t evaluatePassiveRooksFast(const chess::Board& b, uint64_t occ) noexcept;
     int64_t evaluateEarlyQueenFast(const chess::Board& b) noexcept;
     int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept;
+    int64_t evaluateKnightOnRimFast(const chess::Board& b) noexcept;
+
     /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;

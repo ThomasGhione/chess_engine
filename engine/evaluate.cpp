@@ -161,6 +161,68 @@ int64_t Engine::evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint
     return score;
 }
 
+int64_t Engine::evaluatePassiveRooksFast(const chess::Board& b, uint64_t occ) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        uint64_t rooks = b.rooks_bb[side];
+        const uint64_t ownPawns = b.pawns_bb[side];
+
+        while (rooks) {
+            const int sq = poplsbIndex(rooks);
+            const int file = sq & 7;
+            const int rank = sq >> 3;
+
+            const uint64_t attacks = pieces::getRookAttacks(sq, occ);
+            const int mobility = __builtin_popcountll(attacks & ~occ);
+
+            // Low mobility
+            if (mobility <= 3)
+                score -= sign * 25;
+
+            // Rook blocked by own pawn on same file
+            if (ownPawns & fileMask(file))
+                score -= sign * 15;
+
+            // Not on 7th rank (white rank 6, black rank 1)
+            if ((side == 0 && rank != 6) || (side == 1 && rank != 1))
+                score -= sign * 10;
+        }
+    }
+
+    return score;
+}
+
+
+int64_t Engine::evaluateKnightOnRimFast(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        uint64_t knights = b.knights_bb[side];
+
+        while (knights) {
+            const int sq = poplsbIndex(knights);
+            const int file = sq & 7;
+            const int rank = sq >> 3;
+
+            // a/h files
+            if (file == 0 || file == 7)
+                score -= sign * 30;
+            // b/g files
+            else if (file == 1 || file == 6)
+                score -= sign * 15;
+
+            // back rank penalty
+            if (rank == 0 || rank == 7)
+                score -= sign * 10;
+        }
+    }
+
+    return score;
+}
+
 
 int64_t Engine::evaluateMobilityFast(const AttackData data[2]) noexcept {
     return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
@@ -196,7 +258,7 @@ int64_t Engine::evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side
         const int sq = poplsbIndex(bishops);
         const bool bishopOnDark = ((sq ^ (sq >> 3)) & 1);
         const uint64_t sameColorPawns = bishopOnDark ? pawnDark : pawnLight;
-        score -= static_cast<int64_t>(sameColorPawns) * 5; // tuning safe
+        score -= static_cast<int64_t>(sameColorPawns) * 8; // tuning safe
     }
     return (side == 0) ? score : -score;
 }
@@ -593,8 +655,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     eval += evaluateInitiativeFast(board, isEndgame);
     eval += evaluateTrappedPiecesFast(board, occ);
     eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+    eval += evaluatePassiveRooksFast(board, occ);
     eval += evaluateKingActivityFast(board, isEndgame);
     eval += evaluateHangingPiecesFast(board, attackData);
+    eval += evaluateKnightOnRimFast(board);
 
     if (!isEndgame) { // MIDDLEGAME SPECIFIC EVALUATIONS
         eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
