@@ -9,7 +9,7 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 # Variabili compilatore
 CXX = g++
 TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -pg
 
 # Nome file finali
 NAME_APP = chess
@@ -106,6 +106,11 @@ cls:
 	rm -f $(NAME_APP) $(TEST_APP) $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	rm -f doc/main-doc.{aux,log,pdf,toc}
 	@printf "\n✅ Clean completato\n\n"
+
+# 
+get-image:
+	gprof ./chess gmon.out | python3 gprof2dot.py -s -w | dot -Tpng -Gdpi=200 -o output.png
+	@printf "\n✅ Immagine creata\n\n"
 
 # Helper per vedere i comandi
 help:

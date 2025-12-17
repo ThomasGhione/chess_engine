@@ -16,16 +16,14 @@ namespace driver {
             Driver(print::Menu menu, engine::Engine engine);
 
             void startGame();
-            
-        private:    
+            void engineTurn();
+        private:
             bool loadGame(bool isWithPlayer);
             void saveGame();
             void quit(std::string input);
             void endGame();
 
             void playerTurn();
-            void engineTurn();
-            
             void playGameVsHuman();
             void playGameVsEngine(bool isWhite);
             void EngineFirst();
