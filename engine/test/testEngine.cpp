@@ -37,7 +37,7 @@ ut::suite engineSuite = [] {
 
     expect(duration1 < duration2);
   };
-
+*/
   "performance searchPosition depth 6"_test = []{
     engine::Engine e = engine::Engine();
     e.depth = 6;
@@ -47,31 +47,13 @@ ut::suite engineSuite = [] {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // Attesa che la ricerca venga completata in meno di 200 milli
+    // Attesa che la ricerca venga completata in meno di 70 milli
     printf("Depth 6 search completed in %lu ms\n", duration);
     printf("Nodes searched: %lu\n", engine::Engine::nodesSearched);
-    expect(duration < 200);
+    expect(duration < 70);
   };
-  */
 
-  /*
-  "performance searchPosition depth 6"_test = []{
-    engine::Engine e = engine::Engine();
-    e.depth = 6;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    e.search(e.depth);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    // Attesa che la ricerca venga completata in meno di 15 secondi
-    printf("Depth 6 search completed in %lu ms\n", duration);
-    printf("Nodes searched: %lu\n", engine::Engine::nodesSearched);
-    expect(duration < 2000);
-  };
-  */
-
-  /*
+    
   "avg performance searchPosition depth 6 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
     e.depth = 6;
@@ -95,7 +77,7 @@ ut::suite engineSuite = [] {
     printf("Average Depth 6 search time over %d runs: %.2f ms\n", runs, avgDuration);
     expect(avgDuration < 500);
   };
-
+/*
   "calculate 1mln nodes"_test = []{
     engine::Engine e = engine::Engine();
     e.depth = 6;
@@ -114,7 +96,7 @@ ut::suite engineSuite = [] {
     printf("1 million nodes searched in %lu ms\n", duration);
     expect(duration < 5000);
   };
-  
+*/
 
   "is engine generating & sorting castling rights correctly"_test = []{
     engine::Engine e = engine::Engine("8/6pp/6p1/6pk/2p1p1p1/1pPpPpPp/1P1P1P1P/3NK2R w K - 0 1");
@@ -199,5 +181,10 @@ ut::suite engineSuite = [] {
     expect(moves.size == 2) // Expected number of legal moves
       << "Expected 2 legal moves, got " << moves.size << '\n';
   };
-  */
+
+  // "banchmark all evaluation helper functions"_test = []{
+  //   chess::Board b("r3kbnr/pppbpppp/4q3/8/1n6/P1NPB3/1PP1NPPP/R2QKB1R b KQkq - 0 1");
+  //   engine::evaluateMobilityFast(b);
+  // }; 
+  
 };

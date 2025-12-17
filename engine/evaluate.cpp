@@ -2,7 +2,7 @@
 
 namespace engine {
     
-inline int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
+int64_t Engine::getMaterialDeltaFAST(const chess::Board& b) noexcept {
     return static_cast<int64_t>(
           (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
         + (__builtin_popcountll(b.knights_bb[0]) - __builtin_popcountll(b.knights_bb[1])) * PIECE_VALUES[chess::Board::KNIGHT]
@@ -17,8 +17,6 @@ int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
 }
 
-
-namespace {
 
 __attribute__((always_inline))
 inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
@@ -68,7 +66,8 @@ inline uint64_t adjacentFilesMask(int file) noexcept {
     return m;
 }
 
-inline int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+
+int64_t Engine::evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     // NOTE: this is intentionally cheap. The previous implementation had bugs:
     // - doubled pawn detection used (1ULL << file) which is not a file mask
     // - isolated pawn checked against the wrong side's pawn set
@@ -124,7 +123,7 @@ inline int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawn
     return score;
 }
 
-inline int64_t evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Engine::evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
 
     uint64_t wp = whitePawns;
@@ -145,7 +144,7 @@ inline int64_t evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t black
 }
 
 
-inline int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Engine::evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
 
     auto evalSide = [&](uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns, int sign) {
@@ -176,7 +175,7 @@ inline int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint6
 }
 
 
-inline int64_t evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcept {
+int64_t Engine::evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
@@ -205,7 +204,7 @@ inline int64_t evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcep
     return score / 2; // normalizzazione
 }
 
-inline int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept {
+int64_t Engine::evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept {
     // piccolo bonus al side to move
     constexpr int64_t INIT_BONUS_MG = 12;
     constexpr int64_t INIT_BONUS_EG = 4;
@@ -214,7 +213,7 @@ inline int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noe
     return (b.getActiveColor() == chess::Board::WHITE) ? bonus : -bonus;
 }
 
-inline int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept {
+int64_t Engine::evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept {
     // Old version was O(#bishops * #pawns) due to scanning pawns for each bishop.
     // Keep it O(#bishops + #pawns) by counting pawns on light/dark once.
     uint64_t pawnDark = 0;
@@ -240,7 +239,7 @@ inline int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side)
 }
 
 
-inline int64_t evaluateEarlyQueenFast(const chess::Board& b, int nonPawnMajors) noexcept {
+int64_t Engine::evaluateEarlyQueenFast(const chess::Board& b) noexcept {
     int64_t score = 0;
 
     // White queen
@@ -256,7 +255,7 @@ inline int64_t evaluateEarlyQueenFast(const chess::Board& b, int nonPawnMajors) 
     return score;
 }
 
-inline int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
+int64_t Engine::evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
 
     for (int side = 0; side < 2; ++side) {
@@ -307,7 +306,7 @@ inline int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) no
     return score;
 }
 
-inline int64_t evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
+int64_t Engine::evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
 
     for (int side = 0; side < 2; ++side) {
@@ -347,12 +346,12 @@ inline int64_t evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) no
     return score;
 }
 
-inline int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Engine::evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
     return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * 5;
 }
 
-inline int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Engine::evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     // Cheap pawn-shield evaluation. Avoid undefined shifts around edges.
     int64_t score = 0;
 
@@ -385,11 +384,11 @@ inline int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns
     return score;
 }
 
-inline int manhattan(int a, int b) noexcept {
+int Engine::manhattan(int a, int b) noexcept {
     return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
 }
 
-inline int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept {
+int64_t Engine::evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept {
     int64_t score = 0;
 
     for (int side = 0; side < 2; ++side) {
@@ -433,7 +432,7 @@ inline int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) n
     return score;
 }
 
-inline int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept {
+int64_t Engine::evaluateBadKingPositionFast(const chess::Board& b) noexcept {
     constexpr int64_t KING_EXPOSED_PENALTY = -120;
 
     int64_t score = 0;
@@ -456,7 +455,7 @@ inline int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept {
 }
 
 
-inline int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept {
+int64_t Engine::evaluateEndgameKingActivityFast(const chess::Board& b) noexcept {
     constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
     int64_t score = 0;
 
@@ -474,8 +473,6 @@ inline int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept {
     return score;
 }
 
-
-} // namespace
 
 
 
@@ -509,7 +506,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // OPENING SPECIFIC EVALUATIONS
 
     if (board.getFullMoveClock() < 8) {
-        eval += evaluateEarlyQueenFast(board, nonPawnMajors);
+        eval += evaluateEarlyQueenFast(board);
     }
     else {
         eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);

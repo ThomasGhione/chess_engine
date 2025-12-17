@@ -149,8 +149,23 @@ private:
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
 
     
+    int manhattan(int a, int b) noexcept;
     int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-/*
+    int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept;
+    int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept;
+    int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept;
+    int64_t evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    int64_t evaluateEarlyQueenFast(const chess::Board& b) noexcept;
+    int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept;
+    /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;
 */
