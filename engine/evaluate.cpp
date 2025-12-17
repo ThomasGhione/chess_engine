@@ -201,6 +201,39 @@ int64_t Engine::evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side
     return (side == 0) ? score : -score;
 }
 
+int64_t Engine::evaluateEarlyKingFast(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    static constexpr int64_t EARLY_KING_PENALTY = -200;
+
+    if (b.kings_bb[0] && !(b.kings_bb[0] & (1ULL << 60)) && !(b.kings_bb[0] & (1ULL << 62))) {
+        score += EARLY_KING_PENALTY; // già negativo
+    }
+
+    if (b.kings_bb[1] && !(b.kings_bb[1] & (1ULL << 4)) && !(b.kings_bb[1] & (1ULL << 6))) {
+        score -= EARLY_KING_PENALTY; // già negativo
+    }
+
+    return score;
+}
+
+int64_t Engine::evaluateEarlyRookFast(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    static constexpr int64_t ATTACKED_ROOK_PENALTY = -40;
+
+    // White rooks
+    if (b.rooks_bb[0] && !(b.rooks_bb[0] & (1ULL << 56)) && !(b.rooks_bb[0] & (1ULL << 63))) {
+        score += ATTACKED_ROOK_PENALTY; // già negativo
+    }
+
+    // Black rooks
+    if (b.rooks_bb[1] && !(b.rooks_bb[1] & (1ULL << 0)) && !(b.rooks_bb[1] & (1ULL << 7))) {
+        score -= ATTACKED_ROOK_PENALTY;
+    }
+
+    return score;
+}
 
 int64_t Engine::evaluateEarlyQueenFast(const chess::Board& b) noexcept {
     int64_t score = 0;
@@ -538,7 +571,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
 
 
     // OPENING SPECIFIC EVALUATIONS
-
+    if (board.getFullMoveClock() < 6) {
+        eval += evaluateEarlyKingFast(board);
+        eval += evaluateEarlyRookFast(board);
+    }
     if (board.getFullMoveClock() < 8) {
         eval += evaluateEarlyQueenFast(board);
     }

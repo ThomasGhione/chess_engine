@@ -160,6 +160,8 @@ public:
     int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     int64_t evaluateCastlingBonusFast(const chess::Board& b) noexcept;
     int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    int64_t evaluateEarlyKingFast(const chess::Board& b) noexcept;
+    int64_t evaluateEarlyRookFast(const chess::Board& b) noexcept;
     int64_t evaluateEarlyQueenFast(const chess::Board& b) noexcept;
     int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept;
     /*
