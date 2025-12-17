@@ -61,6 +61,12 @@ static constexpr int64_t KING_NON_CASTLING_PENALTY   = 80;    // penalita' per m
 static constexpr int64_t CASTLING_BONUS              = 90;     // BONUS ARROCCO (molto alto per priorita')
 
 
+static constexpr int64_t HANGING_PAWN_PENALTY   = -40;
+static constexpr int64_t HANGING_MINOR_PENALTY = -90;
+static constexpr int64_t HANGING_ROOK_PENALTY  = -180;
+static constexpr int64_t HANGING_QUEEN_PENALTY = -350;
+
+
 
 // MVV-LVA precomputed table: [victim_type][attacker_type]
 // Formula: victimValue * 10 - attackerValue
