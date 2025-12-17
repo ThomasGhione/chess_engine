@@ -75,6 +75,8 @@ public:
         int64_t score;
     };
 
+    void reset() noexcept;
+
 
 
 

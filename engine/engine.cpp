@@ -30,6 +30,32 @@ Engine::Engine(std::string fen)
     std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
 }
 
+void Engine::reset() noexcept {
+    board = chess::Board();
+    depth = 6;
+    eval = 0;
+    isPlayerWhite = true;
+    nodesSearched = 0;
+    
+#ifdef DEBUG
+    ttProbes = 0;
+    ttHits = 0;
+#endif
+
+    if (ttTable != nullptr) {
+        std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
+    }
+
+    // Reset killer moves
+    for (int ply = 0; ply < MAX_PLY; ++ply) {
+        killerMoves[0][ply] = chess::Board::Move{};
+        killerMoves[1][ply] = chess::Board::Move{};
+    }
+
+    // Reset history heuristic
+    std::memset(history, 0, sizeof(history));
+}
+
 bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
     // Nessun late move pruning se poche mosse
     if (totalMoves <= 10) return false;

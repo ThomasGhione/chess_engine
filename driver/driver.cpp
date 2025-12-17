@@ -20,7 +20,6 @@ namespace driver {
     void Driver::startGame() {
         while (true) {
             uint8_t mainMenuChoice = menu.mainMenu();
-            Driver::quit(std::string(1, mainMenuChoice));
 
             switch (mainMenuChoice) {
                 
@@ -67,6 +66,11 @@ namespace driver {
                     }
                     break;
                 }
+
+                case '3':
+                    std::cout << "Thank you for playing! See you next time." << std::endl;
+                    exit(EXIT_SUCCESS);
+                    break;
 
                 default:
                     std::cout << "Invalid option. Please select a valid option.\n";
@@ -142,8 +146,11 @@ namespace driver {
             } else if (this->engine.board.isStalemate(nextColor)) {
                 std::cout << "\nStalemate. Game drawn.\n";
             }
-            std::cout << "Press any key to return to the menu...";
+            std::cout << "Press Enter to return to the menu...";
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cin.get();
+
+            engine.reset();
         } 
     }
 
@@ -197,13 +204,17 @@ namespace driver {
             std::cin >> playerInput;
 
             //! TODO Check if player wants to save or quit
-
             /*
-            if (playerInput == "s") {
+            if (playerInput == "q") {
                 this->saveGame();
                 return;
             }
             */
+
+            if (playerInput == "q") {
+                std::cout << "Thank you for playing! See you next time." << std::endl;
+                exit(EXIT_SUCCESS);
+            }
 
             if (playerInput.length() != 4 && playerInput.length() != 5) {
                 std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
@@ -275,7 +286,8 @@ namespace driver {
                     promoChar = 'q';
                 }
                 moveOk = engine.board.moveBB(fromCoords, toCoords, promoChar);
-            } else {
+            } 
+            else {
                 moveOk = engine.board.moveBB(fromCoords, toCoords);
             }
 
@@ -345,74 +357,4 @@ namespace driver {
         SaveFile << board.getCurrentFen(); 
         SaveFile.close();
     } */
-
-
-
-
-    /*
-    void Driver::EngineFirst() {
-        while (!engine.isMate()) {
-            std::cout << "Engine's thinking... \n";
-            
-#ifdef DEBUG
-            auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif              
-            engine.search(engine.depth);
-#ifdef DEBUG
-            auto chrono_end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
-            std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
-#endif
-
-            if (engine.isMate()) break;
-
-            std::cout << "It's your turn: \n\n";
-            this->playerTurn();
-        }
-    }
-    */
-
-    /*
-    void Driver::HumanFirst() {
-        while (!engine.isMate()) {
-            std::cout << "It's your turn: \n\n";
-            this->playerTurn();
-
-            if (engine.isMate()) break;
-
-            std::cout << "Engine's thinking... \n";
-            
-#ifdef DEBUG
-            auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif    
-            engine.search(engine.depth);
-#ifdef DEBUG
-            auto chrono_end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
-            std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
-#endif
-        }
-    }
-    */
-
-    /*
-    void Engine::playGameVsEngine(bool isWhite) {
-        while (!isMate()) {
-        if(isWhite) {
-          std::cout << "It's your turn: ";
-          playerTurn();
-          std::cout << "Engine's thinking... ";
-          takeEngineTurn();
-        }else{
-          std::cout << "Engine's thinking... ";
-          takeEngineTurn();
-          std::cout << "It's your turn: ";
-          playerTurn();
-        }
-      }
-
-    }
-    */
 }
