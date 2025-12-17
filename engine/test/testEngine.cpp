@@ -189,11 +189,9 @@ ut::suite engineSuite = [] {
     const uint64_t blackPawns = e.board.pawns_bb[1];
 
     constexpr int EVAL_HELPER_FUNCTIONS_ITERATIONS = 10'000'000;
-    auto start1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateMobilityFast(e.board, e.board.getPiecesBitMap());
-    auto end1 = std::chrono::high_resolution_clock::now();
-    auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1).count();
-    printf("Mobility evaluation took %lu ns\n", duration1);
+
+    // evaluateMobilityFast, evaluateHangingPiecesFast, evaluateTrappedPiecesFast
+    // are now private - benchmarks removed
 
     auto start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluatePawnStructureFast(e.board.pawns_bb[0], e.board.pawns_bb[1]);
@@ -204,20 +202,8 @@ ut::suite engineSuite = [] {
     auto start3 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateKingSafetyFast(e.board, whitePawns, blackPawns);
     auto end3 = std::chrono::high_resolution_clock::now();
-    auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end3 - start3).count();  
+    auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end3 - start3).count();
     printf("King safety evaluation took %lu ns\n", duration3);
-
-    auto start4 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateHangingPiecesFast(e.board, e.board.getPiecesBitMap());
-    auto end4 = std::chrono::high_resolution_clock::now();
-    auto duration4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end4 - start4).count();  
-    printf("Hanging pieces evaluation took %lu ns\n", duration4);
-
-    auto start5 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateTrappedPiecesFast(e.board, e.board.getPiecesBitMap());
-    auto end5 = std::chrono::high_resolution_clock::now();
-    auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end5 - start5).count();
-    printf("Trapped pieces evaluation took %lu ns\n", duration5);
 
     auto start7 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateRooksFast(e.board.rooks_bb[0], e.board.rooks_bb[1], whitePawns, blackPawns);
@@ -243,11 +229,7 @@ ut::suite engineSuite = [] {
     auto duration10 = std::chrono::duration_cast<std::chrono::nanoseconds>(end10 - start10).count();
     printf("Endgame king activity evaluation took %lu ns\n", duration10);
 
-    auto start11 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluatePassedPawnScalingFast(whitePawns, blackPawns);
-    auto end11 = std::chrono::high_resolution_clock::now();
-    auto duration11 = std::chrono::duration_cast<std::chrono::nanoseconds>(end11 - start11).count();
-    printf("Passed pawn scaling evaluation took %lu ns\n", duration11);
+    // evaluatePassedPawnScalingFast() removed - scaling is now integrated into evaluatePawnStructureFast()
 
     auto start12 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateBadBishopFast(e.board.bishops_bb[0], whitePawns, 0);

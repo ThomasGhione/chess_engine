@@ -151,28 +151,48 @@ private:
 public:
     int manhattan(int a, int b) noexcept;
     int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-    int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evaluatePassedPawnScalingFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
     int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evaluateMobilityFast(const chess::Board& b, uint64_t occ) noexcept;
     int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept;
     int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept;
     int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept;
-    int64_t evaluateHangingPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
     int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evaluateCastlingBonusFast(const chess::Board& b) noexcept;
     int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept;
     int64_t evaluateEarlyQueenFast(const chess::Board& b) noexcept;
-    int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
     int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept;
     /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;
 */
 private:
+    // Attack data structure for evaluation optimization
+    struct AttackData {
+        uint64_t allAttacks;
+        uint64_t pawnAttacks;
+        uint64_t knightAttacks;
+        uint64_t bishopAttacks;
+        uint64_t rookAttacks;
+        uint64_t queenAttacks;
+
+        int knightMobility;
+        int bishopMobility;
+        int rookMobility;
+        int queenMobility;
+    };
+
+    // Helper function to compute attack data once
+    void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+
+    // Evaluation helper functions using precomputed attack data
+    int64_t evaluateMobilityFast(const AttackData data[2]) noexcept;
+    int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evaluateHangingPiecesFast(const chess::Board& b, const AttackData data[2]) noexcept;
+
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
-    
+
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
 
