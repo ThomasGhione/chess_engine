@@ -130,6 +130,26 @@ int64_t Engine::evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPaw
     return score;
 }
 
+int64_t Engine::evaluateBlockedCenterWithPiecesFast(const chess::Board& b, uint64_t occ) noexcept {
+    int64_t score = 0;
+    
+    // WHITE
+    if ((b.pawns_bb[0] & (1ULL << 27)) && (occ & (1ULL << 35))) {
+        if (b.knights_bb[0] & ((1ULL << 18) | (1ULL << 21))) score -= 10;
+        if (b.bishops_bb[0] & ((1ULL << 19) | (1ULL << 20))) score -= 10;
+        score -= 15;
+    }
+
+    // BLACK
+    if ((b.pawns_bb[1] & (1ULL << 35)) && (occ & (1ULL << 27))) {
+        if (b.knights_bb[1] & ((1ULL << 42) | (1ULL << 45))) score += 10;
+        if (b.bishops_bb[1] & ((1ULL << 43) | (1ULL << 44))) score += 10;
+        score += 15;
+    }
+
+    return score;
+}
+
 
 int64_t Engine::evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
@@ -664,6 +684,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
         eval += evaluateCentralControlFast(whitePawns, blackPawns);
         eval += evaluateBadKingPositionFast(board);
+        eval += evaluateBlockedCenterWithPiecesFast(board, occ);
     }
     else { // ENDGAME SPECIFIC EVALUATIONS
         // Passed pawn scaling is now integrated into evaluatePawnStructureFast()

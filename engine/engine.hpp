@@ -152,6 +152,7 @@ public:
     int manhattan(int a, int b) noexcept;
     int64_t evaluateCheckmate(const chess::Board& board) noexcept;
     int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    int64_t evaluateBlockedCenterWithPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
     int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept;
