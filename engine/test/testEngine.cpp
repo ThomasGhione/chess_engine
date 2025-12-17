@@ -19,7 +19,7 @@ ut::suite engineSuite = [] {
     
     int64_t deltaFast = 0;
     auto start1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 100000; ++i) {
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       deltaFast += e.getMaterialDeltaFAST(testBoard);
     }
     auto end1 = std::chrono::high_resolution_clock::now();
@@ -28,7 +28,7 @@ ut::suite engineSuite = [] {
 
     int64_t deltaNormal = 0;
     auto start2 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 100000; ++i) {
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       deltaNormal += e.getMaterialDelta(testBoard);
     }
     auto end2 = std::chrono::high_resolution_clock::now();
@@ -182,9 +182,86 @@ ut::suite engineSuite = [] {
       << "Expected 2 legal moves, got " << moves.size << '\n';
   };
 
-  // "banchmark all evaluation helper functions"_test = []{
-  //   chess::Board b("r3kbnr/pppbpppp/4q3/8/1n6/P1NPB3/1PP1NPPP/R2QKB1R b KQkq - 0 1");
-  //   engine::evaluateMobilityFast(b);
-  // }; 
+  "banchmark all evaluation helper functions"_test = []{
+    engine::Engine e = engine::Engine("r3kbnr/pppbpppp/4q3/8/1n6/P1NPB3/1PP1NPPP/R2QKB1R b KQkq - 0 1");
+    
+    const uint64_t whitePawns = e.board.pawns_bb[0];
+    const uint64_t blackPawns = e.board.pawns_bb[1];
+
+    constexpr int EVAL_HELPER_FUNCTIONS_ITERATIONS = 10'000'000;
+    auto start1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateMobilityFast(e.board, e.board.getPiecesBitMap());
+    auto end1 = std::chrono::high_resolution_clock::now();
+    auto duration1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1).count();
+    printf("Mobility evaluation took %lu ns\n", duration1);
+
+    auto start2 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluatePawnStructureFast(e.board.pawns_bb[0], e.board.pawns_bb[1]);
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto duration2 = std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2).count();
+    printf("Pawn structure evaluation took %lu ns\n", duration2);
+
+    auto start3 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateKingSafetyFast(e.board, whitePawns, blackPawns);
+    auto end3 = std::chrono::high_resolution_clock::now();
+    auto duration3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end3 - start3).count();  
+    printf("King safety evaluation took %lu ns\n", duration3);
+
+    auto start4 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateHangingPiecesFast(e.board, e.board.getPiecesBitMap());
+    auto end4 = std::chrono::high_resolution_clock::now();
+    auto duration4 = std::chrono::duration_cast<std::chrono::milliseconds>(end4 - start4).count();  
+    printf("Hanging pieces evaluation took %lu ms\n", duration4);
+
+    auto start5 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateTrappedPiecesFast(e.board, e.board.getPiecesBitMap());
+    auto end5 = std::chrono::high_resolution_clock::now();
+    auto duration5 = std::chrono::duration_cast<std::chrono::nanoseconds>(end5 - start5).count();
+    printf("Trapped pieces evaluation took %lu ns\n", duration5);
+
+    auto start6 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateMobilityFast(e.board, e.board.getPiecesBitMap());
+    auto end6 = std::chrono::high_resolution_clock::now();
+    auto duration6 = std::chrono::duration_cast<std::chrono::nanoseconds>(end6 - start6).count();
+    printf("Mobility evaluation took %lu ns\n", duration6);
+
+    auto start7 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateRooksFast(e.board.rooks_bb[0], e.board.rooks_bb[1], whitePawns, blackPawns);
+    auto end7 = std::chrono::high_resolution_clock::now();
+    auto duration7 = std::chrono::duration_cast<std::chrono::nanoseconds>(end7 - start7).count();
+    printf("Rooks evaluation took %lu ns\n", duration7);
+
+    auto start8 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateKingActivityFast(e.board, false);
+    auto end8 = std::chrono::high_resolution_clock::now();
+    auto duration8 = std::chrono::duration_cast<std::chrono::nanoseconds>(end8 - start8).count();
+    printf("King activity evaluation took %lu ns\n", duration8);
+
+    auto start9 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateBadKingPositionFast(e.board);
+    auto end9 = std::chrono::high_resolution_clock::now();
+    auto duration9 = std::chrono::duration_cast<std::chrono::nanoseconds>(end9 - start9).count();
+    printf("Bad king position evaluation took %lu ns\n", duration9);
+
+    auto start10 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateEndgameKingActivityFast(e.board);
+    auto end10 = std::chrono::high_resolution_clock::now();
+    auto duration10 = std::chrono::duration_cast<std::chrono::nanoseconds>(end10 - start10).count();
+    printf("Endgame king activity evaluation took %lu ns\n", duration10);
+
+    auto start11 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluatePassedPawnScalingFast(whitePawns, blackPawns);
+    auto end11 = std::chrono::high_resolution_clock::now();
+    auto duration11 = std::chrono::duration_cast<std::chrono::nanoseconds>(end11 - start11).count();
+    printf("Passed pawn scaling evaluation took %lu ns\n", duration11);
+
+    auto start12 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evaluateBadBishopFast(e.board.bishops_bb[0], whitePawns, 0);
+    auto end12 = std::chrono::high_resolution_clock::now();
+    auto duration12 = std::chrono::duration_cast<std::chrono::nanoseconds>(end12 - start12).count();
+    printf("Bad bishop evaluation took %lu ns\n", duration12);
+
+    expect(false) << "Benchmark completed.";
+  }; 
   
 };

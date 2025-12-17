@@ -148,7 +148,7 @@ private:
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
 
-    
+public:
     int manhattan(int a, int b) noexcept;
     int64_t evaluateCheckmate(const chess::Board& board) noexcept;
     int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
@@ -169,6 +169,7 @@ private:
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
     int64_t bonusBishopPair(int64_t bishopCount, int64_t knightCount) noexcept;
 */
+private:
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
     
