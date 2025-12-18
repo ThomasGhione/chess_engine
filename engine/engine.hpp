@@ -41,6 +41,7 @@ public:
 
     chess::Board board;
     bool isPlayerWhite;
+    bool isCheckMate;
 
     static int64_t globalEval;
     uint64_t depth;
@@ -64,6 +65,7 @@ public:
     
     // TODO It will be in private later when State0 is finished
     bool isMate() noexcept;
+    void setIsCheckMate() noexcept;
 
     int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
     int64_t getMaterialDelta(const chess::Board& b) noexcept;

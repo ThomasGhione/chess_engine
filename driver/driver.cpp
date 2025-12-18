@@ -137,7 +137,7 @@ namespace driver {
 
 
     void Driver::endGame() {
-        if (this->engine.isMate()) {
+        if (this->engine.isCheckMate) {
             uint8_t nextColor = this->engine.board.getActiveColor();
             if (this->engine.board.isCheckmate(nextColor)) {
                 std::cout << "\nCheckmate! "
@@ -156,33 +156,33 @@ namespace driver {
 
 
     void Driver::playGameVsHuman() {
-    	while(!engine.isMate()) {
+    	while(!engine.isCheckMate) {
     	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
             this->playerTurn();
-            if (engine.isMate()) { endGame(); return; }
+            if (engine.isCheckMate) { endGame(); return; }
 
             this->playerTurn();
-            if (engine.isMate()) { endGame(); return; }
+            if (engine.isCheckMate) { endGame(); return; }
     	}
     }
 
     void Driver::playGameVsEngine(bool isHumanWhite) {
         if (isHumanWhite) {
-            while (!engine.isMate()) {
+            while (!engine.isCheckMate) {
                 this->playerTurn();
-                if (engine.isMate()) { endGame(); return; }
+                if (engine.isCheckMate) { endGame(); return; }
                 
                 this->engineTurn();
-                if (engine.isMate()) { endGame(); return; }
+                if (engine.isCheckMate) { endGame(); return; }
             }
         } 
         else {
-            while (!engine.isMate()) {
+            while (!engine.isCheckMate) {
                 this->engineTurn();
-                if (engine.isMate()) { endGame(); return; }
+                if (engine.isCheckMate) { endGame(); return; }
 
                 this->playerTurn();
-                if (engine.isMate()) { endGame(); return; }
+                if (engine.isCheckMate) { endGame(); return; }
             } 
         }
     }
@@ -307,16 +307,8 @@ namespace driver {
             std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
             std::cout << "[DEBUG] Board printed successfully.\n";
 
-            // After successful move, detect terminal state for next side to move
-            uint8_t nextColor = engine.board.getActiveColor();
-            if (engine.board.isCheckmate(nextColor)) {
-                std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
-                return; // exit turn early
-            }
-            if (engine.board.isStalemate(nextColor)) {
-                std::cout << "\nStalemate. Game drawn.\n";
-                return;
-            }
+            // TODO To be eliminated because Engine will handle it in future
+            engine.setIsCheckMate();
 
             error = false;
         }  

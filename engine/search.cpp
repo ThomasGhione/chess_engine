@@ -337,6 +337,7 @@ void Engine::search(uint64_t depth) noexcept {
     chess::Board::Move bestMove = this->getBestMove(moves, searchBestMoveForWhite);
 
     this->doMoveInBoard(bestMove);
+    this->setIsCheckMate();
 
 #ifdef DEBUG
 

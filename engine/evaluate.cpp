@@ -704,4 +704,9 @@ bool Engine::isMate() noexcept {
     }
     return false;
 }
+
+void Engine::setIsCheckMate() noexcept {
+    this->isCheckMate = isMate();
+    return;
+}
 }; // namespace engine

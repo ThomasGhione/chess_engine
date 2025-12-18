@@ -10,13 +10,14 @@ uint64_t Engine::ttHits = 0;
 
 Engine::Engine()
     : board(chess::Board())
-    , depth(4)
+    , depth(6)
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
     // Collega la TT globale e inizializzala a INVALID
     ttTable = globalTT();
     std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
+    isCheckMate = false;
 }
 
 Engine::Engine(std::string fen)
@@ -28,6 +29,7 @@ Engine::Engine(std::string fen)
     // Collega la TT globale e inizializzala a INVALID
     ttTable = globalTT();
     std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
+    isCheckMate = false;
 }
 
 void Engine::reset() noexcept {
