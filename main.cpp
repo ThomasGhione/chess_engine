@@ -10,12 +10,12 @@ using namespace driver;
 #include <string>
 
 int main() {
- /*
-    driver.startGame();*/
     Menu menu = Menu();
     Engine engine = Engine();
     Driver driver = Driver(menu, engine);
+    driver.startGame();
 
+    /*
     // Bot Vs Bot
     std::string currentBoard;
     for(int i = 0; i < 50; i++) {
@@ -31,5 +31,6 @@ int main() {
         currentBoard = print::Prints::getBasicBoard(driver.engine.board);
         std::cout << currentBoard << "\n";
     }
+    */
     return 0;
 }
