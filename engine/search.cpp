@@ -415,15 +415,17 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     return best;
 }
 
+
 __attribute__((always_inline))
-inline void addMovesFromMask_fast(
-    const chess::Board& b,
-    MoveList<chess::Board::Move>& moves,
-    const uint8_t from,
-    uint64_t mask,
-    const uint64_t ownOcc,
-    const bool inCheck
-) noexcept {
+inline uint8_t poplsb(uint64_t& bb) noexcept {
+    const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+    bb &= bb - 1;
+    return sq;
+}
+
+__attribute__((always_inline))
+inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::Move>& moves, const uint8_t from, 
+                                  uint64_t mask, const uint64_t ownOcc, const bool inCheck) noexcept {
     mask &= ~ownOcc;
     if (!mask) [[unlikely]] return; // Early exit se nessuna mossa
 
@@ -443,10 +445,12 @@ MoveList<chess::Board::Move>
 Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     MoveList<chess::Board::Move> moves;
 
-    const uint8_t color    = b.getActiveColor();
-    const int side         = (color == chess::Board::WHITE) ? 0 : 1;
+    const uint8_t color = b.getActiveColor();
+    const int side = (color == chess::Board::WHITE) ? 0 : 1;
+    const bool isWhite = (side == 0);
 
-    const uint64_t occ     = b.getPiecesBitMap();
+    const uint64_t occ = b.getPiecesBitMap();
+
     const uint64_t pawns   = b.pawns_bb[side];
     const uint64_t knights = b.knights_bb[side];
     const uint64_t bishops = b.bishops_bb[side];
@@ -456,59 +460,64 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
 
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
     const bool inCheck = b.inCheck(color);
-    const bool isWhite = (side == 0);
 
-    // ---------------- KING MOVES ----------------
-    if (kings) [[likely]] {
-        const uint8_t kingIndex = __builtin_ctzll(kings);
-        const chess::Coords kingPos{kingIndex};
-        uint64_t kmask = pieces::KING_ATTACKS[kingIndex] & ~ownOcc;
+    // ================= KING =================
+    if (!kings) [[unlikely]] {
+        return moves; // No king found, return empty move list
+    }
+    else [[likely]] {
+        const uint8_t from = poplsb(const_cast<uint64_t&>(kings));
+        const chess::Coords fromC{from};
 
-        while (kmask) {
-            const uint8_t to = __builtin_ctzll(kmask);
-            kmask &= (kmask - 1);
-            const chess::Coords toPos{to};
-            // CRITICAL: King moves MUST be validated (attack checks)
-            if (b.canMoveToBB(kingPos, toPos, inCheck)) [[likely]] {
-                moves.emplace_back(chess::Board::Move{kingPos, toPos});
+        uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
+        while (mask) {
+            const uint8_t to = poplsb(mask);
+            if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
             }
         }
 
-        const uint8_t kingFile = kingIndex & 7;
-        // Castling: branchless-ish
-        if (kingFile <= 5 && b.canMoveToBB(kingPos, chess::Coords{static_cast<uint8_t>(kingIndex+2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{kingPos, chess::Coords{static_cast<uint8_t>(kingIndex+2)}});
-        if (kingFile >= 2 && b.canMoveToBB(kingPos, chess::Coords{static_cast<uint8_t>(kingIndex-2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{kingPos, chess::Coords{static_cast<uint8_t>(kingIndex-2)}});
+        const uint8_t f = from & 7;
+        if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
+        if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
     }
 
-    // ---------------- GENERIC PIECES ----------------
-    auto addMoves = [&](uint64_t bb, auto attackGen) noexcept {
-        while (bb) {
-            const uint8_t from = __builtin_ctzll(bb);
-            bb &= (bb - 1);
-            const uint64_t mask = attackGen(from, occ) & ~ownOcc;
-            addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
-        }
-    };
-
-    // Pawns: attack + forward pushes
-    uint64_t pawnsBB = pawns;
-    while (pawnsBB) {
-        const uint8_t from = __builtin_ctzll(pawnsBB);
-        pawnsBB &= (pawnsBB - 1);
+    uint64_t bb = pawns;
+    while (bb) {
+        const uint8_t from = poplsb(bb);
         uint64_t mask = pieces::PAWN_ATTACKS[isWhite][from] | pieces::getPawnForwardPushes(from, isWhite, occ);
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
-    // Knights
-    addMoves(knights, [](uint8_t from, uint64_t) { return pieces::KNIGHT_ATTACKS[from]; });
-    // Bishops
-    addMoves(bishops, [](uint8_t from, uint64_t occ) { return pieces::getBishopAttacks(from, occ); });
-    // Rooks
-    addMoves(rooks, [](uint8_t from, uint64_t occ) { return pieces::getRookAttacks(from, occ); });
-    // Queens
-    addMoves(queens, [](uint8_t from, uint64_t occ) { return pieces::getQueenAttacks(from, occ); });
+    bb = knights;
+    while (bb) {
+        const uint8_t from = poplsb(bb);
+        uint64_t mask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
+        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+    }
+
+    bb = bishops;
+    while (bb) {
+        const uint8_t from = poplsb(bb);
+        uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
+        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+    }
+
+    bb = rooks;
+    while (bb) {
+        const uint8_t from = poplsb(bb);
+        uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
+        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+    }
+
+    bb = queens;
+    while (bb) {
+        const uint8_t from = poplsb(bb);
+        uint64_t mask = pieces::getQueenAttacks(from, occ) & ~ownOcc;
+        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+    }
 
     return moves;
 }

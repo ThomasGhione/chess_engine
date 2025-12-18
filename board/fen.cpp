@@ -30,8 +30,8 @@ bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32
         for (char symbol : rankSegment) {
             if (std::isdigit(static_cast<unsigned char>(symbol))) {
                 fileIndex += symbol - '0';
-            if (fileIndex > 8) 
-                return false;
+                if (fileIndex > 8) 
+                    return false;
             } else {
                 if (fileIndex >= 8) 
                     return false;
@@ -82,7 +82,9 @@ Coords Board::parseEnPassant(const std::string& enPassantSection) {
         return Coords{};
     }
     uint8_t file = static_cast<uint8_t>(fileChar - 'a');
-    uint8_t rank = static_cast<uint8_t>(rankChar - '1');
+    // Board convention: rank 0 = row 8 (top), rank 7 = row 1 (bottom)
+    // FEN uses '1'-'8' where '8' is the top row → we need to invert
+    uint8_t rank = static_cast<uint8_t>('8' - rankChar);
     return Coords(file, rank);
 }
 // Safely converts a string to an integer with error handling.

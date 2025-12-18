@@ -626,7 +626,8 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
 
 
 int64_t Engine::evaluate(const chess::Board& board) noexcept {
-    if (board.isCheckmate(board.getActiveColor())) [[unlikely]] {
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
+        //(missing king)
         return evaluateCheckmate(board);
     }
 
@@ -698,15 +699,13 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
 }
 
 bool Engine::isMate() noexcept {
-    uint8_t toMove = this->board.getActiveColor();
-    if (this->board.isCheckmate(toMove) || this->board.isStalemate(toMove)) {
-        return true;
-    }
-    return false;
+    uint8_t toMove = board.getActiveColor();
+    return board.kings_bb[0] == 0    || board.kings_bb[1] == 0 
+        || board.isCheckmate(toMove) || board.isStalemate(toMove);
 }
 
 void Engine::setIsCheckMate() noexcept {
-    this->isCheckMate = isMate();
-    return;
+    isCheckMate = isMate();
 }
+
 }; // namespace engine

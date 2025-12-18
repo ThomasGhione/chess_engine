@@ -208,48 +208,47 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     // Early exit: can't capture own piece
     if (destPiece != EMPTY && destColor == movingColor) return false;
 
-    // Detect check state and attackers for restrictions (double check logic)
-    uint8_t attackerCount = 0;
-    uint8_t kingIndex = 64; // invalid index
     if (inChk) {
+        uint8_t kingIndex = 64; // invalid index
+        uint64_t attackerCount = 0; // Detect check state and attackers for restrictions (double check logic)
+
         // Use the king bitboard to find king index quickly
         const uint8_t side = (movingColor == WHITE) ? 0 : 1;
-        const uint64_t kingBB = kings_bb[side]; // Array index (0=WHITE, 1=BLACK)
 
-        if (kingBB) [[likely]] {
-            kingIndex = __builtin_ctzll(kingBB); // Count trailing zeros = find LSB
+        kingIndex = static_cast<uint8_t>(__builtin_ctzll(kings_bb[side])); // Count trailing zeros = find LSB
 
-            const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
-            
-            // Pawns
-            attackerCount += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
-            
-            // Knights
-            attackerCount += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
+        const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
+        
+        // Pawns
+        attackerCount += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
+        
+        // Knights
+        attackerCount += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
 
-            // Kings (adjacent)
-            attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
+        // Kings (adjacent)
+        attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
 
-            // Sliding rook/queen (orthogonal)
-            attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occupancy)) & 
-                                                  (rooks_bb[oppSide] | queens_bb[oppSide]));
-            // Sliding bishop/queen (diagonal)
-            attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occupancy)) & 
-                                                  (bishops_bb[oppSide] | queens_bb[oppSide]));
-        }
+        // Sliding rook/queen (orthogonal)
+        attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occupancy)) & 
+                                                (rooks_bb[oppSide] | queens_bb[oppSide]));
+        // Sliding bishop/queen (diagonal)
+        attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occupancy)) & 
+                                                (bishops_bb[oppSide] | queens_bb[oppSide]));
+        
+        // Double check: only king moves allowed
+        if (attackerCount >= 2 && fromType != KING) [[unlikely]] return false;
     }
 
-    // Double check: only king moves allowed
-    if (inChk && attackerCount >= 2 && fromType != KING) return false;
     
-
     switch (fromType) { // piece type only
         case PAWN: {
-            const bool isWhite = (this->getColor(from) == WHITE);
+            const bool isWhite = movingColor == WHITE;
+            
             const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
             const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy);
             bool legal = false;
             bool isEnPassant = false;
+            
             // En passant: diagonal into empty square matching enPassant target
             if ((attacks & toBit) && ((occupancy & toBit) == 0ULL)) {
                 if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].index) {
@@ -258,12 +257,15 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
                 }
             }
             // Diagonal captures (must be occupied)
-            if (!legal && (attacks & toBit) && ((occupancy & toBit) != 0ULL)) {
-                legal = true;
-            }
-            // Forward pushes (must be empty)
-            if (!legal && (pushes & toBit) && ((occupancy & toBit) == 0ULL)) {
-                legal = true;
+            if (!legal) {
+                if ((attacks & toBit) && ((occupancy & toBit) != 0ULL)) {
+                    legal = true;
+                }
+                // Forward pushes (must be empty)
+                if ((pushes & toBit) && ((occupancy & toBit) == 0ULL)) {
+                    legal = true;
+                }
+
             }
             if (!legal) return false;
 
@@ -473,7 +475,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
     // Early exit: if no sliding pieces of this color, no attack possible
-    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) [[likely]] return false;
+    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) return false;
 
     // Sliding pieces check (expensive)
     const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occupancy);
@@ -494,7 +496,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
     // Early exit: if no sliding pieces, no attack possible
-    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) [[likely]] return false;
+    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) return false;
 
     // Sliding pieces with modified occupancy
     const uint64_t occMinus = occupancy & ~(1ULL << excludeSquare);
