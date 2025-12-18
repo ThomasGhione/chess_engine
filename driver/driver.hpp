@@ -26,6 +26,7 @@ namespace driver {
             void playerTurn();
             void playGameVsHuman();
             void playGameVsEngine(bool isWhite);
+            void botVsBot();
             void EngineFirst();
             void HumanFirst();
     };

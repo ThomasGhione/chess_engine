@@ -68,6 +68,10 @@ namespace driver {
                 }
 
                 case '3':
+                    this->botVsBot();
+                    break;
+
+                case '4':
                     std::cout << "Thank you for playing! See you next time." << std::endl;
                     exit(EXIT_SUCCESS);
                     break;
@@ -184,6 +188,23 @@ namespace driver {
                 this->playerTurn();
                 if (engine.isCheckMate) { endGame(); return; }
             } 
+        }
+    }
+
+    void Driver::botVsBot() {
+        std::string currentBoard = print::Prints::getBasicBoard(engine.board);
+        std::cout << currentBoard << "\n";
+
+        while (!engine.isCheckMate) {
+            this->engineTurn();
+            if (engine.isCheckMate) { endGame(); return; }
+            currentBoard = print::Prints::getBasicBoard(engine.board);
+            std::cout << currentBoard << "\n";
+
+            this->engineTurn();
+            if (engine.isCheckMate) { endGame(); return; }
+            currentBoard = print::Prints::getBasicBoard(engine.board);
+            std::cout << currentBoard << "\n";
         }
     }
 

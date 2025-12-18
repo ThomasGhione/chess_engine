@@ -5,20 +5,21 @@ namespace print {
     // It can return:
     // 1 -> One Player
     // 2 -> Two Players
-    // 3 -> Quit Game
+    // 3 -> Bot Vs Bot
+    // 4 -> Quit Game
     uint8_t Menu::mainMenu() {
 
         clearScreen();
 
-        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Quit Game\n\nSelect an option (1-3): ";
+        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Bot Vs Bot\n4. Quit Game\n\nSelect an option (1-4): ";
 
         uint8_t choice;
 
         std::cout << line;
         std::cin >> choice;
 
-        while (choice < '1' || choice > '3') {
-            std::cout << "Invalid option. Please select a valid option (1-3): ";
+        while (choice < '1' || choice > '4') {
+            std::cout << "Invalid option. Please select a valid option (1-4): ";
             std::cin >> choice;
         }
 
