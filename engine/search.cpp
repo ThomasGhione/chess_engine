@@ -193,7 +193,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     }
 
     // --- YBWC Parallel ---
-    // 1️⃣ First move sequential
     {
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
