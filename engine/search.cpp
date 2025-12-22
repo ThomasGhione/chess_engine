@@ -201,7 +201,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         this->undoAndUpdateMove(firstMove, state, usIsWhite, score, alpha, beta, bestScore, bestMove);
     }
 
-    if (moves.size <= 1) return bestMove;
+    if (moves.size <= 1) [[unlikely]] return bestMove;
 
     std::vector<int64_t> threadScores(moves.size, usIsWhite ? NEG_INF : POS_INF);
     std::atomic<int64_t> alphaGlobal(alpha);
