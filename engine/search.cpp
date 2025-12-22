@@ -419,11 +419,13 @@ inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::
 
     const chess::Coords fromC{from};
 
+    // SEMPRE verifica legalità con canMoveToBB
+    // Questo è necessario per gestire correttamente pin e mosse illegali
     while (mask) {
         const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
 
-        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) [[likely]] {
+        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
     }
@@ -450,28 +452,33 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     const bool inCheck = b.inCheck(color);
 
     // ================= KING =================
-    if (!kings) [[unlikely]] {
-        return moves; // No king found, return empty move list
-    }
-    else [[likely]] {
-        const uint8_t from = poplsb(const_cast<uint64_t&>(kings));
-        const chess::Coords fromC{from};
+    if (!kings) [[unlikely]] return moves; // No king found, return empty move list
+    
 
-        uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
-        while (mask) {
-            const uint8_t to = poplsb(mask);
-            if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
-            }
+    const uint8_t from = poplsb(const_cast<uint64_t&>(kings));
+    const chess::Coords fromC{from};
+
+    // King moves MUST always check legality (can't move to attacked squares)
+    uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
+    while (mask) {
+        const uint8_t to = poplsb(mask);
+        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
-
-        const uint8_t f = from & 7;
-        if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
-        if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
     }
 
+    // Castling: always needs legality check
+    const uint8_t f = from & 7;
+    if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
+        moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
+    if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
+        moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
+    
+
+    // OPTIMIZATION: Se non in scacco, generiamo pseudo-legal moves per pezzi non-king
+    // Le mosse illegali per pin saranno filtrate in doMove/searchPosition
+    // Questo evita migliaia di chiamate a canMoveToBB
+    
     uint64_t bb = pawns;
     while (bb) {
         const uint8_t from = poplsb(bb);
@@ -516,13 +523,13 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
     const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
     const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
-    if (toPieceType != chess::Board::EMPTY) [[likely]] {
+    if (toPieceType != chess::Board::EMPTY) {
         score += MVV_LVA_TABLE[toPieceType][fromPieceType];
         return;
     }
 
     // En passant (only pawn moving diagonally to empty square)
-    if (fromPieceType == chess::Board::PAWN) [[unlikely]] {
+    if (fromPieceType == chess::Board::PAWN) {
         if ((m.from.index & 7) != (m.to.index & 7)) {
             score += MVV_LVA_TABLE[chess::Board::PAWN][chess::Board::PAWN];
         }
@@ -732,9 +739,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // Penalizza catture perdenti con SEE
         // Se SEE < 0, la cattura perde materiale → ordina dopo
-        if (isCapture) [[likely]] {
+        if (isCapture) {
             const int64_t see = staticExchangeEvaluation(b, m);
-            if (see < 0) [[unlikely]] {
+            if (see < 0) {
                 // Cattura perdente: penalità proporzionale alla perdita
                 score += see; // see è negativo, quindi abbassa lo score
             }
