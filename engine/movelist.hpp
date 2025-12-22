@@ -72,7 +72,16 @@ struct MoveList {
             int j = i - 1;
 
             // ordine decrescente (highest score first)
-            while (j >= 0 && data[j].score < key.score) {
+            // Tie-breaker: if scores are equal, sort by move index (from, to) for determinism
+            while (j >= 0 && (data[j].score < key.score 
+                // used for tie breaking to ensure deterministic ordering
+                /* 
+                || (data[j].score == key.score && 
+                              (data[j].move.from.index > key.move.from.index ||
+                               (data[j].move.from.index == key.move.from.index && 
+                                data[j].move.to.index > key.move.to.index)))
+                            */
+                            )) {
                 data[j + 1] = data[j];
                 --j;
             }

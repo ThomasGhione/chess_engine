@@ -89,6 +89,8 @@ public:
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
 
 private:
+    int MAX_THREADS;
+
     // Helper structures to reduce parameter passing
     struct SearchContext {
         int64_t depth;

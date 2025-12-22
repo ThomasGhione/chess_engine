@@ -11,6 +11,7 @@ uint64_t Engine::ttHits = 0;
 Engine::Engine()
     : board(chess::Board())
     , depth(6)
+    , MAX_THREADS(omp_get_max_threads())
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
@@ -23,6 +24,7 @@ Engine::Engine()
 Engine::Engine(std::string fen)
     : board(chess::Board(fen))
     , depth(6)
+    , MAX_THREADS(omp_get_max_threads())
 {
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore

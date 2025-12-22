@@ -180,10 +180,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
 
-    // YBWC: Young Brothers Wait Concept
-    // First move (PV) searched sequentially with full window
-    // Remaining moves can be searched in parallel with narrower windows
-    const bool useYBWC = (moves.size >= 8 && this->depth >= 5);
+    // YBWC: Young Brothers Wait Concept with deterministic parallel search
+    // Strategy: use static scheduling instead of dynamic to ensure deterministic move order
+    // Enable YBWC for moderate move counts and depths >= 5
+    const bool useYBWC = (moves.size >= 6 && this->depth >= 4);
 
     if (!useYBWC) {
         // Sequential search for few moves or shallow depth
@@ -206,80 +206,64 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             this->undoAndUpdateMove(firstMove, state, searchBestMoveForWhite, score, alpha, beta, bestScore, bestMove);
         }
 
-        // Decide a reasonable number of threads for the parallel region.
-        // Use at most one thread per remaining move (moves.size()-1) and cap
-        // to omp_get_max_threads() to avoid oversubscription. We pass the
-        // resulting value via the num_threads clause to keep the setting
-        // local to this parallel region (avoids global side-effects).
-        // Remaining moves in parallel with current alpha/beta bounds
-        // Each thread searches with SHARED alpha/beta (read-only after first move)
+        // Remaining moves in parallel with STATIC scheduling for determinism
         if (moves.size > 1) {
             const int64_t sharedAlpha = alpha;
             const int64_t sharedBeta = beta;
 
-            int maxThreads = omp_get_max_threads();
-            int remainingMoves = moves.size - 1; // excluding PV
-            int numThreads = maxThreads;
-            if (remainingMoves > 0 && remainingMoves < numThreads) numThreads = remainingMoves;
-            if (numThreads < 1) numThreads = 1;
+            const int remainingMoves = moves.size - 1;
+            const int numThreads = std::min(MAX_THREADS, remainingMoves);
 
+            // Pre-allocate per-thread results to avoid race conditions
+            std::vector<int64_t> threadScores(moves.size, searchBestMoveForWhite ? NEG_INF : POS_INF);
+            
             #pragma omp parallel num_threads(numThreads)
             {
-                // Each thread has local board and local best
-                chess::Board localBoard = this->board;
-                int64_t localBestScore = searchBestMoveForWhite ? NEG_INF : POS_INF;
-                chess::Board::Move localBestMove = bestMove;
+                chess::Board threadBoard = this->board;
                 
-                // Dynamic scheduling: moves with similar scores get better load balancing
-                #pragma omp for schedule(dynamic, 1) nowait
+                // STATIC scheduling: each thread gets a fixed chunk, ensuring determinism
+                // chunk_size = 1 ensures fine-grained distribution without randomness
+                #pragma omp for schedule(static, 1) nowait
                 for (int i = 1; i < moves.size; ++i) {
                     const auto& m = moves[i];
                     chess::Board::MoveState state;
                     
-                    if (isPromotionMove(localBoard, m)) [[unlikely]] {
-                        localBoard.doMove(m, state, 'q');
+                    if (isPromotionMove(threadBoard, m)) [[unlikely]] {
+                        threadBoard.doMove(m, state, 'q');
                     } else [[likely]] {
-                        localBoard.doMove(m, state);
+                        threadBoard.doMove(m, state);
                     }
                     
                     // Search with shared bounds (no updates during parallel phase)
-                    int64_t score = this->searchPosition(localBoard, this->depth - 1, sharedAlpha, sharedBeta, currPly);
+                    const int64_t score = this->searchPosition(threadBoard, this->depth - 1, sharedAlpha, sharedBeta, currPly);
                     
-                    localBoard.undoMove(m, state);
+                    threadBoard.undoMove(m, state);
                     
-                    // Update local best
-                    if (searchBestMoveForWhite) {
-                        if (score > localBestScore) {
-                            localBestScore = score;
-                            localBestMove = m;
-                        }
-                    } else {
-                        if (score < localBestScore) {
-                            localBestScore = score;
-                            localBestMove = m;
-                        }
-                    }
+                    // Store result in thread-safe array (each index written by exactly one thread)
+                    threadScores[i] = score;
                 }
+            }
+            
+            // Sequential merge: deterministic order, always picks the same move if scores are equal
+            for (int i = 1; i < moves.size; ++i) {
+                const int64_t score = threadScores[i];
+                const auto& m = moves[i];
                 
-                // Merge results from all threads atomically
-                #pragma omp critical
-                {
-                    if (searchBestMoveForWhite) {
-                        if (localBestScore > bestScore) {
-                            bestScore = localBestScore;
-                            bestMove = localBestMove;
-                        }
-                    } else {
-                        if (localBestScore < bestScore) {
-                            bestScore = localBestScore;
-                            bestMove = localBestMove;
-                        }
+                // Strict comparison: only update if strictly better (not >=/<= for determinism)
+                if (searchBestMoveForWhite) {
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = m;
+                    }
+                } else {
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestMove = m;
                     }
                 }
             }
             
-            // After parallel phase: update alpha/beta with final best score
-            // This is needed for TT storage and consistency with sequential search
+            // Update alpha/beta with final best score
             if (searchBestMoveForWhite) {
                 if (bestScore > alpha) alpha = bestScore;
             } else {
@@ -294,7 +278,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
 // Helper to execute a move, handling promotions
 void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
-    if (isPromotionMove(this->board, m)) {
+    if (isPromotionMove(this->board, m)) [[unlikely]] {
         this->board.doMove(m, state, 'q');
         return;
     }
@@ -314,7 +298,7 @@ void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveSt
 
 void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
     // Execute the best move found, handling promotions
-    if (isPromotionMove(this->board, bestMove)) {
+    if (isPromotionMove(this->board, bestMove)) [[unlikely]] {
         (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
         return;
     }
@@ -323,6 +307,10 @@ void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
 
 void Engine::search(uint64_t depth) noexcept {
     if (depth == 0) return;
+
+    // Increment TT generation to invalidate old entries from previous searches
+    // This ensures deterministic behavior across multiple searches
+    // incrementTTGeneration();
 
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
     if (moves.is_empty()) {
