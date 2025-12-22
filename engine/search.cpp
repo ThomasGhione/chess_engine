@@ -584,8 +584,9 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
     }
 }
 
-// Static Exchange Evaluation (SEE)
+// Static Exchange Evaluation (SEE) - Quick version
 // Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
+// OTTIMIZZAZIONE: si ferma al primo scambio favorevole per il lato passivo (early exit)
 int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
@@ -605,14 +606,14 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         
         // Bishops and Queens (diagonal)
         uint64_t diagSliders = b.bishops_bb[side] | b.queens_bb[side];
-        if (diagSliders) {
+        if (diagSliders) [[likely]] {
             uint64_t bishopAtks = pieces::getBishopAttacks(sq, occ);
             attackers |= diagSliders & bishopAtks;
         }
         
         // Rooks and Queens (orthogonal)
         uint64_t orthSliders = b.rooks_bb[side] | b.queens_bb[side];
-        if (orthSliders) {
+        if (orthSliders) [[likely]] {
             uint64_t rookAtks = pieces::getRookAttacks(sq, occ);
             attackers |= orthSliders & rookAtks;
         }
@@ -648,7 +649,9 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         capturedType = chess::Board::PAWN;
     }
 
-    int64_t gain[32];
+    // Quick SEE: array ridotto da 32 a 16 livelli (praticamente mai raggiunti)
+    constexpr int MAX_SEE_DEPTH = 16;
+    int64_t gain[MAX_SEE_DEPTH];
     gain[0] = PIECE_VALUES[capturedType];
 
     // Simula scambio
@@ -660,7 +663,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int depth = 1;
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
-    while (depth < 32) {
+    while (depth < MAX_SEE_DEPTH) {
         // Trova attaccanti del lato corrente
         uint64_t attackers = getAttackersTo(toSq, occ, side);
         if (!attackers) break;
@@ -671,6 +674,17 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
+        
+        // QUICK SEE OPTIMIZATION: early exit se il lato passivo ha già vantaggio netto
+        // Se il difensore (lato passivo) può fermarsi e guadagnare, la cattura è cattiva
+        if (side == sidePassive && gain[depth] > 0) {
+            // Il difensore può fermarsi qui con guadagno positivo → cattura perdente
+            // Propaga questo risultato e termina
+            while (--depth > 0) {
+                gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+            }
+            return gain[0];
+        }
         
         // Rimuovi l'attaccante dall'occupancy
         occ ^= (1ULL << attacker);
