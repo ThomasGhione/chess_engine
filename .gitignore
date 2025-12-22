@@ -3,5 +3,6 @@
 *.out
 *.o
 *.log
+*.png
 chess
 outputTest
