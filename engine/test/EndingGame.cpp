@@ -1,0 +1,347 @@
+#include "../engine.hpp"
+#include "../../tests/ut.hpp"
+#include <random>
+#include <vector>
+#include <string>
+#include <ctime>
+
+namespace ut = boost::ut;
+
+namespace {
+  // ==================== HELPER FUNCTIONS ====================
+
+  std::mt19937& getRandomGenerator() {
+    static std::mt19937 gen(std::time(nullptr));
+    return gen;
+  }
+
+  uint8_t randomSquare() {
+    std::uniform_int_distribution<> dis(0, 63);
+    return static_cast<uint8_t>(dis(getRandomGenerator()));
+  }
+
+  bool areKingsValid(uint8_t whiteKing, uint8_t blackKing) {
+    if (whiteKing == blackKing) return false;
+    int wFile = whiteKing & 7;
+    int wRank = whiteKing >> 3;
+    int bFile = blackKing & 7;
+    int bRank = blackKing >> 3;
+    int fileDiff = std::abs(wFile - bFile);
+    int rankDiff = std::abs(wRank - bRank);
+    return !(fileDiff <= 1 && rankDiff <= 1);
+  }
+
+  std::pair<uint8_t, uint8_t> placeKingsRandomly() {
+    uint8_t whiteKing = randomSquare();
+    uint8_t blackKing = randomSquare();
+
+    while (!areKingsValid(whiteKing, blackKing)) {
+      blackKing = (blackKing + 1) % 64;
+    }
+
+    return {whiteKing, blackKing};
+  }
+
+  std::string buildFEN(uint8_t whiteKing, uint8_t blackKing, const std::vector<std::pair<uint8_t, char>>& pieces) {
+    std::array<char, 64> boardArray;
+    boardArray.fill('.');
+
+    boardArray[whiteKing] = 'K';
+    boardArray[blackKing] = 'k';
+
+    for (const auto& [square, piece] : pieces) {
+      boardArray[square] = piece;
+    }
+
+    std::string fen;
+    for (int rank = 0; rank < 8; ++rank) {
+      int emptyCount = 0;
+      for (int file = 0; file < 8; ++file) {
+        int index = rank * 8 + file;
+        if (boardArray[index] == '.') {
+          emptyCount++;
+        } else {
+          if (emptyCount > 0) {
+            fen += std::to_string(emptyCount);
+            emptyCount = 0;
+          }
+          fen += boardArray[index];
+        }
+      }
+      if (emptyCount > 0) fen += std::to_string(emptyCount);
+      if (rank < 7) fen += '/';
+    }
+    fen += " w - - 0 1";
+    return fen;
+  }
+
+  bool isBoardLegal(const chess::Board& board) {
+    if (board.getActiveColor() == chess::Board::WHITE) {
+      uint64_t blackKingBB = board.kings_bb[1];
+      if (blackKingBB == 0) return false;
+      uint8_t blackKingPos = __builtin_ctzll(blackKingBB);
+      return !board.isSquareAttacked(blackKingPos, chess::Board::WHITE);
+    }
+    return true;
+  }
+
+  bool tryAddPieceAtSquare(uint8_t whiteKing, uint8_t blackKing,
+                           std::vector<std::pair<uint8_t, char>>& pieces,
+                           uint8_t square, char pieceType) {
+    pieces.push_back({square, pieceType});
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    chess::Board board(fen);
+
+    if (isBoardLegal(board)) {
+      return true;
+    } else {
+      pieces.pop_back();
+      return false;
+    }
+  }
+
+  void addRook(uint8_t whiteKing, uint8_t blackKing,
+               std::vector<std::pair<uint8_t, char>>& pieces,
+               std::vector<uint8_t>& occupied) {
+    while (true) {
+      uint8_t square = randomSquare();
+      while (std::find(occupied.begin(), occupied.end(), square) != occupied.end()) {
+        square = (square + 1) % 64;
+      }
+
+      if (tryAddPieceAtSquare(whiteKing, blackKing, pieces, square, 'R')) {
+        occupied.push_back(square);
+        return;
+      }
+    }
+  }
+
+  void addQueen(uint8_t whiteKing, uint8_t blackKing,
+                std::vector<std::pair<uint8_t, char>>& pieces,
+                std::vector<uint8_t>& occupied) {
+    while (true) {
+      uint8_t square = randomSquare();
+      while (std::find(occupied.begin(), occupied.end(), square) != occupied.end()) {
+        square = (square + 1) % 64;
+      }
+
+      if (tryAddPieceAtSquare(whiteKing, blackKing, pieces, square, 'Q')) {
+        occupied.push_back(square);
+        return;
+      }
+    }
+  }
+
+  void addKnight(uint8_t whiteKing, uint8_t blackKing,
+                 std::vector<std::pair<uint8_t, char>>& pieces,
+                 std::vector<uint8_t>& occupied) {
+    while (true) {
+      uint8_t square = randomSquare();
+      while (std::find(occupied.begin(), occupied.end(), square) != occupied.end()) {
+        square = (square + 1) % 64;
+      }
+
+      if (tryAddPieceAtSquare(whiteKing, blackKing, pieces, square, 'N')) {
+        occupied.push_back(square);
+        return;
+      }
+    }
+  }
+
+  void addBishop(uint8_t whiteKing, uint8_t blackKing,
+                 std::vector<std::pair<uint8_t, char>>& pieces,
+                 std::vector<uint8_t>& occupied,
+                 bool lightSquare) {
+    int targetParity = lightSquare ? 0 : 1;
+
+    while (true) {
+      uint8_t square = randomSquare();
+
+      // Find square with correct color
+      while (true) {
+        int sum = (square & 7) + (square >> 3);
+        if ((sum % 2) == targetParity && std::find(occupied.begin(), occupied.end(), square) == occupied.end()) {
+          break;
+        }
+        square = (square + 1) % 64;
+      }
+
+      if (tryAddPieceAtSquare(whiteKing, blackKing, pieces, square, 'B')) {
+        occupied.push_back(square);
+        return;
+      }
+    }
+  }
+
+  // ==================== POSITION GENERATORS ====================
+
+  chess::Board generatePositionKR() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addRook(whiteKing, blackKing, pieces, occupied);
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  chess::Board generatePositionK2R() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addRook(whiteKing, blackKing, pieces, occupied);
+    addRook(whiteKing, blackKing, pieces, occupied);
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  chess::Board generatePositionKQ() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addQueen(whiteKing, blackKing, pieces, occupied);
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  chess::Board generatePositionK2B() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addBishop(whiteKing, blackKing, pieces, occupied, true);   // Light square
+    addBishop(whiteKing, blackKing, pieces, occupied, false);  // Dark square
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  chess::Board generatePositionKNBLight() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addKnight(whiteKing, blackKing, pieces, occupied);
+    addBishop(whiteKing, blackKing, pieces, occupied, true);  // Light square
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  chess::Board generatePositionKNBDark() {
+    auto [whiteKing, blackKing] = placeKingsRandomly();
+    std::vector<uint8_t> occupied = {whiteKing, blackKing};
+    std::vector<std::pair<uint8_t, char>> pieces;
+
+    addKnight(whiteKing, blackKing, pieces, occupied);
+    addBishop(whiteKing, blackKing, pieces, occupied, false);  // Dark square
+
+    std::string fen = buildFEN(whiteKing, blackKing, pieces);
+    return chess::Board(fen);
+  }
+
+  // ==================== COMMON MATE FINDER ====================
+
+  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 6) {
+    engine::Engine e(board.getCurrentFen());
+    e.depth = searchDepth;
+
+    for (int ply = 0; ply < maxHalfMoves; ++ply) {
+      if (e.isMate()) {
+        printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
+        return true;
+      }
+
+      uint8_t currentColor = e.board.getActiveColor();
+      if (e.board.isStalemate(currentColor)) {
+        printf("  ✗ Stalemate at half-move %d\n", ply);
+        return false;
+      }
+
+      auto moves = e.generateLegalMoves(e.board);
+      if (moves.size == 0) {
+        bool isMate = e.isMate();
+        if (isMate) {
+          printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
+        } else {
+          printf("  ✗ No legal moves but not checkmate at half-move %d\n", ply);
+        }
+        return isMate;
+      }
+
+      bool whiteToMove = (e.board.getActiveColor() == chess::Board::WHITE);
+      chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+
+      chess::Board::MoveState state;
+      e.board.doMove(bestMove, state);
+    }
+
+    printf("  ✗ Max moves (%d) reached without checkmate\n", maxHalfMoves);
+    return false;
+  }
+
+  // ==================== TEST HELPER ====================
+
+  void runEndgameTest(const std::string& testName, chess::Board (*generator)(), int iteration) {
+    printf("\n[%s - Iteration %d]\n", testName.c_str(), iteration);
+
+    chess::Board board = generator();
+    printf("  FEN: %s\n", board.getCurrentFen().c_str());
+    printf("  Searching for mate (depth 6, max 50 moves)...\n");
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << testName << " iteration " << iteration << ": "
+      << "Failed to find checkmate within 50 moves (100 plies).\n"
+      << "FEN: " << board.getCurrentFen() << "\n";
+  }
+}
+
+// ==================== TEST SUITE ====================
+
+ut::suite EndingGameSuite = [] {
+  using namespace ut;
+
+  "Endgame: K+R vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+R vs K", generatePositionKR, i);
+    }
+  };
+
+  "Endgame: K+2R vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+2R vs K", generatePositionK2R, i);
+    }
+  };
+
+  "Endgame: K+Q vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+Q vs K", generatePositionKQ, i);
+    }
+  };
+
+  "Endgame: K+2B vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+2B vs K", generatePositionK2B, i);
+    }
+  };
+
+  "Endgame: K+N+B(light) vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+N+B(light) vs K", generatePositionKNBLight, i);
+    }
+  };
+
+  "Endgame: K+N+B(dark) vs K"_test = [] {
+    for (int i = 1; i <= 5; ++i) {
+      runEndgameTest("K+N+B(dark) vs K", generatePositionKNBDark, i);
+    }
+  };
+};
