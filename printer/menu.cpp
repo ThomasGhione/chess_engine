@@ -7,7 +7,7 @@ namespace print {
     // 2 -> Two Players
     // 3 -> Bot Vs Bot
     // 4 -> Quit Game
-    uint8_t Menu::mainMenu() {
+    uint32_t Menu::mainMenu() noexcept{
 
         clearScreen();
 
@@ -33,7 +33,7 @@ namespace print {
     // 2 -> Play as Black
     // 3 -> Load Game
     // 4 -> Back to Main Menu
-    uint8_t Menu::playWithEngineMenu() {
+    uint32_t Menu::playWithEngineMenu() noexcept {
 
         static const std::string prompt = "\n\n==================== ONE PLAYER MENU ====================\n\n1. Play as White\n2. Play as Black\n3. Load Game\n4. Back to Main Menu\n\nSelect an option (1-4): ";
 
@@ -55,7 +55,7 @@ namespace print {
     // 1 -> New game
     // 2 -> Load game
     // 3 -> Back to main menu
-    uint8_t Menu::playWithPlayerMenu() {
+    uint32_t Menu::playWithPlayerMenu() noexcept {
 
         static const std::string prompt = "\n\n==================== TWO PLAYERS MENU ====================\n\n1. New Game\n2. Load Game\n3. Back to Main Menu\n\nSelect an option (1-3): ";
 
@@ -73,7 +73,7 @@ namespace print {
         return choice;
     }
 
-    void Menu::clearScreen() {
+    void Menu::clearScreen() noexcept{
         #ifdef _WIN32
             system("cls");
         #else

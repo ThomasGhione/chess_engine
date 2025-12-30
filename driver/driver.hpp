@@ -15,20 +15,21 @@ namespace driver {
 
             Driver(print::Menu menu, engine::Engine engine);
 
-            void startGame();
-            void engineTurn();
-        private:
-            bool loadGame(bool isWithPlayer);
-            void saveGame();
-            void quit(std::string input);
-            void endGame();
+            void startGame() noexcept;
 
-            void playerTurn();
-            void playGameVsHuman();
-            void playGameVsEngine(bool isWhite);
-            void botVsBot();
-            void EngineFirst();
-            void HumanFirst();
+        private:
+            bool loadGame(bool isWithPlayer) noexcept;
+            void saveGame() noexcept;
+            void endGame() noexcept;
+            
+            void quit(std::string input) noexcept;
+            
+            void playGameVsHuman() noexcept;
+            void playGameVsEngine(bool isWhite) noexcept;
+            void botVsBot() noexcept;
+            
+            void playerTurn() noexcept;
+            void engineTurn() noexcept;
     };
 }
 

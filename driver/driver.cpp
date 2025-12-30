@@ -10,14 +10,7 @@ namespace driver {
         , engine(e) 
     {}
 
-    void Driver::quit(std::string input){
-        if(input=="Q"||input=="q"){
-            std::cout << "Thank you for playing! See you next time." << std::endl;
-            exit(EXIT_SUCCESS);
-        }
-    } 
-
-    void Driver::startGame() {
+    void Driver::startGame() noexcept {
         while (true) {
             uint8_t mainMenuChoice = menu.mainMenu();
 
@@ -83,7 +76,7 @@ namespace driver {
         } 
     }
 
-    bool Driver::loadGame(bool isWithPlayer) {
+    bool Driver::loadGame(bool isWithPlayer) noexcept{
         std::ifstream SaveFile("saves/save.txt");
         if (!SaveFile.is_open()) {
             std::cerr << "Error: Unable to open save file.\n";
@@ -96,9 +89,9 @@ namespace driver {
             this->engine.board = chess::Board(line);
         } 
 
-	    // TODO aggiungere controlli/eccezioni per il fen
-	
-	    SaveFile.close();
+        // TODO aggiungere controlli/eccezioni per il fen
+    
+        SaveFile.close();
 
         if (isWithPlayer) {
             this->playGameVsHuman();
@@ -118,7 +111,7 @@ namespace driver {
         return true;
     }
 
-    void Driver::saveGame() {
+    void Driver::saveGame() noexcept {
     /*    
         if (std::filesystem::exists("save.txt")) {
             char ans;
@@ -139,8 +132,7 @@ namespace driver {
     */
     }
 
-
-    void Driver::endGame() {
+    void Driver::endGame() noexcept {
         if (this->engine.isCheckMate) {
             uint8_t nextColor = this->engine.board.getActiveColor();
             if (this->engine.board.isCheckmate(nextColor)) {
@@ -158,8 +150,14 @@ namespace driver {
         } 
     }
 
+    void Driver::quit(std::string input) noexcept{
+        if(input=="Q"||input=="q"){
+            std::cout << "Thank you for playing! See you next time." << std::endl;
+            exit(EXIT_SUCCESS);
+        }
+    } 
 
-    void Driver::playGameVsHuman() {
+    void Driver::playGameVsHuman() noexcept {
     	while(!engine.isCheckMate) {
     	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
             this->playerTurn();
@@ -170,7 +168,7 @@ namespace driver {
     	}
     }
 
-    void Driver::playGameVsEngine(bool isHumanWhite) {
+    void Driver::playGameVsEngine(bool isHumanWhite) noexcept{
         if (isHumanWhite) {
             while (!engine.isCheckMate) {
                 this->playerTurn();
@@ -191,7 +189,7 @@ namespace driver {
         }
     }
 
-    void Driver::botVsBot() {
+    void Driver::botVsBot() noexcept {
         std::string currentBoard = print::Prints::getBasicBoard(engine.board);
         std::cout << currentBoard << "\n";
 
@@ -209,7 +207,7 @@ namespace driver {
     }
 
 
-    void Driver::playerTurn() {
+    void Driver::playerTurn() noexcept{
         engine.board.getActiveColor() == chess::Board::WHITE ? std::cout << "\nWhite's turn.\n\n" : std::cout << "\nBlack's turn.\n\n";
 
         std::string playerInput;
@@ -337,7 +335,7 @@ namespace driver {
         return;
     }
 
-    void Driver::engineTurn() {
+    void Driver::engineTurn() noexcept {
         std::cout << "Engine's thinking... \n";
 #ifdef DEBUG
                 auto chrono_start = std::chrono::high_resolution_clock::now();
@@ -350,24 +348,4 @@ namespace driver {
                 std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
 #endif
     }
-
-    /*
-    void Engine::saveGame() {
-        if (std::filesystem::exists("save.txt")) {
-            char ans;
-
-            std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
-            std::cin >> ans;
-            if (ans == 'Y' || ans == 'y') {
-              std::filesystem::remove("saves/save.txt");
-            }
-            else {
-                return;
-            }   
-        }
-
-        std::ofstream SaveFile("saves/save.txt");
-        SaveFile << board.getCurrentFen(); 
-        SaveFile.close();
-    } */
 }

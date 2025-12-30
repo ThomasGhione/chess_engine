@@ -9,12 +9,12 @@ namespace print {
 
     class Menu {
       	public:
-        	static uint8_t mainMenu();
-        	static uint8_t playWithEngineMenu();
-			static uint8_t playWithPlayerMenu();
+        	static uint32_t mainMenu() noexcept;
+        	static uint32_t playWithEngineMenu() noexcept;
+			static uint32_t playWithPlayerMenu() noexcept;
       
       	private:
-        	static void clearScreen();
+        	static void clearScreen() noexcept;
     };
 
 }
