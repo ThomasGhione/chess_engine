@@ -344,4 +344,19 @@ ut::suite EndingGameSuite = [] {
       runEndgameTest("K+N+B(dark) vs K", generatePositionKNBDark, i);
     }
   };
+
+  "Queen endgame"_test = []{
+    const std::string QueenEndgameFen = "K7/8/7Q/8/8/8/6k1/8 w - - 0 1 ";
+    chess::Board board(QueenEndgameFen);
+    printf("\n[Queen Endgame]\n");
+    printf("  FEN: %s\n", board.getCurrentFen().c_str());
+    printf("  Searching for mate (depth 6, max 50 moves)...\n");
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Queen endgame: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n"
+      << "FEN: " << board.getCurrentFen() << "\n";
+  };
 };
