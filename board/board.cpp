@@ -268,9 +268,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
                 if ((pushes & toBit) && ((occupancy & toBit) == 0ULL)) {
                     legal = true;
                 }
-
+                if (!legal) return false;
             }
-            if (!legal) return false;
 
             // Simulate pawn move (including en-passant) using bitboards/occupancy only
             // to ensure king safety without copying the entire Board.
@@ -284,60 +283,37 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
             occNew &= ~fromMask;
             occNew |=  toMask;
 
-            // Prepare opponent bitboards with captures applied
-            uint64_t oppPawnsMask;
-            uint64_t oppKnightsMask;
-            uint64_t oppBishopsMask;
-            uint64_t oppRooksMask;
-            uint64_t oppQueensMask;
-            uint64_t oppKingsMask;
+            // Optimized: compute only the exclusion mask for captured pieces
+            uint64_t excludeMask = 0ULL;
 
             // Handle captures: normal capture on 'to' or en-passant captured pawn
             if (isEnPassant) {
-                const bool isWhitePawn = isWhite;
                 // Coords convention: index increases with rank (a8=0 -> h1=63)
                 // White captures en passant: captured pawn is at higher rank (toIndex + 8)
                 // Black captures en passant: captured pawn is at lower rank (toIndex - 8)
-                const int8_t captureOffset = isWhitePawn ? 8 : -8;
+                const int8_t captureOffset = isWhite ? 8 : -8;
                 const uint8_t capIndex = toIndex + captureOffset;
-                const uint64_t capMask = (1ULL << capIndex);
-
-                occNew &= ~capMask;
-                
-                // Only pawn bitboard changes in en passant
-                oppPawnsMask   = pawns_bb[oppSide] & ~capMask;
-                oppKnightsMask = knights_bb[oppSide];
-                oppBishopsMask = bishops_bb[oppSide];
-                oppRooksMask   = rooks_bb[oppSide];
-                oppQueensMask  = queens_bb[oppSide];
-                oppKingsMask   = kings_bb[oppSide];
+                excludeMask = (1ULL << capIndex);
+                occNew &= ~excludeMask;
             } else if (destPiece != EMPTY && destColor == oppColor) {
-                // Normal capture: exclude captured piece from its bitboard
-                oppPawnsMask   = (destType == PAWN)   ? (pawns_bb[oppSide] & ~toMask)   : pawns_bb[oppSide];
-                oppKnightsMask = (destType == KNIGHT) ? (knights_bb[oppSide] & ~toMask) : knights_bb[oppSide];
-                oppBishopsMask = (destType == BISHOP) ? (bishops_bb[oppSide] & ~toMask) : bishops_bb[oppSide];
-                oppRooksMask   = (destType == ROOK)   ? (rooks_bb[oppSide] & ~toMask)   : rooks_bb[oppSide];
-                oppQueensMask  = (destType == QUEEN)  ? (queens_bb[oppSide] & ~toMask)  : queens_bb[oppSide];
-                oppKingsMask   = (destType == KING)   ? (kings_bb[oppSide] & ~toMask)   : kings_bb[oppSide];
-            } else {
-                // No capture: use bitboards directly
-                oppPawnsMask   = pawns_bb[oppSide];
-                oppKnightsMask = knights_bb[oppSide];
-                oppBishopsMask = bishops_bb[oppSide];
-                oppRooksMask   = rooks_bb[oppSide];
-                oppQueensMask  = queens_bb[oppSide];
-                oppKingsMask   = kings_bb[oppSide];
+                // Normal capture: exclude captured piece
+                excludeMask = toMask;
             }
 
             // King square (unchanged for pawn moves)
-            const uint64_t kingBB = kings_bb[side]; // Array index
+            const uint64_t kingBB = kings_bb[side];
             if (!kingBB) [[unlikely]] return false; // invalid position: treat as illegal
             const uint8_t kingSq = __builtin_ctzll(kingBB);
 
-            // Check if king is attacked in the new position using helper
+            // Check if king is attacked using existing bitboards + exclusion mask
+            // Pass bitboards directly from class members - zero copies!
             if (isKingAttackedCustom(kingSq, oppColor, occNew,
-                                     oppPawnsMask, oppKnightsMask, oppBishopsMask,
-                                     oppRooksMask, oppQueensMask, oppKingsMask)) {
+                                     pawns_bb[oppSide] & ~excludeMask,
+                                     knights_bb[oppSide] & ~excludeMask,
+                                     bishops_bb[oppSide] & ~excludeMask,
+                                     rooks_bb[oppSide] & ~excludeMask,
+                                     queens_bb[oppSide] & ~excludeMask,
+                                     kings_bb[oppSide] & ~excludeMask)) {
                 return false;
             }
 
@@ -446,21 +422,18 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
         if (!kingBB) [[unlikely]] return false;
         const uint8_t kingSq = __builtin_ctzll(kingBB);
 
-        // Pre-calculate opponent bitboards with conditional masking (-10 branches)
-        const bool isCapture = (destPiece != EMPTY && destColor == oppColor);
+        // Optimized: compute only the exclusion mask for captured piece (if any)
+        const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) ? toMask : 0ULL;
         
-        // If capturing, exclude the captured piece from its bitboard
-        const uint64_t oppPawnsMask   = (isCapture && destType == PAWN)   ? (pawns_bb[oppSide] & ~toMask)   : pawns_bb[oppSide];
-        const uint64_t oppKnightsMask = (isCapture && destType == KNIGHT) ? (knights_bb[oppSide] & ~toMask) : knights_bb[oppSide];
-        const uint64_t oppKingsMask   = (isCapture && destType == KING)   ? (kings_bb[oppSide] & ~toMask)   : kings_bb[oppSide];
-        const uint64_t oppRooksMask   = (isCapture && destType == ROOK)   ? (rooks_bb[oppSide] & ~toMask)   : rooks_bb[oppSide];
-        const uint64_t oppBishopsMask = (isCapture && destType == BISHOP) ? (bishops_bb[oppSide] & ~toMask) : bishops_bb[oppSide];
-        const uint64_t oppQueensMask  = (isCapture && destType == QUEEN)  ? (queens_bb[oppSide] & ~toMask)  : queens_bb[oppSide];
-        
-        // Check if king is attacked in the new position using helper
+        // Check if king is attacked using existing bitboards + exclusion mask
+        // Pass bitboards directly from class members - zero copies!
         if (isKingAttackedCustom(kingSq, oppColor, occNew,
-                                 oppPawnsMask, oppKnightsMask, oppBishopsMask,
-                                 oppRooksMask, oppQueensMask, oppKingsMask)) {
+                                 pawns_bb[oppSide] & ~excludeMask,
+                                 knights_bb[oppSide] & ~excludeMask,
+                                 bishops_bb[oppSide] & ~excludeMask,
+                                 rooks_bb[oppSide] & ~excludeMask,
+                                 queens_bb[oppSide] & ~excludeMask,
+                                 kings_bb[oppSide] & ~excludeMask)) {
             return false;
         }
     }
