@@ -1,5 +1,7 @@
 *** Usando @agent-code-reviewer, verifica se sia presente codice non usato. 
 
+*** Fingi di essere un esperto revisionatore di codice: verifica se sia presente codice non usato. Controlla tutta la repository. Fai SOLO proposte, non modificare codice. Se hai domande falle.
+
 ● I'll use the code-reviewer agent to analyze the codebase for unused code.
 
 ● code-reviewer(Review codebase for unused code)
@@ -8,11 +10,6 @@
 ● Ho completato l'analisi del codice per identificare il codice non utilizzato. Ecco un riepilogo dei principali risultati:
 
   Codice Non Utilizzato Trovato
-
-  🔴 Rimozione Sicura - Alto Impatto
-
-  2. Variabili membro in Board (board/board.hpp:395-396):
-    - whiteKingIndex e blackKingIndex - dichiarate per caching ma mai utilizzate
 
   🟡 Codice Commentato - Da Rimuovere
 
