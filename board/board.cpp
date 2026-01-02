@@ -212,34 +212,41 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     if (destPiece != EMPTY && destColor == movingColor) return false;
 
     if (inChk) {
-        uint8_t kingIndex = 64; // invalid index
         uint64_t attackerCount = 0; // Detect check state and attackers for restrictions (double check logic)
 
         // Use the king bitboard to find king index quickly
         const uint8_t side = (movingColor == WHITE) ? 0 : 1;
 
-        kingIndex = static_cast<uint8_t>(__builtin_ctzll(kings_bb[side])); // Count trailing zeros = find LSB
+        uint8_t kingIndex = static_cast<uint8_t>(__builtin_ctzll(kings_bb[side])); // Count trailing zeros = find LSB
 
         const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
         
+        // Early exit optimization: if we're moving a non-king piece, stop counting after finding 2 attackers
+        const bool needEarlyExit = (fromType != KING);
+        
         // Pawns
         attackerCount += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
+        if (needEarlyExit && attackerCount >= 2) return false;
         
         // Knights
         attackerCount += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
+        if (needEarlyExit && attackerCount >= 2) return false;
 
         // Kings (adjacent)
         attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
+        if (needEarlyExit && attackerCount >= 2) return false;
 
         // Sliding rook/queen (orthogonal)
         attackerCount += __builtin_popcountll((pieces::getRookAttacks(kingIndex, occupancy)) & 
                                                 (rooks_bb[oppSide] | queens_bb[oppSide]));
+        if (needEarlyExit && attackerCount >= 2) return false;
+        
         // Sliding bishop/queen (diagonal)
         attackerCount += __builtin_popcountll((pieces::getBishopAttacks(kingIndex, occupancy)) & 
                                                 (bishops_bb[oppSide] | queens_bb[oppSide]));
         
         // Double check: only king moves allowed
-        if (attackerCount >= 2 && fromType != KING) [[unlikely]] return false;
+        if (attackerCount >= 2 && fromType != KING) return false;
     }
 
     
@@ -398,7 +405,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
             }
             break;
         }
-        default: return false;
+        [[unlikely]] default: return false;
     }
 
     if ((bitMap & toBit) == 0ULL) return false;
