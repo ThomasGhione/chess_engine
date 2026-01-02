@@ -11,25 +11,14 @@
 
   🔴 Rimozione Sicura - Alto Impatto
 
-  1. Intero modulo gamestatus/ - Completamente inutilizzato, sembra essere codice legacy da un'architettura precedente
   2. Variabili membro in Board (board/board.hpp:395-396):
     - whiteKingIndex e blackKingIndex - dichiarate per caching ma mai utilizzate
-  3. Metodi non implementati in Engine:
-    - getMaterialDelta() - solo dichiarazione
-    - evaluateFast() - solo dichiarazione
-    - getHashMove() - solo dichiarazione
-    - globalEval - variabile statica mai definita
 
   🟡 Codice Commentato - Da Rimuovere
 
   - printer/prints.cpp:59-143 - ~85 righe di vecchio codice commentato
   - engine/basicrules.hpp:14-55 - funzioni di valutazione commentate
   - main.cpp:18-34 - codice di test bot vs bot commentato
-
-  🟢 Costanti Non Utilizzate (basebonuspenaltyvalues.hpp)
-
-  Molte costanti di valutazione definite ma mai usate:
-  - DEVELOPMENT_BONUS, MOBILITY_BONUS, BISHOP_PAIR_BONUS, HANGING_PIECE_PENALTY, e altre (~15 costanti)
 
   📊 Impatto Totale
 
@@ -41,7 +30,7 @@
 
   Vuoi che proceda con la pulizia del codice? Posso iniziare rimuovendo le parti più sicure (modulo gamestatus, variabili non usate, codice commentato) oppure preferisci rivedere ogni elemento prima della rimozione?
 
-Utilizzo l'agente refactoring-expert per identificare le funzioni più grandi che necessitano refactoring.
+*** Utilizzo l'agente refactoring-expert per identificare le funzioni più grandi che necessitano refactoring.
 
 ● refactoring-expert(Identify large functions needing refactoring)
   ⎿  Done (11 tool uses · 73.0k tokens · 1m 57s)                                                               

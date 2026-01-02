@@ -70,8 +70,8 @@ public:
         uint8_t rookToIndex{};          // rook destination square index in castling
 
         // Optional cached king indices (if used elsewhere)
-        uint8_t prevWhiteKingIndex{64};
-        uint8_t prevBlackKingIndex{64};
+        // uint8_t prevWhiteKingIndex{64};
+        // uint8_t prevBlackKingIndex{64};
     };
 
     struct UndoInfo {
@@ -392,8 +392,8 @@ private:
 
 
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
-    uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
-    uint8_t blackKingIndex = 64;
+    // uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
+    // uint8_t blackKingIndex = 64;
 
     // Helper: check if king at kingSq is attacked by byColor using custom bitboards
     bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,

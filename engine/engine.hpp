@@ -43,7 +43,6 @@ public:
     bool isPlayerWhite;
     bool isCheckMate;
 
-    static int64_t globalEval;
     uint64_t depth;
 
     int64_t eval = 0;  // Inizializzato a 0 per evitare valori spazzatura
@@ -61,14 +60,12 @@ public:
 
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
-    int64_t evaluateFast(const chess::Board& board, bool isEndgameHint = false) noexcept;
     
     // TODO It will be in private later when State0 is finished
     bool isMate() noexcept;
     void setIsCheckMate() noexcept;
 
     int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
-    int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static constexpr int MAX_PLY = 64;
 
@@ -129,8 +126,7 @@ private:
                           bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept;
     bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept;
     void saveTTEntry(const TTSaveInfo& info) noexcept;
-    bool getHashMove(const chess::Board& b, chess::Board::Move& outMove) noexcept; // Get hash move from TT
-
+    
     // Helper methods for move execution
     void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
     void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
