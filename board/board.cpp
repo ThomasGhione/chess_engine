@@ -198,8 +198,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     const uint8_t toIndex = to.index;
     const uint64_t toBit = (1ULL << toIndex);
     
-    const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
-    const uint8_t movingColor = this->getColor(from);
+    const uint8_t fromPiece = this->get(from);
+    const uint8_t fromType = fromPiece & this->MASK_PIECE_TYPE;
+    const uint8_t movingColor = fromPiece & MASK_COLOR;
     
     const uint8_t destPiece = this->get(to);
     const uint8_t destColor = destPiece & MASK_COLOR;
@@ -262,6 +263,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 // Lazy double-check detection - called ONLY when inChk=true && fromType != KING
 [[nodiscard]] inline bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
     const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+    if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
@@ -390,19 +392,23 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint64_t toBit,
     uint8_t movingColor
 ) const noexcept {
-    const uint64_t bitMap = pieces::KING_ATTACKS[fromIndex];
-    
-    // Normal king move: check if destination attacked
-    if (fromIndex != toIndex) [[likely]] {
-        const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
-        if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor, fromIndex)) {
-            // Destination attacked → check castling as fallback
-            return canCastleToSquare(fromIndex, toIndex, movingColor);
-        }
+    if (fromIndex == toIndex) return false;
+
+    const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
+    const int fileDelta = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7);
+    const int rankDelta = static_cast<int>(toIndex >> 3) - static_cast<int>(fromIndex >> 3);
+
+    // Handle castling explicitly when king moves two files on same rank
+    if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
+        return canCastleToSquare(fromIndex, toIndex, movingColor);
     }
-    
-    // Normal move is safe OR castling is legal
-    return (bitMap & toBit) || canCastleToSquare(fromIndex, toIndex, movingColor);
+
+    // Normal king move: one-step king attack and destination not attacked
+    const uint64_t attacks = pieces::KING_ATTACKS[fromIndex];
+    if ((attacks & toBit) == 0ULL) return false;
+    if (isSquareAttacked(toIndex, oppColor, fromIndex)) return false;
+
+    return true;
 }
 
 // Castling dispatcher
