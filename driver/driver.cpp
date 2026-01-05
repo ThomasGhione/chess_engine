@@ -2,6 +2,14 @@
 
 #include "../printer/menu.hpp"
 #include "../engine/engine.hpp"
+#include <array>
+#include <cstdio>
+#include <memory>
+#include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 namespace driver {
 
@@ -67,7 +75,28 @@ namespace driver {
                     this->botVsBot();
                     break;
 
-                case '4':
+                case '4': {
+                    uint8_t botStockfishChoice = menu.playBotVsStockfishMenu();
+                    Driver::quit(std::string(1, botStockfishChoice));
+
+                    switch (botStockfishChoice) {
+                        case '1':
+                            this->botVsStockfish(true);
+                            break;
+                        case '2':
+                            this->botVsStockfish(false);
+                            break;
+                        case '3':
+                            // Back to main menu
+                            break;
+                        default:
+                            std::cout << "Invalid option. Please select a valid option.\n";
+                            break;
+                    }
+                    break;
+                }
+
+                case '5':
                     std::cout << "Thank you for playing! See you next time." << std::endl;
                     exit(EXIT_SUCCESS);
                     break;
@@ -88,7 +117,27 @@ namespace driver {
         std::string mode = std::string(argv[MODE]);
         std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
 
-        if (mode == "bvb" || mode == "3") {
+        if (mode == "bvs" || mode == "4") {
+            if (argc < MAX_PARAM_LENGTH) {
+                std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
+                exit(EXIT_FAILURE);
+            }
+
+            std::string color = argv[COLOR];
+            std::transform(color.begin(), color.end(), color.begin(), ::tolower);
+            
+            if (color == "w") {
+                this->playGameVsEngine(true);
+            } 
+            else if (color == "b") {
+                this->playGameVsEngine(false);
+            } 
+            else {
+                std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        else if (mode == "bvb" || mode == "3") {
             this->botVsBot();
         } 
         else if (mode == "pvp" || mode == "21") {
@@ -247,6 +296,193 @@ namespace driver {
             if (engine.isCheckMate) { endGame(); return; }
             currentBoard = print::Prints::getBasicBoard(engine.board);
             std::cout << currentBoard << "\n";
+        }
+    }
+
+    void Driver::botVsStockfish(bool botColor) noexcept {
+        // botColor: true = our engine plays White, false = our engine plays Black
+        const bool botIsWhite = botColor;
+        const std::string stockfishPath = "./stockfish/stockfish-ubuntu-x86-64-avx2";
+        const int stockfishMoveTimeMs = 200; // tweak if needed
+
+        // Fresh game state for each match
+        engine.reset();
+        engine.isCheckMate = false;
+        engine.isPlayerWhite = botIsWhite;
+
+        struct StockfishProcess {
+            FILE* in {nullptr};
+            FILE* out {nullptr};
+            pid_t pid {-1};
+
+            ~StockfishProcess() {
+                if (in) fclose(in);
+                if (out) fclose(out);
+                if (pid > 0) {
+                    kill(pid, SIGTERM);
+                    int status = 0;
+                    waitpid(pid, &status, 0);
+                }
+            }
+
+            bool valid() const noexcept { return in && out && pid > 0; }
+        };
+
+        auto startStockfish = [&]() -> std::unique_ptr<StockfishProcess> {
+            int toChild[2];
+            int fromChild[2];
+            if (pipe(toChild) != 0 || pipe(fromChild) != 0) {
+                std::perror("pipe");
+                return nullptr;
+            }
+
+            pid_t pid = fork();
+            if (pid < 0) {
+                std::perror("fork");
+                close(toChild[0]); close(toChild[1]);
+                close(fromChild[0]); close(fromChild[1]);
+                return nullptr;
+            }
+
+            if (pid == 0) {
+                // Child: connect pipes and exec stockfish
+                dup2(toChild[0], STDIN_FILENO);
+                dup2(fromChild[1], STDOUT_FILENO);
+                close(toChild[0]); close(toChild[1]);
+                close(fromChild[0]); close(fromChild[1]);
+                execl(stockfishPath.c_str(), stockfishPath.c_str(), (char*)nullptr);
+                std::perror("execl");
+                _exit(1);
+            }
+
+            // Parent
+            close(toChild[0]);
+            close(fromChild[1]);
+
+            FILE* childIn = fdopen(toChild[1], "w");
+            FILE* childOut = fdopen(fromChild[0], "r");
+            if (!childIn || !childOut) {
+                std::cerr << "Error: fdopen failed for Stockfish pipes.\n";
+                if (childIn) fclose(childIn);
+                if (childOut) fclose(childOut);
+                kill(pid, SIGTERM);
+                int status = 0;
+                waitpid(pid, &status, 0);
+                return nullptr;
+            }
+
+            auto proc = std::make_unique<StockfishProcess>();
+            proc->in = childIn;
+            proc->out = childOut;
+            proc->pid = pid;
+
+            // Init UCI and wait readyok
+            fputs("uci\n", proc->in);
+            fputs("isready\n", proc->in);
+            fflush(proc->in);
+
+            std::array<char, 512> buffer{};
+            bool ready = false;
+            for (int i = 0; i < 400 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc->out); ++i) {
+                std::string line(buffer.data());
+                if (line.find("readyok") != std::string::npos) {
+                    ready = true;
+                    break;
+                }
+            }
+            if (!ready) {
+                std::cerr << "Stockfish did not report readyok.\n";
+                return nullptr;
+            }
+
+            fputs("ucinewgame\n", proc->in);
+            fflush(proc->in);
+            return proc;
+        };
+
+        auto runStockfish = [&](StockfishProcess& sf, const std::string& fen) -> std::pair<std::string, std::string> {
+            std::array<char, 512> buffer{};
+            std::string output;
+
+            std::ostringstream cmd;
+            cmd << "position fen " << fen << "\n";
+            cmd << "go movetime " << stockfishMoveTimeMs << "\n";
+
+            fputs(cmd.str().c_str(), sf.in);
+            fflush(sf.in);
+
+            for (int i = 0; i < 800 && fgets(buffer.data(), static_cast<int>(buffer.size()), sf.out); ++i) {
+                output += buffer.data();
+                if (std::string(buffer.data()).rfind("bestmove", 0) == 0) {
+                    break;
+                }
+            }
+
+            const std::string token = "bestmove ";
+            const auto pos = output.find(token);
+            if (pos == std::string::npos) return {"", output};
+            const auto end = output.find('\n', pos);
+            const std::string line = output.substr(pos + token.size(), end - (pos + token.size()));
+            const auto spacePos = line.find(' ');
+            return {line.substr(0, spacePos), output};
+        };
+
+        auto applyUciMoveToBoard = [&](const std::string& uciMove) {
+            if (uciMove.size() < 4) return false;
+            const std::string fromStr = uciMove.substr(0, 2);
+            const std::string toStr = uciMove.substr(2, 2);
+            const char promo = (uciMove.size() >= 5)
+                ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
+                : 'q';
+
+            chess::Coords fromCoords(fromStr);
+            chess::Coords toCoords(toStr);
+            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
+                return false;
+            }
+
+            // Apply move, handling promotions if specified
+            if (uciMove.size() >= 5) {
+                return engine.board.moveBB(fromCoords, toCoords, promo);
+            }
+            return engine.board.moveBB(fromCoords, toCoords);
+        };
+
+        auto sfProc = startStockfish();
+        if (!sfProc) {
+            return;
+        }
+
+        while (!engine.isCheckMate) {
+            const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == botIsWhite;
+
+            if (engineToMove) {
+                // Our engine move
+                this->engineTurn();
+                std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+            } else {
+                // Stockfish move
+                const std::string fen = engine.board.getCurrentFen();
+                const auto [bestMove, sfOutput] = runStockfish(*sfProc, fen);
+                if (bestMove.empty()) {
+                    std::cerr << "Stockfish did not return a move. Aborting match.\n";
+                    return;
+                }
+
+                if (!applyUciMoveToBoard(bestMove)) {
+                    std::cerr << "Failed to apply Stockfish move: " << bestMove << "\n";
+                    return;
+                }
+
+                std::cout << "Stockfish plays: " << bestMove << "\n";
+                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
+                engine.setIsCheckMate();
+            }
+
+            if (engine.isCheckMate) {
+                endGame();
+                return;
+            }
         }
     }
 

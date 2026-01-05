@@ -19,3 +19,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Third-party component notice
+
+This project bundles Stockfish (folder `stockfish/`), which is
+Copyright (C) 2004-2023 The Stockfish developers and released under the
+GNU General Public License v3.0 or later. Stockfish is distributed under
+its own license; see `stockfish/Copying.txt` for the full terms. Nothing
+in this notice alters the terms of the MIT License for the rest of this
+project’s code.

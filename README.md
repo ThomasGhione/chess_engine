@@ -45,6 +45,11 @@ For example:
 Move is pawn to e4, we have to input this: "e2 e4" 
 (which can be seen as: "move the piece in e2 to e4)
 
+# Third-party licenses
+
+- Stockfish (in `stockfish/`) is Copyright (C) 2004-2023 The Stockfish developers and is
+	licensed under the GNU GPL v3.0 or later. See `stockfish/Copying.txt` for full terms.
+
 # Contributing
 
 Pull requests are welcome.

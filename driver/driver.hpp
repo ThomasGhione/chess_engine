@@ -34,6 +34,7 @@ namespace driver {
             void playGameVsHuman() noexcept;
             void playGameVsEngine(bool isWhite) noexcept;
             void botVsBot() noexcept;
+            void botVsStockfish(bool botColor) noexcept;
             
             void playerTurn() noexcept;
             void engineTurn() noexcept;

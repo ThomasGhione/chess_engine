@@ -11,15 +11,15 @@ namespace print {
 
         clearScreen();
 
-        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Bot Vs Bot\n4. Quit Game\n\nSelect an option (1-4): ";
+        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Bot Vs Bot\n4. Bot Vs Stockfish\n5. Quit Game\n\nSelect an option (1-5): ";
 
         uint8_t choice;
 
         std::cout << line;
         std::cin >> choice;
 
-        while (choice < '1' || choice > '4') {
-            std::cout << "Invalid option. Please select a valid option (1-4): ";
+        while (choice < '1' || choice > '5') {
+            std::cout << "Invalid option. Please select a valid option (1-5): ";
             std::cin >> choice;
         }
 
@@ -58,6 +58,27 @@ namespace print {
     uint32_t Menu::playWithPlayerMenu() noexcept {
 
         static const std::string prompt = "\n\n==================== TWO PLAYERS MENU ====================\n\n1. New Game\n2. Load Game\n3. Back to Main Menu\n\nSelect an option (1-3): ";
+
+        std::cout << prompt;
+
+        uint8_t choice;
+        std::cin >> choice;
+
+        while (choice < '1' || choice > '3') {
+            std::cout << "Invalid option. Please select a valid option (1-3): ";
+            std::cin >> choice;
+        }
+
+        clearScreen();
+        return choice;
+    }
+
+    // It can return:
+    // 1 -> Bot plays as White
+    // 2 -> Bot plays as Black
+    // 3 -> Back to main menu
+    uint32_t Menu::playBotVsStockfishMenu() noexcept {
+        static const std::string prompt = "\n\n==================== BOT VS STOCKFISH MENU ====================\n\n1. Bot plays as White\n2. Bot plays as Black\n3. Back to Main Menu\n\nSelect an option (1-3): ";
 
         std::cout << prompt;
 
