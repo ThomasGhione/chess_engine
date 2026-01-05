@@ -14,6 +14,7 @@ PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=nati
 # Nome file finali
 NAME_APP = chess
 TEST_APP = tests/outputTest
+PERF_APP = tests/outputPerformance
 
 # Path dei file separati
 MAIN_SRC = main.cpp
@@ -35,7 +36,7 @@ MODULE_OBJS = $(ALL_MODULE_SRCS:.cpp=.o)
 ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
 
 # Path dei file di test
-TEST_MAIN_SRC = $(wildcard ./tests/*.cpp)
+TEST_MAIN_SRC = tests/mainTest.cpp
 TEST_ENGINE_SRCS = $(wildcard ./engine/test/*.cpp)
 TEST_COORDS_SRCS = $(wildcard ./coords/test/*.cpp)
 TEST_PRINTER_SRCS = $(wildcard ./printer/test/*.cpp)
@@ -53,8 +54,19 @@ ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_COORDS_SRCS) $(TEST_PRINTER_SR
 TEST_MAIN_OBJ = $(TEST_MAIN_SRC:.cpp=.o)
 TEST_OBJS = $(ALL_TEST_MODULE_SRCS:.cpp=.o)
 
+# Path dei file di performance test
+PERF_MAIN_SRC = tests/mainPerformanceTest.cpp
+PERF_ENGINE_SRCS = $(wildcard ./engine/performance-test/*.cpp)
+
+# Path dei file di performance test in unica variabile
+ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
+
+# Path dei file .o di performance test
+PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
+PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
+
 # Target principali
-.PHONY: prod parallel_prod debug test analyze clean help
+.PHONY: prod parallel_prod debug test performance all-tests analyze clean help
 
 # Default per usare make secco
 all: prod
@@ -76,9 +88,21 @@ debug: PRODFLAGS += -g
 debug: $(NAME_APP)
 	@printf "\n✅ Build debug completato: $(NAME_APP)\n\n"
 
-# Comando per generare eseguibile per il debug
+# Comando per generare eseguibile per il test
 test: $(TEST_APP)
 	@printf "\n✅ Test compilato: $(TEST_APP)\n\n"
+
+# Comando per generare eseguibile per performance test
+performance: $(PERF_APP)
+	@printf "\n✅ Performance test compilato: $(PERF_APP)\n\n"
+
+# Comando per eseguire tutti i test (funzionali + performance)
+all-tests: test performance
+	@printf "\n=== Running functional tests ===\n"
+	./$(TEST_APP)
+	@printf "\n=== Running performance tests ===\n"
+	./$(PERF_APP)
+	@printf "\n✅ All tests completed\n\n"
 
 # Generazione file finale 'chess'
 $(NAME_APP): $(ALL_OBJS)
@@ -95,6 +119,11 @@ $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	@printf "\nLinking test $(TEST_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
 
+# Generazione file finale 'outputPerformance'
+$(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
+	@printf "\nLinking performance test $(PERF_APP)..."
+	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
+
 # Analisi del codice
 analyze:
 	@printf "\nAnalyzing code..."
@@ -103,7 +132,7 @@ analyze:
 # Pulizia dei file temporanei
 cls:
 	@printf "\nCleaning..."
-	rm -f $(NAME_APP) $(TEST_APP) $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
+	rm -f $(NAME_APP) $(TEST_APP) $(PERF_APP) $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	rm -f doc/main-doc.{aux,log,pdf,toc}
 	@printf "\n✅ Clean completato\n\n"
 
@@ -120,7 +149,9 @@ help:
 	@printf "  make prod           - Compilazione monolitica (veloce prima volta)"
 	@printf "  make parallel_prod  - Compilazione parallela (veloce dopo modifiche)"
 	@printf "  make debug          - Compilazione con debug symbols"
-	@printf "  make test           - Compilazione test"
+	@printf "  make test           - Compilazione e test funzionali"
+	@printf "  make performance    - Compilazione e performance test"
+	@printf "  make all-tests      - Esecuzione completa (test + performance)"
 	@printf "  make analyze        - Analisi statica del codice"
 	@printf "  make clean          - Rimozione file compilati"
 	@printf "  make debug-vars     - stampa variabili"
