@@ -31,25 +31,45 @@ constexpr size_t BISHOP_LOOKUP_SIZE = 5248;    // ~40 KB
 inline std::array<uint64_t, ROOK_LOOKUP_SIZE> ROOK_ATTACK_LOOKUP;
 inline std::array<uint64_t, BISHOP_LOOKUP_SIZE> BISHOP_ATTACK_LOOKUP;
 
-// Table offsets per square (runtime-initialized, indica dove inizia la subtable per ogni square)
-inline std::array<uint32_t, 64> ROOK_TABLE_OFFSETS;
-inline std::array<uint32_t, 64> BISHOP_TABLE_OFFSETS;
+// ===================================================
+// MAGIC BITBOARDS - OPTIMIZED LAYOUT (AoS for cache locality)
+// ===================================================
 
-// Pre-computed shifts (constexpr, calcolati da masks)
-inline constexpr std::array<uint32_t, 64> ROOK_SHIFTS = []{
-    std::array<uint32_t, 64> shifts{};
+// Struct aligned to 32 bytes to ensure single cache-line access per square
+struct alignas(32) MagicParams {
+    uint64_t mask;
+    uint64_t magic;
+    uint32_t shift;
+    uint32_t offset;
+};
+
+// Pre-computed params (constexpr, .rodata)
+inline constexpr std::array<MagicParams, 64> ROOK_PARAMS = []{
+    std::array<MagicParams, 64> table{};
+    uint32_t runningOffset = 0;
     for (int sq = 0; sq < 64; ++sq) {
-        shifts[sq] = 64 - __builtin_popcountll(ROOK_MASKS[sq]);
+        table[sq].mask = ROOK_MASKS[sq];
+        table[sq].magic = ROOK_MAGICS[sq];
+        int bits = __builtin_popcountll(ROOK_MASKS[sq]);
+        table[sq].shift = 64 - bits;
+        table[sq].offset = runningOffset;
+        runningOffset += (1 << bits);
     }
-    return shifts;
+    return table;
 }();
 
-inline constexpr std::array<uint32_t, 64> BISHOP_SHIFTS = []{
-    std::array<uint32_t, 64> shifts{};
+inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = []{
+    std::array<MagicParams, 64> table{};
+    uint32_t runningOffset = 0;
     for (int sq = 0; sq < 64; ++sq) {
-        shifts[sq] = 64 - __builtin_popcountll(BISHOP_MASKS[sq]);
+        table[sq].mask = BISHOP_MASKS[sq];
+        table[sq].magic = BISHOP_MAGICS[sq];
+        int bits = __builtin_popcountll(BISHOP_MASKS[sq]);
+        table[sq].shift = 64 - bits;
+        table[sq].offset = runningOffset;
+        runningOffset += (1 << bits);
     }
-    return shifts;
+    return table;
 }();
 
 // ===================================================
@@ -130,58 +150,42 @@ inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_
 }
 
 // Popola attack table per una square (Rook) - versione ottimizzata
-inline void populateRookAttackTable(int8_t square, uint32_t tableOffset) noexcept {
-    const uint64_t mask = ROOK_MASKS[square];
-    const int bitCount = __builtin_popcountll(mask);
+inline void populateRookAttackTable(int square) noexcept {
+    const MagicParams& p = ROOK_PARAMS[square];
+    const int bitCount = __builtin_popcountll(p.mask);
     const int numPatterns = 1 << bitCount;
-    const uint32_t shift = ROOK_SHIFTS[square];
 
     for (int i = 0; i < numPatterns; ++i) {
-        uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
+        uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
         uint32_t index = static_cast<uint32_t>(
-            ((occupancy & mask) * ROOK_MAGICS[square]) >> shift
+            ((occupancy & p.mask) * p.magic) >> p.shift
         );
-        uint64_t attacks = calculateRookAttacksClassical(square, occupancy);
-        ROOK_ATTACK_LOOKUP[tableOffset + index] = attacks;
+        uint64_t attacks = calculateRookAttacksClassical(static_cast<int8_t>(square), occupancy);
+        ROOK_ATTACK_LOOKUP[p.offset + index] = attacks;
     }
 }
 
 // Popola attack table per una square (Bishop) - versione ottimizzata
-inline void populateBishopAttackTable(int8_t square, uint32_t tableOffset) noexcept {
-    const uint64_t mask = BISHOP_MASKS[square];
-    const int bitCount = __builtin_popcountll(mask);
+inline void populateBishopAttackTable(int square) noexcept {
+    const MagicParams& p = BISHOP_PARAMS[square];
+    const int bitCount = __builtin_popcountll(p.mask);
     const int numPatterns = 1 << bitCount;
-    const uint32_t shift = BISHOP_SHIFTS[square];
 
     for (int i = 0; i < numPatterns; ++i) {
-        uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
+        uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
         uint32_t index = static_cast<uint32_t>(
-            ((occupancy & mask) * BISHOP_MAGICS[square]) >> shift
+            ((occupancy & p.mask) * p.magic) >> p.shift
         );
-        uint64_t attacks = calculateBishopAttacksClassical(square, occupancy);
-        BISHOP_ATTACK_LOOKUP[tableOffset + index] = attacks;
+        uint64_t attacks = calculateBishopAttacksClassical(static_cast<int8_t>(square), occupancy);
+        BISHOP_ATTACK_LOOKUP[p.offset + index] = attacks;
     }
 }
 
 // Inizializza tutte le magic bitboards (chiamare all'avvio del programma)
 inline void initMagicBitboards() noexcept {
-    uint32_t rookOffset = 0;
-    uint32_t bishopOffset = 0;
-
     for (int sq = 0; sq < 64; ++sq) {
-        // Salva offset per questa square
-        ROOK_TABLE_OFFSETS[sq] = rookOffset;
-        BISHOP_TABLE_OFFSETS[sq] = bishopOffset;
-        
-        // Popola la tabella per questa square
-        populateRookAttackTable(static_cast<int8_t>(sq), rookOffset);
-        populateBishopAttackTable(static_cast<int8_t>(sq), bishopOffset);
-        
-        // Avanza offset per la prossima square
-        const int rookBits = __builtin_popcountll(ROOK_MASKS[sq]);
-        const int bishopBits = __builtin_popcountll(BISHOP_MASKS[sq]);
-        rookOffset += (1 << rookBits);
-        bishopOffset += (1 << bishopBits);
+        populateRookAttackTable(sq);
+        populateBishopAttackTable(sq);
     }
 }
 
@@ -189,35 +193,35 @@ inline void initMagicBitboards() noexcept {
 // PIECE ATTACKS - MAXIMUM OPTIMIZATION (cache-friendly, no pointers, constexpr math)
 // ===================================================
 
+// NOTE: use uint8_t for sq (0..63) to avoid sign-extension and UB-ish corner cases with int8_t indexing.
+
 // ROOK ATTACKS - Accesso diretto con offset pre-calcolato
-inline U64 getRookAttacks(int8_t sq, U64 occ) noexcept {
+inline U64 getRookAttacks(uint8_t sq, U64 occ) noexcept {
+    const MagicParams& p = ROOK_PARAMS[sq];
     const uint32_t index = static_cast<uint32_t>(
-        ((occ & ROOK_MASKS[sq]) * ROOK_MAGICS[sq]) >> ROOK_SHIFTS[sq]
+        ((occ & p.mask) * p.magic) >> p.shift
     );
-    return ROOK_ATTACK_LOOKUP[ROOK_TABLE_OFFSETS[sq] + index];
+    return ROOK_ATTACK_LOOKUP[p.offset + index];
 }
 
 // BISHOP ATTACKS - Accesso diretto con offset pre-calcolato
-inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
+inline U64 getBishopAttacks(uint8_t sq, U64 occ) noexcept {
+    const MagicParams& p = BISHOP_PARAMS[sq];
     const uint32_t index = static_cast<uint32_t>(
-        ((occ & BISHOP_MASKS[sq]) * BISHOP_MAGICS[sq]) >> BISHOP_SHIFTS[sq]
+        ((occ & p.mask) * p.magic) >> p.shift
     );
-    return BISHOP_ATTACK_LOOKUP[BISHOP_TABLE_OFFSETS[sq] + index];
+    return BISHOP_ATTACK_LOOKUP[p.offset + index];
 }
 
 // QUEEN ATTACKS - Combinazione ottimizzata rook + bishop
-inline U64 getQueenAttacks(int8_t sq, U64 occ) noexcept {
-    const uint32_t rookIndex = static_cast<uint32_t>(
-        ((occ & ROOK_MASKS[sq]) * ROOK_MAGICS[sq]) >> ROOK_SHIFTS[sq]
-    );
-    
-    const uint32_t bishopIndex = static_cast<uint32_t>(
-        ((occ & BISHOP_MASKS[sq]) * BISHOP_MAGICS[sq]) >> BISHOP_SHIFTS[sq]
-    );
-    
-    return ROOK_ATTACK_LOOKUP[ROOK_TABLE_OFFSETS[sq] + rookIndex] | 
-           BISHOP_ATTACK_LOOKUP[BISHOP_TABLE_OFFSETS[sq] + bishopIndex];
+inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
+    return getRookAttacks(sq, occ) | getBishopAttacks(sq, occ);
 }
+
+// Compatibility overloads (minimize call-site changes):
+// inline U64 getRookAttacks(int8_t sq, U64 occ) noexcept { return getRookAttacks(static_cast<uint8_t>(sq), occ); }
+// inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept { return getBishopAttacks(static_cast<uint8_t>(sq), occ); }
+// inline U64 getQueenAttacks(int8_t sq, U64 occ) noexcept { return getQueenAttacks(static_cast<uint8_t>(sq), occ); }
 
 
 // ==================== ATTACK MAPS (color-agnostic salvo pedone) ====================
