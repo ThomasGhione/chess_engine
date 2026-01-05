@@ -709,29 +709,89 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
         const bool isCapture = (toPieceType != chess::Board::EMPTY);
 
-        // Add MVV-LVA bonus for captures (including en passant)
-        addMVVLVABonus(m, b, score);
+        // =========================================================
+        // MOVE ORDERING PRIORITY (from highest to lowest):
+        // 1. Hash move (TODO: not implemented yet) → 100000+
+        // 2. Good captures (SEE >= 0) → 10000 + MVV-LVA
+        // 3. Killer moves → 9000/8500
+        // 4. Checks (non-capture) → 8000
+        // 5. Promotions (non-capture) → 7000
+        // 6. History heuristic → 0-1000
+        // 7. Bad captures (SEE < 0) → -10000 + SEE
+        // =========================================================
 
-        // Penalizza catture perdenti con SEE
-        // Se SEE < 0, la cattura perde materiale → ordina dopo
         if (isCapture) {
+            // CAPTURES: priorità basata su SEE
             const int64_t see = staticExchangeEvaluation(b, m);
-            if (see < 0) {
-                // Cattura perdente: penalità proporzionale alla perdita
-                score += see; // see è negativo, quindi abbassa lo score
+            
+            if (see >= 0) {
+                // GOOD CAPTURE: alta priorità (prima di killer/quiet)
+                score = 10000;
+                addMVVLVABonus(m, b, score); // +MVV-LVA (0-9000)
+                // Total: 10000-19000
+            } else {
+                // BAD CAPTURE: bassa priorità (dopo tutto)
+                score = -10000 + see; // see è negativo, quindi score molto basso
+                // Total: -10000 a -10500 circa
+            }
+        } else {
+            // NON-CAPTURES: killer, checks, history
+            
+            // Check for killer moves FIRST (alta priorità)
+            bool isKiller = false;
+            if (ply >= 0 && ply < MAX_PLY) {
+                const auto& km1 = killerMoves[0][ply];
+                const auto& km2 = killerMoves[1][ply];
+
+                if (m.from.index == km1.from.index && m.to.index == km1.to.index) {
+                    score = 9000;
+                    isKiller = true;
+                } else if (m.from.index == km2.from.index && m.to.index == km2.to.index) {
+                    score = 8500;
+                    isKiller = true;
+                }
+            }
+
+            // Se non è killer, controlla altre eurystiche
+            if (!isKiller) {
+                // Check bonus (importante per tattiche)
+                chess::Board::MoveState tmpState;
+                b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
+                const bool givesCheck = b.inCheck(!usIsWhite);
+                b.undoMove(m, tmpState);
+                
+                if (givesCheck) {
+                    score = 8000;
+                } else {
+                    // Promotion bonus (se non è cattura)
+                    if (fromPieceType == chess::Board::PAWN) {
+                        if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
+                            score = 7000;
+                        }
+                    }
+                    
+                    // History heuristic (per quiet moves normali)
+                    if (score == 0 && ply >= 0 && ply < MAX_PLY) {
+                        int colorIndex = usIsWhite ? 0 : 1;
+                        score = history[colorIndex][m.from.index][m.to.index];
+                        // Clampiamo a [0, 1000] per evitare valori anomali
+                        score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), score));
+                    }
+                }
             }
         }
-        
-        // Add promotion bonus
-        addPromotionBonus(m, fromPieceType, usIsWhite, score);
 
-        // For non-captures: use killer moves and history heuristic
-        if (!isCapture) {
-            addKillerAndHistoryBonus(m, ply, usIsWhite, score);
+        // King move penalties (riduci priorità mosse re in opening se non arrocco)
+        if (fromPieceType == chess::Board::KING) {
+            const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
+            const bool isCastling = (fileDelta == 2);
+
+            if (fullMoveClock < 10 && !inCheck && !isCastling) {
+                score -= 500; // penalità moderata
+            } else if (isCastling) {
+                score += 1000; // bonus arrocco
+            }
         }
-
-        // King move penalties/bonuses (castling, early king moves)
-        addKingMoveBonus(m, fromPieceType, inCheck, fullMoveClock, score);
 
         orderedScoredMoves.emplace_back(m, score);
     }

@@ -65,7 +65,7 @@ public:
     bool isMate() noexcept;
     void setIsCheckMate() noexcept;
 
-    int64_t getMaterialDeltaFAST(const chess::Board& b) noexcept;
+    int64_t getMialDelta(const chess::Board& b) noexcept;
 
     static constexpr int MAX_PLY = 64;
 
@@ -151,22 +151,22 @@ private:
 public:
     int manhattan(int a, int b) noexcept;
     int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-    int64_t evaluatePawnStructureFast(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    int64_t evaluateBlockedCenterWithPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evaluateRooksFast(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evaluateKingActivityFast(const chess::Board& b, bool isEndgame) noexcept;
-    int64_t evaluateBadKingPositionFast(const chess::Board& b) noexcept;
-    int64_t evaluateEndgameKingActivityFast(const chess::Board& b) noexcept;
-    int64_t evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evaluateCastlingBonusFast(const chess::Board& b) noexcept;
-    int64_t evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side) noexcept;
-    int64_t evaluateEarlyKingFast(const chess::Board& b) noexcept;
-    int64_t evaluateEarlyRookFast(const chess::Board& b) noexcept;
-    int64_t evaluatePassiveRooksFast(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evaluateEarlyQueenFast(const chess::Board& b) noexcept;
-    int64_t evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept;
-    int64_t evaluateKnightOnRimFast(const chess::Board& b) noexcept;
+    int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    int64_t evalBadKingPosition(const chess::Board& b) noexcept;
+    int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
+    int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    int64_t evalCastlingBonus(const chess::Board& b) noexcept;
+    int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    int64_t evalEarlyKing(const chess::Board& b) noexcept;
+    int64_t evalEarlyRook(const chess::Board& b) noexcept;
+    int64_t evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evalEarlyQueen(const chess::Board& b) noexcept;
+    int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
+    int64_t evalKnightOnRim(const chess::Board& b) noexcept;
 
     /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
@@ -192,9 +192,9 @@ private:
     void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
 
     // Evaluation helper functions using precomputed attack data
-    int64_t evaluateMobilityFast(const AttackData data[2]) noexcept;
-    int64_t evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evaluateHangingPiecesFast(const chess::Board& b, const AttackData data[2]) noexcept;
+    int64_t evalMobility(const AttackData data[2]) noexcept;
+    int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
+    int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
 
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
