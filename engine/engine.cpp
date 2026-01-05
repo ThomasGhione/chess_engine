@@ -11,7 +11,7 @@ uint64_t Engine::ttHits = 0;
 
 Engine::Engine()
     : board(chess::Board())
-    , depth(6)
+    , depth(10)
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
@@ -31,7 +31,7 @@ Engine::Engine()
 
 Engine::Engine(std::string fen)
     : board(chess::Board(fen))
-    , depth(6)
+    , depth(10)
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)

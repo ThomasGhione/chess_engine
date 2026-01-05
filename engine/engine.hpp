@@ -65,7 +65,7 @@ public:
     bool isMate() noexcept;
     void setIsCheckMate() noexcept;
 
-    int64_t getMialDelta(const chess::Board& b) noexcept;
+    int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static constexpr int MAX_PLY = 64;
 

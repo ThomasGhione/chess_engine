@@ -70,39 +70,28 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const auto& m = scoredMove.move;
         chess::Board::MoveState state;
 
+        // CRITICAL: verifica se è cattura PRIMA di fare la mossa
+        // Dopo doMove, b.get(m.to) contiene il pezzo mosso, non è più vuoto!
+        const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
+        const bool isPromo = isPromotionMove(b, m);
+
         // Execute move (handling promotions)
-        if (isPromotionMove(b, m)) {
+        if (isPromo) {
             b.doMove(m, state, 'q');
         } else {
             b.doMove(m, state);
         }
 
-        // Check if move gives check (AFTER executing the move)
+        // Calcola se la mossa dà scacco DOPO averla eseguita
         const uint8_t oppColor = (ctx.activeColor == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
         const bool givesCheck = b.inCheck(oppColor);
-
-        /*
-        // Futility pruning: skip obviously losing captures at low depth
-        // Use SEE to detect bad captures (losing material)
-        const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-        const bool isCapture = (toPieceType != chess::Board::EMPTY);
-        
-        if (ctx.depth <= 2 && isCapture && moveIndex > 0) {
-            int64_t see = staticExchangeEvaluation(b, m);
-            // If we lose more than a pawn's worth of material, skip this capture at shallow depth
-            if (see < -100) {
-                b.undoMove(m, state);
-                ++moveIndex;
-                continue;
-            }
-        } */
 
         // LMR: riduci la profondità per le mosse "late" non critiche
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)
             && (moveIndex > 1)
-            && !isPromotionMove(b, m)
-            && (b.get(m.to) == chess::Board::EMPTY) // non-capture
+            && !isPromo
+            && !wasCapture // FIXED: ora il check è corretto
             && !givesCheck // NON ridurre se la mossa dà scacco!
             && !this->isKillerMove(m, killerMoves, ctx.ply);
 
@@ -346,13 +335,14 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return material > 0;
     };
 
-    if (depth >= 6 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
-        const int R = (depth >= 6) ? 6 : 5;
+    if (depth >= 3 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
+        const int R = (depth >= 6) ? 3 : 2;
         b.setNextTurn();
-        int64_t nullScore = -this->searchPosition(b, depth - 1 - R, -beta, -alpha, ply + 1);
+        // FIXED: negamax corretto con finestre invertite
+        int64_t nullScore = -this->searchPosition(b, depth - 1 - R, -beta, -beta + 1, ply + 1);
         b.setPrevTurn();
         if (nullScore >= beta) {
-            return beta;
+            return beta; // beta cutoff
         }
     }*/
 
@@ -451,9 +441,9 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
         moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
     
 
-    // OPTIMIZATION: Se non in scacco, generiamo pseudo-legal moves per pezzi non-king
-    // Le mosse illegali per pin saranno filtrate in doMove/searchPosition
-    // Questo evita migliaia di chiamate a canMoveToBB
+    // NOTA: Tutte le mosse generate chiamano canMoveToBB per verificare legalità
+    // Questo assicura che non vengano mai generate mosse che lasciano il re sotto scacco
+    // (es. mosse che violano pin, mosse in risposta a scacco doppio, ecc.)
     
     uint64_t bb = pawns;
     while (bb) {
@@ -658,16 +648,9 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
         
-        // QUICK SEE OPTIMIZATION: early exit se il lato passivo ha già vantaggio netto
-        // Se il difensore (lato passivo) può fermarsi e guadagnare, la cattura è cattiva
-        if (side == sidePassive && gain[depth] > 0) {
-            // Il difensore può fermarsi qui con guadagno positivo → cattura perdente
-            // Propaga questo risultato e termina
-            while (--depth > 0) {
-                gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
-            }
-            return gain[0];
-        }
+        // PRUNING: se il guadagno attuale è già peggiore del miglior risultato possibile,
+        // possiamo terminare early (alpha-beta pruning applicato a SEE)
+        // NON usiamo early exit basato solo sul lato passivo perché non è corretto in negamax
         
         // Rimuovi l'attaccante dall'occupancy
         occ ^= (1ULL << attacker);
@@ -754,29 +737,23 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
             // Se non è killer, controlla altre eurystiche
             if (!isKiller) {
-                // Check bonus (importante per tattiche)
-                chess::Board::MoveState tmpState;
-                b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
-                const bool givesCheck = b.inCheck(!usIsWhite);
-                b.undoMove(m, tmpState);
+                // OTTIMIZZAZIONE: rimuoviamo check detection dal move ordering
+                // Costa troppo (doMove/undoMove per ogni quiet move)
+                // I check verranno comunque esplorati presto grazie a killer moves e LMR
                 
-                if (givesCheck) {
-                    score = 8000;
-                } else {
-                    // Promotion bonus (se non è cattura)
-                    if (fromPieceType == chess::Board::PAWN) {
-                        if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
-                            score = 7000;
-                        }
+                // Promotion bonus (se non è cattura)
+                if (fromPieceType == chess::Board::PAWN) {
+                    if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
+                        score = 7000;
                     }
-                    
-                    // History heuristic (per quiet moves normali)
-                    if (score == 0 && ply >= 0 && ply < MAX_PLY) {
-                        int colorIndex = usIsWhite ? 0 : 1;
-                        score = history[colorIndex][m.from.index][m.to.index];
-                        // Clampiamo a [0, 1000] per evitare valori anomali
-                        score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), score));
-                    }
+                }
+                
+                // History heuristic (per quiet moves normali)
+                if (score == 0 && ply >= 0 && ply < MAX_PLY) {
+                    int colorIndex = usIsWhite ? 0 : 1;
+                    int64_t histScore = history[colorIndex][m.from.index][m.to.index];
+                    // Clampiamo a [0, 1000] per evitare valori anomali
+                    score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), histScore));
                 }
             }
         }

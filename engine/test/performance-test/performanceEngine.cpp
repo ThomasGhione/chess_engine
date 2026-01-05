@@ -8,9 +8,9 @@ namespace ut = boost::ut;
 ut::suite performanceEngineSuite = [] {
   using namespace ut;
 
-  "performance searchPosition depth 6"_test = []{
+  "performance searchPosition depth 8"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 6;
+    e.depth = 8;
 
     auto start = std::chrono::high_resolution_clock::now();
     e.search(e.depth);
@@ -24,9 +24,9 @@ ut::suite performanceEngineSuite = [] {
   };
 
     
-  "avg performance searchPosition depth 6 over 20 runs"_test = []{
+  "avg performance searchPosition depth 8 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 6;
+    e.depth = 8;
 
     constexpr int runs = 20;
     int64_t totalDuration = 0;
@@ -44,8 +44,8 @@ ut::suite performanceEngineSuite = [] {
     double avgDuration = static_cast<double>(totalDuration) / runs;
 
     // Attesa che la ricerca media venga completata in meno di 200 millisecondi
-    printf("Average Depth 6 search time over %d runs: %.2f ms\n", runs, avgDuration);
-    expect(avgDuration < 500);
+    printf("Average Depth 8 search time over %d runs: %.2f ms\n", runs, avgDuration);
+    expect(avgDuration < 200);
   };
 
   "banchmark all evaluation helper functions"_test = []{

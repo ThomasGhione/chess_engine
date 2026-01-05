@@ -28,26 +28,28 @@ inline static constexpr int64_t CENTER_CONTROL_BONUS = 8;        // ridotto da 2
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
 // ===================================================
-inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 8;   // era 10
-inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 50;        // ridotto da 60
-inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 15;  // ridotto da 20
-inline static constexpr int64_t PINNED_BISHOP_PENALTY = 35;        // ridotto da 40
-inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 25;    // ridotto da 30
-inline static constexpr int64_t PINNED_ROOK_PENALTY = 25;          // ridotto da 30
-inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 50;   // ridotto da 60
-inline static constexpr int64_t PINNED_QUEEN_PENALTY = 150;        // ridotto da 200
+inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 5;   // ridotto ulteriormente
+inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 30;        // ridotto da 50
+inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 10;  // ridotto da 15
+inline static constexpr int64_t PINNED_BISHOP_PENALTY = 25;        // ridotto da 35
+inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 15;    // ridotto da 25
+inline static constexpr int64_t PINNED_ROOK_PENALTY = 20;          // ridotto da 25
+inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 30;   // ridotto da 50
+inline static constexpr int64_t PINNED_QUEEN_PENALTY = 80;         // ridotto da 150
 
 // ===================================================
-// HANGING PIECES (CRITICAL - must be close to material value!)
+// HANGING PIECES (CRITICAL - bilanciare con SEE e move ordering!)
+// IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!
+// La SEE nella search già valuta gli scambi, quindi qui serve solo un "warning"
 // ===================================================
-inline static constexpr int64_t HANGING_PAWN_PENALTY   = -90;   // aumentato (~90% valore materiale)
-inline static constexpr int64_t HANGING_MINOR_PENALTY  = -280;  // aumentato (~85% valore)
-inline static constexpr int64_t HANGING_ROOK_PENALTY   = -450;  // aumentato (~90% valore)
-inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -800;  // aumentato (~89% valore)
+inline static constexpr int64_t HANGING_PAWN_PENALTY   = -30;   // ridotto! (era -90, troppo alto)
+inline static constexpr int64_t HANGING_MINOR_PENALTY  = -80;   // ridotto! (era -280, paralizzava l'engine)
+inline static constexpr int64_t HANGING_ROOK_PENALTY   = -120;  // ridotto! (era -450, troppo punitivo)
+inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -200;  // ridotto! (era -800, eccessivo)
 
 // Pawn-specific penalties (additional checks beyond hanging)
-inline static constexpr int64_t UNDEFENDED_PAWN_PENALTY = -25;  // pedone non difeso in opening/midgame
-inline static constexpr int64_t ATTACKED_PAWN_PENALTY = -15;    // pedone sotto attacco (anche se difeso)
+inline static constexpr int64_t UNDEFENDED_PAWN_PENALTY = -15;  // ridotto da -25
+inline static constexpr int64_t ATTACKED_PAWN_PENALTY = -8;     // ridotto da -15
 
 // ===================================================
 // ROOK EVALUATION
@@ -64,17 +66,17 @@ inline static constexpr int64_t ATTACKED_QUEEN_PENALTY = -25;    // ridotto da -
 // ===================================================
 // KING SAFETY & ACTIVITY
 // ===================================================
-inline static constexpr int64_t KING_SAFETY_PENALTY = -15;       // ridotto da -50 (troppo alto!)
-inline static constexpr int64_t KING_ACTIVITY_BONUS = 8;         // ridotto da 10
-inline static constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 4;   // ridotto da 5
-inline static constexpr int64_t KING_EXPOSED_PENALTY = -40;      // ridotto da -120 (era eccessivo!)
-inline static constexpr int64_t EARLY_KING_PENALTY = -20;        // ridotto da -30
+inline static constexpr int64_t KING_SAFETY_PENALTY = -10;       // ridotto ulteriormente
+inline static constexpr int64_t KING_ACTIVITY_BONUS = 8;         
+inline static constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 4;   
+inline static constexpr int64_t KING_EXPOSED_PENALTY = -25;      // ridotto da -40
+inline static constexpr int64_t EARLY_KING_PENALTY = -15;        // ridotto da -20
 
 // ===================================================
 // CASTLING
 // ===================================================
-inline static constexpr int64_t CASTLING_BONUS = 30;             // ridotto da 90 (era troppo!)
-inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 25;  // ridotto da 80
+inline static constexpr int64_t CASTLING_BONUS = 35;             // aumentato leggermente (l'arrocco è importante!)
+inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 20;  // ridotto da 25
 
 // ===================================================
 // DEVELOPMENT & INITIATIVE

@@ -2,7 +2,7 @@
 
 namespace engine {
     
-int64_t Engine::getMialDelta(const chess::Board& b) noexcept {
+int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
     return static_cast<int64_t>(
           (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
         + (__builtin_popcountll(b.knights_bb[0]) - __builtin_popcountll(b.knights_bb[1])) * PIECE_VALUES[chess::Board::KNIGHT]
@@ -628,7 +628,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         return evaluateCheckmate(board);
     }
 
-    int64_t eval = getMialDelta(board);
+    int64_t eval = getMaterialDelta(board);
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
