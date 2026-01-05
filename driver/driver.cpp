@@ -10,7 +10,10 @@ namespace driver {
         , engine(e) 
     {}
 
-    void Driver::startGame() noexcept {
+    void Driver::startGame(int argc, char *argv[]) noexcept {
+
+        parse(argc, argv);
+
         while (true) {
             uint8_t mainMenuChoice = menu.mainMenu();
 
@@ -74,6 +77,47 @@ namespace driver {
                     break;
             }
         } 
+    }
+
+
+    void Driver::parse(int argc, char *argv[]) noexcept {
+        if (argc == NO_ARGS || argc > MAX_PARAM_LENGTH) {
+            return;
+        }
+
+        std::string mode = std::string(argv[MODE]);
+        std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+
+        if (mode == "bvb" || mode == "3") {
+            this->botVsBot();
+        } 
+        else if (mode == "pvp" || mode == "21") {
+            this->playGameVsHuman();
+        } 
+        else if (mode == "pvb" || mode == "11") {
+            if (argc < MAX_PARAM_LENGTH) {
+                std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
+                exit(EXIT_FAILURE);
+            }
+
+            std::string color = argv[COLOR];
+            std::transform(color.begin(), color.end(), color.begin(), ::tolower);
+
+            if (color == "w") {
+                this->playGameVsEngine(true);
+            } 
+            else if (color == "b") {
+                this->playGameVsEngine(false);
+            } 
+            else {
+                std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
+                exit(EXIT_FAILURE);
+            }
+        } 
+        else {
+            std::cout << "Error: Invalid mode. Use 'bvb' for bot vs bot, 'pvp' for player vs player, or 'pvb' for player vs bot. \n";
+            exit(EXIT_FAILURE);
+        }
     }
 
     bool Driver::loadGame(bool isWithPlayer) noexcept{
