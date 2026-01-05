@@ -1,7 +1,7 @@
 #include "engine.hpp"
 
 namespace engine {
-    
+
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
     return static_cast<int64_t>(
           (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
@@ -21,16 +21,15 @@ __attribute__((always_inline))
 inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
     // White pieces: use index as-is
     while (bbWhite) {
-        uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbWhite));
+        uint8_t sq = __builtin_ctzll(bbWhite);
         bbWhite &= (bbWhite - 1);
         eval += table[sq];
     }
-    // Black pieces: mirror index vertically
+    // Black pieces: mirror index vertically (inline for performance)
     while (bbBlack) {
-        uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbBlack));
+        uint8_t sq = __builtin_ctzll(bbBlack);
         bbBlack &= (bbBlack - 1);
-        uint8_t idx = mirrorIndex(sq);
-        eval -= table[idx];
+        eval -= table[sq ^ 56]; // Branchless vertical mirror (flip rank)
     }
 }
 
@@ -65,7 +64,137 @@ inline uint64_t adjacentFilesMask(int file) noexcept {
     return m;
 }
 
+// Precompute masks for faster pawn evaluation
+namespace {
+    // Forward fill masks for passed pawn detection (compile-time constant)
+    constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
+        std::array<uint64_t, 64> result{};
+        for (int sq = 0; sq < 64; ++sq) {
+            const int rank = sq >> 3;
+            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
+        }
+        return result;
+    }
+    
+    constexpr std::array<uint64_t, 64> initBlackForwardFill() {
+        std::array<uint64_t, 64> result{};
+        for (int sq = 0; sq < 64; ++sq) {
+            const int rank = sq >> 3;
+            result[sq] = (rank > 0) ? ((1ULL << (rank * 8)) - 1ULL) : 0ULL;
+        }
+        return result;
+    }
+    
+    constexpr auto WHITE_FORWARD_FILL = initWhiteForwardFill();
+    constexpr auto BLACK_FORWARD_FILL = initBlackForwardFill();
+    
+    // File masks (already defined in fileMask() but we precalculate for speed)
+    constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            masks[f] = 0x0101010101010101ULL << f;
+        }
+        return masks;
+    }();
+    
+    // Adjacent files ONLY (without center file) - optimization for isolated pawn check
+    constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            uint64_t m = 0;
+            if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
+            if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
+            masks[f] = m;
+        }
+        return masks;
+    }();
+    
+    // Precalculated adjacent files mask (including center file)
+    constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            uint64_t m = (0x0101010101010101ULL << f); // center file
+            if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
+            if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
+            masks[f] = m;
+        }
+        return masks;
+    }();
+}
 
+__attribute__((hot))
+int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
+    int64_t score = 0;
+    
+    // Per-file pawn counts for doubled pawn detection (vectorizable)
+    int whiteFileCounts[8] = {};
+    int blackFileCounts[8] = {};
+    
+    // Count pawns per file (SIMD-friendly loop)
+    for (int f = 0; f < 8; ++f) {
+        const uint64_t fm = FILE_MASKS[f];
+        whiteFileCounts[f] = __builtin_popcountll(whitePawns & fm);
+        blackFileCounts[f] = __builtin_popcountll(blackPawns & fm);
+    }
+    
+    // Score doubled pawns (vectorizable)
+    for (int f = 0; f < 8; ++f) {
+        if (whiteFileCounts[f] > 1) score += (whiteFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+        if (blackFileCounts[f] > 1) score -= (blackFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+    }
+    
+    // Evaluate WHITE pawns (isolated + passed in ONE loop)
+    uint64_t wp = whitePawns;
+    while (wp) {
+        const int sq = poplsbIndex(wp);
+        const int file = sq & 7;
+        const int rank = sq >> 3;
+        
+        // Isolated pawn check (no friendly pawns on adjacent files) - OPTIMIZED
+        const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
+        if ((whitePawns & adjFilesMask) == 0) [[unlikely]] {
+            score += ISOLATED_PAWN_PENALTY;
+        }
+        
+        // Passed pawn check (no enemy pawns in front on same/adjacent files)
+        const uint64_t adjAndFileMask = ADJACENT_AND_FILE_MASKS[file];
+        const uint64_t forwardMask = WHITE_FORWARD_FILL[sq];
+        if ((blackPawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
+            score += PASSED_PAWN_BONUS;
+            if (isEndgame) {
+                score += (rank - 1) * 6; // Closer to promotion = better
+            }
+        }
+    }
+    
+    // Evaluate BLACK pawns (isolated + passed in ONE loop)
+    uint64_t bp = blackPawns;
+    while (bp) {
+        const int sq = poplsbIndex(bp);
+        const int file = sq & 7;
+        const int rank = sq >> 3;
+        
+        // Isolated pawn check - OPTIMIZED
+        const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
+        if ((blackPawns & adjFilesMask) == 0) [[unlikely]] {
+            score -= ISOLATED_PAWN_PENALTY;
+        }
+        
+        // Passed pawn check
+        const uint64_t adjAndFileMask = ADJACENT_AND_FILE_MASKS[file];
+        const uint64_t forwardMask = BLACK_FORWARD_FILL[sq];
+        if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
+            score -= PASSED_PAWN_BONUS;
+            if (isEndgame) {
+                score -= (7 - rank - 1) * 6; // Closer to promotion = better
+            }
+        }
+    }
+    
+    return score;
+}
+
+/*
 int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
     int64_t score = 0;
 
@@ -129,7 +258,7 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
 
     return score;
 }
-
+*/
 int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
     
@@ -159,7 +288,7 @@ int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whi
             const int sq = poplsbIndex(rooks);
             const int file = sq & 7;
             const int rank = sq >> 3;
-            const uint64_t fm = fileMask(file);
+            const uint64_t fm = FILE_MASKS[file]; // Use precalculated mask
 
             const bool ownPawnOnFile = (ownPawns & fm);
             const bool oppPawnOnFile = (oppPawns & fm);
@@ -202,7 +331,7 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
                 score -= sign * 25;
 
             // Rook blocked by own pawn on same file
-            if (ownPawns & fileMask(file))
+            if (ownPawns & FILE_MASKS[file]) // Use precalculated mask
                 score -= sign * 15;
 
             // Not on 7th rank (white rank 6, black rank 1)
@@ -255,26 +384,17 @@ int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
 }
 
 int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    // Old version was O(#bishops * #pawns) due to scanning pawns for each bishop.
-    // Keep it O(#bishops + #pawns) by counting pawns on light/dark once.
-    uint64_t pawnDark = 0;
-    uint64_t pawnLight = 0;
-    {
-        uint64_t p = pawns;
-        while (p) {
-            const int psq = poplsbIndex(p);
-            const bool isDark = ((psq ^ (psq >> 3)) & 1);
-            if (isDark) pawnDark++;
-            else pawnLight++;
-        }
-    }
+    // Optimized: use bitmask instead of looping over pawns
+    constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
+    
+    const int darkCount = __builtin_popcountll(pawns & DARK_SQUARES);
+    const int lightCount = __builtin_popcountll(pawns & ~DARK_SQUARES);
 
     int64_t score = 0;
     while (bishops) {
         const int sq = poplsbIndex(bishops);
-        const bool bishopOnDark = ((sq ^ (sq >> 3)) & 1);
-        const uint64_t sameColorPawns = bishopOnDark ? pawnDark : pawnLight;
-        score -= static_cast<int64_t>(sameColorPawns) * 8; // tuning safe
+        const bool isDark = (DARK_SQUARES >> sq) & 1;
+        score -= (isDark ? darkCount : lightCount) * 8;
     }
     return (side == 0) ? score : -score;
 }
