@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <array>
+#include "magic_numbers.hpp"
 
 namespace pieces {
 
@@ -18,91 +19,208 @@ inline constexpr int8_t rankOf(int8_t sq) noexcept { return static_cast<int8_t>(
 constexpr int8_t KNIGHT_OFFSET[8][2] = { {1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2} };
 constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1},{0,1} };
 
-enum Direction : uint8_t {
-    N=0, S, E, W,
-    NE, NW, SE, SW,
-    DIRECTION_COUNT
+// ===================================================
+// MAGIC BITBOARDS - STRUCT
+// ===================================================
+struct MagicData {
+    uint64_t  relevantSquares;      // Square che influenzano gli attacks
+    uint64_t  hashingConstant;      // Costante per perfect hashing
+    uint32_t  indexShift;           // Shift per estrarre indice hash
+    uint64_t* attackTable;          // Puntatore alla tabella pre-calcolata
+
+    // Calcola l'indice hash per una data occupancy
+    constexpr uint32_t computeIndex(uint64_t occupancy) const noexcept {
+        return static_cast<uint32_t>(
+            ((occupancy & this->relevantSquares) * this->hashingConstant) >> this->indexShift
+        );
+    }
+
+    // Lookup attacks (encapsulamento completo)
+    constexpr uint64_t getAttacks(uint64_t occupancy) const noexcept {
+        return this->attackTable[this->computeIndex(occupancy)];
+    }
+
+    // Inizializza la struct con mask, magic number e table pointer
+    void initialize(uint64_t relevantSquares, uint64_t hashingConstant, uint64_t* attackTable) noexcept {
+        this->relevantSquares = relevantSquares;
+        this->hashingConstant = hashingConstant;
+        this->indexShift = 64 - __builtin_popcountll(relevantSquares);
+        this->attackTable = attackTable;
+    }
 };
 
 // ===================================================
-// RAY MASK PRECALCULATION
+// MAGIC BITBOARDS - LOOKUP TABLES
 // ===================================================
-constexpr U64 generateRayMask(int8_t square, Direction dir) {
+
+// Dimensioni lookup tables
+constexpr size_t ROOK_LOOKUP_SIZE = 102400;    // ~800 KB
+constexpr size_t BISHOP_LOOKUP_SIZE = 5248;    // ~40 KB
+
+// Attack lookup tables (inline per header-only)
+inline std::array<uint64_t, ROOK_LOOKUP_SIZE> ROOK_ATTACK_LOOKUP;
+inline std::array<uint64_t, BISHOP_LOOKUP_SIZE> BISHOP_ATTACK_LOOKUP;
+
+// Magic info per ogni square (inline per header-only)
+inline std::array<MagicData, 64> ROOK_MAGIC_INFO;
+inline std::array<MagicData, 64> BISHOP_MAGIC_INFO;
+
+// ===================================================
+// MAGIC BITBOARDS - HELPER FUNCTIONS
+// ===================================================
+
+// Genera una specifica occupancy pattern da un indice
+inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint64_t mask) noexcept {
+    uint64_t occupancy = 0ULL;
+    for (int i = 0; i < bitCount; ++i) {
+        int bitPos = __builtin_ctzll(mask);
+        mask &= mask - 1; // Clear LSB
+        if (index & (1 << i)) {
+            occupancy |= (1ULL << bitPos);
+        }
+    }
+    return occupancy;
+}
+
+// Calcola attacks per Rook in modo classico (ground truth)
+inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
+    uint64_t attacks = 0ULL;
     int8_t file = fileOf(square);
     int8_t rank = rankOf(square);
-    int8_t df = 0, dr = 0;
 
-    switch(dir) {
-        case N:  df=0; dr=1; break;
-        case S:  df=0; dr=-1; break;
-        case E:  df=1; dr=0; break;
-        case W:  df=-1; dr=0; break;
-        case NE: df=1; dr=1; break;
-        case NW: df=-1; dr=1; break;
-        case SE: df=1; dr=-1; break;
-        case SW: df=-1; dr=-1; break;
-        default: break;
+    // Nord (rank decreases)
+    for (int8_t r = rank - 1; r >= 0; --r) {
+        attacks |= (1ULL << (r * 8 + file));
+        if (occupancy & (1ULL << (r * 8 + file))) break;
+    }
+    // Sud (rank increases)
+    for (int8_t r = rank + 1; r < 8; ++r) {
+        attacks |= (1ULL << (r * 8 + file));
+        if (occupancy & (1ULL << (r * 8 + file))) break;
+    }
+    // Est (file increases)
+    for (int8_t f = file + 1; f < 8; ++f) {
+        attacks |= (1ULL << (rank * 8 + f));
+        if (occupancy & (1ULL << (rank * 8 + f))) break;
+    }
+    // Ovest (file decreases)
+    for (int8_t f = file - 1; f >= 0; --f) {
+        attacks |= (1ULL << (rank * 8 + f));
+        if (occupancy & (1ULL << (rank * 8 + f))) break;
     }
 
-    U64 mask = 0ULL;
-    file += df; rank += dr;
-    while(file>=0 && file<8 && rank>=0 && rank<8) {
-        mask |= (ONE << (rank*8 + file));
-        file += df; rank += dr;
+    return attacks;
+}
+
+// Calcola attacks per Bishop in modo classico (ground truth)
+inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
+    uint64_t attacks = 0ULL;
+    int8_t file = fileOf(square);
+    int8_t rank = rankOf(square);
+
+    // NE (file increases, rank decreases)
+    for (int8_t f = file + 1, r = rank - 1; f < 8 && r >= 0; ++f, --r) {
+        attacks |= (1ULL << (r * 8 + f));
+        if (occupancy & (1ULL << (r * 8 + f))) break;
     }
-    return mask;
+    // NW (file decreases, rank decreases)
+    for (int8_t f = file - 1, r = rank - 1; f >= 0 && r >= 0; --f, --r) {
+        attacks |= (1ULL << (r * 8 + f));
+        if (occupancy & (1ULL << (r * 8 + f))) break;
+    }
+    // SE (file increases, rank increases)
+    for (int8_t f = file + 1, r = rank + 1; f < 8 && r < 8; ++f, ++r) {
+        attacks |= (1ULL << (r * 8 + f));
+        if (occupancy & (1ULL << (r * 8 + f))) break;
+    }
+    // SW (file decreases, rank increases)
+    for (int8_t f = file - 1, r = rank + 1; f >= 0 && r < 8; --f, ++r) {
+        attacks |= (1ULL << (r * 8 + f));
+        if (occupancy & (1ULL << (r * 8 + f))) break;
+    }
+
+    return attacks;
 }
 
-inline constexpr auto generateAllRayMasks() {
-    std::array<std::array<U64, DIRECTION_COUNT>, 64> table{};
-    for(int sq=0;sq<64;sq++)
-        for(int dir=0;dir<DIRECTION_COUNT;dir++)
-            table[sq][dir] = generateRayMask(sq, static_cast<Direction>(dir));
-    return table;
+// Popola attack table per una square (Rook)
+inline void populateRookAttackTable(int8_t square, MagicData& magicInfo) noexcept {
+    uint64_t mask = magicInfo.relevantSquares;
+    int bitCount = __builtin_popcountll(mask);
+    int numPatterns = 1 << bitCount;
+
+    for (int i = 0; i < numPatterns; ++i) {
+        uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
+        uint32_t index = magicInfo.computeIndex(occupancy);
+        uint64_t attacks = calculateRookAttacksClassical(square, occupancy);
+        magicInfo.attackTable[index] = attacks;
+    }
 }
 
-inline constexpr auto RAY_MASK = generateAllRayMasks();
+// Popola attack table per una square (Bishop)
+inline void populateBishopAttackTable(int8_t square, MagicData& magicInfo) noexcept {
+    uint64_t mask = magicInfo.relevantSquares;
+    int bitCount = __builtin_popcountll(mask);
+    int numPatterns = 1 << bitCount;
 
-// ===================================================
-// BRANCHLESS O(1) RAY
-// ===================================================
-inline constexpr U64 ray(int8_t square, Direction dir, U64 occupancy) noexcept {
-    U64 mask = RAY_MASK[square][dir];
-    U64 blockers = mask & occupancy;
-    if (!blockers) return mask;
+    for (int i = 0; i < numPatterns; ++i) {
+        uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
+        uint32_t index = magicInfo.computeIndex(occupancy);
+        uint64_t attacks = calculateBishopAttacksClassical(square, occupancy);
+        magicInfo.attackTable[index] = attacks;
+    }
+}
 
-    // trova il blocker più vicino in base alla direzione
-    int8_t blockerSq;
-    switch (dir) {
-        // Per direzioni verso l'alto/destra: primo blocker (LSB)
-        case N: case NE: case NW: case E:
-            blockerSq = __builtin_ctzll(blockers);
-            // Include blocker, rimuovi tutto oltre
-            return mask & ((1ULL << (blockerSq + 1)) - 1ULL);
-        
-        // Per direzioni verso il basso/sinistra: ultimo blocker (MSB)
-        case S: case SE: case SW: case W:
-            blockerSq = 63 - __builtin_clzll(blockers);
-            // Include blocker, rimuovi tutto prima
-            return mask & ~((1ULL << blockerSq) - 1ULL);
-        
-        default: 
-            return 0ULL;
+// Inizializza magic info per una square (Rook)
+inline void initRookMagicForSquare(int sq, uint64_t*& tablePtr) noexcept {
+    ROOK_MAGIC_INFO[sq].initialize(
+        ROOK_MASKS[sq],
+        ROOK_MAGICS[sq],
+        tablePtr
+    );
+
+    populateRookAttackTable(static_cast<int8_t>(sq), ROOK_MAGIC_INFO[sq]);
+
+    int bitCount = __builtin_popcountll(ROOK_MASKS[sq]);
+    tablePtr += (1 << bitCount);
+}
+
+// Inizializza magic info per una square (Bishop)
+inline void initBishopMagicForSquare(int sq, uint64_t*& tablePtr) noexcept {
+    BISHOP_MAGIC_INFO[sq].initialize(
+        BISHOP_MASKS[sq],
+        BISHOP_MAGICS[sq],
+        tablePtr
+    );
+
+    populateBishopAttackTable(static_cast<int8_t>(sq), BISHOP_MAGIC_INFO[sq]);
+
+    int bitCount = __builtin_popcountll(BISHOP_MASKS[sq]);
+    tablePtr += (1 << bitCount);
+}
+
+// Inizializza tutte le magic bitboards (chiamare all'avvio del programma)
+inline void initMagicBitboards() noexcept {
+    uint64_t* rookTablePtr = ROOK_ATTACK_LOOKUP.data();
+    uint64_t* bishopTablePtr = BISHOP_ATTACK_LOOKUP.data();
+
+    for (int sq = 0; sq < 64; ++sq) {
+        initRookMagicForSquare(sq, rookTablePtr);
+        initBishopMagicForSquare(sq, bishopTablePtr);
     }
 }
 
 // ===================================================
 // PIECE ATTACKS
 // ===================================================
-inline constexpr U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
-    return ray(sq, NE, occ) | ray(sq, NW, occ) | ray(sq, SE, occ) | ray(sq, SW, occ);
+inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
+    return BISHOP_MAGIC_INFO[sq].getAttacks(occ);
 }
 
-inline constexpr U64 getRookAttacks(int8_t sq, U64 occ) noexcept {
-    return ray(sq, N, occ) | ray(sq, S, occ) | ray(sq, E, occ) | ray(sq, W, occ);
+inline U64 getRookAttacks(int8_t sq, U64 occ) noexcept {
+    return ROOK_MAGIC_INFO[sq].getAttacks(occ);
 }
 
-inline constexpr U64 getQueenAttacks(int8_t sq, U64 occ) noexcept {
+inline U64 getQueenAttacks(int8_t sq, U64 occ) noexcept {
     return getBishopAttacks(sq, occ) | getRookAttacks(sq, occ);
 }
 
@@ -241,8 +359,6 @@ inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
 }
 
 
-// ==================== UTILS ====================
-// inline U64 ray(int8_t file, int8_t rank, int8_t deltaFile, int8_t deltaRank, U64 occupancy);
 
 
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = []{

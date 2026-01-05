@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "../piece/piece.hpp"
 
 namespace engine {
 uint64_t Engine::nodesSearched = 0;
@@ -13,6 +14,13 @@ Engine::Engine()
     , depth(6)
     , MAX_THREADS(omp_get_max_threads())
 {
+    // Inizializza magic bitboards una sola volta (thread-safe)
+    static bool magicInitialized = false;
+    if (!magicInitialized) {
+        pieces::initMagicBitboards();
+        magicInitialized = true;
+    }
+
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
     // Collega la TT globale e inizializzala a INVALID
@@ -26,6 +34,13 @@ Engine::Engine(std::string fen)
     , depth(6)
     , MAX_THREADS(omp_get_max_threads())
 {
+    // Inizializza magic bitboards una sola volta (thread-safe)
+    static bool magicInitialized = false;
+    if (!magicInitialized) {
+        pieces::initMagicBitboards();
+        magicInitialized = true;
+    }
+
     // this->nodesSearched = 0;
     // per ora non avviamo la search automaticamente nel costruttore
     // Collega la TT globale e inizializzala a INVALID

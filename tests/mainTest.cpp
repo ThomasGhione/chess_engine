@@ -1,3 +1,7 @@
 #include "ut.hpp"
+#include "../piece/piece.hpp"
 
-int main(){}
+int main(){
+    // Inizializza magic bitboards prima di eseguire i test
+    pieces::initMagicBitboards();
+}

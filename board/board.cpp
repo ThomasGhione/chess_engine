@@ -205,7 +205,6 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 
     // Pre-calculate destination piece info (used multiple times)
     const uint8_t destPiece = this->get(to);
-    const uint8_t destType = destPiece & MASK_PIECE_TYPE;
     const uint8_t destColor = destPiece & MASK_COLOR;
 
     // Early exit: can't capture own piece
