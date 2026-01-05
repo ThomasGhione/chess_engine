@@ -6,4 +6,4 @@
 *.png
 chess
 outputTest
-outputPerformance
+/tests/outputPerformance
