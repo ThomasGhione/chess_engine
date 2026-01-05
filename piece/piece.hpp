@@ -20,50 +20,37 @@ constexpr int8_t KNIGHT_OFFSET[8][2] = { {1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-
 constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1},{0,1} };
 
 // ===================================================
-// MAGIC BITBOARDS - STRUCT
-// ===================================================
-struct MagicData {
-    uint64_t  relevantSquares;      // Square che influenzano gli attacks
-    uint64_t  hashingConstant;      // Costante per perfect hashing
-    uint32_t  indexShift;           // Shift per estrarre indice hash
-    uint64_t* attackTable;          // Puntatore alla tabella pre-calcolata
-
-    // Calcola l'indice hash per una data occupancy
-    constexpr uint32_t computeIndex(uint64_t occupancy) const noexcept {
-        return static_cast<uint32_t>(
-            ((occupancy & this->relevantSquares) * this->hashingConstant) >> this->indexShift
-        );
-    }
-
-    // Lookup attacks (encapsulamento completo)
-    constexpr uint64_t getAttacks(uint64_t occupancy) const noexcept {
-        return this->attackTable[this->computeIndex(occupancy)];
-    }
-
-    // Inizializza la struct con mask, magic number e table pointer
-    void initialize(uint64_t relevantSquares, uint64_t hashingConstant, uint64_t* attackTable) noexcept {
-        this->relevantSquares = relevantSquares;
-        this->hashingConstant = hashingConstant;
-        this->indexShift = 64 - __builtin_popcountll(relevantSquares);
-        this->attackTable = attackTable;
-    }
-};
-
-// ===================================================
-// MAGIC BITBOARDS - LOOKUP TABLES
+// MAGIC BITBOARDS - OPTIMIZED LAYOUT (no pointers, constexpr friendly)
 // ===================================================
 
 // Dimensioni lookup tables
 constexpr size_t ROOK_LOOKUP_SIZE = 102400;    // ~800 KB
 constexpr size_t BISHOP_LOOKUP_SIZE = 5248;    // ~40 KB
 
-// Attack lookup tables (inline per header-only)
+// Attack lookup tables (runtime storage)
 inline std::array<uint64_t, ROOK_LOOKUP_SIZE> ROOK_ATTACK_LOOKUP;
 inline std::array<uint64_t, BISHOP_LOOKUP_SIZE> BISHOP_ATTACK_LOOKUP;
 
-// Magic info per ogni square (inline per header-only)
-inline std::array<MagicData, 64> ROOK_MAGIC_INFO;
-inline std::array<MagicData, 64> BISHOP_MAGIC_INFO;
+// Table offsets per square (runtime-initialized, indica dove inizia la subtable per ogni square)
+inline std::array<uint32_t, 64> ROOK_TABLE_OFFSETS;
+inline std::array<uint32_t, 64> BISHOP_TABLE_OFFSETS;
+
+// Pre-computed shifts (constexpr, calcolati da masks)
+inline constexpr std::array<uint32_t, 64> ROOK_SHIFTS = []{
+    std::array<uint32_t, 64> shifts{};
+    for (int sq = 0; sq < 64; ++sq) {
+        shifts[sq] = 64 - __builtin_popcountll(ROOK_MASKS[sq]);
+    }
+    return shifts;
+}();
+
+inline constexpr std::array<uint32_t, 64> BISHOP_SHIFTS = []{
+    std::array<uint32_t, 64> shifts{};
+    for (int sq = 0; sq < 64; ++sq) {
+        shifts[sq] = 64 - __builtin_popcountll(BISHOP_MASKS[sq]);
+    }
+    return shifts;
+}();
 
 // ===================================================
 // MAGIC BITBOARDS - HELPER FUNCTIONS
@@ -142,86 +129,94 @@ inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_
     return attacks;
 }
 
-// Popola attack table per una square (Rook)
-inline void populateRookAttackTable(int8_t square, MagicData& magicInfo) noexcept {
-    uint64_t mask = magicInfo.relevantSquares;
-    int bitCount = __builtin_popcountll(mask);
-    int numPatterns = 1 << bitCount;
+// Popola attack table per una square (Rook) - versione ottimizzata
+inline void populateRookAttackTable(int8_t square, uint32_t tableOffset) noexcept {
+    const uint64_t mask = ROOK_MASKS[square];
+    const int bitCount = __builtin_popcountll(mask);
+    const int numPatterns = 1 << bitCount;
+    const uint32_t shift = ROOK_SHIFTS[square];
 
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
-        uint32_t index = magicInfo.computeIndex(occupancy);
+        uint32_t index = static_cast<uint32_t>(
+            ((occupancy & mask) * ROOK_MAGICS[square]) >> shift
+        );
         uint64_t attacks = calculateRookAttacksClassical(square, occupancy);
-        magicInfo.attackTable[index] = attacks;
+        ROOK_ATTACK_LOOKUP[tableOffset + index] = attacks;
     }
 }
 
-// Popola attack table per una square (Bishop)
-inline void populateBishopAttackTable(int8_t square, MagicData& magicInfo) noexcept {
-    uint64_t mask = magicInfo.relevantSquares;
-    int bitCount = __builtin_popcountll(mask);
-    int numPatterns = 1 << bitCount;
+// Popola attack table per una square (Bishop) - versione ottimizzata
+inline void populateBishopAttackTable(int8_t square, uint32_t tableOffset) noexcept {
+    const uint64_t mask = BISHOP_MASKS[square];
+    const int bitCount = __builtin_popcountll(mask);
+    const int numPatterns = 1 << bitCount;
+    const uint32_t shift = BISHOP_SHIFTS[square];
 
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, mask);
-        uint32_t index = magicInfo.computeIndex(occupancy);
+        uint32_t index = static_cast<uint32_t>(
+            ((occupancy & mask) * BISHOP_MAGICS[square]) >> shift
+        );
         uint64_t attacks = calculateBishopAttacksClassical(square, occupancy);
-        magicInfo.attackTable[index] = attacks;
+        BISHOP_ATTACK_LOOKUP[tableOffset + index] = attacks;
     }
-}
-
-// Inizializza magic info per una square (Rook)
-inline void initRookMagicForSquare(int sq, uint64_t*& tablePtr) noexcept {
-    ROOK_MAGIC_INFO[sq].initialize(
-        ROOK_MASKS[sq],
-        ROOK_MAGICS[sq],
-        tablePtr
-    );
-
-    populateRookAttackTable(static_cast<int8_t>(sq), ROOK_MAGIC_INFO[sq]);
-
-    int bitCount = __builtin_popcountll(ROOK_MASKS[sq]);
-    tablePtr += (1 << bitCount);
-}
-
-// Inizializza magic info per una square (Bishop)
-inline void initBishopMagicForSquare(int sq, uint64_t*& tablePtr) noexcept {
-    BISHOP_MAGIC_INFO[sq].initialize(
-        BISHOP_MASKS[sq],
-        BISHOP_MAGICS[sq],
-        tablePtr
-    );
-
-    populateBishopAttackTable(static_cast<int8_t>(sq), BISHOP_MAGIC_INFO[sq]);
-
-    int bitCount = __builtin_popcountll(BISHOP_MASKS[sq]);
-    tablePtr += (1 << bitCount);
 }
 
 // Inizializza tutte le magic bitboards (chiamare all'avvio del programma)
 inline void initMagicBitboards() noexcept {
-    uint64_t* rookTablePtr = ROOK_ATTACK_LOOKUP.data();
-    uint64_t* bishopTablePtr = BISHOP_ATTACK_LOOKUP.data();
+    uint32_t rookOffset = 0;
+    uint32_t bishopOffset = 0;
 
     for (int sq = 0; sq < 64; ++sq) {
-        initRookMagicForSquare(sq, rookTablePtr);
-        initBishopMagicForSquare(sq, bishopTablePtr);
+        // Salva offset per questa square
+        ROOK_TABLE_OFFSETS[sq] = rookOffset;
+        BISHOP_TABLE_OFFSETS[sq] = bishopOffset;
+        
+        // Popola la tabella per questa square
+        populateRookAttackTable(static_cast<int8_t>(sq), rookOffset);
+        populateBishopAttackTable(static_cast<int8_t>(sq), bishopOffset);
+        
+        // Avanza offset per la prossima square
+        const int rookBits = __builtin_popcountll(ROOK_MASKS[sq]);
+        const int bishopBits = __builtin_popcountll(BISHOP_MASKS[sq]);
+        rookOffset += (1 << rookBits);
+        bishopOffset += (1 << bishopBits);
     }
 }
 
 // ===================================================
-// PIECE ATTACKS
+// PIECE ATTACKS - MAXIMUM OPTIMIZATION (cache-friendly, no pointers, constexpr math)
 // ===================================================
-inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
-    return BISHOP_MAGIC_INFO[sq].getAttacks(occ);
-}
 
+// ROOK ATTACKS - Accesso diretto con offset pre-calcolato
 inline U64 getRookAttacks(int8_t sq, U64 occ) noexcept {
-    return ROOK_MAGIC_INFO[sq].getAttacks(occ);
+    const uint32_t index = static_cast<uint32_t>(
+        ((occ & ROOK_MASKS[sq]) * ROOK_MAGICS[sq]) >> ROOK_SHIFTS[sq]
+    );
+    return ROOK_ATTACK_LOOKUP[ROOK_TABLE_OFFSETS[sq] + index];
 }
 
+// BISHOP ATTACKS - Accesso diretto con offset pre-calcolato
+inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept {
+    const uint32_t index = static_cast<uint32_t>(
+        ((occ & BISHOP_MASKS[sq]) * BISHOP_MAGICS[sq]) >> BISHOP_SHIFTS[sq]
+    );
+    return BISHOP_ATTACK_LOOKUP[BISHOP_TABLE_OFFSETS[sq] + index];
+}
+
+// QUEEN ATTACKS - Combinazione ottimizzata rook + bishop
 inline U64 getQueenAttacks(int8_t sq, U64 occ) noexcept {
-    return getBishopAttacks(sq, occ) | getRookAttacks(sq, occ);
+    const uint32_t rookIndex = static_cast<uint32_t>(
+        ((occ & ROOK_MASKS[sq]) * ROOK_MAGICS[sq]) >> ROOK_SHIFTS[sq]
+    );
+    
+    const uint32_t bishopIndex = static_cast<uint32_t>(
+        ((occ & BISHOP_MASKS[sq]) * BISHOP_MAGICS[sq]) >> BISHOP_SHIFTS[sq]
+    );
+    
+    return ROOK_ATTACK_LOOKUP[ROOK_TABLE_OFFSETS[sq] + rookIndex] | 
+           BISHOP_ATTACK_LOOKUP[BISHOP_TABLE_OFFSETS[sq] + bishopIndex];
 }
 
 

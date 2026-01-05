@@ -472,14 +472,14 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     bb = bishops;
     while (bb) {
         const uint8_t from = poplsb(bb);
-        uint64_t mask = pieces::BISHOP_MAGIC_INFO[from].getAttacks(occ) & ~ownOcc;
+        uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
     bb = rooks;
     while (bb) {
         const uint8_t from = poplsb(bb);
-        uint64_t mask = pieces::ROOK_MAGIC_INFO[from].getAttacks(occ) & ~ownOcc;
+        uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
@@ -590,14 +590,14 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // Bishops and Queens (diagonal)
         uint64_t diagSliders = b.bishops_bb[side] | b.queens_bb[side];
         if (diagSliders) [[likely]] {
-            uint64_t bishopAtks = pieces::BISHOP_MAGIC_INFO[sq].getAttacks(occ);
+            uint64_t bishopAtks = pieces::getBishopAttacks(sq, occ);
             attackers |= diagSliders & bishopAtks;
         }
         
         // Rooks and Queens (orthogonal)
         uint64_t orthSliders = b.rooks_bb[side] | b.queens_bb[side];
         if (orthSliders) [[likely]] {
-            uint64_t rookAtks = pieces::ROOK_MAGIC_INFO[sq].getAttacks(occ);
+            uint64_t rookAtks = pieces::getRookAttacks(sq, occ);
             attackers |= orthSliders & rookAtks;
         }
         
