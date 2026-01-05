@@ -161,6 +161,7 @@ public:
     int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     int64_t evalCastlingBonus(const chess::Board& b) noexcept;
     int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
     int64_t evalEarlyKing(const chess::Board& b) noexcept;
     int64_t evalEarlyRook(const chess::Board& b) noexcept;
     int64_t evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept;

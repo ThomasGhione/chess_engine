@@ -279,6 +279,34 @@ int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexce
     return (side == 0) ? score : -score;
 }
 
+// Premia lo sviluppo di cavalli e alfieri fuori dalla casa base
+int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
+    int64_t score = 0;
+    
+    // Caselle iniziali per i pezzi minori bianchi
+    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 per cautela
+    // Caselle iniziali per i pezzi minori neri
+    constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 7 & 8
+    
+    // Cavalli bianchi sviluppati (non in b1, g1)
+    const uint64_t whiteKnightsDeveloped = b.knights_bb[0] & ~WHITE_MINOR_START;
+    score += __builtin_popcountll(whiteKnightsDeveloped) * DEVELOPMENT_BONUS;
+    
+    // Cavalli neri sviluppati (non in b8, g8)
+    const uint64_t blackKnightsDeveloped = b.knights_bb[1] & ~BLACK_MINOR_START;
+    score -= __builtin_popcountll(blackKnightsDeveloped) * DEVELOPMENT_BONUS;
+    
+    // Alfieri bianchi sviluppati (non in c1, f1)
+    const uint64_t whiteBishopsDeveloped = b.bishops_bb[0] & ~WHITE_MINOR_START;
+    score += __builtin_popcountll(whiteBishopsDeveloped) * DEVELOPMENT_BONUS;
+    
+    // Alfieri neri sviluppati (non in c8, f8)
+    const uint64_t blackBishopsDeveloped = b.bishops_bb[1] & ~BLACK_MINOR_START;
+    score -= __builtin_popcountll(blackBishopsDeveloped) * DEVELOPMENT_BONUS;
+    
+    return score;
+}
+
 int64_t Engine::evalEarlyKing(const chess::Board& b) noexcept {
     int64_t score = 0;
 
@@ -674,6 +702,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Focus: development, king safety, avoid early mistakes
     // ===================================================
     if (isOpening) {
+        // CRITICAL: Incentivare sviluppo dei pezzi minori!
+        eval += evalMinorPieceDevelopment(board);
+        
         // Development penalties (re e torre non sviluppati)
         eval += evalEarlyKing(board);
         eval += evalEarlyRook(board);
@@ -685,7 +716,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Basic piece safety (avoid hanging pieces)
         eval += evalHangingPieces(board, attackData);
         
-        // Center control è importante in opening
+        // Center control è FONDAMENTALE in opening
         eval += evalCentralControl(whitePawns, blackPawns);
         
         // Knight positioning (avoid rim)
@@ -706,6 +737,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Transition phase: continue development, prepare attacks
     // ===================================================
     else if (isEarlyMiddlegame) {
+        // Continua a incentivare sviluppo
+        eval += evalMinorPieceDevelopment(board);
+        
         // Castling still important
         eval += evalCastlingBonus(board);
         

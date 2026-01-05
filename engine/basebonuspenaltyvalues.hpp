@@ -19,11 +19,11 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 // ===================================================
 // PAWN STRUCTURE EVALUATION
 // ===================================================
-inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -10;      // ridotto da -15
-inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -12;     // ridotto da -15
-inline static constexpr int64_t BACKWARD_PAWN_PENALTY = -8;      // ridotto da -10
-inline static constexpr int64_t PASSED_PAWN_BONUS = 20;          // ridotto da 25
-inline static constexpr int64_t CENTER_CONTROL_BONUS = 8;        // ridotto da 20
+inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -20;      // aumentato per scoraggiare push eccessivo
+inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
+inline static constexpr int64_t BACKWARD_PAWN_PENALTY = -12;     // aumentato
+inline static constexpr int64_t PASSED_PAWN_BONUS = 15;          // ridotto (meno incentivo a pushare)
+inline static constexpr int64_t CENTER_CONTROL_BONUS = 25;       // TRIPLICATO! Centro è fondamentale
 
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
@@ -81,10 +81,10 @@ inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 20;  // ridotto da 2
 // ===================================================
 // DEVELOPMENT & INITIATIVE
 // ===================================================
-inline static constexpr int64_t INIT_BONUS_MG = 10;    // bonus iniziativa mid-game
+inline static constexpr int64_t INIT_BONUS_MG = 15;    // bonus iniziativa mid-game (aumentato)
 inline static constexpr int64_t INIT_BONUS_EG = 3;     // bonus iniziativa end-game
-inline static constexpr int64_t EARLY_ROOK_PENALTY = -15;  // ridotto da -20
-inline static constexpr int64_t DEVELOPMENT_BONUS = 8;     // ridotto da 10
+inline static constexpr int64_t EARLY_ROOK_PENALTY = -30;  // RADDOPPIATO per evitare torre troppo presto
+inline static constexpr int64_t DEVELOPMENT_BONUS = 15;    // RADDOPPIATO! Sviluppo è critico
 
 // ===================================================
 // MOVE ORDERING (SEARCH)
@@ -96,8 +96,8 @@ static constexpr int64_t KILLER2_BONUS = 1900;
 // ===================================================
 // KNIGHT & BISHOP POSITIONING
 // ===================================================
-inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 20;  // ridotto da 30
-inline static constexpr int64_t BISHOP_PAIR_BONUS = 25;     // aumentato da 10 (importante!)
+inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 30;  // aumentato (cavalli ben piazzati)
+inline static constexpr int64_t BISHOP_PAIR_BONUS = 30;     // aumentato (coppia alfieri importante)
 
 // ===================================================
 // GAME PHASE
