@@ -74,8 +74,19 @@ board.unmovePiece(state);  // restore previous state
 
 `MoveState` contains all information needed to undo a move (captured pieces, castling rights, en passant, etc.).
 
-#### 4. Magic Bitboards
-The `pieces` namespace uses magic bitboards for sliding piece attack generation (rooks, bishops, queens). These are pre-computed lookup tables that provide O(1) attack map retrieval.
+#### 4. Attack Generation - Magic Bitboards (IN PROGRESS)
+
+**Current Implementation** (`piece/piece.hpp`):
+- Sliding pieces (Rook, Bishop, Queen) use **ray-based approach**
+- Function `ray()` with directional masks and branches
+- ~40-60 CPU cycles per attack lookup
+
+**Work in Progress** - Magic Bitboards Implementation:
+- Replacing ray-based with **magic bitboards** for 8-12x speedup
+- Pre-computed lookup tables with perfect hashing
+- O(1) attack retrieval without branches
+- See `magic-bitboards-plan.md` for complete design
+- Phase 1 completed: `piece/magic_numbers.hpp` created with hardcoded data
 
 ### Engine Search Strategy
 
@@ -129,6 +140,36 @@ Generated PDF contains detailed architecture, component descriptions, evaluation
 **Windows**: If Unicode chess symbols don't render, run `chcp 65001` before executing the program. Use CMD if PowerShell has issues.
 
 **Linux/WSL**: Unicode support is typically available by default in modern terminals.
+
+## Work in Progress
+
+### Magic Bitboards Implementation
+
+**Status**: Phase 1 completed (2026-01-05)
+
+**Goal**: Replace ray-based sliding piece attack generation with magic bitboards for 8-12x speedup.
+
+**Files**:
+- `magic-bitboards-plan.md`: Complete implementation plan (design, roadmap, 5 phases)
+- `piece/magic_numbers.hpp`: Hardcoded magic numbers and masks (Phase 1 ✅)
+  - `ROOK_MAGICS[64]`: Magic numbers from [magic-bits library](https://github.com/goutham/magic-bits)
+  - `BISHOP_MAGICS[64]`: Magic numbers from magic-bits library
+  - `ROOK_MASKS[64]`: Relevant occupancy masks (calculated)
+  - `BISHOP_MASKS[64]`: Relevant occupancy masks (calculated)
+
+**Next Steps**:
+- Phase 2: Verify magic_numbers.hpp (optional)
+- Phase 3: Implement in `piece.hpp` (struct MagicData, init functions, new lookup functions)
+- Phase 4: Integration in Engine constructor and testing
+- Phase 5: Benchmark, cleanup ray-based code, final optimizations
+
+**Technical Details**:
+- Magic bitboards use perfect hashing: `index = ((occupancy & mask) * magic) >> shift`
+- Attack tables: ~800 KB (Rook) + ~40 KB (Bishop)
+- Expected total engine speedup: 5-15%
+- See plan document for complete architecture and implementation steps
+
+---
 
 ## Code Style
 
