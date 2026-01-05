@@ -194,7 +194,7 @@ int64_t Engine::evaluatePassiveRooksFast(const chess::Board& b, uint64_t occ) no
             const int file = sq & 7;
             const int rank = sq >> 3;
 
-            const uint64_t attacks = pieces::getRookAttacks(sq, occ);
+            const uint64_t attacks = pieces::ROOK_MAGIC_INFO[sq].getAttacks(occ);
             const int mobility = __builtin_popcountll(attacks & ~occ);
 
             // Low mobility
@@ -359,7 +359,7 @@ int64_t Engine::evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) n
             constexpr int64_t LOW_MOBILITY_BISHOP_VALUE_PENALTY = 20;
             constexpr int64_t PINNED_BISHOP_VALUE_PENALTY = 40;
             const int sq = poplsbIndex(bishops);
-            const int mobility = __builtin_popcountll((pieces::getBishopAttacks(sq, occ)) & ~occ);
+            const int mobility = __builtin_popcountll((pieces::BISHOP_MAGIC_INFO[sq].getAttacks(occ)) & ~occ);
             if (mobility == 0) score -= sign * PINNED_BISHOP_VALUE_PENALTY;
             else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_VALUE_PENALTY;
         }
@@ -368,7 +368,7 @@ int64_t Engine::evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) n
             constexpr int64_t LOW_MOBILITY_ROOK_VALUE_PENALTY = 30;
             constexpr int64_t PINNED_ROOK_VALUE_PENALTY = 30;
             const int sq = poplsbIndex(rooks);
-            const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
+            const int mobility = __builtin_popcountll(pieces::ROOK_MAGIC_INFO[sq].getAttacks(occ) & ~occ);
             if (mobility == 0) score -= sign * PINNED_ROOK_VALUE_PENALTY;
             else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_VALUE_PENALTY;
         }
@@ -596,7 +596,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         uint64_t bishops = b.bishops_bb[side];
         while (bishops) {
             const int sq = poplsbIndex(bishops);
-            uint64_t attacks = pieces::getBishopAttacks(sq, occ);
+            uint64_t attacks = pieces::BISHOP_MAGIC_INFO[sq].getAttacks(occ);
             data[side].bishopAttacks |= attacks;
             data[side].bishopMobility += __builtin_popcountll(attacks & ~occ);
         }
@@ -606,7 +606,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         uint64_t rooks = b.rooks_bb[side];
         while (rooks) {
             const int sq = poplsbIndex(rooks);
-            uint64_t attacks = pieces::getRookAttacks(sq, occ);
+            uint64_t attacks = pieces::ROOK_MAGIC_INFO[sq].getAttacks(occ);
             data[side].rookAttacks |= attacks;
             data[side].rookMobility += __builtin_popcountll(attacks & ~occ);
         }
