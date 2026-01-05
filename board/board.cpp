@@ -305,10 +305,15 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     // Generate attacks and pushes using magic bitboards
     const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
     const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy);
-    const uint64_t bitMap = attacks | pushes;
     
+    // Check for valid normal moves:
+    // 1. Capture: Must be in attack set AND destination must be occupied
+    // 2. Push: Must be in push set (pushes already accounts for blockers)
+    const bool isCapture = (attacks & toBit) && ((occupancy & toBit) != 0ULL);
+    const bool isPush = (pushes & toBit); // getPawnForwardPushes guarantees empty squares
+
     // Try normal pawn moves first (most common case)
-    if ((bitMap & toBit) != 0ULL) [[likely]] {
+    if (isCapture || isPush) [[likely]] {
         // King safety check for normal pawn moves
         uint64_t occNew = occupancy;
         occNew &= ~(1ULL << fromIndex);

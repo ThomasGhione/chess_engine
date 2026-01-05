@@ -27,7 +27,7 @@ bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) 
 }
 
 // Helper to handle terminal nodes and transposition table lookups
-bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score) noexcept {
+bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score, bool useTT) noexcept {
     
     // const uint8_t activeColor = b.getActiveColor();
 
@@ -61,7 +61,7 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
 
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds) noexcept {
+                                       bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
@@ -104,14 +104,14 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             if (moveIndex >= 4) reduction += 1; // +1 se è molto late (>= 4a mossa)
             
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
-            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             
             // Re-search a profondità piena se la mossa ridotta è promettente
             if (score > bounds.alpha && score < bounds.beta) {
-                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             }
         } else {
-            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1);
+            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
         }
 
         // Undo move
@@ -122,8 +122,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         // Beta cutoff: update killer moves and history, then break
         if (bounds.alpha >= bounds.beta) {
-            this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
-                                                  bounds.alpha, bounds.beta, history, killerMoves);
+            if (allowUpdates) {
+                this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
+                                                      bounds.alpha, bounds.beta, history, killerMoves);
+            }
             break;
         }
         ++moveIndex;
@@ -188,7 +190,11 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         chess::Board::MoveState state;
         this->executeMove(firstMove, state);
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
-        this->undoAndUpdateMove(firstMove, state, usIsWhite, score, alpha, beta, bestScore, bestMove);
+        // CRITICAL: Undo PRIMA di lanciare thread paralleli per evitare race sulla copia di this->board
+        this->board.undoMove(firstMove, state);
+        
+        // Update best move DOPO l'undo
+        this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
 
     if (moves.size <= 1) [[unlikely]] return bestMove;
@@ -202,7 +208,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     #pragma omp parallel for schedule(static, 1)
     for (int i = 1; i < moves.size; ++i) {
-        chess::Board threadBoard = this->board; // copia locale
+        chess::Board threadBoard = this->board; // copia locale - ORA SICURA!
         const auto& m = moves[i];
         chess::Board::MoveState state;
 
@@ -215,7 +221,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         
         // FIXED: Usa finestra ORIGINALE (non aggiornata dai thread)
         // Questo garantisce che tutti i thread vedano gli stessi bounds = DETERMINISMO
-        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly);
+        // Passiamo useTT=false per evitare race condition su TT e History/Killer
+        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false);
         threadBoard.undoMove(m, state);
 
         threadScores[i] = score;
@@ -301,7 +308,7 @@ void Engine::search(uint64_t depth) noexcept {
 #endif
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply) noexcept {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT) noexcept {
     this->nodesSearched++;
 
     // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
@@ -314,7 +321,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
-    if (this->handleSearchPrelude(b, depth, bounds, score)) {
+    if (this->handleSearchPrelude(b, depth, bounds, score, useTT)) {
         return score;
     }
 
@@ -356,13 +363,15 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor};
 
     // Search through all moves and find best move with score
-    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds);
+    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT);
     int64_t best = result.score;
 
     // Save position to transposition table
-    const uint64_t hashKey = computeHashKey(b);
-    TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta, 0};
-    this->saveTTEntry(ttInfo);
+    if (useTT) {
+        const uint64_t hashKey = computeHashKey(b);
+        TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta, 0};
+        this->saveTTEntry(ttInfo);
+    }
     return best;
 }
 
