@@ -1,7 +1,7 @@
 // Performance tests for the chess engine
 
-#include "../engine.hpp"
-#include "../../tests/ut.hpp"
+#include "../../engine.hpp"
+#include "../../../tests/ut.hpp"
 
 namespace ut = boost::ut;
 
@@ -103,7 +103,8 @@ ut::suite performanceEngineSuite = [] {
     auto duration12 = std::chrono::duration_cast<std::chrono::nanoseconds>(end12 - start12).count();
     printf("Bad bishop evaluation took %lu ns\n", duration12);
 
-    expect(false) << "Benchmark completed.";
+    expect(true);
+    printf("Benchmark completed.");
   };
 
 };

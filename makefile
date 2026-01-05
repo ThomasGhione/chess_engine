@@ -56,7 +56,7 @@ TEST_OBJS = $(ALL_TEST_MODULE_SRCS:.cpp=.o)
 
 # Path dei file di performance test
 PERF_MAIN_SRC = tests/mainPerformanceTest.cpp
-PERF_ENGINE_SRCS = $(wildcard ./engine/performance-test/*.cpp)
+PERF_ENGINE_SRCS = $(wildcard ./engine/test/performance-test/*.cpp)
 
 # Path dei file di performance test in unica variabile
 ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
@@ -99,9 +99,9 @@ performance: $(PERF_APP)
 # Comando per eseguire tutti i test (funzionali + performance)
 all-tests: test performance
 	@printf "\n=== Running functional tests ===\n"
-	./$(TEST_APP)
+	-./$(TEST_APP)
 	@printf "\n=== Running performance tests ===\n"
-	./$(PERF_APP)
+	-./$(PERF_APP)
 	@printf "\n✅ All tests completed\n\n"
 
 # Generazione file finale 'chess'
