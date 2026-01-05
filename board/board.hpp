@@ -53,8 +53,8 @@ public:
         uint16_t prevFullMoveClock{};
 
         // En passant and castling rights
-        std::array<Coords, 2> prevEnPassant{};
-        uint8_t               prevCastle{};   // bitmask copy of castle
+        Coords  prevEnPassant{};
+        uint8_t prevCastle{};   // bitmask copy of castle
         uint8_t               prevHasMoved{}; // bitmask copy of hasMoved
 
         // Piece information related to the move
@@ -86,7 +86,7 @@ public:
     Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
         , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
-        , enPassant({Coords(), Coords()}) 
+        , enPassant() 
         , halfMoveClock(0)
         , fullMoveClock(1)
         , activeColor(WHITE)
@@ -356,13 +356,10 @@ public:
 
     std::string fromBoardToFen() const;
 
-    // Ritorna la casa di en-passant per il colore dato, se esiste.
+    // Ritorna la casa di en-passant, se esiste.
     // Se non esiste, ritorna una Coords "vuota" (rank e file -1).
-    Coords getEnPassant(uint8_t color) const noexcept {
-        if (color > 1) {
-            return Coords{Coords::INVALID_COORDS, Coords::INVALID_COORDS};
-        }
-        return enPassant[color];
+    Coords getEnPassant() const noexcept {
+        return enPassant;
     }
 
 private:
@@ -382,7 +379,7 @@ private:
 
     uint8_t castle = 0x0F; // castle: 4 bits (KQkq) -> 0000 1111 = all castling rights available
     uint8_t hasMoved = 0x00; // hasMoved: 6 bits (K, Ra, Rh, k, ra, rh)
-    std::array<Coords, 2> enPassant = {Coords{}, Coords{}}; // en-passant square per WHITE e BLACK
+    Coords enPassant{}; // Single en-passant square (only one valid per position)
     
     uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
     uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
@@ -394,6 +391,70 @@ private:
     uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
     // uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
     // uint8_t blackKingIndex = 64;
+
+    // ============================================
+    // HELPER FUNCTIONS FOR canMoveToBB
+    // ============================================
+    
+    // Lazy double-check detection (called only when inChk=true && fromType != KING)
+    [[nodiscard]] inline bool isDoubleCheck(uint8_t movingColor) const noexcept;
+    
+    // Pawn move validation with en-passant optimization
+    [[nodiscard]] inline bool isPawnMoveLegal(
+        uint8_t fromIndex, 
+        uint8_t toIndex,
+        uint64_t toBit,
+        uint8_t movingColor,
+        uint8_t destPiece,
+        uint8_t destColor
+    ) const noexcept;
+    
+    // En passant move validation
+    [[nodiscard]] inline bool isPawnEnPassantLegal(
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t movingColor
+    ) const noexcept;
+    
+    // Simple piece pseudo-legal check (Knight/Bishop/Rook/Queen)
+    [[nodiscard]] static inline bool isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept;
+    
+    // King move validation (normal moves + castling delegation)
+    [[nodiscard]] inline bool isKingMoveLegal(
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint64_t toBit,
+        uint8_t movingColor
+    ) const noexcept;
+    
+    // Castling dispatcher
+    [[nodiscard]] inline bool canCastleToSquare(
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t movingColor
+    ) const noexcept;
+    
+    // Generic castling validation (consolidated logic)
+    [[nodiscard]] inline bool canCastleGeneric(
+        bool isWhite,
+        uint8_t fromIndex,
+        bool isKingside
+    ) const noexcept;
+    
+    // Kingside castling validation
+    [[nodiscard]] inline bool canCastleKingside(bool isWhite, uint8_t fromIndex) const noexcept;
+    
+    // Queenside castling validation
+    [[nodiscard]] inline bool canCastleQueenside(bool isWhite, uint8_t fromIndex) const noexcept;
+    
+    // King safety check for non-king, non-pawn pieces
+    [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t movingColor,
+        uint8_t destPiece,
+        uint8_t destColor
+    ) const noexcept;
 
     // Helper: check if king at kingSq is attacked by byColor using custom bitboards
     bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,

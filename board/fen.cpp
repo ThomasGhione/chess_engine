@@ -129,7 +129,7 @@ void Board::fromFenToBoard(const std::string& fen) {
     }
 
     
-    this->enPassant = {parseEnPassant(enPassantSection), Coords{}};
+    this->enPassant = parseEnPassant(enPassantSection);
 
     this->halfMoveClock = safeParseInt(halfMoveSection, 0, 255, 0);
     this->fullMoveClock = safeParseInt(fullMoveSection, 1, 255, 1);
@@ -192,15 +192,13 @@ std::string Board::castlingToFen() const {
 }
 // Converts en passant target square into FEN notation
 std::string Board::enPassantToFen() const {
-    for (const auto& candidate : enPassant) {
-        if (Coords::isInBounds(candidate)) {
-            std::string ep;
-            // file: 0-7 → 'a'-'h'
-            ep.push_back(static_cast<char>('a' + candidate.file()));
-            // rank: 0-7 → '8'-'1' (Board convention: rank 0 = row 8)
-            ep.push_back(static_cast<char>('8' - candidate.rank()));
-            return ep;
-        }
+    if (Coords::isInBounds(enPassant)) {
+        std::string ep;
+        // file: 0-7 → 'a'-'h'
+        ep.push_back(static_cast<char>('a' + enPassant.file()));
+        // rank: 0-7 → '8'-'1' (Board convention: rank 0 = row 8)
+        ep.push_back(static_cast<char>('8' - enPassant.rank()));
+        return ep;
     }
     return "-";
 }

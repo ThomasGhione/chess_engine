@@ -51,7 +51,7 @@ Engine::Engine(std::string fen)
 
 void Engine::reset() noexcept {
     board = chess::Board();
-    depth = 6;
+    depth = 10;
     eval = 0;
     isPlayerWhite = true;
     nodesSearched = 0;

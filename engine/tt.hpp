@@ -156,8 +156,8 @@ inline uint64_t computeHashKey(const chess::Board& board) {
         (board.getCastle(3) ? 8u : 0u);
     hashKey ^= detail::ZOBRIST.castling[castlingMask];
 
-    // En-passant: usa il getter leggero per il side to move corrente
-    const chess::Coords epSquare = board.getEnPassant((board.getActiveColor() == chess::Board::WHITE) ? 0 : 1);
+    // En-passant: single EP square
+    const chess::Coords epSquare = board.getEnPassant();
     const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(chess::Coords::isInBounds(epSquare)));
     hashKey ^= detail::ZOBRIST.enPassant[epSquare.file()] & epMask;
 

@@ -19,9 +19,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     const uint8_t destBefore = this->get(to);
 
     // Clear en passant by default; may set again after a double push
-    Coords prevEp = enPassant[0];
-    enPassant[0] = Coords{};
-    enPassant[1] = Coords{};
+    Coords prevEp = enPassant;
+    enPassant = Coords{};
 
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
@@ -134,7 +133,7 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
         const int dr = static_cast<int>(toIndex >> 3) - static_cast<int>(fromIndex >> 3);
         if (dr == 2 || dr == -2) {
             const uint8_t midIndex = (fromIndex + toIndex) >> 1; // Average of indices
-            enPassant[0] = Coords{midIndex};
+            enPassant = Coords{midIndex};
         }
     }
 
@@ -192,257 +191,330 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
 }
 
 bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {
-    uint64_t bitMap = 0ULL;
-
-    const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
-    const uint8_t movingColor = this->getColor(from);
-    const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
-
+    // ============================================
+    // PHASE 1: FAST PATH - Early Validation
+    // ============================================
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
-    
     const uint64_t toBit = (1ULL << toIndex);
-
-    // Pre-calculate destination piece info (used multiple times)
+    
+    const uint8_t fromType = this->get(from) & this->MASK_PIECE_TYPE;
+    const uint8_t movingColor = this->getColor(from);
+    
     const uint8_t destPiece = this->get(to);
     const uint8_t destColor = destPiece & MASK_COLOR;
-
-    // Early exit: can't capture own piece
-    if (destPiece != EMPTY && destColor == movingColor) return false;
-
-    if (inChk && fromType != KING) {
-        uint64_t attackerCount = 0; // Detect check state and attackers for restrictions (double check logic)
-
-        // Use the king bitboard to find king index quickly
-        const uint8_t side = (movingColor == WHITE) ? 0 : 1;
-
-        uint8_t kingIndex = static_cast<uint8_t>(__builtin_ctzll(kings_bb[side])); // Count trailing zeros = find LSB
-
-        const uint8_t oppSide = (oppColor == WHITE) ? 0 : 1; // Convert to array index
-        
-        // Pawns
-        attackerCount += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
-        if (attackerCount >= 2) return false;
-        
-        // Knights
-        attackerCount += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
-        if (attackerCount >= 2) return false;
-
-        // Kings (adjacent)
-        attackerCount += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
-        if (attackerCount >= 2) return false;
-
-        // Sliding rook/queen (orthogonal)
-        attackerCount += __builtin_popcountll(pieces::getRookAttacks(kingIndex, occupancy) & 
-                                                (rooks_bb[oppSide] | queens_bb[oppSide]));
-                                                
-        if (attackerCount >= 2) return false;
-        
-        // Sliding bishop/queen (diagonal)
-        attackerCount += __builtin_popcountll(pieces::getBishopAttacks(kingIndex, occupancy) & 
-                                                (bishops_bb[oppSide] | queens_bb[oppSide]));
-        
-        // Double check: only king moves allowed
-        if (attackerCount >= 2) return false;
-    }
-
     
-    switch (fromType) { // piece type only
-        case PAWN: {
-            const bool isWhite = movingColor == WHITE;
-            
-            const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
-            const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy);
-            bool legal = false;
-            bool isEnPassant = false;
-            
-            // En passant: diagonal into empty square matching enPassant target
-            if ((attacks & toBit) && ((occupancy & toBit) == 0ULL)) {
-                if (Coords::isInBounds(enPassant[0]) && toIndex == enPassant[0].index) {
-                    legal = true;
-                    isEnPassant = true;
-                }
-            }
-            // Diagonal captures (must be occupied)
-            if (!legal) {
-                if ((attacks & toBit) && ((occupancy & toBit) != 0ULL)) {
-                    legal = true;
-                }
-                // Forward pushes (must be empty)
-                if ((pushes & toBit) && ((occupancy & toBit) == 0ULL)) {
-                    legal = true;
-                }
-                if (!legal) return false;
-            }
+    // Early exit: can't capture own piece
+    if (destPiece != EMPTY && destColor == movingColor) [[unlikely]] {
+        return false;
+    }
+    
+    // Lazy double-check evaluation
+    if (inChk && fromType != KING) [[unlikely]] {
+        if (isDoubleCheck(movingColor)) [[unlikely]] {
+            return false; // Only king moves allowed in double-check
+        }
+    }
+    
+    // ============================================
+    // PHASE 2: PSEUDO-LEGAL GENERATION + VALIDATION
+    // ============================================
+    switch (fromType) {
+        case PAWN:
+            return isPawnMoveLegal(fromIndex, toIndex, toBit, movingColor, destPiece, destColor);
+        
+        case KNIGHT: {
+            const uint64_t bitMap = pieces::KNIGHT_ATTACKS[fromIndex];
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+        }
+        
+        case BISHOP: {
+            const uint64_t bitMap = pieces::getBishopAttacks(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+        }
+        
+        case ROOK: {
+            const uint64_t bitMap = pieces::getRookAttacks(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+        }
+        
+        case QUEEN: {
+            const uint64_t bitMap = pieces::getQueenAttacks(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+        }
+        
+        case KING:
+            return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
+        
+        [[unlikely]] default:
+            return false;
+    }
+}
 
-            // Simulate pawn move (including en-passant) using bitboards/occupancy only
-            // to ensure king safety without copying the entire Board.
-            const uint8_t side = (movingColor == WHITE) ? 0 : 1; // Convert to array index
-            const uint8_t oppSide = side ^ 1;
+// ============================================
+// HELPER FUNCTIONS FOR canMoveToBB
+// ============================================
 
-            // New occupancy after the move
-            uint64_t occNew = occupancy;
-            const uint64_t fromMask = (1ULL << fromIndex);
-            const uint64_t toMask   = (1ULL << toIndex);
-            occNew &= ~fromMask;
-            occNew |=  toMask;
+// Lazy double-check detection - called ONLY when inChk=true && fromType != KING
+[[nodiscard]] inline bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
+    const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+    const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
+    const uint8_t oppSide = side ^ 1;
+    
+    uint_fast32_t attackers = 0;
+    
+    // Fast path: non-sliding pieces
+    attackers += __builtin_popcountll(pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide]);
+    if (attackers >= 2) return true;
+    
+    attackers += __builtin_popcountll(pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
+    if (attackers >= 2) return true;
+    
+    attackers += __builtin_popcountll(pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
+    if (attackers >= 2) return true;
+    
+    // Sliding pieces
+    attackers += __builtin_popcountll(pieces::getRookAttacks(kingIndex, occupancy) & 
+                                      (rooks_bb[oppSide] | queens_bb[oppSide]));
+    if (attackers >= 2) return true;
+    
+    attackers += __builtin_popcountll(pieces::getBishopAttacks(kingIndex, occupancy) & 
+                                      (bishops_bb[oppSide] | queens_bb[oppSide]));
+    
+    return attackers >= 2;
+}
 
-            // Optimized: compute only the exclusion mask for captured pieces
-            uint64_t excludeMask = 0ULL;
-
-            // Handle captures: normal capture on 'to' or en-passant captured pawn
-            if (isEnPassant) {
-                // Coords convention: index increases with rank (a8=0 -> h1=63)
-                // White captures en passant: captured pawn is at higher rank (toIndex + 8)
-                // Black captures en passant: captured pawn is at lower rank (toIndex - 8)
-                const int8_t captureOffset = isWhite ? 8 : -8;
-                const uint8_t capIndex = toIndex + captureOffset;
-                excludeMask = (1ULL << capIndex);
-                occNew &= ~excludeMask;
-            } else if (destPiece != EMPTY && destColor == oppColor) {
-                // Normal capture: exclude captured piece
-                excludeMask = toMask;
-            }
-
-            // King square (unchanged for pawn moves)
-            const uint64_t kingBB = kings_bb[side];
-            if (!kingBB) [[unlikely]] return false; // invalid position: treat as illegal
-            const uint8_t kingSq = __builtin_ctzll(kingBB);
-
-            // Check if king is attacked using existing bitboards + exclusion mask
-            // Pass bitboards directly from class members - zero copies!
-            if (isKingAttackedCustom(kingSq, oppColor, occNew,
+// Pawn move validation with optimized en-passant
+[[nodiscard]] inline bool Board::isPawnMoveLegal(
+    uint8_t fromIndex, 
+    uint8_t toIndex,
+    uint64_t toBit,
+    uint8_t movingColor,
+    uint8_t destPiece,
+    uint8_t destColor
+) const noexcept {
+    const bool isWhite = (movingColor == WHITE);
+    const uint8_t side = isWhite ? 0 : 1;
+    const uint8_t oppSide = side ^ 1;
+    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    
+    // Generate attacks and pushes using magic bitboards
+    const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
+    const uint64_t pushes  = pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy);
+    const uint64_t bitMap = attacks | pushes;
+    
+    // Try normal pawn moves first (most common case)
+    if ((bitMap & toBit) != 0ULL) [[likely]] {
+        // King safety check for normal pawn moves
+        uint64_t occNew = occupancy;
+        occNew &= ~(1ULL << fromIndex);
+        occNew |= toBit;
+        
+        const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) ? toBit : 0ULL;
+        const uint64_t kingBB = kings_bb[side];
+        if (!kingBB) [[unlikely]] return false;
+        const uint8_t kingSq = __builtin_ctzll(kingBB);
+        
+        return !isKingAttackedCustom(kingSq, oppColor, occNew,
                                      pawns_bb[oppSide] & ~excludeMask,
                                      knights_bb[oppSide] & ~excludeMask,
                                      bishops_bb[oppSide] & ~excludeMask,
                                      rooks_bb[oppSide] & ~excludeMask,
                                      queens_bb[oppSide] & ~excludeMask,
-                                     kings_bb[oppSide] & ~excludeMask)) {
-                return false;
-            }
-
-            return true;
-        }
-        case KNIGHT:
-            bitMap = pieces::KNIGHT_ATTACKS[fromIndex]; break;
-        case BISHOP:
-            bitMap = pieces::getBishopAttacks(fromIndex, occupancy); break;
-        case ROOK:
-            bitMap = pieces::getRookAttacks(fromIndex, occupancy);  break;
-        case QUEEN:
-            bitMap = pieces::getQueenAttacks(fromIndex, occupancy); break;
-        case KING: {
-            bitMap = pieces::KING_ATTACKS[fromIndex];
-            // Disallow king moves into attacked destination squares
-            if (fromIndex != toIndex) { // Optimize: direct index comparison
-                const uint8_t oppColor = movingColor == WHITE ? BLACK : WHITE; // Toggle color
-                // CRITICAL: usa excludeSquare per evitare ray-blocking del re stesso
-                if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor, fromIndex)) {
-                    // Even if it's a normal king move square, it's attacked; reject
-                    // (Castling logic handled below after this block.)
-                    // We don't early return yet if castling attempt because castling handled separately
-                    // We'll clear the bit to force failure unless castling returns true later.
-                    bitMap &= ~toBit;
-                }
-            }
-            // Castling legality: check rights, path emptiness, and safe squares
-            const uint8_t fromRank = fromIndex >> 3; // Extract rank
-            const uint8_t toRank = toIndex >> 3;
-            if (fromRank == toRank) { // Same rank check
-                const bool isWhite = (movingColor == WHITE);
-                const int df = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7); // file diff
-                const uint8_t kf = fromIndex & 7; // king file
-                // Only allow castling from the initial king square (e1=rank 7 for white, e8=rank 0 for black)
-                if (!((isWhite && fromRank == 7 && kf == 4) || (!isWhite && fromRank == 0 && kf == 4))) {
-                    break;
-                }
-                if (df == 2) { // kingside
-                    bool rights = isWhite
-                        ? ((castle & (1u << 0)) != 0u) // white O-O
-                        : ((castle & (1u << 2)) != 0u); // black O-O
-                    // Optimize: calculate indices directly from rank and file offsets
-                    const uint8_t f1Idx = fromIndex + 1; // kf+1
-                    const uint8_t f2Idx = fromIndex + 2; // kf+2
-                    const uint8_t rookIdx = fromIndex + 3; // kf+3
-                    const bool emptyBetween = (this->get(f1Idx) == EMPTY) && (this->get(f2Idx) == EMPTY);
-                    
-                    // Use bitboard to check rook presence (faster than get + mask)
-                    const uint8_t side = isWhite ? 0 : 1;
-                    const bool rookOk = (rooks_bb[side] & (1ULL << rookIdx)) != 0;
-                    
-                    if (rights && emptyBetween && rookOk) {
-                        const uint8_t opp = isWhite ? BLACK : WHITE;
-                        // Check all 3 squares at once (fromIndex, f1Idx, f2Idx)
-                        const uint64_t castlePath = (1ULL << fromIndex) | (1ULL << f1Idx) | (1ULL << f2Idx);
-                        if (isCastlePathSafe(castlePath, opp)) return true;
-                    }
-                } else if (df == -2) { // queenside
-                    const bool rights = isWhite
-                        ? ((castle & (1u << 1)) != 0u) // white O-O-O
-                        : ((castle & (1u << 3)) != 0u); // black O-O-O
-
-                    // Optimize: calculate indices directly
-                    const uint8_t d1Idx = fromIndex - 1; // kf-1
-                    const uint8_t d2Idx = fromIndex - 2; // kf-2
-                    const uint8_t d3Idx = fromIndex - 3; // kf-3
-                    const uint8_t rookIdx = fromIndex - 4; // kf-4
-                    const bool emptyBetween = (this->get(d1Idx) == EMPTY) && (this->get(d2Idx) == EMPTY) && (this->get(d3Idx) == EMPTY);
-
-                    // Use bitboard to check rook presence
-                    const uint8_t side = isWhite ? 0 : 1;
-                    const bool rookOk = (rooks_bb[side] & (1ULL << rookIdx)) != 0;
-
-                    if (rights && emptyBetween && rookOk) {
-                        const uint8_t opp = isWhite ? BLACK : WHITE;
-                        // Check all 3 squares at once (fromIndex, d1Idx, d2Idx)
-                        const uint64_t castlePath = (1ULL << fromIndex) | (1ULL << d1Idx) | (1ULL << d2Idx);
-                        if (isCastlePathSafe(castlePath, opp)) return true;
-                    }
-                }
-            }
-            break;
-        }
-        [[unlikely]] default: return false;
+                                     kings_bb[oppSide] & ~excludeMask);
     }
+    
+    // Try en passant if normal moves fail
+    return isPawnEnPassantLegal(fromIndex, toIndex, movingColor);
+}
 
-    if ((bitMap & toBit) == 0ULL) return false;
+// En passant move validation (extracted for clarity)
+[[nodiscard]] inline bool Board::isPawnEnPassantLegal(
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t movingColor
+) const noexcept {
+    // Early return: no en passant available
+    if (!Coords::isInBounds(enPassant)) [[likely]] return false;
+    
+    // Early return: destination doesn't match en passant square
+    if (toIndex != enPassant.index) [[likely]] return false;
+    
+    const bool isWhite = (movingColor == WHITE);
+    const uint8_t side = isWhite ? 0 : 1;
+    const uint8_t oppSide = side ^ 1;
+    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    
+    // Calculate captured pawn position
+    const int8_t epDir = isWhite ? 8 : -8;
+    const uint8_t capturedPawnIdx = static_cast<uint8_t>(toIndex + epDir);
+    
+    // Simulate en passant capture
+    uint64_t occNew = occupancy;
+    occNew &= ~(1ULL << fromIndex);
+    occNew &= ~(1ULL << capturedPawnIdx);
+    occNew |= (1ULL << toIndex);
+    
+    // King safety check
+    const uint64_t kingBB = kings_bb[side];
+    if (!kingBB) [[unlikely]] return false;
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    
+    return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                 pawns_bb[oppSide] & ~(1ULL << capturedPawnIdx),
+                                 knights_bb[oppSide],
+                                 bishops_bb[oppSide],
+                                 rooks_bb[oppSide],
+                                 queens_bb[oppSide],
+                                 kings_bb[oppSide]);
+}
 
+// Simple piece pseudo-legal check
+[[nodiscard]] inline bool Board::isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept {
+    return (bitMap & toBit) != 0ULL;
+}
 
-    // For any non-king, non-pawn move, ensure king safety (pins and check resolution)
-    if (fromType != KING && fromType != PAWN) {
-        const uint8_t side = (movingColor == WHITE) ? 0 : 1;
-        const uint8_t oppSide = side ^ 1;
+// King move validation (normal moves + castling)
+[[nodiscard]] inline bool Board::isKingMoveLegal(
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint64_t toBit,
+    uint8_t movingColor
+) const noexcept {
+    const uint64_t bitMap = pieces::KING_ATTACKS[fromIndex];
+    
+    // Normal king move: check if destination attacked
+    if (fromIndex != toIndex) [[likely]] {
+        const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
+        if ((bitMap & toBit) && isSquareAttacked(toIndex, oppColor, fromIndex)) {
+            // Destination attacked → check castling as fallback
+            return canCastleToSquare(fromIndex, toIndex, movingColor);
+        }
+    }
+    
+    // Normal move is safe OR castling is legal
+    return (bitMap & toBit) || canCastleToSquare(fromIndex, toIndex, movingColor);
+}
 
-        const uint64_t fromMask = (1ULL << fromIndex);
-        const uint64_t toMask   = (1ULL << toIndex);
+// Castling dispatcher
+[[nodiscard]] inline bool Board::canCastleToSquare(
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t movingColor
+) const noexcept {
+    const uint8_t fromRank = fromIndex >> 3;
+    const uint8_t toRank = toIndex >> 3;
+    const uint8_t fromFile = fromIndex & 7;
+    
+    // Early returns: invalid castling conditions
+    if (fromRank != toRank) return false;
+    if (fromFile != 4) return false;
+    
+    const bool isWhite = (movingColor == WHITE);
+    const uint8_t expectedRank = isWhite ? 7 : 0;
+    
+    if (fromRank != expectedRank) return false;
+    
+    // Calculate file delta
+    const int df = static_cast<int>(toIndex & 7) - 4;
+    
+    if (df == 2) return canCastleKingside(isWhite, fromIndex);
+    if (df == -2) return canCastleQueenside(isWhite, fromIndex);
+    
+    return false;
+}
 
-        // New occupancy after the move
-        uint64_t occNew = occupancy;
-        occNew &= ~fromMask;
-        occNew |=  toMask;
+// Generic castling validation (consolidated logic)
+[[nodiscard]] inline bool Board::canCastleGeneric(
+    bool isWhite,
+    uint8_t fromIndex,
+    bool isKingside
+) const noexcept {
+    const uint8_t side = isWhite ? 0 : 1;
+    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    
+    // Check castling rights
+    const uint8_t rightBit = isWhite 
+        ? (isKingside ? 0u : 1u)   // White O-O / O-O-O
+        : (isKingside ? 2u : 3u);  // Black O-O / O-O-O
+    
+    if ((castle & (1u << rightBit)) == 0u) return false;
+    
+    // Setup indices based on direction
+    const int8_t direction = isKingside ? 1 : -1;
+    const uint8_t sq1 = fromIndex + direction;
+    const uint8_t sq2 = fromIndex + 2 * direction;
+    const uint8_t rookIdx = isKingside ? (fromIndex + 3) : (fromIndex - 4);
+    
+    // Check empty squares (always check 2, for queenside check 3rd)
+    if (this->get(sq1) != EMPTY || this->get(sq2) != EMPTY) {
+        return false;
+    }
+    
+    if (!isKingside && this->get(fromIndex - 3) != EMPTY) {
+        return false;
+    }
+    
+    // Check rook presence
+    if ((rooks_bb[side] & (1ULL << rookIdx)) == 0ULL) {
+        return false;
+    }
+    
+    // Check castle path safety
+    const uint64_t castlePath = (1ULL << fromIndex) | (1ULL << sq1) | (1ULL << sq2);
+    return isCastlePathSafe(castlePath, oppColor);
+}
 
-        // King square (unchanged because king is not moving here)
-        const uint64_t kingBB = kings_bb[side];
-        if (!kingBB) [[unlikely]] return false;
-        const uint8_t kingSq = __builtin_ctzll(kingBB);
+// Kingside castling validation
+[[nodiscard]] inline bool Board::canCastleKingside(bool isWhite, uint8_t fromIndex) const noexcept {
+    return canCastleGeneric(isWhite, fromIndex, true);
+}
 
-        // Optimized: compute only the exclusion mask for captured piece (if any)
-        const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) ? toMask : 0ULL;
-        
-        // Check if king is attacked using existing bitboards + exclusion mask
-        // Pass bitboards directly from class members - zero copies!
-        if (isKingAttackedCustom(kingSq, oppColor, occNew,
+// Queenside castling validation
+[[nodiscard]] inline bool Board::canCastleQueenside(bool isWhite, uint8_t fromIndex) const noexcept {
+    return canCastleGeneric(isWhite, fromIndex, false);
+}
+
+// King safety check for non-king, non-pawn pieces
+[[nodiscard]] inline bool Board::verifyKingSafetyForSimplePiece(
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t movingColor,
+    uint8_t destPiece,
+    uint8_t destColor
+) const noexcept {
+    const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+    
+    // Early return: no king found (should never happen)
+    const uint64_t kingBB = kings_bb[side];
+    if (!kingBB) [[unlikely]] return false;
+    
+    const uint8_t oppSide = side ^ 1;
+    const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    
+    // Simulate move
+    uint64_t occNew = occupancy;
+    occNew &= ~(1ULL << fromIndex);
+    occNew |= (1ULL << toIndex);
+    
+    // Exclusion mask for captured piece
+    const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) 
+        ? (1ULL << toIndex) 
+        : 0ULL;
+    
+    // Zero-copy king safety check
+    return !isKingAttackedCustom(kingSq, oppColor, occNew,
                                  pawns_bb[oppSide] & ~excludeMask,
                                  knights_bb[oppSide] & ~excludeMask,
                                  bishops_bb[oppSide] & ~excludeMask,
                                  rooks_bb[oppSide] & ~excludeMask,
                                  queens_bb[oppSide] & ~excludeMask,
-                                 kings_bb[oppSide] & ~excludeMask)) {
-            return false;
-        }
-    }
-
-    return true;
+                                 kings_bb[oppSide] & ~excludeMask);
 }
 
 // ------------------------------------------------------------
@@ -532,7 +604,7 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
     
     // Early exit: if no sliding pieces, no attack possible
-    if (!(rooks | bishops | queens)) [[likely]] return false;
+    if (!(rooks | bishops | queens)) return false;
     
     // Sliding pieces
     if (pieces::getRookAttacks(kingSq, occ) & (rooks | queens)) return true;
@@ -580,7 +652,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
         
         // Castling (only if not in check)
-        if (!inChk) [[likely]] {
+        if (!inChk) {
             const uint8_t eIndex = (side == 0) ? 60 : 4;
             if (king == eIndex) {
                 if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;

@@ -171,7 +171,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const bool useYBWC = (moves.size >= 6 && this->depth >= 4);
     
     if (!useYBWC) {
-        // Sequential fallback
+        // Sequential fallback - DETERMINISTICO
         for (const auto& m : moves) {
             chess::Board::MoveState state;
             this->executeMove(m, state);
@@ -181,7 +181,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         return bestMove;
     }
 
-    // --- YBWC Parallel ---
+    // --- YBWC Parallel - FIXED per determinismo ---
+    // Prima mossa: ricerca completa con finestra piena
     {
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
@@ -192,9 +193,12 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     if (moves.size <= 1) [[unlikely]] return bestMove;
 
+    // CRITICAL FIX: Salva alpha/beta ORIGINALI prima del loop parallelo
+    // Tutti i thread devono vedere la STESSA finestra per garantire determinismo
+    const int64_t originalAlpha = alpha;
+    const int64_t originalBeta = beta;
+
     std::vector<int64_t> threadScores(moves.size, usIsWhite ? NEG_INF : POS_INF);
-    std::atomic<int64_t> alphaGlobal(alpha);
-    std::atomic<int64_t> betaGlobal(beta);
 
     #pragma omp parallel for schedule(static, 1)
     for (int i = 1; i < moves.size; ++i) {
@@ -208,32 +212,25 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         else [[likely]] {
             threadBoard.doMove(m, state);
         }
-        int64_t localAlpha = alphaGlobal.load(std::memory_order_relaxed);
-        int64_t localBeta  = betaGlobal.load(std::memory_order_relaxed);
-
-        int64_t score = this->searchPosition(threadBoard, this->depth - 1, localAlpha, localBeta, currPly);
+        
+        // FIXED: Usa finestra ORIGINALE (non aggiornata dai thread)
+        // Questo garantisce che tutti i thread vedano gli stessi bounds = DETERMINISMO
+        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly);
         threadBoard.undoMove(m, state);
 
         threadScores[i] = score;
-
-        // Atomic update alpha/beta
-        if (usIsWhite) {
-            int64_t expected = alphaGlobal.load();
-            while (score > expected && !alphaGlobal.compare_exchange_weak(expected, score)) {}
-        } else {
-            int64_t expected = betaGlobal.load();
-            while (score < expected && !betaGlobal.compare_exchange_weak(expected, score)) {}
-        }
     }
 
-    // Merge results deterministically
+    // Merge results deterministically (in ordine sequenziale, senza race)
     for (int i = 1; i < moves.size; ++i) {
         const int64_t score = threadScores[i];
         const auto& m = moves[i];
         if (usIsWhite) {
             if (score > bestScore) { bestScore = score; bestMove = m; }
+            if (score > alpha) alpha = score;
         } else {
             if (score < bestScore) { bestScore = score; bestMove = m; }
+            if (score < beta) beta = score;
         }
     }
 

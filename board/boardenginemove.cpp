@@ -25,7 +25,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         .prevActiveColor         = activeColor,
         .prevHalfMoveClock       = halfMoveClock,
         .prevFullMoveClock       = fullMoveClock,
-        .prevEnPassant           = {enPassant[0], enPassant[1]},
+        .prevEnPassant           = enPassant,
         .prevCastle              = castle,
         .prevHasMoved            = hasMoved,
         .capturedPiece           = destBefore,
@@ -43,14 +43,13 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     //st.prevBlackKingIndex = kings_bb[1] ? __builtin_ctzll(kings_bb[1]) : 64;
 
     // Reset en passant di default (potrà essere reimpostato per un doppio passo)
-    enPassant[0] = Coords{};
-    enPassant[1] = Coords{};
+    enPassant = Coords{};
 
     // --- EN PASSANT CAPTURE ---
     if (movingType == PAWN) {
         if (from.file() != to.file() && destBefore == EMPTY &&
-            Coords::isInBounds(st.prevEnPassant[0]) &&
-            toIndex == st.prevEnPassant[0].toIndex()) {
+            Coords::isInBounds(st.prevEnPassant) &&
+            toIndex == st.prevEnPassant.toIndex()) {
 
             st.wasEnPassantCapture = true;
 
@@ -163,7 +162,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     if (movingType == PAWN) {
         const int8_t dr = static_cast<int8_t>(to.rank() - from.rank());
         if (dr == 2 || dr == -2) {
-            enPassant[0] = Coords{from.file(), static_cast<uint8_t>((from.rank() + to.rank()) >> 1)};
+            enPassant = Coords{from.file(), static_cast<uint8_t>((from.rank() + to.rank()) >> 1)};
         }
     }
 
@@ -252,8 +251,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     activeColor   = st.prevActiveColor;
     halfMoveClock = st.prevHalfMoveClock;
     fullMoveClock = st.prevFullMoveClock;
-    enPassant[0]  = st.prevEnPassant[0];
-    enPassant[1]  = st.prevEnPassant[1];
+    enPassant     = st.prevEnPassant;
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
 }
