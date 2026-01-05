@@ -9,10 +9,13 @@ using namespace driver;
 #include <iostream>
 #include <string>
 
-// ./chess bvb
-// ./chess pvp
-// ./chess pvb w
-// ./chess pvb b 
+// ./chess -> Goes to main menu
+// ./chess bvb -> Bot vs Bot
+// ./chess pvp -> Player vs Player
+// ./chess pvb w -> Player vs Bot (player is white)
+// ./chess pvb b -> Player vs Bot (player is black)
+// ./chess bvs w -> Bot vs Stockfish (bot is white)
+// ./chess bvs b -> Bot vs Stockfish (bot is black)
 // ./chess 11 -> Option 1 (player vs bot) - Option 1 (white)
 // ./chess 12 -> Option 1 (player vs bot) - Option 2 (black)
 
