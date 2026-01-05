@@ -250,10 +250,6 @@ int64_t Engine::evaluateMobilityFast(const AttackData data[2]) noexcept {
 }
 
 int64_t Engine::evaluateInitiativeFast(const chess::Board& b, bool isEndgame) noexcept {
-    // piccolo bonus al side to move
-    constexpr int64_t INIT_BONUS_MG = 12;
-    constexpr int64_t INIT_BONUS_EG = 4;
-
     const int64_t bonus = isEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
     return (b.getActiveColor() == chess::Board::WHITE) ? bonus : -bonus;
 }
@@ -286,8 +282,6 @@ int64_t Engine::evaluateBadBishopFast(uint64_t bishops, uint64_t pawns, int side
 int64_t Engine::evaluateEarlyKingFast(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    static constexpr int64_t EARLY_KING_PENALTY = -30;
-
     if (b.kings_bb[0] && !(b.kings_bb[0] & (1ULL << 60)) && !(b.kings_bb[0] & (1ULL << 62))) {
         score += EARLY_KING_PENALTY; // già negativo
     }
@@ -302,16 +296,14 @@ int64_t Engine::evaluateEarlyKingFast(const chess::Board& b) noexcept {
 int64_t Engine::evaluateEarlyRookFast(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    static constexpr int64_t ATTACKED_ROOK_PENALTY = -20;
-
     // White rooks
     if (b.rooks_bb[0] && !(b.rooks_bb[0] & (1ULL << 56)) && !(b.rooks_bb[0] & (1ULL << 63))) {
-        score += ATTACKED_ROOK_PENALTY; // già negativo
+        score += EARLY_ROOK_PENALTY; // già negativo
     }
 
     // Black rooks
     if (b.rooks_bb[1] && !(b.rooks_bb[1] & (1ULL << 0)) && !(b.rooks_bb[1] & (1ULL << 7))) {
-        score -= ATTACKED_ROOK_PENALTY;
+        score -= EARLY_ROOK_PENALTY;
     }
 
     return score;
@@ -347,39 +339,31 @@ int64_t Engine::evaluateTrappedPiecesFast(const chess::Board& b, uint64_t occ) n
         uint64_t queens = b.queens_bb[side];
 
         while (knights) {
-            constexpr int64_t LOW_MOBILITY_KNIGHT_VALUE_PENALTY = 10;
-            constexpr int64_t PINNED_KNIGHT_VALUE_PENALTY = 60;
             const int sq = poplsbIndex(knights);
             const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_KNIGHT_VALUE_PENALTY;
-            if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_VALUE_PENALTY;
+            if (mobility == 0) score -= sign * PINNED_KNIGHT_PENALTY;
+            if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
         }
 
         while (bishops) {
-            constexpr int64_t LOW_MOBILITY_BISHOP_VALUE_PENALTY = 20;
-            constexpr int64_t PINNED_BISHOP_VALUE_PENALTY = 40;
             const int sq = poplsbIndex(bishops);
             const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_BISHOP_VALUE_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_VALUE_PENALTY;
+            if (mobility == 0) score -= sign * PINNED_BISHOP_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
         }
 
         while (rooks) {
-            constexpr int64_t LOW_MOBILITY_ROOK_VALUE_PENALTY = 30;
-            constexpr int64_t PINNED_ROOK_VALUE_PENALTY = 30;
             const int sq = poplsbIndex(rooks);
             const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_ROOK_VALUE_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_VALUE_PENALTY;
+            if (mobility == 0) score -= sign * PINNED_ROOK_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
         }
 
         while (queens) {
-            constexpr int64_t LOW_MOBILITY_QUEEN_VALUE_PENALTY = 60;
-            constexpr int64_t PINNED_QUEEN_VALUE_PENALTY = 200;
             const int sq = poplsbIndex(queens);
             const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_QUEEN_VALUE_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_VALUE_PENALTY;
+            if (mobility == 0) score -= sign * PINNED_QUEEN_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
         }
     }
 
@@ -398,22 +382,23 @@ int64_t Engine::evaluateHangingPiecesFast(const chess::Board& b, const AttackDat
         uint64_t friendlyDef = data[side].allAttacks;
 
         // Hanging pieces (attacked but undefended)
+        // IMPORTANTE: i penalty sono già negativi, quindi usiamo += con sign
         uint64_t hanging;
 
         hanging = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
-        score -= sign * __builtin_popcountll(hanging) * 20;
+        score += sign * __builtin_popcountll(hanging) * HANGING_PAWN_PENALTY;
 
         hanging = b.knights_bb[side] & enemyAttacks & ~friendlyDef;
-        score -= sign * __builtin_popcountll(hanging) * 50;
+        score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
 
         hanging = b.bishops_bb[side] & enemyAttacks & ~friendlyDef;
-        score -= sign * __builtin_popcountll(hanging) * 40;
+        score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
 
         hanging = b.rooks_bb[side] & enemyAttacks & ~friendlyDef;
-        score -= sign * __builtin_popcountll(hanging) * 60;
+        score += sign * __builtin_popcountll(hanging) * HANGING_ROOK_PENALTY;
 
         hanging = b.queens_bb[side] & enemyAttacks & ~friendlyDef;
-        score -= sign * __builtin_popcountll(hanging) * 100;
+        score += sign * __builtin_popcountll(hanging) * HANGING_QUEEN_PENALTY;
     }
 
     return score;
@@ -421,7 +406,7 @@ int64_t Engine::evaluateHangingPiecesFast(const chess::Board& b, const AttackDat
 
 int64_t Engine::evaluateCentralControlFast(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
-    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * 5;
+    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
 }
 
 int64_t Engine::evaluateKingSafetyFast(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
@@ -506,8 +491,6 @@ int64_t Engine::evaluateKingActivityFast(const chess::Board& b, bool isEndgame) 
 }
 
 int64_t Engine::evaluateBadKingPositionFast(const chess::Board& b) noexcept {
-    constexpr int64_t KING_EXPOSED_PENALTY = -120;
-
     int64_t score = 0;
 
     for (int side = 0; side < 2; ++side) {
@@ -557,13 +540,27 @@ int64_t Engine::evaluateCastlingBonusFast(const chess::Board& b) noexcept {
 
     int64_t score = 0;
 
-    // White has castled (king on g1/c1 AND rook on f1/d1)
-    if ((b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED))
+    // WHITE
+    bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
+    bool whiteCanCastle = b.getCastle(0) || b.getCastle(1); // kingside or queenside
+    
+    if (whiteHasCastled) {
         score += CASTLING_BONUS;
+    } else if (!whiteCanCastle) {
+        // Ha perso il diritto di arroccare senza aver arroccato! PENALITA' GRAVE
+        score -= 60;
+    }
 
-    // Black has castled (king on g8/c8 AND rook on f8/d8)
-    if ((b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED))
+    // BLACK
+    bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
+    bool blackCanCastle = b.getCastle(2) || b.getCastle(3); // kingside or queenside
+    
+    if (blackHasCastled) {
         score -= CASTLING_BONUS;
+    } else if (!blackCanCastle) {
+        // Ha perso il diritto di arroccare senza aver arroccato! PENALITA' GRAVE
+        score += 60;
+    }
 
     return score;
 }
@@ -636,15 +633,29 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
     const uint64_t blackPawns = board.pawns_bb[1];
+    const int fullMoves = board.getFullMoveClock();
 
-    // Endgame flag
+    // ===================================================
+    // GAME PHASE DETECTION
+    // ===================================================
     int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
                                              board.bishops_bb[0] | board.bishops_bb[1] |
                                              board.rooks_bb[0]   | board.rooks_bb[1]   |
                                              board.queens_bb[0]  | board.queens_bb[1]);
-    bool isEndgame = (nonPawnMajors <= PHASE_FINAL_THRESHOLD);
+    
+    // Game phase thresholds
+    constexpr int OPENING_MOVES = 10;      // prime 10 mosse = apertura
+    constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
+    constexpr int PIECE_ENDGAME_THRESHOLD = 8;  // <= 8 pezzi = endgame
+    
+    bool isOpening = (fullMoves < OPENING_MOVES);
+    bool isEarlyMiddlegame = (fullMoves >= OPENING_MOVES && fullMoves < EARLY_MG_MOVES);
+    bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
+    bool isMiddlegame = !isOpening && !isEndgame;
 
-    // Positional evaluation using piece-square tables
+    // ===================================================
+    // PIECE-SQUARE TABLES (always evaluated)
+    // ===================================================
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
     addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
     addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
@@ -652,48 +663,141 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
-
-    // OPENING SPECIFIC EVALUATIONS
-    if (board.getFullMoveClock() < 6) {
-        eval += evaluateEarlyKingFast(board);
-        eval += evaluateEarlyRookFast(board);
-    }
-    if (board.getFullMoveClock() < 8) {
-        eval += evaluateEarlyQueenFast(board);
-    }
-    else {
-        eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);
-        eval += evaluateBadBishopFast(board.bishops_bb[1], blackPawns, 1);
-    }
-
-    // MIDDLEGAME & ENDGAME EVALUATIONS
-    // Compute attack data once and reuse across multiple evaluation functions
+    // ===================================================
+    // PRECOMPUTE ATTACK DATA (used by multiple evaluations)
+    // ===================================================
     AttackData attackData[2];
     computeAttackData(attackData, board, occ);
 
-    eval += evaluatePawnStructureFast(whitePawns, blackPawns, isEndgame);
-    eval += evaluateMobilityFast(attackData);
-    eval += evaluateInitiativeFast(board, isEndgame);
-    eval += evaluateTrappedPiecesFast(board, occ);
-    eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-    eval += evaluatePassiveRooksFast(board, occ);
-    eval += evaluateKingActivityFast(board, isEndgame);
-    eval += evaluateHangingPiecesFast(board, attackData);
-    eval += evaluateKnightOnRimFast(board);
-
-    if (!isEndgame) { // MIDDLEGAME SPECIFIC EVALUATIONS
-        eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
+    // ===================================================
+    // OPENING PHASE (moves 1-10)
+    // Focus: development, king safety, avoid early mistakes
+    // ===================================================
+    if (isOpening) {
+        // Development penalties (re e torre non sviluppati)
+        eval += evaluateEarlyKingFast(board);
+        eval += evaluateEarlyRookFast(board);
+        eval += evaluateEarlyQueenFast(board);
+        
+        // Castling is CRITICAL in opening
+        eval += evaluateCastlingBonusFast(board);
+        
+        // Basic piece safety (avoid hanging pieces)
+        eval += evaluateHangingPiecesFast(board, attackData);
+        
+        // Center control è importante in opening
         eval += evaluateCentralControlFast(whitePawns, blackPawns);
+        
+        // Knight positioning (avoid rim)
+        eval += evaluateKnightOnRimFast(board);
+        
+        // Basic pawn structure (non troppo dettagliato)
+        eval += evaluatePawnStructureFast(whitePawns, blackPawns, false);
+        
+        // Mobility bonus (sviluppare pezzi = più mosse)
+        eval += evaluateMobilityFast(attackData);
+        
+        // Initiative bonus (side to move advantage)
+        eval += evaluateInitiativeFast(board, false);
+    }
+    
+    // ===================================================
+    // EARLY MIDDLEGAME (moves 10-15)
+    // Transition phase: continue development, prepare attacks
+    // ===================================================
+    else if (isEarlyMiddlegame) {
+        // Castling still important
+        eval += evaluateCastlingBonusFast(board);
+        
+        // Full tactical evaluation
+        eval += evaluateHangingPiecesFast(board, attackData);
+        eval += evaluateTrappedPiecesFast(board, occ);
+        
+        // Pawn structure becomes more important
+        eval += evaluatePawnStructureFast(whitePawns, blackPawns, false);
+        eval += evaluateCentralControlFast(whitePawns, blackPawns);
+        
+        // Piece activity
+        eval += evaluateMobilityFast(attackData);
+        eval += evaluateKnightOnRimFast(board);
+        eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);
+        eval += evaluateBadBishopFast(board.bishops_bb[1], blackPawns, 1);
+        
+        // King safety starts to matter
+        eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
         eval += evaluateBadKingPositionFast(board);
+        
+        // Rook evaluation
+        eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        
+        // Initiative
+        eval += evaluateInitiativeFast(board, false);
+    }
+    
+    // ===================================================
+    // MIDDLEGAME (moves 15+, many pieces on board)
+    // Focus: tactics, king safety, piece coordination
+    // ===================================================
+    else if (isMiddlegame) {
+        // Full tactical evaluation (molto importante!)
+        eval += evaluateHangingPiecesFast(board, attackData);
+        eval += evaluateTrappedPiecesFast(board, occ);
+        
+        // Pawn structure evaluation
+        eval += evaluatePawnStructureFast(whitePawns, blackPawns, false);
+        eval += evaluateCentralControlFast(whitePawns, blackPawns);
         eval += evaluateBlockedCenterWithPiecesFast(board, occ);
+        
+        // Piece activity and positioning
+        eval += evaluateMobilityFast(attackData);
+        eval += evaluateKnightOnRimFast(board);
+        eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);
+        eval += evaluateBadBishopFast(board.bishops_bb[1], blackPawns, 1);
+        
+        // King safety è CRITICO in middlegame
+        eval += evaluateKingSafetyFast(board, whitePawns, blackPawns);
+        eval += evaluateBadKingPositionFast(board);
+        eval += evaluateKingActivityFast(board, false);
+        eval += evaluateCastlingBonusFast(board);
+        
+        // Rook evaluation (open files, 7th rank)
+        eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        eval += evaluatePassiveRooksFast(board, occ);
+        
+        // Initiative
+        eval += evaluateInitiativeFast(board, false);
     }
-    else { // ENDGAME SPECIFIC EVALUATIONS
-        // Passed pawn scaling is now integrated into evaluatePawnStructureFast()
+    
+    // ===================================================
+    // ENDGAME (few pieces left)
+    // Focus: pawn promotion, king activity, passed pawns
+    // ===================================================
+    else { // isEndgame
+        // Tactical safety still matters
+        eval += evaluateHangingPiecesFast(board, attackData);
+        
+        // Pawn structure è CRITICO in endgame
+        eval += evaluatePawnStructureFast(whitePawns, blackPawns, true);
+        
+        // King activity è fondamentale
+        eval += evaluateKingActivityFast(board, true);
         eval += evaluateEndgameKingActivityFast(board);
+        
+        // Piece mobility
+        eval += evaluateMobilityFast(attackData);
+        eval += evaluateTrappedPiecesFast(board, occ);
+        
+        // Rook evaluation (still important in endgame)
+        eval += evaluateRooksFast(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        
+        // Minor piece positioning
+        eval += evaluateKnightOnRimFast(board);
+        eval += evaluateBadBishopFast(board.bishops_bb[0], whitePawns, 0);
+        eval += evaluateBadBishopFast(board.bishops_bb[1], blackPawns, 1);
+        
+        // Initiative (meno importante in endgame)
+        eval += evaluateInitiativeFast(board, true);
     }
-
-    // Castling bonus
-    eval += evaluateCastlingBonusFast(board);
 
     return eval;
 }
