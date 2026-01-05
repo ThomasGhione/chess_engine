@@ -119,7 +119,7 @@ namespace driver {
 
         if (mode == "bvs" || mode == "4") {
             if (argc < MAX_PARAM_LENGTH) {
-                std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
+                std::cout << "Error: Please specify 'w' for white or 'b' for black to choose engine color.\n";
                 exit(EXIT_FAILURE);
             }
 
@@ -127,10 +127,10 @@ namespace driver {
             std::transform(color.begin(), color.end(), color.begin(), ::tolower);
             
             if (color == "w") {
-                this->playGameVsEngine(true);
+                this->botVsStockfish(true);
             } 
             else if (color == "b") {
-                this->playGameVsEngine(false);
+                this->botVsStockfish(false);
             } 
             else {
                 std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
