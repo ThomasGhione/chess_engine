@@ -44,7 +44,7 @@ ut::suite performanceEngineSuite = [] {
     double avgDuration = static_cast<double>(totalDuration) / runs;
 
     // Attesa che la ricerca media venga completata in meno di 500 millisecondi
-    printf("Average Depth 10 search time over %d runs: %.2f ms\n", runs, avgDuration);
+    printf("Average Depth 8 search time over %d runs: %.2f ms\n", runs, avgDuration);
     expect(avgDuration < 500);
   };
 

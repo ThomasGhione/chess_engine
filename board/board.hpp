@@ -183,14 +183,12 @@ public:
     }
 
     void setNextTurn() noexcept {
-        // this->activeColor = (this->activeColor == WHITE) ? BLACK : WHITE;
-        if (this->activeColor == WHITE) {
-            this->activeColor = BLACK;
+        if (activeColor == WHITE) {
+            activeColor = BLACK;
         } else {
-            this->activeColor = WHITE;
-            this->fullMoveClock++;
+            activeColor = WHITE;        
+            ++fullMoveClock;
         }
-        this->halfMoveClock++;
     }
 
     void setPrevTurn() noexcept {
@@ -352,6 +350,15 @@ public:
     bool isCheckmate(uint8_t color) const noexcept {return inCheck(color) && !hasAnyLegalMove(color);}
 
     bool isStalemate(uint8_t color) const noexcept {return !inCheck(color) && !hasAnyLegalMove(color);}
+
+    // 50-move rule: draw if no pawn move or capture in the last 50 full moves (100 half-moves)
+    bool isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
+
+    // General draw check: stalemate OR 50-move rule
+    // Note: insufficient material and threefold repetition are not yet implemented
+    bool isDraw(uint8_t color) const noexcept {
+        return isStalemate(color) || isFiftyMoveRule();
+    }
 
     void fromFenToBoard(const std::string& fen);
 

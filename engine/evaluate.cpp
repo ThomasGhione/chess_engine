@@ -959,7 +959,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
 bool Engine::isMate() noexcept {
     uint8_t toMove = board.getActiveColor();
     return board.kings_bb[0] == 0    || board.kings_bb[1] == 0 
-        || board.isCheckmate(toMove) || board.isStalemate(toMove);
+        || board.isCheckmate(toMove) || board.isDraw(toMove);
 }
 
 void Engine::setIsCheckMate() noexcept {

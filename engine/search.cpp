@@ -319,6 +319,24 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->evaluate(b);
     }
 
+    // --- ENDGAME DEPTH EXTENSION ---
+    // Conta il numero totale di pezzi sulla scacchiera (re inclusi)
+    const int totalPieces = __builtin_popcountll(b.getPiecesBitMap());
+    
+    // Estendi la profondità di ricerca in endgame (meno pezzi = ricerca più veloce)
+    static bool extendedDepthMedium = false;
+    static bool extendedDepthMaximum = false;
+    if (totalPieces < 7 && !extendedDepthMedium) {
+        // Tablebase territory: 2 re + 1 pezzo
+        this->depth += 2;
+        extendedDepthMedium = true;
+    }
+    if (totalPieces == 3 && !extendedDepthMaximum) {
+        // Tablebase territory: 2 re + 1 pezzo
+        this->depth += 2;
+        extendedDepthMaximum = true;
+    }
+
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
     int64_t score = 0;

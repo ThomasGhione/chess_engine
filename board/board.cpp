@@ -22,10 +22,14 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     Coords prevEp = enPassant;
     enPassant = Coords{};
 
+    // Track if this is an en passant capture for halfMoveClock reset
+    bool wasEnPassantCapture = false;
+
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
         // Check if pawn moved diagonally (different file): (fromIndex & 7) != (toIndex & 7)
         if ((fromIndex & 7) != (toIndex & 7) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index)) {
+            wasEnPassantCapture = true;
             const bool isWhite = (movingColor == WHITE);
             // Coords convention: index increases with rank (a8=0 -> h1=63)
             // White moves toward rank 0 (decreasing), Black toward rank 7 (increasing)
@@ -137,7 +141,25 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
         }
     }
 
-    this->setNextTurn();
+    // --- UPDATE HALFMOVE CLOCK (50-move rule) ---
+    // Reset to 0 if: pawn move, capture, or en passant capture
+    // Otherwise increment
+    if (movingType == PAWN || destBefore != EMPTY || wasEnPassantCapture) {
+        halfMoveClock = 0;
+    } else if (halfMoveClock < 255) {
+        ++halfMoveClock;
+    }
+
+    // --- UPDATE SIDE TO MOVE AND FULLMOVE CLOCK ---
+    if (activeColor == WHITE) {
+        activeColor = BLACK;
+    } else {
+        activeColor = WHITE;
+        if (fullMoveClock < 255) {
+            ++fullMoveClock;
+        }
+    }
+
     return true;
 }
 
