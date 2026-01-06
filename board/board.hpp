@@ -45,6 +45,11 @@ public:
         Coords from;
         Coords to;
         char promotionPiece = '\0'; // 'q', 'r', 'b', 'n' or '\0' for no promotion
+        
+        // Operatore di confronto per iterative deepening move ordering
+        bool operator==(const Move& other) const noexcept {
+            return from == other.from && to == other.to && promotionPiece == other.promotionPiece;
+        }
     };
 
     struct MoveState {

@@ -173,12 +173,43 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const bool useYBWC = (moves.size >= 6 && this->depth >= 4);
     
     if (!useYBWC) {
-        // Sequential fallback - DETERMINISTICO
-        for (const auto& m : moves) {
+        // Sequential search con PVS (Principal Variation Search)
+        // Prima mossa: finestra piena
+        // Mosse successive: null window, re-search se fallisce
+        
+        for (size_t i = 0; i < moves.size; ++i) {
+            const auto& m = moves[i];
             chess::Board::MoveState state;
             this->executeMove(m, state);
-            int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+            
+            int64_t score;
+            if (i == 0) {
+                // Prima mossa: cerca con finestra piena (PV node)
+                score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+            } else {
+                // Mosse successive: cerca con null window
+                int64_t nullAlpha, nullBeta;
+                if (usIsWhite) {
+                    nullAlpha = alpha;
+                    nullBeta = alpha + 1; // Null window per white (maximizer)
+                } else {
+                    nullAlpha = beta - 1; // Null window per black (minimizer)
+                    nullBeta = beta;
+                }
+                
+                score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly);
+                
+                // PVS re-search: se null window fallisce, ri-cerca con finestra piena
+                if ((usIsWhite && score > alpha && score < beta) || 
+                    (!usIsWhite && score > alpha && score < beta)) {
+                    score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+                }
+            }
+            
             this->undoAndUpdateMove(m, state, usIsWhite, score, alpha, beta, bestScore, bestMove);
+            
+            // Alpha-beta cutoff
+            if (alpha >= beta) break;
         }
         return bestMove;
     }
@@ -291,7 +322,33 @@ void Engine::search(uint64_t depth) noexcept {
     this->nodesSearched = 0; 
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
-    chess::Board::Move bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+    
+    // --- ITERATIVE DEEPENING ---
+    // Cerca a profondità crescenti (1, 2, 3, ..., depth)
+    // Migliora il move ordering per le profondità successive
+    chess::Board::Move bestMove = moves[0];
+    
+    for (uint64_t currentDepth = 1; currentDepth <= depth; ++currentDepth) {
+        this->depth = currentDepth;
+        
+        // Riordina le mosse: la best move della iterazione precedente va in testa
+        // MANTENIAMO L'ORDINAMENTO: rotate invece di swap
+        if (currentDepth > 1) {
+            for (size_t i = 0; i < moves.size; ++i) {
+                if (moves[i] == bestMove) {
+                    // Rotate: [0, 1, 2, ..., i, ...] -> [i, 0, 1, 2, ..., i-1, ...]
+                    // Sposta moves[i] in testa, shiftando le altre a destra
+                    std::rotate(&moves[0], &moves[i], &moves[i + 1]);        
+                    break;
+                }
+            }
+        }
+        
+        bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+    }
+    
+    // Ripristina la profondità originale
+    this->depth = depth;
 
     this->doMoveInBoard(bestMove);
     this->setIsCheckMate();
@@ -300,7 +357,6 @@ void Engine::search(uint64_t depth) noexcept {
     this->moveHistory += bestMove.promotionPiece == '\0' ? "\n" : std::string(1, bestMove.promotionPiece) + "\n";
 
 #ifdef DEBUG
-
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
 /*
