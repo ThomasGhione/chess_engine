@@ -52,11 +52,16 @@ public:
 
     static uint64_t nodesSearched; 
 
+    static constexpr std::int32_t DEFAULTDEPTH = 10;
+    static std::string moveHistory;
+
 #ifdef DEBUG
     // Transposition table statistics (only in debug builds)
     static uint64_t ttProbes;
     static uint64_t ttHits;
 #endif
+
+    bool movePiece (const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 

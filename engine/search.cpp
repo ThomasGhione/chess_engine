@@ -296,6 +296,9 @@ void Engine::search(uint64_t depth) noexcept {
     this->doMoveInBoard(bestMove);
     this->setIsCheckMate();
 
+    this->moveHistory += bestMove.from.toString() + bestMove.to.toString();
+    this->moveHistory += bestMove.promotionPiece == '\0' ? "\n" : std::string(1, bestMove.promotionPiece) + "\n";
+
 #ifdef DEBUG
 
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);

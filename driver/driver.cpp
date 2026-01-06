@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <fstream>
+#include <filesystem>
 
 namespace driver {
 
@@ -235,12 +237,29 @@ namespace driver {
             } else if (this->engine.board.isStalemate(nextColor)) {
                 std::cout << "\nStalemate. Game drawn.\n";
             }
-            std::cout << "Press Enter to return to the menu...";
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cin.get();
+            std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
+            
+            std::string input;
+            std::cin >> input;
+            if (input == "s" || input == "S") {
+                printGameOnFile();
+            }
 
             engine.reset();
         } 
+    }
+
+    void Driver::printGameOnFile() noexcept {
+        if (!std::filesystem::exists("games")) {
+            std::filesystem::create_directory("games");
+        }
+        
+        std::string currentTime = std::to_string(std::time(nullptr));
+        std::string fileName = "games/game_" + currentTime + ".txt";
+
+        std::ofstream gameFile(fileName);
+        gameFile << this->engine.moveHistory;
+        gameFile.close();
     }
 
     void Driver::quit(std::string input) noexcept{
@@ -299,16 +318,14 @@ namespace driver {
         }
     }
 
-    void Driver::botVsStockfish(bool botColor) noexcept {
+    void Driver::botVsStockfish(const bool botColor) noexcept {
         // botColor: true = our engine plays White, false = our engine plays Black
-        const bool botIsWhite = botColor;
         const std::string stockfishPath = "./stockfish/stockfish-ubuntu-x86-64-avx2";
         const int stockfishMoveTimeMs = 200; // tweak if needed
-
+        
         // Fresh game state for each match
         engine.reset();
-        engine.isCheckMate = false;
-        engine.isPlayerWhite = botIsWhite;
+        engine.isPlayerWhite = botColor;
 
         struct StockfishProcess {
             FILE* in {nullptr};
@@ -429,11 +446,13 @@ namespace driver {
 
         auto applyUciMoveToBoard = [&](const std::string& uciMove) {
             if (uciMove.size() < 4) return false;
+
             const std::string fromStr = uciMove.substr(0, 2);
-            const std::string toStr = uciMove.substr(2, 2);
-            const char promo = (uciMove.size() >= 5)
+            const std::string toStr   = uciMove.substr(2, 2);
+            const bool hasPromo       = uciMove.size() >= 5;
+            const char promo = hasPromo
                 ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
-                : 'q';
+                : '\0';
 
             chess::Coords fromCoords(fromStr);
             chess::Coords toCoords(toStr);
@@ -441,11 +460,9 @@ namespace driver {
                 return false;
             }
 
-            // Apply move, handling promotions if specified
-            if (uciMove.size() >= 5) {
-                return engine.board.moveBB(fromCoords, toCoords, promo);
-            }
-            return engine.board.moveBB(fromCoords, toCoords);
+            return hasPromo
+                ? engine.movePiece(fromCoords, toCoords, promo)
+                : engine.movePiece(fromCoords, toCoords);
         };
 
         auto sfProc = startStockfish();
@@ -454,7 +471,7 @@ namespace driver {
         }
 
         while (!engine.isCheckMate) {
-            const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == botIsWhite;
+            const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
             if (engineToMove) {
                 // Our engine move
@@ -565,7 +582,7 @@ namespace driver {
             bool moveOk = false;
 
             // Optional promotion character (5th char): e7e8q, e2e1N, ...
-            char promoChar = 'q';
+            char promoChar = '\0';
             if (playerInput.length() == 5) {
                 promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
                 if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') {
@@ -579,16 +596,12 @@ namespace driver {
                 ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
                  (pieceColor == chess::Board::BLACK && toCoords.rank() == 7));
 
-            if (isPromotionCandidate) {
+            if (isPromotionCandidate && playerInput.length() == 4) {
                 // If user didn't specify, default to queen
-                if (playerInput.length() == 4) {
-                    promoChar = 'q';
-                }
-                moveOk = engine.board.moveBB(fromCoords, toCoords, promoChar);
-            } 
-            else {
-                moveOk = engine.board.moveBB(fromCoords, toCoords);
+                promoChar = 'q';
             }
+
+            moveOk = engine.movePiece(fromCoords, toCoords, promoChar);
 
             if (!moveOk) {
                 std::cout << "Invalid move. Please try again.\n";
@@ -620,7 +633,7 @@ namespace driver {
 #ifdef DEBUG
                 auto chrono_start = std::chrono::high_resolution_clock::now();
 #endif
-        engine.search(engine.depth);
+        this->engine.search(this->engine.depth);
 #ifdef DEBUG
                 auto chrono_end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;

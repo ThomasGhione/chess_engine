@@ -44,6 +44,7 @@ public:
     struct Move {
         Coords from;
         Coords to;
+        char promotionPiece = '\0'; // 'q', 'r', 'b', 'n' or '\0' for no promotion
     };
 
     struct MoveState {

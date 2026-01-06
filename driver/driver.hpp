@@ -28,13 +28,14 @@ namespace driver {
             bool loadGame(bool isWithPlayer) noexcept;
             void saveGame() noexcept;
             void endGame() noexcept;
+            void printGameOnFile() noexcept;
             
             void quit(std::string input) noexcept;
             
             void playGameVsHuman() noexcept;
-            void playGameVsEngine(bool isWhite) noexcept;
+            void playGameVsEngine(const bool isWhite) noexcept;
             void botVsBot() noexcept;
-            void botVsStockfish(bool botColor) noexcept;
+            void botVsStockfish(const bool botColor) noexcept;
             
             void playerTurn() noexcept;
             void engineTurn() noexcept;

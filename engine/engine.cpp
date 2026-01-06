@@ -3,6 +3,7 @@
 
 namespace engine {
 uint64_t Engine::nodesSearched = 0;
+std::string Engine::moveHistory = "";
 
 #ifdef DEBUG
 uint64_t Engine::ttProbes = 0;
@@ -11,7 +12,7 @@ uint64_t Engine::ttHits = 0;
 
 Engine::Engine()
     : board(chess::Board())
-    , depth(10)
+    , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
@@ -31,7 +32,7 @@ Engine::Engine()
 
 Engine::Engine(std::string fen)
     : board(chess::Board(fen))
-    , depth(10)
+    , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
@@ -51,8 +52,9 @@ Engine::Engine(std::string fen)
 
 void Engine::reset() noexcept {
     board = chess::Board();
-    depth = 10;
+    depth = DEFAULTDEPTH;
     eval = 0;
+    isCheckMate = false;
     isPlayerWhite = true;
     nodesSearched = 0;
     
@@ -74,6 +76,18 @@ void Engine::reset() noexcept {
     // Reset history heuristic
     std::memset(history, 0, sizeof(history));
 }
+
+bool Engine::movePiece (const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
+    bool result = promotionPiece == '\0' ? this->board.moveBB(from, to) : this->board.moveBB(from, to, promotionPiece);
+    
+    if (result) {
+        moveHistory += from.toString() + to.toString();
+        moveHistory += promotionPiece == '\0' ? "\n" : std::string(1, promotionPiece) + "\n";
+    }
+
+    return result;
+}
+
 
 bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
     // Nessun late move pruning se poche mosse
