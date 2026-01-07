@@ -8,3 +8,4 @@ chess
 outputTest
 /tests/outputPerformance
 /games/*.txt
+/saves/*.txt
