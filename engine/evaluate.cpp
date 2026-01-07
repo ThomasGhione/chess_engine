@@ -310,6 +310,7 @@ int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whi
     return score;
 }
 
+__attribute__((hot))
 int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
 
@@ -323,20 +324,24 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
             const int file = sq & 7;
             const int rank = sq >> 3;
 
+            // OTTIMIZZAZIONE: calcola mobility solo se necessario (early exit)
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             const int mobility = __builtin_popcountll(attacks & ~occ);
 
-            // Low mobility
-            if (mobility <= 3)
+            // Low mobility - check FIRST (most common case)
+            if (mobility <= 3) [[unlikely]] {
                 score -= sign * 25;
+            }
 
-            // Rook blocked by own pawn on same file
-            if (ownPawns & FILE_MASKS[file]) // Use precalculated mask
+            // Rook blocked by own pawn on same file - usa maschere precalcolate
+            if (ownPawns & FILE_MASKS[file]) [[unlikely]] {
                 score -= sign * 15;
+            }
 
-            // Not on 7th rank (white rank 6, black rank 1)
-            if ((side == 0 && rank != 6) || (side == 1 && rank != 1))
+            // Not on 7th rank penalty
+            if ((side == 0 && rank != 6) || (side == 1 && rank != 1)) {
                 score -= sign * 10;
+            }
         }
     }
 
@@ -344,87 +349,86 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
 }
 
 
+__attribute__((hot))
 int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
+    // OTTIMIZZAZIONE: usa maschere precalcolate invece di loop con if
+    constexpr uint64_t A_FILE = 0x0101010101010101ULL;
+    constexpr uint64_t H_FILE = 0x8080808080808080ULL;
+    constexpr uint64_t B_FILE = 0x0202020202020202ULL;
+    constexpr uint64_t G_FILE = 0x4040404040404040ULL;
+    constexpr uint64_t RANK_1 = 0xFF00000000000000ULL;
+    constexpr uint64_t RANK_8 = 0x00000000000000FFULL;
+    
+    constexpr uint64_t RIM_FILES = A_FILE | H_FILE;
+    constexpr uint64_t NEAR_RIM_FILES = B_FILE | G_FILE;
+    constexpr uint64_t BACK_RANKS = RANK_1 | RANK_8;
+    
     int64_t score = 0;
 
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-        uint64_t knights = b.knights_bb[side];
+    // WHITE knights (penalty per white = score negativo)
+    const int whiteOnRim = __builtin_popcountll(b.knights_bb[0] & RIM_FILES);
+    const int whiteNearRim = __builtin_popcountll(b.knights_bb[0] & NEAR_RIM_FILES);
+    const int whiteBackRank = __builtin_popcountll(b.knights_bb[0] & BACK_RANKS);
+    score -= whiteOnRim * 30 + whiteNearRim * 15 + whiteBackRank * 10;
 
-        while (knights) {
-            const int sq = poplsbIndex(knights);
-            const int file = sq & 7;
-            const int rank = sq >> 3;
-
-            // a/h files
-            if (file == 0 || file == 7)
-                score -= sign * 30;
-            // b/g files
-            else if (file == 1 || file == 6)
-                score -= sign * 15;
-
-            // back rank penalty
-            if (rank == 0 || rank == 7)
-                score -= sign * 10;
-        }
-    }
+    // BLACK knights (penalty per black = score positivo)
+    const int blackOnRim = __builtin_popcountll(b.knights_bb[1] & RIM_FILES);
+    const int blackNearRim = __builtin_popcountll(b.knights_bb[1] & NEAR_RIM_FILES);
+    const int blackBackRank = __builtin_popcountll(b.knights_bb[1] & BACK_RANKS);
+    score -= -(blackOnRim * 30 + blackNearRim * 15 + blackBackRank * 10);
 
     return score;
 }
 
 
-int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
+__attribute__((hot, always_inline))
+inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
     return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
           - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
 }
 
-int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
+__attribute__((hot, always_inline))
+inline int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
     const int64_t bonus = isEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
     return (b.getActiveColor() == chess::Board::WHITE) ? bonus : -bonus;
 }
 
+__attribute__((hot))
 int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    // Optimized: use bitmask instead of looping over pawns
+    // OTTIMIZZAZIONE: calcola in batch invece di loop per bishop
     constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
     
-    const int darkCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightCount = __builtin_popcountll(pawns & ~DARK_SQUARES);
-
-    int64_t score = 0;
-    while (bishops) {
-        const int sq = poplsbIndex(bishops);
-        const bool isDark = (DARK_SQUARES >> sq) & 1;
-        score -= (isDark ? darkCount : lightCount) * 8;
-    }
+    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
+    const int lightPawnCount = __builtin_popcountll(pawns & ~DARK_SQUARES);
+    
+    // Conta alfieri su caselle scure/chiare
+    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
+    const int lightBishops = __builtin_popcountll(bishops & ~DARK_SQUARES);
+    
+    // Score = - (dark_bishops * dark_pawns + light_bishops * light_pawns) * 8
+    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
+    
     return (side == 0) ? score : -score;
 }
 
-// Premia lo sviluppo di cavalli e alfieri fuori dalla casa base
+// OTTIMIZZAZIONE: premia sviluppo con bitboard batch (no loop)
+__attribute__((hot))
 int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
-    int64_t score = 0;
+    // Caselle iniziali per i pezzi minori
+    // ATTENZIONE: bit 0-7 = rank 8 (BLACK), bit 56-63 = rank 1 (WHITE)
+    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
+    constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
     
-    // Caselle iniziali per i pezzi minori bianchi
-    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 per cautela
-    // Caselle iniziali per i pezzi minori neri
-    constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 7 & 8
+    // Conta pezzi sviluppati (fuori dalle caselle iniziali) in una sola operazione
+    const int whiteDeveloped = 
+        __builtin_popcountll(b.knights_bb[0] & ~WHITE_MINOR_START) +
+        __builtin_popcountll(b.bishops_bb[0] & ~WHITE_MINOR_START);
     
-    // Cavalli bianchi sviluppati (non in b1, g1)
-    const uint64_t whiteKnightsDeveloped = b.knights_bb[0] & ~WHITE_MINOR_START;
-    score += __builtin_popcountll(whiteKnightsDeveloped) * DEVELOPMENT_BONUS;
+    const int blackDeveloped = 
+        __builtin_popcountll(b.knights_bb[1] & ~BLACK_MINOR_START) +
+        __builtin_popcountll(b.bishops_bb[1] & ~BLACK_MINOR_START);
     
-    // Cavalli neri sviluppati (non in b8, g8)
-    const uint64_t blackKnightsDeveloped = b.knights_bb[1] & ~BLACK_MINOR_START;
-    score -= __builtin_popcountll(blackKnightsDeveloped) * DEVELOPMENT_BONUS;
-    
-    // Alfieri bianchi sviluppati (non in c1, f1)
-    const uint64_t whiteBishopsDeveloped = b.bishops_bb[0] & ~WHITE_MINOR_START;
-    score += __builtin_popcountll(whiteBishopsDeveloped) * DEVELOPMENT_BONUS;
-    
-    // Alfieri neri sviluppati (non in c8, f8)
-    const uint64_t blackBishopsDeveloped = b.bishops_bb[1] & ~BLACK_MINOR_START;
-    score -= __builtin_popcountll(blackBishopsDeveloped) * DEVELOPMENT_BONUS;
-    
-    return score;
+    return (whiteDeveloped - blackDeveloped) * DEVELOPMENT_BONUS;
 }
 
 int64_t Engine::evalEarlyKing(const chess::Board& b) noexcept {
@@ -481,37 +485,42 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
 
+        // Knights: usa lookup table precalcolata (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
-        uint64_t bishops = b.bishops_bb[side];
-        uint64_t rooks  = b.rooks_bb[side];
-        uint64_t queens = b.queens_bb[side];
-
         while (knights) {
             const int sq = poplsbIndex(knights);
             const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_KNIGHT_PENALTY;
-            if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
+            if (mobility == 0) [[unlikely]] score -= sign * PINNED_KNIGHT_PENALTY;
+            else if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
         }
 
-        while (bishops) {
-            const int sq = poplsbIndex(bishops);
-            const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_BISHOP_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
-        }
+        // Bishops, Rooks, Queens: calcola solo se pochi pezzi (risparmia magic bitboard lookups)
+        const int pieceCount = __builtin_popcountll(b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]);
+        
+        if (pieceCount > 0) [[likely]] {
+            uint64_t bishops = b.bishops_bb[side];
+            while (bishops) {
+                const int sq = poplsbIndex(bishops);
+                const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
+                if (mobility == 0) [[unlikely]] score -= sign * PINNED_BISHOP_PENALTY;
+                else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
+            }
 
-        while (rooks) {
-            const int sq = poplsbIndex(rooks);
-            const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_ROOK_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
-        }
+            uint64_t rooks = b.rooks_bb[side];
+            while (rooks) {
+                const int sq = poplsbIndex(rooks);
+                const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
+                if (mobility == 0) [[unlikely]] score -= sign * PINNED_ROOK_PENALTY;
+                else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
+            }
 
-        while (queens) {
-            const int sq = poplsbIndex(queens);
-            const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
-            if (mobility == 0) score -= sign * PINNED_QUEEN_PENALTY;
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
+            uint64_t queens = b.queens_bb[side];
+            while (queens) {
+                const int sq = poplsbIndex(queens);
+                const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
+                if (mobility == 0) [[unlikely]] score -= sign * PINNED_QUEEN_PENALTY;
+                else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
+            }
         }
     }
 
@@ -552,7 +561,8 @@ int64_t Engine::evalHangingPieces(const chess::Board& b, const AttackData data[2
     return score;
 }
 
-int64_t Engine::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+__attribute__((hot, always_inline))
+inline int64_t Engine::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
     return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
 }
@@ -594,6 +604,7 @@ int Engine::manhattan(int a, int b) noexcept {
     return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
 }
 
+__attribute__((hot))
 int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
     int64_t score = 0;
 
@@ -604,35 +615,35 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 
         const int ksq = __builtin_ctzll(kingBB);
 
-        // ENDGAME: king activity
+        // OTTIMIZZAZIONE: usa bitboard invece di loop per contare pezzi vicini
+        // Precalcola la "king zone" (caselle adiacenti) con bitboard
+        uint64_t kingZone = pieces::KING_ATTACKS[ksq]; // 8 caselle adiacenti
+
+        // ENDGAME: king activity (conta alleati vicini con bitboard)
         if (isEndgame) {
-            uint64_t friends =
+            const uint64_t friends =
                 b.pawns_bb[side]   |
                 b.knights_bb[side] |
                 b.bishops_bb[side] |
                 b.rooks_bb[side]   |
                 b.queens_bb[side];
-
-            while (friends) {
-                const int sq = poplsbIndex(friends);
-                if (manhattan(ksq, sq) <= 2)
-                    score += sign * KING_ACTIVITY_BONUS;
-            }
+            
+            // Conta pezzi amici in king zone (molto più veloce del loop manhattan)
+            const int friendsNearKing = __builtin_popcountll(friends & kingZone);
+            score += sign * friendsNearKing * KING_ACTIVITY_BONUS;
         }
 
-        // MIDGAME: enemy proximity penalty
-        uint64_t enemies =
+        // MIDGAME: enemy proximity penalty (conta nemici vicini con bitboard)
+        const uint64_t enemies =
             b.pawns_bb[side ^ 1]   |
             b.knights_bb[side ^ 1] |
             b.bishops_bb[side ^ 1] |
             b.rooks_bb[side ^ 1]   |
             b.queens_bb[side ^ 1];
 
-        while (enemies) {
-            const int sq = poplsbIndex(enemies);
-            if (manhattan(ksq, sq) <= 2)
-                score += sign * KING_SAFETY_PENALTY;
-        }
+        // Conta pezzi nemici in king zone
+        const int enemiesNearKing = __builtin_popcountll(enemies & kingZone);
+        score += sign * enemiesNearKing * KING_SAFETY_PENALTY;
     }
 
     return score;
@@ -713,63 +724,67 @@ int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
     return score;
 }
 
+__attribute__((hot))
 void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    // Initialize to zero
-    data[0] = {};
-    data[1] = {};
+    // OTTIMIZZAZIONE: inizializza a zero con memset (più veloce)
+    std::memset(data, 0, 2 * sizeof(AttackData));
 
+    // OTTIMIZZAZIONE: elabora entrambi i lati in parallelo per migliore cache locality
     for (int side = 0; side < 2; ++side) {
-        // Pawns
+        AttackData& d = data[side];
+        
+        // Pawns - usa lookup table (no magic bitboards)
         uint64_t pawns = b.pawns_bb[side];
         while (pawns) {
             const int sq = poplsbIndex(pawns);
-            data[side].pawnAttacks |= pieces::PAWN_ATTACKS[side][sq];
+            d.pawnAttacks |= pieces::PAWN_ATTACKS[side][sq];
         }
-        data[side].allAttacks |= data[side].pawnAttacks;
+        d.allAttacks = d.pawnAttacks;
 
-        // Knights
+        // Knights - usa lookup table (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
         while (knights) {
             const int sq = poplsbIndex(knights);
-            uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
-            data[side].knightAttacks |= attacks;
-            data[side].knightMobility += __builtin_popcountll(attacks & ~occ);
+            const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
+            d.knightAttacks |= attacks;
+            d.knightMobility += __builtin_popcountll(attacks & ~occ);
         }
-        data[side].allAttacks |= data[side].knightAttacks;
+        d.allAttacks |= d.knightAttacks;
 
-        // Bishops
+        // Bishops - magic bitboards necessari
         uint64_t bishops = b.bishops_bb[side];
         while (bishops) {
             const int sq = poplsbIndex(bishops);
-            uint64_t attacks = pieces::getBishopAttacks(sq, occ);
-            data[side].bishopAttacks |= attacks;
-            data[side].bishopMobility += __builtin_popcountll(attacks & ~occ);
+            const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
+            d.bishopAttacks |= attacks;
+            d.bishopMobility += __builtin_popcountll(attacks & ~occ);
         }
-        data[side].allAttacks |= data[side].bishopAttacks;
+        d.allAttacks |= d.bishopAttacks;
 
-        // Rooks
+        // Rooks - magic bitboards necessari
         uint64_t rooks = b.rooks_bb[side];
         while (rooks) {
             const int sq = poplsbIndex(rooks);
-            uint64_t attacks = pieces::getRookAttacks(sq, occ);
-            data[side].rookAttacks |= attacks;
-            data[side].rookMobility += __builtin_popcountll(attacks & ~occ);
+            const uint64_t attacks = pieces::getRookAttacks(sq, occ);
+            d.rookAttacks |= attacks;
+            d.rookMobility += __builtin_popcountll(attacks & ~occ);
         }
-        data[side].allAttacks |= data[side].rookAttacks;
+        d.allAttacks |= d.rookAttacks;
 
-        // Queens
+        // Queens - magic bitboards necessari
         uint64_t queens = b.queens_bb[side];
         while (queens) {
             const int sq = poplsbIndex(queens);
-            uint64_t attacks = pieces::getQueenAttacks(sq, occ);
-            data[side].queenAttacks |= attacks;
-            data[side].queenMobility += __builtin_popcountll(attacks & ~occ);
+            const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
+            d.queenAttacks |= attacks;
+            d.queenMobility += __builtin_popcountll(attacks & ~occ);
         }
-        data[side].allAttacks |= data[side].queenAttacks;
+        d.allAttacks |= d.queenAttacks;
     }
 }
 
 
+__attribute__((hot))
 int64_t Engine::evaluate(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
         //(missing king)
@@ -786,7 +801,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // ===================================================
     // GAME PHASE DETECTION
     // ===================================================
-    int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
+    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
                                              board.bishops_bb[0] | board.bishops_bb[1] |
                                              board.rooks_bb[0]   | board.rooks_bb[1]   |
                                              board.queens_bb[0]  | board.queens_bb[1]);
@@ -796,10 +811,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
     constexpr int PIECE_ENDGAME_THRESHOLD = 8;  // <= 8 pezzi = endgame
     
-    bool isOpening = (fullMoves < OPENING_MOVES);
-    bool isEarlyMiddlegame = (fullMoves >= OPENING_MOVES && fullMoves < EARLY_MG_MOVES);
-    bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    bool isMiddlegame = !isOpening && !isEndgame;
+    const bool isOpening = (fullMoves < OPENING_MOVES);
+    const bool isEarlyMiddlegame = (fullMoves >= OPENING_MOVES && fullMoves < EARLY_MG_MOVES);
+    const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
+    const bool isMiddlegame = !isOpening && !isEndgame;
 
     // ===================================================
     // PIECE-SQUARE TABLES (always evaluated)

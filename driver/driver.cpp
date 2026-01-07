@@ -15,7 +15,7 @@
 
 namespace driver {
 
-    Driver::Driver(print::Menu m, engine::Engine e) 
+    Driver::Driver(print::Menu m, engine::Engine& e) 
         : menu(m)
         , engine(e) 
     {}

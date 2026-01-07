@@ -664,6 +664,7 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
 }
 
 // Is the given color currently in check?
+__attribute__((hot))
 bool Board::inCheck(uint8_t color) const noexcept {
     // Find king square using king bitboards (convert to array index)
     const uint8_t side = (color == WHITE) ? 0 : 1;

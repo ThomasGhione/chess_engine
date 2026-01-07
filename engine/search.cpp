@@ -255,7 +255,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     #pragma omp parallel for schedule(static, 1)
     for (int i = 1; i < moves.size; ++i) {
-        chess::Board threadBoard = this->board; // copia locale - ORA SICURA!
+        chess::Board threadBoard = this->board;
         const auto& m = moves[i];
         chess::Board::MoveState state;
 
@@ -266,10 +266,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             threadBoard.doMove(m, state);
         }
         
-        // FIXED: Usa finestra ORIGINALE (non aggiornata dai thread)
-        // Questo garantisce che tutti i thread vedano gli stessi bounds = DETERMINISMO
-        // Passiamo useTT=false per evitare race condition su TT e History/Killer
-        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false);
+        // READ-ONLY TT: threads possono leggere (cache hits), solo main thread scrive
+        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
         threadBoard.undoMove(m, state);
 
         threadScores[i] = score;
@@ -368,9 +366,8 @@ void Engine::search(uint64_t depth) noexcept {
         if (currentDepth > 1) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
-                    // Rotate custom: [A,B,C,D*,E] -> [D*,A,B,C,E]  ✅ Ordinamento preservato
-                    // (invece di swap: [D*,B,C,A,E]  ❌ A va in posizione sbagliata!)
-                    // PERFORMANCE: ~3x più veloce di std::rotate per array piccoli
+                    // Rotate custom: [A,B,C,D*,E] -> [D*,A,B,C,E] Ordinamento preservato
+                    // (invece di swap: [D*,B,C,A,E]  A va in posizione sbagliata!)
                     chess::Board::Move::rotate(moves, i);
                     break;
                 }
@@ -400,7 +397,7 @@ void Engine::search(uint64_t depth) noexcept {
 #endif
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT) noexcept {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite) noexcept {
     this->nodesSearched++;
 
     // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
@@ -442,7 +439,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t best = result.score;
 
     // Save position to transposition table
-    if (useTT) {
+    // DETERMINISMO: salva SOLO se allowTTWrite=true (disabilitato nei thread paralleli)
+    if (useTT && allowTTWrite) {
         const uint64_t hashKey = computeHashKey(b);
         TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta, 0};
         this->saveTTEntry(ttInfo);

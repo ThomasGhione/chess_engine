@@ -16,9 +16,9 @@ namespace driver {
             constexpr static int32_t NO_ARGS = 1;
 
             print::Menu menu;
-            engine::Engine engine;
+            engine::Engine& engine;  // Cambiato da copia a riferimento
 
-            Driver(print::Menu menu, engine::Engine engine);
+            Driver(print::Menu menu, engine::Engine& engine);  // Passaggio per riferimento
 
             void startGame(int argc, char *argv[]) noexcept;
 

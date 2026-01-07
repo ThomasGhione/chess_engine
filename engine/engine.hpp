@@ -38,6 +38,12 @@ class Engine final {
 public:
     Engine();
     Engine(std::string fen);
+    
+    // Engine non è copiabile né movibile a causa di stato complesso
+    Engine(const Engine&) = delete;
+    Engine& operator=(const Engine&) = delete;
+    Engine(Engine&&) = delete;
+    Engine& operator=(Engine&&) = delete;
 
     chess::Board board;
     bool isPlayerWhite;
@@ -154,7 +160,7 @@ private:
     //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
     //MoveList<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
     //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true) noexcept;
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
 
 public:

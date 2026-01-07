@@ -260,8 +260,8 @@ public:
 
 
     // CRITICAL OPTIMIZATION: Inline updateChessboard to avoid double get/set overhead
-    // OLD: 3 function calls (1 get + 2 set) → 6 index conversions
-    // NEW: Direct inline → 0 function calls, direct array access
+    // OLD: 3 function calls (1 get + 2 set) -> 6 index conversions
+    // NEW (commented): Direct inline -> 0 function calls, direct array access
     __attribute__((always_inline))
     inline void updateChessboard(const Coords& from, const Coords& to) noexcept {
         piece_id piece = static_cast<piece_id>(this->get(from));
@@ -319,7 +319,7 @@ public:
         for (uint8_t index = 0; index < 64; ++index) {
             const uint8_t piece = this->get(index);
             
-            if (piece == EMPTY) [[likely]] continue;
+            if (piece == EMPTY) continue;
             
             const uint64_t bit = 1ULL << index;
             const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
@@ -400,6 +400,7 @@ public:
     // Does the color have at least one legal move?
     bool hasAnyLegalMove(uint8_t color) const noexcept;
 
+    __attribute__((hot))
     bool isCheckmate(uint8_t color) const noexcept {return inCheck(color) && !hasAnyLegalMove(color);}
 
     bool isStalemate(uint8_t color) const noexcept {return !inCheck(color) && !hasAnyLegalMove(color);}
