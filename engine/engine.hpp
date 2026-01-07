@@ -143,7 +143,7 @@ private:
     void saveTTEntry(const TTSaveInfo& info) noexcept;
     
     // Helper methods for move execution
-    // executeMove() RIMOSSO - usa direttamente doMove() con promotion check inline
+    // REMOVED: executeMove() was redundant - use doMove() with promotion check inline
     void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
                           int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
                           chess::Board::Move& bestMove) noexcept;

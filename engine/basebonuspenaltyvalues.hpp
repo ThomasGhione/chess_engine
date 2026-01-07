@@ -38,7 +38,7 @@ inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 30;   // ridotto da
 inline static constexpr int64_t PINNED_QUEEN_PENALTY = 80;         // ridotto da 150
 
 // ===================================================
-// HANGING PIECES (CRITICAL - bilanciare con SEE e move ordering!)
+// HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
 // IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!
 // La SEE nella search già valuta gli scambi, quindi qui serve solo un "warning"
 // ===================================================

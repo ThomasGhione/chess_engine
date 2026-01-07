@@ -8,26 +8,26 @@
 
 namespace engine {
 
-// Ottimizzazione: entry compatta da 12 byte (più cache-friendly)
-// key16(2) + score(2) + depth(1) + age(1) + flag(1) + padding(1) = 8 byte minimo
-// Usiamo key per ridurre collisioni: key(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 byte
+// Optimization: compact entry layout to improve cache behavior
+// key16(2) + score(2) + depth(1) + age(1) + flag(1) + padding(1) = 8 bytes minimum
+// We use a wider key to reduce collisions: key(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 bytes
 struct TTEntry {
-    uint64_t key;   // 64 bit della Zobrist key 
-    int16_t  score;   // score in centipawns (range ±32k sufficiente con mate detection)
-    uint8_t  depth;   // profondità (0-255 sufficiente)
-    uint8_t  age  ;   // generation/age per replacement policy
+    uint64_t key;   // 64-bit Zobrist key
+    int16_t  score;   // score in centipawns (±32k range sufficient with mate detection)
+    uint8_t  depth;   // search depth (0-255 sufficient)
+    uint8_t  age  ;   // generation/age for replacement policy
     uint8_t  flag;   // INVALID / EXACT / LOWERBOUND / UPPERBOUND
-    uint8_t  padding[3]; // align a 16 byte
+    uint8_t  padding[3]; // align to 16 bytes
 
     enum Flag : uint8_t {
-        INVALID = 0,  // Entry vuota/non valida
+        INVALID = 0,  // empty/invalid entry
         EXACT,
         LOWERBOUND,
         UPPERBOUND
     };
 
-    // Bucket-based TT: 4 entries per bucket per ridurre collisioni (cache line = 64 byte, bucket = 48 byte)
-    static constexpr std::size_t BUCKET_COUNT = 1u << 22; // 2^22 buckets = 16M entries (256 MB)
+    // Bucket-based TT: 4 entries per bucket to reduce collisions (cache line = 64 bytes, bucket ~48 bytes)
+    static constexpr std::size_t BUCKET_COUNT = 1u << 20; // 2^20 buckets = 4M buckets (table size = 16M entries)
     static constexpr std::size_t ENTRIES_PER_BUCKET = 4;
     static constexpr std::size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
     
@@ -119,7 +119,7 @@ inline constexpr ZobristTables ZOBRIST = makeZobristTables();
 inline uint64_t computeHashKey(const chess::Board& board) {
     uint64_t hashKey = 0ULL;
 
-    // Pezzi usando direttamente le bitboard per tipo/colore
+    // Pieces using bitboards indexed by piece type/color
     auto xorPiecesFromBB = [&](uint64_t bb, uint8_t idx) {
         while (bb) {
             const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
@@ -144,11 +144,11 @@ inline uint64_t computeHashKey(const chess::Board& board) {
     xorPiecesFromBB(board.queens_bb[1],  13);
     xorPiecesFromBB(board.kings_bb[1],   14);
 
-    // Side to move: XOR se tocca al nero (branchless)
+    // Side to move: XOR if black to move (branchless)
     const uint64_t stmMask = static_cast<uint64_t>(-(board.getActiveColor() == chess::Board::BLACK));
     hashKey ^= detail::ZOBRIST.sideToMove & stmMask;
 
-    // Castling rights: usa direttamente il bitmask castle (0-15)
+    // Castling rights: use the Castle bitmask directly (0-15)
     const uint8_t castlingMask = 
         (board.getCastle(0) ? 1u : 0u) |
         (board.getCastle(1) ? 2u : 0u) |
@@ -164,14 +164,14 @@ inline uint64_t computeHashKey(const chess::Board& board) {
     return hashKey;
 }
 
-// Prefetch TT bucket per ridurre cache miss (chiamare prima di probe/store)
+// Prefetch a TT bucket to reduce cache misses (call before probe/store)
 inline void prefetchTT(uint64_t key) {
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
     const TTEntry* bucket = &globalTT()[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
     __builtin_prefetch(bucket, 0, 3); // Read prefetch, high temporal locality
 }
 
-// Store con replacement policy: depth-preferred + age-based
+// Store with replacement policy: prefer higher depth and use age as a tie-breaker
 inline void storeTTEntry(TTEntry* ttTable,
                          uint64_t key,
                          uint8_t depth,
@@ -186,11 +186,11 @@ inline void storeTTEntry(TTEntry* ttTable,
     TTEntry* replaceEntry = &bucket[0];
     int bestReplaceScore = -1000000;
 
-    // Cerca entry esistente o la migliore da sostituire
+    // Search for an existing entry or the best candidate to replace
     for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
         TTEntry& entry = bucket[i];
         
-        // Se stessa key, aggiorna sempre (depth-preferred)
+    // If the same key is found, update it (prefer deeper entries)
         if (entry.key == key) {
             if (depth >= entry.depth || flag == TTEntry::EXACT) {
                 entry.depth = depth;
@@ -201,7 +201,7 @@ inline void storeTTEntry(TTEntry* ttTable,
             return;
         }
 
-        // Calcola replacement score: preferisci entry vecchie o con depth bassa
+    // Compute replacement score: prefer older entries or entries with smaller depth
         const int ageDiff = static_cast<int>(generation - entry.age) & 0xFF;
         const int replaceScore = (ageDiff * 256) - static_cast<int>(entry.depth) * 4;
         
@@ -211,7 +211,7 @@ inline void storeTTEntry(TTEntry* ttTable,
         }
     }
 
-    // Sostituisci la migliore entry trovata
+    // Replace the selected entry
     replaceEntry->key = key;
     replaceEntry->depth = depth;
     replaceEntry->score = score;
@@ -219,7 +219,7 @@ inline void storeTTEntry(TTEntry* ttTable,
     replaceEntry->age   = generation;
 }
 
-// Probe ottimizzato con bucket search
+// Optimized probe using bucket search
 inline bool probeTT(const TTEntry* ttTable,
                     uint64_t key,
                     uint8_t depth,
@@ -234,9 +234,9 @@ inline bool probeTT(const TTEntry* ttTable,
     for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
         const TTEntry& entry = bucket[i];
         
-        if (entry.flag == TTEntry::INVALID) continue;  // entry vuota, salta
-        if (entry.key != key) continue;                // chiave diversa
-        if (entry.depth < depth) continue;             // profondità insufficiente
+        if (entry.flag == TTEntry::INVALID) continue;  // empty entry, skip
+        if (entry.key != key) continue;                // different key
+        if (entry.depth < depth) continue;             // insufficient depth
 
         const int16_t score = entry.score;
         
@@ -258,7 +258,7 @@ inline bool probeTT(const TTEntry* ttTable,
                 break;
         }
         
-        // Entry trovata ma non utilizzabile per cutoff
+        // Entry found but not usable for cutoff
         return false;
     }
     

@@ -324,7 +324,7 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
             const int file = sq & 7;
             const int rank = sq >> 3;
 
-            // OTTIMIZZAZIONE: calcola mobility solo se necessario (early exit)
+            // OPTIMIZATION: compute mobility only when necessary (early exit)
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             const int mobility = __builtin_popcountll(attacks & ~occ);
 
@@ -333,7 +333,7 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
                 score -= sign * 25;
             }
 
-            // Rook blocked by own pawn on same file - usa maschere precalcolate
+            // Rook blocked by own pawn on the same file - use precomputed masks
             if (ownPawns & FILE_MASKS[file]) [[unlikely]] {
                 score -= sign * 15;
             }
@@ -351,7 +351,7 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
 
 __attribute__((hot))
 int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
-    // OTTIMIZZAZIONE: usa maschere precalcolate invece di loop con if
+    // OPTIMIZATION: use precomputed masks instead of loops with if
     constexpr uint64_t A_FILE = 0x0101010101010101ULL;
     constexpr uint64_t H_FILE = 0x8080808080808080ULL;
     constexpr uint64_t B_FILE = 0x0202020202020202ULL;
@@ -395,7 +395,7 @@ inline int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noe
 
 __attribute__((hot))
 int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    // OTTIMIZZAZIONE: calcola in batch invece di loop per bishop
+    // OPTIMIZATION: calculate in batches instead of per-bishop loops
     constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
     
     const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
@@ -411,11 +411,11 @@ int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexce
     return (side == 0) ? score : -score;
 }
 
-// OTTIMIZZAZIONE: premia sviluppo con bitboard batch (no loop)
+// OPTIMIZATION: reward development using bitboard batches (no loop)
 __attribute__((hot))
 int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
     // Caselle iniziali per i pezzi minori
-    // ATTENZIONE: bit 0-7 = rank 8 (BLACK), bit 56-63 = rank 1 (WHITE)
+    // CAUTION: bit 0-7 = rank 8 (BLACK), bit 56-63 = rank 1 (WHITE)
     constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
     constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
     
@@ -485,7 +485,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
 
-        // Knights: usa lookup table precalcolata (no magic bitboards)
+    // Knights: use a precomputed lookup table (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
         while (knights) {
             const int sq = poplsbIndex(knights);
@@ -615,8 +615,8 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 
         const int ksq = __builtin_ctzll(kingBB);
 
-        // OTTIMIZZAZIONE: usa bitboard invece di loop per contare pezzi vicini
-        // Precalcola la "king zone" (caselle adiacenti) con bitboard
+    // OPTIMIZATION: use bitboards instead of loops to count nearby pieces
+    // Precompute the king zone (adjacent squares) as a bitboard
         uint64_t kingZone = pieces::KING_ATTACKS[ksq]; // 8 caselle adiacenti
 
         // ENDGAME: king activity (conta alleati vicini con bitboard)
@@ -726,10 +726,10 @@ int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
 
 __attribute__((hot))
 void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    // OTTIMIZZAZIONE: inizializza a zero con memset (più veloce)
+    // OPTIMIZATION: initialize to zero with memset (faster)
     std::memset(data, 0, 2 * sizeof(AttackData));
 
-    // OTTIMIZZAZIONE: elabora entrambi i lati in parallelo per migliore cache locality
+    // OPTIMIZATION: process both sides to improve cache locality
     for (int side = 0; side < 2; ++side) {
         AttackData& d = data[side];
         

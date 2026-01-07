@@ -3,13 +3,13 @@
 
 namespace engine {
     
-// Helper per LMR: verifica se la mossa è un killer move per il ply corrente
-// OTTIMIZZAZIONE: Unroll manuale del loop (2 iterazioni)
+// Helper for LMR: check if the move is a killer move for the current ply
+// OPTIMIZATION: manually unrolled the loop (2 iterations)
 __attribute__((always_inline))
 inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
     if (ply < 0 || ply >= Engine::MAX_PLY) [[unlikely]] return false;
     
-    // Manual unroll: confronta entrambi i killer move senza loop
+    // Manual unroll: compare both killer moves without a loop
     const auto& km0 = killerMoves[0][ply];
     const auto& km1 = killerMoves[1][ply];
     
@@ -18,10 +18,10 @@ inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board
 }
 
 // Helper function to check if a move is a pawn promotion candidate
-// OTTIMIZZAZIONE: inline + noexcept + constexpr rank check
+// OPTIMIZATION: inline + noexcept + constexpr rank check
 __attribute__((always_inline))
 inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    // Early exit: se non è sulla 1a o 8a riga, non può essere promozione
+    // Early exit: if not on rank 1 or 8, it cannot be a promotion
     const uint8_t toRank = move.to.rank();
     if (toRank != 0 && toRank != 7) return false;
     
@@ -40,15 +40,15 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
     
     // const uint8_t activeColor = b.getActiveColor();
 
-    // NOTA: isCheckmate/isStalemate sono gestiti implicitamente quando generateLegalMoves()
-    // ritorna vuoto in searchPosition, quindi non serve controllarli qui.
+    // NOTE: isCheckmate/isStalemate are handled implicitly when generateLegalMoves()
+    // returns empty in searchPosition, so explicit checks are not required here.
     if (depth <= 0) {
         score = this->evaluate(b);
         return true;
     }
 
-    // Check extension: search deeper if in check, ma con limite per evitare esplosione
-    // Limitiamo a depth massima di 10 per evitare stack overflow e segfault
+    // Check extension: search deeper if in check, but limit to avoid explosion
+    // Limit extended depth to avoid stack overflow and segfaults
     // constexpr int64_t MAX_EXTENDED_DEPTH = 10;
     // const bool inCheck = b.inCheck(activeColor);
     // if (inCheck && depth > 0 && depth < MAX_EXTENDED_DEPTH) {
@@ -79,22 +79,22 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const auto& m = scoredMove.move;
         chess::Board::MoveState state;
 
-        // CRITICAL: verifica se è cattura PRIMA di fare la mossa
-        // Dopo doMove, b.get(m.to) contiene il pezzo mosso, non è più vuoto!
+        // CRITICAL: check for capture BEFORE making the move
+        // After doMove, b.get(m.to) contains the moved piece and is no longer empty
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
         
-        // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA invece di 2-3 volte
+        // OPTIMIZATION: precompute isPromo once instead of 2-3 times
         const bool isPromo = isPromotionMove(b, m);
 
         // Execute move (handling promotions)
-        // UNIFIED: usa una singola chiamata doMove con parametro opzionale
+        // UNIFIED: use a single doMove call with an optional parameter
         b.doMove(m, state, isPromo ? 'q' : '\0');
 
-        // Calcola se la mossa dà scacco DOPO averla eseguita
+        // Compute whether the move gives check AFTER it is made
         const uint8_t oppColor = (ctx.activeColor == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
         const bool givesCheck = b.inCheck(oppColor);
 
-        // LMR: riduci la profondità per le mosse "late" non critiche
+        // LMR: reduce depth for late, non-critical moves
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)
             && (moveIndex > 1)
@@ -105,16 +105,16 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         int64_t score = 0;
         if (canReduce) {
-            // Riduzione adattiva: più profondo cerchiamo, più riduciamo
+            // Adaptive reduction: deeper searches reduce more
             // Formula: R = 1 + floor(log2(depth)) + floor(log2(moveIndex))
             int64_t reduction = 1;
-            if (ctx.depth >= 6) reduction += 1; // +1 se depth >= 6
-            if (moveIndex >= 4) reduction += 1; // +1 se è molto late (>= 4a mossa)
+            if (ctx.depth >= 6) reduction += 2; // +2 if depth >= 6
+            if (moveIndex >= 8) reduction += 2; // +2 if very late (>= 8th move)
             
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             
-            // Re-search a profondità piena se la mossa ridotta è promettente
+            // Re-search at full depth if the reduced search looks promising
             if (score > bounds.alpha && score < bounds.beta) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             }
@@ -180,7 +180,14 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
 
-    const bool useYBWC = (moves.size >= 6 && this->depth >= 4);
+    // Parallelismo YBWC: attivato solo se:
+    // - Abbastanza mosse (>= 10) per giustificare overhead threads
+    // - Profondità sufficiente (>= DEFAULTDEPTH- 2 ) per beneficio reale
+    // - NON in endgame (>= 6 pezzi) dove ricerca sequenziale è più efficiente
+    const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
+    const bool useYBWC = (moves.size >= 10 && 
+                          this->depth >= (Engine::DEFAULTDEPTH - 2) &&
+                          totalPieces >= 6);
     
     if (!useYBWC) {
         // Sequential search con PVS (Principal Variation Search)
@@ -232,12 +239,12 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
         
-        // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA
+        // OPTIMIZATION: precompute isPromo once
         const bool isPromo = isPromotionMove(this->board, firstMove);
         this->board.doMove(firstMove, state, isPromo ? 'q' : '\0');
         
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
-        // CRITICAL: Undo PRIMA di lanciare thread paralleli per evitare race sulla copia di this->board
+        // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
         this->board.undoMove(firstMove, state);
         
         // Update best move DOPO l'undo
@@ -246,8 +253,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     if (moves.size <= 1) [[unlikely]] return bestMove;
 
-    // CRITICAL FIX: Salva alpha/beta ORIGINALI prima del loop parallelo
-    // Tutti i thread devono vedere la STESSA finestra per garantire determinismo
+    // CRITICAL FIX: Save original alpha/beta before the parallel loop
+    // All threads must see the same window to guarantee determinism
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;
 
@@ -266,7 +273,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             threadBoard.doMove(m, state);
         }
         
-        // READ-ONLY TT: threads possono leggere (cache hits), solo main thread scrive
         int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
         threadBoard.undoMove(m, state);
 
@@ -290,8 +296,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     return bestMove;
 }
 
-// RIMOSSO: executeMove() è ridondante - usa direttamente doMove con promotion check inline
-// La versione ottimizzata è già in searchMoves() e getBestMove()
+// REMOVED: executeMove() was redundant - use doMove with promotion check inline
+// The optimized version is already implemented in searchMoves() and getBestMove()
 
 // Helper to undo move and update best move/alpha-beta bounds
 void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
@@ -362,7 +368,7 @@ void Engine::search(uint64_t depth) noexcept {
         
         // Move ordering: porta la best move della iterazione precedente in testa
         // Usa rotate custom ottimizzata per preservare l'ordinamento relativo
-        // CRITICAL: std::swap romperebbe l'ordinamento! (la 2a migliore finirebbe all'i-esima pos)
+        // CRITICAL: std::swap would break ordering! (the 2nd-best would end up at the i-th position)
         if (currentDepth > 1) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
@@ -405,10 +411,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->evaluate(b);
     }
 
-    // RIMOSSO: Endgame depth extension con static bool - BUGGY!
-    // Le static bool non venivano mai resettate, causando estensioni mancate
-    // Soluzione: gestire depth extension nella funzione search() principale
-    // oppure usare contatori per-ricerca invece di static
+    // REMOVED: Endgame depth extension using static bool - buggy
+    // Static booleans were never reset across searches, causing missed extensions
+    // Fix: handle depth extension in the main search() or use per-search counters
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
@@ -520,9 +525,9 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
         moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
     
 
-    // NOTA: Tutte le mosse generate chiamano canMoveToBB per verificare legalità
-    // Questo assicura che non vengano mai generate mosse che lasciano il re sotto scacco
-    // (es. mosse che violano pin, mosse in risposta a scacco doppio, ecc.)
+    // NOTE: All generated moves call canMoveToBB to verify legality
+    // This ensures no moves that leave the king in check are generated
+    // (e.g., moves that violate pins or double-check responses)
     
     uint64_t bb = pawns;
     while (bb) {
@@ -621,7 +626,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 }
 
 // Helper to add king move heuristic bonus/penalty
-// NOTA: inCheck precalcolato fuori dal loop per evitare chiamate ripetute
+// NOTE: inCheck precomputed outside the loop to avoid repeated calls
 void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept {
     if (pieceType != chess::Board::KING) return;
 
@@ -638,7 +643,7 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
 
 // Static Exchange Evaluation (SEE) - Quick version
 // Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
-// OTTIMIZZAZIONE: si ferma al primo scambio favorevole per il lato passivo (early exit)
+// OPTIMIZATION: stop at the first favorable exchange for the passive side (early exit)
 int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
@@ -816,9 +821,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
             // Se non è killer, controlla altre eurystiche
             if (!isKiller) {
-                // OTTIMIZZAZIONE: rimuoviamo check detection dal move ordering
-                // Costa troppo (doMove/undoMove per ogni quiet move)
-                // I check verranno comunque esplorati presto grazie a killer moves e LMR
+                // OPTIMIZATION: remove check detection from move ordering
+                // It is expensive (doMove/undoMove per quiet move)
+                // Checks will still be explored early because of killer moves and LMR
                 
                 // Promotion bonus (se non è cattura)
                 if (fromPieceType == chess::Board::PAWN) {
