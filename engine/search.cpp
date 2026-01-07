@@ -16,14 +16,21 @@ bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move 
 }
 
 // Helper function to check if a move is a pawn promotion candidate
-bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    uint8_t piece = board.get(move.from);
-    uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-    uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-
-    return (pieceType == chess::Board::PAWN) &&
-           ((pieceColor == chess::Board::WHITE && move.to.rank() == 7) ||
-            (pieceColor == chess::Board::BLACK && move.to.rank() == 0));
+// OTTIMIZZAZIONE: inline + noexcept + constexpr rank check
+__attribute__((always_inline))
+inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
+    // Early exit: se non è sulla 1a o 8a riga, non può essere promozione
+    const uint8_t toRank = move.to.rank();
+    if (toRank != 0 && toRank != 7) return false;
+    
+    const uint8_t piece = board.get(move.from);
+    const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
+    
+    if (pieceType != chess::Board::PAWN) return false;
+    
+    const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+    return (pieceColor == chess::Board::WHITE && toRank == 7) ||
+           (pieceColor == chess::Board::BLACK && toRank == 0);
 }
 
 // Helper to handle terminal nodes and transposition table lookups
@@ -73,14 +80,13 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // CRITICAL: verifica se è cattura PRIMA di fare la mossa
         // Dopo doMove, b.get(m.to) contiene il pezzo mosso, non è più vuoto!
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
+        
+        // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA invece di 2-3 volte
         const bool isPromo = isPromotionMove(b, m);
 
         // Execute move (handling promotions)
-        if (isPromo) {
-            b.doMove(m, state, 'q');
-        } else {
-            b.doMove(m, state);
-        }
+        // UNIFIED: usa una singola chiamata doMove con parametro opzionale
+        b.doMove(m, state, isPromo ? 'q' : '\0');
 
         // Calcola se la mossa dà scacco DOPO averla eseguita
         const uint8_t oppColor = (ctx.activeColor == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
@@ -91,8 +97,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool canReduce = (ctx.depth > 2)
             && (moveIndex > 1)
             && !isPromo
-            && !wasCapture // FIXED: ora il check è corretto
-            && !givesCheck // NON ridurre se la mossa dà scacco!
+            && !wasCapture
+            && !givesCheck
             && !this->isKillerMove(m, killerMoves, ctx.ply);
 
         int64_t score = 0;
@@ -153,14 +159,11 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
+// OVERLOAD semplificato senza aggiornamento bestMove (per uso interno)
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
-    if (usIsWhite) {
-        if (score > best) best = score;
-        if (score > alpha) alpha = score;
-        return; 
-    }
-    if (score < best) best = score;
-    if (score < beta) beta = score;
+    // Delega alla versione completa con un bestMove dummy
+    chess::Board::Move dummyMove{};
+    updateMinMax(usIsWhite, score, alpha, beta, best, dummyMove, dummyMove);
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
@@ -180,7 +183,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         for (size_t i = 0; i < moves.size; ++i) {
             const auto& m = moves[i];
             chess::Board::MoveState state;
-            this->executeMove(m, state);
+            
+            // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA
+            const bool isPromo = isPromotionMove(this->board, m);
+            this->board.doMove(m, state, isPromo ? 'q' : '\0');
             
             int64_t score;
             if (i == 0) {
@@ -219,7 +225,11 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     {
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
-        this->executeMove(firstMove, state);
+        
+        // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA
+        const bool isPromo = isPromotionMove(this->board, firstMove);
+        this->board.doMove(firstMove, state, isPromo ? 'q' : '\0');
+        
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
         // CRITICAL: Undo PRIMA di lanciare thread paralleli per evitare race sulla copia di this->board
         this->board.undoMove(firstMove, state);
@@ -276,14 +286,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     return bestMove;
 }
 
-// Helper to execute a move, handling promotions
-void Engine::executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
-    if (isPromotionMove(this->board, m)) [[unlikely]] {
-        this->board.doMove(m, state, 'q');
-        return;
-    }
-    this->board.doMove(m, state);
-}
+// RIMOSSO: executeMove() è ridondante - usa direttamente doMove con promotion check inline
+// La versione ottimizzata è già in searchMoves() e getBestMove()
 
 // Helper to undo move and update best move/alpha-beta bounds
 void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
@@ -321,6 +325,27 @@ void Engine::search(uint64_t depth) noexcept {
     // Reset the nodes searched counter
     this->nodesSearched = 0; 
 
+    // --- ENDGAME DEPTH EXTENSION (UNA VOLTA PER PARTITA) ---
+    // Aumenta la profondità di ricerca negli endgame
+    // Usando flag per garantire che l'aumento sia applicato UNA SOLA VOLTA nella partita
+    const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
+    
+    if (totalPieces == 3 && !this->depthExtendedMaximum) {
+        // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.)
+        depth += 2;
+        this->depthExtendedMaximum = true;
+#ifdef DEBUG
+        std::cout << "[ENDGAME] Depth extended +2 (3 pieces, new depth: " << depth << ")\n";
+#endif
+    } else if (totalPieces < 6 && !this->depthExtendedMedium) {
+        // Endgame con pochi pezzi (es: K+R+P vs K+P)
+        depth += 2;
+        this->depthExtendedMedium = true;
+#ifdef DEBUG
+        std::cout << "[ENDGAME] Depth extended +2 (<6 pieces, new depth: " << depth << ")\n";
+#endif
+    }
+
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
     
     // --- ITERATIVE DEEPENING ---
@@ -331,14 +356,15 @@ void Engine::search(uint64_t depth) noexcept {
     for (uint64_t currentDepth = 1; currentDepth <= depth; ++currentDepth) {
         this->depth = currentDepth;
         
-        // Riordina le mosse: la best move della iterazione precedente va in testa
-        // MANTENIAMO L'ORDINAMENTO: rotate invece di swap
+        // Move ordering: porta la best move della iterazione precedente in testa
+        // Usa std::rotate per preservare l'ordinamento relativo delle altre mosse
+        // CRITICAL: std::swap romperebbe l'ordinamento! (la 2a migliore finirebbe all'i-esima pos)
         if (currentDepth > 1) {
             for (size_t i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
-                    // Rotate: [0, 1, 2, ..., i, ...] -> [i, 0, 1, 2, ..., i-1, ...]
-                    // Sposta moves[i] in testa, shiftando le altre a destra
-                    std::rotate(&moves[0], &moves[i], &moves[i + 1]);        
+                    // Rotate: [A,B,C,D*,E] -> [D*,A,B,C,E]  CORRETTO: Ordinamento preservato
+                    // (invece di swap: [D*,B,C,A,E]  SBAGLIATO: A va in posizione sbagliata!)
+                    std::rotate(moves.data, moves.data + i, moves.data + i + 1);
                     break;
                 }
             }
@@ -375,23 +401,10 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->evaluate(b);
     }
 
-    // --- ENDGAME DEPTH EXTENSION ---
-    // Conta il numero totale di pezzi sulla scacchiera (re inclusi)
-    const int totalPieces = __builtin_popcountll(b.getPiecesBitMap());
-    
-    // Estendi la profondità di ricerca in endgame (meno pezzi = ricerca più veloce)
-    static bool extendedDepthMedium = false;
-    static bool extendedDepthMaximum = false;
-    if (totalPieces < 7 && !extendedDepthMedium) {
-        // Tablebase territory: 2 re + 1 pezzo
-        this->depth += 2;
-        extendedDepthMedium = true;
-    }
-    if (totalPieces == 3 && !extendedDepthMaximum) {
-        // Tablebase territory: 2 re + 1 pezzo
-        this->depth += 2;
-        extendedDepthMaximum = true;
-    }
+    // RIMOSSO: Endgame depth extension con static bool - BUGGY!
+    // Le static bool non venivano mai resettate, causando estensioni mancate
+    // Soluzione: gestire depth extension nella funzione search() principale
+    // oppure usare contatori per-ricerca invece di static
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
@@ -404,30 +417,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     const uint8_t activeColor = b.getActiveColor();
 
-    // --- Null Move Pruning DISABILITATO ---
-    // Reintrodurre quando avremo: hash move, better move ordering, e tactical position detection
-    // Il problema: senza hash move, taglia anche rami con catture ovvie
-    /*auto hasNonPawnMaterial = [&]() {
-        const int side = (activeColor == chess::Board::WHITE) ? 0 : 1;
-        int material = __builtin_popcountll(b.knights_bb[side]) +
-                       __builtin_popcountll(b.bishops_bb[side]) +
-                       __builtin_popcountll(b.rooks_bb[side]) +
-                       __builtin_popcountll(b.queens_bb[side]);
-        return material > 0;
-    };
-
-    if (depth >= 3 && !b.inCheck(activeColor) && hasNonPawnMaterial() && ply >= 1) {
-        const int R = (depth >= 6) ? 3 : 2;
-        b.setNextTurn();
-        // FIXED: negamax corretto con finestre invertite
-        int64_t nullScore = -this->searchPosition(b, depth - 1 - R, -beta, -beta + 1, ply + 1);
-        b.setPrevTurn();
-        if (nullScore >= beta) {
-            return beta; // beta cutoff
-        }
-    }*/
-
-
+    // NOTE: Null Move Pruning è disabilitato
+    // Reintrodurre quando avremo hash move e better tactical position detection
 
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
@@ -648,7 +639,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const uint8_t fromSq = m.from.index;
 
     // Trova tutti gli attaccanti alla casella target
-    auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) -> uint64_t {
+    auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) noexcept -> uint64_t {
         uint64_t attackers = 0ULL;
         
         // Pawns
@@ -678,7 +669,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     };
 
     // Trova l'attaccante meno prezioso
-    auto getLeastValuableAttacker = [&](uint64_t attackers, const chess::Board& board) -> uint8_t {
+    auto getLeastValuableAttacker = [&](uint64_t attackers, const chess::Board& board) noexcept -> uint8_t {
         // Ordine: pawn, knight, bishop, rook, queen, king
         const uint64_t pieceTypes[6] = {
             attackers & (board.pawns_bb[0] | board.pawns_bb[1]),

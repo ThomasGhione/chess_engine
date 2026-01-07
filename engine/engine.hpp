@@ -47,12 +47,16 @@ public:
 
     int64_t eval = 0;  // Inizializzato a 0 per evitare valori spazzatura
 
+    // Traccia se la depth è stata estesa per l'endgame (una volta per partita)
+    bool depthExtendedMedium = false;  // Estensione +2 per <6 pezzi
+    bool depthExtendedMaximum = false; // Estensione +2 per 3 pezzi
+
     // Puntatore alla transposition table globale
     TTEntry* ttTable;
 
     static uint64_t nodesSearched; 
 
-    static constexpr std::int32_t DEFAULTDEPTH = 10;
+    static constexpr int32_t DEFAULTDEPTH = 10;
     static std::string moveHistory;
 
 #ifdef DEBUG
@@ -133,7 +137,7 @@ private:
     void saveTTEntry(const TTSaveInfo& info) noexcept;
     
     // Helper methods for move execution
-    void executeMove(const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
+    // executeMove() RIMOSSO - usa direttamente doMove() con promotion check inline
     void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
                           int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
                           chess::Board::Move& bestMove) noexcept;
