@@ -50,6 +50,19 @@ public:
         bool operator==(const Move& other) const noexcept {
             return from == other.from && to == other.to && promotionPiece == other.promotionPiece;
         }
+        
+        // Rotate custom ottimizzata: sposta moves[index] in moves[0]
+        // e shifta moves[0..index-1] una posizione a destra
+        // Esempio: rotate([A,B,C,D,E], 3) -> [D,A,B,C,E]
+        template<typename MoveContainer>
+        static void rotate(MoveContainer& moves, size_t index) noexcept {
+            Move temp = moves[index];
+            // Shifta tutte le mosse [0..index-1] una posizione a destra
+            for (size_t i = index; i > 0; --i) {
+                moves[i] = moves[i - 1];
+            }
+            moves[0] = temp;
+        }
     };
 
     struct MoveState {
