@@ -4,15 +4,17 @@
 namespace engine {
     
 // Helper per LMR: verifica se la mossa è un killer move per il ply corrente
-bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
-    if (ply < 0 || ply >= Engine::MAX_PLY) return false;
-    for (int k = 0; k < 2; ++k) {
-        const auto& km = killerMoves[k][ply];
-        if (m.from.index == km.from.index && m.to.index == km.to.index) {
-            return true;
-        }
-    }
-    return false;
+// OTTIMIZZAZIONE: Unroll manuale del loop (2 iterazioni)
+__attribute__((always_inline))
+inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
+    if (ply < 0 || ply >= Engine::MAX_PLY) [[unlikely]] return false;
+    
+    // Manual unroll: confronta entrambi i killer move senza loop
+    const auto& km0 = killerMoves[0][ply];
+    const auto& km1 = killerMoves[1][ply];
+    
+    return (m.from.index == km0.from.index && m.to.index == km0.to.index) ||
+           (m.from.index == km1.from.index && m.to.index == km1.to.index);
 }
 
 // Helper function to check if a move is a pawn promotion candidate
@@ -159,11 +161,16 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     if (score < beta) beta = score;
 }
 
-// OVERLOAD semplificato senza aggiornamento bestMove (per uso interno)
-void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
-    // Delega alla versione completa con un bestMove dummy
-    chess::Board::Move dummyMove{};
-    updateMinMax(usIsWhite, score, alpha, beta, best, dummyMove, dummyMove);
+// OVERLOAD ottimizzato: implementazione diretta invece di delegare
+__attribute__((always_inline))
+inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
+    if (usIsWhite) {
+        if (score > best) best = score;
+        if (score > alpha) alpha = score;
+    } else {
+        if (score < best) best = score;
+        if (score < beta) beta = score;
+    }
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
@@ -206,8 +213,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                 score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly);
                 
                 // PVS re-search: se null window fallisce, ri-cerca con finestra piena
-                if ((usIsWhite && score > alpha && score < beta) || 
-                    (!usIsWhite && score > alpha && score < beta)) {
+                if (score > alpha && score < beta) {
                     score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
                 }
             }

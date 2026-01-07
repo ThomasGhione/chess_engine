@@ -15,6 +15,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     const uint8_t fromIndex = from.toIndex();
     const uint8_t toIndex   = to.toIndex();
+    
+    // OTTIMIZZAZIONE CRITICA: Precalcola file/rank UNA VOLTA invece di chiamarle ripetutamente
+    const uint8_t fromFile = fromIndex & 7;
+    const uint8_t fromRank = fromIndex >> 3;
+    const uint8_t toFile = toIndex & 7;
+    const uint8_t toRank = toIndex >> 3;
 
     const uint8_t moving      = this->get(from);
     const uint8_t movingType  = moving & MASK_PIECE_TYPE;
@@ -47,7 +53,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     // --- EN PASSANT CAPTURE ---
     if (movingType == PAWN) {
-        if (from.file() != to.file() && destBefore == EMPTY &&
+        // OTTIMIZZAZIONE: usa fromFile/toFile precalcolati invece di from.file()/to.file()
+        if (fromFile != toFile && destBefore == EMPTY &&
             Coords::isInBounds(st.prevEnPassant) &&
             toIndex == st.prevEnPassant.toIndex()) {
 
@@ -56,7 +63,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             const bool isWhite = (movingColor == WHITE);
             // Coords convention: white moves toward rank 0, black toward rank 7
             const int8_t forwardDir = isWhite ? -1 : 1;
-            Coords captured{to.file(), static_cast<uint8_t>(to.rank() - forwardDir)};
+            Coords captured{toFile, static_cast<uint8_t>(toRank - forwardDir)};
             const uint8_t capturedPiece = this->get(captured);
             st.capturedPiece = capturedPiece;
 
@@ -81,16 +88,17 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     this->addPieceToBitboards(moving, toIndex);
 
     // --- ARROCCO: spostamento torre ---
-    if (movingType == KING && from.rank() == to.rank()) {
-        const int8_t df = static_cast<int8_t>(to.file() - from.file());
+    // OTTIMIZZAZIONE: usa toRank precalcolato invece di to.rank()
+    if (movingType == KING && fromRank == toRank) {
+        const int8_t df = static_cast<int8_t>(toFile - fromFile);
         if (df == 2 || df == -2) {
             st.wasCastling = true;
 
             // Compute rook indices directly
             const uint8_t rookFromFile = (df == 2) ? 7 : 0;
             const uint8_t rookToFile   = (df == 2) ? 5 : 3;
-            const uint8_t rookFromIndex = (to.rank() << 3) | rookFromFile;
-            const uint8_t rookToIndex   = (to.rank() << 3) | rookToFile;
+            const uint8_t rookFromIndex = (toRank << 3) | rookFromFile;
+            const uint8_t rookToIndex   = (toRank << 3) | rookToFile;
 
             st.rookFromIndex = rookFromIndex;
             st.rookToIndex   = rookToIndex;
@@ -106,6 +114,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- UPDATE DIRITTI DI ARROCCO / hasMoved ---
+    // OTTIMIZZAZIONE: usa fromFile/fromRank precalcolati
     if (movingType == KING) {
         const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3
         const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
@@ -114,12 +123,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     } else if (movingType == ROOK) {
         // White rooks at rank 7 (row 1), Black rooks at rank 0 (row 8)
         const bool isInitialSquare = (movingColor == WHITE)
-            ? (from.rank() == 7 && (from.file() == 0 || from.file() == 7))
-            : (from.rank() == 0 && (from.file() == 0 || from.file() == 7));
+            ? (fromRank == 7 && (fromFile == 0 || fromFile == 7))
+            : (fromRank == 0 && (fromFile == 0 || fromFile == 7));
         
         if (isInitialSquare) {
             if (movingColor == WHITE) {
-                if (from.file() == 0) {
+                if (fromFile == 0) {
                     castle &= ~(1u << 1); // white queenside
                     hasMoved |= (1u << 1);
                 } else {
@@ -127,7 +136,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
                     hasMoved |= (1u << 2);
                 }
             } else {
-                if (from.file() == 0) {
+                if (fromFile == 0) {
                     castle &= ~(1u << 3); // black queenside
                     hasMoved |= (1u << 4);
                 } else {
@@ -139,19 +148,20 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
     
     // Captured rook on initial square disables corresponding castling
+    // OTTIMIZZAZIONE: usa toFile/toRank precalcolati
     if (destBefore != EMPTY && (destBefore & MASK_PIECE_TYPE) == ROOK) {
         // White rooks at rank 7 (row 1), Black rooks at rank 0 (row 8)
         const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
-            ? (to.rank() == 7 && (to.file() == 0 || to.file() == 7))
-            : (to.rank() == 0 && (to.file() == 0 || to.file() == 7));
+            ? (toRank == 7 && (toFile == 0 || toFile == 7))
+            : (toRank == 0 && (toFile == 0 || toFile == 7));
         
         if (isInitialSquare) {
             if ((destBefore & MASK_COLOR) == WHITE) {
-                castle &= (to.file() == 0) 
+                castle &= (toFile == 0) 
                     ? ~(1u << 1)  // white queenside
                     : ~(1u << 0); // white kingside
             } else {
-                castle &= (to.file() == 0)
+                castle &= (toFile == 0)
                     ? ~(1u << 3)  // black queenside
                     : ~(1u << 2); // black kingside
             }
@@ -159,18 +169,20 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
+    // OTTIMIZZAZIONE: usa fromFile/fromRank/toRank precalcolati
     if (movingType == PAWN) {
-        const int8_t dr = static_cast<int8_t>(to.rank() - from.rank());
+        const int8_t dr = static_cast<int8_t>(toRank - fromRank);
         if (dr == 2 || dr == -2) {
-            enPassant = Coords{from.file(), static_cast<uint8_t>((from.rank() + to.rank()) >> 1)};
+            enPassant = Coords{fromFile, static_cast<uint8_t>((fromRank + toRank) >> 1)};
         }
     }
 
     // --- PROMOZIONE ---
+    // OTTIMIZZAZIONE: usa toRank precalcolato
     if (movingType == PAWN) {
         // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-        if ((movingColor == WHITE && to.rank() == 0) ||
-            (movingColor == BLACK && to.rank() == 7)) {
+        if ((movingColor == WHITE && toRank == 0) ||
+            (movingColor == BLACK && toRank == 7)) {
 
             uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
             if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') {
@@ -197,10 +209,11 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     const Coords& from = m.from;
     const Coords& to   = m.to;
 
+    // OTTIMIZZAZIONE: precalcola indici una sola volta
     const uint8_t fromIndex = from.toIndex();
     const uint8_t toIndex   = to.toIndex();
 
-    uint8_t pieceOnTo = this->get(to);
+    uint8_t pieceOnTo = this->get(toIndex);  // usa index-based
     uint8_t pieceType = pieceOnTo & MASK_PIECE_TYPE;
 
     // --- ANNULLA PROMOZIONE: pezzo promosso torna pedone ---
@@ -209,7 +222,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         const uint8_t pawnPiece = (PAWN | color);
         this->removePieceFromBitboards(pieceOnTo, toIndex);
         this->addPieceToBitboards(pawnPiece, toIndex);
-        this->set(to, static_cast<piece_id>(pawnPiece));
+        this->set(toIndex, static_cast<piece_id>(pawnPiece));  // usa index-based
         pieceOnTo = pawnPiece;
         pieceType = PAWN;
     }
@@ -228,7 +241,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         this->occupancy |= (1ULL << capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
-        this->set(to, static_cast<piece_id>(st.capturedPiece));
+        this->set(toIndex, static_cast<piece_id>(st.capturedPiece));  // usa index-based
         this->occupancy |= (1ULL << toIndex);
         this->addPieceToBitboards(st.capturedPiece, toIndex);
     }
