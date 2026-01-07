@@ -38,8 +38,11 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             // For Black capturing: captured pawn is at lower rank (toIndex - 8)
             const int8_t captureOffset = isWhite ? 8 : -8;
             const uint8_t capturedIndex = toIndex + captureOffset;
+            const uint8_t capturedPawn = this->get(capturedIndex);
+            
             this->set(capturedIndex, EMPTY);
             this->occupancy &= ~(1ULL << capturedIndex);
+            this->removePieceFromBitboards(capturedPawn, capturedIndex);
         }
     }
 
@@ -47,8 +50,17 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     this->updateChessboard(from, to);
     this->fastUpdateOccupancyBB(fromIndex, toIndex);
 
-    // Ensure per-piece bitboards are updated to reflect the move (including EP/rook changes handled above)
-    this->updateOccupancyBB();
+    // CRITICAL FIX: NON chiamare updateOccupancyBB() completo!
+    // fastUpdateOccupancyBB + removePieceFromBitboards/addPieceToBitboards sono sufficienti
+    // updateOccupancyBB() scansiona tutte le 64 caselle → ~200-300 cicli CPU sprecati!
+    // RIMOSSO: this->updateOccupancyBB();
+    
+    // Update per-piece bitboards incrementally
+    if (destBefore != EMPTY) {
+        this->removePieceFromBitboards(destBefore, toIndex);
+    }
+    this->removePieceFromBitboards(moving, fromIndex);
+    this->addPieceToBitboards(moving, toIndex);
 
     // Castling rook move if king moved two squares on same rank
     // Check if same rank: (fromIndex >> 3) == (toIndex >> 3)
@@ -62,8 +74,9 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
                 this->set(rookToIndex, static_cast<piece_id>(rook));
                 this->set(rookFromIndex, EMPTY);
-                this->occupancy |= (1ULL << rookToIndex);
-                this->occupancy &= ~(1ULL << rookFromIndex);
+                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+                this->removePieceFromBitboards(rook, rookFromIndex);
+                this->addPieceToBitboards(rook, rookToIndex);
             }
         } else if (df == -2) {
             // queenside: rook a -> d
@@ -73,61 +86,65 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
                 this->set(rookToIndex, static_cast<piece_id>(rook));
                 this->set(rookFromIndex, EMPTY);
-                this->occupancy |= (1ULL << rookToIndex);
-                this->occupancy &= ~(1ULL << rookFromIndex);
+                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+                this->removePieceFromBitboards(rook, rookFromIndex);
+                this->addPieceToBitboards(rook, rookToIndex);
             }
         }
     }
 
-    // Update castling rights for king/rook moves or rook captures on original squares
-    auto disableWhiteKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 0)); };
-    auto disableWhiteQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 1)); };
-    auto disableBlackKingside  = [&]{ castle &= static_cast<uint8_t>(~(1u << 2)); };
-    auto disableBlackQueenside = [&]{ castle &= static_cast<uint8_t>(~(1u << 3)); };
-
+    // Update castling rights for king/rook moves or rook captures
+    // OTTIMIZZAZIONE: usa bitwise ops dirette invece di lambda
     if (movingType == KING) {
-        if (movingColor == WHITE) { 
-            disableWhiteKingside(); 
-            disableWhiteQueenside(); 
-            hasMoved |= (1u << 0); // white king
-        }
-        else { 
-            disableBlackKingside(); 
-            disableBlackQueenside(); 
-            hasMoved |= (1u << 3); // black king
-        }
+        const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
+        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3
+        castle &= ~castleMask;
+        hasMoved |= kingBit;
     }
+    
     if (movingType == ROOK) {
-        if (movingColor == WHITE) {
-            // White rooks at rank 7 (row 1): a1 = index 56, h1 = index 63
-            if (fromIndex == 56) { // a1
-                disableWhiteQueenside();
-                hasMoved |= (1u << 1);
-            }
-            if (fromIndex == 63) { // h1
-                disableWhiteKingside();
-                hasMoved |= (1u << 2);
-            }
-        } else {
-            // Black rooks at rank 0 (row 8): a8 = index 0, h8 = index 7
-            if (fromIndex == 0) { // a8
-                disableBlackQueenside();
-                hasMoved |= (1u << 4);
-            }
-            if (fromIndex == 7) { // h8
-                disableBlackKingside();
-                hasMoved |= (1u << 5);
+        // White rooks at rank 7 (row 1), Black rooks at rank 0 (row 8)
+        const bool isInitialSquare = (movingColor == WHITE)
+            ? (fromIndex == 56 || fromIndex == 63)  // a1=56, h1=63
+            : (fromIndex == 0 || fromIndex == 7);   // a8=0, h8=7
+        
+        if (isInitialSquare) {
+            if (movingColor == WHITE) {
+                if (fromIndex == 56) {
+                    castle &= ~(1u << 1); // white queenside
+                    hasMoved |= (1u << 1);
+                } else {
+                    castle &= ~(1u << 0); // white kingside
+                    hasMoved |= (1u << 2);
+                }
+            } else {
+                if (fromIndex == 0) {
+                    castle &= ~(1u << 3); // black queenside
+                    hasMoved |= (1u << 4);
+                } else {
+                    castle &= ~(1u << 2); // black kingside
+                    hasMoved |= (1u << 5);
+                }
             }
         }
     }
+    
     // If a rook was captured on its starting square, disable that side's castling
     if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
-        if ((destBefore & MASK_COLOR) == WHITE) {
-            if (toIndex == 56) disableWhiteQueenside(); // a1
-            if (toIndex == 63) disableWhiteKingside();  // h1
-        } else {
-            if (toIndex == 0) disableBlackQueenside();  // a8
-            if (toIndex == 7) disableBlackKingside();   // h8
+        const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
+            ? (toIndex == 56 || toIndex == 63)  // a1=56, h1=63
+            : (toIndex == 0 || toIndex == 7);   // a8=0, h8=7
+        
+        if (isInitialSquare) {
+            if ((destBefore & MASK_COLOR) == WHITE) {
+                castle &= (toIndex == 56) 
+                    ? ~(1u << 1)  // white queenside
+                    : ~(1u << 0); // white kingside
+            } else {
+                castle &= (toIndex == 0)
+                    ? ~(1u << 3)  // black queenside
+                    : ~(1u << 2); // black kingside
+            }
         }
     }
 

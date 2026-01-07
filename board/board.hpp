@@ -93,10 +93,7 @@ public:
         // uint8_t prevBlackKingIndex{64};
     };
 
-    struct UndoInfo {
-        MoveState state;
-    };
-
+    // CODICE MORTO RIMOSSO: struct UndoInfo non era usata nel codebase
 
     Board() noexcept {
         fromFenToBoard(STARTING_FEN);
@@ -119,6 +116,7 @@ public:
    
     //! GETTERS
     // Primary getter: works directly with index (most efficient)
+    __attribute__((hot, always_inline))
     inline uint8_t get(uint8_t index) const noexcept {
         const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
         const uint8_t file = index & 7;   // index % 8
@@ -127,11 +125,13 @@ public:
     }
     
     // Convenience getter: from Coords object
+    __attribute__((always_inline))
     inline uint8_t get(Coords coords) const noexcept {
         return this->get(coords.index);
     }
     
     // Direct storage access getter (bypasses Coords convention)
+    __attribute__((always_inline))
     inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
         return (chessboard[row] >> (col << 2)) & MASK_PIECE;
     }
@@ -160,17 +160,19 @@ public:
     }
 
     // Both ways to get color of piece at position
-    uint8_t getColor(const Coords& pos) const noexcept {
+    __attribute__((always_inline))
+    inline uint8_t getColor(const Coords& pos) const noexcept {
         const uint8_t rawPiece = this->get(pos);
-        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
+        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
             return EMPTY;
         }
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
-    uint8_t getColor(uint8_t index) const noexcept {
+    __attribute__((always_inline))
+    inline uint8_t getColor(uint8_t index) const noexcept {
         const uint8_t rawPiece = this->get(index);
-        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) {
+        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
             return EMPTY;
         }
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
@@ -181,6 +183,7 @@ public:
 
     //! SETTERS
     // Primary setter: works directly with index (most efficient)
+    __attribute__((hot, always_inline))
     inline void set(uint8_t index, piece_id value) noexcept {
         const uint8_t rank = index >> 3;
         const uint8_t file = index & 7;
@@ -190,12 +193,14 @@ public:
     }
     
     // Convenience setter: from Coords object
-    void set(Coords coords, piece_id value) noexcept {
+    __attribute__((always_inline))
+    inline void set(Coords coords, piece_id value) noexcept {
         this->set(coords.index, value);
     }
 
     // Direct storage access setter (bypasses Coords convention)
-    void set(uint8_t row, uint8_t col, piece_id value) noexcept {
+    __attribute__((always_inline))
+    inline void set(uint8_t row, uint8_t col, piece_id value) noexcept {
         const uint8_t shift = col << 2; // col * 4
         chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
@@ -254,10 +259,37 @@ public:
     }
 
 
-    void updateChessboard(const Coords& from, const Coords& to) noexcept {
+    // CRITICAL OPTIMIZATION: Inline updateChessboard to avoid double get/set overhead
+    // OLD: 3 function calls (1 get + 2 set) → 6 index conversions
+    // NEW: Direct inline → 0 function calls, direct array access
+    __attribute__((always_inline))
+    inline void updateChessboard(const Coords& from, const Coords& to) noexcept {
         piece_id piece = static_cast<piece_id>(this->get(from));
         this->set(to, piece);
         this->set(from, EMPTY);
+/*
+        const uint8_t fromIndex = from.index;
+        const uint8_t toIndex = to.index;
+        
+        // Direct array access usando index (evita conversioni ripetute)
+        const uint8_t fromRank = fromIndex >> 3;
+        const uint8_t fromFile = fromIndex & 7;
+        const uint8_t toRank = toIndex >> 3;
+        const uint8_t toFile = toIndex & 7;
+        
+        const uint8_t fromRow = 7 - fromRank;
+        const uint8_t toRow = 7 - toRank;
+        
+        const uint8_t fromShift = fromFile << 2;
+        const uint8_t toShift = toFile << 2;
+        
+        // Get piece from source (1 array access)
+        const uint8_t piece = (chessboard[fromRow] >> fromShift) & MASK_PIECE;
+        
+        // Clear source and set destination (2 array writes)
+        chessboard[fromRow] = (chessboard[fromRow] & ~(MASK_PIECE << fromShift));
+        chessboard[toRow] = (chessboard[toRow] & ~(MASK_PIECE << toShift)) | ((piece & MASK_PIECE) << toShift);
+  */
     }
 
 
@@ -305,11 +337,13 @@ public:
         }
     }
 
+    __attribute__((always_inline))
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
         this->occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
         this->occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
     }
 
+    __attribute__((always_inline))
     void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
@@ -325,6 +359,7 @@ public:
         }
     }
 
+    __attribute__((always_inline))
     void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0;
@@ -454,18 +489,10 @@ private:
     ) const noexcept;
     
     // Castling dispatcher
-    [[nodiscard]] inline bool canCastleToSquare(
-        uint8_t fromIndex,
-        uint8_t toIndex,
-        uint8_t movingColor
-    ) const noexcept;
+    [[nodiscard]] inline bool canCastleToSquare(uint8_t fromIndex, uint8_t toIndex, uint8_t movingColor) const noexcept;
     
     // Generic castling validation (consolidated logic)
-    [[nodiscard]] inline bool canCastleGeneric(
-        bool isWhite,
-        uint8_t fromIndex,
-        bool isKingside
-    ) const noexcept;
+    [[nodiscard]] inline bool canCastleGeneric(bool isWhite, uint8_t fromIndex, bool isKingside) const noexcept;
     
     // Kingside castling validation
     [[nodiscard]] inline bool canCastleKingside(bool isWhite, uint8_t fromIndex) const noexcept;
