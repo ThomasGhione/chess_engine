@@ -97,7 +97,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LMR: reduce depth for late, non-critical moves
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)
-            && (moveIndex > 1)
+            && (moveIndex > 4) // we always check the first 4 moves at full depth
             && !isPromo
             && !wasCapture
             && !givesCheck
