@@ -615,8 +615,8 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 
         const int ksq = __builtin_ctzll(kingBB);
 
-    // OPTIMIZATION: use bitboards instead of loops to count nearby pieces
-    // Precompute the king zone (adjacent squares) as a bitboard
+        // OPTIMIZATION: use bitboards instead of loops to count nearby pieces
+        // Precompute the king zone (adjacent squares) as a bitboard
         uint64_t kingZone = pieces::KING_ATTACKS[ksq]; // 8 caselle adiacenti
 
         // ENDGAME: king activity (conta alleati vicini con bitboard)
