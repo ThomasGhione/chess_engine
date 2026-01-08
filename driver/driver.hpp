@@ -18,15 +18,17 @@ namespace driver {
             print::Menu menu;
             engine::Engine& engine;  // Cambiato da copia a riferimento
 
-            Driver(print::Menu menu, engine::Engine& engine);  // Passaggio per riferimento
+            Driver(print::Menu& menu, engine::Engine& engine);  // Passaggio per riferimento
 
             void startGame(int argc, char *argv[]) noexcept;
 
         private:
+            bool vsBot = false;
+
             void parse(int argc, char *argv[]) noexcept;
 
-            bool loadGame(bool isWithPlayer) noexcept;
-            void saveGame() noexcept;
+            bool loadGame() noexcept;
+            void saveGame() noexcept; // botColor: true = bot is white, false = bot is black
             void endGame() noexcept;
             void printGameOnFile() noexcept;
             

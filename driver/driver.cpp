@@ -15,7 +15,7 @@
 
 namespace driver {
 
-    Driver::Driver(print::Menu m, engine::Engine& e) 
+    Driver::Driver(print::Menu& m, engine::Engine& e) 
         : menu(m)
         , engine(e) 
     {}
@@ -40,9 +40,6 @@ namespace driver {
                             this->playGameVsEngine(false);
                             break;
                         case '3':
-                            loadGame(false);
-                            break;
-                        case '4':
                             // Back to main menu
                             break;
                         default:
@@ -53,6 +50,10 @@ namespace driver {
                 }
 
                 case '2': {
+                    this->playGameVsHuman();
+                    break;
+
+                    /*
                     uint8_t twoPlayerChoice = menu.playWithPlayerMenu();
                     Driver::quit(std::string(1, twoPlayerChoice));
 
@@ -61,9 +62,6 @@ namespace driver {
                             this->playGameVsHuman();
                             break;
                         case '2':
-                            loadGame(true);
-                            break;
-                        case '3':
                             // Back to main menu
                             break;
                         default:
@@ -71,6 +69,7 @@ namespace driver {
                             break;
                     }
                     break;
+                    */
                 }
 
                 case '3':
@@ -99,6 +98,12 @@ namespace driver {
                 }
 
                 case '5':
+                    if (!this->loadGame()) {
+                        std::cout << "No saved game found. Returning to main menu.\n";
+                    }
+                    break;
+
+                case '6':
                     std::cout << "Thank you for playing! See you next time." << std::endl;
                     exit(EXIT_SUCCESS);
                     break;
@@ -171,7 +176,7 @@ namespace driver {
         }
     }
 
-    bool Driver::loadGame(bool isWithPlayer) noexcept{
+    bool Driver::loadGame() noexcept{
         std::ifstream SaveFile("saves/save.txt");
         if (!SaveFile.is_open()) {
             std::cerr << "Error: Unable to open save file.\n";
@@ -182,39 +187,40 @@ namespace driver {
     
         if (std::getline(SaveFile, line)) {
             this->engine.board = chess::Board(line);
-        } 
+        }
+
+        if (std::getline(SaveFile, line)) {
+            vsBot = true;
+
+            if (line == "w") {
+                this->engine.isPlayerWhite = false;
+            } else if (line == "b") {
+                this->engine.isPlayerWhite = true;
+            }
+        }
 
         // TODO aggiungere controlli/eccezioni per il fen
     
         SaveFile.close();
 
-        if (isWithPlayer) {
-            this->playGameVsHuman();
-        } else {
-            std::cout << "Select your color:\n1. White\n2. Black\n";
-            int choice;
-            std::cin >> choice;
-            if (choice == 1) {
-                this->engine.isPlayerWhite = true;
-            } else {
-                this->engine.isPlayerWhite = false;
-            }
-
-            this->playGameVsEngine(this->engine.isPlayerWhite);
-        }
+        // Not working correctly in playervsbot and player is black
+        vsBot ? this->playGameVsEngine(this->engine.isPlayerWhite) : this->playGameVsHuman();
 
         return true;
     }
 
     void Driver::saveGame() noexcept {
-    /*    
-        if (std::filesystem::exists("save.txt")) {
+        if (!std::filesystem::exists("saves")) {
+            std::filesystem::create_directory("saves");
+        }
+
+        if (std::filesystem::exists("saves/save.txt")) {
             char ans;
             
-            std::cout << "A save file has been detected, do you want to overwrite it? (Y/N) ";
+            std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) ";
             std::cin >> ans;
             if (ans == 'Y' || ans == 'y') {
-            std::filesystem::remove("saves/save.txt");
+                std::filesystem::remove("saves/save.txt");
             }
             else {
                 return;
@@ -223,8 +229,14 @@ namespace driver {
     
         std::ofstream SaveFile("saves/save.txt");
         SaveFile << engine.board.getCurrentFen();
+
+        // If playing against bot, then saveGame() is called by the player, so it saves the opposite active color to indicate
+        // the color of the bot
+        if (vsBot) {
+            SaveFile << '\n' << (this->engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
+        }
+        
         SaveFile.close();
-    */
     }
 
     void Driver::endGame() noexcept {
@@ -270,7 +282,9 @@ namespace driver {
     } 
 
     void Driver::playGameVsHuman() noexcept {
-    	while(!engine.isCheckMate) {
+    	vsBot = false;
+        
+        while(!engine.isCheckMate) {
     	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
             this->playerTurn();
             if (engine.isCheckMate) { endGame(); return; }
@@ -281,6 +295,8 @@ namespace driver {
     }
 
     void Driver::playGameVsEngine(bool isHumanWhite) noexcept{
+        vsBot = true;
+        
         if (isHumanWhite) {
             while (!engine.isCheckMate) {
                 this->playerTurn();
@@ -519,13 +535,10 @@ namespace driver {
             std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
             std::cin >> playerInput;
 
-            //! TODO Check if player wants to save or quit
-            /*
-            if (playerInput == "q") {
+            if (playerInput == "s") {
                 this->saveGame();
-                return;
+                continue;
             }
-            */
 
             if (playerInput == "q") {
                 std::cout << "Thank you for playing! See you next time." << std::endl;
