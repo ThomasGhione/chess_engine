@@ -60,15 +60,10 @@ bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBet
     // Prefetch TT only if deep enough to justify overhead
     // depth >= 2: balanced (avoids overhead on shallow/qsearch nodes)
     // Empirical tests show ~5% speedup vs depth >= 0 or depth >= 3
-    if (depth >= 2) {
-        prefetchTT(hashKey);
-    }
+    if (depth >= 2) prefetchTT(hashKey);
+    
 
-    if (this->probeTTCache(hashKey, depth, bounds, score)) {
-        return true;
-    }
-
-    return false;
+    return this->probeTTCache(hashKey, depth, bounds, score);
 }
 
 // Helper to search through all moves and find best move with its score
@@ -82,14 +77,9 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const auto& m = scoredMove.move;
         chess::Board::MoveState state;
 
-        // CRITICAL: check for capture BEFORE making the move
-        // After doMove, b.get(m.to) contains the moved piece and is no longer empty
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
-        
-        // OPTIMIZATION: precompute isPromo once instead of 2-3 times
         const bool isPromo = isPromotionMove(b, m);
 
-        // Execute move (handling promotions)
         // UNIFIED: use a single doMove call with an optional parameter
         b.doMove(m, state, isPromo ? 'q' : '\0');
 
@@ -99,21 +89,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         // LMR: reduce depth for late, non-critical moves
         const int64_t childDepth = ctx.depth - 1;
-        const bool canReduce = (ctx.depth > 2)
-            && (moveIndex > 4) // we always check the first 4 moves at full depth
-            && !isPromo
-            && !wasCapture
-            && !givesCheck
-            && !this->isKillerMove(m, killerMoves, ctx.ply);
+        const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
+            && (moveIndex > 4)                               // ...the first 4 moves at full depth
+            && !isPromo                                      // ...isn't a promotion...
+            && !wasCapture                                   // ...isn't a capture...
+            && !givesCheck                                   // ...doesn't give check...
+            && !this->isKillerMove(m, killerMoves, ctx.ply); // ...isn't a killer move
 
         int64_t score = 0;
         if (canReduce) {
             // Adaptive reduction: deeper searches reduce more
-            // Formula: R = 1 + floor(log2(depth)) + floor(log2(moveIndex))
             int64_t reduction = 1;
-            if (ctx.depth >= 6) reduction += 2; // +2 if depth >= 6
-            if (moveIndex >= 8) reduction += 2; // +2 if very late (>= 8th move)
+            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
+            if (moveIndex >= 8) reduction += 2; // -2 if very late (>= 8th move)
             
+
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             
@@ -125,10 +115,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
         }
 
-        // Undo move
         b.undoMove(m, state);
 
-        // Update best score and alpha-beta bounds
         this->updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
         // Beta cutoff: update killer moves and history, then break
@@ -242,15 +230,14 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
         
-        // OPTIMIZATION: precompute isPromo once
         const bool isPromo = isPromotionMove(this->board, firstMove);
         this->board.doMove(firstMove, state, isPromo ? 'q' : '\0');
         
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+        
         // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
         this->board.undoMove(firstMove, state);
-        
-        // Update best move DOPO l'undo
+
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
 
