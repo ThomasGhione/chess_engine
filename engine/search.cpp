@@ -37,7 +37,7 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
 }
 
 // Helper to handle terminal nodes and transposition table lookups
-bool Engine::handleSearchPrelude(chess::Board& b, int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
+bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
     
     // const uint8_t activeColor = b.getActiveColor();
 

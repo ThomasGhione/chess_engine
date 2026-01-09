@@ -261,7 +261,6 @@ for (const auto &offset : KING_OFFSET) {
 ```
 
 **Parametri che dovrebbero essere const reference** (`engine/search.cpp`):
-- `handleSearchPrelude()` - parametri `b` e `depth` (linea 40)
 - altro metodo - parametro `ctx` (linea 71)
 - `undoAndUpdateMove()` - parametro `state` (linea 293)
 
@@ -538,9 +537,6 @@ if (enPassantSection == "-") {
 // Range-for loops:
 for (const auto &offset : KNIGHT_OFFSET) {  // piece.hpp:336
 for (const auto &offset : KING_OFFSET) {    // piece.hpp:351
-
-// Parametri funzioni:
-bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, ...)
 ```
 
 **Tempo stimato**: 1 ora
