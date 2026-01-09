@@ -211,9 +211,6 @@ if (enPassantSection.size() != 2 || enPassantSection == "-") {
 |----------|------------|------|
 | `shouldPruneLateMove()` | engine.cpp:92 | Ottimizzazione sperimentale? |
 | `adjacentFilesMask()` | evaluate.cpp:60 | Utilità non usata |
-| `back()` | movelist.hpp:39 | API MoveList |
-| `front()` | movelist.hpp:42 | API MoveList |
-| `clear()` | movelist.hpp:56 | API MoveList |
 | `mirrorIndex()` | piecevaluetables.hpp:103 | Utilità PST |
 | `addPromotionBonus()` | search.cpp:585 | Bonus sperimentale? |
 | `addCheckBonus()` | search.cpp:594 | Bonus sperimentale? |

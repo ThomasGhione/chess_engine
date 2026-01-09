@@ -36,12 +36,6 @@ struct MoveList {
     inline T& operator[](size_t i) noexcept { return data[i]; }
     inline const T& operator[](size_t i) const noexcept { return data[i]; }
 
-    inline T& back() noexcept { return data[size - 1]; }
-    inline const T& back() const noexcept { return data[size - 1]; }
-
-    inline T& front() noexcept { return data[0]; }
-    inline const T& front() const noexcept { return data[0]; }
-
     // ---------------------------------
     // Iterators
     // ---------------------------------
@@ -53,7 +47,6 @@ struct MoveList {
     // ---------------------------------
     // Utilities
     // ---------------------------------
-    inline void clear() noexcept { size = 0; }
     [[nodiscard]] inline bool is_empty() const noexcept { return size == 0; }
     // [[nodiscard]] inline uint16_t count() const noexcept { return size; }
 
