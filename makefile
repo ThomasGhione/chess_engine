@@ -30,6 +30,22 @@ BOARD_SRCS = $(wildcard ./board/*.cpp)
 ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
                   $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS)
 
+# Path dei file header (escludendo stockfish e test utils)
+ENGINE_HDRS = $(wildcard ./engine/*.hpp)
+COORDS_HDRS = $(wildcard ./coords/*.hpp)
+PRINTER_HDRS = $(wildcard ./printer/*.hpp)
+DRIVER_HDRS = $(wildcard ./driver/*.hpp)
+PIECE_HDRS = $(wildcard ./piece/*.hpp)
+GAMESTATUS_HDRS = $(wildcard ./gamestatus/*.hpp)
+BOARD_HDRS = $(wildcard ./board/*.hpp)
+
+# Path di tutti gli header
+ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
+                  $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS)
+
+# Tutti i file da analizzare (.cpp e .hpp)
+ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
+
 # Trucchetto per avere i path dei file .o
 MAIN_OBJ = main.o
 MODULE_OBJS = $(ALL_MODULE_SRCS:.cpp=.o)
@@ -66,7 +82,7 @@ PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
 
 # Target principali
-.PHONY: prod parallel_prod debug test performance all-tests analyze clean help
+.PHONY: prod parallel_prod debug test performance all-tests analyze complexity test-valgrind cls help
 
 # Default per usare make secco
 all: prod
@@ -124,39 +140,172 @@ $(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
 
-# Analisi del codice
+# Analisi completa del codice
+# Esegue: cppcheck + clang-tidy + iwyu + scan-build + lizard
+# Output: analisi.log, scan-build-report/, complexity-report.txt
+# ⚠️  Tempo stimato: 10-30 minuti
 analyze:
-	@printf "\nAnalyzing code..."
-	cppcheck main.cpp $(ALL_MODULE_SRCS) --enable=all --verbose --suppress=missingIncludeSystem
+	@printf "\n=== Complete Static Analysis Suite ===\n"
+	@printf "⚠️  This will take 10-30 minutes...\n"
+	@printf "Analyzing %d files (.cpp + .hpp)...\n\n" $(words $(ALL_ANALYSIS_FILES))
+	@mkdir -p doc/output-analisi
+	@rm -f doc/output-analisi/analisi.log
+	@rm -rf doc/output-analisi/scan-build-report
+	@rm -f doc/output-analisi/complexity-report.csv
+	@printf "=== STATIC ANALYSIS REPORT ===\n" > doc/output-analisi/analisi.log
+	@printf "Date: %s\n" "$$(date '+%Y-%m-%d %H:%M:%S')" >> doc/output-analisi/analisi.log
+	@printf "Files analyzed: %d\n\n" $(words $(ALL_ANALYSIS_FILES)) >> doc/output-analisi/analisi.log
+	@printf "[0/5] Generating compilation database... "
+	@bear -- $(MAKE) prod > /dev/null 2>&1
+	@printf "Done\n"
+	@printf "[1/5] Running cppcheck... "
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "1. CPPCHECK ANALYSIS\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@cppcheck $(ALL_ANALYSIS_FILES) --enable=all --suppress=missingIncludeSystem --quiet >> doc/output-analisi/analisi.log 2>&1
+	@printf "Done\n"
+	@printf "[2/5] Running clang-tidy... "
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "2. CLANG-TIDY ANALYSIS\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@clang-tidy -p . $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS) >> doc/output-analisi/analisi.log 2>&1 || true
+	@printf "Done\n"
+	@printf "[3/5] Running include-what-you-use... "
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "3. INCLUDE-WHAT-YOU-USE ANALYSIS\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@for file in $(MAIN_SRC) $(ALL_MODULE_SRCS); do \
+		printf "Checking $$file...\n" >> doc/output-analisi/analisi.log; \
+		include-what-you-use -std=c++23 -fopenmp -DDEBUG -march=native $$file >> doc/output-analisi/analisi.log 2>&1 || true; \
+	done 2>/dev/null
+	@printf "Done\n"
+	@printf "[4/5] Running scan-build (Clang Static Analyzer)... "
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "4. SCAN-BUILD (CLANG STATIC ANALYZER)\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@printf "Path-sensitive dataflow analysis in progress...\n" >> doc/output-analisi/analisi.log
+	@scan-build -o doc/output-analisi/scan-build-report --status-bugs -v -v -analyzer-config aggressive-binary-operation-simplification=true make prod >> doc/output-analisi/analisi.log 2>&1 || true
+	@printf "\n--- Scan-build text summary ---\n" >> doc/output-analisi/analisi.log
+	@if [ -d doc/output-analisi/scan-build-report ] && [ -n "$$(ls -A doc/output-analisi/scan-build-report 2>/dev/null)" ]; then \
+		printf "HTML Report location: doc/output-analisi/scan-build-report/\n" >> doc/output-analisi/analisi.log; \
+		find doc/output-analisi/scan-build-report -name "*.html" -type f | head -1 | xargs -I {} printf "Main report: {}\n" >> doc/output-analisi/analisi.log 2>&1 || true; \
+		printf "\nBugs found by scan-build:\n" >> doc/output-analisi/analisi.log; \
+		find doc/output-analisi/scan-build-report -name "*.html" -exec grep -h "<!-- BUGTYPE" {} \; 2>/dev/null | sort | uniq -c >> doc/output-analisi/analisi.log || printf "No bugs found or unable to parse HTML reports\n" >> doc/output-analisi/analisi.log; \
+	else \
+		printf "No bugs detected by scan-build!\n" >> doc/output-analisi/analisi.log; \
+	fi
+	@printf "Done\n"
+	@printf "[5/5] Running lizard (complexity analysis)... "
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "5. LIZARD COMPLEXITY ANALYSIS\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@if [ -f script/lizard-1.19.0/lizard.py ]; then \
+		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 --csv . > doc/output-analisi/complexity-report.csv 2>&1 || true; \
+		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 . >> doc/output-analisi/analisi.log 2>&1 || true; \
+		printf "Done\n"; \
+	else \
+		printf "Lizard not found - skipping\n" >> doc/output-analisi/analisi.log; \
+		printf "Skipped\n"; \
+	fi
+	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
+	@printf "COMPLETE ANALYSIS FINISHED\n" >> doc/output-analisi/analisi.log
+	@printf "========================================\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n"
+	@printf "✅ Complete analysis finished!\n"
+	@printf "========================================\n"
+	@printf "\n📊 Reports generated:\n"
+	@printf "   1. doc/output-analisi/analisi.log (main report)\n"
+	@printf "   2. doc/output-analisi/scan-build-report/*/index.html (interactive HTML)\n"
+	@if [ -f doc/output-analisi/complexity-report.csv ]; then \
+		printf "   3. doc/output-analisi/complexity-report.csv (spreadsheet)\n"; \
+	fi
+	@printf "\n"
+
+# Analisi di complessità del codice (solo lizard)
+# Identifica funzioni troppo complesse da refactorare
+complexity:
+	@printf "\n=== Complexity Analysis ===\n"
+	@mkdir -p doc/output-analisi
+	@if [ -f script/lizard-1.19.0/lizard.py ]; then \
+		printf "Analyzing code complexity...\n\n"; \
+		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 . 2>&1 | tee doc/output-analisi/complexity-report.txt; \
+		printf "\n✅ Report saved to: doc/output-analisi/complexity-report.txt\n\n"; \
+	else \
+		printf "❌ Lizard not found at script/lizard-1.19.0/lizard.py\n\n"; \
+	fi
+
+# Test con Valgrind per memory leak detection
+# NOTA: Richiede valgrind installato (sudo apt install valgrind)
+# Esegue il programma con un input di test per verificare memory leaks
+test-valgrind:
+	@printf "\n=== Memory Leak Analysis (Valgrind) ===\n"
+	@mkdir -p doc/output-analisi
+	@if ! command -v valgrind > /dev/null 2>&1; then \
+		printf "❌ Valgrind not installed.\n"; \
+		printf "Install with: sudo apt install valgrind\n\n"; \
+		exit 1; \
+	fi
+	@if [ ! -f $(NAME_APP) ]; then \
+		printf "❌ Binary '$(NAME_APP)' not found. Run 'make prod' first.\n\n"; \
+		exit 1; \
+	fi
+	@printf "Running valgrind on $(NAME_APP)...\n"
+	@printf "This will run the program and check for memory issues.\n"
+	@printf "⚠️  The program will wait for input - press Ctrl+D to exit gracefully.\n\n"
+	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=doc/output-analisi/valgrind-report.txt ./$(NAME_APP) || true
+	@printf "\n✅ Valgrind analysis complete!\n"
+	@printf "📊 Full report saved to: doc/output-analisi/valgrind-report.txt\n"
+	@printf "\nSummary:\n"
+	@grep -A 5 "LEAK SUMMARY" doc/output-analisi/valgrind-report.txt || printf "No leaks detected!\n"
+	@printf "\n"
 
 # Pulizia dei file temporanei
 cls:
 	@printf "\nCleaning..."
 	rm -f $(NAME_APP) $(TEST_APP) $(PERF_APP) $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	rm -f doc/main-doc.{aux,log,pdf,toc}
+	rm -f compile_commands.json
+	rm -rf doc/output-analisi
+	rm -rf gmon.out
 	@printf "\n✅ Clean completato\n\n"
 
-# 
+#
 get-image:
-	gprof ./chess gmon.out | python3 gprof2dot.py -s -w | dot -Tpng -Gdpi=200 -o output.png
+	gprof ./chess gmon.out | python3 script/gprof2dot.py -s -w | dot -Tpng -Gdpi=200 -o output.png
 	@printf "\n✅ Immagine creata\n\n"
 
 # Helper per vedere i comandi
 help:
-	@printf "\n=== Chess Build System ==="
-	@printf ""
-	@printf "Target disponibili:"
-	@printf "  make prod           - Compilazione monolitica (veloce prima volta)"
-	@printf "  make parallel_prod  - Compilazione parallela (veloce dopo modifiche)"
-	@printf "  make debug          - Compilazione con debug symbols"
-	@printf "  make test           - Compilazione e test funzionali"
-	@printf "  make performance    - Compilazione e performance test"
-	@printf "  make all-tests      - Esecuzione completa (test + performance)"
-	@printf "  make analyze        - Analisi statica del codice"
-	@printf "  make clean          - Rimozione file compilati"
-	@printf "  make debug-vars     - stampa variabili"
-	@printf ""
-	@printf "=================================="
+	@printf "\n=== Chess Build System ===\n"
+	@printf "\n📦 BUILD TARGETS:\n"
+	@printf "  make prod           - Compilazione monolitica (veloce prima volta)\n"
+	@printf "  make debug          - Compilazione con debug symbols\n"
+	@printf "  make test           - Compilazione e test funzionali\n"
+	@printf "  make performance    - Compilazione e performance test\n"
+	@printf "  make all-tests      - Esecuzione completa (test + performance)\n"
+	@printf "\n🔍 STATIC ANALYSIS:\n"
+	@printf "  make analyze        - Analisi completa (5 tool) ⏱️ 10-30min\n"
+	@printf "                        • cppcheck (bug detection)\n"
+	@printf "                        • clang-tidy (modernization)\n"
+	@printf "                        • iwyu (include optimization)\n"
+	@printf "                        • scan-build (deep dataflow analysis)\n"
+	@printf "                        • lizard (complexity metrics)\n"
+	@printf "  make complexity     - Solo analisi complessità (lizard)\n"
+	@printf "\n🧪 RUNTIME TESTING:\n"
+	@printf "  make test-valgrind  - Memory leak detection (valgrind)\n"
+	@printf "\n🧹 UTILITIES:\n"
+	@printf "  make cls            - Rimozione file compilati e report\n"
+	@printf "  make debug-vars     - Stampa variabili Makefile\n"
+	@printf "  make help           - Mostra questo help\n"
+	@printf "\n📊 REPORTS GENERATED:\n"
+	@printf "  - doc/output-analisi/analisi.log                    (main text report)\n"
+	@printf "  - doc/output-analisi/scan-build-report/*.html       (interactive HTML)\n"
+	@printf "  - doc/output-analisi/complexity-report.txt/.csv     (complexity metrics)\n"
+	@printf "  - doc/output-analisi/valgrind-report.txt            (memory analysis)\n"
+	@printf "\n⚙️  TOOL LOCATIONS:\n"
+	@printf "  - lizard: script/lizard-1.19.0/lizard.py\n"
+	@printf "  - valgrind: install with 'sudo apt install valgrind'\n"
+	@printf "\n==================================\n"
 
 # Per mostrare le variabili
 .PHONY: debug-vars
