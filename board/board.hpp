@@ -99,7 +99,7 @@ public:
         fromFenToBoard(STARTING_FEN);
     }
 
-    Board(const std::array<uint32_t, 8>& chessboard) noexcept
+    explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
         , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
         , enPassant() 
@@ -110,7 +110,7 @@ public:
         this->updateOccupancyBB();
     }
 
-    Board(const std::string& fen) {
+    explicit Board(const std::string& fen) {
         fromFenToBoard(fen);
     }
    
@@ -519,7 +519,6 @@ private:
     uint8_t charToPiece(char symbol);
     bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     uint8_t parseActiveColor(const std::string& activeSection);
-    std::vector<bool> parseCastling(const std::string& castlingSection);
     Coords parseEnPassant(const std::string& enPassantSection);
     uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
    

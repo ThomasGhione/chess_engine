@@ -37,7 +37,7 @@ class Engine final {
 
 public:
     Engine();
-    Engine(std::string fen);
+    explicit Engine(const std::string& fen);
     
     // Engine non è copiabile né movibile a causa di stato complesso
     Engine(const Engine&) = delete;
@@ -71,7 +71,7 @@ public:
     static uint64_t ttHits;
 #endif
 
-    bool movePiece (const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
+    bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
@@ -138,13 +138,13 @@ private:
     // Helper methods for search
     bool handleSearchPrelude(const chess::Board& b, const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                          bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
+                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
     bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept;
     void saveTTEntry(const TTSaveInfo& info) noexcept;
     
     // Helper methods for move execution
     // REMOVED: executeMove() was redundant - use doMove() with promotion check inline
-    void undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
+    void undoAndUpdateMove(const chess::Board::Move& m, const chess::Board::MoveState& state, bool usIsWhite,
                           int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
                           chess::Board::Move& bestMove) noexcept;
 

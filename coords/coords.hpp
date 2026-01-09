@@ -32,7 +32,7 @@ public:
 
     // Costruttore da stringa notazione algebrica (es. "e4", "a8")
     // NON constexpr perché usa std::tolower che non è constexpr
-    Coords(const std::string& input) noexcept : index(INVALID_COORDS) {
+    explicit Coords(const std::string& input) noexcept : index(INVALID_COORDS) {
         if (input.length() != 2) return;
 
         char fileChar = std::tolower(input[0]);

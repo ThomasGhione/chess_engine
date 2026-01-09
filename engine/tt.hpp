@@ -17,7 +17,7 @@ struct TTEntry {
     uint8_t  depth;   // search depth (0-255 sufficient)
     uint8_t  age  ;   // generation/age for replacement policy
     uint8_t  flag;   // INVALID / EXACT / LOWERBOUND / UPPERBOUND
-    uint8_t  padding[3]; // align to 16 bytes
+    [[maybe_unused]] uint8_t  padding[3]; // align to 16 bytes
 
     enum Flag : uint8_t {
         INVALID = 0,  // empty/invalid entry

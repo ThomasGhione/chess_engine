@@ -68,7 +68,7 @@ bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, co
 
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
+                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
     int64_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
@@ -290,7 +290,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 // The optimized version is already implemented in searchMoves() and getBestMove()
 
 // Helper to undo move and update best move/alpha-beta bounds
-void Engine::undoAndUpdateMove(const chess::Board::Move& m, chess::Board::MoveState& state, bool usIsWhite,
+void Engine::undoAndUpdateMove(const chess::Board::Move& m, const chess::Board::MoveState& state, bool usIsWhite,
                                int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
                                chess::Board::Move& bestMove) noexcept {
     // Undo move before processing next one

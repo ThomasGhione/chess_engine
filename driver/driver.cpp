@@ -274,7 +274,7 @@ namespace driver {
         gameFile.close();
     }
 
-    void Driver::quit(std::string input) noexcept{
+    void Driver::quit(const std::string& input) noexcept{
         if(input=="Q"||input=="q"){
             std::cout << "Thank you for playing! See you next time." << std::endl;
             exit(EXIT_SUCCESS);

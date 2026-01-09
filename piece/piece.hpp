@@ -333,7 +333,7 @@ inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
 
 	U64 attackBitboard = 0ULL;
 	
-    for (auto &offset : KNIGHT_OFFSET) {
+    for (const auto &offset : KNIGHT_OFFSET) {
 		int8_t newFile = file + offset[0], newRank = rank + offset[1];
 		if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
 			attackBitboard |= ONE << (newRank * 8 + newFile);
@@ -348,7 +348,7 @@ inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
 
 	U64 attackBitboard = 0ULL;
 
-	for (auto &offset : KING_OFFSET) {
+	for (const auto &offset : KING_OFFSET) {
 		int8_t newFile = file + offset[0], newRank = rank + offset[1];
 		if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
 			attackBitboard |= ONE << (newRank * 8 + newFile);

@@ -148,7 +148,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
     
     // Captured rook on initial square disables corresponding castling
-    // OTTIMIZZAZIONE: usa toFile/toRank precalcolati
     if (destBefore != EMPTY && (destBefore & MASK_PIECE_TYPE) == ROOK) {
         // White rooks at rank 7 (row 1), Black rooks at rank 0 (row 8)
         const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
@@ -168,18 +167,14 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         }
     }
 
-    // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
-    // OTTIMIZZAZIONE: usa fromFile/fromRank/toRank precalcolati
     if (movingType == PAWN) {
+        // --- EN PASSANT TARGET DOPO DOPPIO PASSO ---
         const int8_t dr = static_cast<int8_t>(toRank - fromRank);
         if (dr == 2 || dr == -2) {
             enPassant = Coords{fromFile, static_cast<uint8_t>((fromRank + toRank) >> 1)};
         }
-    }
 
-    // --- PROMOZIONE ---
-    // OTTIMIZZAZIONE: usa toRank precalcolato
-    if (movingType == PAWN) {
+        // --- PROMOZIONE ---
         // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
         if ((movingColor == WHITE && toRank == 0) ||
             (movingColor == BLACK && toRank == 7)) {

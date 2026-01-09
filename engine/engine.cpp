@@ -12,6 +12,7 @@ uint64_t Engine::ttHits = 0;
 
 Engine::Engine()
     : board(chess::Board())
+    , isPlayerWhite(true)
     , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {
@@ -30,8 +31,9 @@ Engine::Engine()
     isCheckMate = false;
 }
 
-Engine::Engine(std::string fen)
+Engine::Engine(const std::string& fen)
     : board(chess::Board(fen))
+    , isPlayerWhite(true)
     , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {

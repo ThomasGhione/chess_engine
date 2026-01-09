@@ -30,68 +30,13 @@ L'analisi statica completa ha identificato **127+ segnalazioni** distribuite nel
 
 ## PARTE 1: PROBLEMI CRITICI E AD ALTA PRIORITÀ
 
-### 1. WARNING - Variabile Membro Non Inizializzata ⚠️ CRITICO
-
-**File**: `engine/engine.cpp:13` e `engine/engine.cpp:33`
-**Severità**: CRITICA
-
-```
-warning: Member variable 'Engine::isPlayerWhite' is not initialized in the constructor.
-```
-
-**Impatto**: Bug reale che può causare comportamento indefinito. DEVE essere risolto immediatamente.
-
-**Fix richiesto**:
-```cpp
-// PRIMA (BUGGY):
-Engine::Engine()
-    : board(), depth(1), usIsWhite(true), nodeCount(0) {
-    pieces::initMagicBitboards();
-}
-
-// DOPO (CORRETTO):
-Engine::Engine()
-    : board(), depth(1), usIsWhite(true), isPlayerWhite(true), nodeCount(0) {
-    //                                    ^^^^^^^^^^^^^^^^^^^^ AGGIUNTO
-    pieces::initMagicBitboards();
-}
-```
-
 ---
 
 ### 2. PERFORMANCE - Parametri Passati per Valore
 
-**Files**:
-- `engine/engine.cpp:33` - `std::string fen`
-- `driver/driver.cpp:277` - `std::string input`
-
-**Fix**:
-```cpp
-// PRIMA:
-Engine::Engine(std::string fen)
-void Driver::quit(std::string input) noexcept
-
-// DOPO:
-Engine::Engine(const std::string& fen)
-void Driver::quit(const std::string& input) noexcept
-```
-
 ---
 
 ### 3. TYPE SAFETY - Costruttori Non Explicit
-
-**Severità**: ALTA
-
-| File | Linea | Costruttore |
-|------|-------|-------------|
-| coords/coords.hpp | 35 | `Coords(const std::string&)` |
-| board/board.hpp | 102 | `Board(const std::array<uint32_t, 8>&)` |
-| board/board.hpp | 113 | `Board(const std::string& fen)` |
-| engine/engine.hpp | 40 | `Engine(std::string fen)` |
-
-**Problema**: Permettono conversioni implicite pericolose.
-
-**Fix**: Aggiungere `explicit` a tutti.
 
 ---
 
@@ -226,17 +171,6 @@ while (bb) {
 
 ### 3.2 Condizioni Logiche Problematiche
 
-**Condizione duplicata** (`board/boardenginemove.cpp:173 e 182`):
-```cpp
-if (movingType == PAWN) {     // linea 173
-    // codice A
-}
-// ...
-if (movingType == PAWN) {     // linea 182 - DUPLICATO!
-    // codice B
-}
-```
-
 **Condizione sempre falsa** (`board/fen.cpp:75`):
 ```cpp
 if (enPassantSection.size() != 2 || enPassantSection == "-") {
@@ -248,21 +182,6 @@ if (enPassantSection.size() != 2 || enPassantSection == "-") {
 ---
 
 ### 3.3 Variabili che Possono Essere Const
-
-**File**: `piece/piece.hpp`
-```cpp
-// PRIMA:
-for (auto &offset : KNIGHT_OFFSET) {    // linea 336
-for (auto &offset : KING_OFFSET) {      // linea 351
-
-// DOPO:
-for (const auto &offset : KNIGHT_OFFSET) {
-for (const auto &offset : KING_OFFSET) {
-```
-
-**Parametri che dovrebbero essere const reference** (`engine/search.cpp`):
-- altro metodo - parametro `ctx` (linea 71)
-- `undoAndUpdateMove()` - parametro `state` (linea 293)
 
 ---
 
@@ -286,7 +205,6 @@ for (const auto &offset : KING_OFFSET) {
 | `setNextTurn()` | board.hpp:208 | API pubblica? |
 | `setPrevTurn()` | board.hpp:217 | API pubblica? |
 | `CHESSBOARD_SIZE()` | board.hpp:241 | Utilità debug? |
-| `parseCastling()` | fen.cpp:57 | Legacy? |
 
 ### Engine Module (11 funzioni)
 | Funzione | File:Linea | Note |
@@ -576,13 +494,6 @@ for (const auto &offset : KING_OFFSET) {    // piece.hpp:351
 ```cpp
 [[nodiscard]] bool isValid() const;
 [[nodiscard]] std::optional<Move> findBestMove();
-```
-
-#### Usare `[[maybe_unused]]` per membri intenzionalmente non usati:
-```cpp
-struct MoveState {
-    [[maybe_unused]] uint8_t padding[3];  // per allineamento
-};
 ```
 
 #### Usare `std::string_view` invece di `const std::string&`:

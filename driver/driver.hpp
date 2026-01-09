@@ -53,7 +53,7 @@ namespace driver {
             void endGame() noexcept;
             void printGameOnFile() noexcept;
             
-            void quit(std::string input) noexcept;
+            void quit(const std::string& input) noexcept;
             
             void playGameVsHuman() noexcept;
             void playGameVsEngine(const bool isWhite) noexcept;
