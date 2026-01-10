@@ -170,7 +170,7 @@ analyze-cppcheck:
 	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
 	@printf "1. CPPCHECK ANALYSIS\n" >> doc/output-analisi/analisi.log
 	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --enable=all --suppress=missingIncludeSystem --quiet >> doc/output-analisi/analisi.log 2>&1
+	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem ---inline-suppr --std=c++23 -quiet >> doc/output-analisi/analisi.log 2>&1
 	@printf "[1/7] Running cppcheck terminated\n"
 
 analyze-clang-tidy:
@@ -253,13 +253,7 @@ analyze-summary:
 	fi
 	@printf "\n[7/7] Generating LLM prompt...\n\n"
 	@printf "=== LLM PROMPT (copy below) ===\n\n"
-	@printf "Analizza il report (doc/output-analisi/analisi.log) di analisi statica di un chess engine in C++23.\n\n"
-	@printf "**Obiettivo**: Fornisci un riassunto in formato md conciso degli errori rilevati. Inserisci il file dentro: 'doc/testi-llm'\n\n"
-	@printf "**Output richiesto**:\n"
-	@printf "1. Raggruppa errori identici in una sola voce\n"
-	@printf "2. Per ogni errore indica: fonte (cppcheck/clang-tidy/iwyu/scan-build/gcc-analyzer/cppclean), descrizione, numero occorrenze\n"
-	@printf "3. Suggerisci fix se evidenti\n"
-	@printf "4. Indica il numero di righe in cui l'errore e' presente\n\n"
+	@cat doc/prompt-llm-riassunto-analisi-statica.txt
 	@printf "\n\n=== END PROMPT ===\n"
 
 # Pulizia solo dei file oggetto e binari
