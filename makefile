@@ -170,7 +170,7 @@ analyze-cppcheck:
 	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
 	@printf "1. CPPCHECK ANALYSIS\n" >> doc/output-analisi/analisi.log
 	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem ---inline-suppr --std=c++23 -quiet >> doc/output-analisi/analisi.log 2>&1
+	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> doc/output-analisi/analisi.log 2>&1
 	@printf "[1/7] Running cppcheck terminated\n"
 
 analyze-clang-tidy:
