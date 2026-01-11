@@ -76,11 +76,10 @@ public:
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
-    // TODO It will be in private later when State0 is finished
     bool isMate() noexcept;
     void setIsCheckMate() noexcept;
 
-    int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static constexpr int MAX_PLY = 64;
 
@@ -122,7 +121,7 @@ private:
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept;
 
-    bool shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept;
+    bool shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept;
 
     void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept;
 
@@ -191,15 +190,25 @@ private:
         int64_t bishopMobility;
         int64_t rookMobility;
         int64_t queenMobility;
+        
+        bool isComputed; // Lazy evaluation flag
     };
 
     // Helper function to compute attack data once
-    void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    
+    // Lazy evaluation: compute only if needed
+    __attribute__((always_inline))
+    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
+        if (!data[0].isComputed) {
+            computeAttackData(data, b, occ);
+        }
+    }
 
     // Evaluation helper functions using precomputed attack data
-    int64_t evalMobility(const AttackData data[2]) noexcept;
-    int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int64_t evalMobility(const AttackData data[2]) noexcept;
+    static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
+    static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
 
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();

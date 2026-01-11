@@ -120,6 +120,33 @@ namespace {
         }
         return masks;
     }();
+    
+    // Dark/Light square masks for bad bishop evaluation
+    constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
+    constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
+    
+    // King proximity masks (squares at distance <= 2 from each square)
+    constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
+        std::array<uint64_t, 64> masks{};
+        for (int sq = 0; sq < 64; ++sq) {
+            uint64_t mask = 0;
+            const int rank = sq >> 3;
+            const int file = sq & 7;
+            
+            // All squares within Manhattan distance 2
+            for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
+                for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
+                    const int target = (r << 3) | f;
+                    const int dist = std::abs(r - rank) + std::abs(f - file);
+                    if (dist <= 2 && target != sq) {
+                        mask |= (1ULL << target);
+                    }
+                }
+            }
+            masks[sq] = mask;
+        }
+        return masks;
+    }();
 }
 
 __attribute__((hot))
@@ -615,11 +642,11 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 
         const int ksq = __builtin_ctzll(kingBB);
 
-        // OPTIMIZATION: use bitboards instead of loops to count nearby pieces
-        // Precompute the king zone (adjacent squares) as a bitboard
-        uint64_t kingZone = pieces::KING_ATTACKS[ksq]; // 8 caselle adiacenti
+        // OPTIMIZATION: use precomputed proximity masks (distance <= 2)
+        // This replaces the expensive manhattan distance loops
+        const uint64_t proximityMask = KING_PROXIMITY_MASKS[ksq];
 
-        // ENDGAME: king activity (conta alleati vicini con bitboard)
+        // ENDGAME: king activity (count nearby friendly pieces)
         if (isEndgame) {
             const uint64_t friends =
                 b.pawns_bb[side]   |
@@ -628,12 +655,12 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
                 b.rooks_bb[side]   |
                 b.queens_bb[side];
             
-            // Conta pezzi amici in king zone (molto più veloce del loop manhattan)
-            const int friendsNearKing = __builtin_popcountll(friends & kingZone);
+            // Single popcount instead of loop with manhattan!
+            const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
             score += sign * friendsNearKing * KING_ACTIVITY_BONUS;
         }
 
-        // MIDGAME: enemy proximity penalty (conta nemici vicini con bitboard)
+        // MIDGAME: enemy proximity penalty (count nearby enemy pieces)
         const uint64_t enemies =
             b.pawns_bb[side ^ 1]   |
             b.knights_bb[side ^ 1] |
@@ -641,8 +668,8 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
             b.rooks_bb[side ^ 1]   |
             b.queens_bb[side ^ 1];
 
-        // Conta pezzi nemici in king zone
-        const int enemiesNearKing = __builtin_popcountll(enemies & kingZone);
+        // Single popcount instead of loop with manhattan!
+        const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
         score += sign * enemiesNearKing * KING_SAFETY_PENALTY;
     }
 
@@ -780,6 +807,9 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             d.queenMobility += __builtin_popcountll(attacks & ~occ);
         }
         d.allAttacks |= d.queenAttacks;
+        
+        // Mark as computed
+        d.isComputed = true;
     }
 }
 
@@ -827,11 +857,11 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
     // ===================================================
-    // PRECOMPUTE ATTACK DATA (used by multiple evaluations)
+    // LAZY ATTACK DATA (computed only when needed)
+    // OPTIMIZATION: Initialize with isComputed=false, compute on-demand
     // ===================================================
-    AttackData attackData[2];
-    computeAttackData(attackData, board, occ);
-
+    AttackData attackData[2] = {};  // Zero-initialize (isComputed = false)
+    ensureAttackData(attackData, board, occ);
     // ===================================================
     // OPENING PHASE (moves 1-10)
     // Focus: development, king safety, avoid early mistakes
@@ -848,7 +878,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Castling is CRITICAL in opening
         eval += evalCastlingBonus(board);
         
-        // Basic piece safety (avoid hanging pieces)
+        // Basic piece safety (avoid hanging pieces) - NEEDS attackData
+        
         eval += evalHangingPieces(board, attackData);
         
         // Center control è FONDAMENTALE in opening
@@ -860,7 +891,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Basic pawn structure (non troppo dettagliato)
         eval += evalPawnStructure(whitePawns, blackPawns, false);
         
-        // Mobility bonus (sviluppare pezzi = più mosse)
+        // Mobility bonus (sviluppare pezzi = più mosse) - NEEDS attackData
         eval += evalMobility(attackData);
         
         // Initiative bonus (side to move advantage)
@@ -878,7 +909,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Castling still important
         eval += evalCastlingBonus(board);
         
-        // Full tactical evaluation
+        // Full tactical evaluation - NEEDS attackData
         eval += evalHangingPieces(board, attackData);
         eval += evalTrappedPieces(board, occ);
         
@@ -886,7 +917,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalPawnStructure(whitePawns, blackPawns, false);
         eval += evalCentralControl(whitePawns, blackPawns);
         
-        // Piece activity
+        // Piece activity - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
@@ -908,7 +939,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Focus: tactics, king safety, piece coordination
     // ===================================================
     else if (isMiddlegame) {
-        // Full tactical evaluation (molto importante!)
+        // Full tactical evaluation (molto importante!) - NEEDS attackData
         eval += evalHangingPieces(board, attackData);
         eval += evalTrappedPieces(board, occ);
         
@@ -917,7 +948,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalCentralControl(whitePawns, blackPawns);
         eval += evalBlockedCenterWithPieces(board, occ);
         
-        // Piece activity and positioning
+        // Piece activity and positioning - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
@@ -942,7 +973,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Focus: pawn promotion, king activity, passed pawns
     // ===================================================
     else { // isEndgame
-        // Tactical safety still matters
+        // Tactical safety still matters - NEEDS attackData
         eval += evalHangingPieces(board, attackData);
         
         // Pawn structure è CRITICO in endgame
@@ -952,7 +983,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalKingActivity(board, true);
         eval += evalEndgameKingActivity(board);
         
-        // Piece mobility
+        // Piece mobility - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalTrappedPieces(board, occ);
         
