@@ -24,6 +24,26 @@ public:
     static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
     static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
 
+    // ============================================
+    // BOARD CONSTANTS - Square indices e castling
+    // ============================================
+    enum CastlingBits : uint8_t {
+        WHITE_KINGSIDE  = 0,  // Bit 0 in castle bitmask
+        WHITE_QUEENSIDE = 1,  // Bit 1
+        BLACK_KINGSIDE  = 2,  // Bit 2
+        BLACK_QUEENSIDE = 3   // Bit 3
+    };
+    
+    // Starting square indices (Coords convention: a8=0, h1=63)
+    static constexpr uint8_t WHITE_KING_START  = 60;  // e1
+    static constexpr uint8_t BLACK_KING_START  = 4;   // e8
+    static constexpr uint8_t WHITE_ROOK_A_START = 56;  // a1
+    static constexpr uint8_t WHITE_ROOK_H_START = 63;  // h1
+    static constexpr uint8_t BLACK_ROOK_A_START = 0;   // a8
+    static constexpr uint8_t BLACK_ROOK_H_START = 7;   // h8
+    
+    static constexpr uint8_t CASTLING_RIGHTS_ALL = 0x0F; // All 4 castling rights
+
     enum piece_id : uint8_t {
     // piece bits
     EMPTY  = 0x0, // 0000 
@@ -101,7 +121,7 @@ public:
 
     explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept
         : chessboard(chessboard)
-        , castle(this->MASK_PIECE) // 0x0F = 0000 1111 => all castling rights available
+        , castle(CASTLING_RIGHTS_ALL)
         , enPassant() 
         , halfMoveClock(0)
         , fullMoveClock(1)
@@ -425,32 +445,38 @@ public:
     }
 
 private:
+    // ============================================
+    // BOARD STATE - Rappresentazione principale
+    // ============================================
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
 
 public:
-    // Per-piece, per-color bitboards to accelerate move generation and attack tests
-    //??? 0 = WHITE, 1 = BLACK
-    std::array<uint64_t, 2> pawns_bb = {0ULL, 0ULL};
+    // ============================================
+    // BITBOARDS - Public per prestazioni critiche
+    // Accesso diretto richiesto da Engine/MoveValidator in loop hot
+    // Convenzione: [0] = WHITE, [1] = BLACK
+    // ============================================
+    std::array<uint64_t, 2> pawns_bb   = {0ULL, 0ULL};
     std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
     std::array<uint64_t, 2> bishops_bb = {0ULL, 0ULL};
-    std::array<uint64_t, 2> rooks_bb = {0ULL, 0ULL};
-    std::array<uint64_t, 2> queens_bb = {0ULL, 0ULL};
-    std::array<uint64_t, 2> kings_bb = {0ULL, 0ULL};
+    std::array<uint64_t, 2> rooks_bb   = {0ULL, 0ULL};
+    std::array<uint64_t, 2> queens_bb  = {0ULL, 0ULL};
+    std::array<uint64_t, 2> kings_bb   = {0ULL, 0ULL};
 
 private:
-
-    uint8_t castle = 0x0F; // castle: 4 bits (KQkq) -> 0000 1111 = all castling rights available
-    uint8_t hasMoved = 0x00; // hasMoved: 6 bits (K, Ra, Rh, k, ra, rh)
-    Coords enPassant{}; // Single en-passant square (only one valid per position)
-    
-    uint16_t halfMoveClock = 0; // Tracks the number of half-moves since the last pawn move or capture
-    uint16_t fullMoveClock = 1; // Tracks the number of full moves in the game
-    uint8_t activeColor = WHITE; // Tracks the active color (white or black)
+    // ============================================
+    // GAME STATE - Stato della partita
+    // ============================================
+    uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
+    uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
+    Coords   enPassant{};                   // En-passant target square
+    uint16_t halfMoveClock = 0;             // 50-move rule counter
+    uint16_t fullMoveClock = 1;             // Current move number
+    uint8_t  activeColor = WHITE;           // Current side to move
     
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-
-    uint64_t occupancy = 0; // 64 bits to represent presence of pieces on the board
+    
+    uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     // uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked
     // uint8_t blackKingIndex = 64;
 

@@ -105,24 +105,24 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     if (movingType == ROOK) {
         // White rooks at rank 7 (row 1), Black rooks at rank 0 (row 8)
         const bool isInitialSquare = (movingColor == WHITE)
-            ? (fromIndex == 56 || fromIndex == 63)  // a1=56, h1=63
-            : (fromIndex == 0 || fromIndex == 7);   // a8=0, h8=7
+            ? (fromIndex == WHITE_ROOK_A_START || fromIndex == WHITE_ROOK_H_START)
+            : (fromIndex == BLACK_ROOK_A_START || fromIndex == BLACK_ROOK_H_START);
         
         if (isInitialSquare) {
             if (movingColor == WHITE) {
-                if (fromIndex == 56) {
-                    castle &= ~(1u << 1); // white queenside
+                if (fromIndex == WHITE_ROOK_A_START) {
+                    castle &= ~(1u << WHITE_QUEENSIDE);
                     hasMoved |= (1u << 1);
                 } else {
-                    castle &= ~(1u << 0); // white kingside
+                    castle &= ~(1u << WHITE_KINGSIDE);
                     hasMoved |= (1u << 2);
                 }
             } else {
-                if (fromIndex == 0) {
-                    castle &= ~(1u << 3); // black queenside
+                if (fromIndex == BLACK_ROOK_A_START) {
+                    castle &= ~(1u << BLACK_QUEENSIDE);
                     hasMoved |= (1u << 4);
                 } else {
-                    castle &= ~(1u << 2); // black kingside
+                    castle &= ~(1u << BLACK_KINGSIDE);
                     hasMoved |= (1u << 5);
                 }
             }
@@ -132,18 +132,18 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     // If a rook was captured on its starting square, disable that side's castling
     if (destBefore != EMPTY && ((destBefore & MASK_PIECE_TYPE) == ROOK)) {
         const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
-            ? (toIndex == 56 || toIndex == 63)  // a1=56, h1=63
-            : (toIndex == 0 || toIndex == 7);   // a8=0, h8=7
+            ? (toIndex == WHITE_ROOK_A_START || toIndex == WHITE_ROOK_H_START)
+            : (toIndex == BLACK_ROOK_A_START || toIndex == BLACK_ROOK_H_START);
         
         if (isInitialSquare) {
             if ((destBefore & MASK_COLOR) == WHITE) {
-                castle &= (toIndex == 56) 
-                    ? ~(1u << 1)  // white queenside
-                    : ~(1u << 0); // white kingside
+                castle &= (toIndex == WHITE_ROOK_A_START) 
+                    ? ~(1u << WHITE_QUEENSIDE)
+                    : ~(1u << WHITE_KINGSIDE);
             } else {
-                castle &= (toIndex == 0)
-                    ? ~(1u << 3)  // black queenside
-                    : ~(1u << 2); // black kingside
+                castle &= (toIndex == BLACK_ROOK_A_START)
+                    ? ~(1u << BLACK_QUEENSIDE)
+                    : ~(1u << BLACK_KINGSIDE);
             }
         }
     }
@@ -704,7 +704,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         
         // Castling (only if not in check)
         if (!inChk) {
-            const uint8_t eIndex = (side == 0) ? 60 : 4;
+            const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
                 if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
                 if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
