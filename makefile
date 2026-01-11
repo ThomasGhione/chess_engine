@@ -16,8 +16,8 @@ CPPCHECK = script/cppcheck-2.19.0/cppcheck
 
 # Nome file finali
 NAME_APP = chess
-TEST_APP = tests/outputTest
-PERF_APP = tests/outputPerformance
+TEST_APP = tests/test
+PERF_APP = tests/perf
 
 # Path dei file separati
 MAIN_SRC = main.cpp
@@ -85,7 +85,7 @@ PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
 
 # Target principali
-.PHONY: prod parallel_prod debug test performance all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default per usare make secco
 all: prod
@@ -112,11 +112,11 @@ test: $(TEST_APP)
 	@printf "\n✅ Test compilato: $(TEST_APP)\n\n"
 
 # Comando per generare eseguibile per performance test
-performance: $(PERF_APP)
+perf: $(PERF_APP)
 	@printf "\n✅ Performance test compilato: $(PERF_APP)\n\n"
 
 # Comando per eseguire tutti i test (funzionali + performance)
-all-tests: test performance
+all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
 	-./$(TEST_APP)
 	@printf "\n=== Running performance tests ===\n"
@@ -281,7 +281,7 @@ help:
 	@printf "  make prod           - Compilazione monolitica (veloce prima volta)\n"
 	@printf "  make debug          - Compilazione con debug symbols\n"
 	@printf "  make test           - Compilazione e test funzionali\n"
-	@printf "  make performance    - Compilazione e performance test\n"
+	@printf "  make perf           - Compilazione e performance test\n"
 	@printf "  make all-tests      - Esecuzione completa (test + performance)\n"
 	@printf "\n🔍 STATIC ANALYSIS:\n"
 	@printf "  make analyze        - Analisi completa (7 tool) ⏱️ 5min\n"
