@@ -107,7 +107,7 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
 
 
 __attribute__((hot))
-bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
+bool Engine::shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
 
     if (depth > 1) return false;
     if (inCheck) return false; // Don't prune if already in check
@@ -124,15 +124,14 @@ bool Engine::shouldPruneLateMove(const chess::Board& b,const chess::Board::Move&
 
     if (moveIndex < latePruneStart) return false; // Not in late move zone yet
 
-    // OPTIMIZATION: Avoid board copy - check directly with canMoveToBB
-    // If the move gives check, don't prune (expensive check, do last)
+    // Check if move gives check (expensive check, do last)
     chess::Board::MoveState tmpState;
-    chess::Board checkBoard = b; // Only one copy, unavoidable for check detection
-    const bool moveValid = checkBoard.moveBB(m.from, m.to);
-    if (!moveValid) [[unlikely]] return false; // Invalid move shouldn't happen
+    b.doMove(m, tmpState);
     
     const uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
-    const bool givesCheck = checkBoard.inCheck(opponent);
+    const bool givesCheck = b.inCheck(opponent);
+    
+    b.undoMove(m, tmpState);
     
     if (givesCheck) return false;
 
