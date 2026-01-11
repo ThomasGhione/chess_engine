@@ -5,7 +5,8 @@
 *.log
 *.png
 chess
-outputTest
-/tests/outputPerformance
+test
+/tests/test
+/tests/perf
 /games/*.txt
 /saves/*.txt
