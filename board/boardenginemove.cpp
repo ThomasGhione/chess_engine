@@ -219,7 +219,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         this->addPieceToBitboards(pawnPiece, toIndex);
         this->set(toIndex, static_cast<piece_id>(pawnPiece));  // usa index-based
         pieceOnTo = pawnPiece;
-        pieceType = PAWN;
+        // pieceType = PAWN; // non necessario, non usato dopo
     }
 
     // --- SPOSTA IL PEZZO INDIETRO (to -> from) ---

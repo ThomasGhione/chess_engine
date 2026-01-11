@@ -164,25 +164,25 @@ private:
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
 
 public:
-    int manhattan(int a, int b) noexcept;
-    int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-    int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    int64_t evalBadKingPosition(const chess::Board& b) noexcept;
-    int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
-    int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    int64_t evalCastlingBonus(const chess::Board& b) noexcept;
-    int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
-    int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
-    int64_t evalEarlyKing(const chess::Board& b) noexcept;
-    int64_t evalEarlyRook(const chess::Board& b) noexcept;
-    int64_t evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept;
-    int64_t evalEarlyQueen(const chess::Board& b) noexcept;
-    int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
-    int64_t evalKnightOnRim(const chess::Board& b) noexcept;
+    static int manhattan(int a, int b) noexcept;
+    static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
+    static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
+    static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static int64_t evalBadKingPosition(const chess::Board& b) noexcept;
+    static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
+    static int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalCastlingBonus(const chess::Board& b) noexcept;
+    static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    static int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
+    static int64_t evalEarlyKing(const chess::Board& b) noexcept;
+    static int64_t evalEarlyRook(const chess::Board& b) noexcept;
+    static int64_t evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept;
+    static int64_t evalEarlyQueen(const chess::Board& b) noexcept;
+    static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
+    static int64_t evalKnightOnRim(const chess::Board& b) noexcept;
 
     /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);
