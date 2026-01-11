@@ -23,11 +23,8 @@ Engine::Engine()
         magicInitialized = true;
     }
 
-    // this->nodesSearched = 0;
-    // per ora non avviamo la search automaticamente nel costruttore
-    // Collega la TT globale e inizializzala a INVALID
-    ttTable = globalTT();
-    std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
+    // Inizializza TT (marca tutte le entries come INVALID)
+    this->tt.clear();
     isCheckMate = false;
 }
 
@@ -44,11 +41,8 @@ Engine::Engine(const std::string& fen)
         magicInitialized = true;
     }
 
-    // this->nodesSearched = 0;
-    // per ora non avviamo la search automaticamente nel costruttore
-    // Collega la TT globale e inizializzala a INVALID
-    ttTable = globalTT();
-    std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
+    // Inizializza TT (marca tutte le entries come INVALID)
+    this->tt.clear();
     isCheckMate = false;
 }
 
@@ -65,9 +59,8 @@ void Engine::reset() noexcept {
     ttHits = 0;
 #endif
 
-    if (ttTable != nullptr) {
-        std::memset(ttTable, 0, sizeof(TTEntry) * TTEntry::TABLE_SIZE);
-    }
+    // Reset TT
+    this->tt.clear();
 
     // Reset killer moves
     for (int ply = 0; ply < MAX_PLY; ++ply) {

@@ -28,7 +28,7 @@
 #include "basebonuspenaltyvalues.hpp"
 #include "basicrules.hpp"
 #include "piecevaluetables.hpp"
-#include "tt.hpp"
+#include "../tt/transposition_table.hpp"
 #include "movelist.hpp"
 
 namespace engine {
@@ -57,8 +57,8 @@ public:
     bool depthExtendedMedium = false;  // Estensione +2 per <6 pezzi
     bool depthExtendedMaximum = false; // Estensione +2 per 3 pezzi
 
-    // Puntatore alla transposition table globale
-    TTEntry* ttTable;
+    // Transposition table istanza
+    tt::TranspositionTable tt;
 
     static uint64_t nodesSearched; 
 
@@ -117,15 +117,6 @@ private:
         int64_t beta;
     };
 
-    struct TTSaveInfo {
-        uint64_t hashKey;
-        int64_t depth;
-        int64_t score;
-        int64_t alphaOrig;
-        int64_t beta;
-        uint16_t bestMove; // Add best move to save info
-    };
-
     void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
@@ -139,8 +130,6 @@ private:
     bool handleSearchPrelude(const chess::Board& b, const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                           bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
-    bool probeTTCache(uint64_t hashKey, int64_t depth, const AlphaBeta& bounds, int64_t& score) noexcept;
-    void saveTTEntry(const TTSaveInfo& info) noexcept;
     
     // Helper methods for move execution
     // REMOVED: executeMove() was redundant - use doMove() with promotion check inline

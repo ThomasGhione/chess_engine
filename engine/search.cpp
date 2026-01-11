@@ -60,10 +60,10 @@ bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, co
     // Prefetch TT only if deep enough to justify overhead
     // depth >= 2: balanced (avoids overhead on shallow/qsearch nodes)
     // Empirical tests show ~5% speedup vs depth >= 0 or depth >= 3
-    if (depth >= 2) prefetchTT(hashKey);
+    if (depth >= 2) this->tt.prefetch(hashKey);
     
 
-    return this->probeTTCache(hashKey, depth, bounds, score);
+    return this->tt.probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, score);
 }
 
 // Helper to search through all moves and find best move with its score
@@ -407,7 +407,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // OPTIMIZATION: Compute hash key ONCE per node (used by both TT probe and save)
     // This avoids duplicate computeHashKey() calls (~50-100 cycles saved per node)
-    const uint64_t hashKey = computeHashKey(b);
+    const uint64_t hashKey = zobrist::computeHashKey(b);
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
@@ -441,8 +441,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // DETERMINISM: save only if allowTTWrite=true (disabled in parallel threads)
     // Reuse hashKey computed earlier to avoid redundant computation
     if (useTT && allowTTWrite) {
-        TTSaveInfo ttInfo{hashKey, depth, best, alphaOrig, bounds.beta, 0};
-        this->saveTTEntry(ttInfo);
+        const auto flag = tt::determineFlag(best, alphaOrig, bounds.beta);
+        this->tt.store(hashKey, static_cast<uint8_t>(depth), best, flag);
     }
     return best;
 }
