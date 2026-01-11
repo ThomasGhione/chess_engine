@@ -76,11 +76,10 @@ public:
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
-    // TODO It will be in private later when State0 is finished
     bool isMate() noexcept;
     void setIsCheckMate() noexcept;
 
-    int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static constexpr int MAX_PLY = 64;
 
@@ -207,11 +206,11 @@ private:
     };
 
     // Helper function to compute attack data once
-    void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     
     // Lazy evaluation: compute only if needed
     __attribute__((always_inline))
-    inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
+    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
         if (!data[0].isComputed) {
             computeAttackData(data, b, occ);
         }
