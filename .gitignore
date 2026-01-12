@@ -7,6 +7,6 @@
 chess
 test
 /tests/test
-/tests/perf
+/tests/outputPerformance
 /games/*.txt
 /saves/*.txt
