@@ -185,12 +185,12 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t piece = this->get(at);
     const uint8_t type = piece & MASK_PIECE_TYPE;
-    if (type != PAWN) return false; // must be a pawn
+    if (type != PAWN) [[unlikely]] return false; // must be a pawn
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
     // Verify pawn is on last rank according to color
     // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
     const uint8_t rank = at.index >> 3; // Extract rank from index directly
-    if ((color == WHITE && rank != 0) || (color == BLACK && rank != 7)) return false;
+    if ((color == WHITE && rank != 0) || (color == BLACK && rank != 7)) [[unlikely]] return false;
 
     choice = static_cast<char>(std::tolower(static_cast<unsigned char>(choice)));
     uint8_t newType = QUEEN; // default promotion
@@ -202,31 +202,26 @@ bool Board::promote(const Coords& at, char choice) noexcept {
         default: /* default to queen */ break;
     }
 
-    this->set(at, static_cast<piece_id>(newType | color));
+    const uint8_t newPiece = newType | color;
+    
+    // Update bitboards: remove pawn, add promoted piece
+    const uint8_t atIndex = at.index;
+    this->removePieceFromBitboards(piece, atIndex);
+    this->addPieceToBitboards(newPiece, atIndex);
+    
+    // Update chessboard array
+    this->set(at, static_cast<piece_id>(newPiece));
     // Occupancy remains unchanged (piece stays on the same square)
     return true;
 }
 
 // Overload: execute move and, if a pawn reaches last rank, promote using provided choice
-bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept {
-    // Capture piece info before moving
-    const uint8_t fromPiece = this->get(from);
-    const uint8_t fromType = fromPiece & this->MASK_PIECE_TYPE;
-    const uint8_t fromColor = fromPiece & this->MASK_COLOR;
-
+bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
     if (!this->moveBB(from, to)) {
         return false;
     }
 
-    // If it was a pawn and landed on last rank, promote with given choice
-    if (fromType == PAWN) {
-        // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-        const uint8_t toRank = to.index >> 3; // Extract rank from index
-        if ((fromColor == WHITE && toRank == 0) || (fromColor == BLACK && toRank == 7)) {
-            (void)this->promote(to, promotionChoice);
-        }
-    }
-    return true;
+    return this->promote(to, promotionChoice);
 }
 
 bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {

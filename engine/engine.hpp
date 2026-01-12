@@ -62,7 +62,7 @@ public:
 
     static uint64_t nodesSearched; 
 
-    static constexpr int32_t DEFAULTDEPTH = 8;
+    static constexpr int32_t DEFAULTDEPTH = 10;
     static std::string moveHistory;
 
 #ifdef DEBUG
