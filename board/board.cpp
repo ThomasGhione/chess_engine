@@ -257,37 +257,20 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     switch (fromType) {
         case PAWN:
             return isPawnMoveLegal(fromIndex, toIndex, toBit, movingColor, destPiece, destColor);
-        
-        case KNIGHT: {
-            const uint64_t bitMap = pieces::KNIGHT_ATTACKS[fromIndex];
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
-        }
-        
-        case BISHOP: {
-            const uint64_t bitMap = pieces::getBishopAttacks(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
-        }
-        
-        case ROOK: {
-            const uint64_t bitMap = pieces::getRookAttacks(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
-        }
-        
+        case KNIGHT:
+        case BISHOP:
+        case ROOK:
         case QUEEN: {
-            const uint64_t bitMap = pieces::getQueenAttacks(fromIndex, occupancy);
+            // Use dispatch table for simple pieces (eliminates branch misprediction)
+            const uint64_t bitMap = pieces::dispatchPieceMoves(fromType, fromIndex, occupancy);
             if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
         }
-        
         case KING:
             return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
         
-        [[unlikely]] default:
-            return false;
     }
+    return false;
 }
 
 // ============================================
@@ -674,6 +657,32 @@ bool Board::inCheck(uint8_t color) const noexcept {
 }
 
 
+// Helper template per simple pieces con pattern identico (Knight, Bishop, Rook, Queen)
+// Elimina duplicazione codice in hasAnyLegalMove
+template<uint8_t PieceType>
+[[nodiscard]] static inline bool hasLegalMovesForPieceType(
+    const Board* board,
+    uint64_t pieceBB,
+    uint64_t ownOcc,
+    uint64_t occupancy,
+    bool inCheck
+) noexcept {
+    while (pieceBB) {
+        const uint8_t from = __builtin_ctzll(pieceBB);
+        pieceBB &= pieceBB - 1;
+        
+        // Use dispatch table for move generation
+        uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
+        while (movesMask) {
+            const uint8_t to = __builtin_ctzll(movesMask);
+            movesMask &= movesMask - 1;
+            if (board->canMoveToBB(Coords{from}, Coords{to}, inCheck)) return true;
+        }
+    }
+    return false;
+}
+
+
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const int side = (color == WHITE) ? 0 : 1;
     const int oppSide = side ^ 1;
@@ -708,17 +717,8 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     // --- KNIGHTS (cheap, no magic bitboards) ---
-    uint64_t knights = knights_bb[side];
-    while (knights) {
-        const uint8_t from = __builtin_ctzll(knights);
-        knights &= knights - 1;
-        
-        uint64_t movesMask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
-        while (movesMask) {
-            const uint8_t to = __builtin_ctzll(movesMask);
-            movesMask &= movesMask - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
-        }
+    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, this->occupancy, inChk)) {
+        return true;
     }
 
     // --- PAWNS (most common pieces, optimized loop) ---
@@ -746,45 +746,18 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     // --- BISHOPS ---
-    uint64_t bishops = bishops_bb[side];
-    while (bishops) {
-        const uint8_t from = __builtin_ctzll(bishops);
-        bishops &= bishops - 1;
-        
-        uint64_t movesMask = pieces::getBishopAttacks(from, this->occupancy) & ~ownOcc;
-        while (movesMask) {
-            const uint8_t to = __builtin_ctzll(movesMask);
-            movesMask &= movesMask - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
-        }
+    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, this->occupancy, inChk)) {
+        return true;
     }
 
     // --- ROOKS ---
-    uint64_t rooks = rooks_bb[side];
-    while (rooks) {
-        const uint8_t from = __builtin_ctzll(rooks);
-        rooks &= rooks - 1;
-        
-        uint64_t movesMask = pieces::getRookAttacks(from, this->occupancy) & ~ownOcc;
-        while (movesMask) {
-            const uint8_t to = __builtin_ctzll(movesMask);
-            movesMask &= movesMask - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
-        }
+    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, this->occupancy, inChk)) {
+        return true;
     }
 
     // --- QUEENS ---
-    uint64_t queens = queens_bb[side];
-    while (queens) {
-        const uint8_t from = __builtin_ctzll(queens);
-        queens &= queens - 1;
-        
-        uint64_t movesMask = pieces::getQueenAttacks(from, this->occupancy) & ~ownOcc;
-        while (movesMask) {
-            const uint8_t to = __builtin_ctzll(movesMask);
-            movesMask &= movesMask - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
-        }
+    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, this->occupancy, inChk)) {
+        return true;
     }
 
     return false;

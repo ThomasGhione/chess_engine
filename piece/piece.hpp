@@ -406,6 +406,35 @@ inline constexpr std::array<uint64_t, 64> KING_ATTACKS = []{
 }();
 
 
+// ==================== PIECE MOVE DISPATCH TABLE ====================
+// Optimized dispatch per piece type usando template specialization
+// Elimina branch misprediction con jump table del compilatore
+
+// Template dispatch per compile-time specialization
+template<uint8_t PieceType>
+[[nodiscard]] inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy) noexcept {
+    // Note: PAWN escluso - richiede parametro color, gestito separatamente
+    if constexpr (PieceType == 0x2) return KNIGHT_ATTACKS[index];                    // KNIGHT
+    if constexpr (PieceType == 0x3) return getBishopAttacks(index, occupancy);       // BISHOP
+    if constexpr (PieceType == 0x4) return getRookAttacks(index, occupancy);         // ROOK
+    if constexpr (PieceType == 0x5) return getQueenAttacks(index, occupancy);        // QUEEN
+    if constexpr (PieceType == 0x6) return KING_ATTACKS[index];                      // KING
+    return 0ULL;
+}
+
+// Runtime dispatch tramite jump table (compilatore ottimizza in switch efficiente)
+[[nodiscard]] inline uint64_t dispatchPieceMoves(uint8_t pieceType, uint8_t index, uint64_t occupancy) noexcept {
+    switch (pieceType) {
+        case 0x2: return generateMovesByType<0x2>(index, occupancy); // KNIGHT
+        case 0x3: return generateMovesByType<0x3>(index, occupancy); // BISHOP
+        case 0x4: return generateMovesByType<0x4>(index, occupancy); // ROOK
+        case 0x5: return generateMovesByType<0x5>(index, occupancy); // QUEEN
+        case 0x6: return generateMovesByType<0x6>(index, occupancy); // KING
+        default:  return 0ULL;
+    }
+}
+
+
 } // namespace pieces
 
 #endif
