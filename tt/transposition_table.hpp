@@ -51,10 +51,6 @@ namespace tt {
         inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
         inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
 
-        // Overload per int64_t (conversioni gestite internamente)
-        inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept;
-        inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept;
-
         // Generation management
         void incrementGeneration() { ++generation_; }
         uint8_t getCurrentGeneration() const { return generation_; }
@@ -159,27 +155,6 @@ namespace tt {
         replaceEntry->age   = generation_;
     }
 
-    // Overload int64_t → int32_t (conversioni gestite da TT)
-    inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept {
-        const int32_t alpha32 = static_cast<int32_t>(
-            std::max<int64_t>(alpha - ADJUSTMENT, INT32_MIN + 1));
-        const int32_t beta32 = static_cast<int32_t>(
-            std::min<int64_t>(beta + ADJUSTMENT, INT32_MAX - 1));
-
-        int32_t score32 = 0;
-        if (probe(key, depth, alpha32, beta32, score32)) {
-            outScore = static_cast<int64_t>(score32);
-            return true;
-        }
-        return false;
-    }
-
-    inline void TranspositionTable::store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept {
-        const int32_t score32 = static_cast<int32_t>(
-            std::max<int64_t>(std::min<int64_t>(score, INT32_MAX - 1), INT32_MIN + 1));
-        store(key, depth, score32, flag);
-    }
-
     inline void TranspositionTable::clear() {
         for (Entry& entry : *table_) {
             entry.flag = Entry::INVALID;
@@ -188,7 +163,7 @@ namespace tt {
 
     // Helper per determinare flag TT (riduce duplicazione codice in Engine)
     inline constexpr TranspositionTable::Entry::Flag 
-    determineFlag(int64_t score, int64_t alphaOrig, int64_t beta) noexcept {
+    determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
         if (score <= alphaOrig) return TranspositionTable::Entry::UPPERBOUND;
         if (score >= beta) return TranspositionTable::Entry::LOWERBOUND;
         return TranspositionTable::Entry::EXACT;

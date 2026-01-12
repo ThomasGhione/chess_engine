@@ -20,56 +20,6 @@ Perfetto! Ho letto tutto il file. Ecco la mia analisi completa come **code revie
 
 ---
 
-## 🔴 **BOTTLENECK CRITICI**
-
-### **1. `computeAttackData()` - KILLER #1** (linee 729-788)
-**Problema**: Chiamata **SEMPRE** in `evaluate()`, calcola attacchi per tutti i pezzi di entrambi i lati anche quando NON servono.
-
-**Costo stimato**: ~40-60% del tempo di evaluate()
-
-**Evidenze**:
-```cpp
-// Viene SEMPRE chiamata (linea 808)
-AttackData attackData[2];
-computeAttackData(attackData, board, occ);
-
-// MA viene usata solo in alcune fasi:
-// - Opening: 2 volte (evalHangingPieces, evalMobility)
-// - Early MG: 4 volte
-// - Middlegame: 5 volte
-// Endgame: 3 volte
-```
-
-**Fix proposto**:
-```cpp
-// OPZIONE A: Lazy evaluation (calcola solo se necessario)
-struct AttackData {
-    uint64_t pawnAttacks = 0;
-    // ... altri campi
-    bool isComputed = false; // FLAG
-};
-
-// Aggiungi getter con lazy init:
-void ensureComputed(AttackData data[2], const chess::Board& b, uint64_t occ) {
-    if (!data[0].isComputed) {
-        computeAttackData(data, b, occ);
-    }
-}
-
-// OPZIONE B: Calcola solo i componenti necessari per fase
-void computeLightAttackData(AttackData data[2], ...) {
-    // Solo pawn + knight attacks per opening
-}
-
-void computeFullAttackData(AttackData data[2], ...) {
-    // Tutto per middlegame
-}
-```
-
-**Speedup atteso**: **1.5-2x** in opening/endgame dove non serve tutto
-
----
-
 ### **2. `evalTrappedPieces()` - DUPLICAZIONE MASSIVA** (linee 470-523)
 **Problema**: Ricalcola mobilità PER PEZZO anche se già calcolata in `computeAttackData()`!
 

@@ -131,18 +131,6 @@ private:
         int32_t rookMobility;
         int32_t queenMobility;
         bool isComputed;
-        
-        // Helper method per processare un tipo di pezzo (metodo base)
-        template<typename AttackGetter>
-        inline void processPiece(uint64_t pieceBB, uint64_t occ, AttackGetter getter,
-                                 uint64_t& attacks, int32_t& mobility) noexcept {
-            Engine::computePieceAttacks(pieceBB, occ, getter, attacks, mobility, allAttacks);
-        }
-        
-        // Helper method ottimizzato con loop unrolling per 0-2 pezzi
-        template<typename AttackGetter>
-        inline void processPieceOptimized(uint64_t pieceBB, uint64_t occ, AttackGetter getter,
-                                          uint64_t& attacksOut, int32_t& mobilityOut) noexcept;
     };
 
     // Constants
@@ -196,32 +184,6 @@ private:
 
     // Private methods - Evaluation helpers
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
-    
-    // Template helper per calcolo attacchi e mobilità (pattern comune per pezzi)
-    template<typename AttackGetter>
-    __attribute__((always_inline))
-    static inline void computePieceAttacks(
-        uint64_t pieceBB,
-        uint64_t occ,
-        AttackGetter getAttacks,
-        uint64_t& attacksOut,
-        int32_t& mobilityOut,
-        uint64_t& allAttacks) noexcept;
-    
-    // Specializzazione per pawns (no mobilità, side-dependent)
-    __attribute__((always_inline))
-    static inline void computePawnAttacks(
-        const chess::Board& b,
-        int side,
-        AttackData& d) noexcept;
-    
-    // Helper per processare tutti i pezzi di un colore
-    __attribute__((always_inline))
-    static inline void computeAttackDataForSide(
-        const chess::Board& b,
-        uint64_t occ,
-        int side,
-        AttackData& d) noexcept;
     
     __attribute__((always_inline))
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {

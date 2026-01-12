@@ -11,10 +11,10 @@ uint64_t Engine::ttHits = 0;
 #endif
 
 Engine::Engine()
-    : board(chess::Board())
-    , isPlayerWhite(true)
-    , depth(DEFAULTDEPTH)
-    , MAX_THREADS(omp_get_max_threads())
+    : board(chess::Board()),
+    isPlayerWhite(true),
+    depth(DEFAULTDEPTH),
+    MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
     static bool magicInitialized = false;
@@ -29,10 +29,10 @@ Engine::Engine()
 }
 
 Engine::Engine(const std::string& fen)
-    : board(chess::Board(fen))
-    , isPlayerWhite(true)
-    , depth(DEFAULTDEPTH)
-    , MAX_THREADS(omp_get_max_threads())
+    : board(chess::Board(fen)),
+    isPlayerWhite(true),
+    depth(DEFAULTDEPTH),
+    MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
     static bool magicInitialized = false;
@@ -100,7 +100,7 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
 
 
 __attribute__((hot))
-bool Engine::shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
+bool Engine::shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int32_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
 
     if (depth > 1) return false;
     if (inCheck) return false; // Don't prune if already in check
@@ -134,7 +134,7 @@ bool Engine::shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, in
 
 // OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int32_t alpha, int32_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept {
     // EARLY EXIT: cheap checks first
     if (alpha < beta) return; // No beta-cutoff
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
@@ -158,7 +158,7 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // HISTORY HEURISTIC: Bonus based on depth
     // bonus = (depth + 1) * (depth + 1) can be optimized for small depths
     const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-    const int64_t depthPlusOne = depth + 1;
+    const int32_t depthPlusOne = depth + 1;
     const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
     
     // OPTIMIZATION: Direct array access (already optimized)

@@ -37,7 +37,7 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
 }
 
 // Helper to handle terminal nodes and transposition table lookups
-bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
+bool Engine::handleSearchPrelude(const chess::Board& b, const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept {
     
     // const uint8_t activeColor = b.getActiveColor();
 
@@ -69,7 +69,7 @@ bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, co
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                                        bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
-    int64_t best = usIsWhite ? NEG_INF : POS_INF;
+    int32_t best = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
     int moveIndex = 0;
@@ -88,7 +88,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool givesCheck = b.inCheck(oppColor);
 
         // LMR: reduce depth for late, non-critical moves
-        const int64_t childDepth = ctx.depth - 1;
+        const int32_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
             && (moveIndex > 4)                               // ...the first 4 moves at full depth
             && !isPromo                                      // ...isn't a promotion...
@@ -96,15 +96,15 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             && !givesCheck                                   // ...doesn't give check...
             && !this->isKillerMove(m, killerMoves, ctx.ply); // ...isn't a killer move
 
-        int64_t score = 0;
+        int32_t score = 0;
         if (canReduce) {
             // Adaptive reduction: deeper searches reduce more
-            int64_t reduction = 1;
+            int32_t reduction = 1;
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
             if (moveIndex >= 8) reduction += 2; // -2 if very late (>= 8th move)
             
 
-            const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
+            const int32_t reducedDepth = std::max(static_cast<int32_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
             
             // Re-search at full depth if the reduced search looks promising
@@ -133,7 +133,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     return ScoredMove{bestMove, best};
 }
 
-void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
+void Engine::updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
                           chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept {
     if (usIsWhite) {
         // White is the maximizing player
@@ -154,7 +154,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
 
 // OVERLOAD ottimizzato: implementazione diretta invece di delegare
 __attribute__((always_inline))
-inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
+inline void Engine::updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& best) noexcept {
     if (usIsWhite) {
         if (score > best) best = score;
         if (score > alpha) alpha = score;
@@ -165,9 +165,9 @@ inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, 
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
-    int64_t alpha = NEG_INF;
-    int64_t beta  = POS_INF;
-    int64_t bestScore = usIsWhite ? NEG_INF : POS_INF;
+    int32_t alpha = NEG_INF;
+    int32_t beta  = POS_INF;
+    int32_t bestScore = usIsWhite ? NEG_INF : POS_INF;
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
 
@@ -193,13 +193,13 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             const bool isPromo = isPromotionMove(this->board, m);
             this->board.doMove(m, state, isPromo ? 'q' : '\0');
             
-            int64_t score;
+            int32_t score;
             if (i == 0) {
                 // Prima mossa: cerca con finestra piena (PV node)
                 score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
             } else {
                 // Mosse successive: cerca con null window
-                int64_t nullAlpha, nullBeta;
+                int32_t nullAlpha, nullBeta;
                 if (usIsWhite) {
                     nullAlpha = alpha;
                     nullBeta = alpha + 1; // Null window per white (maximizer)
@@ -233,7 +233,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         const bool isPromo = isPromotionMove(this->board, firstMove);
         this->board.doMove(firstMove, state, isPromo ? 'q' : '\0');
         
-        int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+        int32_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
         
         // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
         this->board.undoMove(firstMove, state);
@@ -245,10 +245,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     // CRITICAL FIX: Save original alpha/beta before the parallel loop
     // All threads must see the same window to guarantee determinism
-    const int64_t originalAlpha = alpha;
-    const int64_t originalBeta = beta;
+    const int32_t originalAlpha = alpha;
+    const int32_t originalBeta = beta;
 
-    std::vector<int64_t> threadScores(moves.size, usIsWhite ? NEG_INF : POS_INF);
+    std::vector<int32_t> threadScores(moves.size, usIsWhite ? NEG_INF : POS_INF);
 
     #pragma omp parallel for schedule(static, 1)
     for (int i = 1; i < moves.size; ++i) {
@@ -263,7 +263,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             threadBoard.doMove(m, state);
         }
         
-        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+        int32_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
         threadBoard.undoMove(m, state);
 
         threadScores[i] = score;
@@ -271,7 +271,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     // Merge results deterministically (in ordine sequenziale, senza race)
     for (int i = 1; i < moves.size; ++i) {
-        const int64_t score = threadScores[i];
+        const int32_t score = threadScores[i];
         const auto& m = moves[i];
         if (usIsWhite) {
             if (score > bestScore) { bestScore = score; bestMove = m; }
@@ -291,7 +291,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
 // Helper to undo move and update best move/alpha-beta bounds
 void Engine::undoAndUpdateMove(const chess::Board::Move& m, const chess::Board::MoveState& state, bool usIsWhite,
-                               int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
+                               int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore,
                                chess::Board::Move& bestMove) noexcept {
     // Undo move before processing next one
     this->board.undoMove(m, state);
@@ -393,7 +393,7 @@ void Engine::search(uint64_t depth) noexcept {
 #endif
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite) noexcept {
+int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, int32_t beta, int ply, bool useTT, bool allowTTWrite) noexcept {
     this->nodesSearched++;
 
     // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
@@ -411,7 +411,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};
-    int64_t score = 0;
+    int32_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
     if (this->handleSearchPrelude(b, depth, bounds, score, hashKey)) {
@@ -428,14 +428,14 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     if (moves.is_empty()) return this->evaluate(b);
 
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
-    const int64_t alphaOrig = bounds.alpha;
+    const int32_t alphaOrig = bounds.alpha;
 
     // Build search context
     SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor};
 
     // Search through all moves and find best move with score
     ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT);
-    int64_t best = result.score;
+    int32_t best = result.score;
 
     // Save position to transposition table
     // DETERMINISM: save only if allowTTWrite=true (disabled in parallel threads)
@@ -562,7 +562,7 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
 }
 
 // Helper to add MVV-LVA bonus for captures
-void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept {
+void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int32_t& score) noexcept {
 
     const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
     const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
@@ -582,7 +582,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 
 
 // Helper to add promotion bonus
-void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept {
+void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int32_t& score) noexcept {
     if (pieceType == chess::Board::PAWN) {
         if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
             score += PIECE_VALUES[chess::Board::QUEEN];
@@ -591,7 +591,7 @@ void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, b
 }
 
 // Helper to add check bonus
-void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept {
+void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int32_t& score) noexcept {
     chess::Board::MoveState tmpState;
     b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
     if (b.inCheck(!usIsWhite)) {
@@ -601,7 +601,7 @@ void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool us
 }
 
 // Helper to add killer move and history heuristic bonuses
-void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) noexcept {
+void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int32_t& score) noexcept {
     if (ply >= MAX_PLY) return;
 
     const auto& km1 = killerMoves[0][ply];
@@ -621,7 +621,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 
 // Helper to add king move heuristic bonus/penalty
 // NOTE: inCheck precomputed outside the loop to avoid repeated calls
-void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept {
+void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int32_t& score) noexcept {
     if (pieceType != chess::Board::KING) return;
 
     const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
@@ -638,7 +638,7 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
 // Static Exchange Evaluation (SEE) - Quick version
 // Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
 // OPTIMIZATION: stop at the first favorable exchange for the passive side (early exit)
-int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
+int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
@@ -761,7 +761,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     const int fullMoveClock = b.getFullMoveClock();
 
     for (const auto& m : moves) {
-        int64_t score = 0;
+        int32_t score = 0;
 
         const uint8_t fromPiece = b.get(m.from);
         const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
@@ -783,7 +783,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         if (isCapture) {
             // CAPTURES: priorità basata su SEE
-            const int64_t see = staticExchangeEvaluation(b, m);
+            const int32_t see = staticExchangeEvaluation(b, m);
             
             if (see >= 0) {
                 // GOOD CAPTURE: alta priorità (prima di killer/quiet)
