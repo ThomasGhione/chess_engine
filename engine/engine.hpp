@@ -130,12 +130,7 @@ private:
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                           bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
     
-    // Helper methods for move execution
-    // REMOVED: executeMove() was redundant - use doMove() with promotion check inline
-    void undoAndUpdateMove(const chess::Board::Move& m, const chess::Board::MoveState& state, bool usIsWhite,
-                          int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
-                          chess::Board::Move& bestMove) noexcept;
-
+    
     // Helper methods for move scoring
     void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;
     void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept;

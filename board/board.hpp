@@ -596,13 +596,6 @@ public:
         return enPassant;
     }
 
-private:
-    // ============================================
-    // BOARD STATE - Rappresentazione principale
-    // ============================================
-    board chessboard; // 8 * 32 bit = 256 bit = 32 byte
-
-public:
     // ============================================
     // BITBOARDS - Public per prestazioni critiche
     // Accesso diretto richiesto da Engine/MoveValidator in loop hot
@@ -616,6 +609,11 @@ public:
     std::array<uint64_t, 2> kings_bb   = {0ULL, 0ULL};
 
 private:
+    // ============================================
+    // BOARD STATE - Rappresentazione principale
+    // ============================================
+    board chessboard; // 8 * 32 bit = 256 bit = 32 byte
+
     // ============================================
     // GAME STATE - Stato della partita
     // ============================================

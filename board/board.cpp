@@ -27,8 +27,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Handle en passant capture: pawn moves diagonally into empty ep square
     if (movingType == PAWN) {
-        // Check if pawn moved diagonally (different file): (fromIndex & 7) != (toIndex & 7)
-        if ((fromIndex & 7) != (toIndex & 7) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index)) {
+        // Check if pawn moved diagonally (different file)
+        if (fileOf(fromIndex) != fileOf(toIndex) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index)) {
             wasEnPassantCapture = true;
             const bool isWhite = (movingColor == WHITE);
             // Coords convention: index increases with rank (a8=0 -> h1=63)
@@ -63,9 +63,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     this->addPieceToBitboards(moving, toIndex);
 
     // Castling rook move if king moved two squares on same rank
-    // Check if same rank: (fromIndex >> 3) == (toIndex >> 3)
-    if (movingType == KING && (fromIndex >> 3) == (toIndex >> 3)) {
-        const int df = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7);
+    if (movingType == KING && rankOf(fromIndex) == rankOf(toIndex)) {
+        const int df = static_cast<int>(fileOf(toIndex)) - static_cast<int>(fileOf(fromIndex));
         if (df == 2) {
             // kingside: rook h -> f
             const uint8_t rookFromIndex = toIndex + 1; // h = f + 2, simplified to toIndex + 1
@@ -150,8 +149,8 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 
     // Set en passant target if the move was a double pawn push
     if (movingType == PAWN) {
-        // Optimize: use index arithmetic instead of rank() calls
-        const int dr = static_cast<int>(toIndex >> 3) - static_cast<int>(fromIndex >> 3);
+        // Optimize: use rankOf() dispatcher
+        const int dr = static_cast<int>(rankOf(toIndex)) - static_cast<int>(rankOf(fromIndex));
         if (dr == 2 || dr == -2) {
             const uint8_t midIndex = (fromIndex + toIndex) >> 1; // Average of indices
             enPassant = Coords{midIndex};
@@ -187,10 +186,9 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t type = piece & MASK_PIECE_TYPE;
     if (type != PAWN) [[unlikely]] return false; // must be a pawn
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
-    // Verify pawn is on last rank according to color
-    // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-    const uint8_t rank = at.index >> 3; // Extract rank from index directly
-    if ((color == WHITE && rank != 0) || (color == BLACK && rank != 7)) [[unlikely]] return false;
+    // Verify pawn is on promotion rank according to color
+    const uint8_t rank = rankOf(at.index);
+    if (rank != promotionRank(color == WHITE)) [[unlikely]] return false;
 
     choice = static_cast<char>(std::tolower(static_cast<unsigned char>(choice)));
     uint8_t newType = QUEEN; // default promotion
@@ -317,9 +315,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint8_t destColor
 ) const noexcept {
     const bool isWhite = (movingColor == WHITE);
-    const uint8_t side = isWhite ? 0 : 1;
+    const uint8_t side = colorToIndex(movingColor);
     const uint8_t oppSide = side ^ 1;
-    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    const uint8_t oppColor = oppositeColor(movingColor);
     
     // Generate attacks and pushes using magic bitboards
     const uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][fromIndex];
@@ -369,9 +367,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     if (toIndex != enPassant.index) [[likely]] return false;
     
     const bool isWhite = (movingColor == WHITE);
-    const uint8_t side = isWhite ? 0 : 1;
+    const uint8_t side = colorToIndex(movingColor);
     const uint8_t oppSide = side ^ 1;
-    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    const uint8_t oppColor = oppositeColor(movingColor);
     
     // Calculate captured pawn position
     const int8_t epDir = isWhite ? 8 : -8;
@@ -411,9 +409,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 ) const noexcept {
     if (fromIndex == toIndex) return false;
 
-    const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
-    const int fileDelta = static_cast<int>(toIndex & 7) - static_cast<int>(fromIndex & 7);
-    const int rankDelta = static_cast<int>(toIndex >> 3) - static_cast<int>(fromIndex >> 3);
+    const uint8_t oppColor = oppositeColor(movingColor);
+    const int fileDelta = static_cast<int>(fileOf(toIndex)) - static_cast<int>(fileOf(fromIndex));
+    const int rankDelta = static_cast<int>(rankOf(toIndex)) - static_cast<int>(rankOf(fromIndex));
 
     // Handle castling explicitly when king moves two files on same rank
     if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
@@ -434,9 +432,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint8_t toIndex,
     uint8_t movingColor
 ) const noexcept {
-    const uint8_t fromRank = fromIndex >> 3;
-    const uint8_t toRank = toIndex >> 3;
-    const uint8_t fromFile = fromIndex & 7;
+    const uint8_t fromRank = rankOf(fromIndex);
+    const uint8_t toRank = rankOf(toIndex);
+    const uint8_t fromFile = fileOf(fromIndex);
     
     // Early returns: invalid castling conditions
     if (fromRank != toRank) return false;
@@ -448,7 +446,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     if (fromRank != expectedRank) return false;
     
     // Calculate file delta
-    const int df = static_cast<int>(toIndex & 7) - 4;
+    const int df = static_cast<int>(fileOf(toIndex)) - 4;
     
     if (df == 2) return canCastleKingside(isWhite, fromIndex);
     if (df == -2) return canCastleQueenside(isWhite, fromIndex);
@@ -462,8 +460,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint8_t fromIndex,
     bool isKingside
 ) const noexcept {
-    const uint8_t side = isWhite ? 0 : 1;
-    const uint8_t oppColor = isWhite ? BLACK : WHITE;
+    const uint8_t side = colorBoolToIndex(isWhite);
+    const uint8_t oppColor = oppositeColor(isWhite ? WHITE : BLACK);
     
     // Check castling rights
     const uint8_t rightBit = isWhite 
@@ -515,14 +513,14 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint8_t destPiece,
     uint8_t destColor
 ) const noexcept {
-    const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+    const uint8_t side = colorToIndex(movingColor);
     
     // Early return: no king found (should never happen)
     const uint64_t kingBB = kings_bb[side];
     if (!kingBB) [[unlikely]] return false;
     
     const uint8_t oppSide = side ^ 1;
-    const uint8_t oppColor = (movingColor == WHITE) ? BLACK : WHITE;
+    const uint8_t oppColor = oppositeColor(movingColor);
     const uint8_t kingSq = __builtin_ctzll(kingBB);
     
     // Simulate move
@@ -550,7 +548,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 // ------------------------------------------------------------
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
-    const int side = (byColor == WHITE) ? 0 : 1;
+    const int side = colorToIndex(byColor);
 
     // Fast path: check non-sliding pieces first (cheaper)
     if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
@@ -571,7 +569,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
 
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const int side = (byColor == WHITE) ? 0 : 1;
+    const int side = colorToIndex(byColor);
 
     // Fast path: check non-sliding pieces first
     if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
@@ -595,7 +593,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 // Returns true if all squares are safe, false if ANY square is attacked
 // Used for castling to avoid 3 separate isSquareAttacked calls
 bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
-    const int side = (byColor == WHITE) ? 0 : 1;
+    const int side = colorToIndex(byColor);
     
     // Check each square in the mask
     while (squaresMask) {
@@ -624,7 +622,7 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
 bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
                                  uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept {
-    const uint8_t side = (byColor == WHITE) ? 0 : 1;
+    const uint8_t side = colorToIndex(byColor);
     
     // Fast path: non-sliding pieces
     if (pieces::PAWN_ATTACKERS_TO[side][kingSq] & pawns) return true;
@@ -645,14 +643,14 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
 __attribute__((hot))
 bool Board::inCheck(uint8_t color) const noexcept {
     // Find king square using king bitboards (convert to array index)
-    const uint8_t side = (color == WHITE) ? 0 : 1;
+    const uint8_t side = colorToIndex(color);
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false; // no king found (invalid position) -> treat as not in check
     
 
     const uint8_t kingIndex = __builtin_ctzll(kingBB);
-    const uint8_t opp = (color == WHITE) ? BLACK : WHITE;
+    const uint8_t opp = oppositeColor(color);
     return isSquareAttacked(kingIndex, opp);
 }
 

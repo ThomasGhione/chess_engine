@@ -215,9 +215,13 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                     score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
                 }
             }
-            
-            this->undoAndUpdateMove(m, state, usIsWhite, score, alpha, beta, bestScore, bestMove);
-            
+
+            // Undo move before processing next one
+            this->board.undoMove(m, state);
+
+            // Update best move and alpha-beta bounds
+            this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
+
             // Alpha-beta cutoff
             if (alpha >= beta) break;
         }
@@ -287,20 +291,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     this->eval = bestScore;
     return bestMove;
-}
-
-// REMOVED: executeMove() was redundant - use doMove with promotion check inline
-// The optimized version is already implemented in searchMoves() and getBestMove()
-
-// Helper to undo move and update best move/alpha-beta bounds
-void Engine::undoAndUpdateMove(const chess::Board::Move& m, const chess::Board::MoveState& state, bool usIsWhite,
-                               int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore,
-                               chess::Board::Move& bestMove) noexcept {
-    // Undo move before processing next one
-    this->board.undoMove(m, state);
-
-    // Update best move and alpha-beta bounds
-    this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
 }
 
 void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
