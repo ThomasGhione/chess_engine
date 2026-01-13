@@ -74,6 +74,11 @@ public:
         return color >> 3;
     }
     
+    // Convert bool color to array index: true (white) -> 0, false (black) -> 1
+    static constexpr int colorBoolToIndex(bool isWhite) noexcept {
+        return isWhite ? 0 : 1;
+    }
+    
     // ============================================
     // PIECE-CHAR LOOKUP TABLES - Compile-time
     // ============================================
@@ -97,6 +102,70 @@ public:
     static constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
         '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
     };
+
+
+    
+    // ============================================
+    // SQUARE TRANSFORMATIONS - Geometric operations
+    // ============================================
+    
+    // Vertical mirror: flip rank (a1 <-> a8, b1 <-> b8, etc.)
+    static constexpr uint8_t verticalMirror(uint8_t sq) noexcept {
+        return sq ^ 56;  // XOR with 0b111000 flips bits 3-5 (rank)
+    }
+    
+    // Horizontal mirror: flip file (a1 <-> h1, a2 <-> h2, etc.)
+    static constexpr uint8_t horizontalMirror(uint8_t sq) noexcept {
+        return sq ^ 7;   // XOR with 0b000111 flips bits 0-2 (file)
+    }
+    
+    // ============================================
+    // FILE/RANK MASKS - Precomputed bitboard masks
+    // ============================================
+    
+    // File masks: vertical columns (a-h files)
+    static constexpr uint64_t FILE_MASKS[8] = {
+        0x0101010101010101ULL,  // a-file
+        0x0202020202020202ULL,  // b-file
+        0x0404040404040404ULL,  // c-file
+        0x0808080808080808ULL,  // d-file
+        0x1010101010101010ULL,  // e-file
+        0x2020202020202020ULL,  // f-file
+        0x4040404040404040ULL,  // g-file
+        0x8080808080808080ULL,  // h-file
+    };
+    
+    // Rank masks: horizontal rows (1-8 ranks)
+    static constexpr uint64_t RANK_MASKS[8] = {
+        0x00000000000000FFULL,  // rank 1
+        0x000000000000FF00ULL,  // rank 2
+        0x0000000000FF0000ULL,  // rank 3
+        0x00000000FF000000ULL,  // rank 4
+        0x000000FF00000000ULL,  // rank 5
+        0x0000FF0000000000ULL,  // rank 6
+        0x00FF000000000000ULL,  // rank 7
+        0xFF00000000000000ULL,  // rank 8
+    };
+    
+    // Get file mask for a given file (0-7)
+    static constexpr uint64_t fileMask(int file) noexcept {
+        return FILE_MASKS[file];
+    }
+    
+    // Get rank mask for a given rank (0-7)
+    static constexpr uint64_t rankMask(int rank) noexcept {
+        return RANK_MASKS[rank];
+    }
+    
+    // Get file mask for a square
+    static constexpr uint64_t fileMaskFromSquare(uint8_t sq) noexcept {
+        return FILE_MASKS[sq & 7];  // Extract file (bits 0-2)
+    }
+    
+    // Get rank mask for a square
+    static constexpr uint64_t rankMaskFromSquare(uint8_t sq) noexcept {
+        return RANK_MASKS[sq >> 3];  // Extract rank (bits 3-5)
+    }
 
     struct Move {
         Coords from;

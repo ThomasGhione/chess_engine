@@ -2,6 +2,13 @@
 
 namespace engine {
 
+__attribute__((always_inline))
+static inline int popLsb(uint64_t& bb) noexcept {
+    const int sq = __builtin_ctzll(bb);
+    bb &= (bb - 1);  // Clear LSB
+    return sq;
+}
+
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
     return static_cast<int64_t>(
           (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
@@ -21,46 +28,24 @@ __attribute__((always_inline))
 inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
     // White pieces: use index as-is
     while (bbWhite) {
-        uint8_t sq = __builtin_ctzll(bbWhite);
-        bbWhite &= (bbWhite - 1);
+        const uint8_t sq = popLsb(bbWhite);
         eval += table[sq];
     }
     // Black pieces: mirror index vertically (inline for performance)
     while (bbBlack) {
-        uint8_t sq = __builtin_ctzll(bbBlack);
-        bbBlack &= (bbBlack - 1);
-        eval -= table[sq ^ 56]; // Branchless vertical mirror (flip rank)
+        const uint8_t sq = popLsb(bbBlack);
+        eval -= table[chess::Board::verticalMirror(sq)];
     }
 }
 
-__attribute__((always_inline))
-inline int poplsbIndex(uint64_t& bb) noexcept {
-    const int sq = __builtin_ctzll(bb);
-    bb &= (bb - 1);
-    return sq;
-}
-
-__attribute__((always_inline))
-inline uint64_t fileMask(int file) noexcept {
-    // Table-driven: avoids a variable shift on the hot path.
-    static constexpr uint64_t FILE_MASKS[8] = {
-        0x0101010101010101ULL,
-        0x0202020202020202ULL,
-        0x0404040404040404ULL,
-        0x0808080808080808ULL,
-        0x1010101010101010ULL,
-        0x2020202020202020ULL,
-        0x4040404040404040ULL,
-        0x8080808080808080ULL,
-    };
-    return FILE_MASKS[file];
-}
+// REMOVED: Using popLsb() instead (defined in board.hpp)
+// REMOVED: Using chess::Board::fileMask() instead (defined in board.hpp)
 
 __attribute__((always_inline))
 inline uint64_t adjacentFilesMask(int file) noexcept {
     uint64_t m = 0;
-    if (file > 0) m |= fileMask(file - 1);
-    if (file < 7) m |= fileMask(file + 1);
+    if (file > 0) m |= chess::Board::fileMask(file - 1);
+    if (file < 7) m |= chess::Board::fileMask(file + 1);
     return m;
 }
 
@@ -173,7 +158,7 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     // Evaluate WHITE pawns (isolated + passed in ONE loop)
     uint64_t wp = whitePawns;
     while (wp) {
-        const int sq = poplsbIndex(wp);
+        const int sq = popLsb(wp);
         const int file = sq & 7;
         const int rank = sq >> 3;
         
@@ -197,7 +182,7 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     // Evaluate BLACK pawns (isolated + passed in ONE loop)
     uint64_t bp = blackPawns;
     while (bp) {
-        const int sq = poplsbIndex(bp);
+        const int sq = popLsb(bp);
         const int file = sq & 7;
         const int rank = sq >> 3;
         
@@ -227,7 +212,7 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
 
     // Doubled pawns: count per-file pawn excess over 1.
     for (int f = 0; f < 8; ++f) {
-        const uint64_t fm = fileMask(f);
+        const uint64_t fm = chess::Board::fileMask(f);
         const int wCount = __builtin_popcountll(whitePawns & fm);
         const int bCount = __builtin_popcountll(blackPawns & fm);
         if (wCount > 1){ score += (wCount - 1) * DOUBLED_PAWN_PENALTY; }
@@ -237,13 +222,13 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     // Isolated pawns: no friendly pawns on adjacent files.
     uint64_t wp = whitePawns;
     while (wp) {
-        const int sq = poplsbIndex(wp);
+        const int sq = popLsb(wp);
         const int file = sq & 7;
         if ((whitePawns & adjacentFilesMask(file)) == 0) score += ISOLATED_PAWN_PENALTY;
     }
     uint64_t bp = blackPawns;
     while (bp) {
-        const int sq = poplsbIndex(bp);
+        const int sq = popLsb(bp);
         const int file = sq & 7;
         if ((blackPawns & adjacentFilesMask(file)) == 0) score -= ISOLATED_PAWN_PENALTY;
     }
@@ -252,9 +237,9 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     // This is simplified but correct and safe.
     wp = whitePawns;
     while (wp) {
-        const int sq = poplsbIndex(wp);
+        const int sq = popLsb(wp);
         const int file = sq & 7;
-        const uint64_t lanes = fileMask(file) | adjacentFilesMask(file);
+        const uint64_t lanes = chess::Board::fileMask(file) | adjacentFilesMask(file);
         // Squares in front of sq for white are ranks > current rank.
         const int rank = sq >> 3;
         const uint64_t inFront = 0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8);
@@ -268,9 +253,9 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     }
     bp = blackPawns;
     while (bp) {
-        const int sq = poplsbIndex(bp);
+        const int sq = popLsb(bp);
         const int file = sq & 7;
-        const uint64_t lanes = fileMask(file) | adjacentFilesMask(file);
+        const uint64_t lanes = chess::Board::fileMask(file) | adjacentFilesMask(file);
         // Squares in front of sq for black are ranks < current rank.
         const int rank = sq >> 3;
         const uint64_t inFront = (rank == 0) ? 0ULL : ((1ULL << (rank * 8)) - 1ULL);
@@ -312,7 +297,7 @@ int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whi
 
     auto evalSide = [&](uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns, int sign) {
         while (rooks) {
-            const int sq = poplsbIndex(rooks);
+            const int sq = popLsb(rooks);
             const int file = sq & 7;
             const int rank = sq >> 3;
             const uint64_t fm = FILE_MASKS[file]; // Use precalculated mask
@@ -347,7 +332,7 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
         const uint64_t ownPawns = b.pawns_bb[side];
 
         while (rooks) {
-            const int sq = poplsbIndex(rooks);
+            const int sq = popLsb(rooks);
             const int file = sq & 7;
             const int rank = sq >> 3;
 
@@ -515,7 +500,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
     // Knights: use a precomputed lookup table (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
         while (knights) {
-            const int sq = poplsbIndex(knights);
+            const int sq = popLsb(knights);
             const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
             if (mobility == 0) [[unlikely]] score -= sign * PINNED_KNIGHT_PENALTY;
             else if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
@@ -527,7 +512,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
         if (pieceCount > 0) [[likely]] {
             uint64_t bishops = b.bishops_bb[side];
             while (bishops) {
-                const int sq = poplsbIndex(bishops);
+                const int sq = popLsb(bishops);
                 const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
                 if (mobility == 0) [[unlikely]] score -= sign * PINNED_BISHOP_PENALTY;
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
@@ -535,7 +520,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
 
             uint64_t rooks = b.rooks_bb[side];
             while (rooks) {
-                const int sq = poplsbIndex(rooks);
+                const int sq = popLsb(rooks);
                 const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
                 if (mobility == 0) [[unlikely]] score -= sign * PINNED_ROOK_PENALTY;
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
@@ -543,7 +528,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
 
             uint64_t queens = b.queens_bb[side];
             while (queens) {
-                const int sq = poplsbIndex(queens);
+                const int sq = popLsb(queens);
                 const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
                 if (mobility == 0) [[unlikely]] score -= sign * PINNED_QUEEN_PENALTY;
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
@@ -763,7 +748,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         // Pawns - usa lookup table (no magic bitboards)
         uint64_t pawns = b.pawns_bb[side];
         while (pawns) {
-            const int sq = poplsbIndex(pawns);
+            const int sq = popLsb(pawns);
             d.pawnAttacks |= pieces::PAWN_ATTACKS[side][sq];
         }
         d.allAttacks = d.pawnAttacks;
@@ -771,7 +756,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         // Knights - usa lookup table (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
         while (knights) {
-            const int sq = poplsbIndex(knights);
+            const int sq = popLsb(knights);
             const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
             d.knightAttacks |= attacks;
             d.knightMobility += __builtin_popcountll(attacks & ~occ);
@@ -781,7 +766,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         // Bishops - magic bitboards necessari
         uint64_t bishops = b.bishops_bb[side];
         while (bishops) {
-            const int sq = poplsbIndex(bishops);
+            const int sq = popLsb(bishops);
             const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
             d.bishopAttacks |= attacks;
             d.bishopMobility += __builtin_popcountll(attacks & ~occ);
@@ -791,7 +776,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         // Rooks - magic bitboards necessari
         uint64_t rooks = b.rooks_bb[side];
         while (rooks) {
-            const int sq = poplsbIndex(rooks);
+            const int sq = popLsb(rooks);
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             d.rookAttacks |= attacks;
             d.rookMobility += __builtin_popcountll(attacks & ~occ);
@@ -801,7 +786,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
         // Queens - magic bitboards necessari
         uint64_t queens = b.queens_bb[side];
         while (queens) {
-            const int sq = poplsbIndex(queens);
+            const int sq = popLsb(queens);
             const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
             d.queenAttacks |= attacks;
             d.queenMobility += __builtin_popcountll(attacks & ~occ);

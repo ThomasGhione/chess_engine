@@ -69,7 +69,7 @@ bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, co
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                                        bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
-    int64_t best = usIsWhite ? NEG_INF : POS_INF;
+    int64_t best = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
     int moveIndex = 0;
@@ -135,31 +135,32 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                           chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept {
-    if (usIsWhite) {
-        // White is the maximizing player
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = m;
-        }
-        if (score > alpha) alpha = score;
-        return;
-    }
-    // Black is the minimizing player
-    if (score < bestScore) {
+    // Update best score and move if this is better
+    if (Engine::isBetter(score, bestScore, usIsWhite)) {
         bestScore = score;
         bestMove = m;
     }
-    if (score < beta) beta = score;
+    
+    // Update alpha/beta bounds
+    if (usIsWhite) {
+        if (score > alpha) alpha = score;
+    } else {
+        if (score < beta) beta = score;
+    }
 }
 
 // OVERLOAD ottimizzato: implementazione diretta invece di delegare
 __attribute__((always_inline))
 inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
+    // Update best score if this is better
+    if (Engine::isBetter(score, best, usIsWhite)) {
+        best = score;
+    }
+    
+    // Update alpha/beta bounds
     if (usIsWhite) {
-        if (score > best) best = score;
         if (score > alpha) alpha = score;
     } else {
-        if (score < best) best = score;
         if (score < beta) beta = score;
     }
 }
@@ -167,7 +168,7 @@ inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
     int64_t alpha = NEG_INF;
     int64_t beta  = POS_INF;
-    int64_t bestScore = usIsWhite ? NEG_INF : POS_INF;
+    int64_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
 
@@ -248,7 +249,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;
 
-    std::vector<int64_t> threadScores(moves.size, usIsWhite ? NEG_INF : POS_INF);
+    std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
 
     #pragma omp parallel for schedule(static, 1)
     for (int i = 1; i < moves.size; ++i) {
@@ -273,11 +274,14 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     for (int i = 1; i < moves.size; ++i) {
         const int64_t score = threadScores[i];
         const auto& m = moves[i];
+        if (Engine::isBetter(score, bestScore, usIsWhite)) {
+            bestScore = score;
+            bestMove = m;
+        }
+        // Update alpha/beta bounds
         if (usIsWhite) {
-            if (score > bestScore) { bestScore = score; bestMove = m; }
             if (score > alpha) alpha = score;
         } else {
-            if (score < bestScore) { bestScore = score; bestMove = m; }
             if (score < beta) beta = score;
         }
     }
@@ -613,7 +617,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
         score += KILLER2_BONUS;
     }
 
-    const int colorIndex = usIsWhite ? 0 : 1;
+    const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
     const int fromIndex = m.from.index;
     const int toIndex = m.to.index;
     score += history[colorIndex][fromIndex][toIndex];
@@ -828,7 +832,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 
                 // History heuristic (per quiet moves normali)
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
-                    const int colorIndex = usIsWhite ? 0 : 1;
+                    const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
                     int64_t histScore = history[colorIndex][m.from.index][m.to.index];
                     // Clampiamo a [0, 1000] per evitare valori anomali
                     score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), histScore));

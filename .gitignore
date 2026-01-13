@@ -6,7 +6,8 @@
 *.png
 chess
 test
+perf
 /tests/test
-/tests/outputPerformance
+/tests/perf
 /games/*.txt
 /saves/*.txt

@@ -212,6 +212,33 @@ private:
 
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
+    
+    // ============================================
+    // COLOR-AWARE SEARCH DISPATCHERS - Compile-time branch elimination
+    // ============================================
+    
+    // Initial best score for min-max search
+    // White maximizes: starts from -INF, Black minimizes: starts from +INF
+    template<bool IsWhite>
+    static constexpr int64_t initialBest() noexcept {
+        return IsWhite ? NEG_INF : POS_INF;
+    }
+    // Runtime version (when color is not known at compile time)
+    static constexpr int64_t initialBest(bool isWhite) noexcept {
+        return isWhite ? NEG_INF : POS_INF;
+    }
+    
+    // Compare if newScore is better than currentBest (color-aware)
+    // White: newScore > currentBest (maximize)
+    // Black: newScore < currentBest (minimize)
+    template<bool IsWhite>
+    static constexpr bool isBetter(int64_t newScore, int64_t currentBest) noexcept {
+        return IsWhite ? (newScore > currentBest) : (newScore < currentBest);
+    }
+    // Runtime version
+    static constexpr bool isBetter(int64_t newScore, int64_t currentBest, bool isWhite) noexcept {
+        return isWhite ? (newScore > currentBest) : (newScore < currentBest);
+    }
 
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
@@ -230,6 +257,16 @@ private:
         KING_VALUE,  // KING = 6
         0       // unused = 7
     };
+    
+    // ============================================
+    // PIECE VALUE DISPATCHER - Evaluation utility
+    // ============================================
+    
+    // Fast access to piece values (inline for zero-cost abstraction)
+    __attribute__((always_inline))
+    static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept {
+        return PIECE_VALUES[pieceType & chess::Board::MASK_PIECE_TYPE];
+    }
 
 }; //class Engine final
 
