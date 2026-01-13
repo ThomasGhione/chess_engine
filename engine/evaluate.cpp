@@ -55,7 +55,7 @@ namespace {
     constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
         std::array<uint64_t, 64> result{};
         for (int sq = 0; sq < 64; ++sq) {
-            const int rank = sq >> 3;
+            const int rank = chess::Board::rankOf(sq);
             result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
         }
         return result;
@@ -64,7 +64,7 @@ namespace {
     constexpr std::array<uint64_t, 64> initBlackForwardFill() {
         std::array<uint64_t, 64> result{};
         for (int sq = 0; sq < 64; ++sq) {
-            const int rank = sq >> 3;
+            const int rank = chess::Board::rankOf(sq);
             result[sq] = (rank > 0) ? ((1ULL << (rank * 8)) - 1ULL) : 0ULL;
         }
         return result;
@@ -115,8 +115,8 @@ namespace {
         std::array<uint64_t, 64> masks{};
         for (int sq = 0; sq < 64; ++sq) {
             uint64_t mask = 0;
-            const int rank = sq >> 3;
-            const int file = sq & 7;
+            const int rank = chess::Board::rankOf(sq);
+            const int file = chess::Board::fileOf(sq);
             
             // All squares within Manhattan distance 2
             for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
@@ -159,8 +159,8 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     uint64_t wp = whitePawns;
     while (wp) {
         const int sq = popLsb(wp);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
+        const int file = chess::Board::fileOf(sq);
+        const int rank = chess::Board::rankOf(sq);
         
         // Isolated pawn check (no friendly pawns on adjacent files) - OPTIMIZED
         const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
@@ -183,8 +183,8 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     uint64_t bp = blackPawns;
     while (bp) {
         const int sq = popLsb(bp);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
+        const int file = chess::Board::fileOf(sq);
+        const int rank = chess::Board::rankOf(sq);
         
         // Isolated pawn check - OPTIMIZED
         const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
@@ -223,13 +223,13 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     uint64_t wp = whitePawns;
     while (wp) {
         const int sq = popLsb(wp);
-        const int file = sq & 7;
+        const int file = chess::Board::fileOf(sq);
         if ((whitePawns & adjacentFilesMask(file)) == 0) score += ISOLATED_PAWN_PENALTY;
     }
     uint64_t bp = blackPawns;
     while (bp) {
         const int sq = popLsb(bp);
-        const int file = sq & 7;
+        const int file = chess::Board::fileOf(sq);
         if ((blackPawns & adjacentFilesMask(file)) == 0) score -= ISOLATED_PAWN_PENALTY;
     }
 
@@ -238,10 +238,10 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     wp = whitePawns;
     while (wp) {
         const int sq = popLsb(wp);
-        const int file = sq & 7;
+        const int file = chess::Board::fileOf(sq);
         const uint64_t lanes = chess::Board::fileMask(file) | adjacentFilesMask(file);
         // Squares in front of sq for white are ranks > current rank.
-        const int rank = sq >> 3;
+        const int rank = chess::Board::rankOf(sq);
         const uint64_t inFront = 0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8);
         if ((blackPawns & lanes & inFront) == 0) {
             score += PASSED_PAWN_BONUS;
@@ -254,10 +254,10 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
     bp = blackPawns;
     while (bp) {
         const int sq = popLsb(bp);
-        const int file = sq & 7;
+        const int file = chess::Board::fileOf(sq);
         const uint64_t lanes = chess::Board::fileMask(file) | adjacentFilesMask(file);
         // Squares in front of sq for black are ranks < current rank.
-        const int rank = sq >> 3;
+        const int rank = chess::Board::rankOf(sq);
         const uint64_t inFront = (rank == 0) ? 0ULL : ((1ULL << (rank * 8)) - 1ULL);
         if ((whitePawns & lanes & inFront) == 0) {
             score -= PASSED_PAWN_BONUS;

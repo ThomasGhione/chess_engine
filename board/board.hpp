@@ -80,6 +80,38 @@ public:
     }
     
     // ============================================
+    // RANK UTILITIES - Color-dependent rank helpers
+    // ============================================
+    
+    // Get promotion rank for a color: WHITE -> 7 (8th rank), BLACK -> 0 (1st rank)
+    template<bool IsWhite>
+    static constexpr uint8_t promotionRank() noexcept {
+        return IsWhite ? 7 : 0;
+    }
+    
+    // Runtime version of promotion rank
+    static constexpr uint8_t promotionRank(bool isWhite) noexcept {
+        return isWhite ? 7 : 0;
+    }
+    
+    // Check if a rank is a promotion rank for a given color
+    static constexpr bool isPromotionRank(uint8_t rank, bool isWhite) noexcept {
+        return rank == promotionRank(isWhite);
+    }
+    
+    // Get back rank (starting rank) for a color: WHITE -> 0 (1st rank), BLACK -> 7 (8th rank)
+    template<bool IsWhite>
+    static constexpr uint8_t backRank() noexcept {
+        return IsWhite ? 0 : 7;
+    }
+    
+    // Get seventh rank for a color: WHITE -> 6 (7th rank), BLACK -> 1 (2nd rank)
+    template<bool IsWhite>
+    static constexpr uint8_t seventhRank() noexcept {
+        return IsWhite ? 6 : 1;
+    }
+    
+    // ============================================
     // PIECE-CHAR LOOKUP TABLES - Compile-time
     // ============================================
     
@@ -166,6 +198,20 @@ public:
     static constexpr uint64_t rankMaskFromSquare(uint8_t sq) noexcept {
         return RANK_MASKS[sq >> 3];  // Extract rank (bits 3-5)
     }
+    
+    // ============================================
+    // FILE/RANK EXTRACTORS - Replace raw bitwise ops
+    // ============================================
+    
+    // Extract file from square index (0-7, representing a-h)
+    static constexpr uint8_t fileOf(uint8_t sq) noexcept {
+        return sq & 7;  // Extract bits 0-2
+    }
+    
+    // Extract rank from square index (0-7, representing 8th-1st in Coords convention)
+    static constexpr uint8_t rankOf(uint8_t sq) noexcept {
+        return sq >> 3;  // Extract bits 3-5
+    }
 
     struct Move {
         Coords from;
@@ -243,7 +289,7 @@ public:
     //! GETTERS
     // Primary getter: works directly with index (most efficient)
     __attribute__((hot, always_inline))
-    inline uint8_t get(uint8_t index) const noexcept {
+    constexpr inline uint8_t get(uint8_t index) const noexcept {
         const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
         const uint8_t file = index & 7;   // index % 8
         // Convert from Coords convention to Board storage
@@ -252,13 +298,13 @@ public:
     
     // Convenience getter: from Coords object
     __attribute__((always_inline))
-    inline uint8_t get(Coords coords) const noexcept {
+    constexpr inline uint8_t get(Coords coords) const noexcept {
         return this->get(coords.index);
     }
     
     // Direct storage access getter (bypasses Coords convention)
     __attribute__((always_inline))
-    inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
+    constexpr inline uint8_t get(uint8_t row, uint8_t col) const noexcept {
         return (chessboard[row] >> (col << 2)) & MASK_PIECE;
     }
     
@@ -272,22 +318,22 @@ public:
     std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
 
     // TODO check whether Castle and HasMoved getters works fine :D
-    uint8_t getActiveColor() const noexcept { return this->activeColor; }
+    constexpr uint8_t getActiveColor() const noexcept { return this->activeColor; }
 
     // Castling rights (KQkq) and hasMoved flags stored as bitmasks in uint8_t
     // castle bits: 0=white king side (K), 1=white queen side (Q), 2=black king side (k), 3=black queen side (q)
-    bool getCastle(uint8_t index) const noexcept {
+    constexpr bool getCastle(uint8_t index) const noexcept {
         return (castle & (1u << index));
     }
 
     // hasMoved bits: K, Ra, Rh, k, ra, rh  (use same ordering as old vector<bool>)
-    bool getHasMoved(uint8_t index) const noexcept {
+    constexpr bool getHasMoved(uint8_t index) const noexcept {
         return (hasMoved & (1u << index));
     }
 
     // Both ways to get color of piece at position
     __attribute__((always_inline))
-    inline uint8_t getColor(const Coords& pos) const noexcept {
+    constexpr inline uint8_t getColor(const Coords& pos) const noexcept {
         const uint8_t rawPiece = this->get(pos);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
             return EMPTY;
@@ -296,7 +342,7 @@ public:
     }
 
     __attribute__((always_inline))
-    inline uint8_t getColor(uint8_t index) const noexcept {
+    constexpr inline uint8_t getColor(uint8_t index) const noexcept {
         const uint8_t rawPiece = this->get(index);
         if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
             return EMPTY;
@@ -304,8 +350,8 @@ public:
         return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
     }
 
-    uint16_t getHalfMoveClock() const noexcept { return halfMoveClock; }
-    uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
+    constexpr uint16_t getHalfMoveClock() const noexcept { return halfMoveClock; }
+    constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
 
     //! SETTERS
     // Primary setter: works directly with index (most efficient)
@@ -355,12 +401,12 @@ public:
     }
 
     //! Operator overloads
-    uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
+    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
     uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
+    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
     uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
-    bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
-    bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
+    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
 
 
     //! PER DEBUG
@@ -377,7 +423,7 @@ public:
 
 
     // Piece movement logic
-    bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
+    constexpr bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
         uint8_t p1 = this->get(pos1);
         uint8_t p2 = this->get(pos2);
         if (p1 == EMPTY || p2 == EMPTY) return false;

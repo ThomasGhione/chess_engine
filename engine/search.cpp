@@ -31,9 +31,8 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
     if (pieceType != chess::Board::PAWN) return false;
     
     const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-    // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-    return (pieceColor == chess::Board::WHITE && toRank == 0) ||
-           (pieceColor == chess::Board::BLACK && toRank == 7);
+    // White promotes at rank 7 (8th rank), Black promotes at rank 0 (1st rank)
+    return toRank == chess::Board::promotionRank(pieceColor == chess::Board::WHITE);
 }
 
 // Helper to handle terminal nodes and transposition table lookups
@@ -578,7 +577,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 
     // En passant (only pawn moving diagonally to empty square)
     if (fromPieceType == chess::Board::PAWN) {
-        if ((m.from.index & 7) != (m.to.index & 7)) {
+        if (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index)) {
             score += MVV_LVA_TABLE[chess::Board::PAWN][chess::Board::PAWN];
         }
     }
@@ -588,7 +587,7 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 // Helper to add promotion bonus
 void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept {
     if (pieceType == chess::Board::PAWN) {
-        if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
+        if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
             score += PIECE_VALUES[chess::Board::QUEEN];
         }
     }
@@ -628,7 +627,7 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
 void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept {
     if (pieceType != chess::Board::KING) return;
 
-    const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
+    const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
     const bool isCastling = (fileDelta == 2);
 
     // Penalizza mosse del re in apertura se non sotto scacco e non arrocco
@@ -825,7 +824,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 
                 // Promotion bonus (se non è cattura)
                 if (fromPieceType == chess::Board::PAWN) {
-                    if ((usIsWhite && m.to.rank() == 7) || (!usIsWhite && m.to.rank() == 0)) {
+                    if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
                         score = 7000;
                     }
                 }
@@ -842,7 +841,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // King move penalties (riduci priorità mosse re in opening se non arrocco)
         if (fromPieceType == chess::Board::KING) {
-            const int fileDelta = std::abs((m.to.index & 7) - (m.from.index & 7));
+            const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
             const bool isCastling = (fileDelta == 2);
 
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
