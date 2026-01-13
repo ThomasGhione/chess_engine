@@ -6,11 +6,11 @@
 #include <concepts> // per concepts C++20
 #include <algorithm> // per std::partial_sort
 
-// Concept: T deve avere un membro .score di tipo int32_t
+// Concept: T deve avere un membro .score di tipo int64_t
 template<typename T>
 concept HasScore = requires(T a, T b) {
-    { a.score } -> std::convertible_to<int32_t>;
-    { b.score } -> std::convertible_to<int32_t>;
+    { a.score } -> std::convertible_to<int64_t>;
+    { b.score } -> std::convertible_to<int64_t>;
 };
 
 template<typename T, size_t MAX_MOVES = 256>
