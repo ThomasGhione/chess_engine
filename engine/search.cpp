@@ -84,7 +84,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         b.doMove(m, state, isPromo ? 'q' : '\0');
 
         // Compute whether the move gives check AFTER it is made
-        const uint8_t oppColor = (ctx.activeColor == chess::Board::WHITE) ? chess::Board::BLACK : chess::Board::WHITE;
+        const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
         const bool givesCheck = b.inCheck(oppColor);
 
         // LMR: reduce depth for late, non-critical moves
@@ -480,7 +480,7 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
-    const int side = (color == chess::Board::WHITE) ? 0 : 1;
+    const int side = chess::Board::colorToIndex(color);
     const bool isWhite = (side == 0);
 
     const uint64_t occ = b.getPiecesBitMap();
@@ -613,9 +613,9 @@ void Engine::addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool
         score += KILLER2_BONUS;
     }
 
-    int colorIndex = usIsWhite ? 0 : 1;
-    int fromIndex = m.from.index;
-    int toIndex = m.to.index;
+    const int colorIndex = usIsWhite ? 0 : 1;
+    const int fromIndex = m.from.index;
+    const int toIndex = m.to.index;
     score += history[colorIndex][fromIndex][toIndex];
 }
 
@@ -828,7 +828,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 
                 // History heuristic (per quiet moves normali)
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
-                    int colorIndex = usIsWhite ? 0 : 1;
+                    const int colorIndex = usIsWhite ? 0 : 1;
                     int64_t histScore = history[colorIndex][m.from.index][m.to.index];
                     // Clampiamo a [0, 1000] per evitare valori anomali
                     score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), histScore));

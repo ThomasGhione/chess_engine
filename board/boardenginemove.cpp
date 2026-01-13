@@ -197,7 +197,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     if (activeColor == BLACK && fullMoveClock < 255) {
         ++fullMoveClock;
     }
-    activeColor = (activeColor == WHITE) ? BLACK : WHITE;
+    activeColor = oppositeColor(activeColor);
 }
 
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {

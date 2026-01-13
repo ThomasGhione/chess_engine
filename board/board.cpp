@@ -279,7 +279,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 
 // Lazy double-check detection - called ONLY when inChk=true && fromType != KING
 [[nodiscard]] inline bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
-    const uint8_t side = (movingColor == WHITE) ? 0 : 1;
+    const uint8_t side = colorToIndex(movingColor);
     if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;

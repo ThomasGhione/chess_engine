@@ -2,22 +2,9 @@
 
 namespace chess {
 
-// Converts a single FEN character
+// Converts a single FEN character using compile-time lookup table
 uint8_t Board::charToPiece(char symbol) {
-    const bool isWhite = std::isupper(static_cast<unsigned char>(symbol));
-    const char lower = static_cast<char>(std::tolower(static_cast<unsigned char>(symbol)));
-
-    uint8_t pieceType = EMPTY;
-    switch (lower) {
-        case 'p': pieceType = PAWN;   break;
-        case 'n': pieceType = KNIGHT; break;
-        case 'b': pieceType = BISHOP; break;
-        case 'r': pieceType = ROOK;   break;
-        case 'q': pieceType = QUEEN;  break;
-        case 'k': pieceType = KING;   break;
-        default:  return EMPTY;
-    }
-    return isWhite ? pieceType : static_cast<uint8_t>(pieceType | BLACK);
+    return CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(symbol)];
 }
 // Parses the board section of the FEN 
 bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
@@ -170,15 +157,7 @@ std::string Board::boardToFenPieces() const {
 
 // Maps internal piece type codes to FEN characters
 char Board::pieceTypeToChar(uint8_t pieceType) const {
-    switch (pieceType) {
-        case PAWN:   return 'p';
-        case KNIGHT: return 'n';
-        case BISHOP: return 'b';
-        case ROOK:   return 'r';
-        case QUEEN:  return 'q';
-        case KING:   return 'k';
-        default:     return '?';
-    }
+    return PIECE_TYPE_TO_CHAR[pieceType & MASK_PIECE_TYPE];
 }
 
 // Converts castling rights into the FEN castling string

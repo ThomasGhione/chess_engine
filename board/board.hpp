@@ -60,6 +60,43 @@ public:
     // ENPASSANT = 0x7  // 0111
     };
 
+    // ============================================
+    // COLOR UTILITIES - Branchless operations
+    // ============================================
+    
+    // Branchless color flip: WHITE (0x0) <-> BLACK (0x8)
+    static constexpr uint8_t oppositeColor(uint8_t color) noexcept {
+        return color ^ 0x8;
+    }
+    
+    // Branchless color to array index: WHITE (0x0) -> 0, BLACK (0x8) -> 1
+    static constexpr uint8_t colorToIndex(uint8_t color) noexcept {
+        return color >> 3;
+    }
+    
+    // ============================================
+    // PIECE-CHAR LOOKUP TABLES - Compile-time
+    // ============================================
+    
+    // ASCII character -> piece_id lookup (256 entries, mostly EMPTY)
+    static constexpr std::array<uint8_t, 256> CHAR_TO_PIECE_TYPE = []() {
+        std::array<uint8_t, 256> table{};
+        for (int i = 0; i < 256; ++i) table[i] = EMPTY;
+        
+        table['P'] = PAWN;   table['p'] = PAWN | BLACK;
+        table['N'] = KNIGHT; table['n'] = KNIGHT | BLACK;
+        table['B'] = BISHOP; table['b'] = BISHOP | BLACK;
+        table['R'] = ROOK;   table['r'] = ROOK | BLACK;
+        table['Q'] = QUEEN;  table['q'] = QUEEN | BLACK;
+        table['K'] = KING;   table['k'] = KING | BLACK;
+        
+        return table;
+    }();
+    
+    // piece_id -> ASCII character lookup (8 entries: EMPTY, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING)
+    static constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
+        '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
+    };
 
     struct Move {
         Coords from;
