@@ -10,6 +10,9 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 CXX = g++
 TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -pg
+# Cross-compiler per Windows (installare mingw-w64)
+WIN_CXX = x86_64-w64-mingw32-g++
+WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -static -static-libgcc -static-libstdc++ -DDEBUG -fopenmp -flto=4 -fext-numeric-literals
 
 # Tool di analisi statica locali
 CPPCHECK = script/cppcheck-2.19.0/cppcheck
@@ -18,6 +21,7 @@ CPPCHECK = script/cppcheck-2.19.0/cppcheck
 NAME_APP = chess
 TEST_APP = tests/test
 PERF_APP = tests/perf
+NAME_APP_WIN = chess.exe
 
 # Path dei file separati
 MAIN_SRC = main.cpp
@@ -85,7 +89,7 @@ PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
 
 # Target principali
-.PHONY: prod parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default per usare make secco
 all: prod
@@ -94,6 +98,12 @@ all: prod
 # Nota: Piu' veloce dopo la prima volta ma lascia i file .o
 prod: $(NAME_APP)
 	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
+
+# Produzione Windows (cross-compile da Linux)
+prod_windows:
+	@printf "\nCompiling Windows binary..."
+	$(WIN_CXX) $(WIN_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP_WIN)
+	@printf "\n✅ Build completato: $(NAME_APP_WIN)\n\n"
 
 # Produzione sequenziale
 # Nota: Non e' piu' lento ma non genera i file .o
@@ -258,7 +268,7 @@ analyze-summary:
 
 # Pulizia solo dei file oggetto e binari
 cls-compile-files:
-	rm -f $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) $(NAME_APP) $(TEST_APP) $(PERF_APP)
+	rm -f $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
 
 # Pulizia dei file temporanei
 cls: cls-compile-files
@@ -279,6 +289,7 @@ help:
 	@printf "\n=== Chess Build System ===\n"
 	@printf "\n📦 BUILD TARGETS:\n"
 	@printf "  make prod           - Compilazione monolitica (veloce prima volta)\n"
+	@printf "  make prod_windows   - Cross-compilazione Windows (richiede mingw-w64)\n"
 	@printf "  make debug          - Compilazione con debug symbols\n"
 	@printf "  make test           - Compilazione e test funzionali\n"
 	@printf "  make perf           - Compilazione e performance test\n"

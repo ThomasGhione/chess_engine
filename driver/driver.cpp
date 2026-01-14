@@ -6,10 +6,12 @@
 #include <cstdio>
 #include <memory>
 #include <sstream>
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
+#endif
 #include <fstream>
 #include <filesystem>
 
@@ -335,6 +337,10 @@ namespace driver {
     }
 
     void Driver::botVsStockfish(const bool botColor) noexcept {
+#ifdef _WIN32
+        std::cout << "Stockfish integration is not available on Windows builds.\n";
+        return;
+#else
         // botColor: true = our engine plays White, false = our engine plays Black
         const std::string stockfishPath = "./stockfish/stockfish-ubuntu-x86-64-avx2";
         const int stockfishMoveTimeMs = 200; // tweak if needed
@@ -517,6 +523,7 @@ namespace driver {
                 return;
             }
         }
+#endif // _WIN32
     }
 
 
