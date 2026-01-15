@@ -1,5 +1,4 @@
 .vscode
-*.exe
 *.out
 *.o
 *.log
@@ -7,6 +6,7 @@
 chess
 test
 perf
+chess.exe
 /tests/test
 /tests/perf
 /games/*.txt
