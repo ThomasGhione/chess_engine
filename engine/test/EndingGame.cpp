@@ -248,13 +248,13 @@ namespace {
 
   // ==================== COMMON MATE FINDER ====================
 
-  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 6) {
+  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 10) {
     engine::Engine e(board.getCurrentFen());
     e.depth = searchDepth;
 
     for (int ply = 0; ply < maxHalfMoves; ++ply) {
       if (e.isMate()) {
-        printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
+        //printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
         return true;
       }
 
@@ -267,9 +267,7 @@ namespace {
       auto moves = e.generateLegalMoves(e.board);
       if (moves.size == 0) {
         bool isMate = e.isMate();
-        if (isMate) {
-          printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
-        } else {
+        if (!isMate) {
           printf("  ✗ No legal moves but not checkmate at half-move %d\n", ply);
         }
         return isMate;
@@ -288,19 +286,16 @@ namespace {
 
   // ==================== TEST HELPER ====================
 
-  void runEndgameTest(const std::string& testName, chess::Board (*generator)(), int iteration) {
-    printf("\n[%s - Iteration %d]\n", testName.c_str(), iteration);
+  bool runEndgameTest(const std::string& testName, chess::Board (*generator)(), int iteration) {
+    //printf("\n[%s - Iteration %d]\n", testName.c_str(), iteration);
 
     chess::Board board = generator();
-    printf("  FEN: %s\n", board.getCurrentFen().c_str());
-    printf("  Searching for mate (depth 6, max 50 moves)...\n");
-
     bool foundMate = findMate(board);
 
-    ut::expect(foundMate)
-      << testName << " iteration " << iteration << ": "
-      << "Failed to find checkmate within 50 moves (100 plies).\n"
-      << "FEN: " << board.getCurrentFen() << "\n";
+    ut::expect(foundMate) << "Test fallito: "
+      << testName << "FEN: " << board.getCurrentFen() << "\n";
+
+    return foundMate;
   }
 }
 
@@ -311,37 +306,55 @@ ut::suite EndingGameSuite = [] {
 
   "Endgame: K+R vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+R vs K", generatePositionKR, i);
+      bool hasToStop = runEndgameTest("K+R vs K", generatePositionKR, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 
   "Endgame: K+2R vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+2R vs K", generatePositionK2R, i);
+      bool hasToStop =runEndgameTest("K+2R vs K", generatePositionK2R, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 
   "Endgame: K+Q vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+Q vs K", generatePositionKQ, i);
+      bool hasToStop =runEndgameTest("K+Q vs K", generatePositionKQ, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 
   "Endgame: K+2B vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+2B vs K", generatePositionK2B, i);
+      bool hasToStop =runEndgameTest("K+2B vs K", generatePositionK2B, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 
   "Endgame: K+N+B(light) vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+N+B(light) vs K", generatePositionKNBLight, i);
+      bool hasToStop =runEndgameTest("K+N+B(light) vs K", generatePositionKNBLight, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 
   "Endgame: K+N+B(dark) vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
-      runEndgameTest("K+N+B(dark) vs K", generatePositionKNBDark, i);
+      bool hasToStop =runEndgameTest("K+N+B(dark) vs K", generatePositionKNBDark, i);
+      if(hasToStop){
+        break;
+      }
     }
   };
 

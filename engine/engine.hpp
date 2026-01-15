@@ -26,7 +26,6 @@
 #include "../coords/coords.hpp"
 
 #include "basebonuspenaltyvalues.hpp"
-#include "basicrules.hpp"
 #include "piecevaluetables.hpp"
 #include "../tt/transposition_table.hpp"
 #include "movelist.hpp"

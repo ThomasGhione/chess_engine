@@ -163,30 +163,34 @@ ut::suite boardSuite = [] {
   "fromBoardToFen_starting_position"_test = []{
     chess::Board b{}; // default ctor loads the starting FEN
     const std::string expected = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    expect(b.getCurrentFen() == expected);
+    expect(b.getCurrentFen() == expected) 
+      << "Current fen: " << b.getCurrentFen() << "\n" 
+      << "expected fen: " << expected << "\n";
   };
   
   "fromBoardToFen_roundtrip_examples_1"_test = []{
     chess::Board b{};
-    const std::string fen = "r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
-    b.fromFenToBoard(fen);
-    expect(b.getCurrentFen() == fen);
+    const std::string expected = "r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+    b.fromFenToBoard(expected);
+    expect(b.getCurrentFen() == expected) 
+      << "Current fen: " << b.getCurrentFen() << "\n" 
+      << "expected fen: " << expected << "\n";
   };
   
   "fromBoardToFen_roundtrip_examples_2"_test = []{
     chess::Board b{};
-    const std::string fen = "r3kb1r/pp1n1ppp/1qpp4/8/2P2B2/2Q2BP1/PP2P2P/R3K2R b KQkq - 5 15";
-    b.fromFenToBoard(fen);
-    expect(b.getCurrentFen() == fen);
+    const std::string expected = "r3kb1r/pp1n1ppp/1qpp4/8/2P2B2/2Q2BP1/PP2P2P/R3K2R b KQkq - 5 15";
+    b.fromFenToBoard(expected);
+    expect(b.getCurrentFen() == expected);
   };
 
 
   "fromBoardToFen_roundtrip_with_enpassant"_test = []{
     chess::Board b{};
     // Includes en passant square and maintains active color and clocks
-    const std::string fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e4 0 1";
-    b.fromFenToBoard(fen);
-    expect(b.getCurrentFen() == fen);
+    const std::string expected = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e4 0 1";
+    b.fromFenToBoard(expected);
+    expect(b.getCurrentFen() == expected);
   };
 
   "fifty_move_rule_not_triggered"_test = []{

@@ -132,6 +132,7 @@ std::string Board::boardToFenPieces() const {
         for (int file = 0; file < 8; ++file) {
             const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
             const uint8_t pieceType = rawPiece & MASK_PIECE_TYPE;
+            const uint8_t pieceColor = rawPiece & MASK_COLOR;
 
             if (pieceType == EMPTY) {
                 ++emptySquares;
@@ -144,8 +145,8 @@ std::string Board::boardToFenPieces() const {
             }
 
             char symbol = pieceTypeToChar(pieceType);
-            if ((rawPiece & MASK_COLOR) == WHITE) {
-                symbol = static_cast<char>(std::toupper(static_cast<unsigned char>(symbol)));
+            if (pieceColor == BLACK) {
+                symbol = static_cast<char>(std::tolower(static_cast<unsigned char>(symbol)));
             }
             fen.push_back(symbol);
         }
