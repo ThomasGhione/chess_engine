@@ -206,7 +206,7 @@ namespace driver {
         SaveFile.close();
 
         // Not working correctly in playervsbot and player is black
-        vsBot ? this->playGameVsEngine(this->engine.isPlayerWhite) : this->playGameVsHuman();
+        vsBot ? this->playGameVsEngine(true) : this->playGameVsHuman();
 
         return true;
     }
@@ -296,10 +296,10 @@ namespace driver {
     	}
     }
 
-    void Driver::playGameVsEngine(bool isHumanWhite) noexcept{
+    void Driver::playGameVsEngine(bool isFirstTurnOfPlayer) noexcept{
         vsBot = true;
         
-        if (isHumanWhite) {
+        if (isFirstTurnOfPlayer) {
             while (!engine.isCheckMate) {
                 this->playerTurn();
                 if (engine.isCheckMate) { endGame(); return; }
