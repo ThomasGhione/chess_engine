@@ -9,7 +9,18 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 # Variabili compilatore
 CXX = g++
 TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -pg
+
+# PRODFLAGS OTTIMIZZATE: Match MinGW performance
+# -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
+# -march=native: Use all CPU features (SSE4.2, AVX2, BMI2, POPCNT)
+# -mtune=native: Optimize instruction scheduling for your CPU
+# -flto=auto: Let compiler decide LTO threads (usually better than fixed number)
+# -fno-math-errno: Don't set errno on math functions (safe for chess)
+# -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
+# -funroll-loops: Unroll hot loops (good for bitboard operations)
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -mtune=native \
+            -flto=auto -fno-math-errno -fno-trapping-math -funroll-loops
+
 # Cross-compiler per Windows (installare mingw-w64)
 WIN_CXX = x86_64-w64-mingw32-g++
 WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -static -static-libgcc -static-libstdc++ -DDEBUG -fopenmp -flto=4 -fext-numeric-literals
