@@ -2,7 +2,9 @@
 
 #include "../printer/menu.hpp"
 #include "../engine/engine.hpp"
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <limits>
 #include <memory>
@@ -106,13 +108,33 @@ namespace driver {
                     break;
                 }
 
-                case '5':
+                case '5': {
+                    uint8_t betaAlphaChoice = menu.playBetaVsAlphaMenu();
+                    Driver::quit(std::string(1, betaAlphaChoice));
+                    switch (betaAlphaChoice) {
+                        case '1':
+                            this->betaVsAlpha(true);
+                            break;
+                        case '2':
+                            this->betaVsAlpha(false);
+                            break;
+                        case '3':
+                            // Back to main menu
+                            break;
+                        default:
+                            std::cout << "Invalid option. Please select a valid option.\n";
+                            break;
+                    }
+                    break;
+                }
+
+                case '6':
                     if (!this->loadGame()) {
                         std::cout << "No saved game found. Returning to main menu.\n";
                     }
                     break;
 
-                case '6':
+                case '7':
                     std::cout << "Thank you for playing! See you next time." << std::endl;
                     exit(EXIT_SUCCESS);
                     break;
@@ -124,7 +146,7 @@ namespace driver {
         } 
     }
 
-
+    // TODO TO BE UPDATED FOR NEW MODES
     void Driver::parse(int argc, char *argv[]) noexcept {
         if (argc == NO_ARGS || argc > MAX_PARAM_LENGTH) {
             return;
@@ -249,7 +271,7 @@ namespace driver {
     }
 
     void Driver::endGame() noexcept {
-        if (this->engine.isCheckMate) {
+        if (this->engine.gameResult != engine::Engine::ONGOING) {
             uint8_t nextColor = this->engine.board.getActiveColor();
             if (this->engine.board.isCheckmate(nextColor)) {
                 std::cout << "\nCheckmate! "
@@ -296,13 +318,13 @@ namespace driver {
     void Driver::playGameVsHuman() noexcept {
     	vsBot = false;
         
-        while(!engine.isCheckMate) {
+        while(engine.gameResult == engine::Engine::ONGOING) {
     	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
             this->playerTurn();
-            if (engine.isCheckMate) { endGame(); return; }
+            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
 
             this->playerTurn();
-            if (engine.isCheckMate) { endGame(); return; }
+            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
     	}
     }
 
@@ -310,21 +332,21 @@ namespace driver {
         vsBot = true;
         
         if (isFirstTurnOfPlayer) {
-            while (!engine.isCheckMate) {
+            while (engine.gameResult == engine::Engine::ONGOING) {
                 this->playerTurn();
-                if (engine.isCheckMate) { endGame(); return; }
+                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
                 
                 this->engineTurn();
-                if (engine.isCheckMate) { endGame(); return; }
+                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
             }
         } 
         else {
-            while (!engine.isCheckMate) {
+            while (engine.gameResult == engine::Engine::ONGOING) {
                 this->engineTurn();
-                if (engine.isCheckMate) { endGame(); return; }
+                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
 
                 this->playerTurn();
-                if (engine.isCheckMate) { endGame(); return; }
+                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
             } 
         }
     }
@@ -333,14 +355,14 @@ namespace driver {
         std::string currentBoard = print::Prints::getBasicBoard(engine.board);
         std::cout << currentBoard << "\n";
 
-        while (!engine.isCheckMate) {
+        while (engine.gameResult == engine::Engine::ONGOING) {
             this->engineTurn();
-            if (engine.isCheckMate) { endGame(); return; }
+            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
             currentBoard = print::Prints::getBasicBoard(engine.board);
             std::cout << currentBoard << "\n";
 
             this->engineTurn();
-            if (engine.isCheckMate) { endGame(); return; }
+            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
             currentBoard = print::Prints::getBasicBoard(engine.board);
             std::cout << currentBoard << "\n";
         }
@@ -574,7 +596,7 @@ namespace driver {
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setIsCheckMate();
+                engine.setGameStatus();
             }
 
             if (engine.isCheckMate) {
@@ -736,13 +758,14 @@ namespace driver {
             return;
         }
 
-        while (!engine.isCheckMate) {
+        while (engine.gameResult == engine::Engine::ONGOING) {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
             if (engineToMove) {
                 // Our engine move
                 this->engineTurn();
                 std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+                engine.setGameResult();
             } else {
                 // Stockfish move
                 const std::string fen = engine.board.getCurrentFen();
@@ -759,10 +782,10 @@ namespace driver {
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setIsCheckMate();
+                engine.setGameResult();
             }
 
-            if (engine.isCheckMate) {
+            if (engine.gameResult != engine::Engine::ONGOING) {
                 endGame();
                 return;
             }
@@ -771,138 +794,206 @@ namespace driver {
     }
 
 
-    void Driver::playerTurn() noexcept{
-        engine.board.getActiveColor() == chess::Board::WHITE ? std::cout << "\nWhite's turn.\n\n" : std::cout << "\nBlack's turn.\n\n";
+    void Driver::betaVsAlpha(bool betaIsWhite) noexcept {
+        engine.reset();
+        engine.isPlayerWhite = betaIsWhite;
 
-        std::string playerInput;
+#ifdef _WIN32
+        std::cout << "Beta vs Alpha is only available on Linux." << std::endl;
+        return;
+#else
+        const std::string alphaPath = "./versions/chess_alpha0-0-1";
+        const bool alphaIsWhite = !betaIsWhite;
 
-        bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
+        struct AlphaProcess {
+            FILE* in {nullptr};
+            FILE* out {nullptr};
+            pid_t pid {-1};
 
-        bool error = true;
-        while (error) {
-            std::string currentBoard = print::Prints::getBasicBoard(engine.board);
-            std::cout << currentBoard << "\n";
-
-            std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
-            std::cin >> playerInput;
-
-            if (playerInput == "s") {
-                this->saveGame();
-                continue;
-            }
-
-            if (playerInput == "q") {
-                std::cout << "Thank you for playing! See you next time." << std::endl;
-                exit(EXIT_SUCCESS);
-            }
-
-            if (playerInput.length() != 4 && playerInput.length() != 5) {
-                std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
-                continue;
-            }
-
-            chess::Coords fromCoords(playerInput.substr(0, 2));
-            chess::Coords toCoords(playerInput.substr(2, 2));
-        
-            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-                std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
-                continue;
-            }
-        
-            uint8_t piece = engine.board.get(fromCoords);
-
-            /*
-            std::cout << "[DEBUG] fromCoords: " << fromCoords.toString() << " (index=" << (int)fromCoords.index
-                      << ", rank=" << (int)fromCoords.rank() << ", file=" << (int)fromCoords.file() << ")\n";
-            std::cout << "[DEBUG] piece at from: " << (int)piece << "\n";
-            std::cout << "[DEBUG] activeColor: " << (int)engine.board.getActiveColor() << " (WHITE=0, BLACK=8)\n";
-            std::cout << "[DEBUG] isWhiteTurn: " << (isWhiteTurn ? "true" : "false") << "\n";
-            std::cout << "[DEBUG] getColor(from): " << (int)engine.board.getColor(fromCoords) << "\n";
-            */
-
-            if (piece == chess::Board::EMPTY) {
-                std::cout << "There is no piece at the source square. Please enter a valid move.\n";
-                continue;
-            }
-
-            if (isWhiteTurn != (engine.board.getColor(fromCoords) == chess::Board::WHITE)) {
-                std::cout << "It's not your turn to move that piece. Please enter a valid move.\n";
-                continue;
-            }
-
-            // TODO: check whether it's redundant or not
-            if (engine.board.isSameColor(fromCoords, toCoords)) {
-                std::cout << "You cannot move to a square occupied by your own piece.\n";
-                continue;
-            }
-
-    #ifdef DEBUG
-            auto chrono_start = std::chrono::high_resolution_clock::now();
-    #endif  
-
-            const uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
-            const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-
-            bool moveOk = false;
-
-            // Optional promotion character (5th char): e7e8q, e2e1N, ...
-            char promoChar = '\0';
-            if (playerInput.length() == 5) {
-                promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
-                if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') {
-                    std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
-                    continue;
+            ~AlphaProcess() {
+                if (in) fclose(in);
+                if (out) fclose(out);
+                if (pid > 0) {
+                    kill(pid, SIGTERM);
+                    int status = 0;
+                    waitpid(pid, &status, 0);
                 }
             }
 
-            const bool isPromotionCandidate =
-                (pieceType == chess::Board::PAWN) &&
-                ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
-                 (pieceColor == chess::Board::BLACK && toCoords.rank() == 7));
+            bool valid() const noexcept { return in && out && pid > 0; }
+        };
 
-            if (isPromotionCandidate && playerInput.length() == 4) {
-                // If user didn't specify, default to queen
-                promoChar = 'q';
+        auto startAlpha = [&]() -> std::unique_ptr<AlphaProcess> {
+            int toChild[2];
+            int fromChild[2];
+            if (pipe(toChild) != 0 || pipe(fromChild) != 0) {
+                std::perror("pipe");
+                return nullptr;
             }
 
-            moveOk = engine.movePiece(fromCoords, toCoords, promoChar);
-
-            if (!moveOk) {
-                std::cout << "Invalid move. Please try again.\n";
-                continue;
+            pid_t pid = fork();
+            if (pid < 0) {
+                std::perror("fork");
+                close(toChild[0]); close(toChild[1]);
+                close(fromChild[0]); close(fromChild[1]);
+                return nullptr;
             }
 
-    #ifdef DEBUG
-            auto chrono_end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
-    #endif
+            if (pid == 0) {
+                dup2(toChild[0], STDIN_FILENO);
+                dup2(fromChild[1], STDOUT_FILENO);
+                close(toChild[0]); close(toChild[1]);
+                close(fromChild[0]); close(fromChild[1]);
 
-            // Print the updated board after successful move
-            std::cout << "[DEBUG] About to print updated board...\n";
-            std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
-            std::cout << "[DEBUG] Board printed successfully.\n";
+                // Use stdbuf to force line-buffered output from alpha so we can read moves promptly
+                execlp("stdbuf", "stdbuf", "-oL", alphaPath.c_str(), (char*)nullptr);
+                std::perror("execlp stdbuf");
+                _exit(1);
+            }
 
-            // TODO To be eliminated because Engine will handle it in future
-            engine.setIsCheckMate();
+            close(toChild[0]);
+            close(fromChild[1]);
 
-            error = false;
-        }  
+            FILE* childIn = fdopen(toChild[1], "w");
+            FILE* childOut = fdopen(fromChild[0], "r");
+            if (!childIn || !childOut) {
+                std::cerr << "Error: fdopen failed for Alpha pipes.\n";
+                if (childIn) fclose(childIn);
+                if (childOut) fclose(childOut);
+                kill(pid, SIGTERM);
+                int status = 0;
+                waitpid(pid, &status, 0);
+                return nullptr;
+            }
 
-        return;
-    }
+            setvbuf(childIn, nullptr, _IONBF, 0);
+            setvbuf(childOut, nullptr, _IONBF, 0);
 
-    void Driver::engineTurn() noexcept {
-        std::cout << "Engine's thinking... \n";
-#ifdef DEBUG
-                auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif
-        this->engine.search(this->engine.depth);
-#ifdef DEBUG
-                auto chrono_end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-                std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
-                std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
-#endif
+            auto proc = std::make_unique<AlphaProcess>();
+            proc->in = childIn;
+            proc->out = childOut;
+            proc->pid = pid;
+
+            // One Player match, then choose Alpha color (opposite of Beta)
+            fputs("1\n", proc->in);
+            // Empirically, alpha expects '2' when it should play White, '1' when it should play Black.
+            const char alphaColorChoice = alphaIsWhite ? '2' : '1';
+            fputc(alphaColorChoice, proc->in);
+            fputc('\n', proc->in);
+            fflush(proc->in);
+
+            return proc;
+        };
+
+        auto sendMoveToAlpha = [](AlphaProcess& proc, const std::string& move) {
+            fputs(move.c_str(), proc.in);
+            fputc('\n', proc.in);
+            fflush(proc.in);
+        };
+
+        auto applyUciMoveToBoard = [&](const std::string& uciMove) {
+            if (uciMove.size() < 4) return false;
+
+            const std::string fromStr = uciMove.substr(0, 2);
+            const std::string toStr   = uciMove.substr(2, 2);
+            const bool hasPromo       = uciMove.size() >= 5;
+            const char promo = hasPromo
+                ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
+                : '\0';
+
+            chess::Coords fromCoords(fromStr);
+            chess::Coords toCoords(toStr);
+            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
+                return false;
+            }
+
+            return hasPromo
+                ? engine.movePiece(fromCoords, toCoords, promo)
+                : engine.movePiece(fromCoords, toCoords);
+        };
+
+        auto parseAlphaMove = [](const std::string& line) -> std::string {
+            const std::string token = "Engine plays:";
+            const auto pos = line.find(token);
+            if (pos == std::string::npos) return "";
+
+            size_t start = line.find_first_not_of(" \t", pos + token.size());
+            if (start == std::string::npos) return "";
+            size_t end = start;
+            while (end < line.size() && !std::isspace(static_cast<unsigned char>(line[end]))) {
+                ++end;
+            }
+            std::string move = line.substr(start, end - start);
+            for (char& c : move) {
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+            return move;
+        };
+
+        auto readAlphaMove = [&](AlphaProcess& proc) -> std::string {
+            std::array<char, 512> buffer{};
+            for (int i = 0; i < 4000 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc.out); ++i) {
+                const std::string line(buffer.data());
+                const std::string move = parseAlphaMove(line);
+                if (!move.empty()) {
+                    return move;
+                }
+            }
+            return std::string{};
+        };
+
+        auto alphaProc = startAlpha();
+        if (!alphaProc || !alphaProc->valid()) {
+            std::cerr << "Failed to start alpha engine." << std::endl;
+            return;
+        }
+
+        while (engine.gameResult == engine::Engine::ONGOING) {
+            const bool betaToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
+
+            if (betaToMove) {
+                const std::size_t previousHistorySize = engine.moveHistory.size();
+                this->engineTurn();
+
+                std::string delta = engine.moveHistory.substr(previousHistorySize);
+                while (!delta.empty() && (delta.back() == '\n' || delta.back() == '\r')) {
+                    delta.pop_back();
+                }
+
+                if (delta.size() < 4) {
+                    std::cerr << "Beta engine did not produce a move to send to Alpha." << std::endl;
+                    break;
+                }
+
+                sendMoveToAlpha(*alphaProc, delta);
+                std::cout << "Beta plays: " << delta << "\n";
+                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
+
+                if (engine.gameResult != engine::Engine::ONGOING) {
+                    endGame();
+                    break;
+                }
+            } else {
+                const std::string alphaMove = readAlphaMove(*alphaProc);
+                if (alphaMove.empty()) {
+                    std::cerr << "Alpha engine did not return a move." << std::endl;
+                    break;
+                }
+
+                if (!applyUciMoveToBoard(alphaMove)) {
+                    std::cerr << "Failed to apply Alpha move: " << alphaMove << std::endl;
+                    break;
+                }
+
+                std::cout << "Alpha plays: " << alphaMove << "\n";
+                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
+                engine.setGameResult();
+                if (engine.gameResult != engine::Engine::ONGOING) {
+                    endGame();
+                    break;
+                }
+            }
+        }
+#endif // _WIN32
     }
 }

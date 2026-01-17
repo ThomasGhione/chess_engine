@@ -46,7 +46,16 @@ public:
 
     chess::Board board;
     bool isPlayerWhite;
-    bool isCheckMate;
+    
+    enum GameResult : uint8_t {
+        ONGOING = 0,
+        WHITE_WINS = 1,
+        BLACK_WINS = 2,
+        DRAW = 3
+    };
+    static GameResult gameResult;
+    
+    //bool isCheckMate;
 
     uint64_t depth;
 
@@ -76,7 +85,8 @@ public:
     int64_t evaluate(const chess::Board& board) noexcept; 
     
     bool isMate() noexcept;
-    void setIsCheckMate() noexcept;
+    //void setIsCheckMate() noexcept;
+    void setGameResult() noexcept;
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 

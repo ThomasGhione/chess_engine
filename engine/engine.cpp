@@ -2,6 +2,9 @@
 #include "../piece/piece.hpp"
 
 namespace engine {
+
+// Initialize static members
+Engine::GameResult Engine::gameResult = Engine::ONGOING;
 uint64_t Engine::nodesSearched = 0;
 std::string Engine::moveHistory = "";
 
@@ -25,7 +28,6 @@ Engine::Engine()
 
     // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();
-    isCheckMate = false;
 }
 
 Engine::Engine(const std::string& fen)
@@ -43,14 +45,13 @@ Engine::Engine(const std::string& fen)
 
     // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();
-    isCheckMate = false;
 }
 
 void Engine::reset() noexcept {
     board = chess::Board();
     depth = DEFAULTDEPTH;
     eval = 0;
-    isCheckMate = false;
+    gameResult = ONGOING;
     isPlayerWhite = true;
     nodesSearched = 0;
     

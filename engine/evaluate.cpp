@@ -993,8 +993,18 @@ bool Engine::isMate() noexcept {
         || board.isCheckmate(toMove) || board.isDraw(toMove);
 }
 
-void Engine::setIsCheckMate() noexcept {
-    isCheckMate = isMate();
+void Engine::setGameResult() noexcept {
+    gameResult = GameResult::ONGOING;
+    uint8_t toMove = board.getActiveColor();
+    if (board.kings_bb[0] == 0) {
+        gameResult = GameResult::BLACK_WINS;
+    } else if (board.kings_bb[1] == 0) {
+        gameResult = GameResult::WHITE_WINS;
+    } else if (board.isCheckmate(toMove)) {
+        gameResult = (toMove == chess::Board::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
+    } else if (board.isDraw(toMove)) {
+        gameResult = GameResult::DRAW;
+    }
 }
 
 }; // namespace engine

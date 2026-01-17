@@ -13,6 +13,7 @@ namespace print {
         	static uint32_t playWithEngineMenu() noexcept;
 			static uint32_t playWithPlayerMenu() noexcept;
 			static uint32_t playBotVsStockfishMenu() noexcept;
+			static uint32_t playBetaVsAlphaMenu() noexcept;
       
       	private:
         	static void clearScreen() noexcept;
