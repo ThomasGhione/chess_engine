@@ -65,19 +65,13 @@ public:
     // ============================================
     
     // Branchless color flip: WHITE (0x0) <-> BLACK (0x8)
-    static constexpr uint8_t oppositeColor(uint8_t color) noexcept {
-        return color ^ 0x8;
-    }
+    static constexpr uint8_t oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
     
     // Branchless color to array index: WHITE (0x0) -> 0, BLACK (0x8) -> 1
-    static constexpr uint8_t colorToIndex(uint8_t color) noexcept {
-        return color >> 3;
-    }
+    static constexpr uint8_t colorToIndex(uint8_t color) noexcept { return color >> 3; }
     
     // Convert bool color to array index: true (white) -> 0, false (black) -> 1
-    static constexpr int colorBoolToIndex(bool isWhite) noexcept {
-        return isWhite ? 0 : 1;
-    }
+    static constexpr int colorBoolToIndex(bool isWhite) noexcept { return isWhite ? 0 : 1; }
     
     // ============================================
     // RANK UTILITIES - Color-dependent rank helpers
@@ -85,31 +79,21 @@ public:
     
     // Get promotion rank for a color: WHITE -> 7 (8th rank), BLACK -> 0 (1st rank)
     template<bool IsWhite>
-    static constexpr uint8_t promotionRank() noexcept {
-        return IsWhite ? 7 : 0;
-    }
+    static constexpr uint8_t promotionRank() noexcept { return IsWhite ? 7 : 0; }
     
     // Runtime version of promotion rank
-    static constexpr uint8_t promotionRank(bool isWhite) noexcept {
-        return isWhite ? 7 : 0;
-    }
+    static constexpr uint8_t promotionRank(bool isWhite) noexcept { return isWhite ? 7 : 0; }
     
     // Check if a rank is a promotion rank for a given color
-    static constexpr bool isPromotionRank(uint8_t rank, bool isWhite) noexcept {
-        return rank == promotionRank(isWhite);
-    }
+    static constexpr bool isPromotionRank(uint8_t rank, bool isWhite) noexcept { return rank == promotionRank(isWhite); }
     
     // Get back rank (starting rank) for a color: WHITE -> 0 (1st rank), BLACK -> 7 (8th rank)
     template<bool IsWhite>
-    static constexpr uint8_t backRank() noexcept {
-        return IsWhite ? 0 : 7;
-    }
+    static constexpr uint8_t backRank() noexcept { return IsWhite ? 0 : 7; }
     
     // Get seventh rank for a color: WHITE -> 6 (7th rank), BLACK -> 1 (2nd rank)
     template<bool IsWhite>
-    static constexpr uint8_t seventhRank() noexcept {
-        return IsWhite ? 6 : 1;
-    }
+    static constexpr uint8_t seventhRank() noexcept { return IsWhite ? 6 : 1; }
     
     // ============================================
     // PIECE-CHAR LOOKUP TABLES - Compile-time
@@ -527,7 +511,6 @@ public:
             case ROOK:   rooks_bb[color]   |= bit; break;
             case QUEEN:  queens_bb[color]  |= bit; break;
             case KING:   kings_bb[color]   |= bit; break;
-            default: break;
         }
     }
 
@@ -543,7 +526,6 @@ public:
             case ROOK:   rooks_bb[color]   &= mask; break;
             case QUEEN:  queens_bb[color]  &= mask; break;
             case KING:   kings_bb[color]   &= mask; break;
-            default: break;
         }
     }
 

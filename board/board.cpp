@@ -197,7 +197,7 @@ bool Board::promote(const Coords& at, char choice) noexcept {
         case 'r': newType = ROOK;   break;
         case 'b': newType = BISHOP; break;
         case 'n': newType = KNIGHT; break;
-        default: /* default to queen */ break;
+        // default to queen
     }
 
     const uint8_t newPiece = newType | color;
@@ -218,7 +218,6 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
     if (!this->moveBB(from, to)) {
         return false;
     }
-
     return this->promote(to, promotionChoice);
 }
 
@@ -407,7 +406,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     uint64_t toBit,
     uint8_t movingColor
 ) const noexcept {
-    if (fromIndex == toIndex) return false;
+    if (fromIndex == toIndex) [[unlikely]] return false;
 
     const uint8_t oppColor = oppositeColor(movingColor);
     const int fileDelta = static_cast<int>(fileOf(toIndex)) - static_cast<int>(fileOf(fromIndex));
