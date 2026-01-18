@@ -4,11 +4,14 @@
 #include "../engine/engine.hpp"
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstdio>
 #include <limits>
 #include <memory>
 #include <sstream>
+#include <thread>
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -795,15 +798,28 @@ namespace driver {
 
 
     void Driver::betaVsAlpha(bool betaIsWhite) noexcept {
-        engine.reset();
-        engine.isPlayerWhite = betaIsWhite;
-
+        // Note: betaIsWhite parameter is kept for API compatibility but not used
+        // The function always runs 10 games (5 as white + 5 as black)
+        (void)betaIsWhite; // Suppress unused parameter warning
 #ifdef _WIN32
         std::cout << "Beta vs Alpha is only available on Linux." << std::endl;
         return;
 #else
         const std::string alphaPath = "./versions/chess_alpha0-0-1";
-        const bool alphaIsWhite = !betaIsWhite;
+        
+        // Statistics tracking
+        struct GameStats {
+            int betaWins = 0;
+            int alphaWins = 0;
+            int draws = 0;
+            int betaWinsAsWhite = 0;
+            int betaWinsAsBlack = 0;
+            int alphaWinsAsWhite = 0;
+            int alphaWinsAsBlack = 0;
+            int drawsWithBetaWhite = 0;
+            int drawsWithBetaBlack = 0;
+            int alphaStalls = 0; // Times Alpha got stuck and was killed by watchdog
+        } stats;
 
         struct AlphaProcess {
             FILE* in {nullptr};
@@ -874,21 +890,40 @@ namespace driver {
             proc->out = childOut;
             proc->pid = pid;
 
+            return proc;
+        };
+        
+        auto configureAlpha = [](AlphaProcess& proc, bool alphaIsWhite) {
             // One Player match, then choose Alpha color (opposite of Beta)
-            fputs("1\n", proc->in);
+            fputs("1\n", proc.in);
             // Empirically, alpha expects '2' when it should play White, '1' when it should play Black.
             const char alphaColorChoice = alphaIsWhite ? '2' : '1';
-            fputc(alphaColorChoice, proc->in);
-            fputc('\n', proc->in);
-            fflush(proc->in);
-
-            return proc;
+            fputc(alphaColorChoice, proc.in);
+            fputc('\n', proc.in);
+            fflush(proc.in);
+            
+            // Consume any initial output from Alpha (menu text, etc.)
+            std::array<char, 512> buffer{};
+            for (int i = 0; i < 100; ++i) {
+                // Set a short timeout to avoid blocking
+                fd_set readfds;
+                FD_ZERO(&readfds);
+                FD_SET(fileno(proc.out), &readfds);
+                struct timeval tv = {0, 10000}; // 10ms timeout
+                
+                int ret = select(fileno(proc.out) + 1, &readfds, nullptr, nullptr, &tv);
+                if (ret <= 0) break; // No more data available
+                
+                if (!fgets(buffer.data(), static_cast<int>(buffer.size()), proc.out)) break;
+            }
         };
 
         auto sendMoveToAlpha = [](AlphaProcess& proc, const std::string& move) {
+            std::cerr << "[DEBUG] Sending to Alpha: " << move << "\n";
             fputs(move.c_str(), proc.in);
             fputc('\n', proc.in);
             fflush(proc.in);
+            std::cerr << "[DEBUG] Move sent and flushed\n";
         };
 
         auto applyUciMoveToBoard = [&](const std::string& uciMove) {
@@ -930,70 +965,285 @@ namespace driver {
             return move;
         };
 
-        auto readAlphaMove = [&](AlphaProcess& proc) -> std::string {
+        auto readAlphaMove = [&](AlphaProcess& proc, const std::atomic<bool>& keepRunning) -> std::string {
             std::array<char, 512> buffer{};
-            for (int i = 0; i < 4000 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc.out); ++i) {
+            int linesRead = 0;
+            
+            while (keepRunning.load()) {
+                // Set 1 second timeout for select
+                fd_set readfds;
+                FD_ZERO(&readfds);
+                FD_SET(fileno(proc.out), &readfds);
+                struct timeval tv = {1, 0}; // 1 second
+                
+                int ret = select(fileno(proc.out) + 1, &readfds, nullptr, nullptr, &tv);
+                if (ret < 0) {
+                    return std::string{};
+                }
+                if (ret == 0) {
+                    // Timeout, check keepRunning and continue
+                    continue;
+                }
+                
+                if (!fgets(buffer.data(), static_cast<int>(buffer.size()), proc.out)) {
+                    return std::string{};
+                }
+                
                 const std::string line(buffer.data());
+                linesRead++;
+                
                 const std::string move = parseAlphaMove(line);
                 if (!move.empty()) {
                     return move;
                 }
             }
+            
             return std::string{};
         };
 
-        auto alphaProc = startAlpha();
-        if (!alphaProc || !alphaProc->valid()) {
-            std::cerr << "Failed to start alpha engine." << std::endl;
-            return;
-        }
+        // Lambda to play a single game and return the result
+        // Returns: pair<GameResult, bool wasStalled>
+        auto playOneGame = [&](AlphaProcess& proc, bool betaIsWhite) -> std::pair<engine::Engine::GameResult, bool> {
+            engine.reset();
+            engine.isPlayerWhite = betaIsWhite;
+            const bool alphaIsWhite = !betaIsWhite;
+            
+            configureAlpha(proc, alphaIsWhite);
 
-        while (engine.gameResult == engine::Engine::ONGOING) {
-            const bool betaToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
-
-            if (betaToMove) {
-                const std::size_t previousHistorySize = engine.moveHistory.size();
-                this->engineTurn();
-
-                std::string delta = engine.moveHistory.substr(previousHistorySize);
-                while (!delta.empty() && (delta.back() == '\n' || delta.back() == '\r')) {
-                    delta.pop_back();
+            // Watchdog timer: 30 seconds per move
+            std::atomic<bool> gameRunning{true};
+            std::atomic<time_t> lastMoveTime{time(nullptr)};
+            const int moveTimeoutSeconds = 30;
+            std::atomic<bool> watchdogKilled{false};
+            
+            // Watchdog thread
+            std::thread watchdog([&]() {
+                while (gameRunning.load()) {
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    
+                    const time_t now = time(nullptr);
+                    const time_t elapsed = now - lastMoveTime.load();
+                    
+                    if (elapsed >= moveTimeoutSeconds) {
+                        std::cerr << "[Watchdog] Move timeout after " << elapsed << " seconds - KILLING Alpha process\n";
+                        gameRunning.store(false);
+                        watchdogKilled.store(true);
+                        
+                        // Force kill Alpha process
+                        if (proc.pid > 0) {
+                            kill(proc.pid, SIGKILL);
+                            std::cerr << "[Watchdog] Sent SIGKILL to Alpha (PID " << proc.pid << ")\n";
+                        }
+                        return;
+                    }
                 }
+            });
 
-                if (delta.size() < 4) {
-                    std::cerr << "Beta engine did not produce a move to send to Alpha." << std::endl;
-                    break;
-                }
+            engine::Engine::GameResult result = engine::Engine::DRAW;
+            bool timeoutOccurred = false;
 
-                sendMoveToAlpha(*alphaProc, delta);
-                std::cout << "Beta plays: " << delta << "\n";
-                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
+            while (engine.gameResult == engine::Engine::ONGOING && gameRunning.load()) {
+                const bool betaToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
-                if (engine.gameResult != engine::Engine::ONGOING) {
-                    endGame();
-                    break;
-                }
-            } else {
-                const std::string alphaMove = readAlphaMove(*alphaProc);
-                if (alphaMove.empty()) {
-                    std::cerr << "Alpha engine did not return a move." << std::endl;
-                    break;
-                }
+                // Reset timer for new move
+                lastMoveTime.store(time(nullptr));
 
-                if (!applyUciMoveToBoard(alphaMove)) {
-                    std::cerr << "Failed to apply Alpha move: " << alphaMove << std::endl;
-                    break;
-                }
+                if (betaToMove) {
+                    const std::size_t previousHistorySize = engine.moveHistory.size();
+                    
+                    this->engineTurn();
+                    
+                    if (!gameRunning.load()) {
+                        std::cerr << "[Watchdog] Timeout during Beta's turn\n";
+                        timeoutOccurred = true;
+                        break;
+                    }
 
-                std::cout << "Alpha plays: " << alphaMove << "\n";
-                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setGameResult();
-                if (engine.gameResult != engine::Engine::ONGOING) {
-                    endGame();
-                    break;
+                    std::string delta = engine.moveHistory.substr(previousHistorySize);
+                    while (!delta.empty() && (delta.back() == '\n' || delta.back() == '\r')) {
+                        delta.pop_back();
+                    }
+
+                    if (delta.size() < 4) {
+                        std::cerr << "Beta engine did not produce a move\n";
+                        result = engine::Engine::DRAW;
+                        break;
+                    }
+
+                    sendMoveToAlpha(proc, delta);
+
+                    if (engine.gameResult != engine::Engine::ONGOING) {
+                        result = engine.gameResult;
+                        break;
+                    }
+                } else {
+                    const std::string alphaMove = readAlphaMove(proc, gameRunning);
+                    
+                    if (!gameRunning.load()) {
+                        std::cerr << "[Watchdog] Timeout during Alpha's turn\n";
+                        timeoutOccurred = true;
+                        break;
+                    }
+                    
+                    if (alphaMove.empty()) {
+                        std::cerr << "[Error] Alpha did not return a move\n";
+                        result = engine::Engine::DRAW;
+                        break;
+                    }
+
+                    if (!applyUciMoveToBoard(alphaMove)) {
+                        std::cerr << "[Error] Failed to apply Alpha move: " << alphaMove << "\n";
+                        result = engine::Engine::DRAW;
+                        break;
+                    }
+
+                    engine.setGameResult();
+                    if (engine.gameResult != engine::Engine::ONGOING) {
+                        result = engine.gameResult;
+                        break;
+                    }
                 }
             }
+            
+            if (timeoutOccurred || (!gameRunning.load() && result == engine::Engine::ONGOING)) {
+                result = engine::Engine::DRAW;
+            }
+            
+            // Stop watchdog
+            gameRunning.store(false);
+            
+            if (watchdog.joinable()) {
+                watchdog.join();
+            }
+            
+            return {result, watchdogKilled.load()};
+        };
+
+        // Start alpha process
+        std::cout << "Starting 50-game match between Beta and Alpha...\n";
+        std::cout << "First 25 games: Beta plays White\n";
+        std::cout << "Last 25 games: Beta plays Black\n";
+        std::cout << "Press any key (except 'S') to start or continue between games...\n\n";
+
+        // Play 25 games with Beta as White
+        for (int gameNum = 1; gameNum <= 25; ++gameNum) {
+            // Restart Alpha process for each game
+            auto alphaProc = startAlpha();
+            if (!alphaProc || !alphaProc->valid()) {
+                std::cerr << "Failed to start alpha engine for game " << gameNum << ", counting as draw\n";
+                stats.draws++;
+                stats.drawsWithBetaWhite++;
+                std::cout << "Game " << gameNum << "/50 (Beta=White)... Draw (Alpha failed to start)\n";
+                continue; // Skip to next game instead of breaking
+            }
+            
+            std::cout << "Game " << gameNum << "/50 (Beta=White)... ";
+            std::cout.flush();
+            
+            const auto [result, wasStalled] = playOneGame(*alphaProc, true);
+            
+            if (wasStalled) {
+                stats.alphaStalls++;
+            }
+            
+            if (result == engine::Engine::WHITE_WINS) {
+                stats.betaWins++;
+                stats.betaWinsAsWhite++;
+                std::cout << "Beta wins\n";
+            } else if (result == engine::Engine::BLACK_WINS) {
+                stats.alphaWins++;
+                stats.alphaWinsAsBlack++;
+                std::cout << "Alpha wins\n";
+            } else {
+                stats.draws++;
+                stats.drawsWithBetaWhite++;
+                std::cout << "Draw\n";
+            }
         }
+
+        std::cout << "\nFirst 25 games completed. Starting second half...\n\n";
+
+        // Play 25 games with Beta as Black
+        for (int gameNum = 26; gameNum <= 50; ++gameNum) {
+            // Restart Alpha process for each game
+            auto alphaProc = startAlpha();
+            if (!alphaProc || !alphaProc->valid()) {
+                std::cerr << "Failed to start alpha engine for game " << gameNum << ", counting as draw\n";
+                stats.draws++;
+                stats.drawsWithBetaBlack++;
+                std::cout << "Game " << gameNum << "/50 (Beta=Black)... Draw (Alpha failed to start)\n";
+                continue; // Skip to next game instead of breaking
+            }
+            
+            std::cout << "Game " << gameNum << "/50 (Beta=Black)... ";
+            std::cout.flush();
+            
+            const auto [result, wasStalled] = playOneGame(*alphaProc, false);
+            
+            if (wasStalled) {
+                stats.alphaStalls++;
+            }
+            
+            if (result == engine::Engine::BLACK_WINS) {
+                stats.betaWins++;
+                stats.betaWinsAsBlack++;
+                std::cout << "Beta wins\n";
+            } else if (result == engine::Engine::WHITE_WINS) {
+                stats.alphaWins++;
+                stats.alphaWinsAsWhite++;
+                std::cout << "Alpha wins\n";
+            } else {
+                stats.draws++;
+                stats.drawsWithBetaBlack++;
+                std::cout << "Draw\n";
+            }
+        }
+
+        // Save results to CSV file
+        const std::string resultsFile = "beta_vs_alpha_results.csv";
+        std::ofstream outFile(resultsFile);
+        if (outFile.is_open()) {
+            outFile << "Category,Value\n";
+            outFile << "Total Games,50\n";
+            outFile << "\n";
+            outFile << "Beta Total Wins," << stats.betaWins << "\n";
+            outFile << "Alpha Total Wins," << stats.alphaWins << "\n";
+            outFile << "Total Draws," << stats.draws << "\n";
+            outFile << "\n";
+            outFile << "Beta Wins as White," << stats.betaWinsAsWhite << "\n";
+            outFile << "Beta Wins as Black," << stats.betaWinsAsBlack << "\n";
+            outFile << "Alpha Wins as White," << stats.alphaWinsAsWhite << "\n";
+            outFile << "Alpha Wins as Black," << stats.alphaWinsAsBlack << "\n";
+            outFile << "Draws (Beta=White)," << stats.drawsWithBetaWhite << "\n";
+            outFile << "Draws (Beta=Black)," << stats.drawsWithBetaBlack << "\n";
+            outFile << "\n";
+            outFile << "Alpha Stalls (Timeouts)," << stats.alphaStalls << "\n";
+            outFile << "\n";
+            outFile << "Beta Win Rate," << (stats.betaWins * 100.0 / 50.0) << "%\n";
+            outFile << "Alpha Win Rate," << (stats.alphaWins * 100.0 / 50.0) << "%\n";
+            outFile << "Draw Rate," << (stats.draws * 100.0 / 50.0) << "%\n";
+            outFile.close();
+            
+            std::cout << "\n=== MATCH RESULTS ===\n";
+            std::cout << "Results saved to: " << resultsFile << "\n\n";
+            std::cout << "Total Games: 50\n";
+            std::cout << "\nOverall Results:\n";
+            std::cout << "  Beta Wins:  " << stats.betaWins << " (" << (stats.betaWins * 100.0 / 10.0) << "%)\n";
+            std::cout << "  Alpha Wins: " << stats.alphaWins << " (" << (stats.alphaWins * 100.0 / 10.0) << "%)\n";
+            std::cout << "  Draws:      " << stats.draws << " (" << (stats.draws * 100.0 / 10.0) << "%)\n";
+            std::cout << "\nDetailed Breakdown:\n";
+            std::cout << "  Beta as White: " << stats.betaWinsAsWhite << " wins, " 
+                      << stats.drawsWithBetaWhite << " draws\n";
+            std::cout << "  Beta as Black: " << stats.betaWinsAsBlack << " wins, " 
+                      << stats.drawsWithBetaBlack << " draws\n";
+            std::cout << "  Alpha as White: " << stats.alphaWinsAsWhite << " wins\n";
+            std::cout << "  Alpha as Black: " << stats.alphaWinsAsBlack << " wins\n";
+            std::cout << "\nAlpha Stalls (Timeouts): " << stats.alphaStalls << "\n";
+            std::cout << "=====================\n";
+        } else {
+            std::cerr << "Failed to open file for writing results." << std::endl;
+        }
+
 #endif // _WIN32
     }
 }
