@@ -3,6 +3,7 @@
 *.o
 *.log
 *.png
+*.csv
 chess
 test
 perf
