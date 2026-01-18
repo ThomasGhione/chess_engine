@@ -8,7 +8,7 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 
 # Variabili compilatore
 CXX = g++
-TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
+TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
 
 # PRODFLAGS OTTIMIZZATE: Match MinGW performance
 # -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
@@ -18,12 +18,29 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -DDEBUG -fopenmp -march=nat
 # -fno-math-errno: Don't set errno on math functions (safe for chess)
 # -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
 # -funroll-loops: Unroll hot loops (good for bitboard operations)
+# Balanced production flags (safety + speed)
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -mtune=native \
-            -flto=auto -fno-math-errno -fno-trapping-math -funroll-loops
+		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
+		-ffunction-sections -fdata-sections -fomit-frame-pointer
+
+# Ultra-aggressive speed flags (ignore size, relax FP semantics). Use when you want maximum throughput.
+# Notes:
+# - Removes DEBUG macro and enables NDEBUG for faster asserts
+# - -Ofast + -ffast-math enable non-IEEE FP optimizations (safe here: engine is integer-heavy)
+# - -fno-exceptions/-fno-rtti drop RTTI/exception tables; ensure codebase doesn't rely on them
+# - Link-time optimization kept automatic
+ULTRAFLAGS = -std=c++23 -O3 -Ofast -march=native -mtune=native -flto=auto -fopenmp \
+		-ffast-math -fno-math-errno -fno-trapping-math -fno-signed-zeros -fno-rounding-math \
+		-funsafe-math-optimizations -freciprocal-math -ffinite-math-only -funroll-loops \
+		-ffunction-sections -fdata-sections -fomit-frame-pointer -fno-plt -pipe \
+		-fno-rtti -DNDEBUG
+# -DDEBUG
+# -fno-exceptions 
+# Uncomment if codebase is exception-free
 
 # Cross-compiler per Windows (installare mingw-w64)
 WIN_CXX = x86_64-w64-mingw32-g++
-WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O2 -static -static-libgcc -static-libstdc++ -DDEBUG -fopenmp -flto=4 -fext-numeric-literals
+WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -DDEBUG -fopenmp -flto=4 -fext-numeric-literals
 
 # Tool di analisi statica locali
 CPPCHECK = script/cppcheck-2.19.0/cppcheck
@@ -100,7 +117,7 @@ PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
 
 # Target principali
-.PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod prod_ultra prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default per usare make secco
 all: prod
@@ -109,6 +126,13 @@ all: prod
 # Nota: Piu' veloce dopo la prima volta ma lascia i file .o
 prod: $(NAME_APP)
 	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
+
+# Produzione ultra-ottimizzata (no safety, massima velocita')
+# Compilazione monolitica per evitare mix di .o con flag diversi
+prod_ultra:
+	@printf "\nCompiling ULTRA build..."
+	$(CXX) $(ULTRAFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
+	@printf "\n✅ Build completato (ULTRA): $(NAME_APP)\n\n"
 
 # Produzione Windows (cross-compile da Linux)
 prod_windows:
@@ -300,6 +324,7 @@ help:
 	@printf "\n=== Chess Build System ===\n"
 	@printf "\n📦 BUILD TARGETS:\n"
 	@printf "  make prod           - Compilazione monolitica (veloce prima volta)\n"
+	@printf "  make prod_ultra     - Build monolitica con flag massimi per performance (Ofast, fast-math, no RTTI/exceptions)\n"
 	@printf "  make prod_windows   - Cross-compilazione Windows (richiede mingw-w64)\n"
 	@printf "  make debug          - Compilazione con debug symbols\n"
 	@printf "  make test           - Compilazione e test funzionali\n"
