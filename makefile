@@ -33,9 +33,8 @@ ULTRAFLAGS = -std=c++23 -O3 -Ofast -march=native -mtune=native -flto=auto -fopen
 		-ffast-math -fno-math-errno -fno-trapping-math -fno-signed-zeros -fno-rounding-math \
 		-funsafe-math-optimizations -freciprocal-math -ffinite-math-only -funroll-loops \
 		-ffunction-sections -fdata-sections -fomit-frame-pointer -fno-plt -pipe \
-		-fno-rtti -DNDEBUG
+		-fno-rtti -fno-exceptions -DNDEBUG
 # -DDEBUG
-# -fno-exceptions 
 # Uncomment if codebase is exception-free
 
 # Cross-compiler per Windows (installare mingw-w64)

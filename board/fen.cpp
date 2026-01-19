@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include <charconv>
 
 namespace chess {
 
@@ -76,13 +77,22 @@ Coords Board::parseEnPassant(const std::string& enPassantSection) {
 }
 // Safely converts a string to an integer with error handling.
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
-    try {
-        int value = std::stoi(section);
-        value = std::clamp(value, min, max);
-        return static_cast<uint8_t>(value);
-    } catch (...) {
+    if (section.empty()) {
         return static_cast<uint8_t>(defaultValue);
     }
+
+    int value = 0;
+    const char* first = section.data();
+    const char* last = first + section.size();
+    const auto result = std::from_chars(first, last, value);
+
+    // Fail if parsing failed or not all characters were consumed
+    if (result.ec != std::errc{} || result.ptr != last) {
+        return static_cast<uint8_t>(defaultValue);
+    }
+
+    value = std::clamp(value, min, max);
+    return static_cast<uint8_t>(value);
 }
 
 void Board::fromFenToBoard(const std::string& fen) {
