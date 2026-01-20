@@ -81,57 +81,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
 
 ---
 
-## 🟡 PROBLEMI IMPORTANTI (da sistemare presto)
-
-### 5. **ATTACK DATA CALCOLATO MULTIPLE VOLTE**
-**Severity**: 🟡 MEDIA  
-**Impatto**: ~10-15% overhead in evaluate()
-
-**Problema**:
-`computeAttackData()` viene chiamato in:
-- `evalKingSafety()` 
-- `evalMobility()`
-- `evalPinnedPieces()`
-- `evalHangingPieces()`
-- `evalRookActivity()`
-- `evalQueenActivity()`
-- `evalPawnStructure()` (indirettamente)
-
-Ogni chiamata ricalcola:
-```cpp
-AttackData computeAttackData(bool isWhite) const {
-    // Calcolo bitboard attacchi per tutti i pezzi
-    // ~50-100 CPU cycles per chiamata
-    // Chiamato 6-10 volte per evaluate() = 300-1000 cycles sprecati
-}
-```
-
-**SOLUZIONE**:
-```cpp
-// In evaluate.cpp
-int64_t Engine::evaluate() {
-    const bool isWhite = (board.getActiveColor() == chess::Board::WHITE);
-    
-    // PRECALCOLA UNA VOLTA
-    const AttackData whiteAttacks = computeAttackData(true);
-    const AttackData blackAttacks = computeAttackData(false);
-    
-    // Passa come const& a tutte le funzioni
-    score += evalKingSafety(isWhite, whiteAttacks, blackAttacks);
-    score += evalMobility(isWhite, whiteAttacks, blackAttacks);
-    score += evalPinnedPieces(isWhite, whiteAttacks, blackAttacks);
-    // ... etc
-    
-    return score;
-}
-```
-
-**Modifiche richieste**:
-- Cambiare signature di ~10 funzioni eval*() per accettare `const AttackData&`
-- Rimuovere chiamate interne a `computeAttackData()`
-
-**Impatto atteso**: +10-15% eval speed
-
 **Stima tempo**: 30 minuti  
 **LOC modificate**: ~50
 
@@ -144,12 +93,6 @@ int64_t Engine::evaluate() {
 **Impatto**: Features mancanti, documentazione stale
 
 **Lista TODO trovati**:
-
-1. **search.cpp:748**:
-   ```cpp
-   // 1. Hash move (TODO: not implemented yet) → 100000+
-   ```
-   → Collegato a problema critico #2
 
 2. **search.cpp:1018**:
    ```cpp
