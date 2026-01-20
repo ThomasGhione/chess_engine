@@ -627,37 +627,32 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
-    // Trova tutti gli attaccanti alla casella target
-    auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) noexcept -> uint64_t {
-        uint64_t attackers = 0ULL;
-        // Pawns
-        attackers |= b.pawns_bb[side] & pieces::PAWN_ATTACKERS_TO[side][sq];
-        // Knights
-        attackers |= b.knights_bb[side] & pieces::KNIGHT_ATTACKS[sq];
-        // Kings
-        attackers |= b.kings_bb[side] & pieces::KING_ATTACKS[sq];
-        // Bishops and Queens (diagonal) - magic bitboards direct lookup
-        attackers |= (b.bishops_bb[side] | b.queens_bb[side]) & pieces::getBishopAttacks(sq, occ);
-        // Rooks and Queens (orthogonal) - magic bitboards direct lookup
-        attackers |= (b.rooks_bb[side] | b.queens_bb[side]) & pieces::getRookAttacks(sq, occ);
-        return attackers;
-    };
+    // Micro-ottimizzazione SEE: identifichiamo il meno prezioso controllando
+    // i tipi di attaccanti in ordine (pawn -> knight -> bishop -> rook -> queen -> king)
+    // e calcolando gli attacchi degli slider solo quando strettamente necessario.
+    auto getLeastValuableAttackerTo = [&](uint8_t sq, uint64_t occ, int side) noexcept -> uint8_t {
+        uint64_t bb;
 
-    // Trova l'attaccante meno prezioso
-    auto getLeastValuableAttacker = [&](uint64_t attackers, const chess::Board& board) noexcept -> uint8_t {
-        // Ordine: pawn, knight, bishop, rook, queen, king
-        const uint64_t pieceTypes[6] = {
-            attackers & (board.pawns_bb[0] | board.pawns_bb[1]),
-            attackers & (board.knights_bb[0] | board.knights_bb[1]),
-            attackers & (board.bishops_bb[0] | board.bishops_bb[1]),
-            attackers & (board.rooks_bb[0] | board.rooks_bb[1]),
-            attackers & (board.queens_bb[0] | board.queens_bb[1]),
-            attackers & (board.kings_bb[0] | board.kings_bb[1])
-        };
-        
-        for (uint64_t bb : pieceTypes) {
-            if (bb) return __builtin_ctzll(bb);
-        }
+        // Pawns
+        bb = b.pawns_bb[side] & pieces::PAWN_ATTACKERS_TO[side][sq];
+        if (bb) return __builtin_ctzll(bb);
+
+        // Knights
+        bb = b.knights_bb[side] & pieces::KNIGHT_ATTACKS[sq];
+        if (bb) return __builtin_ctzll(bb);
+
+        // Bishops/Queens (diagonal) - compute bishop attacks only now
+        bb = (b.bishops_bb[side] | b.queens_bb[side]) & pieces::getBishopAttacks(sq, occ);
+        if (bb) return __builtin_ctzll(bb);
+
+        // Rooks/Queens (orthogonal) - compute rook attacks only if needed
+        bb = (b.rooks_bb[side] | b.queens_bb[side]) & pieces::getRookAttacks(sq, occ);
+        if (bb) return __builtin_ctzll(bb);
+
+        // Kings (last)
+        bb = b.kings_bb[side] & pieces::KING_ATTACKS[sq];
+        if (bb) return __builtin_ctzll(bb);
+
         return 64; // nessun attaccante
     };
 
@@ -686,25 +681,17 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
     while (depth < MAX_SEE_DEPTH) {
-        // Trova attaccanti del lato corrente
-        uint64_t attackers = getAttackersTo(toSq, occ, side);
-        if (!attackers) break;
-
-        // Prendi l'attaccante meno prezioso
-        uint8_t attacker = getLeastValuableAttacker(attackers, b);
+        // Trova l'attaccante meno prezioso verso la casella target
+        uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
         if (attacker == 64) break;
 
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
-        
-        // PRUNING: se il guadagno attuale è già peggiore del miglior risultato possibile,
-        // possiamo terminare early (alpha-beta pruning applicato a SEE)
-        // NON usiamo early exit basato solo sul lato passivo perché non è corretto in negamax
-        
+
         // Rimuovi l'attaccante dall'occupancy
         occ ^= (1ULL << attacker);
         attackerType = b.get(attacker) & chess::Board::MASK_PIECE_TYPE;
-        
+
         // Cambia lato
         side ^= 1;
         depth++;
