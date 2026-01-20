@@ -274,13 +274,13 @@ namespace driver {
     }
 
     void Driver::endGame() noexcept {
-        if (this->engine.gameResult != engine::Engine::ONGOING) {
-            uint8_t nextColor = this->engine.board.getActiveColor();
-            if (this->engine.board.isCheckmate(nextColor)) {
+        if (this->engine.isGameOver()) {
+            if (this->engine.isMate()) {
+                uint8_t nextColor = this->engine.board.getActiveColor();
                 std::cout << "\nCheckmate! "
                             << (nextColor == chess::Board::WHITE ? "Black" : "White")
                             << " wins.\n";
-            } else if (this->engine.board.isStalemate(nextColor)) {
+            } else if (this->engine.isStalemate()) {
                 std::cout << "\nStalemate. Game drawn.\n";
             }
             std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
@@ -317,59 +317,6 @@ namespace driver {
             exit(EXIT_SUCCESS);
         }
     } 
-
-    void Driver::playGameVsHuman() noexcept {
-    	vsBot = false;
-        
-        while(engine.gameResult == engine::Engine::ONGOING) {
-    	    //! It doesn't check for loaded games, we should fix it later based on the activeColor in board
-            this->playerTurn();
-            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-
-            this->playerTurn();
-            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-    	}
-    }
-
-    void Driver::playGameVsEngine(bool isFirstTurnOfPlayer) noexcept{
-        vsBot = true;
-        
-        if (isFirstTurnOfPlayer) {
-            while (engine.gameResult == engine::Engine::ONGOING) {
-                this->playerTurn();
-                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-                
-                this->engineTurn();
-                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-            }
-        } 
-        else {
-            while (engine.gameResult == engine::Engine::ONGOING) {
-                this->engineTurn();
-                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-
-                this->playerTurn();
-                if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-            } 
-        }
-    }
-
-    void Driver::botVsBot() noexcept {
-        std::string currentBoard = print::Prints::getBasicBoard(engine.board);
-        std::cout << currentBoard << "\n";
-
-        while (engine.gameResult == engine::Engine::ONGOING) {
-            this->engineTurn();
-            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-            currentBoard = print::Prints::getBasicBoard(engine.board);
-            std::cout << currentBoard << "\n";
-
-            this->engineTurn();
-            if (engine.gameResult != engine::Engine::ONGOING) { endGame(); return; }
-            currentBoard = print::Prints::getBasicBoard(engine.board);
-            std::cout << currentBoard << "\n";
-        }
-    }
 
     void Driver::botVsStockfish(const bool botColor) noexcept {
 #ifdef _WIN32
@@ -578,7 +525,7 @@ namespace driver {
             return;
         }
 
-        while (engine.gameResult == engine::Engine::ONGOING) {
+        while (!this->engine.isGameOver()) {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
             if (engineToMove) {
@@ -602,12 +549,13 @@ namespace driver {
                 engine.setGameResult();
             }
 
-            if (engine.gameResult != engine::Engine::ONGOING) {
+            if (this->engine.isGameOver()) {
                 endGame();
                 break;
             }
         }
 
+        endGame();
         writeToStockfish(*sfProc, "quit\n");
 #else
         // botColor: true = our engine plays White, false = our engine plays Black
@@ -761,7 +709,7 @@ namespace driver {
             return;
         }
 
-        while (engine.gameResult == engine::Engine::ONGOING) {
+        while (!this->engine.isGameOver()) {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
             if (engineToMove) {
@@ -788,11 +736,13 @@ namespace driver {
                 engine.setGameResult();
             }
 
-            if (engine.gameResult != engine::Engine::ONGOING) {
+            if (this->engine.isGameOver()) {
                 endGame();
                 return;
             }
         }
+
+        endGame();
 #endif // _WIN32
     }
 
@@ -1042,7 +992,7 @@ namespace driver {
             engine::Engine::GameResult result = engine::Engine::DRAW;
             bool timeoutOccurred = false;
 
-            while (engine.gameResult == engine::Engine::ONGOING && gameRunning.load()) {
+            while (!this->engine.isGameOver() && gameRunning.load()) {
                 const bool betaToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
                 // Reset timer for new move
@@ -1072,8 +1022,8 @@ namespace driver {
 
                     sendMoveToAlpha(proc, delta);
 
-                    if (engine.gameResult != engine::Engine::ONGOING) {
-                        result = engine.gameResult;
+                    if (this->engine.isGameOver()) {
+                        result = this->engine.getGameResult();
                         break;
                     }
                 } else {
@@ -1098,8 +1048,8 @@ namespace driver {
                     }
 
                     engine.setGameResult();
-                    if (engine.gameResult != engine::Engine::ONGOING) {
-                        result = engine.gameResult;
+                    if (this->engine.isGameOver()) {
+                        result = this->engine.getGameResult();
                         break;
                     }
                 }

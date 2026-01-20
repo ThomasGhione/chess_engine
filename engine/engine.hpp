@@ -50,16 +50,20 @@ public:
     Engine(Engine&&) = delete;
     Engine& operator=(Engine&&) = delete;
 
-    chess::Board board;
-    bool isPlayerWhite;
-    
+    struct ScoredMove {
+        chess::Board::Move move;
+        int64_t score;
+    };
+
     enum GameResult : uint8_t {
         ONGOING = 0,
         WHITE_WINS = 1,
         BLACK_WINS = 2,
         DRAW = 3
     };
-    GameResult gameResult = Engine::ONGOING;
+
+    chess::Board board;
+    bool isPlayerWhite;
 
     uint64_t depth;
     int64_t eval = 0;
@@ -73,6 +77,7 @@ public:
 
     uint64_t nodesSearched = 0; 
     static constexpr int32_t DEFAULTDEPTH = 10;
+    static constexpr int MAX_PLY = 64;
     std::string moveHistory = "";
 
 #ifdef DEBUG
@@ -86,17 +91,21 @@ public:
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
-    bool isMate() noexcept;
+    inline bool isGameOver() const noexcept {
+        return gameResult != ONGOING;
+    }
+    inline bool isMate() const noexcept {
+        return gameResult == WHITE_WINS || gameResult == BLACK_WINS;
+    }
+    bool isStalemate() const noexcept {
+        return gameResult == DRAW;
+    }
     void setGameResult() noexcept;
+    inline GameResult getGameResult() const noexcept {
+        return gameResult;
+    }
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
-
-    static constexpr int MAX_PLY = 64;
-
-    struct ScoredMove {
-        chess::Board::Move move;
-        int64_t score;
-    };
 
     void reset() noexcept;
 
@@ -122,6 +131,8 @@ private:
         int64_t alpha;
         int64_t beta;
     };
+
+    GameResult gameResult = Engine::ONGOING;
 
     void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
