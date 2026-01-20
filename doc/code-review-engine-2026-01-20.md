@@ -11,7 +11,6 @@
 | File | LOC | Stato | Note |
 |------|-----|-------|------|
 | `tt.hpp` | 269 | ⚠️ MANCANTE | Non salva hash move (feature critica) |
-| `piecevaluetables.hpp` | 109 | ⚠️ INCOMPLETO | PAWN_END_GAME_VALUES_TABLE vuota |
 | **TOTALE** | **3136** | - | - |
 
 ---
@@ -81,11 +80,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
 
 ---
 
-**Stima tempo**: 30 minuti  
-**LOC modificate**: ~50
-
----
-
 ## 🟢 PICCOLI MIGLIORAMENTI
 
 ### 9. **COMMENTI TODO NON IMPLEMENTATI**
@@ -99,12 +93,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
    // 3. Checks (optional, controlled by QSEARCH_INCLUDE_CHECKS (TODO))
    ```
    → Feature: aggiungere check evasion in quiescence (opzionale, rischio esplosione)
-
-3. **evaluate.cpp:527**:
-   ```cpp
-   // TODO: se non ha arroccato, NON muovere pedoni dell'arrocco
-   ```
-   → Idea buona: penalizzare push di pedoni f/g/h se Re non ha arroccato
 
 **AZIONE**: Implementare o rimuovere TODO stale
 
@@ -128,50 +116,6 @@ git commit -m "Remove backup files and ignore them"
 ```
 
 **Stima tempo**: 2 minuti
-
----
-
-### 11. **PAWN_END_GAME_VALUES_TABLE VUOTA**
-**Severity**: 🟢 BASSA  
-**Impatto**: Endgame precision loss (~5 ELO)
-
-**Problema**:
-```cpp
-// piecevaluetables.hpp:31-33
-inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
-    // VUOTO! Usa zero-initialization
-};
-```
-
-**Conseguenza**: 
-- In endgame, pawns non hanno PSQT bonus/penalty
-- Passed pawns lontani da promozione hanno stesso valore di quelli vicini
-- King non viene incentivato a supportare passed pawns
-
-**SOLUZIONE**:
-```cpp
-inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
-    // Rank 1 (shouldn't happen for pawns, but for safety)
-      0,   0,   0,   0,   0,   0,   0,   0,
-    // Rank 2
-     10,  10,  10,  10,  10,  10,  10,  10,
-    // Rank 3
-     20,  20,  20,  20,  20,  20,  20,  20,
-    // Rank 4
-     35,  35,  35,  35,  35,  35,  35,  35,
-    // Rank 5
-     60,  60,  60,  60,  60,  60,  60,  60,
-    // Rank 6
-    100, 100, 100, 100, 100, 100, 100, 100,
-    // Rank 7 (about to promote - huge bonus!)
-    200, 200, 200, 200, 200, 200, 200, 200,
-    // Rank 8 (promotion)
-      0,   0,   0,   0,   0,   0,   0,   0
-};
-```
-
-**Stima tempo**: 10 minuti  
-**ELO gain**: +3-5 punti in endgame
 
 ---
 
@@ -278,18 +222,6 @@ if (move == hashMove) {
 
 ---
 
-### FASE 2: REFACTORING (2 ore)
-**Obiettivo**: Migliorare architettura e manutenibilità
-
-| Task | Problema | Tempo | Priorità |
-|------|----------|-------|----------|
-| Precalcolare AttackData | #5 | 30 min | ⭐⭐⭐⭐ |
-
-**LOC risparmiate**: ~120-150  
-**Performance gain**: +12-18%
-
----
-
 ### FASE 3: CLEANUP (30 min)
 **Obiettivo**: Code quality e features mancanti
 
@@ -297,7 +229,6 @@ if (move == hashMove) {
 |------|----------|-------|----------|
 | Implementare TODOs | #9 | variabile | ⭐⭐ |
 | Rimuovere .backup | #10 | 2 min | ⭐⭐ |
-| PAWN_END_GAME_TABLE | #11 | 10 min | ⭐⭐ |
 | Rimuovere debug code | #12 | 10 min | ⭐ |
 
 **ELO gain atteso**: +5-8 punti
@@ -357,14 +288,6 @@ if (move == hashMove) {
 
 ---
 
-### 2. **Questa Settimana**
-- ⚠️ Precalcolare AttackData
-
-**Tempo totale**: 1h 15min  
-**Gain cumulativo**: +80-100 ELO
-
----
-
 ### 3. **Prossime 2 Settimane**
 - 🔵 Early exit in evaluate()
 - 🔵 Partial sort in search
@@ -401,15 +324,15 @@ grep -A5 "% time" profile.txt | head -30
 ## 📝 CHECKLIST FINALE
 
 ### Codice
-- [v] popLSB unificato in engine.hpp
+- [V] popLSB unificato in engine.hpp
 - [V] Hash move salvato in TT
-- [X] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
-- [v] Static bool unificato
+- [?] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
+- [V] Static bool unificato
 - [ ] AttackData precalcolato
 - [V] History decay implementato
 - [V] Static members rimossi
 - [V] Alpha-beta helpers estesi
-- [ ] PAWN_END_GAME_TABLE riempito
+- [V] PAWN_END_GAME_TABLE riempito
 - [ ] File .backup rimossi
 - [ ] Debug code rimosso
 - [ ] TODOs implementati o rimossi
@@ -418,7 +341,7 @@ grep -A5 "% time" profile.txt | head -30
 - [ ] Compilazione senza warning
 - [ ] Test suite passa al 100%
 - [ ] Nessuna regressione tattica
-- [ ] Performance gain verificato
+- [V] Performance gain verificato
 - [ ] Profiling eseguito
 - [ ] ELO gain misurato (vs versione precedente)
 

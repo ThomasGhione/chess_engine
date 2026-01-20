@@ -517,10 +517,48 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
         const int sq = __builtin_ctzll(kingBB);
         const int sign = (side == 0) ? 1 : -1;
 
-        // TODO: se non ha arroccato, NON muovere pedoni dell'arrocco
-        if (!((side == 0 && (sq == 62 || sq == 58)) || (side == 1 && (sq == 6 || sq == 2)))) {
+        // Check if castled
+        const bool hasCastled = (side == 0 && (sq == 62 || sq == 58)) || (side == 1 && (sq == 6 || sq == 2));
+        
+        if (!hasCastled) {
             score -= sign * 20; // penalità fissa se non arroccato
+            
+            // OPTIMIZATION: Penalize moving kingside/queenside pawns before castling
+            // This weakens king safety if castling rights are still available
+            const bool canCastleKingside = (side == 0) ? b.getCastle(0) : b.getCastle(2);
+            const bool canCastleQueenside = (side == 0) ? b.getCastle(1) : b.getCastle(3);
+            
+            if (side == 0) { // WHITE
+                // Kingside castling pawns: f2(53), g2(54), h2(55)
+                if (canCastleKingside) {
+                    constexpr uint64_t KINGSIDE_PAWNS_START = (1ULL << 53) | (1ULL << 54) | (1ULL << 55);
+                    const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
+                    score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
+                }
+                
+                // Queenside castling pawns: b2(49), c2(50), d2(51)
+                if (canCastleQueenside) {
+                    constexpr uint64_t QUEENSIDE_PAWNS_START = (1ULL << 49) | (1ULL << 50) | (1ULL << 51);
+                    const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
+                    score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
+                }
+            } else { // BLACK
+                // Kingside castling pawns: f7(13), g7(14), h7(15)
+                if (canCastleKingside) {
+                    constexpr uint64_t KINGSIDE_PAWNS_START = (1ULL << 13) | (1ULL << 14) | (1ULL << 15);
+                    const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
+                    score += movedPawns * 5; // bonus per WHITE (black indebolito)
+                }
+                
+                // Queenside castling pawns: b7(9), c7(10), d7(11)
+                if (canCastleQueenside) {
+                    constexpr uint64_t QUEENSIDE_PAWNS_START = (1ULL << 9) | (1ULL << 10) | (1ULL << 11);
+                    const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
+                    score += movedPawns * 5; // bonus per WHITE (black indebolito)
+                }
+            }
         }
+        
         uint64_t shieldSquares = 0ULL;
         if (side == 0) {
             // White king: pawns in front are towards lower indices (south)

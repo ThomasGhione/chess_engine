@@ -630,30 +630,16 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     // Trova tutti gli attaccanti alla casella target
     auto getAttackersTo = [&](uint8_t sq, uint64_t occ, int side) noexcept -> uint64_t {
         uint64_t attackers = 0ULL;
-        
         // Pawns
         attackers |= b.pawns_bb[side] & pieces::PAWN_ATTACKERS_TO[side][sq];
-        
         // Knights
         attackers |= b.knights_bb[side] & pieces::KNIGHT_ATTACKS[sq];
-        
         // Kings
         attackers |= b.kings_bb[side] & pieces::KING_ATTACKS[sq];
-        
-        // Bishops and Queens (diagonal)
-        uint64_t diagSliders = b.bishops_bb[side] | b.queens_bb[side];
-        if (diagSliders) [[likely]] {
-            uint64_t bishopAtks = pieces::getBishopAttacks(sq, occ);
-            attackers |= diagSliders & bishopAtks;
-        }
-        
-        // Rooks and Queens (orthogonal)
-        uint64_t orthSliders = b.rooks_bb[side] | b.queens_bb[side];
-        if (orthSliders) [[likely]] {
-            uint64_t rookAtks = pieces::getRookAttacks(sq, occ);
-            attackers |= orthSliders & rookAtks;
-        }
-        
+        // Bishops and Queens (diagonal) - magic bitboards direct lookup
+        attackers |= (b.bishops_bb[side] | b.queens_bb[side]) & pieces::getBishopAttacks(sq, occ);
+        // Rooks and Queens (orthogonal) - magic bitboards direct lookup
+        attackers |= (b.rooks_bb[side] | b.queens_bb[side]) & pieces::getRookAttacks(sq, occ);
         return attackers;
     };
 
