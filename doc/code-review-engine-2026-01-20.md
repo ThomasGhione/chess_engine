@@ -11,7 +11,6 @@
 | File | LOC | Stato | Note |
 |------|-----|-------|------|
 | `tt.hpp` | 269 | ⚠️ MANCANTE | Non salva hash move (feature critica) |
-| `piecevaluetables.hpp` | 109 | ⚠️ INCOMPLETO | PAWN_END_GAME_VALUES_TABLE vuota |
 | **TOTALE** | **3136** | - | - |
 
 ---
@@ -81,11 +80,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
 
 ---
 
-**Stima tempo**: 30 minuti  
-**LOC modificate**: ~50
-
----
-
 ## 🟢 PICCOLI MIGLIORAMENTI
 
 ### 9. **COMMENTI TODO NON IMPLEMENTATI**
@@ -99,12 +93,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
    // 3. Checks (optional, controlled by QSEARCH_INCLUDE_CHECKS (TODO))
    ```
    → Feature: aggiungere check evasion in quiescence (opzionale, rischio esplosione)
-
-3. **evaluate.cpp:527**:
-   ```cpp
-   // TODO: se non ha arroccato, NON muovere pedoni dell'arrocco
-   ```
-   → Idea buona: penalizzare push di pedoni f/g/h se Re non ha arroccato
 
 **AZIONE**: Implementare o rimuovere TODO stale
 
@@ -234,18 +222,6 @@ if (move == hashMove) {
 
 ---
 
-### FASE 2: REFACTORING (2 ore)
-**Obiettivo**: Migliorare architettura e manutenibilità
-
-| Task | Problema | Tempo | Priorità |
-|------|----------|-------|----------|
-| Precalcolare AttackData | #5 | 30 min | ⭐⭐⭐⭐ |
-
-**LOC risparmiate**: ~120-150  
-**Performance gain**: +12-18%
-
----
-
 ### FASE 3: CLEANUP (30 min)
 **Obiettivo**: Code quality e features mancanti
 
@@ -253,7 +229,6 @@ if (move == hashMove) {
 |------|----------|-------|----------|
 | Implementare TODOs | #9 | variabile | ⭐⭐ |
 | Rimuovere .backup | #10 | 2 min | ⭐⭐ |
-| PAWN_END_GAME_TABLE | #11 | 10 min | ⭐⭐ |
 | Rimuovere debug code | #12 | 10 min | ⭐ |
 
 **ELO gain atteso**: +5-8 punti
@@ -310,14 +285,6 @@ if (move == hashMove) {
 
 **Tempo totale**: 1h 10min  
 **Gain immediato**: +50-70 ELO
-
----
-
-### 2. **Questa Settimana**
-- ⚠️ Precalcolare AttackData
-
-**Tempo totale**: 1h 15min  
-**Gain cumulativo**: +80-100 ELO
 
 ---
 
