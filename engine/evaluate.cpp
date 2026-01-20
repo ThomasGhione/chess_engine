@@ -926,7 +926,7 @@ bool Engine::isMate() noexcept {
 }
 */
 
-void Engine::setGameResult() noexcept {
+void Engine::updateGameResult() noexcept {
     gameResult = GameResult::ONGOING;
     uint8_t toMove = board.getActiveColor();
     if (board.kings_bb[0] == 0) {

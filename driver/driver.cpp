@@ -276,7 +276,7 @@ namespace driver {
     void Driver::endGame() noexcept {
         if (this->engine.isGameOver()) {
             if (this->engine.isMate()) {
-                uint8_t nextColor = this->engine.board.getActiveColor();
+                uint8_t nextColor = this->engine.getActiveColor();
                 std::cout << "\nCheckmate! "
                             << (nextColor == chess::Board::WHITE ? "Black" : "White")
                             << " wins.\n";
@@ -320,9 +320,11 @@ namespace driver {
 
     void Driver::botVsStockfish(const bool botColor) noexcept {
 #ifdef _WIN32
+        // botColor: true = our engine plays White, false = our engine plays Black
         const std::string stockfishPath = "./stockfish/windows/stockfish-windows-x86-64-avx2.exe";
-        const int stockfishMoveTimeMs = 200;
-
+        const int stockfishMoveTimeMs = 200; // tweak if needed
+        
+        // Fresh game state for each match
         engine.reset();
         engine.isPlayerWhite = botColor;
 
@@ -367,6 +369,7 @@ namespace driver {
             for (int i = 0; i < maxIterations; ++i) {
                 DWORD available = 0;
                 if (!PeekNamedPipe(sf.outputRead, nullptr, 0, nullptr, &available, nullptr)) {
+                    std::cerr << "[WARNING] PeekNamedPipe failed after " << i << " iterations\n";
                     break;
                 }
 
@@ -377,6 +380,7 @@ namespace driver {
 
                 DWORD bytesRead = 0;
                 if (!ReadFile(sf.outputRead, buffer.data(), static_cast<DWORD>(buffer.size() - 1), &bytesRead, nullptr) || bytesRead == 0) {
+                    std::cerr << "[WARNING] ReadFile failed after " << i << " iterations\n";
                     break;
                 }
 
@@ -386,6 +390,10 @@ namespace driver {
                 if (output.find(token) != std::string::npos) {
                     break;
                 }
+            }
+
+            if (output.find(token) == std::string::npos) {
+                std::cerr << "[WARNING] Token '" << token << "' not found. Output so far: " << output.substr(0, 200) << "\n";
             }
 
             return output;
@@ -486,13 +494,24 @@ namespace driver {
             cmd << "go movetime " << stockfishMoveTimeMs << "\n";
 
             if (!writeToStockfish(sf, cmd.str())) {
+                std::cerr << "[ERROR] Failed to write command to Stockfish\n";
+                return {"", ""};
+            }
+
+            // Check if process is still running
+            DWORD exitCode;
+            if (GetExitCodeProcess(sf.processInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
+                std::cerr << "[ERROR] Stockfish process has terminated with exit code " << exitCode << "\n";
                 return {"", ""};
             }
 
             const std::string output = readUntilToken(sf, "bestmove", 800);
             const std::string token = "bestmove ";
             const auto pos = output.find(token);
-            if (pos == std::string::npos) return {"", output};
+            if (pos == std::string::npos) {
+                std::cerr << "[ERROR] Stockfish did not return bestmove. Output: " << output.substr(0, 300) << "\n";
+                return {"", output};
+            }
             const auto end = output.find('\n', pos);
             const std::string line = output.substr(pos + token.size(), end - (pos + token.size()));
             const auto spacePos = line.find(' ');
@@ -500,7 +519,13 @@ namespace driver {
         };
 
         auto applyUciMoveToBoard = [&](const std::string& uciMove) {
-            if (uciMove.size() < 4) return false;
+            std::cout << "[DEBUG] Applying UCI move: '" << uciMove << "' (length: " << uciMove.size() << ")\n";
+            std::cout.flush();
+            
+            if (uciMove.size() < 4) {
+                std::cerr << "[ERROR] UCI move too short\n";
+                return false;
+            }
 
             const std::string fromStr = uciMove.substr(0, 2);
             const std::string toStr   = uciMove.substr(2, 2);
@@ -509,15 +534,28 @@ namespace driver {
                 ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
                 : '\0';
 
+            std::cout << "[DEBUG] From: " << fromStr << ", To: " << toStr 
+                      << ", HasPromo: " << hasPromo << ", Promo: " << (promo ? promo : '?') << "\n";
+            std::cout.flush();
+
             chess::Coords fromCoords(fromStr);
             chess::Coords toCoords(toStr);
             if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
+                std::cerr << "[ERROR] Coordinates out of bounds\n";
                 return false;
             }
 
-            return hasPromo
+            std::cout << "[DEBUG] Calling movePiece...\n";
+            std::cout.flush();
+            
+            bool result = hasPromo
                 ? engine.movePiece(fromCoords, toCoords, promo)
                 : engine.movePiece(fromCoords, toCoords);
+            
+            std::cout << "[DEBUG] movePiece returned: " << result << "\n";
+            std::cout.flush();
+            
+            return result;
         };
 
         auto sfProc = startStockfish();
@@ -531,31 +569,36 @@ namespace driver {
             if (engineToMove) {
                 this->engineTurn();
                 std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+                std::cout.flush();
             } else {
+                std::cout << "Waiting for Stockfish move..." << std::endl;
                 const std::string fen = engine.board.getCurrentFen();
                 const auto [bestMove, sfOutput] = runStockfish(*sfProc, fen);
                 if (bestMove.empty()) {
-                    std::cerr << "Stockfish did not return a move. Aborting match.\n";
+                    std::cerr << "[ERROR] Stockfish did not return a move. Aborting match.\n";
+                    std::cerr << "Current FEN: " << fen << "\n";
                     return;
                 }
 
                 if (!applyUciMoveToBoard(bestMove)) {
-                    std::cerr << "Failed to apply Stockfish move: " << bestMove << "\n";
+                    std::cerr << "[ERROR] Failed to apply Stockfish move: " << bestMove << "\n";
                     return;
                 }
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
+                std::cout.flush();
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setGameResult();
+                std::cout.flush();
             }
 
             if (this->engine.isGameOver()) {
+                std::cout << "Game over detected, calling endGame()...\n";
+                std::cout.flush();
                 endGame();
                 break;
             }
         }
 
-        endGame();
         writeToStockfish(*sfProc, "quit\n");
 #else
         // botColor: true = our engine plays White, false = our engine plays Black
@@ -716,7 +759,6 @@ namespace driver {
                 // Our engine move
                 this->engineTurn();
                 std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setGameResult();
             } else {
                 // Stockfish move
                 const std::string fen = engine.board.getCurrentFen();
@@ -733,7 +775,6 @@ namespace driver {
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setGameResult();
             }
 
             if (this->engine.isGameOver()) {
@@ -741,8 +782,6 @@ namespace driver {
                 return;
             }
         }
-
-        endGame();
 #endif // _WIN32
     }
 
@@ -1047,7 +1086,7 @@ namespace driver {
                         break;
                     }
 
-                    engine.setGameResult();
+                    engine.updateGameResult();
                     if (this->engine.isGameOver()) {
                         result = this->engine.getGameResult();
                         break;
