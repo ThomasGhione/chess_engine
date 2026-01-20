@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "tt.hpp"
 #include <atomic>
 
 namespace engine {
@@ -420,14 +421,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     return best;
 }
 
-
-__attribute__((always_inline))
-inline uint8_t poplsb(uint64_t& bb) noexcept {
-    const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
-    bb &= bb - 1;
-    return sq;
-}
-
 __attribute__((always_inline))
 inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::Move>& moves, const uint8_t from, 
                                   uint64_t mask, const uint64_t ownOcc, const bool inCheck) noexcept {
@@ -472,13 +465,13 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     if (!kings) [[unlikely]] return moves; // No king found, return empty move list
     
 
-    const uint8_t from = poplsb(const_cast<uint64_t&>(kings));
+    const uint8_t from = popLSB(const_cast<uint64_t&>(kings));
     const chess::Coords fromC{from};
 
     // King moves MUST always check legality (can't move to attacked squares)
     uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
     while (mask) {
-        const uint8_t to = poplsb(mask);
+        const uint8_t to = popLSB(mask);
         if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
@@ -498,35 +491,35 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     
     uint64_t bb = pawns;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::PAWN_ATTACKS[isWhite][from] | pieces::getPawnForwardPushes(from, isWhite, occ);
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
     bb = knights;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
     bb = bishops;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
     bb = rooks;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
 
     bb = queens;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getQueenAttacks(from, occ) & ~ownOcc;
         addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
     }
@@ -854,16 +847,52 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // evaluate() returns score from white's perspective (positive = white winning)
     const int64_t standPat = this->evaluate(b);
     
+    // ============================================================================
+    // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
+    // ============================================================================
+    constexpr uint8_t MAX_QSEARCH_DEPTH = 20;
+    if (ply >= MAX_QSEARCH_DEPTH) {
+        return standPat; // Cutoff profondità - return stand-pat to avoid re-evaluation
+    }
+    
     const uint8_t activeColor = b.getActiveColor();
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
 
     // Beta cutoff: position is too good for the active player
     if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
+        // Early cutoff - don't store in TT (too shallow, overhead not worth it)
         return cutoffValue(alpha, beta, usIsWhite);
     }
 
     // Update alpha/beta with stand-pat score
     updateBound(standPat, alpha, beta, usIsWhite);
+
+    // ============================================================================
+    // EARLY DELTA PRUNING - BEFORE move generation
+    // ============================================================================
+    // If stand-pat is so bad that even the best possible capture (Queen = 900cp)
+    // plus a huge margin (100cp safety) can't reach alpha/beta, skip move generation entirely.
+    // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
+    // IMPORTANT: Skip this pruning if we're in check (must search all evasions)
+    constexpr int64_t EARLY_DELTA_MARGIN = 1000; // Queen + margin
+    
+    const bool inCheck = b.inCheck(activeColor);
+    
+    if (!inCheck) {
+        if (usIsWhite) {
+            // White to move: if standPat + margin < alpha, no capture can help
+            if (standPat + EARLY_DELTA_MARGIN < alpha) {
+                // Early pruning - don't store in TT (too frequent, overhead not worth it)
+                return alpha; // Early delta cutoff
+            }
+        } else {
+            // Black to move: if standPat - margin > beta, no capture can help
+            if (standPat - EARLY_DELTA_MARGIN > beta) {
+                // Early pruning - don't store in TT (too frequent, overhead not worth it)
+                return beta; // Early delta cutoff
+            }
+        }
+    }
 
     // ============================================================================
     // DYNAMIC DELTA PRUNING - Advanced version
@@ -939,6 +968,28 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         int64_t score = 0;
         
         if (isCapture) {
+            // TODO test this better!!
+            // ============================================================================
+            // FUTILITY PRUNING IN QSEARCH
+            // ============================================================================
+            // Skip captures that can't possibly raise alpha, even if they win material.
+            // This is aggressive pruning based on material value alone.
+            const int64_t capturedValue = PIECE_VALUES[toPieceType];
+            constexpr int64_t FUTILITY_MARGIN = 200; // Safety margin for positional compensation
+            
+            // Check if this capture can possibly improve our position enough
+            if (usIsWhite) {
+                // White to move: if standPat + capturedValue + margin < alpha, skip
+                if (standPat + capturedValue + FUTILITY_MARGIN < alpha) {
+                    continue; // Futility pruning
+                }
+            } else {
+                // Black to move: if standPat - capturedValue - margin > beta, skip
+                if (standPat - capturedValue - FUTILITY_MARGIN > beta) {
+                    continue; // Futility pruning
+                }
+            }
+            
             const int64_t see = staticExchangeEvaluation(b, m);
             
             // SEE-based pruning with dynamic threshold
@@ -1000,6 +1051,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         
         // Alpha-beta pruning
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+            // Beta cutoff - don't store in TT (happens too frequently in qsearch)
             return cutoffValue(alpha, beta, usIsWhite);
         }
         
@@ -1065,7 +1117,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= PAWNS (captures and promotions) =================
     uint64_t bb = pawns;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         
         // Pawn attacks (captures only)
         uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
@@ -1088,7 +1140,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= KNIGHTS (captures only) =================
     bb = knights;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1096,7 +1148,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= BISHOPS (captures only) =================
     bb = bishops;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1104,7 +1156,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= ROOKS (captures only) =================
     bb = rooks;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1112,7 +1164,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= QUEENS (captures only) =================
     bb = queens;
     while (bb) {
-        const uint8_t from = poplsb(bb);
+        const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }

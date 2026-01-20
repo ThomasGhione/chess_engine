@@ -3,11 +3,6 @@
 
 namespace engine {
 
-// Initialize static members
-Engine::GameResult Engine::gameResult = Engine::ONGOING;
-uint64_t Engine::nodesSearched = 0;
-std::string Engine::moveHistory = "";
-
 #ifdef DEBUG
 uint64_t Engine::ttProbes = 0;
 uint64_t Engine::ttHits = 0;
@@ -99,39 +94,6 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
     return result;
 }
 
-
-__attribute__((hot))
-bool Engine::shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept {
-
-    if (depth > 1) return false;
-    if (inCheck) return false; // Don't prune if already in check
-    if (totalMoves <= 10) return false; // Don't prune if too few moves
-
-    
-    const uint8_t toPiece = b.get(m.to); // Don't prune captures (cheap bitboard check)
-    if ((toPiece & chess::Board::MASK_PIECE_TYPE) != chess::Board::EMPTY) return false;
-    
-    // Calculate late prune threshold (precalculate division)
-    // latePruneStart = totalMoves - max(1, totalMoves / 10)
-    const int lastTenth = (totalMoves >= 10) ? (totalMoves / 10) : 1;
-    const int latePruneStart = totalMoves - lastTenth;
-
-    if (moveIndex < latePruneStart) return false; // Not in late move zone yet
-
-    // Check if move gives check (expensive check, do last)
-    chess::Board::MoveState tmpState;
-    b.doMove(m, tmpState);
-    
-    const uint8_t opponent = usIsWhite ? chess::Board::BLACK : chess::Board::WHITE;
-    const bool givesCheck = b.inCheck(opponent);
-    
-    b.undoMove(m, tmpState);
-    
-    if (givesCheck) return false;
-
-    // Quiet move in late position at low depth: prune
-    return true;
-}
 
 // OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))

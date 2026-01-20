@@ -1,7 +1,6 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-//#include <unordered_map>
 #include <cstdint>
 #include <iostream>
 #include <filesystem>
@@ -14,11 +13,7 @@
 
 #ifdef DEBUG
 #include <chrono>
-#include <iostream>
 #endif
-
-// Usata solo per sleep 
-// #include <unistd.h>
 
 #include "../printer/menu.hpp"
 #include "../printer/prints.hpp"
@@ -32,13 +27,24 @@
 
 namespace engine {
 
+// ===================================================
+// BITBOARD HELPERS
+// ===================================================
+
+/// Pop least significant bit and return its index
+[[nodiscard]] inline uint8_t popLSB(uint64_t& bb) noexcept {
+    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
+    bb &= (bb - 1);
+    return index;
+}
+
 class Engine final {
 
 public:
     Engine();
     explicit Engine(const std::string& fen);
     
-    // Engine non è copiabile né movibile a causa di stato complesso
+    // Engine is non-copyable and non-movable due to complex state
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
     Engine(Engine&&) = delete;
@@ -53,28 +59,24 @@ public:
         BLACK_WINS = 2,
         DRAW = 3
     };
-    static GameResult gameResult;
-    
-    //bool isCheckMate;
+    GameResult gameResult = Engine::ONGOING;
 
     uint64_t depth;
+    int64_t eval = 0;
 
-    int64_t eval = 0;  // Inizializzato a 0 per evitare valori spazzatura
+    // Endgame depth extension flags (set once per game)
+    bool depthExtendedMedium = false;  // +2 extension for <6 pieces
+    bool depthExtendedMaximum = false; // +2 extension for 3 pieces
 
-    // Traccia se la depth è stata estesa per l'endgame (una volta per partita)
-    bool depthExtendedMedium = false;  // Estensione +2 per <6 pezzi
-    bool depthExtendedMaximum = false; // Estensione +2 per 3 pezzi
-
-    // Transposition table istanza
+    // Transposition table
     tt::TranspositionTable tt;
 
-    static uint64_t nodesSearched; 
-
+    uint64_t nodesSearched = 0; 
     static constexpr int32_t DEFAULTDEPTH = 10;
-    static std::string moveHistory;
+    std::string moveHistory = "";
 
 #ifdef DEBUG
-    // Transposition table statistics (only in debug builds)
+    // Transposition table statistics
     static uint64_t ttProbes;
     static uint64_t ttHits;
 #endif
@@ -85,7 +87,6 @@ public:
     int64_t evaluate(const chess::Board& board) noexcept; 
     
     bool isMate() noexcept;
-    //void setIsCheckMate() noexcept;
     void setGameResult() noexcept;
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
@@ -99,10 +100,7 @@ public:
 
     void reset() noexcept;
 
-
-
-
-    // Genera tutte le mosse legali per la posizione corrente di b (nuova/bitboard)
+    // Legal move generation (bitboard-based)
     MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
     MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) noexcept;
 
@@ -111,7 +109,7 @@ public:
 private:
     int MAX_THREADS;
 
-    // Helper structures to reduce parameter passing
+    // Helper structures for cleaner function signatures
     struct SearchContext {
         int64_t depth;
         int64_t alpha;
@@ -130,17 +128,14 @@ private:
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept;
 
-    bool shouldPruneLateMove(chess::Board& b,const chess::Board::Move& m, int64_t depth, bool inCheck, bool usIsWhite, int moveIndex, int totalMoves) noexcept;
-
     void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept;
 
-    // Helper methods for search
+    // Search helpers
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                           bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
     
-    
-    // Helper methods for move scoring
+    // Move scoring helpers
     void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;
     void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept;
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept;
@@ -148,15 +143,11 @@ private:
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
-    //void savePositionToTT();
-    //bool hasSearchStop(int64_t& depth, chess::Board& b, int64_t& evaluate);
-    //MoveList<engine::Engine::ScoredMove> getOrderedScoreMoveForCurrentPosition(chess::Board& b);
-    //int64_t cleanSearchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply);
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true) noexcept;
     int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     
-    // Helper for quiescence: generate only tactical moves (captures, promotions, checks)
+    // Quiescence helper: generates only tactical moves (captures, promotions)
     MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b) const noexcept;
 
 public:

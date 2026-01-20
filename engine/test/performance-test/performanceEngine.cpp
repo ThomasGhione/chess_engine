@@ -19,7 +19,7 @@ ut::suite performanceEngineSuite = [] {
 
     // Attesa che la ricerca venga completata in meno di 300 milli
     printf("Depth 10 search completed in %lu ms\n", duration);
-    printf("Nodes searched: %lu\n", engine::Engine::nodesSearched);
+    printf("Nodes searched: %lu\n", e.nodesSearched);
     expect(duration < 300);
   };
 
