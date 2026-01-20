@@ -36,24 +36,10 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
 }
 
 // Helper to handle terminal nodes and transposition table lookups
-bool Engine::handleSearchPrelude(const chess::Board& b, const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
-    
-    // const uint8_t activeColor = b.getActiveColor();
-
-    // NOTE: isCheckmate/isStalemate are handled implicitly when generateLegalMoves()
-    // returns empty in searchPosition, so explicit checks are not required here.
-    if (depth <= 0) {
-        score = this->evaluate(b);
-        return true;
-    }
-
-    // Check extension: search deeper if in check, but limit to avoid explosion
-    // Limit extended depth to avoid stack overflow and segfaults
-    // constexpr int64_t MAX_EXTENDED_DEPTH = 10;
-    // const bool inCheck = b.inCheck(activeColor);
-    // if (inCheck && depth > 0 && depth < MAX_EXTENDED_DEPTH) {
-    //     depth++;
-    // }
+bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
+    // REMOVED: Direct evaluate() call at depth<=0
+    // Now handled by quiescenceSearch() in searchPosition()
+    // This eliminates horizon effect and tactical blunders
 
     // Transposition table lookup (hashKey already computed by caller to avoid duplication)
     // Prefetch TT only if deep enough to justify overhead
@@ -394,6 +380,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->evaluate(b);
     }
 
+    // QUIESCENCE SEARCH: when depth <= 0, switch to tactical-only search
+    // This eliminates horizon effect by searching all captures/checks/promotions
+    if (depth <= 0) {
+        return this->quiescenceSearch(b, alpha, beta, ply);
+    }
+
     // REMOVED: Endgame depth extension using static bool - buggy
     // Static booleans were never reset across searches, causing missed extensions
     // Fix: handle depth extension in the main search() or use per-search counters
@@ -407,7 +399,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
-    if (this->handleSearchPrelude(b, depth, bounds, score, hashKey)) {
+    if (this->handleSearchPrelude(depth, bounds, score, hashKey)) {
         return score;
     }
 
@@ -849,5 +841,296 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     return orderedScoredMoves;
 }
 
+// ============================================================================
+// QUIESCENCE SEARCH - Eliminates horizon effect
+// ============================================================================
+// QUIESCENCE SEARCH - Eliminates horizon effect
+// ============================================================================
+// Searches only tactical moves (captures, promotions) to find a quiet position
+// This prevents the engine from stopping the search at a position where a capture sequence is ongoing
+// Example: if we search to depth 0 during "Queen takes Pawn, Rook takes Queen", we'd evaluate
+// as if we won a pawn, when in reality we're about to lose the Queen.
+//
+// Delta pruning: Skip captures that can't possibly raise alpha (even if the capture succeeds)
+// SEE pruning: Skip losing captures (SEE < threshold)
+//
+// NOTE: We do NOT generate checks (non-capture) as they cause tree explosion
+// Most modern engines only search captures + promotions in qsearch
+//
+// CRITICAL: This follows the MINIMAX pattern (not negamax) to match the rest of the engine
+int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept {
+    this->nodesSearched++;
+
+    // SAFETY: prevent stack overflow
+    if (ply >= MAX_PLY - 1) {
+        return this->evaluate(b);
+    }
+
+    // Stand-pat: current static evaluation
+    // evaluate() returns score from white's perspective (positive = white winning)
+    const int64_t standPat = this->evaluate(b);
+    
+    const uint8_t activeColor = b.getActiveColor();
+    const bool usIsWhite = (activeColor == chess::Board::WHITE);
+
+    // Beta cutoff: position is too good for the active player
+    // White (maximizer): standPat >= beta
+    // Black (minimizer): standPat <= alpha
+    if (usIsWhite) {
+        if (standPat >= beta) {
+            return beta;
+        }
+        // Update alpha
+        if (standPat > alpha) {
+            alpha = standPat;
+        }
+    } else {
+        if (standPat <= alpha) {
+            return alpha;
+        }
+        // Update beta
+        if (standPat < beta) {
+            beta = standPat;
+        }
+    }
+
+    // DELTA PRUNING: skip moves that can't possibly improve the position
+    // For white (maximizer): if standPat + QUEEN + margin < alpha, we can't reach alpha
+    // For black (minimizer): if standPat - QUEEN - margin > beta, we can't reach beta
+    constexpr int64_t DELTA_MARGIN = QUEEN_VALUE + 200;
+    if (usIsWhite) {
+        if (standPat + DELTA_MARGIN < alpha) {
+            return alpha;
+        }
+    } else {
+        if (standPat - DELTA_MARGIN > beta) {
+            return beta;
+        }
+    }
+
+    // Generate only tactical moves (captures, promotions - NO CHECKS)
+    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b);
+    
+    // No tactical moves: return stand-pat (quiet position reached)
+    if (tacticalMoves.is_empty()) {
+        return standPat;
+    }
+
+    // Sort tactical moves by MVV-LVA and SEE
+    MoveList<ScoredMove> orderedMoves;
+    
+    // SEE pruning: only search captures with SEE >= -50
+    constexpr int64_t SEE_THRESHOLD = -50;
+    
+    for (const auto& m : tacticalMoves) {
+        const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+        const bool isCapture = (toPieceType != chess::Board::EMPTY);
+        
+        int64_t score = 0;
+        
+        if (isCapture) {
+            const int64_t see = staticExchangeEvaluation(b, m);
+            
+            // Prune clearly losing captures
+            if (see < SEE_THRESHOLD) {
+                continue;
+            }
+            
+            // Score by MVV-LVA for good ordering
+            score = 10000;
+            addMVVLVABonus(m, b, score);
+        } else {
+            // Non-capture: must be a promotion
+            const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
+            if (fromPieceType == chess::Board::PAWN && m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
+                score = 9000; // Promotion (high priority)
+            } else {
+                continue;
+            }
+        }
+        
+        orderedMoves.emplace_back(m, score);
+    }
+    
+    // If all captures were pruned, return stand-pat
+    if (orderedMoves.is_empty()) {
+        return standPat;
+    }
+    
+    orderedMoves.sort();
+
+    // Search tactical moves using MINIMAX (not negamax)
+    int64_t best = standPat; // Initialize with stand-pat
+    
+    for (const auto& scoredMove : orderedMoves) {
+        const auto& m = scoredMove.move;
+        chess::Board::MoveState state;
+        
+        const bool isPromo = isPromotionMove(b, m);
+        b.doMove(m, state, isPromo ? 'q' : '\0');
+        
+        // MINIMAX: recursively search with same alpha-beta window
+        // The side switches automatically because b.doMove() changes activeColor
+        const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1);
+        
+        b.undoMove(m, state);
+        
+        // Update best and alpha-beta based on who is moving
+        if (usIsWhite) {
+            // White maximizes
+            if (score > best) {
+                best = score;
+            }
+            if (score >= beta) {
+                return beta; // Beta cutoff
+            }
+            if (score > alpha) {
+                alpha = score;
+            }
+        } else {
+            // Black minimizes
+            if (score < best) {
+                best = score;
+            }
+            if (score <= alpha) {
+                return alpha; // Alpha cutoff
+            }
+            if (score < beta) {
+                beta = score;
+            }
+        }
+    }
+    
+    return best;
+}
+
+// ============================================================================
+// GENERATE TACTICAL MOVES - Helper for quiescence search
+// ============================================================================
+// Generates only moves that are tactically relevant:
+// 1. Captures (including en passant)
+// 2. Pawn promotions (even non-capturing)
+// 3. Checks (optional, controlled by QSEARCH_INCLUDE_CHECKS (TODO))
+//
+// This is a simplified version of generateLegalMoves() optimized for qsearch
+MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b) const noexcept {
+    MoveList<chess::Board::Move> moves;
+
+    const uint8_t color = b.getActiveColor();
+    const int side = chess::Board::colorToIndex(color);
+    const bool isWhite = (side == 0);
+
+    const uint64_t occ = b.getPiecesBitMap();
+
+    const uint64_t pawns   = b.pawns_bb[side];
+    const uint64_t knights = b.knights_bb[side];
+    const uint64_t bishops = b.bishops_bb[side];
+    const uint64_t rooks   = b.rooks_bb[side];
+    const uint64_t queens  = b.queens_bb[side];
+    const uint64_t kings   = b.kings_bb[side];
+
+    const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
+    
+    // Opponent occupancy: all pieces minus our pieces
+    const uint64_t oppOcc = occ & ~ownOcc;
+    
+    const bool inCheck = b.inCheck(color);
+
+    // Helper to add only captures and promotions
+    auto addTacticalMovesFromMask = [&](uint8_t from, uint64_t mask, bool isPawn) {
+        const chess::Coords fromC{from};
+        
+        while (mask) {
+            const uint8_t to = __builtin_ctzll(mask);
+            mask &= (mask - 1);
+            
+            const chess::Coords toC{to};
+            const bool isCapture = (b.get(toC) != chess::Board::EMPTY);
+            const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhite));
+            
+            // Only add if it's a capture or promotion
+            if (isCapture || isPromotion) {
+                if (b.canMoveToBB(fromC, toC, inCheck)) {
+                    moves.emplace_back(chess::Board::Move{fromC, toC});
+                }
+            }
+        }
+    };
+
+    // ================= PAWNS (captures and promotions) =================
+    uint64_t bb = pawns;
+    while (bb) {
+        const uint8_t from = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        
+        // Pawn attacks (captures only)
+        uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
+        
+        // Pawn forward pushes (only if promotion rank)
+        const uint8_t rank = from / 8;
+        const uint8_t promotionRank = isWhite ? 6 : 1; // Rank 7 for white, rank 2 for black (0-indexed)
+        if (rank == promotionRank) {
+            // Check forward push for promotion
+            const int direction = isWhite ? 8 : -8;
+            const uint8_t frontSq = from + direction;
+            if (!(occ & (1ULL << frontSq))) {
+                attacks |= (1ULL << frontSq);
+            }
+        }
+        
+        addTacticalMovesFromMask(from, attacks, true);
+    }
+
+    // ================= KNIGHTS (captures only) =================
+    bb = knights;
+    while (bb) {
+        const uint8_t from = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        
+        uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
+        addTacticalMovesFromMask(from, attacks, false);
+    }
+
+    // ================= BISHOPS (captures only) =================
+    bb = bishops;
+    while (bb) {
+        const uint8_t from = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        
+        uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
+        addTacticalMovesFromMask(from, attacks, false);
+    }
+
+    // ================= ROOKS (captures only) =================
+    bb = rooks;
+    while (bb) {
+        const uint8_t from = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        
+        uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
+        addTacticalMovesFromMask(from, attacks, false);
+    }
+
+    // ================= QUEENS (captures only) =================
+    bb = queens;
+    while (bb) {
+        const uint8_t from = __builtin_ctzll(bb);
+        bb &= (bb - 1);
+        
+        uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
+        addTacticalMovesFromMask(from, attacks, false);
+    }
+
+    // ================= KING (captures only) =================
+    if (kings) {
+        const uint8_t from = __builtin_ctzll(kings);
+        uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
+        addTacticalMovesFromMask(from, attacks, false);
+    }
+
+    return moves;
+}
+
 
 }; //namespace engine
+
