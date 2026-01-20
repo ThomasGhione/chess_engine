@@ -894,16 +894,61 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         }
     }
 
-    // DELTA PRUNING: skip moves that can't possibly improve the position
-    // For white (maximizer): if standPat + QUEEN + margin < alpha, we can't reach alpha
-    // For black (minimizer): if standPat - QUEEN - margin > beta, we can't reach beta
-    constexpr int64_t DELTA_MARGIN = QUEEN_VALUE + 200;
+    // ============================================================================
+    // DYNAMIC DELTA PRUNING - Advanced version
+    // ============================================================================
+    // Delta pruning: if even the best possible capture can't improve our position enough
+    // to affect the search result, we can prune the entire qsearch subtree.
+    //
+    // Dynamic factors:
+    // 1. Base margin: Queen value (biggest possible single capture)
+    // 2. Promotion bonus: if we have pawns close to promotion
+    // 3. Material deficit bonus: if we're losing, we need comebacks (larger delta)
+    // 4. Depth penalty: deeper in qsearch = more conservative (reduce delta)
+    
+    // Compute dynamic delta margin
+    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+    
+    // Factor 1: Check for near-promotion pawns (7th/2nd rank)
+    const int side = chess::Board::colorToIndex(activeColor);
+    const uint64_t ourPawns = b.pawns_bb[side];
+    const uint64_t nearPromoPawns = usIsWhite 
+        ? (ourPawns & 0x00FF000000000000ULL) // Rank 7 for white
+        : (ourPawns & 0x000000000000FF00ULL); // Rank 2 for black
+    
+    if (nearPromoPawns) {
+        // Add promotion potential to delta (Queen - Pawn = extra 800cp upside)
+        deltaMargin += (QUEEN_VALUE - PAWN_VALUE);
+    }
+    
+    // Factor 2: Material deficit - if we're losing, allow more speculative lines
+    // Use standPat as proxy for material balance
+    const int64_t materialBalance = usIsWhite ? standPat : -standPat;
+    if (materialBalance < -300) {
+        // Losing by 3+ pawns: add 200cp to delta (need comebacks)
+        deltaMargin += 200;
+    } else if (materialBalance < -150) {
+        // Losing by 1.5 pawns: add 100cp
+        deltaMargin += 100;
+    }
+    
+    // Factor 3: Depth penalty - deeper in qsearch = more conservative
+    // Reduce delta by 50cp per 5 plies to limit explosion
+    const int qsearchDepth = ply - this->depth; // Approximate qsearch depth
+    if (qsearchDepth > 5) {
+        deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
+        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+    }
+    
+    // Apply delta pruning with dynamic margin
     if (usIsWhite) {
-        if (standPat + DELTA_MARGIN < alpha) {
+        // White maximizes: if standPat + deltaMargin < alpha, can't reach alpha
+        if (standPat + deltaMargin < alpha) {
             return alpha;
         }
     } else {
-        if (standPat - DELTA_MARGIN > beta) {
+        // Black minimizes: if standPat - deltaMargin > beta, can't reach beta
+        if (standPat - deltaMargin > beta) {
             return beta;
         }
     }
@@ -919,8 +964,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // Sort tactical moves by MVV-LVA and SEE
     MoveList<ScoredMove> orderedMoves;
     
-    // SEE pruning: only search captures with SEE >= -50
-    constexpr int64_t SEE_THRESHOLD = -50;
+    // Dynamic SEE pruning threshold based on depth and material balance
+    // Shallow qsearch (ply < 15): allow slightly losing captures (-50cp)
+    // Deep qsearch (ply >= 15): only neutral/winning captures (0cp)
+    int64_t seeThreshold = (ply < 15) ? -50 : 0;
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -931,9 +978,27 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         if (isCapture) {
             const int64_t see = staticExchangeEvaluation(b, m);
             
-            // Prune clearly losing captures
-            if (see < SEE_THRESHOLD) {
+            // SEE-based pruning with dynamic threshold
+            if (see < seeThreshold) {
                 continue;
+            }
+            
+            // PER-MOVE DELTA PRUNING: prune captures that can't improve position
+            // Even if this capture is "good" by SEE, if standPat + captureValue + margin
+            // still can't reach alpha/beta, skip it
+            const int64_t captureValue = PIECE_VALUES[toPieceType];
+            constexpr int64_t MOVE_DELTA_MARGIN = 200; // Safety margin for positional gains
+            
+            if (usIsWhite) {
+                // White: if standPat + see + margin < alpha, this capture can't help
+                if (standPat + see + MOVE_DELTA_MARGIN < alpha) {
+                    continue; // Per-move delta pruning
+                }
+            } else {
+                // Black: if standPat - see - margin > beta, this capture can't help
+                if (standPat - see - MOVE_DELTA_MARGIN > beta) {
+                    continue; // Per-move delta pruning
+                }
             }
             
             // Score by MVV-LVA for good ordering
