@@ -127,11 +127,12 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // OPTIMIZATION: Direct array access (already optimized)
     history[colorIndex][fromIndex][toIndex] += bonus;
     
-    // OPTIONAL: Cap history values to prevent overflow (if needed)
-    // constexpr int MAX_HISTORY = 10000;
-    // if (history[colorIndex][fromIndex][toIndex] > MAX_HISTORY) {
-    //     history[colorIndex][fromIndex][toIndex] = MAX_HISTORY;
-    // }
+    // Cap history values to prevent overflow and stale data dominance
+    // After ~30-40 beta cutoffs at depth 10, values would saturate at cap
+    constexpr int MAX_HISTORY = 10000;
+    if (history[colorIndex][fromIndex][toIndex] > MAX_HISTORY) {
+        history[colorIndex][fromIndex][toIndex] = MAX_HISTORY;
+    }
 }
 
 } // namespace engine

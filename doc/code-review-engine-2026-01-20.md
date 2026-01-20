@@ -24,91 +24,6 @@
 
 ## 🔴 PROBLEMI CRITICI (da risolvere SUBITO)
 
-### 1. **DUPLICAZIONE CRITICA: `popLsb` vs `poplsb`** 
-**Severity**: 🔴 ALTA  
-**Impatto**: Codice duplicato, possibili bug da inconsistenza
-
-**Dettagli**:
-- **`evaluate.cpp:6`**: 
-  ```cpp
-  static inline int popLsb(uint64_t& bb) {
-      const int index = __builtin_ctzll(bb);
-      bb &= (bb - 1);
-      return index;
-  }
-  ```
-- **`search.cpp:425`**: 
-  ```cpp
-  inline uint8_t poplsb(uint64_t& bb) {
-      uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
-      bb &= bb - 1;
-      return index;
-  }
-  ```
-
-**Differenze**:
-1. Return type: `int` vs `uint8_t`
-2. Naming: `popLsb` vs `poplsb` (inconsistente)
-3. Cast esplicito vs implicito
-4. Stessa identica logica: get LSB index + clear bit
-
-**SOLUZIONE**:
-```cpp
-// In engine.hpp, aggiungere:
-namespace engine {
-    inline uint8_t popLSB(uint64_t& bb) noexcept {
-        const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
-        bb &= (bb - 1);
-        return index;
-    }
-}
-```
-Poi sostituire tutte le chiamate in `evaluate.cpp` e `search.cpp` con `engine::popLSB()`.
-
-**Stima tempo**: 5 minuti  
-**LOC risparmiate**: ~10
-
----
-
-### 2. **TT NON SALVA HASH MOVE** (performance loss 15-20%)
-**Severity**: 🔴 ALTA  
-**Impatto**: Performance degradation significativa
-
-**Problema**:
-- **`tt.hpp:9-22`**: `TTEntry` contiene solo `key, score, depth, age, flag`
-- **Manca**: `chess::Move bestMove` 
-- **Conseguenza**: Ogni nodo rifà move ordering da zero invece di provare prima la hash move
-
-**Evidenza nel codice**:
-```cpp
-// search.cpp:748
-// 1. Hash move (TODO: not implemented yet) → 100000+
-```
-
-**Struttura attuale**:
-```cpp
-struct TTEntry {
-    uint64_t key;
-    int16_t  score;
-    uint8_t  depth;
-    uint8_t  age;
-    uint8_t  flag;
-    uint8_t  padding[3];  // ← SPAZIO DISPONIBILE!
-};
-```
-
-**SOLUZIONE**:
-1. Cambiare padding da `uint8_t[3]` a `uint16_t move + uint8_t padding`
-2. Modificare `storeTTEntry()` per salvare il best move
-3. Modificare `sortLegalMoves()` per recuperare hash move e dargli massima priorità
-
-**Impatto atteso**: +15-20% performance in mid-game, +10% in endgame
-
-**Stima tempo**: 45 minuti  
-**ELO gain**: +30-50 punti
-
----
-
 ### 3. **QUIESCENCE NON USA TT** (inefficienza grave)
 **Severity**: 🔴 ALTA  
 **Impatto**: Ogni posizione tattica ricalcolata anche se già vista
@@ -348,59 +263,6 @@ if (score > alpha) {
 
 ---
 
-### 7. **HISTORY TABLE SENZA DECAY** (overflow risk)
-**Severity**: 🟡 MEDIA  
-**Impatto**: Potenziale overflow, move ordering degradation
-
-**Problema**:
-```cpp
-// engine.hpp:55
-int history[2][64][64];  // 8KB di dati
-```
-
-**Issue**:
-1. **Nessun reset**: History table non viene mai azzerata tra search diverse
-2. **Nessun decay**: Valori crescono indefinitamente
-3. **Overflow risk**: Dopo migliaia di mosse, `history[c][from][to]` può superare INT_MAX
-4. **Stale data**: Mosse buone in early-game possono dominare anche in end-game
-
-**Evidenza**:
-```cpp
-// search.cpp - update history
-ctx.engine.history[color][move.from.index][move.to.index] += depth * depth;
-// ↑ Cresce quadraticamente! Dopo 100 cutoff a depth=10: +10000
-```
-
-**SOLUZIONE 1** (age-based decay):
-```cpp
-// All'inizio di ogni search in getBestMove()
-void Engine::decayHistory() {
-    for (int c = 0; c < 2; ++c) {
-        for (int from = 0; from < 64; ++from) {
-            for (int to = 0; to < 64; ++to) {
-                history[c][from][to] >>= 1;  // Divide by 2
-            }
-        }
-    }
-}
-```
-
-**SOLUZIONE 2** (cap + bonus normalization):
-```cpp
-// In updateKillerAndHistoryOnBetaCutoff
-const int bonus = depth * depth;
-history[color][from][to] += bonus;
-
-// Cap per evitare overflow
-if (history[color][from][to] > 10000) {
-    history[color][from][to] = 10000;
-}
-```
-
-**Stima tempo**: 15 minuti
-
----
-
 ## 🟢 PICCOLI MIGLIORAMENTI
 
 ### 9. **COMMENTI TODO NON IMPLEMENTATI**
@@ -546,7 +408,6 @@ inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
 **% tempo totale**: ~40-50%
 
 **Problemi**:
-1. ✅ **Manca hash move**: Vedi problema critico #2
 2. ⚠️ **Insertion sort O(n²)**: Su 35-40 mosse legali, ~700 comparazioni
 3. ⚠️ **SEE chiamato su tutte le catture**: Anche quelle obviously buone (QxP undefended)
 
@@ -679,7 +540,6 @@ if (move == hashMove) {
 ## 🚀 RACCOMANDAZIONI FINALI
 
 ### 1. **Priorità Immediate** (oggi)
-- ✅ Aggiungere hash move in TT (45 min)
 - ✅ TT in quiescence (20 min)
 
 **Tempo totale**: 1h 10min  
@@ -736,7 +596,7 @@ grep -A5 "% time" profile.txt | head -30
 
 ### Codice
 - [v] popLSB unificato in engine.hpp
-- [ ] Hash move salvato in TT
+- [V] Hash move salvato in TT
 - [X] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
 - [ ] Static bool unificato
 - [ ] AttackData precalcolato

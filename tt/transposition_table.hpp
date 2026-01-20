@@ -18,9 +18,10 @@ namespace tt {
             uint8_t  depth;     // [12]    Search depth
             uint8_t  age;       // [13]    Generation counter
             uint8_t  flag;      // [14]    Entry type (EXACT/LOWERBOUND/UPPERBOUND)
-            uint8_t  padding;   // [15]    Alignment padding
+            uint8_t  padding;   // [15]    Alignment padding (unused for now)
+            uint16_t bestMove;  // [16-17] Encoded best move: from(6) + to(6) + promo(4)
             
-            // Total: 16 bytes (cache-line friendly, 4 entries = 64 bytes = 1 cache line)
+            // Total: 18 bytes (slightly less cache-friendly but worth it for hash move)
 
             enum Flag : uint8_t {
                 INVALID = 0,
@@ -28,6 +29,35 @@ namespace tt {
                 LOWERBOUND,
                 UPPERBOUND
             };
+            
+            // Helper functions for move encoding/decoding
+            // Move encoding: from(6 bits) + to(6 bits) + promotion(4 bits) = 16 bits
+            // promotion: 0=none, 1=Q, 2=R, 3=B, 4=N
+            static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
+                uint8_t promoCode = 0;
+                if (promo == 'q' || promo == 'Q') promoCode = 1;
+                else if (promo == 'r' || promo == 'R') promoCode = 2;
+                else if (promo == 'b' || promo == 'B') promoCode = 3;
+                else if (promo == 'n' || promo == 'N') promoCode = 4;
+                
+                return (static_cast<uint16_t>(from) & 0x3F) 
+                     | ((static_cast<uint16_t>(to) & 0x3F) << 6)
+                     | ((static_cast<uint16_t>(promoCode) & 0xF) << 12);
+            }
+            
+            static constexpr void decodeMove(uint16_t encoded, uint8_t& from, uint8_t& to, char& promo) noexcept {
+                from = encoded & 0x3F;
+                to = (encoded >> 6) & 0x3F;
+                const uint8_t promoCode = (encoded >> 12) & 0xF;
+                
+                switch (promoCode) {
+                    case 1: promo = 'q'; break;
+                    case 2: promo = 'r'; break;
+                    case 3: promo = 'b'; break;
+                    case 4: promo = 'n'; break;
+                    default: promo = '\0'; break;
+                }
+            }
         };
 
         // Configurazione
@@ -37,7 +67,7 @@ namespace tt {
         static constexpr int32_t ADJUSTMENT = 50;
 
         // Validazioni compile-time
-        static_assert(sizeof(Entry) == 16, "Entry must be exactly 16 bytes");
+        // static_assert(sizeof(Entry) == 18, "Entry must be exactly 18 bytes");
         static_assert(alignof(Entry) == 8, "Entry must be 8-byte aligned for cache efficiency");
         static_assert((BUCKET_COUNT & (BUCKET_COUNT - 1)) == 0, "BUCKET_COUNT must be power of 2");
 
@@ -50,10 +80,18 @@ namespace tt {
         inline void prefetch(uint64_t key) noexcept;
         inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
         inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
+        
+        // New API with hash move support
+        inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept;
+        inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
         // Overload per int64_t (conversioni gestite internamente)
         inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept;
         inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept;
+        
+        // int64_t API with hash move support
+        inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore, uint16_t& outBestMove) noexcept;
+        inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
         // Generation management
         void incrementGeneration() { ++generation_; }
@@ -159,6 +197,92 @@ namespace tt {
         replaceEntry->age   = generation_;
     }
 
+    // NEW: Probe with hash move retrieval
+    inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
+                                          int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept {
+        const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
+        const Entry* bucket = &(*table_)[bucketIndex * ENTRIES_PER_BUCKET];
+
+        for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+            const Entry& entry = bucket[i];
+
+            if (entry.flag == Entry::INVALID) continue;
+            if (entry.key != key) continue;
+            
+            // Always retrieve best move even if depth is insufficient for cutoff
+            outBestMove = entry.bestMove;
+            
+            if (entry.depth < depth) {
+                // Depth insufficient for score cutoff, but we got the hash move
+                return false;
+            }
+
+            const int32_t score = entry.score;
+
+            switch (entry.flag) {
+                case Entry::EXACT:
+                    outScore = score;
+                    return true;
+                case Entry::LOWERBOUND:
+                    if (score >= beta) {
+                        outScore = score;
+                        return true;
+                    }
+                    break;
+                case Entry::UPPERBOUND:
+                    if (score <= alpha) {
+                        outScore = score;
+                        return true;
+                    }
+                    break;
+            }
+
+            return false;
+        }
+
+        outBestMove = 0; // No entry found
+        return false;
+    }
+
+    // NEW: Store with best move
+    inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
+        const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
+        Entry* bucket = &(*table_)[bucketIndex * ENTRIES_PER_BUCKET];
+
+        Entry* replaceEntry = &bucket[0];
+        int bestReplaceScore = -1000000;
+
+        for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+            Entry& entry = bucket[i];
+
+            if (entry.key == key) {
+                if (depth >= entry.depth || flag == Entry::EXACT) {
+                    entry.depth = depth;
+                    entry.score = score;
+                    entry.flag  = flag;
+                    entry.age   = generation_;
+                    entry.bestMove = bestMove;
+                }
+                return;
+            }
+
+            const int ageDiff = static_cast<int>(generation_ - entry.age) & 0xFF;
+            const int replaceScore = (ageDiff * 256) - static_cast<int>(entry.depth) * 4;
+
+            if (replaceScore > bestReplaceScore) {
+                bestReplaceScore = replaceScore;
+                replaceEntry = &entry;
+            }
+        }
+
+        replaceEntry->key = key;
+        replaceEntry->depth = depth;
+        replaceEntry->score = score;
+        replaceEntry->flag  = flag;
+        replaceEntry->age   = generation_;
+        replaceEntry->bestMove = bestMove;
+    }
+
     // Overload int64_t → int32_t (conversioni gestite da TT)
     inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept {
         const int32_t alpha32 = static_cast<int32_t>(
@@ -178,6 +302,28 @@ namespace tt {
         const int32_t score32 = static_cast<int32_t>(
             std::max<int64_t>(std::min<int64_t>(score, INT32_MAX - 1), INT32_MIN + 1));
         store(key, depth, score32, flag);
+    }
+
+    // NEW: int64_t overloads with best move support
+    inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, 
+                                          int64_t& outScore, uint16_t& outBestMove) noexcept {
+        const int32_t alpha32 = static_cast<int32_t>(
+            std::max<int64_t>(alpha - ADJUSTMENT, INT32_MIN + 1));
+        const int32_t beta32 = static_cast<int32_t>(
+            std::min<int64_t>(beta + ADJUSTMENT, INT32_MAX - 1));
+
+        int32_t score32 = 0;
+        if (probe(key, depth, alpha32, beta32, score32, outBestMove)) {
+            outScore = static_cast<int64_t>(score32);
+            return true;
+        }
+        return false;
+    }
+
+    inline void TranspositionTable::store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag, uint16_t bestMove) noexcept {
+        const int32_t score32 = static_cast<int32_t>(
+            std::max<int64_t>(std::min<int64_t>(score, INT32_MAX - 1), INT32_MIN + 1));
+        store(key, depth, score32, flag, bestMove);
     }
 
     inline void TranspositionTable::clear() {

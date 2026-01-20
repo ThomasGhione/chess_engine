@@ -293,6 +293,20 @@ void Engine::search(uint64_t depth) noexcept {
     // Reset the nodes searched counter
     this->nodesSearched = 0; 
 
+    // ===================================================
+    // HISTORY TABLE SOFT RESET - Age-based decay
+    // ===================================================
+    // Prevent stale data from dominating move ordering
+    // Divide all history values by 2 at the start of each new search
+    // This gives recent data more weight while preserving good moves
+    for (int c = 0; c < 2; ++c) {
+        for (int from = 0; from < 64; ++from) {
+            for (int to = 0; to < 64; ++to) {
+                this->history[c][from][to] >>= 1; // Divide by 2 (fast bit shift)
+            }
+        }
+    }
+
     // --- ENDGAME DEPTH EXTENSION (UNA VOLTA PER PARTITA) ---
     // Aumenta la profondità di ricerca negli endgame
     // Usando flag per garantire che l'aumento sia applicato UNA SOLA VOLTA nella partita
@@ -416,7 +430,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Reuse hashKey computed earlier to avoid redundant computation
     if (useTT && allowTTWrite) {
         const auto flag = tt::determineFlag(best, alphaOrig, bounds.beta);
-        this->tt.store(hashKey, static_cast<uint8_t>(depth), best, flag);
+        
+        // Encode best move for TT storage
+        const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
+            result.move.from.index, result.move.to.index, result.move.promotionPiece);
+        
+        this->tt.store(hashKey, static_cast<uint8_t>(depth), best, flag, encodedMove);
     }
     return best;
 }
@@ -726,6 +745,20 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
 
+    // HASH MOVE: Retrieve from TT for highest priority
+    uint16_t encodedHashMove = 0;
+    uint8_t hashFrom = 64, hashTo = 64;
+    char hashPromo = '\0';
+    
+    // Probe TT to get hash move (don't care about score, just the move)
+    const uint64_t hashKey = zobrist::computeHashKey(b);
+    int64_t dummyScore = 0;
+    this->tt.probe(hashKey, 0, NEG_INF, POS_INF, dummyScore, encodedHashMove);
+    
+    if (encodedHashMove != 0) {
+        tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
+    }
+
     for (const auto& m : moves) {
         int64_t score = 0;
 
@@ -738,7 +771,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // =========================================================
         // MOVE ORDERING PRIORITY (from highest to lowest):
-        // 1. Hash move (TODO: not implemented yet) → 100000+
+        // 1. Hash move (from TT) → 100000
         // 2. Good captures (SEE >= 0) → 10000 + MVV-LVA
         // 3. Killer moves → 9000/8500
         // 4. Checks (non-capture) → 8000
@@ -747,7 +780,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         // 7. Bad captures (SEE < 0) → -10000 + SEE
         // =========================================================
 
-        if (isCapture) {
+        // Check if this is the hash move (highest priority!)
+        if (m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
+            score = 100000; // Highest priority
+        } else if (isCapture) {
             // CAPTURES: priorità basata su SEE
             const int64_t see = staticExchangeEvaluation(b, m);
             
