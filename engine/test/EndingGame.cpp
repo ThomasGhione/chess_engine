@@ -248,11 +248,12 @@ namespace {
 
   // ==================== COMMON MATE FINDER ====================
 
-  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 10) {
+  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 12) {
     engine::Engine e(board.getCurrentFen());
     e.depth = searchDepth;
 
     for (int ply = 0; ply < maxHalfMoves; ++ply) {
+      e.setGameResult();
       if (e.isMate()) {
         //printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
         return true;
@@ -266,6 +267,7 @@ namespace {
 
       auto moves = e.generateLegalMoves(e.board);
       if (moves.size == 0) {
+        e.setGameResult();
         bool isMate = e.isMate();
         if (!isMate) {
           printf("  ✗ No legal moves but not checkmate at half-move %d\n", ply);

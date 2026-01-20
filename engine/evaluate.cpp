@@ -573,17 +573,20 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
             score += sign * friendsNearKing * KING_ACTIVITY_BONUS;
         }
 
-        // MIDGAME: enemy proximity penalty (count nearby enemy pieces)
-        const uint64_t enemies =
-            b.pawns_bb[side ^ 1]   |
-            b.knights_bb[side ^ 1] |
-            b.bishops_bb[side ^ 1] |
-            b.rooks_bb[side ^ 1]   |
-            b.queens_bb[side ^ 1];
+        // MIDGAME ONLY: enemy proximity penalty (count nearby enemy pieces)
+        // In endgame, the king needs to attack, so we don't penalize enemy proximity
+        if (!isEndgame) {
+            const uint64_t enemies =
+                b.pawns_bb[side ^ 1]   |
+                b.knights_bb[side ^ 1] |
+                b.bishops_bb[side ^ 1] |
+                b.rooks_bb[side ^ 1]   |
+                b.queens_bb[side ^ 1];
 
-        // Single popcount instead of loop with manhattan!
-        const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
-        score += sign * enemiesNearKing * KING_SAFETY_PENALTY;
+            // Single popcount instead of loop with manhattan!
+            const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
+            score += sign * enemiesNearKing * KING_SAFETY_PENALTY;
+        }
     }
 
     return score;
@@ -758,17 +761,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     const bool isEarlyMiddlegame = (fullMoves >= OPENING_MOVES && fullMoves < EARLY_MG_MOVES);
     const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
     const bool isMiddlegame = !isOpening && !isEndgame;
-
-    // ===================================================
-    // EARLY EXIT: Material overwhelming in endgame
-    // ===================================================
-    // If material advantage is huge (>= Queen) in endgame, skip expensive evaluation
-    // Just return material + small PSQT bonus for piece positioning
-    if (isEndgame && std::abs(eval) >= QUEEN_VALUE) {
-        // Add small PSQT bonus (king centralization is important in endgame)
-        const int64_t psqtBonus = eval > 0 ? 50 : -50;
-        return eval + psqtBonus;
-    }
 
     // ===================================================
     // PIECE-SQUARE TABLES (always evaluated)
