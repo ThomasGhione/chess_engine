@@ -578,7 +578,7 @@ namespace driver {
             return;
         }
 
-        while (!engine.isCheckMate) {
+        while (engine.gameResult == engine::Engine::ONGOING) {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
 
             if (engineToMove) {
@@ -599,10 +599,10 @@ namespace driver {
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-                engine.setGameStatus();
+                engine.setGameResult();
             }
 
-            if (engine.isCheckMate) {
+            if (engine.gameResult != engine::Engine::ONGOING) {
                 endGame();
                 break;
             }
