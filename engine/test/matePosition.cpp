@@ -14,7 +14,7 @@ ut::suite mateTest = [] {
     bool whiteToMove = true;
 
     engine::Engine e(FEN);
-    e.depth = 3;
+    e.depth = 4;
 
     auto moves = e.generateLegalMoves(e.board);
     chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
@@ -30,7 +30,7 @@ ut::suite mateTest = [] {
     bool whiteToMove = false;
 
     engine::Engine e(FEN);
-    e.depth = 3;
+    e.depth = 4;
 
     auto moves = e.generateLegalMoves(e.board);
     chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
@@ -46,7 +46,7 @@ ut::suite mateTest = [] {
     bool whiteToMove = true;
 
     engine::Engine e(FEN);
-    e.depth = 3;
+    e.depth = 4;
 
     auto moves = e.generateLegalMoves(e.board);
     chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
@@ -70,7 +70,7 @@ ut::suite mateTest = [] {
     bool whiteToMove = true;
 
     engine::Engine e(FEN);
-    e.depth = 5;
+    e.depth = 6;
 
     auto whiteMoves = e.generateLegalMoves(e.board);
     chess::Board::Move firstMove = e.getBestMove(whiteMoves, whiteToMove);
@@ -113,7 +113,7 @@ ut::suite mateTest = [] {
     bool whiteToMove = true;
 
     engine::Engine e(FEN);
-    e.depth = 5;
+    e.depth = 6;
 
     auto whiteMoves = e.generateLegalMoves(e.board);
     chess::Board::Move firstMove = e.getBestMove(whiteMoves, whiteToMove);
