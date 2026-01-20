@@ -35,6 +35,19 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
     return toRank == chess::Board::promotionRank(pieceColor == chess::Board::WHITE);
 }
 
+// ============================================================================
+// MOVE EXECUTION HELPERS - Eliminates doMove/undoMove duplication
+// ============================================================================
+
+// Execute a move with automatic promotion detection
+// Returns true if the move was a promotion (for information)
+__attribute__((always_inline))
+inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
+    const bool isPromo = isPromotionMove(b, m);
+    b.doMove(m, state, isPromo ? 'q' : '\0');
+    return isPromo;
+}
+
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
     // REMOVED: Direct evaluate() call at depth<=0
@@ -63,10 +76,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         chess::Board::MoveState state;
 
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
-        const bool isPromo = isPromotionMove(b, m);
-
-        // UNIFIED: use a single doMove call with an optional parameter
-        b.doMove(m, state, isPromo ? 'q' : '\0');
+        const bool isPromo = doMoveWithPromotion(b, m, state);
 
         // Compute whether the move gives check AFTER it is made
         const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
@@ -127,11 +137,7 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     }
     
     // Update alpha/beta bounds
-    if (usIsWhite) {
-        if (score > alpha) alpha = score;
-    } else {
-        if (score < beta) beta = score;
-    }
+    updateBound(score, alpha, beta, usIsWhite);
 }
 
 // OVERLOAD ottimizzato: implementazione diretta invece di delegare
@@ -143,11 +149,7 @@ inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, 
     }
     
     // Update alpha/beta bounds
-    if (usIsWhite) {
-        if (score > alpha) alpha = score;
-    } else {
-        if (score < beta) beta = score;
-    }
+    updateBound(score, alpha, beta, usIsWhite);
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
@@ -176,8 +178,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             chess::Board::MoveState state;
             
             // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA
-            const bool isPromo = isPromotionMove(this->board, m);
-            this->board.doMove(m, state, isPromo ? 'q' : '\0');
+            doMoveWithPromotion(this->board, m, state);
             
             int64_t score;
             if (i == 0) {
@@ -220,8 +221,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         const auto& firstMove = moves[0];
         chess::Board::MoveState state;
         
-        const bool isPromo = isPromotionMove(this->board, firstMove);
-        this->board.doMove(firstMove, state, isPromo ? 'q' : '\0');
+        doMoveWithPromotion(this->board, firstMove, state);
         
         int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
         
@@ -246,12 +246,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         const auto& m = moves[i];
         chess::Board::MoveState state;
 
-        if (isPromotionMove(this->board, m)) [[unlikely]] {
-            threadBoard.doMove(m, state, 'q');
-        }
-        else [[likely]] {
-            threadBoard.doMove(m, state);
-        }
+        doMoveWithPromotion(threadBoard, m, state);
         
         int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
         threadBoard.undoMove(m, state);
@@ -268,11 +263,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             bestMove = m;
         }
         // Update alpha/beta bounds
-        if (usIsWhite) {
-            if (score > alpha) alpha = score;
-        } else {
-            if (score < beta) beta = score;
-        }
+        updateBound(score, alpha, beta, usIsWhite);
     }
 
     this->eval = bestScore;
@@ -281,11 +272,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
 void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
     // Execute the best move found, handling promotions
-    if (isPromotionMove(this->board, bestMove)) [[unlikely]] {
-        (void)this->board.moveBB(bestMove.from, bestMove.to, 'q');
-        return;
-    }
-    (void)this->board.moveBB(bestMove.from, bestMove.to);
+    const bool isPromo = isPromotionMove(this->board, bestMove);
+    (void)this->board.moveBB(bestMove.from, bestMove.to, isPromo ? 'q' : '\0');
 }
 
 void Engine::search(uint64_t depth) noexcept {
@@ -844,8 +832,6 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 // ============================================================================
 // QUIESCENCE SEARCH - Eliminates horizon effect
 // ============================================================================
-// QUIESCENCE SEARCH - Eliminates horizon effect
-// ============================================================================
 // Searches only tactical moves (captures, promotions) to find a quiet position
 // This prevents the engine from stopping the search at a position where a capture sequence is ongoing
 // Example: if we search to depth 0 during "Queen takes Pawn, Rook takes Queen", we'd evaluate
@@ -856,8 +842,6 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 //
 // NOTE: We do NOT generate checks (non-capture) as they cause tree explosion
 // Most modern engines only search captures + promotions in qsearch
-//
-// CRITICAL: This follows the MINIMAX pattern (not negamax) to match the rest of the engine
 int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept {
     this->nodesSearched++;
 
@@ -874,25 +858,12 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
 
     // Beta cutoff: position is too good for the active player
-    // White (maximizer): standPat >= beta
-    // Black (minimizer): standPat <= alpha
-    if (usIsWhite) {
-        if (standPat >= beta) {
-            return beta;
-        }
-        // Update alpha
-        if (standPat > alpha) {
-            alpha = standPat;
-        }
-    } else {
-        if (standPat <= alpha) {
-            return alpha;
-        }
-        // Update beta
-        if (standPat < beta) {
-            beta = standPat;
-        }
+    if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
+        return cutoffValue(alpha, beta, usIsWhite);
     }
+
+    // Update alpha/beta with stand-pat score
+    updateBound(standPat, alpha, beta, usIsWhite);
 
     // ============================================================================
     // DYNAMIC DELTA PRUNING - Advanced version
@@ -941,16 +912,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
     
     // Apply delta pruning with dynamic margin
-    if (usIsWhite) {
-        // White maximizes: if standPat + deltaMargin < alpha, can't reach alpha
-        if (standPat + deltaMargin < alpha) {
-            return alpha;
-        }
-    } else {
-        // Black minimizes: if standPat - deltaMargin > beta, can't reach beta
-        if (standPat - deltaMargin > beta) {
-            return beta;
-        }
+    if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
+        return cutoffValue(alpha, beta, usIsWhite);
     }
 
     // Generate only tactical moves (captures, promotions - NO CHECKS)
@@ -986,19 +949,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            const int64_t captureValue = PIECE_VALUES[toPieceType];
             constexpr int64_t MOVE_DELTA_MARGIN = 200; // Safety margin for positional gains
             
-            if (usIsWhite) {
-                // White: if standPat + see + margin < alpha, this capture can't help
-                if (standPat + see + MOVE_DELTA_MARGIN < alpha) {
-                    continue; // Per-move delta pruning
-                }
-            } else {
-                // Black: if standPat - see - margin > beta, this capture can't help
-                if (standPat - see - MOVE_DELTA_MARGIN > beta) {
-                    continue; // Per-move delta pruning
-                }
+            if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
+                continue; // Per-move delta pruning
             }
             
             // Score by MVV-LVA for good ordering
@@ -1031,8 +985,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         const auto& m = scoredMove.move;
         chess::Board::MoveState state;
         
-        const bool isPromo = isPromotionMove(b, m);
-        b.doMove(m, state, isPromo ? 'q' : '\0');
+        doMoveWithPromotion(b, m, state);
         
         // MINIMAX: recursively search with same alpha-beta window
         // The side switches automatically because b.doMove() changes activeColor
@@ -1040,30 +993,17 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         
         b.undoMove(m, state);
         
-        // Update best and alpha-beta based on who is moving
-        if (usIsWhite) {
-            // White maximizes
-            if (score > best) {
-                best = score;
-            }
-            if (score >= beta) {
-                return beta; // Beta cutoff
-            }
-            if (score > alpha) {
-                alpha = score;
-            }
-        } else {
-            // Black minimizes
-            if (score < best) {
-                best = score;
-            }
-            if (score <= alpha) {
-                return alpha; // Alpha cutoff
-            }
-            if (score < beta) {
-                beta = score;
-            }
+        // Update best score
+        if (isBetter(score, best, usIsWhite)) {
+            best = score;
         }
+        
+        // Alpha-beta pruning
+        if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+            return cutoffValue(alpha, beta, usIsWhite);
+        }
+        
+        updateBound(score, alpha, beta, usIsWhite);
     }
     
     return best;
@@ -1125,8 +1065,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= PAWNS (captures and promotions) =================
     uint64_t bb = pawns;
     while (bb) {
-        const uint8_t from = __builtin_ctzll(bb);
-        bb &= (bb - 1);
+        const uint8_t from = poplsb(bb);
         
         // Pawn attacks (captures only)
         uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
@@ -1149,9 +1088,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= KNIGHTS (captures only) =================
     bb = knights;
     while (bb) {
-        const uint8_t from = __builtin_ctzll(bb);
-        bb &= (bb - 1);
-        
+        const uint8_t from = poplsb(bb);
         uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1159,9 +1096,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= BISHOPS (captures only) =================
     bb = bishops;
     while (bb) {
-        const uint8_t from = __builtin_ctzll(bb);
-        bb &= (bb - 1);
-        
+        const uint8_t from = poplsb(bb);
         uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1169,9 +1104,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= ROOKS (captures only) =================
     bb = rooks;
     while (bb) {
-        const uint8_t from = __builtin_ctzll(bb);
-        bb &= (bb - 1);
-        
+        const uint8_t from = poplsb(bb);
         uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
@@ -1179,16 +1112,14 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     // ================= QUEENS (captures only) =================
     bb = queens;
     while (bb) {
-        const uint8_t from = __builtin_ctzll(bb);
-        bb &= (bb - 1);
-        
+        const uint8_t from = poplsb(bb);
         uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }
 
     // ================= KING (captures only) =================
     if (kings) {
-        const uint8_t from = __builtin_ctzll(kings);
+        const uint8_t from = __builtin_ctzll(kings); // King: no need for poplsb (only one)
         uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
         addTacticalMovesFromMask(from, attacks, false);
     }

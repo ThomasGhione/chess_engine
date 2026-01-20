@@ -247,6 +247,41 @@ private:
     static constexpr bool isBetter(int64_t newScore, int64_t currentBest, bool isWhite) noexcept {
         return isWhite ? (newScore > currentBest) : (newScore < currentBest);
     }
+    
+    // Check if we have a beta cutoff (position too good, opponent won't allow it)
+    // White (maximizer): score >= beta
+    // Black (minimizer): score <= alpha
+    __attribute__((always_inline))
+    static inline bool isBetaCutoff(int64_t score, int64_t alpha, int64_t beta, bool isWhite) noexcept {
+        return isWhite ? (score >= beta) : (score <= alpha);
+    }
+    
+    // Update alpha or beta bound based on score
+    // White (maximizer): alpha = max(alpha, score)
+    // Black (minimizer): beta = min(beta, score)
+    __attribute__((always_inline))
+    static inline void updateBound(int64_t score, int64_t& alpha, int64_t& beta, bool isWhite) noexcept {
+        if (isWhite) {
+            if (score > alpha) alpha = score;
+        } else {
+            if (score < beta) beta = score;
+        }
+    }
+    
+    // Check delta pruning condition
+    // White: standPat + margin < alpha (can't reach alpha even with best capture)
+    // Black: standPat - margin > beta (can't reach beta even with best capture)
+    __attribute__((always_inline))
+    static inline bool shouldDeltaPrune(int64_t standPat, int64_t margin, int64_t alpha, int64_t beta, bool isWhite) noexcept {
+        return isWhite ? (standPat + margin < alpha) : (standPat - margin > beta);
+    }
+    
+    // Return the cutoff value when beta cutoff occurs
+    // White: return beta, Black: return alpha
+    __attribute__((always_inline))
+    static inline int64_t cutoffValue(int64_t alpha, int64_t beta, bool isWhite) noexcept {
+        return isWhite ? beta : alpha;
+    }
 
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
