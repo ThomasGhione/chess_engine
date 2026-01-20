@@ -100,6 +100,10 @@ public:
 
     void reset() noexcept;
 
+    // Magic bitboard initialization (shared across all Engine instances)
+    static inline bool magicTablesInitialized = false;
+    static void ensureMagicTablesInitialized() noexcept;
+
     // Legal move generation (bitboard-based)
     MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
     MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) noexcept;

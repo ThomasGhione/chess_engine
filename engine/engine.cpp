@@ -8,6 +8,14 @@ uint64_t Engine::ttProbes = 0;
 uint64_t Engine::ttHits = 0;
 #endif
 
+// Static method to ensure magic tables are initialized exactly once
+void Engine::ensureMagicTablesInitialized() noexcept {
+    if (!magicTablesInitialized) {
+        pieces::initMagicBitboards();
+        magicTablesInitialized = true;
+    }
+}
+
 Engine::Engine()
     : board(chess::Board())
     , isPlayerWhite(true)
@@ -15,11 +23,7 @@ Engine::Engine()
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
-    static bool magicInitialized = false;
-    if (!magicInitialized) {
-        pieces::initMagicBitboards();
-        magicInitialized = true;
-    }
+    ensureMagicTablesInitialized();
 
     // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();
@@ -32,11 +36,7 @@ Engine::Engine(const std::string& fen)
     , MAX_THREADS(omp_get_max_threads())
 {
     // Inizializza magic bitboards una sola volta (thread-safe)
-    static bool magicInitialized = false;
-    if (!magicInitialized) {
-        pieces::initMagicBitboards();
-        magicInitialized = true;
-    }
+    ensureMagicTablesInitialized();
 
     // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();

@@ -10,14 +10,8 @@
 
 | File | LOC | Stato | Note |
 |------|-----|-------|------|
-| `search.cpp` | 1132 | ⚠️ PROBLEMI | Duplicazione popLsb, manca TT in quiescence |
-| `evaluate.cpp` | 946 | ⚠️ PROBLEMI | Duplicazione popLsb, attack data ripetuto |
 | `tt.hpp` | 269 | ⚠️ MANCANTE | Non salva hash move (feature critica) |
-| `engine.hpp` | 299 | ✅ OK | Alpha-beta helpers buoni ma sottoutilizzati |
-| `engine.cpp` | 142 | ⚠️ PROBLEMI | Static bool duplicati, static members problematici |
-| `movelist.hpp` | 106 | ✅ OK | Nessun problema rilevato |
 | `piecevaluetables.hpp` | 109 | ⚠️ INCOMPLETO | PAWN_END_GAME_VALUES_TABLE vuota |
-| `basebonuspenaltyvalues.hpp` | 133 | ✅ OK | Valori ben documentati |
 | **TOTALE** | **3136** | - | - |
 
 ---
@@ -87,68 +81,6 @@ int16_t Engine::quiescenceSearch(SearchContext& ctx, int16_t alpha, int16_t beta
 
 ---
 
-### 4. **STATIC BOOL DUPLICATI** in `engine.cpp`
-**Severity**: 🔴 MEDIA-ALTA  
-**Impatto**: Confusione, potenziali bug
-
-**Problema**:
-```cpp
-// engine.cpp:23 (dentro Engine::Engine costruttore)
-static bool magicInitialized = false;
-if (!magicInitialized) {
-    chess::Piece::initMagicTables();
-    magicInitialized = true;
-}
-
-// engine.cpp:40 (dentro Engine::reset)
-static bool magicInitialized = false;
-if (!magicInitialized) {
-    chess::Piece::initMagicTables();
-    magicInitialized = true;
-}
-```
-
-**Problema logico**:
-- Due static bool con STESSO NOME in scope diversi
-- Ogni funzione ha la propria variabile static
-- Se `reset()` viene chiamato senza costruttore, magic tables vengono reinizializzate
-- Se costruttore e reset vengono chiamati, init avviene 2 volte
-
-**SOLUZIONE 1** (semplice):
-```cpp
-// A livello di file (fuori da funzioni)
-namespace {
-    bool magicInitialized = false;
-}
-
-// Usare in entrambe le funzioni
-if (!magicInitialized) {
-    chess::Piece::initMagicTables();
-    magicInitialized = true;
-}
-```
-
-**SOLUZIONE 2** (migliore):
-```cpp
-// In engine.hpp, aggiungere static member
-class Engine {
-    static inline bool magicTablesInitialized = false;
-    static void ensureMagicTablesInitialized();
-};
-
-// In engine.cpp
-void Engine::ensureMagicTablesInitialized() {
-    if (!magicTablesInitialized) {
-        chess::Piece::initMagicTables();
-        magicTablesInitialized = true;
-    }
-}
-```
-
-**Stima tempo**: 10 minuti
-
----
-
 ## 🟡 PROBLEMI IMPORTANTI (da sistemare presto)
 
 ### 5. **ATTACK DATA CALCOLATO MULTIPLE VOLTE**
@@ -202,64 +134,6 @@ int64_t Engine::evaluate() {
 
 **Stima tempo**: 30 minuti  
 **LOC modificate**: ~50
-
----
-
-### 6. **ALPHA-BETA HELPERS SOTTOUTILIZZATI**
-**Severity**: 🟡 MEDIA  
-**Impatto**: Codice duplicato, manutenibilità
-
-**Situazione**:
-In `engine.hpp:180-233` sono definiti ottimi helper:
-```cpp
-inline bool isBetaCutoff(int16_t score, int16_t beta)
-inline void updateBound(int16_t& bound, int16_t score, int16_t threshold)
-inline bool shouldDeltaPrune(...)
-inline int16_t cutoffValue(...)
-```
-
-**Problema**: Usati SOLO in `quiescenceSearch()`, ma NON in:
-- `searchMoves()` (search.cpp:400-900)
-- `getBestMove()` (search.cpp:200-350)
-
-**Codice duplicato in searchMoves()**:
-```cpp
-// search.cpp:630-650 (circa)
-if (score >= beta) {
-    updateKillerAndHistoryOnBetaCutoff(from, to, ply);
-    if (depth > 0) {
-        storeTTEntry(globalTT(), hashKey, depth, score, TTEntry::LOWERBOUND);
-    }
-    return score;
-}
-if (score > alpha) {
-    alpha = score;
-    bestMove = move;
-    ttFlag = TTEntry::EXACT;
-}
-```
-
-Questo codice potrebbe essere:
-```cpp
-if (isBetaCutoff(score, beta)) {
-    updateKillerAndHistoryOnBetaCutoff(from, to, ply);
-    if (depth > 0) {
-        storeTTEntry(globalTT(), hashKey, depth, score, TTEntry::LOWERBOUND);
-    }
-    return cutoffValue(score, beta);
-}
-updateBound(alpha, score, alpha);
-if (score > alpha) {
-    bestMove = move;
-    ttFlag = TTEntry::EXACT;
-}
-```
-
-**SOLUZIONE**: Refactorare `searchMoves()` per usare gli helper esistenti
-
-**Impatto**: -80-100 LOC, codice più leggibile e manutenibile
-
-**Stima tempo**: 1 ora
 
 ---
 
@@ -453,10 +327,8 @@ if (move == hashMove) {
 
 | Task | Problema | Tempo | Priorità |
 |------|----------|-------|----------|
-| Unificare popLSB | #1 | 5 min | ⭐⭐⭐⭐⭐ |
-| Hash move in TT | #2 | 45 min | ⭐⭐⭐⭐⭐ |
 | TT in quiescence | #3 | 20 min | ⭐⭐⭐⭐⭐ |
-| Fix static bool | #4 | 10 min | ⭐⭐⭐⭐ |
+
 
 **ELO gain atteso**: +50-70 punti  
 **Performance gain**: +35-45%
@@ -469,9 +341,6 @@ if (move == hashMove) {
 | Task | Problema | Tempo | Priorità |
 |------|----------|-------|----------|
 | Precalcolare AttackData | #5 | 30 min | ⭐⭐⭐⭐ |
-| Estendere alpha-beta helpers | #6 | 60 min | ⭐⭐⭐ |
-| History decay | #7 | 15 min | ⭐⭐⭐ |
-| Rimuovere static members | #8 | 20 min | ⭐⭐⭐ |
 
 **LOC risparmiate**: ~120-150  
 **Performance gain**: +12-18%
@@ -499,8 +368,6 @@ if (move == hashMove) {
 |------|------------|-------|----------|
 | Early exit in evaluate() | A | 20 min | ⭐⭐⭐⭐ |
 | Partial sort in search | B | 15 min | ⭐⭐⭐⭐ |
-| Early delta in qsearch | C | 25 min | ⭐⭐⭐⭐ |
-| Depth limit qsearch | C | 10 min | ⭐⭐⭐ |
 | Skip SEE obviously good | B | 15 min | ⭐⭐⭐ |
 
 **Performance gain**: +15-25%
@@ -549,9 +416,6 @@ if (move == hashMove) {
 
 ### 2. **Questa Settimana**
 - ⚠️ Precalcolare AttackData
-- ⚠️ History decay
-- ⚠️ Rimuovere static members
-- ⚠️ Fix static bool duplicati
 
 **Tempo totale**: 1h 15min  
 **Gain cumulativo**: +80-100 ELO
@@ -559,7 +423,6 @@ if (move == hashMove) {
 ---
 
 ### 3. **Prossime 2 Settimane**
-- 🔵 Estendere alpha-beta helpers
 - 🔵 Early exit in evaluate()
 - 🔵 Partial sort in search
 - 🔵 Implementare PAWN_END_GAME_TABLE
@@ -598,11 +461,11 @@ grep -A5 "% time" profile.txt | head -30
 - [v] popLSB unificato in engine.hpp
 - [V] Hash move salvato in TT
 - [X] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
-- [ ] Static bool unificato
+- [v] Static bool unificato
 - [ ] AttackData precalcolato
-- [ ] History decay implementato
-- [ ] Static members rimossi
-- [ ] Alpha-beta helpers estesi
+- [V] History decay implementato
+- [V] Static members rimossi
+- [V] Alpha-beta helpers estesi
 - [ ] PAWN_END_GAME_TABLE riempito
 - [ ] File .backup rimossi
 - [ ] Debug code rimosso
