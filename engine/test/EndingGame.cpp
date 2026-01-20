@@ -253,7 +253,7 @@ namespace {
     e.depth = searchDepth;
 
     for (int ply = 0; ply < maxHalfMoves; ++ply) {
-      e.setGameResult();
+      e.updateGameResult();
       if (e.isMate()) {
         //printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
         return true;
@@ -267,7 +267,7 @@ namespace {
 
       auto moves = e.generateLegalMoves(e.board);
       if (moves.size == 0) {
-        e.setGameResult();
+        e.updateGameResult();
         bool isMate = e.isMate();
         if (!isMate) {
           printf("  ✗ No legal moves but not checkmate at half-move %d\n", ply);

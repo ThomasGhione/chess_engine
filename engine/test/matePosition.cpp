@@ -96,7 +96,7 @@ ut::suite mateTest = [] {
     chess::Board::MoveState state3;
     e.board.doMove(matingMove, state3);
 
-    e.setGameResult();
+    e.updateGameResult();
     bool isMate = e.isMate();
 
     expect(isMate) << "Expected checkmate but position is not mate\n";
@@ -140,7 +140,7 @@ ut::suite mateTest = [] {
     chess::Board::MoveState state3;
     e.board.doMove(matingMove, state3);
 
-    e.setGameResult();
+    e.updateGameResult();
     bool isMate = e.isMate();
 
     expect(isMate) << "Expected checkmate but position is not mate\n";

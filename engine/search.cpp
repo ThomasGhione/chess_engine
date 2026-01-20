@@ -359,7 +359,7 @@ void Engine::search(uint64_t depth) noexcept {
     this->depth = depth;
 
     this->doMoveInBoard(bestMove);
-    this->setGameResult();
+    this->updateGameResult();
 
     this->moveHistory += bestMove.from.toString() + bestMove.to.toString();
     this->moveHistory += bestMove.promotionPiece == '\0' ? "\n" : std::string(1, bestMove.promotionPiece) + "\n";

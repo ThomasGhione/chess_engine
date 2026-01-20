@@ -91,6 +91,8 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
         }
     }
 
+    this->updateGameResult();
+
     return result;
 }
 

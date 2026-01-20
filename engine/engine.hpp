@@ -41,6 +41,8 @@ namespace engine {
 class Engine final {
 
 public:
+
+    // Constructors and reset
     Engine();
     explicit Engine(const std::string& fen);
     
@@ -50,6 +52,9 @@ public:
     Engine(Engine&&) = delete;
     Engine& operator=(Engine&&) = delete;
 
+    void reset() noexcept;
+
+    // Structs and enums
     struct ScoredMove {
         chess::Board::Move move;
         int64_t score;
@@ -62,6 +67,7 @@ public:
         DRAW = 3
     };
 
+    // Data members
     chess::Board board;
     bool isPlayerWhite;
 
@@ -100,14 +106,15 @@ public:
     bool isStalemate() const noexcept {
         return gameResult == DRAW;
     }
-    void setGameResult() noexcept;
+    void updateGameResult() noexcept;
     inline GameResult getGameResult() const noexcept {
         return gameResult;
     }
+    inline uint8_t getActiveColor() const noexcept {
+        return board.getActiveColor();
+    }
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
-
-    void reset() noexcept;
 
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;

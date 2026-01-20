@@ -2,11 +2,11 @@
 
 namespace driver {
     void Driver::playerTurn() noexcept{
-        engine.board.getActiveColor() == chess::Board::WHITE ? std::cout << "\nWhite's turn.\n\n" : std::cout << "\nBlack's turn.\n\n";
+        engine.getActiveColor() == chess::Board::WHITE ? std::cout << "\nWhite's turn.\n\n" : std::cout << "\nBlack's turn.\n\n";
 
         std::string playerInput;
 
-        bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
+        bool isWhiteTurn = (engine.getActiveColor() == chess::Board::WHITE);
 
         bool error = true;
         while (error) {
@@ -112,9 +112,6 @@ namespace driver {
             std::cout << "[DEBUG] About to print updated board...\n";
             std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
             std::cout << "[DEBUG] Board printed successfully.\n";
-
-            // TODO To be eliminated because Engine will handle it in future
-            engine.setGameResult();
 
             error = false;
         }  
