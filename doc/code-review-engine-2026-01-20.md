@@ -131,50 +131,6 @@ git commit -m "Remove backup files and ignore them"
 
 ---
 
-### 11. **PAWN_END_GAME_VALUES_TABLE VUOTA**
-**Severity**: 🟢 BASSA  
-**Impatto**: Endgame precision loss (~5 ELO)
-
-**Problema**:
-```cpp
-// piecevaluetables.hpp:31-33
-inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
-    // VUOTO! Usa zero-initialization
-};
-```
-
-**Conseguenza**: 
-- In endgame, pawns non hanno PSQT bonus/penalty
-- Passed pawns lontani da promozione hanno stesso valore di quelli vicini
-- King non viene incentivato a supportare passed pawns
-
-**SOLUZIONE**:
-```cpp
-inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
-    // Rank 1 (shouldn't happen for pawns, but for safety)
-      0,   0,   0,   0,   0,   0,   0,   0,
-    // Rank 2
-     10,  10,  10,  10,  10,  10,  10,  10,
-    // Rank 3
-     20,  20,  20,  20,  20,  20,  20,  20,
-    // Rank 4
-     35,  35,  35,  35,  35,  35,  35,  35,
-    // Rank 5
-     60,  60,  60,  60,  60,  60,  60,  60,
-    // Rank 6
-    100, 100, 100, 100, 100, 100, 100, 100,
-    // Rank 7 (about to promote - huge bonus!)
-    200, 200, 200, 200, 200, 200, 200, 200,
-    // Rank 8 (promotion)
-      0,   0,   0,   0,   0,   0,   0,   0
-};
-```
-
-**Stima tempo**: 10 minuti  
-**ELO gain**: +3-5 punti in endgame
-
----
-
 ### 12. **DEBUG CODE IN PRODUCTION**
 **Severity**: 🟢 BASSA  
 **Impatto**: Code clutter
@@ -401,15 +357,15 @@ grep -A5 "% time" profile.txt | head -30
 ## 📝 CHECKLIST FINALE
 
 ### Codice
-- [v] popLSB unificato in engine.hpp
+- [V] popLSB unificato in engine.hpp
 - [V] Hash move salvato in TT
-- [X] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
-- [v] Static bool unificato
+- [?] TT usato in quiescence -> forse rallenta troppo? meglio non usare per ora
+- [V] Static bool unificato
 - [ ] AttackData precalcolato
 - [V] History decay implementato
 - [V] Static members rimossi
 - [V] Alpha-beta helpers estesi
-- [ ] PAWN_END_GAME_TABLE riempito
+- [V] PAWN_END_GAME_TABLE riempito
 - [ ] File .backup rimossi
 - [ ] Debug code rimosso
 - [ ] TODOs implementati o rimossi
@@ -418,7 +374,7 @@ grep -A5 "% time" profile.txt | head -30
 - [ ] Compilazione senza warning
 - [ ] Test suite passa al 100%
 - [ ] Nessuna regressione tattica
-- [ ] Performance gain verificato
+- [V] Performance gain verificato
 - [ ] Profiling eseguito
 - [ ] ELO gain misurato (vs versione precedente)
 
