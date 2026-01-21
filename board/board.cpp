@@ -41,7 +41,7 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             const uint8_t capturedPawn = this->get(capturedIndex);
             
             this->set(capturedIndex, EMPTY);
-            this->occupancy &= ~(1ULL << capturedIndex);
+            this->occupancy &= ~Board::bitMask(capturedIndex);
             this->removePieceFromBitboards(capturedPawn, capturedIndex);
         }
     }
@@ -227,7 +227,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     // ============================================
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
-    const uint64_t toBit = (1ULL << toIndex);
+    const uint64_t toBit = Board::bitMask(toIndex);
     
     const uint8_t fromPiece = this->get(from);
     const uint8_t fromType = fromPiece & this->MASK_PIECE_TYPE;
@@ -332,8 +332,8 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     if (isCapture || isPush) [[likely]] {
         // King safety check for normal pawn moves
         uint64_t occNew = occupancy;
-        occNew &= ~(1ULL << fromIndex);
-        occNew |= toBit;
+    occNew &= ~Board::bitMask(fromIndex);
+    occNew |= toBit;
         
         const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) ? toBit : 0ULL;
         const uint64_t kingBB = kings_bb[side];
@@ -376,9 +376,9 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     
     // Simulate en passant capture
     uint64_t occNew = occupancy;
-    occNew &= ~(1ULL << fromIndex);
-    occNew &= ~(1ULL << capturedPawnIdx);
-    occNew |= (1ULL << toIndex);
+    occNew &= ~Board::bitMask(fromIndex);
+    occNew &= ~Board::bitMask(capturedPawnIdx);
+    occNew |= Board::bitMask(toIndex);
     
     // King safety check
     const uint64_t kingBB = kings_bb[side];
@@ -386,7 +386,7 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     const uint8_t kingSq = __builtin_ctzll(kingBB);
     
     return !isKingAttackedCustom(kingSq, oppColor, occNew,
-                                 pawns_bb[oppSide] & ~(1ULL << capturedPawnIdx),
+                                 pawns_bb[oppSide] & ~Board::bitMask(capturedPawnIdx),
                                  knights_bb[oppSide],
                                  bishops_bb[oppSide],
                                  rooks_bb[oppSide],
@@ -485,12 +485,12 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     }
     
     // Check rook presence
-    if ((rooks_bb[side] & (1ULL << rookIdx)) == 0ULL) {
+    if ((rooks_bb[side] & Board::bitMask(rookIdx)) == 0ULL) {
         return false;
     }
     
     // Check castle path safety
-    const uint64_t castlePath = (1ULL << fromIndex) | (1ULL << sq1) | (1ULL << sq2);
+    const uint64_t castlePath = Board::bitMask(fromIndex) | Board::bitMask(sq1) | Board::bitMask(sq2);
     return isCastlePathSafe(castlePath, oppColor);
 }
 
@@ -524,12 +524,12 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     
     // Simulate move
     uint64_t occNew = occupancy;
-    occNew &= ~(1ULL << fromIndex);
-    occNew |= (1ULL << toIndex);
+    occNew &= ~Board::bitMask(fromIndex);
+    occNew |= Board::bitMask(toIndex);
     
     // Exclusion mask for captured piece
     const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) 
-        ? (1ULL << toIndex) 
+    ? Board::bitMask(toIndex) 
         : 0ULL;
     
     // Zero-copy king safety check
@@ -579,7 +579,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
     if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) return false;
 
     // Sliding pieces with modified occupancy
-    const uint64_t occMinus = occupancy & ~(1ULL << excludeSquare);
+    const uint64_t occMinus = occupancy & ~Board::bitMask(excludeSquare);
     const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occMinus);
     const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occMinus);
 

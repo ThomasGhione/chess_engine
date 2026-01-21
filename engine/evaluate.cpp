@@ -58,7 +58,7 @@ namespace {
         std::array<uint64_t, 64> result{};
         for (int sq = 0; sq < 64; ++sq) {
             const int rank = chess::Board::rankOf(sq);
-            result[sq] = (rank > 0) ? ((1ULL << (rank * 8)) - 1ULL) : 0ULL;
+            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
         }
         return result;
     }
@@ -117,7 +117,7 @@ namespace {
                     const int target = (r << 3) | f;
                     const int dist = std::abs(r - rank) + std::abs(f - file);
                     if (dist <= 2 && target != sq) {
-                        mask |= (1ULL << target);
+                        mask |= chess::Board::bitMask(target);
                     }
                 }
             }
@@ -203,16 +203,16 @@ int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ)
     int64_t score = 0;
     
     // WHITE
-    if ((b.pawns_bb[0] & (1ULL << 27)) && (occ & (1ULL << 35))) {
-        if (b.knights_bb[0] & ((1ULL << 18) | (1ULL << 21))) score -= 10;
-        if (b.bishops_bb[0] & ((1ULL << 19) | (1ULL << 20))) score -= 10;
+    if ((b.pawns_bb[0] & (chess::Board::bitMask(27))) && (occ & (chess::Board::bitMask(35)))) {
+        if (b.knights_bb[0] & ((chess::Board::bitMask(18)) | (chess::Board::bitMask(21)))) score -= 10;
+        if (b.bishops_bb[0] & ((chess::Board::bitMask(19)) | (chess::Board::bitMask(20)))) score -= 10;
         score -= 15;
     }
 
     // BLACK
-    if ((b.pawns_bb[1] & (1ULL << 35)) && (occ & (1ULL << 27))) {
-        if (b.knights_bb[1] & ((1ULL << 42) | (1ULL << 45))) score += 10;
-        if (b.bishops_bb[1] & ((1ULL << 43) | (1ULL << 44))) score += 10;
+    if ((b.pawns_bb[1] & (chess::Board::bitMask(35))) && (occ & (chess::Board::bitMask(27)))) {
+        if (b.knights_bb[1] & ((chess::Board::bitMask(42)) | (chess::Board::bitMask(45)))) score += 10;
+        if (b.bishops_bb[1] & ((chess::Board::bitMask(43)) | (chess::Board::bitMask(44)))) score += 10;
         score += 15;
     }
 
@@ -374,11 +374,11 @@ int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
 int64_t Engine::evalEarlyKing(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    if (b.kings_bb[0] && !(b.kings_bb[0] & (1ULL << 60)) && !(b.kings_bb[0] & (1ULL << 62))) {
+    if (b.kings_bb[0] && !(b.kings_bb[0] & chess::Board::bitMask(60)) && !(b.kings_bb[0] & chess::Board::bitMask(62))) {
         score += EARLY_KING_PENALTY; // già negativo
     }
 
-    if (b.kings_bb[1] && !(b.kings_bb[1] & (1ULL << 4)) && !(b.kings_bb[1] & (1ULL << 6))) {
+    if (b.kings_bb[1] && !(b.kings_bb[1] & chess::Board::bitMask(4)) && !(b.kings_bb[1] & chess::Board::bitMask(6))) {
         score -= EARLY_KING_PENALTY; // già negativo
     }
 
@@ -389,12 +389,12 @@ int64_t Engine::evalEarlyRook(const chess::Board& b) noexcept {
     int64_t score = 0;
 
     // White rooks
-    if (b.rooks_bb[0] && !(b.rooks_bb[0] & (1ULL << 56)) && !(b.rooks_bb[0] & (1ULL << 63))) {
+    if (b.rooks_bb[0] && !(b.rooks_bb[0] & chess::Board::bitMask(56)) && !(b.rooks_bb[0] & chess::Board::bitMask(63))) {
         score += EARLY_ROOK_PENALTY; // già negativo
     }
 
     // Black rooks
-    if (b.rooks_bb[1] && !(b.rooks_bb[1] & (1ULL << 0)) && !(b.rooks_bb[1] & (1ULL << 7))) {
+    if (b.rooks_bb[1] && !(b.rooks_bb[1] & chess::Board::bitMask(0)) && !(b.rooks_bb[1] & chess::Board::bitMask(7))) {
         score -= EARLY_ROOK_PENALTY;
     }
 
@@ -405,12 +405,12 @@ int64_t Engine::evalEarlyQueen(const chess::Board& b) noexcept {
     int64_t score = 0;
 
     // White queen
-    if (b.queens_bb[0] && !(b.queens_bb[0] & (1ULL << 59))) {
+    if (b.queens_bb[0] && !(b.queens_bb[0] & chess::Board::bitMask(59))) {
         score += ATTACKED_QUEEN_PENALTY * 8; // già negativo
     }
 
     // Black queen
-    if (b.queens_bb[1] && !(b.queens_bb[1] & (1ULL << 3))) {
+    if (b.queens_bb[1] && !(b.queens_bb[1] & chess::Board::bitMask(3))) {
         score -= ATTACKED_QUEEN_PENALTY * 8;
     }
 
@@ -531,28 +531,28 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
             if (side == 0) { // WHITE
                 // Kingside castling pawns: f2(53), g2(54), h2(55)
                 if (canCastleKingside) {
-                    constexpr uint64_t KINGSIDE_PAWNS_START = (1ULL << 53) | (1ULL << 54) | (1ULL << 55);
+                    constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(53) | chess::Board::bitMask(54) | chess::Board::bitMask(55);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
                     score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
                 }
                 
                 // Queenside castling pawns: b2(49), c2(50), d2(51)
                 if (canCastleQueenside) {
-                    constexpr uint64_t QUEENSIDE_PAWNS_START = (1ULL << 49) | (1ULL << 50) | (1ULL << 51);
+                    constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(49) | chess::Board::bitMask(50) | chess::Board::bitMask(51);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
                     score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
                 }
             } else { // BLACK
                 // Kingside castling pawns: f7(13), g7(14), h7(15)
                 if (canCastleKingside) {
-                    constexpr uint64_t KINGSIDE_PAWNS_START = (1ULL << 13) | (1ULL << 14) | (1ULL << 15);
+                    constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(13) | chess::Board::bitMask(14) | chess::Board::bitMask(15);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
                     score += movedPawns * 5; // bonus per WHITE (black indebolito)
                 }
                 
                 // Queenside castling pawns: b7(9), c7(10), d7(11)
                 if (canCastleQueenside) {
-                    constexpr uint64_t QUEENSIDE_PAWNS_START = (1ULL << 9) | (1ULL << 10) | (1ULL << 11);
+                    constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(9) | chess::Board::bitMask(10) | chess::Board::bitMask(11);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
                     score += movedPawns * 5; // bonus per WHITE (black indebolito)
                 }
@@ -562,15 +562,15 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
         uint64_t shieldSquares = 0ULL;
         if (side == 0) {
             // White king: pawns in front are towards lower indices (south)
-            if (sq >= 8) shieldSquares |= (1ULL << (sq - 8));
-            if (sq >= 7 && (sq & 7) != 7) shieldSquares |= (1ULL << (sq - 7));
-            if (sq >= 9 && (sq & 7) != 0) shieldSquares |= (1ULL << (sq - 9));
+            if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
+            if (sq >= 7 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
+            if (sq >= 9 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq - 9);
             score += sign * __builtin_popcountll(whitePawns & shieldSquares) * 10;
         } else {
             // Black king: pawns in front are towards higher indices (north)
-            if (sq <= 55) shieldSquares |= (1ULL << (sq + 8));
-            if (sq <= 56 && (sq & 7) != 0) shieldSquares |= (1ULL << (sq + 7));
-            if (sq <= 54 && (sq & 7) != 7) shieldSquares |= (1ULL << (sq + 9));
+            if (sq <= 55) shieldSquares |= chess::Board::bitMask(sq + 8);
+            if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
+            if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
             score += sign * __builtin_popcountll(blackPawns & shieldSquares) * 10;
         }
     }
@@ -673,10 +673,10 @@ int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
     // Castling positions (a8=0, h1=63):
     // White: g1=62 (kingside), c1=58 (queenside), f1=61, d1=59
     // Black: g8=6 (kingside), c8=2 (queenside), f8=5, d8=3
-    constexpr uint64_t WHITE_KING_CASTLED  = (1ULL << 62) | (1ULL << 58);
-    constexpr uint64_t WHITE_ROOK_CASTLED  = (1ULL << 61) | (1ULL << 59);
-    constexpr uint64_t BLACK_KING_CASTLED  = (1ULL << 6)  | (1ULL << 2);
-    constexpr uint64_t BLACK_ROOK_CASTLED  = (1ULL << 5)  | (1ULL << 3);
+    constexpr uint64_t WHITE_KING_CASTLED  = (chess::Board::bitMask(62) | chess::Board::bitMask(58));
+    constexpr uint64_t WHITE_ROOK_CASTLED  = (chess::Board::bitMask(61) | chess::Board::bitMask(59));
+    constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
+    constexpr uint64_t BLACK_ROOK_CASTLED  = (chess::Board::bitMask(5)  | chess::Board::bitMask(3));
 
     int64_t score = 0;
 

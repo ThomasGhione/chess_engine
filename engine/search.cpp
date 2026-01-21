@@ -673,7 +673,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     // Simula scambio
     uint64_t occ = b.getPiecesBitMap();
-    uint64_t fromBB = 1ULL << fromSq;
+    uint64_t fromBB = chess::Board::bitMask(fromSq);
     occ ^= fromBB; // rimuovi il pezzo che fa la prima cattura
     
     uint8_t attackerType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
@@ -699,7 +699,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
 
         // Rimuovi l'attaccante dall'occupancy
-        occ ^= (1ULL << attacker);
+        occ ^= chess::Board::bitMask(attacker);
         attackerType = b.get(attacker) & chess::Board::MASK_PIECE_TYPE;
 
         // Cambia lato
@@ -1148,8 +1148,8 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
             // Check forward push for promotion
             const int direction = isWhite ? 8 : -8;
             const uint8_t frontSq = from + direction;
-            if (!(occ & (1ULL << frontSq))) {
-                attacks |= (1ULL << frontSq);
+            if (!(occ & chess::Board::bitMask(frontSq))) {
+                attacks |= chess::Board::bitMask(frontSq);
             }
         }
         

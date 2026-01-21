@@ -182,6 +182,16 @@ public:
     static constexpr uint64_t rankMaskFromSquare(uint8_t sq) noexcept {
         return RANK_MASKS[sq >> 3];  // Extract rank (bits 3-5)
     }
+
+    // Bit mask for individual squares (1ULL << sq)
+    static constexpr std::array<uint64_t, 64> BIT_MASKS = []() constexpr {
+        std::array<uint64_t, 64> masks{};
+        for (int i = 0; i < 64; ++i) masks[i] = (1ULL << i);
+        return masks;
+    }();
+
+    // Get bit mask for a specific square index
+    static constexpr uint64_t bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
     
     // ============================================
     // FILE/RANK EXTRACTORS - Replace raw bitwise ops
@@ -477,7 +487,7 @@ public:
             
             if (piece == EMPTY) continue;
             
-            const uint64_t bit = 1ULL << index;
+            const uint64_t bit = bitMask(index);
             const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
 
             occupancy |= bit;
@@ -495,15 +505,15 @@ public:
 
     __attribute__((always_inline))
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-        this->occupancy |= (1ULL << toIndex);  // Set the bit at 'to' position    
-        this->occupancy &= ~(1ULL << fromIndex); // Clear the bit at 'from' position
+        this->occupancy |= (bitMask(toIndex));  // Set the bit at 'to' position    
+        this->occupancy &= ~(bitMask(fromIndex)); // Clear the bit at 'from' position
     }
 
     __attribute__((always_inline))
     void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
-        const uint64_t bit = (1ULL << index);
+        const uint64_t bit = (bitMask(index));
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   |= bit; break;
             case KNIGHT: knights_bb[color] |= bit; break;
@@ -518,7 +528,7 @@ public:
     void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0;
-        const uint64_t mask = ~(1ULL << index);
+        const uint64_t mask = ~(bitMask(index));
         switch (piece & MASK_PIECE_TYPE) {
             case PAWN:   pawns_bb[color]   &= mask; break;
             case KNIGHT: knights_bb[color] &= mask; break;

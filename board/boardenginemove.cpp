@@ -71,7 +71,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             st.enPassantCapturedIndex = capIndex;
 
             this->set(captured, EMPTY);
-            this->occupancy &= ~(1ULL << capIndex);
+            this->occupancy &= ~(bitMask(capIndex));
             this->removePieceFromBitboards(capturedPiece, capIndex);
         }
     }
@@ -233,11 +233,11 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         const uint8_t capIndex = st.enPassantCapturedIndex;
         // Use index-based set for efficiency
         this->set(capIndex, static_cast<piece_id>(st.capturedPiece));
-        this->occupancy |= (1ULL << capIndex);
+        this->occupancy |= bitMask(capIndex);
         this->addPieceToBitboards(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
         this->set(toIndex, static_cast<piece_id>(st.capturedPiece));  // usa index-based
-        this->occupancy |= (1ULL << toIndex);
+        this->occupancy |= bitMask(toIndex);
         this->addPieceToBitboards(st.capturedPiece, toIndex);
     }
 
