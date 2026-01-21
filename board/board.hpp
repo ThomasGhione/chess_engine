@@ -233,15 +233,16 @@ public:
     };
 
     struct MoveState {
-        // Game state before the move
-        uint8_t  prevActiveColor{};
         uint16_t prevHalfMoveClock{};
         uint16_t prevFullMoveClock{};
+
+        // Game state before the move
+        uint8_t  prevActiveColor{};
 
         // En passant and castling rights
         Coords  prevEnPassant{};
         uint8_t prevCastle{};   // bitmask copy of castle
-        uint8_t               prevHasMoved{}; // bitmask copy of hasMoved
+        uint8_t prevHasMoved{}; // bitmask copy of hasMoved
 
         // Piece information related to the move
         uint8_t capturedPiece{};        // piece captured on destination or via en-passant (0 if none)
@@ -254,10 +255,6 @@ public:
         bool    wasCastling{};          // true if the move was a castling move
         uint8_t rookFromIndex{};        // rook start square index in castling
         uint8_t rookToIndex{};          // rook destination square index in castling
-
-        // Optional cached king indices (if used elsewhere)
-        // uint8_t prevWhiteKingIndex{64};
-        // uint8_t prevBlackKingIndex{64};
     };
 
     Board() noexcept {
