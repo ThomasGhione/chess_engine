@@ -430,8 +430,7 @@ public:
     // OLD: 3 function calls (1 get + 2 set) -> 6 index conversions
     // NEW (commented): Direct inline -> 0 function calls, direct array access
     __attribute__((always_inline))
-    inline void updateChessboard(const Coords& from, const Coords& to) noexcept {
-        piece_id piece = static_cast<piece_id>(this->get(from));
+    inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
         this->set(to, piece);
         this->set(from, EMPTY);
 /*

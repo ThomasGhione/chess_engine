@@ -47,7 +47,7 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     }
 
     // Move the piece
-    this->updateChessboard(from, to);
+    this->updateChessboard(from, to, static_cast<piece_id>(moving));
     this->fastUpdateOccupancyBB(fromIndex, toIndex);
 
     // CRITICAL FIX: NON chiamare updateOccupancyBB() completo!

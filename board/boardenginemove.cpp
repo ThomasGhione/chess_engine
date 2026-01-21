@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include <cstring>
 
 
 namespace chess {
@@ -27,22 +28,18 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = this->get(to);
 
-    st = MoveState{
-        .prevActiveColor         = activeColor,
-        .prevHalfMoveClock       = halfMoveClock,
-        .prevFullMoveClock       = fullMoveClock,
-        .prevEnPassant           = enPassant,
-        .prevCastle              = castle,
-        .prevHasMoved            = hasMoved,
-        .capturedPiece           = destBefore,
-        .fromPiece               = moving,
-        .promotionPieceType      = 0,
-        .wasEnPassantCapture     = false,
-        .enPassantCapturedIndex  = 0,
-        .wasCastling             = false,
-        .rookFromIndex           = 0,
-        .rookToIndex             = 0
-    };
+    // Fast init: zero the struct in one call then only write the variable fields.
+    // MoveState is POD/trivially-copyable so memset is safe and typically faster
+    // than many separate assignments or a large aggregate initializer.
+    memset(&st, 0, sizeof(st));
+    st.prevActiveColor   = activeColor;
+    st.prevHalfMoveClock = halfMoveClock;
+    st.prevFullMoveClock = fullMoveClock;
+    st.prevEnPassant     = enPassant;
+    st.prevCastle        = castle;
+    st.prevHasMoved      = hasMoved;
+    st.capturedPiece     = destBefore;
+    st.fromPiece         = moving;
 
     // Cache opzionale re
     //st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
@@ -82,7 +79,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- SPOSTAMENTO PEZZO ---
-    this->updateChessboard(from, to);
+    this->updateChessboard(from, to, static_cast<piece_id>(moving));
     this->fastUpdateOccupancyBB(fromIndex, toIndex);
     this->removePieceFromBitboards(moving, fromIndex);
     this->addPieceToBitboards(moving, toIndex);
@@ -223,7 +220,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     }
 
     // --- SPOSTA IL PEZZO INDIETRO (to -> from) ---
-    this->updateChessboard(to, from);
+    this->updateChessboard(to, from, static_cast<piece_id>(pieceOnTo));
     this->fastUpdateOccupancyBB(toIndex, fromIndex);
     this->removePieceFromBitboards(pieceOnTo, toIndex);
     this->addPieceToBitboards(pieceOnTo, fromIndex);
