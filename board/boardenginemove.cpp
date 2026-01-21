@@ -23,10 +23,10 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t toFile = toIndex & 7;
     const uint8_t toRank = toIndex >> 3;
 
-    const uint8_t moving      = this->get(from);
+    const uint8_t moving      = get(from);
     const uint8_t movingType  = moving & MASK_PIECE_TYPE;
     const uint8_t movingColor = moving & MASK_COLOR;
-    const uint8_t destBefore  = this->get(to);
+    const uint8_t destBefore  = get(to);
 
     // Fast init: zero the struct in one call then only write the variable fields.
     // MoveState is POD/trivially-copyable so memset is safe and typically faster
@@ -61,28 +61,28 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             // Coords convention: white moves toward rank 0, black toward rank 7
             const int8_t forwardDir = isWhite ? -1 : 1;
             Coords captured{toFile, static_cast<uint8_t>(toRank - forwardDir)};
-            const uint8_t capturedPiece = this->get(captured);
+            const uint8_t capturedPiece = get(captured);
             st.capturedPiece = capturedPiece;
 
             const uint8_t capIndex = captured.toIndex();
             st.enPassantCapturedIndex = capIndex;
 
-            this->set(captured, EMPTY);
-            this->occupancy &= ~(bitMask(capIndex));
-            this->removePieceFromBitboards(capturedPiece, capIndex);
+            set(captured, EMPTY);
+            occupancy &= ~(bitMask(capIndex));
+            removePieceFromBB(capturedPiece, capIndex);
         }
     }
 
     // --- NORMAL CAPTURE SU DESTINAZIONE ---
     if (destBefore != EMPTY && !st.wasEnPassantCapture) {
-        this->removePieceFromBitboards(destBefore, toIndex);
+        removePieceFromBB(destBefore, toIndex);
     }
 
     // --- SPOSTAMENTO PEZZO ---
-    this->updateChessboard(from, to, static_cast<piece_id>(moving));
-    this->fastUpdateOccupancyBB(fromIndex, toIndex);
-    this->removePieceFromBitboards(moving, fromIndex);
-    this->addPieceToBitboards(moving, toIndex);
+    updateChessboard(from, to, static_cast<piece_id>(moving));
+    fastUpdateOccupancyBB(fromIndex, toIndex);
+    removePieceFromBB(moving, fromIndex);
+    addPieceToBB(moving, toIndex);
 
     // --- ARROCCO: spostamento torre ---
     // OTTIMIZZAZIONE: usa toRank precalcolato invece di to.rank()
@@ -101,12 +101,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             st.rookToIndex   = rookToIndex;
 
             // Use index-based get/set for efficiency (get(index) does Coords conversion internally)
-            const uint8_t rook = this->get(rookFromIndex);
-            this->set(rookToIndex, static_cast<piece_id>(rook));
-            this->set(rookFromIndex, EMPTY);
-            this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-            this->removePieceFromBitboards(rook, rookFromIndex);
-            this->addPieceToBitboards(rook, rookToIndex);
+            const uint8_t rook = get(rookFromIndex);
+            set(rookToIndex, static_cast<piece_id>(rook));
+            set(rookFromIndex, EMPTY);
+            fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+            removePieceFromBB(rook, rookFromIndex);
+            addPieceToBB(rook, rookToIndex);
         }
     }
 
@@ -180,7 +180,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
                 promo = 'q';
             }
             st.promotionPieceType = promo;
-            (void)this->promote(to, static_cast<char>(promo));
+            (void)promote(to, static_cast<char>(promo));
         }
         
     }
@@ -205,37 +205,37 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     const uint8_t fromIndex = from.toIndex();
     const uint8_t toIndex   = to.toIndex();
 
-    uint8_t pieceOnTo = this->get(toIndex);  // usa index-based
+    uint8_t pieceOnTo = get(toIndex);  // usa index-based
     uint8_t pieceType = pieceOnTo & MASK_PIECE_TYPE;
 
     // --- ANNULLA PROMOZIONE: pezzo promosso torna pedone ---
     if (st.promotionPieceType != 0 && pieceType != PAWN) {
         const uint8_t color = pieceOnTo & MASK_COLOR;
         const uint8_t pawnPiece = (PAWN | color);
-        this->removePieceFromBitboards(pieceOnTo, toIndex);
-        this->addPieceToBitboards(pawnPiece, toIndex);
-        this->set(toIndex, static_cast<piece_id>(pawnPiece));  // usa index-based
+        removePieceFromBB(pieceOnTo, toIndex);
+        addPieceToBB(pawnPiece, toIndex);
+        set(toIndex, static_cast<piece_id>(pawnPiece));  // usa index-based
         pieceOnTo = pawnPiece;
         // pieceType = PAWN; // non necessario, non usato dopo
     }
 
     // --- SPOSTA IL PEZZO INDIETRO (to -> from) ---
-    this->updateChessboard(to, from, static_cast<piece_id>(pieceOnTo));
-    this->fastUpdateOccupancyBB(toIndex, fromIndex);
-    this->removePieceFromBitboards(pieceOnTo, toIndex);
-    this->addPieceToBitboards(pieceOnTo, fromIndex);
+    updateChessboard(to, from, static_cast<piece_id>(pieceOnTo));
+    fastUpdateOccupancyBB(toIndex, fromIndex);
+    removePieceFromBB(pieceOnTo, toIndex);
+    addPieceToBB(pieceOnTo, fromIndex);
 
     // --- RIPRISTINA PEZZO CATTURATO (EP o normale) ---
     if (st.wasEnPassantCapture) {
         const uint8_t capIndex = st.enPassantCapturedIndex;
         // Use index-based set for efficiency
-        this->set(capIndex, static_cast<piece_id>(st.capturedPiece));
-        this->occupancy |= bitMask(capIndex);
-        this->addPieceToBitboards(st.capturedPiece, capIndex);
+        set(capIndex, static_cast<piece_id>(st.capturedPiece));
+        occupancy |= bitMask(capIndex);
+        addPieceToBB(st.capturedPiece, capIndex);
     } else if (st.capturedPiece != EMPTY) {
-        this->set(toIndex, static_cast<piece_id>(st.capturedPiece));  // usa index-based
-        this->occupancy |= bitMask(toIndex);
-        this->addPieceToBitboards(st.capturedPiece, toIndex);
+        set(toIndex, static_cast<piece_id>(st.capturedPiece));  // usa index-based
+        occupancy |= bitMask(toIndex);
+        addPieceToBB(st.capturedPiece, toIndex);
     }
 
     // --- ANNULLA SPOSTAMENTO TORRE IN ARROCCO ---
@@ -244,12 +244,12 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
         const uint8_t rookToIndex   = st.rookToIndex;
         
         // Use index-based operations for efficiency
-        const uint8_t rook = this->get(rookToIndex);
-        this->set(rookFromIndex, static_cast<piece_id>(rook));
-        this->set(rookToIndex, EMPTY);
-        this->fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
-        this->removePieceFromBitboards(rook, rookToIndex);
-        this->addPieceToBitboards(rook, rookFromIndex);
+        const uint8_t rook = get(rookToIndex);
+        set(rookFromIndex, static_cast<piece_id>(rook));
+        set(rookToIndex, EMPTY);
+        fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
+        removePieceFromBB(rook, rookToIndex);
+        addPieceToBB(rook, rookFromIndex);
     }
 
     // --- RIPRISTINA GAME STATE ---

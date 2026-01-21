@@ -15,7 +15,7 @@ Ristrutturare `Board` per migliorare leggibilità e prestazioni attraverso decom
 
 ### Problemi di Prestazioni
 - **Overhead getter/setter**: conversioni coordinate ripetute (7-rank → internal row)
-- **Aggiornamento bitboard**: chiamate a `addPieceToBitboards`/`removePieceFromBitboards` in ogni move
+- **Aggiornamento bitboard**: chiamate a `addPieceToBB`/`removePieceFromBB` in ogni move
 - **Branch misprediction**: switch statements su piece_id, `[[unlikely]]` non sempre efficaci
 - **Cache pollution**: struct MoveState grande (96 byte), frequenti accessi sparsi
 

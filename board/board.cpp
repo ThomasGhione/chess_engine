@@ -7,16 +7,16 @@ namespace chess {
 
 
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
-    const uint8_t moving = this->get(from);
-    const uint8_t movingColor = moving & this->MASK_COLOR;
+    const uint8_t moving = get(from);
+    const uint8_t movingColor = moving & MASK_COLOR;
     const bool inCheck = this->inCheck(movingColor);
     
     if (!canMoveToBB(from, to, inCheck)) return false;
 
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
-    const uint8_t movingType = moving & this->MASK_PIECE_TYPE;
-    const uint8_t destBefore = this->get(to);
+    const uint8_t movingType = moving & MASK_PIECE_TYPE;
+    const uint8_t destBefore = get(to);
 
     // Clear en passant by default; may set again after a double push
     Coords prevEp = enPassant;
@@ -38,29 +38,29 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             // For Black capturing: captured pawn is at lower rank (toIndex - 8)
             const int8_t captureOffset = isWhite ? 8 : -8;
             const uint8_t capturedIndex = toIndex + captureOffset;
-            const uint8_t capturedPawn = this->get(capturedIndex);
+            const uint8_t capturedPawn = get(capturedIndex);
             
-            this->set(capturedIndex, EMPTY);
-            this->occupancy &= ~Board::bitMask(capturedIndex);
-            this->removePieceFromBitboards(capturedPawn, capturedIndex);
+            set(capturedIndex, EMPTY);
+            occupancy &= ~Board::bitMask(capturedIndex);
+            removePieceFromBB(capturedPawn, capturedIndex);
         }
     }
 
     // Move the piece
-    this->updateChessboard(from, to, static_cast<piece_id>(moving));
-    this->fastUpdateOccupancyBB(fromIndex, toIndex);
+    updateChessboard(from, to, static_cast<piece_id>(moving));
+    fastUpdateOccupancyBB(fromIndex, toIndex);
 
     // CRITICAL FIX: NON chiamare updateOccupancyBB() completo!
-    // fastUpdateOccupancyBB + removePieceFromBitboards/addPieceToBitboards sono sufficienti
+    // fastUpdateOccupancyBB + removePieceFromBB/addPieceToBB sono sufficienti
     // updateOccupancyBB() scansiona tutte le 64 caselle → ~200-300 cicli CPU sprecati!
-    // RIMOSSO: this->updateOccupancyBB();
+    // RIMOSSO: updateOccupancyBB();
     
     // Update per-piece bitboards incrementally
     if (destBefore != EMPTY) {
-        this->removePieceFromBitboards(destBefore, toIndex);
+        removePieceFromBB(destBefore, toIndex);
     }
-    this->removePieceFromBitboards(moving, fromIndex);
-    this->addPieceToBitboards(moving, toIndex);
+    removePieceFromBB(moving, fromIndex);
+    addPieceToBB(moving, toIndex);
 
     // Castling rook move if king moved two squares on same rank
     if (movingType == KING && rankOf(fromIndex) == rankOf(toIndex)) {
@@ -69,25 +69,25 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             // kingside: rook h -> f
             const uint8_t rookFromIndex = toIndex + 1; // h = f + 2, simplified to toIndex + 1
             const uint8_t rookToIndex = toIndex - 1;   // f = g - 1, simplified to toIndex - 1
-            const uint8_t rook = this->get(rookFromIndex);
+            const uint8_t rook = get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(rookToIndex, static_cast<piece_id>(rook));
-                this->set(rookFromIndex, EMPTY);
-                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-                this->removePieceFromBitboards(rook, rookFromIndex);
-                this->addPieceToBitboards(rook, rookToIndex);
+                set(rookToIndex, static_cast<piece_id>(rook));
+                set(rookFromIndex, EMPTY);
+                fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+                removePieceFromBB(rook, rookFromIndex);
+                addPieceToBB(rook, rookToIndex);
             }
         } else if (df == -2) {
             // queenside: rook a -> d
             const uint8_t rookFromIndex = toIndex - 2; // a = c - 2, simplified to toIndex - 2
             const uint8_t rookToIndex = toIndex + 1;   // d = c + 1, simplified to toIndex + 1
-            const uint8_t rook = this->get(rookFromIndex);
+            const uint8_t rook = get(rookFromIndex);
             if ((rook & MASK_PIECE_TYPE) == ROOK) {
-                this->set(rookToIndex, static_cast<piece_id>(rook));
-                this->set(rookFromIndex, EMPTY);
-                this->fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
-                this->removePieceFromBitboards(rook, rookFromIndex);
-                this->addPieceToBitboards(rook, rookToIndex);
+                set(rookToIndex, static_cast<piece_id>(rook));
+                set(rookFromIndex, EMPTY);
+                fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+                removePieceFromBB(rook, rookFromIndex);
+                addPieceToBB(rook, rookToIndex);
             }
         }
     }
@@ -182,7 +182,7 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
 // Promote a pawn at 'at' using the provided choice char: 'q','r','b','n' (case-insensitive).
 // Returns false if the piece is not a pawn on its promotion rank, otherwise promotes and returns true.
 bool Board::promote(const Coords& at, char choice) noexcept {
-    const uint8_t piece = this->get(at);
+    const uint8_t piece = get(at);
     const uint8_t type = piece & MASK_PIECE_TYPE;
     if (type != PAWN) [[unlikely]] return false; // must be a pawn
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
@@ -204,21 +204,21 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     
     // Update bitboards: remove pawn, add promoted piece
     const uint8_t atIndex = at.index;
-    this->removePieceFromBitboards(piece, atIndex);
-    this->addPieceToBitboards(newPiece, atIndex);
+    removePieceFromBB(piece, atIndex);
+    addPieceToBB(newPiece, atIndex);
     
     // Update chessboard array
-    this->set(at, static_cast<piece_id>(newPiece));
+    set(at, static_cast<piece_id>(newPiece));
     // Occupancy remains unchanged (piece stays on the same square)
     return true;
 }
 
 // Overload: execute move and, if a pawn reaches last rank, promote using provided choice
 bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
-    if (!this->moveBB(from, to)) {
+    if (!moveBB(from, to)) {
         return false;
     }
-    return this->promote(to, promotionChoice);
+    return promote(to, promotionChoice);
 }
 
 bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {
@@ -229,11 +229,11 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     const uint8_t toIndex = to.index;
     const uint64_t toBit = Board::bitMask(toIndex);
     
-    const uint8_t fromPiece = this->get(from);
-    const uint8_t fromType = fromPiece & this->MASK_PIECE_TYPE;
+    const uint8_t fromPiece = get(from);
+    const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
     
-    const uint8_t destPiece = this->get(to);
+    const uint8_t destPiece = get(to);
     const uint8_t destColor = destPiece & MASK_COLOR;
     
     // Early exit: can't capture own piece
@@ -476,11 +476,11 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     const uint8_t rookIdx = isKingside ? (fromIndex + 3) : (fromIndex - 4);
     
     // Check empty squares (always check 2, for queenside check 3rd)
-    if (this->get(sq1) != EMPTY || this->get(sq2) != EMPTY) {
+    if (get(sq1) != EMPTY || get(sq2) != EMPTY) {
         return false;
     }
     
-    if (!isKingside && this->get(fromIndex - 3) != EMPTY) {
+    if (!isKingside && get(fromIndex - 3) != EMPTY) {
         return false;
     }
     
@@ -684,7 +684,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const int side = (color == WHITE) ? 0 : 1;
     const int oppSide = side ^ 1;
 
-    const bool inChk = this->inCheck(color);
+    const bool inChk = inCheck(color);
 
     // Pre-calculate occupancy masks
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
@@ -700,21 +700,21 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (this->canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
+            if (canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
         }
         
         // Castling (only if not in check)
         if (!inChk) {
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
-                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
-                if (this->canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
+                if (canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
+                if (canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
             }
         }
     }
 
     // --- KNIGHTS (cheap, no magic bitboards) ---
-    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, this->occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, occupancy, inChk)) {
         return true;
     }
 
@@ -726,11 +726,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         pawns &= pawns - 1;
 
         // Forward pushes (more common than captures)
-        uint64_t push = pieces::getPawnForwardPushes(from, isWhite, this->occupancy);
+        uint64_t push = pieces::getPawnForwardPushes(from, isWhite, occupancy);
         while (push) {
             const uint8_t to = __builtin_ctzll(push);
             push &= push - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
+            if (canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
         }
 
         // Pawn captures
@@ -738,22 +738,22 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (caps) {
             const uint8_t to = __builtin_ctzll(caps);
             caps &= caps - 1;
-            if (this->canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
+            if (canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
         }
     }
 
     // --- BISHOPS ---
-    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, this->occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, occupancy, inChk)) {
         return true;
     }
 
     // --- ROOKS ---
-    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, this->occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, occupancy, inChk)) {
         return true;
     }
 
     // --- QUEENS ---
-    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, this->occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, occupancy, inChk)) {
         return true;
     }
 

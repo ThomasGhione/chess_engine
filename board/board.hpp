@@ -260,8 +260,6 @@ public:
         // uint8_t prevBlackKingIndex{64};
     };
 
-    // CODICE MORTO RIMOSSO: struct UndoInfo non era usata nel codebase
-
     Board() noexcept {
         fromFenToBoard(STARTING_FEN);
     }
@@ -273,8 +271,8 @@ public:
         , halfMoveClock(0)
         , fullMoveClock(1)
         , activeColor(WHITE)
-    {
-        this->updateOccupancyBB();
+{
+        updateOccupancyBB();
     }
 
     explicit Board(const std::string& fen) {
@@ -294,7 +292,7 @@ public:
     // Convenience getter: from Coords object
     __attribute__((always_inline))
     constexpr inline uint8_t get(Coords coords) const noexcept {
-        return this->get(coords.index);
+        return get(coords.index);
     }
     
     // Direct storage access getter (bypasses Coords convention)
@@ -307,13 +305,13 @@ public:
     uint8_t get(const std::string& square) const noexcept { 
         const uint8_t col = square[0] - 'a';
         const uint8_t row = square[1] - '1';
-        return this->get(row, col);
+        return get(row, col);
     }
     
-    std::string getCurrentFen() const noexcept { return this->fromBoardToFen(); };
+    std::string getCurrentFen() const noexcept { return fromBoardToFen(); };
 
     // TODO check whether Castle and HasMoved getters works fine :D
-    constexpr uint8_t getActiveColor() const noexcept { return this->activeColor; }
+    constexpr uint8_t getActiveColor() const noexcept { return activeColor; }
 
     // Castling rights (KQkq) and hasMoved flags stored as bitmasks in uint8_t
     // castle bits: 0=white king side (K), 1=white queen side (Q), 2=black king side (k), 3=black queen side (q)
@@ -329,20 +327,12 @@ public:
     // Both ways to get color of piece at position
     __attribute__((always_inline))
     constexpr inline uint8_t getColor(const Coords& pos) const noexcept {
-        const uint8_t rawPiece = this->get(pos);
-        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
-            return EMPTY;
-        }
-        return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
+        return (get(pos) & MASK_COLOR) ? BLACK : WHITE;
     }
 
     __attribute__((always_inline))
     constexpr inline uint8_t getColor(uint8_t index) const noexcept {
-        const uint8_t rawPiece = this->get(index);
-        if ((rawPiece & MASK_PIECE_TYPE) == EMPTY) [[unlikely]] {
-            return EMPTY;
-        }
-        return (rawPiece & MASK_COLOR) ? BLACK : WHITE;
+        return (get(index) & MASK_COLOR) ? BLACK : WHITE;
     }
 
     constexpr uint16_t getHalfMoveClock() const noexcept { return halfMoveClock; }
@@ -352,17 +342,15 @@ public:
     // Primary setter: works directly with index (most efficient)
     __attribute__((hot, always_inline))
     inline void set(uint8_t index, piece_id value) noexcept {
-        const uint8_t rank = index >> 3;
-        const uint8_t file = index & 7;
-        const uint8_t internal_row = 7 - rank;
-        const uint8_t shift = file << 2; // file * 4
+        const uint8_t internal_row = 7 - (index >> 3);
+        const uint8_t shift = (index & 7) << 2; // file * 4
         chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
     }
     
     // Convenience setter: from Coords object
     __attribute__((always_inline))
     inline void set(Coords coords, piece_id value) noexcept {
-        this->set(coords.index, value);
+        set(coords.index, value);
     }
 
     // Direct storage access setter (bypasses Coords convention)
@@ -382,45 +370,37 @@ public:
     }
 
     void setPrevTurn() noexcept {
-        if (this->activeColor == BLACK) {
-            this->activeColor = WHITE;
+        if (activeColor == BLACK) {
+            activeColor = WHITE;
         } else {
-            this->activeColor = BLACK;
-            if (this->fullMoveClock > 1) {
-                this->fullMoveClock--;
+            activeColor = BLACK;
+            if (fullMoveClock > 1) {
+                fullMoveClock--;
             }
         }
-        if (this->halfMoveClock > 0) {
-            this->halfMoveClock--;
+        if (halfMoveClock > 0) {
+            halfMoveClock--;
         }
     }
 
     //! Operator overloads
-    constexpr uint8_t operator[](const Coords& coords) const noexcept { return this->get(coords); }
-    uint8_t operator[](const Coords& coords) noexcept { return this->get(coords); }
-    constexpr uint8_t operator[](uint8_t index) const noexcept { return this->get(index); } // assert index 0-63
-    uint8_t operator[](uint8_t index) noexcept { return this->get(index); }
-    constexpr bool operator==(const Board& other) const noexcept { return this->chessboard == other.chessboard; }
-    constexpr bool operator!=(const Board& other) const noexcept { return this->chessboard != other.chessboard; }
+    constexpr uint8_t operator[](const Coords& coords) const noexcept { return get(coords); }
+    uint8_t operator[](const Coords& coords) noexcept { return get(coords); }
+    constexpr uint8_t operator[](uint8_t index) const noexcept { return get(index); } // assert index 0-63
+    uint8_t operator[](uint8_t index) noexcept { return get(index); }
+    constexpr bool operator==(const Board& other) const noexcept { return chessboard == other.chessboard; }
+    constexpr bool operator!=(const Board& other) const noexcept { return chessboard != other.chessboard; }
 
 
     //! PER DEBUG
     static constexpr size_t CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
     // static constexpr size_t BOARD_SIZE(Board b) noexcept { return sizeof(b); }
-
-    // Iterator support
-    auto begin() noexcept { return chessboard.begin(); }
-    auto end() noexcept { return chessboard.end(); }
-    constexpr auto begin() const noexcept { return chessboard.begin(); }
-    constexpr auto end() const noexcept { return chessboard.end(); }
-    constexpr auto cbegin() const noexcept { return chessboard.cbegin(); }
-    constexpr auto cend() const noexcept { return chessboard.cend(); }
-
+    
 
     // Piece movement logic
     constexpr bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
-        uint8_t p1 = this->get(pos1);
-        uint8_t p2 = this->get(pos2);
+        uint8_t p1 = get(pos1);
+        uint8_t p2 = get(pos2);
         if (p1 == EMPTY || p2 == EMPTY) return false;
         return (p1 & BLACK) == (p2 & BLACK);
     }
@@ -431,8 +411,8 @@ public:
     // NEW (commented): Direct inline -> 0 function calls, direct array access
     __attribute__((always_inline))
     inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
-        this->set(to, piece);
-        this->set(from, EMPTY);
+        set(to, piece);
+        set(from, EMPTY);
 /*
         const uint8_t fromIndex = from.index;
         const uint8_t toIndex = to.index;
@@ -483,7 +463,7 @@ public:
         // Single loop: iterate all 64 squares directly
         // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
         for (uint8_t index = 0; index < 64; ++index) {
-            const uint8_t piece = this->get(index);
+            const uint8_t piece = get(index);
             
             if (piece == EMPTY) continue;
             
@@ -505,12 +485,12 @@ public:
 
     __attribute__((always_inline))
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-        this->occupancy |= (bitMask(toIndex));  // Set the bit at 'to' position    
-        this->occupancy &= ~(bitMask(fromIndex)); // Clear the bit at 'from' position
+        occupancy |= bitMask(toIndex);  // Set the bit at 'to' position    
+        occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
     }
 
     __attribute__((always_inline))
-    void addPieceToBitboards(uint8_t piece, uint8_t index) noexcept {
+    void addPieceToBB(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
         const uint64_t bit = (bitMask(index));
@@ -525,7 +505,7 @@ public:
     }
 
     __attribute__((always_inline))
-    void removePieceFromBitboards(uint8_t piece, uint8_t index) noexcept {
+    void removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
         if (piece == EMPTY) return;
         const uint8_t color = (piece & MASK_COLOR) != 0;
         const uint64_t mask = ~(bitMask(index));
