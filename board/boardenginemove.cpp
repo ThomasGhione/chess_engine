@@ -175,10 +175,9 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         }
 
         // --- PROMOZIONE ---
-        // White promotes at rank 0 (row 8), Black promotes at rank 7 (row 1)
-        if ((movingColor == WHITE && toRank == 0) ||
-            (movingColor == BLACK && toRank == 7)) {
-
+        const bool isWhiteMoving = (movingColor == WHITE);
+        const uint8_t promoRank = Board::promotionRank(isWhiteMoving);
+        if (static_cast<uint8_t>(toRank) == promoRank) {
             uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
             if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') {
                 promo = 'q';
@@ -186,6 +185,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             st.promotionPieceType = promo;
             (void)this->promote(to, static_cast<char>(promo));
         }
+        
     }
 
     // --- CLOCKS E SIDE TO MOVE ---

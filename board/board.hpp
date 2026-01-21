@@ -77,12 +77,13 @@ public:
     // RANK UTILITIES - Color-dependent rank helpers
     // ============================================
     
-    // Get promotion rank for a color: WHITE -> 7 (8th rank), BLACK -> 0 (1st rank)
+    // Get promotion rank for a color (Coords convention: rank 0 = 8th rank, rank 7 = 1st rank):
+    // WHITE pawns promote on the top of the board (rank 0), BLACK pawns promote on bottom (rank 7).
     template<bool IsWhite>
-    static constexpr uint8_t promotionRank() noexcept { return IsWhite ? 7 : 0; }
-    
+    static constexpr uint8_t promotionRank() noexcept { return IsWhite ? 0 : 7; }
+
     // Runtime version of promotion rank
-    static constexpr uint8_t promotionRank(bool isWhite) noexcept { return isWhite ? 7 : 0; }
+    static constexpr uint8_t promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
     
     // Check if a rank is a promotion rank for a given color
     static constexpr bool isPromotionRank(uint8_t rank, bool isWhite) noexcept { return rank == promotionRank(isWhite); }
