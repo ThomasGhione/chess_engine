@@ -630,28 +630,37 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     // Micro-ottimizzazione SEE: identifichiamo il meno prezioso controllando
     // i tipi di attaccanti in ordine (pawn -> knight -> bishop -> rook -> queen -> king)
     // e calcolando gli attacchi degli slider solo quando strettamente necessario.
-    auto getLeastValuableAttackerTo = [&](uint8_t sq, uint64_t occ, int side) noexcept -> uint8_t {
+    auto getLeastValuableAttackerTo = [&](uint8_t sq, uint64_t occLocal, int sideLocal) noexcept -> uint8_t {
+        // Limit piece bitboards to the simulated occupancy so that pieces
+        // that were "captured" in the simulated exchange aren't considered
+        // as attackers in subsequent steps.
+        const uint64_t pawns_bb = b.pawns_bb[sideLocal] & occLocal;
+        const uint64_t knights_bb = b.knights_bb[sideLocal] & occLocal;
+        const uint64_t bishops_queens_bb = (b.bishops_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
+        const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
+        const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
+
         uint64_t bb;
 
         // Pawns
-        bb = b.pawns_bb[side] & pieces::PAWN_ATTACKERS_TO[side][sq];
-        if (bb) return __builtin_ctzll(bb);
+        bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
+        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
         // Knights
-        bb = b.knights_bb[side] & pieces::KNIGHT_ATTACKS[sq];
-        if (bb) return __builtin_ctzll(bb);
+        bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
+        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
         // Bishops/Queens (diagonal) - compute bishop attacks only now
-        bb = (b.bishops_bb[side] | b.queens_bb[side]) & pieces::getBishopAttacks(sq, occ);
-        if (bb) return __builtin_ctzll(bb);
+        bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
+        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
         // Rooks/Queens (orthogonal) - compute rook attacks only if needed
-        bb = (b.rooks_bb[side] | b.queens_bb[side]) & pieces::getRookAttacks(sq, occ);
-        if (bb) return __builtin_ctzll(bb);
+        bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
+        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
         // Kings (last)
-        bb = b.kings_bb[side] & pieces::KING_ATTACKS[sq];
-        if (bb) return __builtin_ctzll(bb);
+        bb = kings_bb & pieces::KING_ATTACKS[sq];
+        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
         return 64; // nessun attaccante
     };
@@ -694,14 +703,27 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // Trova l'attaccante meno prezioso verso la casella target
         uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
         if (attacker == 64) break;
-
+        
+        // Determine attacker type using the piece bitboards AND the simulated occupancy
+        // (safer than querying b.get(...) which reflects the original board only).
+        const uint64_t attackerMask = chess::Board::bitMask(attacker);
+        uint8_t currentAttackerType = chess::Board::PAWN; // default/fallback
+        if ((b.pawns_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::PAWN;
+        else if ((b.knights_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KNIGHT;
+        else if ((b.bishops_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::BISHOP;
+        else if ((b.rooks_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::ROOK;
+        else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
+        else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
+        
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
-
+        
         // Rimuovi l'attaccante dall'occupancy
-        occ ^= chess::Board::bitMask(attacker);
-        attackerType = b.get(attacker) & chess::Board::MASK_PIECE_TYPE;
-
+        occ ^= attackerMask;
+        
+        // Aggiorna attackerType per il prossimo ciclo (il pezzo che ha appena catturato)
+        attackerType = currentAttackerType;
+        
         // Cambia lato
         side ^= 1;
         depth++;

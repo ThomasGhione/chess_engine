@@ -9,9 +9,9 @@ namespace chess {
 bool Board::moveBB(const Coords& from, const Coords& to) noexcept {   
     const uint8_t moving = get(from);
     const uint8_t movingColor = moving & MASK_COLOR;
-    const bool inCheck = this->inCheck(movingColor);
     
-    if (!canMoveToBB(from, to, inCheck)) return false;
+    if (!canMoveToBB(from, to, inCheck(movingColor)))
+        return false;
 
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
@@ -30,13 +30,12 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
         // Check if pawn moved diagonally (different file)
         if (fileOf(fromIndex) != fileOf(toIndex) && destBefore == EMPTY && Coords::isInBounds(prevEp) && (toIndex == prevEp.index)) {
             wasEnPassantCapture = true;
-            const bool isWhite = (movingColor == WHITE);
             // Coords convention: index increases with rank (a8=0 -> h1=63)
             // White moves toward rank 0 (decreasing), Black toward rank 7 (increasing)
             // Captured pawn is one rank "behind" where the capturing pawn lands
             // For White capturing: captured pawn is at higher rank (toIndex + 8)
             // For Black capturing: captured pawn is at lower rank (toIndex - 8)
-            const int8_t captureOffset = isWhite ? 8 : -8;
+            const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
             const uint8_t capturedIndex = toIndex + captureOffset;
             const uint8_t capturedPawn = get(capturedIndex);
             
