@@ -122,7 +122,7 @@ public:
 
     // Legal move generation (bitboard-based)
     MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
-    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite) noexcept;
+    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey) noexcept;
 
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
 

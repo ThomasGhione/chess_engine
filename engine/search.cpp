@@ -415,7 +415,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
     if (moves.is_empty()) return this->evaluate(b);
 
-    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite);
+    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey);
     const int64_t alphaOrig = bounds.alpha;
 
     // Build search context
@@ -703,7 +703,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // Trova l'attaccante meno prezioso verso la casella target
         uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
         if (attacker == 64) break;
-        
+
         // Determine attacker type using the piece bitboards AND the simulated occupancy
         // (safer than querying b.get(...) which reflects the original board only).
         const uint64_t attackerMask = chess::Board::bitMask(attacker);
@@ -714,16 +714,16 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         else if ((b.rooks_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::ROOK;
         else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
         else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
-        
+
         // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
         gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
-        
+
         // Rimuovi l'attaccante dall'occupancy
         occ ^= attackerMask;
-        
+
         // Aggiorna attackerType per il prossimo ciclo (il pezzo che ha appena catturato)
         attackerType = currentAttackerType;
-        
+
         // Cambia lato
         side ^= 1;
         depth++;
@@ -742,7 +742,8 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     const MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
-    bool usIsWhite) noexcept
+    bool usIsWhite,
+    uint64_t hashKey) noexcept
 {
     MoveList<ScoredMove> orderedScoredMoves;
 
@@ -756,7 +757,6 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     char hashPromo = '\0';
     
     // Probe TT to get hash move (don't care about score, just the move)
-    const uint64_t hashKey = zobrist::computeHashKey(b);
     int64_t dummyScore = 0;
     this->tt.probe(hashKey, 0, NEG_INF, POS_INF, dummyScore, encodedHashMove);
     
