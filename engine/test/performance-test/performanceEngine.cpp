@@ -106,5 +106,4 @@ ut::suite performanceEngineSuite = [] {
     expect(true);
     printf("Benchmark completed.");
   };
-
 };

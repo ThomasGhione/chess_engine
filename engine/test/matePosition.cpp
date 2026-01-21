@@ -56,6 +56,38 @@ ut::suite mateTest = [] {
       << ", but got " << bestMove.from.toString() << bestMove.to.toString() << '\n';
   };
 
+  "4. mate in 1 with promotion for white"_test = []{
+    const std::string FEN = "6k1/P4ppp/8/8/8/8/8/4K3 w - - 0 1";
+    const chess::Board::Move EXPECTED_MOVE{chess::Coords("a7"), chess::Coords("a8")};
+    bool whiteToMove = true;
+
+    engine::Engine e(FEN);
+    e.depth = 4;
+
+    auto moves = e.generateLegalMoves(e.board);
+    chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+
+    expect(bestMove.from == EXPECTED_MOVE.from && bestMove.to == EXPECTED_MOVE.to)
+      << "Expected mate move " << EXPECTED_MOVE.from.toString() << EXPECTED_MOVE.to.toString()
+      << ", but got " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
+  "5. mate in 1 with promotion for black"_test = []{
+    const std::string FEN = "6k1/8/8/8/8/8/p4PPP/6K1 b - - 0 1";
+    const chess::Board::Move EXPECTED_MOVE{chess::Coords("a2"), chess::Coords("a1")};
+    bool whiteToMove = false;
+
+    engine::Engine e(FEN);
+    e.depth = 4;
+
+    auto moves = e.generateLegalMoves(e.board);
+    chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+
+    expect(bestMove.from == EXPECTED_MOVE.from && bestMove.to == EXPECTED_MOVE.to)
+      << "Expected mate move " << EXPECTED_MOVE.from.toString() << EXPECTED_MOVE.to.toString()
+      << ", but got " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
   // ========== MATE IN 2 TESTS ==========
 
   "1. mate in 2"_test = []{

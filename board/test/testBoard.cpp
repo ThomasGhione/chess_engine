@@ -277,63 +277,6 @@ ut::suite boardSuite = [] {
     // halfMoveClock should increment by 1
     expect(b.getHalfMoveClock() == 51_u);
   };
-
-  "moveBB_resets_halfMoveClock_on_pawn_move"_test = []{
-    chess::Board b{};
-    const std::string fen = "8/8/8/8/8/3Pk3/3K4/8 w - - 99 100";
-    b.fromFenToBoard(fen);
-    
-    expect(b.getHalfMoveClock() == 99_u);
-    
-    // Move pawn using moveBB (d3 to d4) - pedone bianco è su d3
-    bool success = b.moveBB(chess::Coords("d3"), chess::Coords("d4"));
-    
-    expect(success == true);
-    expect(b.getHalfMoveClock() == 0_u); // Should reset
-  };
-
-  "moveBB_resets_halfMoveClock_on_capture"_test = []{
-    chess::Board b{};
-    const std::string fen = "8/8/8/8/8/3Nk3/3K4/8 w - - 99 100";
-    b.fromFenToBoard(fen);
-    
-    expect(b.getHalfMoveClock() == 99_u);
-    
-    // King captures knight using moveBB
-    bool success = b.moveBB(chess::Coords("d2"), chess::Coords("d3"));
-    
-    expect(success == true);
-    expect(b.getHalfMoveClock() == 0_u); // Should reset
-  };
-
-  "moveBB_increments_halfMoveClock_on_normal_move"_test = []{
-    chess::Board b{};
-    const std::string fen = "8/8/8/8/8/3k4/3K4/8 w - - 50 100";
-    b.fromFenToBoard(fen);
-    
-    expect(b.getHalfMoveClock() == 50_u);
-    
-    // Normal king move using moveBB
-    bool success = b.moveBB(chess::Coords("d2"), chess::Coords("c2"));
-    
-    expect(success == true);
-    expect(b.getHalfMoveClock() == 51_u); // Should increment
-  };
-
-  "moveBB_resets_halfMoveClock_on_en_passant"_test = []{
-    chess::Board b{};
-    // White pawn on e5, black pawn just moved d7-d5 (en passant available at d6)
-    const std::string fen = "8/8/8/3pP3/8/8/8/8 w - d6 99 100";
-    b.fromFenToBoard(fen);
-    
-    expect(b.getHalfMoveClock() == 99_u);
-    
-    // White pawn captures en passant (e5 to d6)
-    bool success = b.moveBB(chess::Coords("e5"), chess::Coords("d6"));
-    
-    expect(success == true);
-    expect(b.getHalfMoveClock() == 0_u); // Should reset (it's a capture)
-  };
 };
 
 

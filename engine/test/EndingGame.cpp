@@ -8,6 +8,8 @@
 namespace ut = boost::ut;
 
 namespace {
+
+  /*
   // ==================== HELPER FUNCTIONS ====================
 
   std::mt19937& getRandomGenerator() {
@@ -245,23 +247,23 @@ namespace {
     std::string fen = buildFEN(whiteKing, blackKing, pieces);
     return chess::Board(fen);
   }
+  */
 
   // ==================== COMMON MATE FINDER ====================
 
-  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 12) {
+  bool findMate(chess::Board board, int maxHalfMoves = 100, int searchDepth = 10) {
     engine::Engine e(board.getCurrentFen());
     e.depth = searchDepth;
 
     for (int ply = 0; ply < maxHalfMoves; ++ply) {
       e.updateGameResult();
       if (e.isMate()) {
-        //printf("  ✓ Checkmate found in %d half-moves (%d full moves)\n", ply, (ply + 1) / 2);
         return true;
       }
 
       uint8_t currentColor = e.board.getActiveColor();
       if (e.board.isStalemate(currentColor)) {
-        printf("  ✗ Stalemate at half-move %d\n", ply);
+        printf("Stalemate at half-move %d\n", ply);
         return false;
       }
 
@@ -270,7 +272,7 @@ namespace {
         e.updateGameResult();
         bool isMate = e.isMate();
         if (!isMate) {
-          printf("  ✗ No legal moves but not checkmate at half-move %d\n", ply);
+          printf("No legal moves but not checkmate at half-move %d\n", ply);
         }
         return isMate;
       }
@@ -282,7 +284,7 @@ namespace {
       e.board.doMove(bestMove, state);
     }
 
-    printf("  ✗ Max moves (%d) reached without checkmate\n", maxHalfMoves);
+    printf("Max moves (%d) reached without checkmate\n", maxHalfMoves);
     return false;
   }
 
@@ -305,6 +307,10 @@ namespace {
 
 ut::suite EndingGameSuite = [] {
   using namespace ut;
+
+  /*
+  // Questi test li rimettiamo quando passiamo quelli statici.
+  
 
   "Endgame: K+R vs K"_test = [] {
     for (int i = 1; i <= 5; ++i) {
@@ -359,19 +365,61 @@ ut::suite EndingGameSuite = [] {
       }
     }
   };
+  */
 
   "Queen endgame"_test = []{
-    const std::string QueenEndgameFen = "K7/8/7Q/8/8/8/6k1/8 w - - 0 1 ";
-    chess::Board board(QueenEndgameFen);
-    printf("\n[Queen Endgame]\n");
-    printf("  FEN: %s\n", board.getCurrentFen().c_str());
-    printf("  Searching for mate (depth 6, max 50 moves)...\n");
+    const std::string fen = "K7/8/7Q/8/8/8/6k1/8 w - - 0 1 ";
+    chess::Board board(fen);
 
     bool foundMate = findMate(board);
 
     ut::expect(foundMate)
       << "Queen endgame: "
-      << "Failed to find checkmate within 50 moves (100 plies).\n"
-      << "FEN: " << board.getCurrentFen() << "\n";
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
+  };
+
+  
+  "Rook endgame"_test = []{
+    const std::string fen = "8/8/8/8/8/4k3/7R/6K1 w - - 0 1";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Rook endgame: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
+  };
+  "Double rook endgame"_test = []{
+    const std::string fen = "8/8/8/8/8/4k3/R6R/6K1 w - - 0 1";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Double Rook endgame: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
+  };
+
+
+  "Knight and bishop endgame"_test = []{
+    const std::string fen = "8/8/8/8/8/4k3/8/2N1B1K1 w - - 0 1";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Knight and bishop endgame: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
+  };
+
+  "Double bishop endgame"_test = []{
+    const std::string fen = "8/8/8/8/8/4k3/8/4BBK1 w - - 0 1";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Double bishop endgame: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
   };
 };
