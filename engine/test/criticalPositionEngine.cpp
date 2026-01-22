@@ -72,4 +72,23 @@ ut::suite criticalPositionEngineSuite = [] {
     expect(moves.size == 2) // Expected number of legal moves
       << "Expected 2 legal moves, got " << moves.size << '\n';
   };
+
+  "critical position 4"_test = [] {
+    engine::Engine e = engine::Engine("R7/8/3B2p1/5n2/P2k4/3r3P/5PK1/8 b - - 0 1");
+    e.depth = 6;
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    // write a test to see if it generates the illegal move d3-d6:
+    bool illegalMoveFound = false;
+    chess::Board::Move m;
+    for (const auto& move : moves) {
+      if (move.from == chess::Coords("d3") && move.to == chess::Coords("d6")) {
+        illegalMoveFound = true;
+        m = move;
+        break;
+      }
+    }
+    expect(!illegalMoveFound) << "Illegal move d3-d6 found in generated moves. move = " << m.from.toString() << m.to.toString() << '\n';
+  };
 }; // ut::suite criticalPositionEngineSuite
