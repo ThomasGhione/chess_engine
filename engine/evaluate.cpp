@@ -223,29 +223,41 @@ int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ)
 int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
 
-    auto evalSide = [&](uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns, int sign) {
-        while (rooks) {
-            const int sq = popLSB(rooks);
-            const int file = sq & 7;
-            const int rank = sq >> 3;
-            const uint64_t fm = FILE_MASKS[file]; // Use precalculated mask
+    // Evaluate white rooks
+    uint64_t rooks = whiteRooks;
+    while (rooks) {
+        const int sq = popLSB(rooks);
+        const int file = sq & 7;
+        const int rank = sq >> 3;
+        const uint64_t fm = FILE_MASKS[file];
 
-            const bool ownPawnOnFile = (ownPawns & fm);
-            const bool oppPawnOnFile = (oppPawns & fm);
+        const bool ownPawnOnFile = (whitePawns & fm) != 0;
+        const bool oppPawnOnFile = (blackPawns & fm) != 0;
 
-            if (!ownPawnOnFile && !oppPawnOnFile)
-                score += sign * OPEN_FILE_ROOK_BONUS;
-            else if (!ownPawnOnFile && oppPawnOnFile)
-                score += sign * SEMI_OPEN_FILE_ROOK_BONUS;
+        // Branchless: bonus for open/semi-open file
+        const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS);
+        score += fileBonus;
 
-            // 7th rank (white = rank 6, black = rank 1)
-            if ((sign == 1 && rank == 6) || (sign == -1 && rank == 1))
-                score += sign * ROOK_ON_SEVENTH_BONUS;
-        }
-    };
+        score += (rank == 6) * ROOK_ON_SEVENTH_BONUS;
+    }
 
-    evalSide(whiteRooks, whitePawns, blackPawns, +1);
-    evalSide(blackRooks, blackPawns, whitePawns, -1);
+    // Evaluate black rooks
+    rooks = blackRooks;
+    while (rooks) {
+        const int sq = popLSB(rooks);
+        const int file = sq & 7;
+        const int rank = sq >> 3;
+        const uint64_t fm = FILE_MASKS[file];
+
+        const bool ownPawnOnFile = (blackPawns & fm) != 0;
+        const bool oppPawnOnFile = (whitePawns & fm) != 0;
+
+        // Branchless: bonus for open/semi-open file (negative for black)
+        const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? -OPEN_FILE_ROOK_BONUS : -SEMI_OPEN_FILE_ROOK_BONUS);
+        score += fileBonus;
+
+        score += (rank == 1) * (-ROOK_ON_SEVENTH_BONUS);
+    }
 
     return score;
 }
