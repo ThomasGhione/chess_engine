@@ -395,7 +395,8 @@ public:
     
 
     // Piece movement logic
-    constexpr bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
+    __attribute__((always_inline))
+    constexpr inline bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
         uint8_t p1 = get(pos1);
         uint8_t p2 = get(pos2);
         if (p1 == EMPTY || p2 == EMPTY) return false;

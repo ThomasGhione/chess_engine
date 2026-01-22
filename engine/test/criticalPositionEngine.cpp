@@ -25,7 +25,7 @@ ut::suite criticalPositionEngineSuite = [] {
       })
     );
 
-    auto sortedMoves = e.sortLegalMoves(moves, 0, e.board, true);
+    auto sortedMoves = e.sortLegalMoves(moves, 0, e.board, true, 0);
     expect(sortedMoves[0].move.from == chess::Coords("e1") && sortedMoves[0].move.to == chess::Coords("g1"))
       << "Expected castling move to be prioritized, but got move from " << sortedMoves[0].move.from.toString() << sortedMoves[0].move.to.toString() << '\n'
       << "with score " << sortedMoves[0].score << '\n'

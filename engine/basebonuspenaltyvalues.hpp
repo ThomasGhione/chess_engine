@@ -37,6 +37,10 @@ inline static constexpr int64_t PINNED_ROOK_PENALTY = 20;          // ridotto da
 inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 30;   // ridotto da 50
 inline static constexpr int64_t PINNED_QUEEN_PENALTY = 80;         // ridotto da 150
 
+// Coordination penalty: minor pieces (knights/bishops) far from other friendly pieces
+// measured within Manhattan distance <= 2 (useful to promote piece coordination)
+inline static constexpr int64_t COORDINATION_PENALTY = 12;         // centipawns
+
 // ===================================================
 // HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
 // IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!

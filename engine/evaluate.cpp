@@ -321,6 +321,34 @@ int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
 }
 
 
+__attribute__((hot))
+int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+
+        // Minor pieces: knights and bishops
+        uint64_t minors = b.knights_bb[side] | b.bishops_bb[side];
+        if (!minors) continue;
+
+        // All friendly pieces (including pawns) - used to check proximity
+        const uint64_t friends = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side];
+
+        while (minors) {
+            const int sq = popLSB(minors);
+            const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
+            if ((friends & nearby) == 0) {
+                // No friendly piece within Manhattan distance <= 2
+                score -= sign * COORDINATION_PENALTY;
+            }
+        }
+    }
+
+    return score;
+}
+
+
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
     return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
@@ -422,15 +450,20 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
     // We still need to iterate through individual pieces to check if each one is trapped
     int64_t score = 0;
 
+    // Small extra penalty to make truly trapped pieces slightly worse than the
+    // base PINNED_* penalties. This keeps tuning local to the evaluation
+    // function and avoids changing global constants.
+    constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
+
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
 
-    // Knights: use a precomputed lookup table (no magic bitboards)
+        // Knights: use a precomputed lookup table (no magic bitboards)
         uint64_t knights = b.knights_bb[side];
         while (knights) {
             const int sq = popLSB(knights);
             const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
-            if (mobility == 0) [[unlikely]] score -= sign * PINNED_KNIGHT_PENALTY;
+            if (mobility == 0) [[unlikely]] score -= sign * (PINNED_KNIGHT_PENALTY + TRAPPED_EXTRA_SEVERITY);
             else if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
         }
 
@@ -442,7 +475,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
             while (bishops) {
                 const int sq = popLSB(bishops);
                 const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
-                if (mobility == 0) [[unlikely]] score -= sign * PINNED_BISHOP_PENALTY;
+                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_BISHOP_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
             }
 
@@ -450,7 +483,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
             while (rooks) {
                 const int sq = popLSB(rooks);
                 const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
-                if (mobility == 0) [[unlikely]] score -= sign * PINNED_ROOK_PENALTY;
+                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_ROOK_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
             }
 
@@ -458,7 +491,7 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
             while (queens) {
                 const int sq = popLSB(queens);
                 const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
-                if (mobility == 0) [[unlikely]] score -= sign * PINNED_QUEEN_PENALTY;
+                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_QUEEN_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
             }
         }
@@ -841,6 +874,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Knight positioning (avoid rim)
         eval += evalKnightOnRim(board);
+        // Penalize non-coordinated minor pieces (promote piece coordination)
+        eval += evalPieceCoordination(board);
         
         // Basic pawn structure (non troppo dettagliato)
         eval += evalPawnStructure(whitePawns, blackPawns, false);
@@ -874,6 +909,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Piece activity - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
+        // Penalize non-coordinated minor pieces
+        eval += evalPieceCoordination(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         
@@ -905,6 +942,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Piece activity and positioning - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
+        // Penalize non-coordinated minor pieces in middlegame
+        eval += evalPieceCoordination(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         
