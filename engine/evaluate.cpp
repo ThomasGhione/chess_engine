@@ -349,6 +349,44 @@ int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
 }
 
 
+__attribute__((hot))
+int64_t Engine::evalOutposts(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+
+        // Consider knights and bishops for outposts (knights benefit more)
+        uint64_t knights = b.knights_bb[side];
+        while (knights) {
+            const int sq = popLSB(knights);
+            const int opp = side ^ 1;
+
+            // Outpost: supported by a friendly pawn and not attacked by enemy pawns
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[side][sq] & b.pawns_bb[side]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
+
+            if (supportedByPawn && !attackedByEnemyPawn) {
+                score += sign * OUTPOST_KNIGHT_BONUS; // knight outpost bonus
+            }
+        }
+
+        uint64_t bishops = b.bishops_bb[side];
+        while (bishops) {
+            const int sq = popLSB(bishops);
+            const int opp = side ^ 1;
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[side][sq] & b.pawns_bb[side]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
+            if (supportedByPawn && !attackedByEnemyPawn) {
+                score += sign * (OUTPOST_BISHOP_BONUS / 2); // smaller bonus for bishops
+            }
+        }
+    }
+
+    return score;
+}
+
+
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
     return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
@@ -876,6 +914,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalKnightOnRim(board);
         // Penalize non-coordinated minor pieces (promote piece coordination)
         eval += evalPieceCoordination(board);
+        // Outposts: reward stable knights/bishops supported by pawns and not attacked by enemy pawns
+        eval += evalOutposts(board);
         
         // Basic pawn structure (non troppo dettagliato)
         eval += evalPawnStructure(whitePawns, blackPawns, false);
@@ -909,8 +949,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Piece activity - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
-        // Penalize non-coordinated minor pieces
         eval += evalPieceCoordination(board);
+        eval += evalOutposts(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         
@@ -942,8 +982,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Piece activity and positioning - NEEDS attackData
         eval += evalMobility(attackData);
         eval += evalKnightOnRim(board);
-        // Penalize non-coordinated minor pieces in middlegame
         eval += evalPieceCoordination(board);
+        eval += evalOutposts(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         

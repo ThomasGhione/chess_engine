@@ -840,6 +840,15 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                     // Clampiamo a [0, 1000] per evitare valori anomali
                     score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), histScore));
                 }
+                // Discourage moving the same pawn twice in the opening: small negative ordering penalty
+                // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
+                if (fromPieceType == chess::Board::PAWN && fullMoveClock < 8) {
+                    const int fromRank = chess::Board::rankOf(m.from.index);
+                    const int pawnStartRank = usIsWhite ? 6 : 1; // white pawns start on rank index 6, black on 1
+                    if (fromRank != pawnStartRank) {
+                        score += ORDERING_PENALTY_SAME_PAWN_OPENING; // negative value lowers priority
+                    }
+                }
             }
         }
 

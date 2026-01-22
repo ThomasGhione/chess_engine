@@ -180,6 +180,7 @@ public:
     static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int64_t evalPieceCoordination(const chess::Board& b) noexcept;
+    static int64_t evalOutposts(const chess::Board& b) noexcept;
     static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
     static int64_t evalBadKingPosition(const chess::Board& b) noexcept;
     static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;

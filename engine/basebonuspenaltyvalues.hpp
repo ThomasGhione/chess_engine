@@ -41,6 +41,14 @@ inline static constexpr int64_t PINNED_QUEEN_PENALTY = 80;         // ridotto da
 // measured within Manhattan distance <= 2 (useful to promote piece coordination)
 inline static constexpr int64_t COORDINATION_PENALTY = 12;         // centipawns
 
+// Outpost bonus for stable knight/bishop squares (supported by pawn and not attacked by enemy pawns)
+inline static constexpr int64_t OUTPOST_BISHOP_BONUS = 20;               // centipawns
+inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 30;        // knight outposts are more valuable
+
+// Move-ordering penalty for moving the same pawn again during opening
+// (search-time penalty applied in move ordering; negative number lowers priority)
+inline static constexpr int64_t ORDERING_PENALTY_SAME_PAWN_OPENING = -15;
+
 // ===================================================
 // HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
 // IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!
@@ -98,9 +106,8 @@ static constexpr int64_t KILLER1_BONUS = 2000;
 static constexpr int64_t KILLER2_BONUS = 1900;
 
 // ===================================================
-// KNIGHT & BISHOP POSITIONING
+// BISHOP PAIR
 // ===================================================
-inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 30;  // aumentato (cavalli ben piazzati)
 inline static constexpr int64_t BISHOP_PAIR_BONUS = 30;     // aumentato (coppia alfieri importante)
 
 // ===================================================
