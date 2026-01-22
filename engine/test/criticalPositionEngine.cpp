@@ -91,4 +91,20 @@ ut::suite criticalPositionEngineSuite = [] {
     }
     expect(!illegalMoveFound) << "Illegal move d3-d6 found in generated moves. move = " << m.from.toString() << m.to.toString() << '\n';
   };
+
+  "critical position 5"_test = []{
+    engine::Engine e = engine::Engine("r1bqkb1r/pppppppp/2n2n2/4P3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    int64_t evaluation = e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("f6")){
+      expect(bestMove.to != chess::Coords("e4"))
+        << "Expected not knight in center.";
+    }
+  };
+
 }; // ut::suite criticalPositionEngineSuite
