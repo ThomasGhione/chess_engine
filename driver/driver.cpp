@@ -181,7 +181,7 @@ namespace driver {
         std::string mode = std::string(argv[MODE]);
         std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
 
-        if (mode == "bvs" || mode == "4") {
+        if (mode == "-bvs" || mode == "4") {
             if (argc < MAX_PARAM_LENGTH) {
                 std::cout << "Error: Please specify 'w' for white or 'b' for black to choose engine color.\n";
                 exit(EXIT_FAILURE);
@@ -201,13 +201,13 @@ namespace driver {
                 exit(EXIT_FAILURE);
             }
         }
-        else if (mode == "bvb" || mode == "3") {
+        else if (mode == "-bvb" || mode == "3") {
             this->botVsBot();
         } 
-        else if (mode == "pvp" || mode == "21") {
+        else if (mode == "-pvp" || mode == "21") {
             this->playGameVsHuman();
         } 
-        else if (mode == "pvb" || mode == "11") {
+        else if (mode == "-pvb" || mode == "11") {
             if (argc < MAX_PARAM_LENGTH) {
                 std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
                 exit(EXIT_FAILURE);
@@ -227,8 +227,12 @@ namespace driver {
                 exit(EXIT_FAILURE);
             }
         } 
+        else if (mode == "-uci") {
+            auto uciInterface = uci::UCI(this->engine);
+            uciInterface.mainLoop();
+        }
         else {
-            std::cout << "Error: Invalid mode. Use 'bvb' for bot vs bot, 'pvp' for player vs player, or 'pvb' for player vs bot. \n";
+            std::cout << "Error: Invalid mode. Use '-bvb' for bot vs bot, '-pvp' for player vs player, or '-pvb' for player vs bot. \n";
             exit(EXIT_FAILURE);
         }
     }

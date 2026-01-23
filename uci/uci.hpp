@@ -16,7 +16,7 @@ namespace uci {
             engine::Engine& engine;
 
 
-            void mainLoop() noexcept;
+            [[noreturn]] void mainLoop() noexcept;
 
             // Parser
             void parseCommand(const std::string& command) noexcept;
