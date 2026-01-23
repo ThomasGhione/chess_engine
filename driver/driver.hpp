@@ -6,7 +6,7 @@
 
 #include "../printer/menu.hpp"
 #include "../engine/engine.hpp"
-
+#include "../uci/uci.hpp"
 
 namespace driver {
 

@@ -87,57 +87,80 @@ namespace driver {
                 }
 
                 case '3':
-                    this->botVsBot();
-                    break;
-
-                case '4': {
-                    uint8_t botStockfishChoice = menu.playBotVsStockfishMenu();
-                    Driver::quit(std::string(1, botStockfishChoice));
-
-                    switch (botStockfishChoice) {
-                        case '1':
-                            this->botVsStockfish(true);
-                            break;
-                        case '2':
-                            this->botVsStockfish(false);
-                            break;
-                        case '3':
-                            // Back to main menu
-                            break;
-                        default:
-                            std::cout << "Invalid option. Please select a valid option.\n";
-                            break;
-                    }
-                    break;
-                }
-
-                case '5': {
-                    uint8_t betaAlphaChoice = menu.playBetaVsAlphaMenu();
-                    Driver::quit(std::string(1, betaAlphaChoice));
-                    switch (betaAlphaChoice) {
-                        case '1':
-                            this->betaVsAlpha(true);
-                            break;
-                        case '2':
-                            this->betaVsAlpha(false);
-                            break;
-                        case '3':
-                            // Back to main menu
-                            break;
-                        default:
-                            std::cout << "Invalid option. Please select a valid option.\n";
-                            break;
-                    }
-                    break;
-                }
-
-                case '6':
                     if (!this->loadGame()) {
                         std::cout << "No saved game found. Returning to main menu.\n";
                     }
                     break;
 
-                case '7':
+                case '4': {
+                    uint8_t extraMenuChoice = menu.extraMenu();
+                    Driver::quit(std::string(1, extraMenuChoice));
+
+                    switch (extraMenuChoice) {
+                        case '1':
+                            this->botVsBot();
+                            break;
+
+                        case '2': {
+                            uint8_t botStockfishChoice = menu.playBotVsStockfishMenu();
+                            Driver::quit(std::string(1, botStockfishChoice));
+
+                            switch (botStockfishChoice) {
+                                case '1':
+                                    this->botVsStockfish(true);
+                                    break;
+                                case '2':
+                                    this->botVsStockfish(false);
+                                    break;
+                                case '3':
+                                    // Back to main menu
+                                    break;
+                                default:
+                                    std::cout << "Invalid option. Please select a valid option.\n";
+                                    break;
+                            }
+                            break;
+                        }
+
+                        case '3': {
+                            uint8_t betaAlphaChoice = menu.playBetaVsAlphaMenu();
+                            Driver::quit(std::string(1, betaAlphaChoice));
+                            switch (betaAlphaChoice) {
+                                case '1':
+                                    this->betaVsAlpha(true);
+                                    break;
+                                case '2':
+                                    this->betaVsAlpha(false);
+                                    break;
+                                case '3':
+                                    // Back to main menu
+                                    break;
+                                default:
+                                    std::cout << "Invalid option. Please select a valid option.\n";
+                                    break;
+                            }
+                            break;
+                        }
+                        
+                        case '4': {
+                            auto uciInterface = uci::UCI();
+                            uciInterface.mainLoop();
+                            break;
+                        }
+
+                        case '5':
+                            // Back to main menu
+                            break;
+
+                        default:
+                            std::cout << "Invalid option. Please select a valid option.\n";
+                            break;
+                    }
+                    
+                    break;
+                }
+
+                case '5':
                     std::cout << "Thank you for playing! See you next time." << std::endl;
                     exit(EXIT_SUCCESS);
                     break;

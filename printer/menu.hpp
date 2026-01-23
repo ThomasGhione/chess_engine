@@ -10,6 +10,7 @@ namespace print {
     class Menu {
       	public:
         	static uint32_t mainMenu() noexcept;
+			static uint32_t extraMenu() noexcept;
         	static uint32_t playWithEngineMenu() noexcept;
 			static uint32_t playWithPlayerMenu() noexcept;
 			static uint32_t playBotVsStockfishMenu() noexcept;

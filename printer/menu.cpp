@@ -13,20 +13,41 @@ namespace print {
 
         clearScreen();
 
-        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Bot Vs Bot\n4. Bot Vs Stockfish\n5. Beta vs Alpha Engines\n6. Load Game\n7. Quit Game\n\nSelect an option (1-7): ";
+        static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Load Game\n4. Extra Modes\n5. Quit Game\n\nSelect an option (1-5): ";
 
         uint8_t choice;
 
         std::cout << line;
         std::cin >> choice;
 
-        while (choice < '1' || choice > '7') {
-            std::cout << "Invalid option. Please select a valid option (1-7): ";
+        while (choice < '1' || choice > '5') {
+            std::cout << "Invalid option. Please select a valid option (1-5): ";
             std::cin >> choice;
         }
 
         clearScreen();
                 
+        return choice;
+    }
+
+    uint32_t Menu::extraMenu() noexcept{
+
+        clearScreen();
+
+        static const std::string prompt = "\n\n==================== EXTRA MODES MENU ====================\n\n1. Bot Vs Bot\n2. Bot Vs Stockfish\n3. Beta vs Alpha Engines\n4. UCI Mode\n5. Go back\n\nSelect an option (1-5): ";
+        
+        uint8_t choice;
+        
+        std::cout << prompt;
+        std::cin >> choice;
+
+        while (choice < '1' || choice > '5') {
+            std::cout << "Invalid option. Please select a valid option (1-5): ";
+            std::cin >> choice;
+        }
+
+        clearScreen();
+
         return choice;
     }
 

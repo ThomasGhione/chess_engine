@@ -59,10 +59,11 @@ DRIVER_SRCS = $(wildcard ./driver/*.cpp)
 PIECE_SRCS = $(wildcard ./piece/*.cpp)
 GAMESTATUS_SRCS = $(wildcard ./gamestatus/*.cpp)
 BOARD_SRCS = $(wildcard ./board/*.cpp)
+UCI_SRCS = $(wildcard ./uci/*.cpp)
 
 # Path dei file in unica variabile
 ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
-                  $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS)
+                  $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Path dei file header (escludendo stockfish e test utils)
 ENGINE_HDRS = $(wildcard ./engine/*.hpp)
@@ -72,10 +73,11 @@ DRIVER_HDRS = $(wildcard ./driver/*.hpp)
 PIECE_HDRS = $(wildcard ./piece/*.hpp)
 GAMESTATUS_HDRS = $(wildcard ./gamestatus/*.hpp)
 BOARD_HDRS = $(wildcard ./board/*.hpp)
+UCI_HDRS = $(wildcard ./uci/*.hpp)
 
 # Path di tutti gli header
 ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
-                  $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS)
+                  $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
 
 # Tutti i file da analizzare (.cpp e .hpp)
 ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
