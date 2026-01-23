@@ -10,7 +10,7 @@ namespace uci {
         : engine(e) 
     {}
 
-    void UCI::mainLoop() noexcept {
+    [[noreturn]] void UCI::mainLoop() noexcept {
         while(true) {
             std::string command;
             std::getline(std::cin, command);
@@ -36,6 +36,7 @@ namespace uci {
         }
         else if (command == "isready") {
             isready();
+            std::cout << "readyok\n";
         }
         else if (command.rfind("go", 0) == 0) { // starts with "go"
             go();
@@ -75,11 +76,12 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
-        
+        engine.reset();
     }
 
     void UCI::isready() noexcept {
-        
+        // Not final implementation
+        std::cout << "readyok\n";
     }
     
     void UCI::go() noexcept {

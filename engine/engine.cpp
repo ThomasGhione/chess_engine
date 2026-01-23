@@ -50,6 +50,13 @@ void Engine::reset() noexcept {
     isPlayerWhite = true;
     nodesSearched = 0;
     
+    // Reset endgame depth extension flags
+    depthExtendedMedium = false;
+    depthExtendedMaximum = false;
+    
+    // Reset move history
+    moveHistory.clear();
+    
 #ifdef DEBUG
     ttProbes = 0;
     ttHits = 0;
