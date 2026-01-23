@@ -1,15 +1,20 @@
 #ifndef UCI_HPP
 #define UCI_HPP
 
+#include "../engine/engine.hpp"
 #include <string>
 #include <iostream>
 
 namespace uci {
 
-    class UCI final {
+    class UCI {
 
         public:
             UCI();
+            UCI(engine::Engine& engine);
+
+            engine::Engine& engine;
+
 
             void mainLoop() noexcept;
 
@@ -20,7 +25,7 @@ namespace uci {
             void quit() noexcept;
             void uci() noexcept;
             void setOption() noexcept;
-            void position() noexcept;
+            void position(const std::string& command) noexcept;
             void ucinewgame() noexcept;
             void isready() noexcept;
             void go() noexcept;
@@ -28,6 +33,9 @@ namespace uci {
             void ponderhit() noexcept;
 
         private:
+
+            void parseMoves(const std::string& moves) noexcept;
+            void parseFEN(const std::string& fen) noexcept;
 
     }; // class UCI
 
