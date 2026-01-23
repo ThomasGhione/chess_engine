@@ -36,7 +36,6 @@ namespace uci {
         }
         else if (command == "isready") {
             isready();
-            std::cout << "readyok\n";
         }
         else if (command.rfind("go", 0) == 0) { // starts with "go"
             go();
