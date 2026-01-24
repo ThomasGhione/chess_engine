@@ -28,7 +28,7 @@ namespace uci {
         else if (command == "setoption") {
             setOption();
         }
-        else if (command.find("position", 0) == 0) { // starts with "position"
+        else if (command.find("position") == 0) { // starts with "position"
             position(command.substr(9)); // pass the rest of the command
         }
         else if (command == "ucinewgame") {
@@ -37,7 +37,7 @@ namespace uci {
         else if (command == "isready") {
             isready();
         }
-        else if (command.rfind("go", 0) == 0) { // starts with "go"
+        else if (command.find("go") == 0) { // starts with "go"
             go();
         }
         else if (command == "stop") {
@@ -65,12 +65,20 @@ namespace uci {
     }
 
     void UCI::position(const std::string& command) noexcept {
-        if (command.find("startpos", 0)) {
+        engine.reset();
+        
+        if (command.find("startpos") == 0) {
             parseMoves(command.substr(9));
         }
-        else if (command.find("fen", 0)) {
-            parseFEN(command.substr(4));
-            parseMoves(command.substr(command.find("moves")));
+        else if (command.find("fen") == 0) {
+            auto movesPos = command.find("moves");
+            if (movesPos == std::string::npos) {
+                parseFEN(command.substr(4));
+            }
+            else {
+                parseFEN(command.substr(4, movesPos - 4));
+                parseMoves(command.substr(command.find("moves")));
+            }
         }
     }
 
@@ -84,7 +92,9 @@ namespace uci {
     }
     
     void UCI::go() noexcept {
-        
+        engine.search(engine.depth);
+        chess::Board::Move bestMove = engine.bestMove;
+        std::cout << "bestmove " << bestMove.toUCIString() << "\n";
     }
     
     void UCI::stop() noexcept {
@@ -99,7 +109,7 @@ namespace uci {
     // Private parsing helpers
 
     void UCI::parseMoves(const std::string& moves) noexcept {
-        if (moves.size() < 6 || moves.substr(0, 6) != "moves ") {
+        if (moves.empty() || (moves.size() < 6 || moves.substr(0, 6) != "moves ")) {
             return;
         }
 

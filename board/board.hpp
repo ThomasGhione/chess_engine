@@ -230,6 +230,14 @@ public:
             }
             moves[0] = temp;
         }
+
+        std::string toUCIString() const noexcept {
+            std::string uciMove = from.toString() + to.toString();
+            if (promotionPiece != '\0') {
+                uciMove += std::tolower(promotionPiece);
+            }
+            return uciMove;
+        }
     };
 
     struct MoveState {

@@ -54,6 +54,8 @@ public:
 
     void reset() noexcept;
 
+    chess::Board::Move bestMove;
+
     // Structs and enums
     struct ScoredMove {
         chess::Board::Move move;
