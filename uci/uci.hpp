@@ -28,7 +28,7 @@ namespace uci {
             void position(const std::string& command) noexcept;
             void ucinewgame() noexcept;
             void isready() noexcept;
-            void go() noexcept;
+            void go(const std::string& args) noexcept;
             void stop() noexcept;
             void ponderhit() noexcept;
 

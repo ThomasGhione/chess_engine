@@ -1,4 +1,6 @@
 #include "uci.hpp"
+#include <sstream>
+#include <algorithm>
 
 namespace uci {
     
@@ -14,6 +16,9 @@ namespace uci {
         while(true) {
             std::string command;
             std::getline(std::cin, command);
+            // Trim possible Windows CRLF trailing \r from piped input
+            if (!command.empty() && command.back() == '\r') command.pop_back();
+            if (command.empty()) continue;
             this->parseCommand(command);
         }
     }
@@ -29,7 +34,9 @@ namespace uci {
             setOption();
         }
         else if (command.find("position") == 0) { // starts with "position"
-            position(command.substr(9)); // pass the rest of the command
+            std::string rest;
+            if (command.size() > 9 && command[8] == ' ') rest = command.substr(9);
+            position(rest); // pass the rest of the command (safe)
         }
         else if (command == "ucinewgame") {
             ucinewgame();
@@ -38,7 +45,9 @@ namespace uci {
             isready();
         }
         else if (command.find("go") == 0) { // starts with "go"
-            go();
+            std::string args;
+            if (command.size() > 3 && command[2] == ' ') args = command.substr(3);
+            go(args);
         }
         else if (command == "stop") {
             stop();
@@ -68,7 +77,11 @@ namespace uci {
         engine.reset();
         
         if (command.find("startpos") == 0) {
-            parseMoves(command.substr(9));
+            auto movesPos = command.find("moves");
+            if (movesPos != std::string::npos) {
+                parseMoves(command.substr(movesPos));
+            }
+            return;
         }
         else if (command.find("fen") == 0) {
             auto movesPos = command.find("moves");
@@ -91,8 +104,40 @@ namespace uci {
         std::cout << "readyok\n";
     }
     
-    void UCI::go() noexcept {
-        engine.search(engine.depth);
+    void UCI::go(const std::string& args) noexcept {
+        // Minimal parsing for common UCI 'go' options: depth and movetime.
+        // If depth provided, use it. If not, fall back to engine.depth or default.
+        uint64_t requestedDepth = engine.depth;
+
+        if (requestedDepth == 0) requestedDepth = engine::Engine::DEFAULTDEPTH;
+
+        if (!args.empty()) {
+            std::istringstream iss(args);
+            std::string token;
+            while (iss >> token) {
+                if (token == "depth") {
+                    int d = 0;
+                    if (iss >> d) requestedDepth = static_cast<uint64_t>(std::max(0, d));
+                }
+                else if (token == "movetime") {
+                    // We don't have a time-based search API; fall back to default depth.
+                    // Consume value so subsequent tokens (if any) are parsed correctly.
+                    int mt = 0;
+                    if (iss >> mt) {
+                        // No-op conversion: keep requestedDepth as-is (could be improved).
+                    }
+                }
+                else {
+                    // Skip token's argument if present (e.g. wtime 3000 btime 3000)
+                    if (token == "wtime" || token == "btime" || token == "winc" || token == "binc") {
+                        int skipv = 0;
+                        iss >> skipv;
+                    }
+                }
+            }
+        }
+
+        engine.search(requestedDepth);
         chess::Board::Move bestMove = engine.bestMove;
         std::cout << "bestmove " << bestMove.toUCIString() << "\n";
     }
@@ -119,15 +164,19 @@ namespace uci {
         while ((delimiterPos = movesList.find(' ')) != std::string::npos) {
             std::string move = movesList.substr(0, delimiterPos);
 
-            engine.movePiece(chess::Coords(move.substr(0,2)), chess::Coords(move.substr(2,2)),
-                             move.size() > 4 ? move[4] : '\0');
+            if (move.size() >= 4) {
+                engine.movePiece(chess::Coords(move.substr(0,2)), chess::Coords(move.substr(2,2)),
+                                 move.size() > 4 ? move[4] : '\0');
+            }
 
             movesList.erase(0, delimiterPos + 1);
         }
 
         // Last move (or only move if no spaces)
-        engine.movePiece(chess::Coords(movesList.substr(0,2)), chess::Coords(movesList.substr(2,2)),
-                         movesList.size() > 4 ? movesList[4] : '\0');
+        if (!movesList.empty() && movesList.size() >= 4) {
+            engine.movePiece(chess::Coords(movesList.substr(0,2)), chess::Coords(movesList.substr(2,2)),
+                             movesList.size() > 4 ? movesList[4] : '\0');
+        }
     }
 
     void UCI::parseFEN(const std::string& fen) noexcept {
