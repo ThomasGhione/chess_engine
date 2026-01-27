@@ -263,26 +263,41 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             threadScores[i] = score;
         }
     } else {
-        // Parallel region with task generation. Deterministic merge is performed after taskwait.
+        // Parallel region with chunked tasks to reduce task overhead and copies
+        // We create tasks that process a contiguous range of moves. Each task copies the board ONCE
+        // and evaluates all moves in the chunk sequentially. We use taskgroup to
+        // wait for all tasks deterministically before merging results.
+        const int totalJobs = static_cast<int>(moves.size - 1);
+        int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
+        const int chunk = std::min(16, estimatedChunk); // cap chunk size to avoid too-large tasks
+
         #pragma omp parallel num_threads(threadsToUse)
+        
         {
             #pragma omp single nowait
             {
-                for (int i = 1; i < moves.size; ++i) {
-                    #pragma omp task firstprivate(i)
-                    {
-                        chess::Board threadBoard = this->board;
-                        const auto m = moves[i]; // per-task copy
-                        chess::Board::MoveState state;
+                #pragma omp taskgroup
+                {
+                    for (int start = 1; start <= totalJobs; start += chunk) {
+                        const int end = std::min(start + chunk, static_cast<int>(moves.size));
+                        #pragma omp task firstprivate(start, end)
+                        {
+                            // Make ONE copy of the board for this task using copy ctor (safe)
+                            chess::Board threadBoard = this->board;
 
-                        doMoveWithPromotion(threadBoard, m, state);
-                        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
-                        threadBoard.undoMove(m, state);
+                            for (int i = start; i < end; ++i) {
+                                const auto m = moves[i]; // local copy
+                                chess::Board::MoveState state;
 
-                        threadScores[i] = score;
-                    } // task
-                } // for moves
-                #pragma omp taskwait
+                                doMoveWithPromotion(threadBoard, m, state);
+                                int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+                                threadBoard.undoMove(m, state);
+
+                                threadScores[i] = score;
+                            }
+                        } // task
+                    }
+                } // taskgroup
             } // single
         } // parallel
     }
