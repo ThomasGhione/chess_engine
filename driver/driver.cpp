@@ -227,7 +227,7 @@ namespace driver {
                 exit(EXIT_FAILURE);
             }
         } 
-        else if (mode == "-uci") {
+        else if (mode == "uci" || mode == "-uci" || mode == "--uci") {
             auto uciInterface = uci::UCI(this->engine);
             uciInterface.mainLoop();
         }

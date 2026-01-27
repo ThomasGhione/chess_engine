@@ -64,9 +64,9 @@ namespace uci {
     }
 
     void UCI::uci() noexcept {
-        std::cout << "id name Fenty The Chess Engine Beta 0.1.0\n";
-        std::cout << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n";
-        std::cout << "uciok\n";
+        std::cout << "id name Fenty The Chess Engine Beta 0.1.0" << std::endl;
+        std::cout << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella" << std::endl;
+        std::cout << "uciok" << std::endl;
     }
 
     void UCI::setOption() noexcept {
@@ -101,7 +101,7 @@ namespace uci {
 
     void UCI::isready() noexcept {
         // Not final implementation
-        std::cout << "readyok\n";
+        std::cout << "readyok" << std::endl;
     }
     
     void UCI::go(const std::string& args) noexcept {
@@ -139,7 +139,7 @@ namespace uci {
 
         engine.search(requestedDepth);
         chess::Board::Move bestMove = engine.bestMove;
-        std::cout << "bestmove " << bestMove.toUCIString() << "\n";
+        std::cout << "bestmove " << bestMove.toUCIString() << std::endl;
     }
     
     void UCI::stop() noexcept {
