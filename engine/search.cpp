@@ -239,20 +239,52 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;
 
-    std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
+    // std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
+    std::array<int64_t, 218> threadScores; // 218 = max moves 
+    threadScores.fill(Engine::initialBest(usIsWhite));
 
-    #pragma omp parallel for schedule(static, 1)
-    for (int i = 1; i < moves.size; ++i) {
-        chess::Board threadBoard = this->board;
-        const auto& m = moves[i];
-        chess::Board::MoveState state;
+    // Task-based root parallelism (work-stealing, better load balance)
+    // Bound the number of threads to MAX_THREADS and the number of moves
+    int candidateThreads = static_cast<int>(moves.size - 1);
+    if (candidateThreads < 1) candidateThreads = 1;
+    const int threadsToUse = (this->MAX_THREADS < candidateThreads) ? this->MAX_THREADS : candidateThreads;
 
-        doMoveWithPromotion(threadBoard, m, state);
-        
-        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
-        threadBoard.undoMove(m, state);
+    if (threadsToUse <= 1) {
+        // Sequential fallback (avoid OpenMP overhead)
+        for (int i = 1; i < moves.size; ++i) {
+            chess::Board threadBoard = this->board;
+            const auto m = moves[i]; // copy to avoid referencing container inside tasks
+            chess::Board::MoveState state;
 
-        threadScores[i] = score;
+            doMoveWithPromotion(threadBoard, m, state);
+            int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+            threadBoard.undoMove(m, state);
+
+            threadScores[i] = score;
+        }
+    } else {
+        // Parallel region with task generation. Deterministic merge is performed after taskwait.
+        #pragma omp parallel num_threads(threadsToUse)
+        {
+            #pragma omp single nowait
+            {
+                for (int i = 1; i < moves.size; ++i) {
+                    #pragma omp task firstprivate(i)
+                    {
+                        chess::Board threadBoard = this->board;
+                        const auto m = moves[i]; // per-task copy
+                        chess::Board::MoveState state;
+
+                        doMoveWithPromotion(threadBoard, m, state);
+                        int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+                        threadBoard.undoMove(m, state);
+
+                        threadScores[i] = score;
+                    } // task
+                } // for moves
+                #pragma omp taskwait
+            } // single
+        } // parallel
     }
 
     // Merge results deterministically (in ordine sequenziale, senza race)
