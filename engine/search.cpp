@@ -271,8 +271,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk); // cap chunk size to avoid too-large tasks
 
-        #pragma omp parallel num_threads(threadsToUse)
-        
+        #pragma omp parallel num_threads(threadsToUse)        
         {
             #pragma omp single nowait
             {
@@ -846,9 +845,19 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 addMVVLVABonus(m, b, score); // +MVV-LVA (0-9000)
                 // Total: 10000-19000
             } else {
-                // BAD CAPTURE: bassa priorità (dopo tutto)
-                score = -10000 + see; // see è negativo, quindi score molto basso
-                // Total: -10000 a -10500 circa
+                // BAD CAPTURE: penalize based on how bad the SEE is
+                // Strongly discourage clearly losing exchanges so they are explored last
+                if (see <= -200) {
+                    // Very bad: give it a huge negative priority
+                    score = -30000 + see;
+                } else if (see <= -50) {
+                    // Moderately bad: large negative priority
+                    score = -20000 + see;
+                } else {
+                    // Slightly bad: keep negative but add small extra penalty
+                    score = -10000 + see - 2000;
+                }
+                // Total: pushed to very low priority to avoid risky sacrifices
             }
         } else {
             // NON-CAPTURES: killer, checks, history
@@ -878,6 +887,18 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 if (fromPieceType == chess::Board::PAWN) {
                     if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
                         score = 7000;
+                    }
+                }
+
+                // Discourage placing a bishop directly in front of own pawn (blocks pawn advance)
+                if (fromPieceType == chess::Board::BISHOP) {
+                    const int toIdx = m.to.index;
+                    const int behind = usIsWhite ? (toIdx - 8) : (toIdx + 8);
+                    if (behind >= 0 && behind < 64) {
+                        const uint64_t pawnMask = usIsWhite ? b.pawns_bb[0] : b.pawns_bb[1];
+                        if (pawnMask & chess::Board::bitMask(behind)) {
+                            score += -80;
+                        }
                     }
                 }
                 
@@ -1055,9 +1076,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     MoveList<ScoredMove> orderedMoves;
     
     // Dynamic SEE pruning threshold based on depth and material balance
-    // Shallow qsearch (ply < 15): allow slightly losing captures (-50cp)
+    // Make qsearch more conservative against pruning losing exchanges.
+    // Shallow qsearch (ply < 15): allow slightly losing captures (-15cp)
     // Deep qsearch (ply >= 15): only neutral/winning captures (0cp)
-    int64_t seeThreshold = (ply < 15) ? -50 : 0;
+    int64_t seeThreshold = (ply < 15) ? -15 : 0;
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -1073,7 +1095,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[toPieceType];
-            constexpr int64_t FUTILITY_MARGIN = 200; // Safety margin for positional compensation
+            // Increase futility margin to be more conservative about skipping captures
+            constexpr int64_t FUTILITY_MARGIN = 300; // Safety margin for positional compensation
             
             // Check if this capture can possibly improve our position enough
             if (usIsWhite) {

@@ -851,6 +851,48 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
 }
 
 
+int64_t Engine::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    // For each pawn, check if a friendly bishop sits on the square directly in front
+    // (i.e., blocks pawn advance). Penalize more heavily for central files (d/e)
+    // and if the pawn is still on its initial rank (d2/e2 or d7/e7).
+    for (int side = 0; side < 2; ++side) {
+        const int sign = (side == 0) ? 1 : -1;
+        uint64_t pawns = b.pawns_bb[side];
+        const uint64_t bishops = b.bishops_bb[side]; // own bishops
+
+        if (!pawns || !bishops) continue;
+
+        while (pawns) {
+            const int psq = popLSB(pawns);
+            const int rank = chess::Board::rankOf(psq);
+            const int file = chess::Board::fileOf(psq);
+
+            const int forward = (side == 0) ? (psq - 8) : (psq + 8);
+            if (forward < 0 || forward >= 64) continue;
+
+            if (bishops & chess::Board::bitMask(forward)) {
+                // base penalty
+                int penalty = 40; // base
+                // central files (d=3, e=4) are worse
+                if (file == 3 || file == 4) penalty += 45;
+                // extra penalty if pawn still on starting rank (white:6, black:1)
+                const int startRank = (side == 0) ? 6 : 1;
+                if (rank == startRank) penalty += 30;
+
+                score -= sign * penalty;
+            }
+        }
+    }
+
+    return score;
+}
+
+
+
+
+
 __attribute__((hot))
 int64_t Engine::evaluate(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
@@ -937,6 +979,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative bonus (side to move advantage)
         eval += evalInitiative(board, false);
+    // Penalize bishops that block pawns directly (opening)
+    eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
@@ -975,6 +1019,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative
         eval += evalInitiative(board, false);
+    // Penalize bishops that block pawns in early middlegame
+    eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
@@ -1011,6 +1057,8 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative
         eval += evalInitiative(board, false);
+    // Penalize bishops that block pawns in middlegame
+    eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
