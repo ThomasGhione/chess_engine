@@ -50,7 +50,7 @@ ut::suite criticalPositionEngineSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
 
-    int64_t evaluation = e.evaluate(e.board);
+    e.evaluate(e.board);
 
     chess::Board::Move bestMove = e.getBestMove(moves, false);
 
@@ -97,7 +97,7 @@ ut::suite criticalPositionEngineSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
 
-    int64_t evaluation = e.evaluate(e.board);
+    e.evaluate(e.board);
 
     chess::Board::Move bestMove = e.getBestMove(moves, false);
 
@@ -107,13 +107,12 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
-  "critical position 5"_test = []{
-    engine::Engine e = engine::Engine("3r2k1/pp4b1/2p1bn1p/5pp1/2p4B/2N1PN2/PPP2PPP/R4K2 w - - 0 18
-");
+  "critical position 6"_test = []{
+    engine::Engine e = engine::Engine("3r2k1/pp4b1/2p1bn1p/5pp1/2p4B/2N1PN2/PPP2PPP/R4K2 w - - 0 18");
 
     auto moves = e.generateLegalMoves(e.board);
 
-    int64_t evaluation = e.evaluate(e.board);
+    e.evaluate(e.board);
 
     chess::Board::Move bestMove = e.getBestMove(moves, true);
 

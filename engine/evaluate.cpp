@@ -889,6 +889,83 @@ int64_t Engine::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
     return score;
 }
 
+// Rook endgame helper: push enemy king to edges for checkmate
+// Strategy: King on edge = easier to mate (especially with Rook support)
+// Returns bonus for our side when we have material advantage in endgame
+int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    // Detect if we're in a favorable Rook endgame (R+K vs K or better)
+    // Count material: if one side has Rook(s) and the other doesn't, it's favorable
+    const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
+    const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
+    
+    // Only apply in clear endgame material imbalance: one side has Rooks, other doesn't
+    // (or significant Rook advantage)
+    const bool whiteHasRookAdvantage = (whiteRooks > blackRooks);
+    const bool blackHasRookAdvantage = (blackRooks > whiteRooks);
+    
+    if (!whiteHasRookAdvantage && !blackHasRookAdvantage) {
+        // Balanced material (both have rooks or none), don't apply this bonus
+        return 0;
+    }
+
+    // For each side with Rook advantage, bonus enemy king when it approaches edges
+    for (int side = 0; side < 2; ++side) {
+        const bool sideHasAdvantage = (side == 0) ? whiteHasRookAdvantage : blackHasRookAdvantage;
+        if (!sideHasAdvantage) continue;
+
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
+        if (!enemyKingBB) continue;
+
+        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+        const int rank = chess::Board::rankOf(enemyKingSq);
+        const int file = chess::Board::fileOf(enemyKingSq);
+
+        // Distance to edge (minimum of rank distance to rank 0/7 and file distance to file 0/7)
+        const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
+
+        // Bonus: closer to edge = better (enemy king trapped!)
+        // Formula: 7 - distToEdge = 0 (center) to 7 (edge)
+        const int edgeProximity = 7 - distToEdge;
+        
+        // Number of our Rooks involved in the attack
+        const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
+        
+        if (ourRooks >= 2)
+            return 0; // per ora, solo bonus per 1 torre (evita overcounting)
+
+        // Scale the edge bonus based on number of rooks:
+        // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS = 60)
+        // - 2+ Rooks: MUCH STRONGER bonus (multiply by 3x) for coordinated attack
+        const int64_t edgeBonus = (ourRooks >= 2) 
+            ? (ROOK_EG_EDGE_BONUS * 3)  // 3x bonus for 2+ rooks (180 cp at edge!)
+            : ROOK_EG_EDGE_BONUS;
+        
+        // Gradually increase bonus as enemy king approaches edge
+        // 0 (center) -> edgeBonus*0, 7 (on edge) -> edgeBonus*7
+        // Single rook: 0-420 cp, Double rook: 0-1260 cp (VERY strong!)
+        score += sign * edgeProximity * edgeBonus;
+
+        // Additional bonus for King+Rook coordination: distance between our King and enemy King
+        const uint64_t ourKingBB = b.kings_bb[side];
+        if (ourKingBB) {
+            const int ourKingSq = __builtin_ctzll(ourKingBB);
+            const int kingDist = manhattan(ourKingSq, enemyKingSq);
+            
+            // For multiple rooks, being close to enemy king is VERY important (creates net)
+            // Base: 14 - distance (so at distance 0, bonus is 14 cp; at distance 14, bonus is 0)
+            // With 2+ rooks: scale up DRAMATICALLY (rooks create a constricting net)
+            const int proximityMult = (ourRooks >= 2) ? 4 : 1;  // 4x multiplier for 2+ rooks!
+            const int proximityBonus = std::max(0, 14 - kingDist) * proximityMult;
+            score += sign * proximityBonus * ROOK_EG_PRESSURE_BONUS / 14;
+        }
+    }
+
+    return score;
+}
+
 
 
 
@@ -1082,6 +1159,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Rook evaluation (still important in endgame)
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        
+        // Rook endgame bonus: push opponent king to edge for mating patterns (R+K vs K)
+        eval += evalRookEndgamePressure(board);
         
         // Minor piece positioning
         eval += evalKnightOnRim(board);

@@ -198,6 +198,7 @@ public:
     static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static int64_t evalKnightOnRim(const chess::Board& b) noexcept;
     static int64_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
+    static int64_t evalRookEndgamePressure(const chess::Board& b) noexcept;
 
     /*
     int64_t avoidUnfavorableExchanges(int64_t bishopCount, int64_t knightCount, int64_t pawnCount);

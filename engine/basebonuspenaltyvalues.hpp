@@ -111,6 +111,13 @@ static constexpr int64_t KILLER2_BONUS = 1900;
 inline static constexpr int64_t BISHOP_PAIR_BONUS = 30;     // aumentato (coppia alfieri importante)
 
 // ===================================================
+// ROOK ENDGAME (R+K vs K)
+// Strategy: push enemy king to edge to deliver checkmate
+// ===================================================
+inline static constexpr int64_t ROOK_EG_EDGE_BONUS = 35;        // bonus when opponent king is near edge
+inline static constexpr int64_t ROOK_EG_PRESSURE_BONUS = 20;    // bonus for active coordination
+
+// ===================================================
 // GAME PHASE
 // ===================================================
 inline static constexpr int64_t PHASE_FINAL_THRESHOLD = 8;
