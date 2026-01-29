@@ -22,7 +22,7 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -20;      // aumentato per scoraggiare push eccessivo
 inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
 inline static constexpr int64_t BACKWARD_PAWN_PENALTY = -12;     // aumentato
-inline static constexpr int64_t PASSED_PAWN_BONUS = 15;          // ridotto (meno incentivo a pushare)
+inline static constexpr int64_t PASSED_PAWN_BONUS = 20;          // ridotto (meno incentivo a pushare)
 inline static constexpr int64_t CENTER_CONTROL_BONUS = 25;       // TRIPLICATO! Centro è fondamentale
 
 // ===================================================
@@ -66,9 +66,9 @@ inline static constexpr int64_t ATTACKED_PAWN_PENALTY = -8;     // ridotto da -1
 // ===================================================
 // ROOK EVALUATION
 // ===================================================
-inline static constexpr int64_t OPEN_FILE_ROOK_BONUS = 15;       // ridotto da 20
-inline static constexpr int64_t SEMI_OPEN_FILE_ROOK_BONUS = 8;   // ridotto da 10
-inline static constexpr int64_t ROOK_ON_SEVENTH_BONUS = 25;      // ridotto da 40
+inline static constexpr int64_t OPEN_FILE_ROOK_BONUS = 30;
+inline static constexpr int64_t SEMI_OPEN_FILE_ROOK_BONUS = 15;
+inline static constexpr int64_t ROOK_ON_SEVENTH_BONUS = 25;
 
 // ===================================================
 // QUEEN EVALUATION
