@@ -28,14 +28,14 @@ inline static constexpr int64_t CENTER_CONTROL_BONUS = 25;       // TRIPLICATO! 
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
 // ===================================================
-inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 5;   // ridotto ulteriormente
-inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 30;        // ridotto da 50
-inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 10;  // ridotto da 15
-inline static constexpr int64_t PINNED_BISHOP_PENALTY = 25;        // ridotto da 35
-inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 15;    // ridotto da 25
-inline static constexpr int64_t PINNED_ROOK_PENALTY = 20;          // ridotto da 25
-inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 30;   // ridotto da 50
-inline static constexpr int64_t PINNED_QUEEN_PENALTY = 80;         // ridotto da 150
+inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 10;   
+inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 30;
+inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 15;
+inline static constexpr int64_t PINNED_BISHOP_PENALTY = 30;
+inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 45;
+inline static constexpr int64_t PINNED_ROOK_PENALTY = 80;
+inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 55;
+inline static constexpr int64_t PINNED_QUEEN_PENALTY = 120;
 
 // Coordination penalty: minor pieces (knights/bishops) far from other friendly pieces
 // measured within Manhattan distance <= 2 (useful to promote piece coordination)

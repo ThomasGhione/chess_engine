@@ -521,26 +521,38 @@ int64_t Engine::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept 
         const int pieceCount = __builtin_popcountll(b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]);
         
         if (pieceCount > 0) [[likely]] {
+            // Bishops - magic bitboards
             uint64_t bishops = b.bishops_bb[side];
             while (bishops) {
                 const int sq = popLSB(bishops);
-                const int mobility = __builtin_popcountll(pieces::getBishopAttacks(sq, occ) & ~occ);
+                const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
+                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
                 if (mobility == 0) [[unlikely]] score -= sign * (PINNED_BISHOP_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
             }
 
+            // Rooks - magic bitboards
             uint64_t rooks = b.rooks_bb[side];
             while (rooks) {
                 const int sq = popLSB(rooks);
-                const int mobility = __builtin_popcountll(pieces::getRookAttacks(sq, occ) & ~occ);
+                const uint64_t attacks = pieces::getRookAttacks(sq, occ);
+                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
                 if (mobility == 0) [[unlikely]] score -= sign * (PINNED_ROOK_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
             }
 
+            // Queens - magic bitboards
             uint64_t queens = b.queens_bb[side];
             while (queens) {
                 const int sq = popLSB(queens);
-                const int mobility = __builtin_popcountll(pieces::getQueenAttacks(sq, occ) & ~occ);
+                const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
+                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
                 if (mobility == 0) [[unlikely]] score -= sign * (PINNED_QUEEN_PENALTY + TRAPPED_EXTRA_SEVERITY);
                 else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
             }
@@ -811,7 +823,12 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(knights);
             const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
             d.knightAttacks |= attacks;
-            d.knightMobility += __builtin_popcountll(attacks & ~occ);
+            // CORRETTO: mobility = caselle dove il pezzo può muoversi LEGALMENTE
+            // = (case attaccate) MENO (case occupate da pezzi tuoi)
+            const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+                                     : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+            const int mobility = __builtin_popcountll(attacks & ~ownOcc);
+            d.knightMobility += mobility;
         }
         d.allAttacks |= d.knightAttacks;
 
