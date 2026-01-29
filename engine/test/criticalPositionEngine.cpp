@@ -122,4 +122,9 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
+  "critical position 7, avoid stallmate"_test = []{
+    engine::Engine e = engine::Engine("  6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34");
+
+  };
+
 }; // ut::suite criticalPositionEngineSuite
