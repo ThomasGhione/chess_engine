@@ -455,4 +455,16 @@ ut::suite EndingGameSuite = [] {
       << "Rook and Knights: "
       << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 5]\n";
   };
+
+  "Queen vs rook and bishop"_test = []{
+    const std::string fen = "8/7r/6bk/4Q3/2P5/2K1P3/PP4P1/8 b - - 8 51";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Queen ending game: "
+      << "Failed to find checkmate within 50 moves (100 plies).\n";
+  };
+  
 };

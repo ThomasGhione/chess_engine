@@ -137,4 +137,20 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
+  "critical position 8, avoid losing"_test = []{
+    engine::Engine e = engine::Engine("2kr3r/1ppqnpp1/p2p1n1p/4p3/2BPP3/P1P2Q1P/2P2PP1/1RBR2K1 b - - 0 15");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("e5")){
+      expect(bestMove.to != chess::Coords("d4"))
+        << "Expected not pawn capture.";
+    }
+  };
+
+
 }; // ut::suite criticalPositionEngineSuite
