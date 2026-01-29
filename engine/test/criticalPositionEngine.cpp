@@ -122,9 +122,19 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
-  "critical position 7, avoid stallmate"_test = []{
-    engine::Engine e = engine::Engine("  6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34");
+  "critical position 7, avoid losing in"_test = []{
+    engine::Engine e = engine::Engine("R7/p1p1rkpp/1p6/1P1P2P1/2P2K2/8/8/8 b - - 16 52");
 
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("a7")){
+      expect(bestMove.to != chess::Coords("a5"))
+        << "Expected not pawn push.";
+    }
   };
 
 }; // ut::suite criticalPositionEngineSuite
