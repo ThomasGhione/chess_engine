@@ -319,8 +319,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
 void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
     // Execute the best move found, handling promotions
+    // CORRECTED: use the promotion piece from the move, default to 'q' if promotion but no piece specified
     const bool isPromo = isPromotionMove(this->board, bestMove);
-    (void)this->board.moveBB(bestMove.from, bestMove.to, isPromo ? 'q' : '\0');
+    const char promoPiece = isPromo ? (bestMove.promotionPiece != '\0' ? bestMove.promotionPiece : 'q') : '\0';
+    (void)this->board.moveBB(bestMove.from, bestMove.to, promoPiece);
 }
 
 void Engine::search(uint64_t depth) noexcept {
@@ -413,6 +415,10 @@ void Engine::search(uint64_t depth) noexcept {
 
 #ifdef DEBUG
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
+    // CORRECTED: include promotion piece in UCI notation if present
+    if (bestMove.promotionPiece != '\0') {
+        moveStr += bestMove.promotionPiece;
+    }
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
 /*
     std::cout << "[DEBUG] TT probes: " << ttProbes
@@ -494,6 +500,9 @@ inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::
     if (!mask) [[unlikely]] return; // Early exit se nessuna mossa
 
     const chess::Coords fromC{from};
+    const uint8_t fromPieceType = b.get(from) & chess::Board::MASK_PIECE_TYPE;
+    const uint8_t color = b.getActiveColor();
+    const int promotionRank = chess::Board::promotionRank(color == chess::Board::WHITE);
 
     // SEMPRE verifica legalità con canMoveToBB
     // Questo è necessario per gestire correttamente pin e mosse illegali
@@ -502,7 +511,16 @@ inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::
         mask &= (mask - 1);
 
         if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
+            // Check if this is a pawn promotion move
+            if (fromPieceType == chess::Board::PAWN && chess::Board::rankOf(to) == promotionRank) {
+                // CORRECTED: generate all 4 promotion moves (q, r, b, n)
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'q'});
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'r'});
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'b'});
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'n'});
+            } else {
+                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
+            }
         }
     }
 }
