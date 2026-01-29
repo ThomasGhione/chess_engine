@@ -434,4 +434,25 @@ ut::suite EndingGameSuite = [] {
       << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 6]\n";
   };
 
+  "Mate in 17 moves"_test = []{
+    const std::string fen = "8/8/5k2/4pp2/R5p1/2P1K3/PP4PP/8 b - - 0 37";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Rook and some pawn: "
+      << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 17]\n";
+  };
+
+  "Mate in 5 moves"_test = []{
+    const std::string fen = "1kbr4/pn3R2/2p3P1/2p1N2p/7P/P1N5/BPP2PP1/2K5 w - - 1 36";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Rook and Knights: "
+      << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 5]\n";
+  };
 };
