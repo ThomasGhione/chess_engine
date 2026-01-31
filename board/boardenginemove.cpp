@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include "../tt/zobrist.hpp"
 #include <cstring>
 
 
@@ -40,6 +41,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.prevHasMoved      = hasMoved;
     st.capturedPiece     = destBefore;
     st.fromPiece         = moving;
+    st.prevHistorySize   = historySize;
+    st.prevHistoryHead   = currentHash;
 
     // Cache opzionale re
     //st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
@@ -186,7 +189,9 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- CLOCKS E SIDE TO MOVE ---
-    if (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture) {
+    const bool resetHistory = (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture);
+    st.historyWasReset = resetHistory;
+    if (resetHistory) {
         halfMoveClock = 0;
     } else if (halfMoveClock < 255) {
         ++halfMoveClock;
@@ -195,6 +200,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         ++fullMoveClock;
     }
     activeColor = oppositeColor(activeColor);
+
+    updateRepetitionAfterMove(resetHistory);
 }
 
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {
@@ -259,6 +266,12 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     enPassant     = st.prevEnPassant;
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
+
+    historySize = st.prevHistorySize;
+    currentHash = zobrist::computeHashKey(*this);
+    if (historySize > 0) {
+        repetitionHistory[historySize - 1] = currentHash;
+    }
 }
 
 

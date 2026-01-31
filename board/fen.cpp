@@ -132,6 +132,7 @@ void Board::fromFenToBoard(const std::string& fen) {
     this->fullMoveClock = safeParseInt(fullMoveSection, 1, 255, 1);
 
     this->updateOccupancyBB();
+    this->rebuildRepetitionHistory();
 }
 
 // Converts the internal board representation into the FEN piece placement string

@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include "../tt/zobrist.hpp"
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -174,6 +175,9 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
             ++fullMoveClock;
         }
     }
+
+    const bool resetHistory = (movingType == PAWN) || (destBefore != EMPTY) || wasEnPassantCapture;
+    updateRepetitionAfterMove(resetHistory);
 
     return true;
 }
@@ -756,6 +760,35 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         return true;
     }
 
+    return false;
+}
+
+void Board::rebuildRepetitionHistory() noexcept {
+    currentHash = zobrist::computeHashKey(*this);
+    historySize = 0;
+    repetitionHistory[historySize++] = currentHash;
+}
+
+void Board::updateRepetitionAfterMove(bool resetHistory) noexcept {
+    currentHash = zobrist::computeHashKey(*this);
+    if (resetHistory) {
+        historySize = 0;
+    }
+    if (historySize >= repetitionHistory.size()) {
+        historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
+    }
+    repetitionHistory[historySize++] = currentHash;
+}
+
+bool Board::isThreefoldRepetition() const noexcept {
+    if (historySize == 0) return false;
+    const uint64_t target = currentHash;
+    int count = 0;
+    for (uint8_t i = historySize; i > 0; --i) {
+        if (repetitionHistory[i - 1] == target) {
+            if (++count >= 3) return true;
+        }
+    }
     return false;
 }
 

@@ -243,6 +243,8 @@ public:
     struct MoveState {
         uint16_t prevHalfMoveClock{};
         uint16_t prevFullMoveClock{};
+        uint8_t  prevHistorySize{};
+        uint64_t prevHistoryHead{};
 
         // Game state before the move
         uint8_t  prevActiveColor{};
@@ -263,6 +265,7 @@ public:
         bool    wasCastling{};          // true if the move was a castling move
         uint8_t rookFromIndex{};        // rook start square index in castling
         uint8_t rookToIndex{};          // rook destination square index in castling
+        bool    historyWasReset{};      // true if repetition history was reset by the move
     };
 
     Board() noexcept {
@@ -278,6 +281,7 @@ public:
         , activeColor(WHITE)
 {
         updateOccupancyBB();
+        rebuildRepetitionHistory();
     }
 
     explicit Board(const std::string& fen) {
@@ -559,10 +563,10 @@ public:
     bool isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
 
     // General draw check: stalemate OR 50-move rule
-    // Note: insufficient material and threefold repetition are not yet implemented
     bool isDraw(uint8_t color) const noexcept {
-        return isStalemate(color) || isFiftyMoveRule();
+        return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition();
     }
+    bool isThreefoldRepetition() const noexcept;
 
     void fromFenToBoard(const std::string& fen);
 
@@ -601,6 +605,9 @@ private:
     uint16_t halfMoveClock = 0;             // 50-move rule counter
     uint16_t fullMoveClock = 1;             // Current move number
     uint8_t  activeColor = WHITE;           // Current side to move
+    uint64_t currentHash = 0ULL;            // Zobrist hash of current position
+    std::array<uint64_t, 128> repetitionHistory{}; // Ring buffer of recent positions (bounded by 50-move rule)
+    uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
@@ -682,6 +689,10 @@ private:
     char pieceTypeToChar(uint8_t pieceType) const;
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
+
+    // Repetition helpers
+    void rebuildRepetitionHistory() noexcept;
+    void updateRepetitionAfterMove(bool resetHistory) noexcept;
 }; // Class Board
 
 } // namespace chess
