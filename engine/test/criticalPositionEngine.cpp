@@ -152,5 +152,80 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
+  "critical position 9, avoid losing rook"_test = []{
+    engine::Engine e = engine::Engine("1k3br1/p3p1pp/b2p1n2/2p5/8/1N2B2P/PPP2PP1/R4RK1 w - - 2 22");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("b3")){
+      expect(bestMove.to != chess::Coords("c5"))
+        << "Expected not sacrifice knight.";
+    }
+  };
+
+  "critical position 10, capture queen instead of bishop"_test = []{
+    engine::Engine e = engine::Engine("2kr1r2/ppp1bp1p/3p1Q2/3P4/2N3q1/2N2P2/PP1P2PP/n1BKR3 w - - 1 15");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("e1")){
+      expect(bestMove.to != chess::Coords("e7"))
+        << "Expected not sacrifice rook.";
+    }
+  };
+
+  "critical position 11, avoid losing knight"_test = []{
+    engine::Engine e = engine::Engine("r1bqkbnr/ppp1pppp/2n5/3P4/4p3/2N5/PPP2PPP/R1BQKBNR b KQkq - 0 4");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("g8")){
+      expect(bestMove.to != chess::Coords("f6"))
+        << "Expected not sacrifice rook.";
+    }
+  };
+
+
+  "critical position 12, avoid losing knight"_test = []{
+    engine::Engine e = engine::Engine("5rk1/p3pp1p/1rp1b1p1/2n5/8/1PK2NBP/P1P2PP1/4RB1R b - - 6 19");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("e6")){
+      expect(bestMove.to != chess::Coords("b3"))
+        << "Expected not sacrifice rook.";
+    }
+  };
+
+  "critical position 13, avoid losing knight"_test = []{
+    engine::Engine e = engine::Engine("3r2k1/1pp1qpp1/5n1p/5R2/r3p1n1/2P3PP/P3Q1B1/RNN4K b - - 0 25");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    if(bestMove.from == chess::Coords("e7")){
+      expect(bestMove.to != chess::Coords("d6"))
+        << "Expected not sacrifice knight.";
+    }
+  };
 
 }; // ut::suite criticalPositionEngineSuite
