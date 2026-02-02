@@ -49,7 +49,9 @@ namespace {
         std::array<uint64_t, 64> result{};
         for (int sq = 0; sq < 64; ++sq) {
             const int rank = chess::Board::rankOf(sq);
-            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
+            // White pawns move toward decreasing rank (rank 0 is promotion).
+            // Forward squares = all ranks strictly less than current rank.
+            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
         }
         return result;
     }
@@ -58,7 +60,9 @@ namespace {
         std::array<uint64_t, 64> result{};
         for (int sq = 0; sq < 64; ++sq) {
             const int rank = chess::Board::rankOf(sq);
-            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
+            // Black pawns move toward increasing rank (rank 7 is promotion).
+            // Forward squares = all ranks strictly greater than current rank.
+            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
         }
         return result;
     }
@@ -166,6 +170,20 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         const uint64_t forwardMask = WHITE_FORWARD_FILL[sq];
         if ((blackPawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score += PASSED_PAWN_BONUS;
+            // Slight bonus for advancement even in middlegame
+            const int advancement = 6 - rank; // rank 6 (start) -> 0, rank 1 (near promo) -> 5
+            score += advancement * (isEndgame ? 8 : 3);
+
+            // Extra danger on 7th rank (one step from promotion)
+            if (rank == 1) {
+                score += isEndgame ? 60 : 30;
+            }
+
+            // If blocked by an enemy pawn directly in front, reduce the bonus
+            const int forwardSq = sq - 8;
+            if (forwardSq >= 0 && (blackPawns & chess::Board::bitMask(forwardSq))) {
+                score -= PASSED_PAWN_BONUS / 2;
+            }
             if (isEndgame) {
                 // BUG FIX: White pawns move from rank 6 (row 2) toward rank 0 (row 8/promotion)
                 // Closer to promotion = higher rank value → INVERTED: use (6 - rank)
@@ -194,6 +212,20 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         const uint64_t forwardMask = BLACK_FORWARD_FILL[sq];
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score -= PASSED_PAWN_BONUS;
+            // Slight bonus for advancement even in middlegame
+            const int advancement = rank; // rank 1 (start) -> 1, rank 6 (near promo) -> 6
+            score -= advancement * (isEndgame ? 8 : 3);
+
+            // Extra danger on 7th rank (one step from promotion)
+            if (rank == 6) {
+                score -= isEndgame ? 60 : 30;
+            }
+
+            // If blocked by an enemy pawn directly in front, reduce the bonus
+            const int forwardSq = sq + 8;
+            if (forwardSq < 64 && (whitePawns & chess::Board::bitMask(forwardSq))) {
+                score += PASSED_PAWN_BONUS / 2;
+            }
             if (isEndgame) {
                 // BUG FIX: Black pawns move from rank 1 (row 7) toward rank 7 (row 1/promotion)
                 // Closer to promotion = higher rank value → use rank directly
