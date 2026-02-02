@@ -9,8 +9,8 @@ namespace engine {
 // PIECE BASE VALUES
 // ===================================================
 inline static constexpr int64_t PAWN_VALUE   =       100;
-inline static constexpr int64_t KNIGHT_VALUE =       330;  // Increased from 320
-inline static constexpr int64_t BISHOP_VALUE =       340;  // Increased from 330
+inline static constexpr int64_t KNIGHT_VALUE =       320;
+inline static constexpr int64_t BISHOP_VALUE =       330;
 inline static constexpr int64_t ROOK_VALUE   =       500;
 inline static constexpr int64_t QUEEN_VALUE  =       900;
 inline static constexpr int64_t KING_VALUE   =    20'000;
@@ -22,8 +22,8 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -20;      // aumentato per scoraggiare push eccessivo
 inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
 inline static constexpr int64_t BACKWARD_PAWN_PENALTY = -12;     // aumentato
-inline static constexpr int64_t PASSED_PAWN_BONUS = 40;          // ridotto (meno incentivo a pushare)
-inline static constexpr int64_t CENTER_CONTROL_BONUS = 25;       // TRIPLICATO! Centro è fondamentale
+inline static constexpr int64_t PASSED_PAWN_BONUS = 25;          // REDUCED from 40 (was too high, caused bad sacrifices)
+inline static constexpr int64_t CENTER_CONTROL_BONUS = 15;       // REDUCED from 25 (was too high)
 
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
@@ -140,17 +140,17 @@ inline constexpr int64_t MVV_LVA_TABLE[7][7] = {
     // victim: EMPTY
     {0, 0, 0, 0, 0, 0, 0},
     // victim: PAWN (100)
-    {0, 100*10 - 100, 100*10 - 330, 100*10 - 340, 100*10 - 500, 100*10 - 900, 100*10 - 20000},
-    // victim: KNIGHT (350)
-    {0, 350*10 - 100, 350*10 - 350, 350*10 - 360, 350*10 - 500, 350*10 - 900, 350*10 - 20000},
-    // victim: BISHOP (360)
-    {0, 340*10 - 100, 340*10 - 330, 340*10 - 340, 340*10 - 500, 340*10 - 900, 340*10 - 20000},
+    {0, PAWN_VALUE*10 - PAWN_VALUE, PAWN_VALUE*10 - KNIGHT_VALUE, PAWN_VALUE*10 - BISHOP_VALUE, PAWN_VALUE*10 - ROOK_VALUE, PAWN_VALUE*10 - QUEEN_VALUE, PAWN_VALUE*10 - KING_VALUE},
+    // victim: KNIGHT (320)
+    {0, KNIGHT_VALUE*10 - PAWN_VALUE, KNIGHT_VALUE*10 - KNIGHT_VALUE, KNIGHT_VALUE*10 - BISHOP_VALUE, KNIGHT_VALUE*10 - ROOK_VALUE, KNIGHT_VALUE*10 - QUEEN_VALUE, KNIGHT_VALUE*10 - KING_VALUE},
+    // victim: BISHOP (330)
+    {0, BISHOP_VALUE*10 - PAWN_VALUE, BISHOP_VALUE*10 - KNIGHT_VALUE, BISHOP_VALUE*10 - BISHOP_VALUE, BISHOP_VALUE*10 - ROOK_VALUE, BISHOP_VALUE*10 - QUEEN_VALUE, BISHOP_VALUE*10 - KING_VALUE},
     // victim: ROOK (500)
-    {0, 500*10 - 100, 500*10 - 330, 500*10 - 340, 500*10 - 500, 500*10 - 900, 500*10 - 20000},
+    {0, ROOK_VALUE*10 - PAWN_VALUE, ROOK_VALUE*10 - KNIGHT_VALUE, ROOK_VALUE*10 - BISHOP_VALUE, ROOK_VALUE*10 - ROOK_VALUE, ROOK_VALUE*10 - QUEEN_VALUE, ROOK_VALUE*10 - KING_VALUE},
     // victim: QUEEN (900)
-    {0, 900*10 - 100, 900*10 - 330, 900*10 - 340, 900*10 - 500, 900*10 - 900, 900*10 - 20000},
+    {0, QUEEN_VALUE*10 - PAWN_VALUE, QUEEN_VALUE*10 - KNIGHT_VALUE, QUEEN_VALUE*10 - BISHOP_VALUE, QUEEN_VALUE*10 - ROOK_VALUE, QUEEN_VALUE*10 - QUEEN_VALUE, QUEEN_VALUE*10 - KING_VALUE},
     // victim: KING (20000) - teoricamente non dovrebbe essere catturato, ma per completezza
-    {0, 20000*10 - 100, 20000*10 - 330, 20000*10 - 340, 20000*10 - 500, 20000*10 - 900, 20000*10 - 20000}
+    {0, KING_VALUE*10 - PAWN_VALUE, KING_VALUE*10 - KNIGHT_VALUE, KING_VALUE*10 - BISHOP_VALUE, KING_VALUE*10 - ROOK_VALUE, KING_VALUE*10 - QUEEN_VALUE, KING_VALUE*10 - KING_VALUE}
 };
 
 

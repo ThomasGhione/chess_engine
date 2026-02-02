@@ -97,8 +97,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         if (canReduce) {
             // Adaptive reduction: balanced between speed and accuracy
             int64_t reduction = 1;
-            if (ctx.depth >= 6) reduction += 1; // -1 instead of -2 (less aggressive)
-            if (moveIndex >= 9) reduction += 1; // -1 if very late (>= 9th move)
+            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
+            if (moveIndex >= 9) reduction += 2; // -2 if very late (>= 10th move)
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);

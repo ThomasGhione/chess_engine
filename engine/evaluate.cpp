@@ -167,7 +167,11 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         if ((blackPawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score += PASSED_PAWN_BONUS;
             if (isEndgame) {
-                score += (rank - 1) * 6; // Closer to promotion = better
+                // BUG FIX: White pawns move from rank 6 (row 2) toward rank 0 (row 8/promotion)
+                // Closer to promotion = higher rank value → INVERTED: use (6 - rank)
+                // rank 1 (row 7, near promotion) → 5*6 = 30cp
+                // rank 6 (row 2, far from promotion) → 0*6 = 0cp
+                score += (6 - rank) * 6; // Fixed from (rank - 1)
             }
         }
     }
@@ -191,7 +195,11 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score -= PASSED_PAWN_BONUS;
             if (isEndgame) {
-                score -= (7 - rank - 1) * 6; // Closer to promotion = better
+                // BUG FIX: Black pawns move from rank 1 (row 7) toward rank 7 (row 1/promotion)
+                // Closer to promotion = higher rank value → use rank directly
+                // rank 6 (row 2, near promotion) → 6*6 = 36cp
+                // rank 1 (row 7, far from promotion) → 1*6 = 6cp
+                score -= rank * 6; // Fixed from (7 - rank - 1)
             }
         }
     }
@@ -1165,10 +1173,13 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
     constexpr int PIECE_ENDGAME_THRESHOLD = 8;  // <= 8 pezzi = endgame
     
-    const bool isOpening = (fullMoves < OPENING_MOVES);
-    const bool isEarlyMiddlegame = (fullMoves >= OPENING_MOVES && fullMoves < EARLY_MG_MOVES);
+    // BUG FIX: Game phases must be MUTUALLY EXCLUSIVE
+    // Priority: endgame (few pieces) > opening (early moves) > early middlegame > middlegame
+    // This ensures one and only one phase is active
     const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    const bool isMiddlegame = !isOpening && !isEndgame;
+    const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
+    const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
+    const bool isMiddlegame = !isEndgame && !isOpening && !isEarlyMiddlegame;
 
     // ===================================================
     // PIECE-SQUARE TABLES (always evaluated)
@@ -1224,8 +1235,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative bonus (side to move advantage)
         eval += evalInitiative(board, false);
-    // Penalize bishops that block pawns directly (opening)
-    eval += evalBlockedPawnByBishops(board);
+        
+        // Penalize bishops that block pawns directly (opening)
+        eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
@@ -1264,8 +1276,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative
         eval += evalInitiative(board, false);
-    // Penalize bishops that block pawns in early middlegame
-    eval += evalBlockedPawnByBishops(board);
+        
+        // Penalize bishops that block pawns in early middlegame
+        eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
@@ -1302,8 +1315,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Initiative
         eval += evalInitiative(board, false);
-    // Penalize bishops that block pawns in middlegame
-    eval += evalBlockedPawnByBishops(board);
+        
+        // Penalize bishops that block pawns in middlegame
+        eval += evalBlockedPawnByBishops(board);
     }
     
     // ===================================================
