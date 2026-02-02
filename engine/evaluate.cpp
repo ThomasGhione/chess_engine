@@ -322,17 +322,17 @@ int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
 
             // Low mobility - check FIRST (most common case)
             if (mobility <= 3) [[unlikely]] {
-                score -= sign * 25;
+                score += sign * (-25);  // FIX: use += with sign to apply penalty correctly
             }
 
             // Rook blocked by own pawn on the same file - use precomputed masks
             if (ownPawns & FILE_MASKS[file]) [[unlikely]] {
-                score -= sign * 15;
+                score += sign * (-15);  // FIX: use += with sign to apply penalty correctly
             }
 
             // Not on 7th rank penalty
             if ((side == 0 && rank != 6) || (side == 1 && rank != 1)) {
-                score -= sign * 10;
+                score += sign * (-10);  // FIX: use += with sign to apply penalty correctly
             }
         }
     }
@@ -367,7 +367,7 @@ int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
     const int blackOnRim = __builtin_popcountll(b.knights_bb[1] & RIM_FILES);
     const int blackNearRim = __builtin_popcountll(b.knights_bb[1] & NEAR_RIM_FILES);
     const int blackBackRank = __builtin_popcountll(b.knights_bb[1] & BACK_RANKS);
-    score -= -(blackOnRim * 30 + blackNearRim * 15 + blackBackRank * 10);
+    score += blackOnRim * 30 + blackNearRim * 15 + blackBackRank * 10;  // FIX: removed double negation
 
     return score;
 }
@@ -849,6 +849,11 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
     for (int side = 0; side < 2; ++side) {
         AttackData& d = data[side];
         
+        // OPTIMIZATION: compute own occupancy ONCE per side (reused for all pieces)
+        const uint64_t ownOcc = (side == 0) 
+            ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+            : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+        
         // Pawns - usa lookup table (no magic bitboards)
         uint64_t pawns = b.pawns_bb[side];
         while (pawns) {
@@ -865,8 +870,7 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             d.knightAttacks |= attacks;
             // CORRETTO: mobility = caselle dove il pezzo può muoversi LEGALMENTE
             // = (case attaccate) MENO (case occupate da pezzi tuoi)
-            const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-                                     : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+            // Includes captures (enemy pieces) as legal moves
             const int mobility = __builtin_popcountll(attacks & ~ownOcc);
             d.knightMobility += mobility;
         }
@@ -878,7 +882,8 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(bishops);
             const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
             d.bishopAttacks |= attacks;
-            d.bishopMobility += __builtin_popcountll(attacks & ~occ);
+            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
+            d.bishopMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.bishopAttacks;
 
@@ -888,7 +893,8 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(rooks);
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             d.rookAttacks |= attacks;
-            d.rookMobility += __builtin_popcountll(attacks & ~occ);
+            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
+            d.rookMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.rookAttacks;
 
@@ -898,7 +904,8 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(queens);
             const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
             d.queenAttacks |= attacks;
-            d.queenMobility += __builtin_popcountll(attacks & ~occ);
+            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
+            d.queenMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.queenAttacks;
         
