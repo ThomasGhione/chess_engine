@@ -765,17 +765,22 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         capturedType = chess::Board::PAWN;
     }
 
-    // Quick SEE: array ridotto da 32 a 16 livelli (praticamente mai raggiunti)
+    // Canonical SEE (swap algorithm):
+    // gain[0] = value(victim)
+    // for each recapture i:
+    //   gain[i] = value(captured_piece) - gain[i-1]
+    // where captured_piece is the piece that just moved to the target square in the previous ply.
     constexpr int MAX_SEE_DEPTH = 16;
     int64_t gain[MAX_SEE_DEPTH];
     gain[0] = PIECE_VALUES[capturedType];
 
-    // Simula scambio
+    // Simula scambio su occupazione locale
     uint64_t occ = b.getPiecesBitMap();
-    uint64_t fromBB = chess::Board::bitMask(fromSq);
-    occ ^= fromBB; // rimuovi il pezzo che fa la prima cattura
-    
-    uint8_t attackerType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+    occ ^= chess::Board::bitMask(fromSq); // rimuovi il pezzo che fa la prima cattura dalla sua casa
+
+    // Il pezzo ora “in presa” sulla casa target, dopo la mossa iniziale, è il nostro attaccante iniziale.
+    uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+
     int depth = 1;
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
@@ -785,8 +790,8 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     // e ritorniamo una stima negativa rapida.
     // Soglia: un pedone (PAWN_VALUE) per evitare falsi positivi su scambi
     // ravvicinati. Usiamo la costante PAWN_VALUE per rendere esplicite le unità.
-    if (PIECE_VALUES[capturedType] < PIECE_VALUES[attackerType] - PAWN_VALUE * 2) {
-        return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[attackerType]);
+    if (PIECE_VALUES[capturedType] < PIECE_VALUES[capturedOnTargetType] - PAWN_VALUE * 2) {
+        return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType]);
     }
 
     while (depth < MAX_SEE_DEPTH) {
@@ -805,14 +810,16 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
         else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
 
-        // Calcola guadagno: catturi il pezzo precedente, perdi quello corrente
-        gain[depth] = PIECE_VALUES[attackerType] - gain[depth - 1];
+        // In questo ply si cattura il pezzo che era rimasto sulla casa target
+        // (cioè il pezzo dell'ultimo catturante).
+        gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
         // Rimuovi l'attaccante dall'occupancy
         occ ^= attackerMask;
 
-        // Aggiorna attackerType per il prossimo ciclo (il pezzo che ha appena catturato)
-        attackerType = currentAttackerType;
+        // Ora sulla casa target rimane il pezzo che ha appena catturato: sarà lui
+        // a poter essere catturato nel ply successivo.
+        capturedOnTargetType = currentAttackerType;
 
         // Cambia lato
         side ^= 1;
