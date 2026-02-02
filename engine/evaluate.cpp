@@ -1356,6 +1356,34 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalInitiative(board, true);
     }
 
+    // ===================================================
+    // MATERIAL CONTEMPT - Discourage speculative sacrifices
+    // ===================================================
+    // Add extra penalty for being down in material WITHOUT clear compensation
+    // This prevents the engine from making "optimistic" sacrifices hoping for tactics
+    // that don't materialize. Only skip this if we're clearly checkmating.
+    const int64_t matDelta = getMaterialDelta(board);
+    const int64_t absMatDelta = std::abs(matDelta);
+    
+    // Only apply contempt if material difference is significant (> 1.5 pawns = 150cp)
+    // and we're not in a forced mate position
+    if (absMatDelta > 150) {
+        // Check if the losing side is giving check (might indicate mating attack)
+        const bool loserGivingCheck = (matDelta > 0) 
+            ? board.inCheck(chess::Board::WHITE)  // White ahead, check if Black checking
+            : board.inCheck(chess::Board::BLACK); // Black ahead, check if White checking
+        
+        if (!loserGivingCheck) {
+            // Apply contempt: extra penalty proportional to material loss
+            // This makes sacrifices VERY expensive unless there's immediate tactics
+            // Formula: 20% of the material loss as extra penalty
+            const int64_t contemptPenalty = absMatDelta / 5; // 20%
+            
+            // Apply from White's perspective
+            eval += (matDelta > 0) ? contemptPenalty : -contemptPenalty;
+        }
+    }
+
     return eval;
 }
 
