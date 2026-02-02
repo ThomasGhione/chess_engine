@@ -84,9 +84,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool givesCheck = b.inCheck(oppColor);
 
         // LMR: reduce depth for late, non-critical moves
+        // BALANCED: slight improvement in tactics without major speed penalty
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 8)                               // ...first 8 moves at full dept
+            && (moveIndex > 5)                               // ...first 5 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
             && !wasCapture                                   // ...isn't a capture...
             && !givesCheck                                   // ...doesn't give check...
@@ -94,10 +95,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         int64_t score = 0;
         if (canReduce) {
-            // Adaptive reduction: deeper searches reduce more
+            // Adaptive reduction: balanced between speed and accuracy
             int64_t reduction = 1;
-            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            if (moveIndex >= 9) reduction += 2; // -2 if very late (>= 10th move)
+            if (ctx.depth >= 6) reduction += 1; // -1 instead of -2 (less aggressive)
+            if (moveIndex >= 9) reduction += 1; // -1 if very late (>= 9th move)
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
@@ -1125,9 +1126,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     // Dynamic SEE pruning threshold based on depth and material balance
     // LESS AGGRESSIVE: allow more slightly-losing captures to find tactics
-    // Shallow qsearch (ply < 20): allow losing captures up to -20cp (was -15cp)
-    // Deep qsearch (ply >= 20): allow slightly losing captures up to -2cp (was 0cp)
-    int64_t seeThreshold = (ply < 20) ? -20 : -2;
+    // Shallow qsearch (ply < 20): allow losing captures up to -18cp (was -15cp)
+    // Deep qsearch (ply >= 20): allow slightly losing captures up to 0cp
+    int64_t seeThreshold = (ply < 20) ? -18 : 0;
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
