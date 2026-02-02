@@ -983,8 +983,155 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
     return score;
 }
 
+// Queen endgame helper: push enemy king to edges/corners for checkmate
+// Strategy: Queen is very powerful - combine with King to deliver mate
+int64_t Engine::evalQueenEndgamePressure(const chess::Board& b) noexcept {
+    int64_t score = 0;
 
+    const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
+    const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
+    
+    // Only apply when one side has Queen and opponent has little material
+    // (Q+K vs K, or Q vs Q with material imbalance)
+    if (whiteQueens == 0 && blackQueens == 0) {
+        return 0; // No queens on board
+    }
 
+    for (int side = 0; side < 2; ++side) {
+        const int ourQueens = (side == 0) ? whiteQueens : blackQueens;
+        const int oppQueens = (side == 0) ? blackQueens : whiteQueens;
+        
+        // Only apply if we have at least 1 queen
+        if (ourQueens == 0) continue;
+        
+        // Calculate opponent's material (excluding king)
+        const int oppSide = side ^ 1;
+        const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
+        const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+        const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
+        const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
+        
+        const int oppMaterial = oppQueens * 900 + oppRooks * 500 + 
+                                oppBishops * 320 + oppKnights * 300 + oppPawns * 100;
+        const int ourMaterial = ourQueens * 900;
+        
+        // Only apply if we're significantly ahead (Q vs little/no material)
+        // For example: Q+K vs K (our=900, opp=0) or Q vs R+pawns (our=900, opp<700)
+        if (ourMaterial <= oppMaterial + 200) continue; // Not enough advantage
+
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t enemyKingBB = b.kings_bb[oppSide];
+        if (!enemyKingBB) continue;
+
+        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+        const int rank = chess::Board::rankOf(enemyKingSq);
+        const int file = chess::Board::fileOf(enemyKingSq);
+
+        // Queen mating: push to edge/corner - STRONG bonus
+        const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
+        const int edgeProximity = 7 - distToEdge;
+        
+        // Queen is very strong: HUGE bonus for pushing king to edge
+        // Must be large enough to override material considerations
+        constexpr int64_t QUEEN_EG_EDGE_BONUS = 200; // Very large!
+        score += sign * edgeProximity * QUEEN_EG_EDGE_BONUS;
+
+        // King coordination: CRITICAL for Queen mates
+        const uint64_t ourKingBB = b.kings_bb[side];
+        if (ourKingBB) {
+            const int ourKingSq = __builtin_ctzll(ourKingBB);
+            const int kingDist = manhattan(ourKingSq, enemyKingSq);
+            
+            // King MUST be close for mating (within 3-5 squares ideally)
+            // Give HUGE bonus for close king
+            const int proximityBonus = std::max(0, 14 - kingDist);
+            score += sign * proximityBonus * 40; // Very strong bonus
+        }
+        
+        // Additional: Queen proximity to enemy king
+        const uint64_t queenBB = b.queens_bb[side];
+        if (queenBB) {
+            const int queenSq = __builtin_ctzll(queenBB);
+            const int queenToEnemyKing = manhattan(queenSq, enemyKingSq);
+            
+            // Queen should be reasonably close (2-5 squares optimal for control)
+            if (queenToEnemyKing >= 2 && queenToEnemyKing <= 5) {
+                score += sign * 80; // Good attacking position
+            } else if (queenToEnemyKing <= 7) {
+                score += sign * 30; // Still reasonably positioned
+            }
+        }
+    }
+
+    return score;
+}
+
+// Double Rook endgame: coordinate rooks to deliver back-rank or edge mates
+int64_t Engine::evalDoubleRookEndgame(const chess::Board& b) noexcept {
+    int64_t score = 0;
+
+    const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
+    const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
+    
+    // Only apply when we have 2+ rooks and opponent has fewer
+    for (int side = 0; side < 2; ++side) {
+        const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
+        const int oppRooks = (side == 0) ? blackRooks : whiteRooks;
+        
+        if (ourRooks < 2 || ourRooks <= oppRooks) continue;
+
+        const int sign = (side == 0) ? 1 : -1;
+        const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
+        if (!enemyKingBB) continue;
+
+        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+        const int rank = chess::Board::rankOf(enemyKingSq);
+        const int file = chess::Board::fileOf(enemyKingSq);
+
+        // Double rook: push to edge (very strong)
+        const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
+        const int edgeProximity = 7 - distToEdge;
+        
+        // With 2 rooks, edge pressure is VERY strong
+        constexpr int64_t DOUBLE_ROOK_EDGE_BONUS = 100;
+        score += sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
+
+        // Rook coordination: check if rooks are on same rank or file
+        uint64_t rooksBB = b.rooks_bb[side];
+        if (__builtin_popcountll(rooksBB) >= 2) {
+            const int rook1 = __builtin_ctzll(rooksBB);
+            rooksBB &= (rooksBB - 1); // Remove first rook
+            const int rook2 = __builtin_ctzll(rooksBB);
+            
+            const int r1_rank = chess::Board::rankOf(rook1);
+            const int r1_file = chess::Board::fileOf(rook1);
+            const int r2_rank = chess::Board::rankOf(rook2);
+            const int r2_file = chess::Board::fileOf(rook2);
+            
+            // Bonus if rooks are on same rank or file (coordinated)
+            if (r1_rank == r2_rank || r1_file == r2_file) {
+                score += sign * 50; // Coordination bonus
+            }
+            
+            // Extra bonus if they control the rank/file where enemy king is
+            if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
+                score += sign * 40; // Controlling enemy king's escape
+            }
+        }
+
+        // King support (less critical than Queen, but still helpful)
+        const uint64_t ourKingBB = b.kings_bb[side];
+        if (ourKingBB) {
+            const int ourKingSq = __builtin_ctzll(ourKingBB);
+            const int kingDist = manhattan(ourKingSq, enemyKingSq);
+            
+            const int proximityBonus = std::max(0, 14 - kingDist);
+            score += sign * proximityBonus * 8; // 8 cp per square (less than Queen)
+        }
+    }
+
+    return score;
+}
 
 
 __attribute__((hot))
@@ -995,6 +1142,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     }
 
     int64_t eval = getMaterialDelta(board);
+
+    // NOTE: Stalemate is NOT checked here because evaluate() is called AFTER we know
+    // there are legal moves (via generateLegalMoves check in searchPosition).
+    // Stalemate detection happens in searchPosition() when moves.is_empty()
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
@@ -1177,8 +1328,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Rook evaluation (still important in endgame)
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
         
-        // Rook endgame bonus: push opponent king to edge for mating patterns (R+K vs K)
+        // Endgame mating bonuses: push opponent king to edge for checkmate
         eval += evalRookEndgamePressure(board);
+        eval += evalQueenEndgamePressure(board);
+        eval += evalDoubleRookEndgame(board);
         
         // Minor piece positioning
         eval += evalKnightOnRim(board);

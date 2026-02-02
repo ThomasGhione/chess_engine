@@ -466,7 +466,31 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
-    if (moves.is_empty()) return this->evaluate(b);
+    if (moves.is_empty()) {
+        // No legal moves: either checkmate or stalemate
+        // activeColor = side that CANNOT move (stalemated side)
+        
+        if (b.inCheck(activeColor)) {
+            // Checkmate: activeColor loses
+            return usIsWhite ? NEG_INF : POS_INF;
+        } else {
+            // Stalemate: draw, but heavily penalize throwing away a win
+            const int64_t matDelta = getMaterialDelta(b);
+            
+            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+                return 0; // Balanced material: true draw
+            }
+            
+            // Use reasonable penalty: worse than losing a Queen (900 cp) but not absurd
+            // 5000 cp = 50 pawns = clearly terrible, but won't dominate deep searches
+            constexpr int64_t STALEMATE_PENALTY = 5000;
+            
+            // Return from White's perspective
+            // If White ahead (matDelta > 0) and position is stalemate: bad for White
+            // If Black ahead (matDelta < 0) and position is stalemate: good for White
+            return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
+        }
+    }
 
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey);
     const int64_t alphaOrig = bounds.alpha;
@@ -938,6 +962,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 }
             }
         }
+
+        // NOTE: Stalemate check removed from move ordering (too expensive: doMove/undoMove per move!)
+        // Stalemate is now handled ONLY in searchPosition() terminal node evaluation
+        // This is much faster and still prevents stalemate in winning positions
 
         // King move penalties (riduci priorità mosse re in opening se non arrocco)
         if (fromPieceType == chess::Board::KING) {

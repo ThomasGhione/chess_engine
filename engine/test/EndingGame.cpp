@@ -367,6 +367,17 @@ ut::suite EndingGameSuite = [] {
   };
   */
 
+  "critical position 7, avoid stalemate"_test = []{
+    const std::string fen = "6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34";
+    chess::Board board(fen);
+
+    bool foundMate = findMate(board);
+
+    ut::expect(foundMate)
+      << "Rook and some pawn: "
+      << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 6]\n";
+  };
+
   "Queen endgame"_test = []{
     const std::string fen = "K7/8/7Q/8/8/8/6k1/8 w - - 0 1 ";
     chess::Board board(fen);
@@ -421,17 +432,6 @@ ut::suite EndingGameSuite = [] {
     ut::expect(foundMate)
       << "Double bishop endgame: "
       << "Failed to find checkmate within 50 moves (100 plies).\n";
-  };
-
-  "critical position 7, avoid stallmate"_test = []{
-    const std::string fen = "6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34";
-    chess::Board board(fen);
-
-    bool foundMate = findMate(board);
-
-    ut::expect(foundMate)
-      << "Rook and some pawn: "
-      << "Failed to find checkmate within 50 moves (100 plies). [expect mate in 6]\n";
   };
 
   "Mate in 17 moves"_test = []{
