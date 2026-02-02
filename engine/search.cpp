@@ -86,7 +86,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LMR: reduce depth for late, non-critical moves
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 4)                               // ...the first 4 moves at full depth
+            && (moveIndex > 8)                               // ...first 8 moves at full dept
             && !isPromo                                      // ...isn't a promotion...
             && !wasCapture                                   // ...isn't a capture...
             && !givesCheck                                   // ...doesn't give check...
@@ -97,7 +97,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             // Adaptive reduction: deeper searches reduce more
             int64_t reduction = 1;
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            if (moveIndex >= 8) reduction += 2; // -2 if very late (>= 8th move)
+            if (moveIndex >= 9) reduction += 2; // -2 if very late (>= 10th move)
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
@@ -1015,7 +1015,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    constexpr uint8_t MAX_QSEARCH_DEPTH = 20;
+    // INCREASED: Allow deeper tactical search for better combination vision
+    constexpr uint8_t MAX_QSEARCH_DEPTH = 22; // was 20
     if (ply >= MAX_QSEARCH_DEPTH) {
         return standPat; // Cutoff profondità - return stand-pat to avoid re-evaluation
     }
@@ -1036,10 +1037,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // EARLY DELTA PRUNING - BEFORE move generation
     // ============================================================================
     // If stand-pat is so bad that even the best possible capture (Queen = 900cp)
-    // plus a huge margin (100cp safety) can't reach alpha/beta, skip move generation entirely.
+    // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // IMPORTANT: Skip this pruning if we're in check (must search all evasions)
-    constexpr int64_t EARLY_DELTA_MARGIN = 1000; // Queen + margin
+    // LESS AGGRESSIVE: increased margin to avoid missing tactical tricks
+    constexpr int64_t EARLY_DELTA_MARGIN = 1080; // Queen + bigger margin (was 1000)
     
     const bool inCheck = b.inCheck(activeColor);
     
@@ -1122,10 +1124,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     MoveList<ScoredMove> orderedMoves;
     
     // Dynamic SEE pruning threshold based on depth and material balance
-    // Make qsearch more conservative against pruning losing exchanges.
-    // Shallow qsearch (ply < 15): allow slightly losing captures (-15cp)
-    // Deep qsearch (ply >= 15): only neutral/winning captures (0cp)
-    int64_t seeThreshold = (ply < 15) ? -15 : 0;
+    // LESS AGGRESSIVE: allow more slightly-losing captures to find tactics
+    // Shallow qsearch (ply < 20): allow losing captures up to -20cp (was -15cp)
+    // Deep qsearch (ply >= 20): allow slightly losing captures up to -2cp (was 0cp)
+    int64_t seeThreshold = (ply < 20) ? -20 : -2;
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
