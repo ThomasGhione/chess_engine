@@ -96,7 +96,8 @@ namespace zobrist {
         xorPiecesFromBitboard(hashKey, board.kings_bb[1],  14);
 
         // Side to move (branchless: XOR if black to move)
-        const uint64_t stmMask = static_cast<uint64_t>(-(board.getActiveColor() == chess::Board::BLACK));
+        // FIX: avoid undefined behavior - cast to int64_t before negation
+        const uint64_t stmMask = static_cast<uint64_t>(-static_cast<int64_t>(board.getActiveColor() == chess::Board::BLACK));
         hashKey ^= TABLES.sideToMove & stmMask;
 
         // Castling rights (0-15 bitmask)
@@ -108,9 +109,13 @@ namespace zobrist {
         hashKey ^= TABLES.castling[castlingMask];
 
         // En-passant (branchless: XOR if valid EP square)
+        // FIX: check bounds BEFORE accessing file() to avoid out-of-bounds
         const chess::Coords epSquare = board.getEnPassant();
-        const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(chess::Coords::isInBounds(epSquare)));
-        hashKey ^= TABLES.enPassant[epSquare.file()] & epMask;
+        const bool epValid = chess::Coords::isInBounds(epSquare);
+        const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(epValid));
+        // Only access file() if epSquare is valid, otherwise use 0 (masked out anyway)
+        const uint8_t epFile = epValid ? epSquare.file() : 0;
+        hashKey ^= TABLES.enPassant[epFile] & epMask;
 
         return hashKey;
     }

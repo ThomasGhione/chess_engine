@@ -774,7 +774,13 @@ void Board::updateRepetitionAfterMove(bool resetHistory) noexcept {
     if (resetHistory) {
         historySize = 0;
     }
+    // FIX: Check BEFORE incrementing to avoid out-of-bounds write
+    // If we're at capacity, shift the array (ring buffer behavior)
     if (historySize >= repetitionHistory.size()) {
+        // Shift all entries one position to the left (discard oldest)
+        for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
+            repetitionHistory[i - 1] = repetitionHistory[i];
+        }
         historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
     }
     repetitionHistory[historySize++] = currentHash;
@@ -783,8 +789,9 @@ void Board::updateRepetitionAfterMove(bool resetHistory) noexcept {
 bool Board::isThreefoldRepetition() const noexcept {
     if (historySize == 0) return false;
     const uint64_t target = currentHash;
-    int count = 0;
-    for (uint8_t i = historySize; i > 0; --i) {
+    int count = 1; // FIX: Start at 1 because currentHash is already in history (last entry)
+    // Search history excluding the last entry (which is currentHash)
+    for (uint8_t i = historySize - 1; i > 0; --i) {
         if (repetitionHistory[i - 1] == target) {
             if (++count >= 3) return true;
         }

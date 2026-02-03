@@ -367,6 +367,15 @@ ut::suite EndingGameSuite = [] {
   };
   */
 
+  "critical position 14, avoid sacrificing queen"_test = [] {
+    engine::Engine e = engine::Engine("3r1r1k/2Q3pp/p1p2q1n/1p6/2b1P3/2N1PN1P/PPP2RP1/R5K1 w - - 0 18");
+    auto moves = e.generateLegalMoves(e.board);
+    e.evaluate(e.board);
+    chess::Board::Move bestMove = e.getBestMove(moves, true);
+    expect(!(bestMove.from == chess::Coords("c7") && bestMove.to == chess::Coords("d8"))) 
+      << "Expected not to sacrifice queen.";
+  };
+
   "critical position 7, avoid stalemate"_test = []{
     const std::string fen = "6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34";
     chess::Board board(fen);

@@ -267,11 +267,10 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
 
+    // FIX: Restore repetition history correctly
+    // Simply restore the saved state - no need to recompute hash
     historySize = st.prevHistorySize;
-    currentHash = zobrist::computeHashKey(*this);
-    if (historySize > 0) {
-        repetitionHistory[historySize - 1] = currentHash;
-    }
+    currentHash = st.prevHistoryHead;
 }
 
 
