@@ -174,7 +174,7 @@ private:
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     
     // Quiescence helper: generates only tactical moves (captures, promotions)
-    MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b) const noexcept;
+    MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false) const noexcept;
 
 public:
     static int manhattan(int a, int b) noexcept;

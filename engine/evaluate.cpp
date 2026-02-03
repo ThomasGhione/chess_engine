@@ -165,6 +165,35 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             score += ISOLATED_PAWN_PENALTY;
         }
         
+        // Pawn chain bonus: supported pawn (has pawn protecting it diagonally behind)
+        // White pawns: "behind" = higher rank (protected from diagonal behind)
+        {
+            const bool protectedByLeft = (file > 0 && (whitePawns & chess::Board::bitMask(sq + 7)));   // Behind-left
+            const bool protectedByRight = (file < 7 && (whitePawns & chess::Board::bitMask(sq + 9)));  // Behind-right
+            
+            if (protectedByLeft || protectedByRight) {
+                score += 15;  // Bonus for supported pawns (chain bonus helps with tactics)
+            }
+        }
+        
+        // Backward pawn check: pawn can't advance and no supporting pawns
+        // A backward pawn is blocked (pawn in front) and no support from behind
+        // White pawns move down (decreasing rank: 6→0), so "behind" = higher rank
+        {
+            const int forwardSq = sq - 8;  // Square in front (lower rank)
+            const bool isBlocked = (forwardSq >= 0) && ((whitePawns | blackPawns) & chess::Board::bitMask(forwardSq));
+            
+            if (isBlocked) {
+                // Check for supporting pawns (diagonally behind on adjacent files)
+                const bool hasSupport = ((whitePawns & chess::Board::bitMask(sq + 7)) != 0) ||  // Behind-left
+                                       ((whitePawns & chess::Board::bitMask(sq + 9)) != 0);     // Behind-right
+                
+                if (!hasSupport && file > 0 && file < 7) {  // Not on edge files
+                    score += ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
+                }
+            }
+        }
+        
         // Passed pawn check (no enemy pawns in front on same/adjacent files)
         const uint64_t adjAndFileMask = ADJACENT_AND_FILE_MASKS[file];
         const uint64_t forwardMask = WHITE_FORWARD_FILL[sq];
@@ -205,6 +234,34 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
         if ((blackPawns & adjFilesMask) == 0) [[unlikely]] {
             score -= ISOLATED_PAWN_PENALTY;
+        }
+        
+        // Pawn chain bonus: supported pawn (has pawn protecting it diagonally behind)
+        // Black pawns: "behind" = lower rank (protected from diagonal behind)
+        {
+            const bool protectedByLeft = (file > 0 && (blackPawns & chess::Board::bitMask(sq - 7)));   // Behind-left
+            const bool protectedByRight = (file < 7 && (blackPawns & chess::Board::bitMask(sq - 9)));  // Behind-right
+            
+            if (protectedByLeft || protectedByRight) {
+                score -= 15;  // Bonus for Black chain (subtract because Black is negative)
+            }
+        }
+        
+        // Backward pawn check: pawn can't advance and no supporting pawns
+        // Black pawns move up (increasing rank: 1→7), so "behind" = lower rank
+        {
+            const int forwardSq = sq + 8;  // Square in front (higher rank)
+            const bool isBlocked = (forwardSq < 64) && ((whitePawns | blackPawns) & chess::Board::bitMask(forwardSq));
+            
+            if (isBlocked) {
+                // Check for supporting pawns (diagonally behind on adjacent files)
+                const bool hasSupport = ((blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
+                                       ((blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
+                
+                if (!hasSupport && file > 0 && file < 7) {  // Not on edge files
+                    score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
+                }
+            }
         }
         
         // Passed pawn check
@@ -392,7 +449,7 @@ int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
             const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
             if ((friends & nearby) == 0) {
                 // No friendly piece within Manhattan distance <= 2
-                score -= sign * COORDINATION_PENALTY;
+                score += sign * (-COORDINATION_PENALTY);  // FIX: COORDINATION_PENALTY is already negative
             }
         }
     }
@@ -656,7 +713,7 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
         const bool hasCastled = (side == 0 && (sq == 62 || sq == 58)) || (side == 1 && (sq == 6 || sq == 2));
         
         if (!hasCastled) {
-            score -= sign * 20; // penalità fissa se non arroccato
+            score += sign * (-20); // penalità fissa se non arroccato (apply with correct sign)
             
             // OPTIMIZATION: Penalize moving kingside/queenside pawns before castling
             // This weakens king safety if castling rights are still available
@@ -1407,7 +1464,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Apply contempt for ANY material imbalance (even small)
     // FIX BUG: soglia precedente (150cp) permetteva sacrifici fino a 1.5 pedoni senza penalty!
     // Ora: penalty anche per piccole perdite materiali (es. +100 dopo sacrificio -400 = penalty)
-    if (absMatDelta > 100) {
+    if (absMatDelta > 50) {
         // Check if the losing side is giving check (might indicate mating attack)
         const bool loserGivingCheck = (matDelta > 0) 
             ? board.inCheck(chess::Board::WHITE)  // White ahead, check if Black checking

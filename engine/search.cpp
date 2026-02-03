@@ -1154,8 +1154,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         return cutoffValue(alpha, beta, usIsWhite);
     }
 
-    // Generate only tactical moves (captures, promotions - NO CHECKS)
-    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b);
+    // Generate tactical moves (captures, promotions) with checks for pawn tactics
+    // Include checks to discover check-based pawn sacrifices and tactics
+    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, true);
     
     // No tactical moves: return stand-pat (quiet position reached)
     if (tacticalMoves.is_empty()) {
@@ -1286,7 +1287,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 // 3. Checks (optional, controlled by QSEARCH_INCLUDE_CHECKS (TODO))
 //
 // This is a simplified version of generateLegalMoves() optimized for qsearch
-MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b) const noexcept {
+MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b, bool includeChecks) const noexcept {
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
@@ -1309,7 +1310,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     
     const bool inCheck = b.inCheck(color);
 
-    // Helper to add only captures and promotions
+    // Helper to add tactical moves (captures, promotions, and optionally checks)
     auto addTacticalMovesFromMask = [&](uint8_t from, uint64_t mask, bool isPawn) {
         const chess::Coords fromC{from};
         
@@ -1321,11 +1322,23 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
             const bool isCapture = (b.get(toC) != chess::Board::EMPTY);
             const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhite));
             
-            // Only add if it's a capture or promotion
-            if (isCapture || isPromotion) {
+            // Only add if it's a capture, promotion, or (if includeChecks) a check
+            bool shouldAdd = (isCapture || isPromotion);
+            
+            if (!shouldAdd && includeChecks) {
+                // Check if this move gives check (expensive doMove/undoMove)
                 if (b.canMoveToBB(fromC, toC, inCheck)) {
-                    moves.emplace_back(chess::Board::Move{fromC, toC});
+                    chess::Board::MoveState tmpState;
+                    const_cast<chess::Board&>(b).doMove({fromC, toC, '\0'}, tmpState, isPawn && isPromotion ? 'q' : '\0');
+                    if (const_cast<chess::Board&>(b).inCheck(isWhite ? chess::Board::BLACK : chess::Board::WHITE)) {
+                        shouldAdd = true;
+                    }
+                    const_cast<chess::Board&>(b).undoMove({fromC, toC, '\0'}, tmpState);
                 }
+            }
+            
+            if (shouldAdd && b.canMoveToBB(fromC, toC, inCheck)) {
+                moves.emplace_back(chess::Board::Move{fromC, toC});
             }
         }
     };
