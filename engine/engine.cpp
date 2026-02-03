@@ -106,26 +106,55 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
 
 // OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     // EARLY EXIT: cheap checks first
     if (alpha < beta) return; // No beta-cutoff
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
-    // Only update for non-captures (killer/history heuristic)
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-    if (toPieceType != chess::Board::EMPTY) return;
+    const bool isCapture = (toPieceType != chess::Board::EMPTY);
     
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex = m.to.index;
 
-    // KILLER MOVES: Update if not already primary killer
+    // CAPTURE HISTORY: bonus for captures that cause cutoffs
+    if (isCapture) {
+        const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+        const int64_t depthPlusOne = depth + 1;
+        const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
+        
+        captureHistory[colorIndex][toIndex][toPieceType] += bonus;
+        
+        // Cap to prevent overflow
+        constexpr int MAX_CAPTURE_HISTORY = 10000;
+        if (captureHistory[colorIndex][toIndex][toPieceType] > MAX_CAPTURE_HISTORY) {
+            captureHistory[colorIndex][toIndex][toPieceType] = MAX_CAPTURE_HISTORY;
+        }
+        return; // Don't process as quiet move
+    }
+
+    // COUNTER-MOVE: Track best response to opponent's previous move (quiet moves only)
+    if (previousMove != nullptr && previousMove->from.index < 64) {
+        counterMoves[previousMove->from.index][previousMove->to.index] = m;
+    }
+    // KILLER MOVES: Update avoiding duplicates
     auto& km1 = killerMoves[0][ply];
     auto& km2 = killerMoves[1][ply];
     const bool isAlreadyKm1 = (fromIndex == km1.from.index) & (toIndex == km1.to.index);
+    const bool isAlreadyKm2 = (fromIndex == km2.from.index) & (toIndex == km2.to.index);
+    
     if (!isAlreadyKm1) {
-        km2 = km1;
-        km1 = m;
+        // If it's km2, promote it to km1
+        if (isAlreadyKm2) {
+            km2 = km1;
+            km1 = m;
+        } else {
+            // New killer: shift and insert
+            km2 = km1;
+            km1 = m;
+        }
     }
+    // If already km1, do nothing (avoid duplicates)
 
     // HISTORY HEURISTIC: Bonus based on depth
     // bonus = (depth + 1) * (depth + 1) can be optimized for small depths

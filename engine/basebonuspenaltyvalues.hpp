@@ -132,10 +132,22 @@ inline static constexpr int64_t STALEMATE_DRAW_PENALTY_MINOR = 100; // 1 pawn-eq
 inline static constexpr int64_t STALEMATE_MATERIAL_THRESHOLD = 150; // 1.5 pawns (catch smaller advantages)
 
 
-// MVV-LVA precomputed table: [victim_type][attacker_type]
-// Formula: victimValue * 10 - attackerValue
+// MVV (Most Valuable Victim) table for capture ordering
+// Simplified from MVV-LVA: only victim value matters (attacker irrelevant)
+// SEE already handles exchange evaluation, so MVV-only is sufficient
 // Indices: 0=EMPTY, 1=PAWN, 2=KNIGHT, 3=BISHOP, 4=ROOK, 5=QUEEN, 6=KING
-// Per MVV-LVA usiamo solo 1-6 (EMPTY non cattura nulla, KING non usiamo come victim normalmente)
+inline constexpr int64_t MVV_TABLE[7] = {
+    0,                  // EMPTY
+    PAWN_VALUE * 10,    // PAWN = 1000
+    KNIGHT_VALUE * 10,  // KNIGHT = 3200
+    BISHOP_VALUE * 10,  // BISHOP = 3300
+    ROOK_VALUE * 10,    // ROOK = 5000
+    QUEEN_VALUE * 10,   // QUEEN = 9000
+    KING_VALUE * 10     // KING = 200000 (should never be captured)
+};
+
+// Legacy MVV-LVA table kept for compatibility (not used in new code)
+// TODO: Remove after confirming MVV-only works well
 inline constexpr int64_t MVV_LVA_TABLE[7][7] = {
     // victim: EMPTY
     {0, 0, 0, 0, 0, 0, 0},

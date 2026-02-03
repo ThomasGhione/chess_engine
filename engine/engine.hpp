@@ -125,7 +125,7 @@ public:
 
     // Legal move generation (bitboard-based)
     MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
-    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey) noexcept;
+    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
 
@@ -139,6 +139,7 @@ private:
         int64_t beta;
         int ply;
         uint8_t activeColor;
+        const chess::Board::Move* previousMove = nullptr; // For counter-move history
     };
 
     struct AlphaBeta {
@@ -153,7 +154,7 @@ private:
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept;
 
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY]) noexcept;
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
 
     // Search helpers
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
@@ -311,6 +312,15 @@ private:
     // History heuristic: bonus for non-capture moves that often cause cutoffs
     // history[colorIndex][fromIndex][toIndex]
     int history[2][64][64] = {};
+
+    // Counter-move history: tracks best response to opponent's previous move
+    // counterMoves[prevFrom][prevTo] → best response move
+    // Improves move ordering in tactical sequences
+    chess::Board::Move counterMoves[64][64] {};
+
+    // Capture history: bonus for captures that often cause cutoffs
+    // captureHistory[color][to][victimType]
+    int captureHistory[2][64][7] = {};
 
     static constexpr int64_t PIECE_VALUES[8] = {
         0,      // EMPTY = 0

@@ -120,7 +120,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         if (bounds.alpha >= bounds.beta) {
             if (allowUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
-                                                      bounds.alpha, bounds.beta, history, killerMoves);
+                                                      bounds.alpha, bounds.beta, history, killerMoves, ctx.previousMove);
             }
             break;
         }
@@ -493,11 +493,11 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
-    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey);
-    const int64_t alphaOrig = bounds.alpha;
+    // Build search context (previousMove passed from parent call)
+    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, nullptr};
 
-    // Build search context
-    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor};
+    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
+    const int64_t alphaOrig = bounds.alpha;
 
     // Search through all moves and find best move with score
     ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT);
@@ -636,21 +636,22 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     return moves;
 }
 
-// Helper to add MVV-LVA bonus for captures
+// Helper to add MVV (Most Valuable Victim) bonus for captures
+// Simplified from MVV-LVA: only victim matters, attacker is irrelevant (SEE handles exchange eval)
 void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept {
 
     const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
     const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
     if (toPieceType != chess::Board::EMPTY) {
-        score += MVV_LVA_TABLE[toPieceType][fromPieceType];
+        score += MVV_TABLE[toPieceType];  // MVV-only: just victim value
         return;
     }
 
     // En passant (only pawn moving diagonally to empty square)
     if (fromPieceType == chess::Board::PAWN) {
         if (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index)) {
-            score += MVV_LVA_TABLE[chess::Board::PAWN][chess::Board::PAWN];
+            score += MVV_TABLE[chess::Board::PAWN];
         }
     }
 }
@@ -842,7 +843,8 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     int ply,
     chess::Board& b,
     bool usIsWhite,
-    uint64_t hashKey) noexcept
+    uint64_t hashKey,
+    const chess::Board::Move* previousMove) noexcept
 {
     MoveList<ScoredMove> orderedScoredMoves;
 
@@ -854,6 +856,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     uint16_t encodedHashMove = 0;
     uint8_t hashFrom = 64, hashTo = 64;
     char hashPromo = '\0';
+    bool hashMoveIsLegal = false;
     
     // Probe TT to get hash move (don't care about score, just the move)
     int64_t dummyScore = 0;
@@ -861,8 +864,17 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     
     if (encodedHashMove != 0) {
         tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
+        
+        // Validate hash move is in legal moves list (guards against TT collisions)
+        for (const auto& m : moves) {
+            if (m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
+                hashMoveIsLegal = true;
+                break;
+            }
+        }
     }
 
+    int moveIndex = 0; // Track move count for lazy check detection
     for (const auto& m : moves) {
         int64_t score = 0;
 
@@ -876,46 +888,46 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         // =========================================================
         // MOVE ORDERING PRIORITY (from highest to lowest):
         // 1. Hash move (from TT) → 100000
-        // 2. Good captures (SEE >= 0) → 10000 + MVV-LVA
-        // 3. Killer moves → 9000/8500
-        // 4. Checks (non-capture) → 8000
-        // 5. Promotions (non-capture) → 7000
-        // 6. History heuristic → 0-1000
-        // 7. Bad captures (SEE < 0) → -10000 + SEE
+        // 2. Good captures (SEE >= 0) → 10000 + MVV (1000-9000)
+        // 3. Killer move 1 → 9000
+        // 4. Killer move 2 → 8500
+        // 5. Counter-move (response to prev move) → 8200
+        // 6. Checks (non-capture, lazy: first 8 moves) → 8000
+        // 7. Promotions (non-capture) → 7000
+        // 8. History heuristic → 0-2000
+        // 9. Bad captures (SEE < 0) → -10000 + SEE
         // =========================================================
 
         // Check if this is the hash move (highest priority!)
-        if (m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
+        // Only assign high priority if hash move was validated as legal
+        if (hashMoveIsLegal && m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
             score = 100000; // Highest priority
         } else if (isCapture) {
-            // CAPTURES: priorità basata su SEE
+            // CAPTURES: priorità basata su SEE + capture history
             const int64_t see = staticExchangeEvaluation(b, m);
             
             if (see >= 0) {
                 // GOOD CAPTURE: alta priorità (prima di killer/quiet)
                 score = 10000;
-                addMVVLVABonus(m, b, score); // +MVV-LVA (0-9000)
-                // Total: 10000-19000
+                addMVVLVABonus(m, b, score); // +MVV (1000-9000)
+                
+                // Add capture history bonus (0-500 range)
+                const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
+                const int64_t capHist = captureHistory[colorIndex][m.to.index][toPieceType];
+                score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
+                // Total: 10000-19500
             } else {
-                // BAD CAPTURE: penalize based on how bad the SEE is
-                // Strongly discourage clearly losing exchanges so they are explored last
-                if (see <= -200) {
-                    // Very bad: give it a huge negative priority
-                    score = -30000 + see;
-                } else if (see <= -50) {
-                    // Moderately bad: large negative priority
-                    score = -20000 + see;
-                } else {
-                    // Slightly bad: keep negative but add small extra penalty
-                    score = -10000 + see - 2000;
-                }
-                // Total: pushed to very low priority to avoid risky sacrifices
+                // BAD CAPTURE: low priority, ordered by SEE value
+                // Simpler single-tier approach: all bad captures get -10000 + SEE
+                score = -10000 + see;
+                // Total: -10000 to -10001+ (worse SEE = lower priority)
             }
         } else {
             // NON-CAPTURES: killer, checks, history
             
             // Check for killer moves FIRST (alta priorità)
             bool isKiller = false;
+            bool isCounterMove = false;
             if (ply >= 0 && ply < MAX_PLY) {
                 const auto& km1 = killerMoves[0][ply];
                 const auto& km2 = killerMoves[1][ply];
@@ -929,14 +941,33 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 }
             }
 
-            // Se non è killer, controlla altre eurystiche
-            if (!isKiller) {
-                // OPTIMIZATION: remove check detection from move ordering
-                // It is expensive (doMove/undoMove per quiet move)
-                // Checks will still be explored early because of killer moves and LMR
+            // Check for counter-move (response to opponent's previous move)
+            if (!isKiller && previousMove != nullptr && previousMove->from.index < 64) {
+                const auto& counter = counterMoves[previousMove->from.index][previousMove->to.index];
+                if (counter.from.index < 64 && m.from.index == counter.from.index && m.to.index == counter.to.index) {
+                    score = 8200; // Between killer moves and checks
+                    isCounterMove = true;
+                }
+            }
+
+            // Se non è killer o counter-move, controlla altre eurystiche
+            if (!isKiller && !isCounterMove) {
+                // LAZY CHECK DETECTION: only for first 8 non-capture moves
+                // Balances tactical strength with performance overhead
+                if (moveIndex < 8) {
+                    chess::Board::MoveState tmpState;
+                    const bool isPromo = isPromotionMove(b, m);
+                    b.doMove(m, tmpState, isPromo ? 'q' : '\0');
+                    const bool givesCheck = b.inCheck(b.getActiveColor());
+                    b.undoMove(m, tmpState);
+                    
+                    if (givesCheck) {
+                        score = 8000; // High priority for checking moves
+                    }
+                }
                 
-                // Promotion bonus (se non è cattura)
-                if (fromPieceType == chess::Board::PAWN) {
+                // Promotion bonus (se non è cattura e non dà scacco già rilevato)
+                if (score == 0 && fromPieceType == chess::Board::PAWN) {
                     if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
                         score = 7000;
                     }
@@ -958,8 +989,8 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
                     const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
                     int64_t histScore = history[colorIndex][m.from.index][m.to.index];
-                    // Clampiamo a [0, 1000] per evitare valori anomali
-                    score = std::min(static_cast<int64_t>(1000), std::max(static_cast<int64_t>(0), histScore));
+                    // Increased range: 0-2000 (was 0-1000) for better move differentiation
+                    score = std::min(static_cast<int64_t>(2000), std::max(static_cast<int64_t>(0), histScore));
                 }
                 // Discourage moving the same pawn twice in the opening: small negative ordering penalty
                 // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
@@ -990,6 +1021,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         }
 
         orderedScoredMoves.emplace_back(m, score);
+        ++moveIndex; // Increment for lazy check detection threshold
     }
 
     orderedScoredMoves.sort();
@@ -1187,9 +1219,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
                 continue; // Per-move delta pruning
             }
             
-            // Score by MVV-LVA for good ordering
-            score = 10000;
-            addMVVLVABonus(m, b, score);
+            // Score by MVV + SEE for better ordering
+            // SEE-based ordering: captures with better SEE explored first
+            score = 10000 + see; // Base + SEE value (can be negative for losing captures)
+            addMVVLVABonus(m, b, score); // Add MVV bonus on top
+            // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
             const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
