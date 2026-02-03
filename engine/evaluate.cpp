@@ -1413,10 +1413,20 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
             : board.inCheck(chess::Board::BLACK); // Black ahead, check if White checking
         
         if (!loserGivingCheck) {
-            // Apply contempt: extra penalty proportional to material loss
-            // This makes sacrifices VERY expensive unless there's immediate tactics
-            // Formula: 20% of the material loss as extra penalty
-            const int64_t contemptPenalty = absMatDelta / 5; // 20%
+            // Apply STRONG contempt to discourage speculative sacrifices
+            // Use progressive penalty: 50% for small losses, 100% for large losses
+            // FIX BUG: precedente 20% era troppo debole (sacrificio Regina: -900 → -180 penalty)
+            int64_t contemptPenalty;
+            if (absMatDelta < 300) {
+                // Small material loss (< 3 pawns): 50% penalty
+                // Example: Knight sacrifice (-320) → -160 penalty → -480 total
+                contemptPenalty = absMatDelta / 2;
+            } else {
+                // Large material loss (>= 3 pawns): 100% penalty
+                // Example: Queen sacrifice (-900) → -900 penalty → -1800 total
+                // This makes major piece sacrifices VERY expensive
+                contemptPenalty = absMatDelta;
+            }
             
             // Apply from White's perspective
             eval += (matDelta > 0) ? contemptPenalty : -contemptPenalty;

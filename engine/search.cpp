@@ -784,13 +784,15 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int depth = 1;
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
-    // EARLY-EXIT: se il pezzo catturato vale significativamente meno di
-    // quello che sta effettuando la cattura (es. QxP), nella maggior parte
-    // dei casi la cattura è perdente dopo le riprese; saltiamo il SEE costoso
-    // e ritorniamo una stima negativa rapida.
-    // Soglia: un pedone (PAWN_VALUE) per evitare falsi positivi su scambi
-    // ravvicinati. Usiamo la costante PAWN_VALUE per rendere esplicite le unità.
-    if (PIECE_VALUES[capturedType] < PIECE_VALUES[capturedOnTargetType] - PAWN_VALUE * 2) {
+    // EARLY-EXIT: Solo per catture OVVIAMENTE perdenti (es. QxP con riconquista garantita)
+    // Soglia CONSERVATIVA: solo se vittima + 400cp < attaccante
+    // Questo salta il calcolo SEE solo per catture chiaramente cattive (es. QxP, QxN)
+    // ma calcola SEE completo per QxR, RxP, etc. che potrebbero essere buone.
+    // FIX BUG: soglia precedente (-200cp) marcava QxR come perdente quando è +400!
+    if (PIECE_VALUES[capturedType] + 400 < PIECE_VALUES[capturedOnTargetType]) {
+        // Esempio: QxP → 100 + 400 < 900 → TRUE (skip SEE, ritorna -800)
+        // Esempio: QxR → 500 + 400 < 900 → FALSE (calcola SEE completo!)
+        // Esempio: RxP → 100 + 400 < 500 → FALSE (calcola SEE)
         return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType]);
     }
 
