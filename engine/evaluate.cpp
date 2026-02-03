@@ -1432,7 +1432,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
             // Apply from White's perspective
             eval += (matDelta > 0) ? contemptPenalty : -contemptPenalty;
         }
-    }
+    } 
 
     return eval;
 }

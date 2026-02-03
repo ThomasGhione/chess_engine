@@ -21,7 +21,7 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 // ===================================================
 inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -20;      // aumentato per scoraggiare push eccessivo
 inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
-inline static constexpr int64_t BACKWARD_PAWN_PENALTY = -12;     // aumentato
+// BACKWARD_PAWN_PENALTY removed - was never implemented in evalPawnStructure()
 inline static constexpr int64_t PASSED_PAWN_BONUS = 25;          // REDUCED from 40 (was too high, caused bad sacrifices)
 inline static constexpr int64_t CENTER_CONTROL_BONUS = 15;       // REDUCED from 25 (was too high)
 

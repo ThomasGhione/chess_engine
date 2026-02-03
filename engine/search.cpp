@@ -1230,13 +1230,14 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             best = score;
         }
         
+        // Update alpha bound before checking beta cutoff
+        updateBound(score, alpha, beta, usIsWhite);
+        
         // Alpha-beta pruning
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
             // Beta cutoff - don't store in TT (happens too frequently in qsearch)
             return cutoffValue(alpha, beta, usIsWhite);
         }
-        
-        updateBound(score, alpha, beta, usIsWhite);
     }
     
     return best;
