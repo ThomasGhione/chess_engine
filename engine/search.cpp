@@ -1171,15 +1171,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             
             const int64_t see = staticExchangeEvaluation(b, m);
 
-            // HARD GUARDRAIL: avoid absurd sacrifices (e.g., QxR+check)
-            // If SEE is massively negative, don't even consider the capture.
-            // This is intentionally strict to enforce "no insane sacs".
-            constexpr int64_t SEE_HARD_CUTOFF = -300; // ~3 pawns or more
-            if (see <= SEE_HARD_CUTOFF) {
-                continue;
-            }
-            
             // SEE-based pruning with dynamic threshold
+            // Dynamic threshold is already strict enough (-16cp shallow, 0cp deep)
+            // No need for additional hard cutoff (was redundant and too permissive at -300cp)
             if (see < seeThreshold) {
                 continue;
             }

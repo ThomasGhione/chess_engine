@@ -275,9 +275,16 @@ I bug trovati spiegano completamente il comportamento dell'engine:
 2. **Material contempt debole** → sacrifici non scoraggiati abbastanza
 3. **Combinazione letale** → engine sacrifica pensando di essere perdente comunque
 
+**Fix applicati (2026-02-03):**
+1. ✅ SEE early-exit: soglia corretta da -200cp a +400cp
+2. ✅ Material contempt: penalty rafforzata da 20% a 50-100% progressivo
+3. ✅ Material contempt threshold: abbassata da 150cp a 50cp
+4. ✅ Quiescence: rimosso HARD_CUTOFF ridondante (-300cp), ora usa solo seeThreshold dinamico (-16cp/0cp)
+
 **Fix attesi:** Dopo correzione dei bug, l'engine dovrebbe:
 - Vedere correttamente catture come QxR, QxN, QxB come vantaggiose
 - Evitare sacrifici speculativi senza compensazione concreta
 - Giocare in modo più solido in posizioni vincenti
+- Maggiore selettività nelle catture in quiescence search
 
 **Rischio regression:** Il SEE completo è più lento dell'early-exit. Monitorare performance dopo il fix.

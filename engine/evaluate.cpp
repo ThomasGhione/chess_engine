@@ -1404,9 +1404,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     const int64_t matDelta = getMaterialDelta(board);
     const int64_t absMatDelta = std::abs(matDelta);
     
-    // Only apply contempt if material difference is significant (> 1.5 pawns = 150cp)
-    // and we're not in a forced mate position
-    if (absMatDelta > 150) {
+    // Apply contempt for ANY material imbalance (even small)
+    // FIX BUG: soglia precedente (150cp) permetteva sacrifici fino a 1.5 pedoni senza penalty!
+    // Ora: penalty anche per piccole perdite materiali (es. +100 dopo sacrificio -400 = penalty)
+    if (absMatDelta > 100) {
         // Check if the losing side is giving check (might indicate mating attack)
         const bool loserGivingCheck = (matDelta > 0) 
             ? board.inCheck(chess::Board::WHITE)  // White ahead, check if Black checking
