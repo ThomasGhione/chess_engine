@@ -67,7 +67,7 @@ bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, 
 
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept {
+                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite) noexcept {
     int64_t best = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
@@ -102,14 +102,14 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
-            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
+            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             
             // Re-search at full depth if the reduced search looks promising
             if (score > bounds.alpha && score < bounds.beta) {
-                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             }
         } else {
-            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates);
+            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
         }
 
         b.undoMove(m, state);
@@ -214,6 +214,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             // Alpha-beta cutoff
             if (alpha >= beta) break;
         }
+        // BUGFIX: Store eval for sequential path (was missing, always returned 0)
+        this->eval = bestScore;
         return bestMove;
     }
 
@@ -456,7 +458,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
-    if (this->handleSearchPrelude(depth, bounds, score, hashKey)) {
+    // BUGFIX: Only probe TT if useTT is true (parallel threads must NOT read shared TT)
+    if (useTT && this->handleSearchPrelude(depth, bounds, score, hashKey)) {
         return score;
     }
 
@@ -500,7 +503,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t alphaOrig = bounds.alpha;
 
     // Search through all moves and find best move with score
-    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT);
+    // BUGFIX: Propagate allowTTWrite to searchMoves so parallel threads never write TT at any depth
+    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowTTWrite);
     int64_t best = result.score;
 
     // Save position to transposition table

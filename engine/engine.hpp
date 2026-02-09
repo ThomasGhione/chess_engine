@@ -119,6 +119,9 @@ public:
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
+    // DEBUG: Trace version of evaluate that prints each component
+    int64_t evaluateTrace(const chess::Board& board) noexcept;
+
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;
     static void ensureMagicTablesInitialized() noexcept;
@@ -129,8 +132,8 @@ public:
 
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
 
-private:
     int MAX_THREADS;
+private:
 
     // Helper structures for cleaner function signatures
     struct SearchContext {
@@ -159,7 +162,7 @@ private:
     // Search helpers
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates) noexcept;
+                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite = true) noexcept;
     
     // Move scoring helpers
     void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;

@@ -948,17 +948,13 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
     int64_t score = 0;
 
     // Detect if we're in a favorable Rook endgame (R+K vs K or better)
-    // Count material: if one side has Rook(s) and the other doesn't, it's favorable
     const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
     const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
     
-    // Only apply in clear endgame material imbalance: one side has Rooks, other doesn't
-    // (or significant Rook advantage)
     const bool whiteHasRookAdvantage = (whiteRooks > blackRooks);
     const bool blackHasRookAdvantage = (blackRooks > whiteRooks);
     
     if (!whiteHasRookAdvantage && !blackHasRookAdvantage) {
-        // Balanced material (both have rooks or none), don't apply this bonus
         return 0;
     }
 
@@ -966,6 +962,19 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
     for (int side = 0; side < 2; ++side) {
         const bool sideHasAdvantage = (side == 0) ? whiteHasRookAdvantage : blackHasRookAdvantage;
         if (!sideHasAdvantage) continue;
+
+        // BUGFIX: Only apply mating pressure if opponent has very limited material.
+        // If opponent has a queen or significant pieces, a single rook advantage
+        // is NOT enough for a mating net.
+        const int oppSide = side ^ 1;
+        const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
+        const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
+        const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+        const int oppRooks2 = (side == 0) ? blackRooks : whiteRooks;
+        const int oppMaterial = oppQueens * 900 + oppRooks2 * 500 + oppBishops * 330 + oppKnights * 320;
+        
+        // Only apply if opponent has at most a minor piece (no queen, no rook)
+        if (oppMaterial > 400) continue;
 
         const int sign = (side == 0) ? 1 : -1;
         const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
@@ -1116,6 +1125,20 @@ int64_t Engine::evalDoubleRookEndgame(const chess::Board& b) noexcept {
         const int oppRooks = (side == 0) ? blackRooks : whiteRooks;
         
         if (ourRooks < 2 || ourRooks <= oppRooks) continue;
+
+        // BUGFIX: Only apply mating pressure if opponent has very limited material.
+        // If opponent has a queen or significant other pieces, the rook advantage
+        // alone is NOT a mating net. This was generating -806cp penalties in positions
+        // where opponent had Q+R+B, causing the engine to sacrifice pieces.
+        const int oppSide = side ^ 1;
+        const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
+        const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
+        const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+        const int oppMaterial = oppQueens * 900 + oppRooks * 500 + oppBishops * 330 + oppKnights * 320;
+        
+        // Only apply if opponent material is low enough that double rooks can force mate
+        // (opponent has at most a minor piece, no queen)
+        if (oppMaterial > 500) continue;
 
         const int sign = (side == 0) ? 1 : -1;
         const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
@@ -1396,6 +1419,89 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // a penalty proportional to it again effectively doubled/tripled material value.
     // The alpha-beta search already prevents speculative sacrifices.
 
+    return eval;
+}
+
+// DEBUG: Trace version of evaluate() that prints each component for the endgame path
+int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
+        return evaluateCheckmate(board);
+    }
+
+    int64_t eval = getMaterialDelta(board);
+    int64_t prev = eval;
+    std::cout << "  [TRACE] material: " << eval << std::endl;
+
+    const uint64_t occ = board.getPiecesBitMap();
+    const uint64_t whitePawns = board.pawns_bb[0];
+    const uint64_t blackPawns = board.pawns_bb[1];
+
+    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
+                                             board.bishops_bb[0] | board.bishops_bb[1] |
+                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
+                                             board.queens_bb[0]  | board.queens_bb[1]);
+
+    // PSQT
+    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (true ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+    addPsqt(board.kings_bb[0],   board.kings_bb[1],   KING_END_GAME_VALUES_TABLE.data(), eval);
+    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
+
+    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
+
+    AttackData attackData[2] = {};
+    ensureAttackData(attackData, board, occ);
+
+    // Endgame path:
+    int64_t v;
+    v = evalHangingPieces(board, attackData);
+    eval += v; std::cout << "  [TRACE] +hangingPieces: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalPawnStructure(whitePawns, blackPawns, true);
+    eval += v; std::cout << "  [TRACE] +pawnStructure: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalKingActivity(board, true);
+    eval += v; std::cout << "  [TRACE] +kingActivity: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalEndgameKingActivity(board);
+    eval += v; std::cout << "  [TRACE] +endgameKingActivity: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalMobility(attackData);
+    eval += v; std::cout << "  [TRACE] +mobility: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalTrappedPieces(board, occ);
+    eval += v; std::cout << "  [TRACE] +trappedPieces: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+    eval += v; std::cout << "  [TRACE] +rooks: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalRookEndgamePressure(board);
+    eval += v; std::cout << "  [TRACE] +rookEgPressure: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalQueenEndgamePressure(board);
+    eval += v; std::cout << "  [TRACE] +queenEgPressure: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalDoubleRookEndgame(board);
+    eval += v; std::cout << "  [TRACE] +doubleRookEg: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalKnightOnRim(board);
+    eval += v; std::cout << "  [TRACE] +knightOnRim: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalBadBishop(board.bishops_bb[0], whitePawns, 0);
+    eval += v; std::cout << "  [TRACE] +badBishopW: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalBadBishop(board.bishops_bb[1], blackPawns, 1);
+    eval += v; std::cout << "  [TRACE] +badBishopB: " << eval << " (delta=" << v << ")" << std::endl;
+
+    v = evalInitiative(board, true);
+    eval += v; std::cout << "  [TRACE] +initiative: " << eval << " (delta=" << v << ")" << std::endl;
+
+    std::cout << "  [TRACE] TOTAL: " << eval << std::endl;
     return eval;
 }
 
