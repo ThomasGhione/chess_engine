@@ -19,7 +19,7 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 // ===================================================
 // PAWN STRUCTURE EVALUATION
 // ===================================================
-inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -20;      // aumentato per scoraggiare push eccessivo
+inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -12;      // TUNED: was -20 (too harsh, caused avoidance of good pawn structures)
 inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
 // BACKWARD_PAWN_PENALTY removed - was never implemented in evalPawnStructure()
 inline static constexpr int64_t PASSED_PAWN_BONUS = 25;          // REDUCED from 40 (was too high, caused bad sacrifices)
@@ -55,9 +55,9 @@ inline static constexpr int64_t ORDERING_PENALTY_SAME_PAWN_OPENING = -15;
 // La SEE nella search già valuta gli scambi, quindi qui serve solo un "warning"
 // ===================================================
 inline static constexpr int64_t HANGING_PAWN_PENALTY   = -30;   // ridotto! (era -90, troppo alto)
-inline static constexpr int64_t HANGING_MINOR_PENALTY  = -80;   // ridotto! (era -280, paralizzava l'engine)
-inline static constexpr int64_t HANGING_ROOK_PENALTY   = -120;  // ridotto! (era -450, troppo punitivo)
-inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -200;  // ridotto! (era -800, eccessivo)
+inline static constexpr int64_t HANGING_MINOR_PENALTY  = -55;   // TUNED: was -80 (too punitive, SEE already handles exchanges)
+inline static constexpr int64_t HANGING_ROOK_PENALTY   = -85;   // TUNED: was -120 (too punitive)
+inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -140;  // TUNED: was -200 (too punitive)
 
 // Pawn-specific penalties (additional checks beyond hanging)
 inline static constexpr int64_t UNDEFENDED_PAWN_PENALTY = -15;  // ridotto da -25
@@ -80,7 +80,7 @@ inline static constexpr int64_t ATTACKED_QUEEN_PENALTY = -25;    // ridotto da -
 // ===================================================
 inline static constexpr int64_t KING_SAFETY_PENALTY = -10;       // ridotto ulteriormente
 inline static constexpr int64_t KING_ACTIVITY_BONUS = 8;         
-inline static constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 4;   
+inline static constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 8;   // FIX: was 4 (too low), now symmetric for both sides
 inline static constexpr int64_t KING_EXPOSED_PENALTY = -25;      // ridotto da -40
 inline static constexpr int64_t EARLY_KING_PENALTY = -15;        // ridotto da -20
 
@@ -88,7 +88,7 @@ inline static constexpr int64_t EARLY_KING_PENALTY = -15;        // ridotto da -
 // CASTLING
 // ===================================================
 inline static constexpr int64_t CASTLING_BONUS = 35;             // aumentato leggermente (l'arrocco è importante!)
-inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 20;  // ridotto da 25
+inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 10;  // TUNED: was 20 (too high, redundant with evalCastlingBonus)
 
 // ===================================================
 // DEVELOPMENT & INITIATIVE
@@ -96,7 +96,7 @@ inline static constexpr int64_t KING_NON_CASTLING_PENALTY = 20;  // ridotto da 2
 inline static constexpr int64_t INIT_BONUS_MG = 15;    // bonus iniziativa mid-game (aumentato)
 inline static constexpr int64_t INIT_BONUS_EG = 3;     // bonus iniziativa end-game
 inline static constexpr int64_t EARLY_ROOK_PENALTY = -30;  // RADDOPPIATO per evitare torre troppo presto
-inline static constexpr int64_t DEVELOPMENT_BONUS = 15;    // RADDOPPIATO! Sviluppo è critico
+inline static constexpr int64_t DEVELOPMENT_BONUS = 10;    // TUNED: was 15, too high (causes tactical blindness)
 
 // ===================================================
 // MOVE ORDERING (SEARCH)

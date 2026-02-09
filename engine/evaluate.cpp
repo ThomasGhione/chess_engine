@@ -185,10 +185,10 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             
             if (isBlocked) {
                 // Check for supporting pawns (diagonally behind on adjacent files)
-                const bool hasSupport = ((whitePawns & chess::Board::bitMask(sq + 7)) != 0) ||  // Behind-left
-                                       ((whitePawns & chess::Board::bitMask(sq + 9)) != 0);     // Behind-right
+                const bool hasSupport = (file > 0 && (whitePawns & chess::Board::bitMask(sq + 7)) != 0) ||  // Behind-left
+                                       (file < 7 && (whitePawns & chess::Board::bitMask(sq + 9)) != 0);     // Behind-right
                 
-                if (!hasSupport && file > 0 && file < 7) {  // Not on edge files
+                if (!hasSupport) {
                     score += ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
                 }
             }
@@ -255,10 +255,10 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             
             if (isBlocked) {
                 // Check for supporting pawns (diagonally behind on adjacent files)
-                const bool hasSupport = ((blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
-                                       ((blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
+                const bool hasSupport = (file < 7 && (blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
+                                       (file > 0 && (blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
                 
-                if (!hasSupport && file > 0 && file < 7) {  // Not on edge files
+                if (!hasSupport) {
                     score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
                 }
             }
@@ -270,7 +270,8 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score -= PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
-            const int advancement = rank; // rank 1 (start) -> 1, rank 6 (near promo) -> 6
+            // FIX: was using rank directly (range 1-6), now using rank-1 (range 0-5) to match white
+            const int advancement = rank - 1; // rank 1 (start) -> 0, rank 6 (near promo) -> 5
             score -= advancement * (isEndgame ? 6 : 2);
 
             // Extra danger on 7th rank (one step from promotion)
@@ -284,11 +285,11 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
                 score += PASSED_PAWN_BONUS / 2;
             }
             if (isEndgame) {
-                // BUG FIX: Black pawns move from rank 1 (row 7) toward rank 7 (row 1/promotion)
-                // Closer to promotion = higher rank value → use rank directly
-                // rank 6 (row 2, near promotion) → 6*4 = 24cp
-                // rank 1 (row 7, far from promotion) → 1*4 = 4cp
-                score -= rank * 4; // Reduced from 6
+                // FIX: Black pawns move from rank 1 toward rank 7 (promotion)
+                // Use (rank - 1) for range 0-5 to match white's (6 - rank)
+                // rank 6 (near promotion) → 5*4 = 20cp
+                // rank 1 (far from promotion) → 0*4 = 0cp
+                score -= (rank - 1) * 4;
             }
         }
     }
@@ -359,74 +360,23 @@ int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whi
     return score;
 }
 
+// REMOVED: evalPassiveRooks() - double counts with evalRooks() (open/semi-open files)
+// and evalTrappedPieces() (mobility). Also had bugs:
+// 1. Penalized ALL rooks not on 7th rank (-10cp each)
+// 2. Penalized rooks with own pawn on same file even if rook was in front
+// 3. Mobility <=3 double-counted with evalTrappedPieces()
 __attribute__((hot))
 int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
-    int64_t score = 0;
-
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-        uint64_t rooks = b.rooks_bb[side];
-        const uint64_t ownPawns = b.pawns_bb[side];
-
-        while (rooks) {
-            const int sq = popLSB(rooks);
-            const int file = sq & 7;
-            const int rank = sq >> 3;
-
-            // OPTIMIZATION: compute mobility only when necessary (early exit)
-            const uint64_t attacks = pieces::getRookAttacks(sq, occ);
-            const int mobility = __builtin_popcountll(attacks & ~occ);
-
-            // Low mobility - check FIRST (most common case)
-            if (mobility <= 3) [[unlikely]] {
-                score += sign * (-25);  // FIX: use += with sign to apply penalty correctly
-            }
-
-            // Rook blocked by own pawn on the same file - use precomputed masks
-            if (ownPawns & FILE_MASKS[file]) [[unlikely]] {
-                score += sign * (-15);  // FIX: use += with sign to apply penalty correctly
-            }
-
-            // Not on 7th rank penalty
-            if ((side == 0 && rank != 6) || (side == 1 && rank != 1)) {
-                score += sign * (-10);  // FIX: use += with sign to apply penalty correctly
-            }
-        }
-    }
-
-    return score;
+    return 0; // Disabled - functionality covered by evalRooks() and evalTrappedPieces()
 }
 
 
 __attribute__((hot))
 int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
-    // OPTIMIZATION: use precomputed masks instead of loops with if
-    constexpr uint64_t A_FILE = 0x0101010101010101ULL;
-    constexpr uint64_t H_FILE = 0x8080808080808080ULL;
-    constexpr uint64_t B_FILE = 0x0202020202020202ULL;
-    constexpr uint64_t G_FILE = 0x4040404040404040ULL;
-    constexpr uint64_t RANK_1 = 0xFF00000000000000ULL;
-    constexpr uint64_t RANK_8 = 0x00000000000000FFULL;
-    
-    constexpr uint64_t RIM_FILES = A_FILE | H_FILE;
-    constexpr uint64_t NEAR_RIM_FILES = B_FILE | G_FILE;
-    constexpr uint64_t BACK_RANKS = RANK_1 | RANK_8;
-    
-    int64_t score = 0;
-
-    // WHITE knights (penalty per white = score negativo)
-    const int whiteOnRim = __builtin_popcountll(b.knights_bb[0] & RIM_FILES);
-    const int whiteNearRim = __builtin_popcountll(b.knights_bb[0] & NEAR_RIM_FILES);
-    const int whiteBackRank = __builtin_popcountll(b.knights_bb[0] & BACK_RANKS);
-    score -= whiteOnRim * 30 + whiteNearRim * 15 + whiteBackRank * 10;
-
-    // BLACK knights (penalty per black = score positivo)
-    const int blackOnRim = __builtin_popcountll(b.knights_bb[1] & RIM_FILES);
-    const int blackNearRim = __builtin_popcountll(b.knights_bb[1] & NEAR_RIM_FILES);
-    const int blackBackRank = __builtin_popcountll(b.knights_bb[1] & BACK_RANKS);
-    score += blackOnRim * 30 + blackNearRim * 15 + blackBackRank * 10;  // FIX: removed double negation
-
-    return score;
+    // REMOVED: Double-counted with KNIGHT_VALUES_TABLE (PSQT already penalizes rim squares)
+    // The PSQT values for knights are strongly negative on rim squares (A/H files)
+    // and near-rim squares (B/G files), making this function redundant.
+    return 0;
 }
 
 
@@ -547,46 +497,33 @@ int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
 }
 
 int64_t Engine::evalEarlyKing(const chess::Board& b) noexcept {
-    int64_t score = 0;
-
-    if (b.kings_bb[0] && !(b.kings_bb[0] & chess::Board::bitMask(60)) && !(b.kings_bb[0] & chess::Board::bitMask(62))) {
-        score += EARLY_KING_PENALTY; // già negativo
-    }
-
-    if (b.kings_bb[1] && !(b.kings_bb[1] & chess::Board::bitMask(4)) && !(b.kings_bb[1] & chess::Board::bitMask(6))) {
-        score -= EARLY_KING_PENALTY; // già negativo
-    }
-
-    return score;
+    // REMOVED: Double-counted with evalCastlingBonus() and evalKingSafety().
+    // evalCastlingBonus already rewards castling and penalizes lost castling rights.
+    // evalKingSafety already penalizes exposed kings. This function was
+    // adding a third layer of penalty for the same concept.
+    return 0;
 }
 
 int64_t Engine::evalEarlyRook(const chess::Board& b) noexcept {
-    int64_t score = 0;
-
-    // White rooks
-    if (b.rooks_bb[0] && !(b.rooks_bb[0] & chess::Board::bitMask(56)) && !(b.rooks_bb[0] & chess::Board::bitMask(63))) {
-        score += EARLY_ROOK_PENALTY; // già negativo
-    }
-
-    // Black rooks
-    if (b.rooks_bb[1] && !(b.rooks_bb[1] & chess::Board::bitMask(0)) && !(b.rooks_bb[1] & chess::Board::bitMask(7))) {
-        score -= EARLY_ROOK_PENALTY;
-    }
-
-    return score;
+    // REMOVED: Flawed logic — was checking if ANY rook is not on a1/h1 (white) or a8/h8 (black),
+    // but this penalizes natural rook development to open files. Also double-counted
+    // with evalRooks() which handles open/semi-open file evaluation.
+    return 0;
 }
 
 int64_t Engine::evalEarlyQueen(const chess::Board& b) noexcept {
     int64_t score = 0;
 
+    // FIX: Was ATTACKED_QUEEN_PENALTY * 8 = -200cp! Way too aggressive.
+    // Reduced to a mild -20cp penalty for queen not on starting square.
     // White queen
     if (b.queens_bb[0] && !(b.queens_bb[0] & chess::Board::bitMask(59))) {
-        score += ATTACKED_QUEEN_PENALTY * 8; // già negativo
+        score -= 20; // Mild penalty for early queen development
     }
 
     // Black queen
     if (b.queens_bb[1] && !(b.queens_bb[1] & chess::Board::bitMask(3))) {
-        score -= ATTACKED_QUEEN_PENALTY * 8;
+        score += 20; // Mild penalty for early queen development (positive = bad for black)
     }
 
     return score;
@@ -766,7 +703,7 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
             if (sq <= 55) shieldSquares |= chess::Board::bitMask(sq + 8);
             if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
             if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
-            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * 10;
+            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
         }
     }
 
@@ -826,23 +763,10 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 }
 
 int64_t Engine::evalBadKingPosition(const chess::Board& b) noexcept {
-    int64_t score = 0;
-
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-        const uint64_t kingBB = b.kings_bb[side];
-        if (!kingBB) [[unlikely]] continue;
-
-        const int sq = __builtin_ctzll(kingBB);
-        const int rank = sq >> 3;
-
-        // White re sopra 2a traversa o Black sotto 7a
-        if ((side == 0 && rank < 6) || (side == 1 && rank > 1)) {
-            score += sign * KING_EXPOSED_PENALTY;
-        }
-    }
-
-    return score;
+    // REMOVED: Double-counted with evalKingSafety() and KING_MIDDLE_GAME_VALUES_TABLE (PSQT).
+    // The PSQT already encodes king safety zones. evalKingSafety() already evaluates
+    // pawn shield and king exposure. This function was adding a third penalty layer.
+    return 0;
 }
 
 
@@ -859,7 +783,10 @@ int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
         for (int c : CENTER)
             best = std::min(best, manhattan(sq, c));
 
-        score += (side == 0 ? -best : best) * 10;
+        // White king near center (small best) => bonus for white (positive)
+        // Black king near center (small best) => bonus for black (negative)
+        const int centralityBonus = (7 - best) * 10;
+        score += (side == 0 ? centralityBonus : -centralityBonus);
     }
     return score;
 }
@@ -1273,7 +1200,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     // Game phase thresholds
     constexpr int OPENING_MOVES = 10;      // prime 10 mosse = apertura
     constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
-    constexpr int PIECE_ENDGAME_THRESHOLD = 8;  // <= 8 pezzi = endgame
+    constexpr int PIECE_ENDGAME_THRESHOLD = 5;  // TUNED: was 8 (too high, triggered endgame too early)
     
     // BUG FIX: Game phases must be MUTUALLY EXCLUSIVE
     // Priority: endgame (few pieces) > opening (early moves) > early middlegame > middlegame
@@ -1292,6 +1219,12 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
     addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+
+    // ===================================================
+    // BISHOP PAIR BONUS (always evaluated, all phases)
+    // ===================================================
+    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
 
     // ===================================================
     // LAZY ATTACK DATA (computed only when needed)
@@ -1413,7 +1346,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Rook evaluation (open files, 7th rank)
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-        eval += evalPassiveRooks(board, occ);
+        // REMOVED: evalPassiveRooks() - double counts with evalRooks() and evalTrappedPieces()
         
         // Initiative
         eval += evalInitiative(board, false);
@@ -1458,44 +1391,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalInitiative(board, true);
     }
 
-    // ===================================================
-    // MATERIAL CONTEMPT - Discourage speculative sacrifices
-    // ===================================================
-    // Add extra penalty for being down in material WITHOUT clear compensation
-    // This prevents the engine from making "optimistic" sacrifices hoping for tactics
-    // that don't materialize. Only skip this if we're clearly checkmating.
-    const int64_t matDelta = getMaterialDelta(board);
-    const int64_t absMatDelta = std::abs(matDelta);
-    
-    // Apply contempt for ANY material imbalance (even small)
-    // FIX BUG: soglia precedente (150cp) permetteva sacrifici fino a 1.5 pedoni senza penalty!
-    // Ora: penalty anche per piccole perdite materiali (es. +100 dopo sacrificio -400 = penalty)
-    if (absMatDelta > 50) {
-        // Check if the losing side is giving check (might indicate mating attack)
-        const bool loserGivingCheck = (matDelta > 0) 
-            ? board.inCheck(chess::Board::WHITE)  // White ahead, check if Black checking
-            : board.inCheck(chess::Board::BLACK); // Black ahead, check if White checking
-        
-        if (!loserGivingCheck) {
-            // Apply STRONG contempt to discourage speculative sacrifices
-            // Use progressive penalty: 50% for small losses, 100% for large losses
-            // FIX BUG: precedente 20% era troppo debole (sacrificio Regina: -900 → -180 penalty)
-            int64_t contemptPenalty;
-            if (absMatDelta < 300) {
-                // Small material loss (< 3 pawns): 50% penalty
-                // Example: Knight sacrifice (-320) → -160 penalty → -480 total
-                contemptPenalty = absMatDelta / 2;
-            } else {
-                // Large material loss (>= 3 pawns): 100% penalty
-                // Example: Queen sacrifice (-900) → -900 penalty → -1800 total
-                // This makes major piece sacrifices VERY expensive
-                contemptPenalty = absMatDelta;
-            }
-            
-            // Apply from White's perspective
-            eval += (matDelta > 0) ? contemptPenalty : -contemptPenalty;
-        }
-    } 
+    // REMOVED: Material contempt was doubling material costs.
+    // getMaterialDelta() is already the first component of eval, so adding
+    // a penalty proportional to it again effectively doubled/tripled material value.
+    // The alpha-beta search already prevents speculative sacrifices.
 
     return eval;
 }
