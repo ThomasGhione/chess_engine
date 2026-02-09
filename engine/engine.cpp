@@ -104,6 +104,21 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
 }
 
 
+void Engine::updateGameResult() noexcept {
+    gameResult = GameResult::ONGOING;
+    uint8_t toMove = board.getActiveColor();
+    if (board.kings_bb[0] == 0) {
+        gameResult = GameResult::BLACK_WINS;
+    } else if (board.kings_bb[1] == 0) {
+        gameResult = GameResult::WHITE_WINS;
+    } else if (board.isCheckmate(toMove)) {
+        gameResult = (toMove == chess::Board::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
+    } else if (board.isDraw(toMove)) {
+        gameResult = GameResult::DRAW;
+    }
+}
+
+
 // OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))
 void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {

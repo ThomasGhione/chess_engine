@@ -201,11 +201,11 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             score += PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
             const int advancement = 6 - rank; // rank 6 (start) -> 0, rank 1 (near promo) -> 5
-            score += advancement * (isEndgame ? 8 : 3);
+            score += advancement * (isEndgame ? 6 : 2);
 
             // Extra danger on 7th rank (one step from promotion)
             if (rank == 1) {
-                score += isEndgame ? 60 : 30;
+                score += isEndgame ? 40 : 20;
             }
 
             // If blocked by an enemy pawn directly in front, reduce the bonus
@@ -216,9 +216,9 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             if (isEndgame) {
                 // BUG FIX: White pawns move from rank 6 (row 2) toward rank 0 (row 8/promotion)
                 // Closer to promotion = higher rank value → INVERTED: use (6 - rank)
-                // rank 1 (row 7, near promotion) → 5*6 = 30cp
-                // rank 6 (row 2, far from promotion) → 0*6 = 0cp
-                score += (6 - rank) * 6; // Fixed from (rank - 1)
+                // rank 1 (row 7, near promotion) → 5*4 = 20cp
+                // rank 6 (row 2, far from promotion) → 0*4 = 0cp
+                score += (6 - rank) * 4; // Reduced from 6
             }
         }
     }
@@ -271,11 +271,11 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             score -= PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
             const int advancement = rank; // rank 1 (start) -> 1, rank 6 (near promo) -> 6
-            score -= advancement * (isEndgame ? 8 : 3);
+            score -= advancement * (isEndgame ? 6 : 2);
 
             // Extra danger on 7th rank (one step from promotion)
             if (rank == 6) {
-                score -= isEndgame ? 60 : 30;
+                score -= isEndgame ? 40 : 20;
             }
 
             // If blocked by an enemy pawn directly in front, reduce the bonus
@@ -286,9 +286,9 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             if (isEndgame) {
                 // BUG FIX: Black pawns move from rank 1 (row 7) toward rank 7 (row 1/promotion)
                 // Closer to promotion = higher rank value → use rank directly
-                // rank 6 (row 2, near promotion) → 6*6 = 36cp
-                // rank 1 (row 7, far from promotion) → 1*6 = 6cp
-                score -= rank * 6; // Fixed from (7 - rank - 1)
+                // rank 6 (row 2, near promotion) → 6*4 = 24cp
+                // rank 1 (row 7, far from promotion) → 1*4 = 4cp
+                score -= rank * 4; // Reduced from 6
             }
         }
     }
@@ -709,11 +709,14 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
         const int sq = __builtin_ctzll(kingBB);
         const int sign = (side == 0) ? 1 : -1;
 
-        // Check if castled
-        const bool hasCastled = (side == 0 && (sq == 62 || sq == 58)) || (side == 1 && (sq == 6 || sq == 2));
+        // Verify castling status: King in castling position AND castling rights lost
+        // (If rights still exist, we haven't castled yet!)
+        const bool rightsLost = !b.getCastle(side == 0 ? 0 : 2) && !b.getCastle(side == 0 ? 1 : 3);
+        const bool onCastlingSquare = (side == 0) ? (sq == 62 || sq == 58) : (sq == 6 || sq == 2);
+        const bool hasCastled = onCastlingSquare && rightsLost;
         
         if (!hasCastled) {
-            score += sign * (-20); // penalità fissa se non arroccato (apply with correct sign)
+            score += sign * (-KING_NON_CASTLING_PENALTY);
             
             // OPTIMIZATION: Penalize moving kingside/queenside pawns before castling
             // This weakens king safety if castling rights are still available
@@ -725,28 +728,28 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(53) | chess::Board::bitMask(54) | chess::Board::bitMask(55);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
+                    score -= movedPawns * 6; // penalità per pedone mosso
                 }
                 
                 // Queenside castling pawns: b2(49), c2(50), d2(51)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(49) | chess::Board::bitMask(50) | chess::Board::bitMask(51);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 5; // penalità ridotta: 5cp per pedone
+                    score -= movedPawns * 6; // penalità per pedone mosso
                 }
             } else { // BLACK
                 // Kingside castling pawns: f7(13), g7(14), h7(15)
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(13) | chess::Board::bitMask(14) | chess::Board::bitMask(15);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 5; // bonus per WHITE (black indebolito)
+                    score += movedPawns * 6; // bonus per WHITE (black indebolito)
                 }
                 
                 // Queenside castling pawns: b7(9), c7(10), d7(11)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(9) | chess::Board::bitMask(10) | chess::Board::bitMask(11);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 5; // bonus per WHITE (black indebolito)
+                    score += movedPawns * 6; // bonus per WHITE (black indebolito)
                 }
             }
         }
@@ -757,7 +760,7 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
             if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
             if (sq >= 7 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
             if (sq >= 9 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq - 9);
-            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * 10;
+            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
         } else {
             // Black king: pawns in front are towards higher indices (north)
             if (sq <= 55) shieldSquares |= chess::Board::bitMask(sq + 8);
@@ -994,15 +997,16 @@ int64_t Engine::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
             if (forward < 0 || forward >= 64) continue;
 
             if (bishops & chess::Board::bitMask(forward)) {
-                // base penalty
-                int penalty = 40; // base
+                // base penalty magnitude (positive value)
+                int penaltyVal = 30; // base (reduced from 40)
                 // central files (d=3, e=4) are worse
-                if (file == 3 || file == 4) penalty += 45;
+                if (file == 3 || file == 4) penaltyVal += 25;
                 // extra penalty if pawn still on starting rank (white:6, black:1)
                 const int startRank = (side == 0) ? 6 : 1;
-                if (rank == startRank) penalty += 30;
+                if (rank == startRank) penaltyVal += 20;
 
-                score -= sign * penalty;
+                // Apply penalty (negative value) properly signed
+                score += sign * (-penaltyVal);
             }
         }
     }
@@ -1054,19 +1058,16 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
         // Number of our Rooks involved in the attack
         const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
         
+        // Delegate 2+ rooks case to evalDoubleRookEndgame to avoid double counting
         if (ourRooks >= 2)
-            return 0; // per ora, solo bonus per 1 torre (evita overcounting)
+            continue; 
 
         // Scale the edge bonus based on number of rooks:
-        // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS = 60)
-        // - 2+ Rooks: MUCH STRONGER bonus (multiply by 3x) for coordinated attack
-        const int64_t edgeBonus = (ourRooks >= 2) 
-            ? (ROOK_EG_EDGE_BONUS * 3)  // 3x bonus for 2+ rooks (180 cp at edge!)
-            : ROOK_EG_EDGE_BONUS;
+        // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS)
+        const int64_t edgeBonus = ROOK_EG_EDGE_BONUS;
         
         // Gradually increase bonus as enemy king approaches edge
-        // 0 (center) -> edgeBonus*0, 7 (on edge) -> edgeBonus*7
-        // Single rook: 0-420 cp, Double rook: 0-1260 cp (VERY strong!)
+        // 0 (center) -> 7 (edge)
         score += sign * edgeProximity * edgeBonus;
 
         // Additional bonus for King+Rook coordination: distance between our King and enemy King
@@ -1075,11 +1076,9 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
             const int ourKingSq = __builtin_ctzll(ourKingBB);
             const int kingDist = manhattan(ourKingSq, enemyKingSq);
             
-            // For multiple rooks, being close to enemy king is VERY important (creates net)
-            // Base: 14 - distance (so at distance 0, bonus is 14 cp; at distance 14, bonus is 0)
-            // With 2+ rooks: scale up DRAMATICALLY (rooks create a constricting net)
-            const int proximityMult = (ourRooks >= 2) ? 4 : 1;  // 4x multiplier for 2+ rooks!
-            const int proximityBonus = std::max(0, 14 - kingDist) * proximityMult;
+            // For single rook, king support is essential.
+            // Base: 14 - distance (bonus increases as king gets closer)
+            const int proximityBonus = std::max(0, 14 - kingDist);
             score += sign * proximityBonus * ROOK_EG_PRESSURE_BONUS / 14;
         }
     }
@@ -1095,33 +1094,35 @@ int64_t Engine::evalQueenEndgamePressure(const chess::Board& b) noexcept {
     const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
     const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
     
-    // Only apply when one side has Queen and opponent has little material
-    // (Q+K vs K, or Q vs Q with material imbalance)
     if (whiteQueens == 0 && blackQueens == 0) {
         return 0; // No queens on board
     }
 
     for (int side = 0; side < 2; ++side) {
         const int ourQueens = (side == 0) ? whiteQueens : blackQueens;
-        const int oppQueens = (side == 0) ? blackQueens : whiteQueens;
         
         // Only apply if we have at least 1 queen
         if (ourQueens == 0) continue;
         
         // Calculate opponent's material (excluding king)
         const int oppSide = side ^ 1;
+        
+        // Simplified material check: Only apply pressure bonus if we have a CLEAR material advantage.
+        // If material is roughly equal (e.g. Q vs Q), don't force king to edge (it might be unsafe).
+        // Material threshold: We must be ahead by at least 2 pawns (200cp).
+        // Using getMaterialDelta would be better, but local estimation is faster here.
         const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
         const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
         const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
         const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
-        
+        const int oppQueens = (side == 0) ? blackQueens : whiteQueens;
+
         const int oppMaterial = oppQueens * 900 + oppRooks * 500 + 
-                                oppBishops * 320 + oppKnights * 300 + oppPawns * 100;
-        const int ourMaterial = ourQueens * 900;
-        
-        // Only apply if we're significantly ahead (Q vs little/no material)
-        // For example: Q+K vs K (our=900, opp=0) or Q vs R+pawns (our=900, opp<700)
-        if (ourMaterial <= oppMaterial + 200) continue; // Not enough advantage
+                                oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
+                            
+        // Standard check: Our Queen (900) vs Opponent Material.
+        // If Opponent Material > 700 (e.g. R+B), it's not a clear "Mating Net" simplified endgame.
+        if (oppMaterial > 700) continue;
 
         const int sign = (side == 0) ? 1 : -1;
         const uint64_t enemyKingBB = b.kings_bb[oppSide];
@@ -1136,8 +1137,8 @@ int64_t Engine::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         const int edgeProximity = 7 - distToEdge;
         
         // Queen is very strong: HUGE bonus for pushing king to edge
-        // Must be large enough to override material considerations
-        constexpr int64_t QUEEN_EG_EDGE_BONUS = 200; // Very large!
+        constexpr int64_t QUEEN_EG_EDGE_BONUS = 120; // Decreased from 200 (too aggressive, caused sacrifices). 
+                                                     // Material is dominant.
         score += sign * edgeProximity * QUEEN_EG_EDGE_BONUS;
 
         // King coordination: CRITICAL for Queen mates
@@ -1146,23 +1147,28 @@ int64_t Engine::evalQueenEndgamePressure(const chess::Board& b) noexcept {
             const int ourKingSq = __builtin_ctzll(ourKingBB);
             const int kingDist = manhattan(ourKingSq, enemyKingSq);
             
-            // King MUST be close for mating (within 3-5 squares ideally)
-            // Give HUGE bonus for close king
+            // King MUST be close for mating
             const int proximityBonus = std::max(0, 14 - kingDist);
-            score += sign * proximityBonus * 40; // Very strong bonus
+            score += sign * proximityBonus * 20; // Decreased from 40
         }
         
         // Additional: Queen proximity to enemy king
         const uint64_t queenBB = b.queens_bb[side];
         if (queenBB) {
-            const int queenSq = __builtin_ctzll(queenBB);
-            const int queenToEnemyKing = manhattan(queenSq, enemyKingSq);
+            // Find closest queen if multiple
+            uint64_t tempQueens = queenBB;
+            int bestQueenDist = 100;
+            while (tempQueens) {
+                 const int qSq = __builtin_ctzll(tempQueens);
+                 tempQueens &= tempQueens - 1;
+                 bestQueenDist = std::min(bestQueenDist, manhattan(qSq, enemyKingSq));
+            }
             
             // Queen should be reasonably close (2-5 squares optimal for control)
-            if (queenToEnemyKing >= 2 && queenToEnemyKing <= 5) {
-                score += sign * 80; // Good attacking position
-            } else if (queenToEnemyKing <= 7) {
-                score += sign * 30; // Still reasonably positioned
+            if (bestQueenDist >= 2 && bestQueenDist <= 5) {
+                score += sign * 40; // Reduced from 80
+            } else if (bestQueenDist <= 7) {
+                score += sign * 15; // Reduced from 30
             }
         }
     }
@@ -1492,28 +1498,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     } 
 
     return eval;
-}
-
-/*
-bool Engine::isMate() noexcept {
-    uint8_t toMove = board.getActiveColor();
-    return board.kings_bb[0] == 0    || board.kings_bb[1] == 0 
-        || board.isCheckmate(toMove) || board.isDraw(toMove);
-}
-*/
-
-void Engine::updateGameResult() noexcept {
-    gameResult = GameResult::ONGOING;
-    uint8_t toMove = board.getActiveColor();
-    if (board.kings_bb[0] == 0) {
-        gameResult = GameResult::BLACK_WINS;
-    } else if (board.kings_bb[1] == 0) {
-        gameResult = GameResult::WHITE_WINS;
-    } else if (board.isCheckmate(toMove)) {
-        gameResult = (toMove == chess::Board::WHITE) ? GameResult::BLACK_WINS : GameResult::WHITE_WINS;
-    } else if (board.isDraw(toMove)) {
-        gameResult = GameResult::DRAW;
-    }
 }
 
 }; // namespace engine
