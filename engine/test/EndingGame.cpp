@@ -367,7 +367,33 @@ ut::suite EndingGameSuite = [] {
   };
   */
 
-  "critical position 14, avoid sacrificing queen"_test = [] {
+  "critical position 14, avoid sacrificing knight"_test = []{
+    engine::Engine e = engine::Engine("r4rk1/ppp2ppp/2nq4/2R1p3/1P6/P2PB2P/5PP1/3QR1K1 b - - 4 22");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    expect(!(bestMove.from == chess::Coords("c6") && bestMove.to == chess::Coords("b4")))
+      << "Shouldn't sacrifice the knight (c6 b4), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
+  "critical position 15, avoid sacrificing queen (after knight)"_test = []{
+    engine::Engine e = engine::Engine("r4rk1/ppp2ppp/3q4/2R1p3/1P6/3PB2P/5PP1/3QR1K1 b - - 0 23");
+
+    auto moves = e.generateLegalMoves(e.board);
+
+    e.evaluate(e.board);
+
+    chess::Board::Move bestMove = e.getBestMove(moves, false);
+
+    expect(!(bestMove.from == chess::Coords("d6") && bestMove.to == chess::Coords("c5")))
+      << "Shouldn't sacrifice the queen (d6 c5), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
+  "critical position 16, avoid sacrificing queen"_test = [] {
     engine::Engine e = engine::Engine("3r1r1k/2Q3pp/p1p2q1n/1p6/2b1P3/2N1PN1P/PPP2RP1/R5K1 w - - 0 18");
     auto moves = e.generateLegalMoves(e.board);
     e.evaluate(e.board);
