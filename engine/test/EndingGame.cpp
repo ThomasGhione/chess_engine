@@ -288,6 +288,38 @@ namespace {
     return false;
   }
 
+  bool isDraw(chess::Board board, int maxHalfMoves = 8, int searchDepth = 10) {
+    engine::Engine e(board.getCurrentFen());
+    e.depth = searchDepth;
+
+    for (int ply = 0; ply < maxHalfMoves; ++ply) {
+      e.updateGameResult();
+      if (e.isGameOver()) {
+        return e.getGameResult() == engine::Engine::DRAW;
+      }
+
+      auto moves = e.generateLegalMoves(e.board);
+      if (moves.size == 0) {
+        e.updateGameResult();
+        return e.getGameResult() == engine::Engine::DRAW;
+      }
+
+      bool whiteToMove = (e.board.getActiveColor() == chess::Board::WHITE);
+      chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+
+      chess::Board::MoveState state;
+      e.board.doMove(bestMove, state);
+    }
+    
+    e.updateGameResult();
+    if (e.isGameOver()) {
+      return e.getGameResult() == engine::Engine::DRAW;
+    }
+    
+    printf("Max moves (%d) reached without game over\n", maxHalfMoves);
+    return false;
+  }
+
   // ==================== TEST HELPER ====================
 
   bool runEndgameTest(const std::string& testName, chess::Board (*generator)(), int iteration) {
@@ -367,6 +399,20 @@ ut::suite EndingGameSuite = [] {
   };
   */
 
+  //TODO TEST THIS!!
+  // "critical position 17, avoid stalemate2"_test = []{
+    // engine::Engine e = engine::Engine("8/p4pp1/1pk5/2p2K2/3r4/8/8/8 b - - 15 67");
+// 
+    // auto moves = e.generateLegalMoves(e.board);
+// 
+    // e.evaluate(e.board);
+// 
+    // chess::Board::Move bestMove = e.getBestMove(moves, true);
+// 
+    // expect(!(bestMove.from == chess::Coords("h4") && bestMove.to == chess::Coords("g6")))
+      // << "Shouldn't sacrifice the knight (h4 g6), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  // };
+  
   "critical position 14, avoid sacrificing knight"_test = []{
     engine::Engine e = engine::Engine("r4rk1/ppp2ppp/2nq4/2R1p3/1P6/P2PB2P/5PP1/3QR1K1 b - - 4 22");
 
@@ -402,7 +448,17 @@ ut::suite EndingGameSuite = [] {
       << "Expected not to sacrifice queen.";
   };
 
-  "critical position 7, avoid stalemate"_test = []{
+  "critical stalemate 2"_test = []{
+    const std::string fen = "r3kb1r/ppp2ppp/2n2n2/8/N4P2/2PP4/PP1P1RKP/R1Bq4 b kq - 1 15";
+    chess::Board board(fen);
+
+    bool isDrawResult = isDraw(board);
+
+    ut::expect(!isDrawResult)
+      << "+11 material for white, shouldn't draw (16 plies).\n";
+  };
+
+  "critical stalemate 1"_test = []{
     const std::string fen = "6k1/1pp2pp1/3p2p1/p5K1/r7/8/8/8 b - - 1 34";
     chess::Board board(fen);
 
