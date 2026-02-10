@@ -416,24 +416,36 @@ public:
     }
 
 
-    // CRITICAL OPTIMIZATION: Direct inline array access
-    // Eliminates 2 set() calls (each does index conversion) with direct bitwise ops
+    // CRITICAL OPTIMIZATION: Inline updateChessboard to avoid double get/set overhead
+    // OLD: 3 function calls (1 get + 2 set) -> 6 index conversions
+    // NEW (commented): Direct inline -> 0 function calls, direct array access
     __attribute__((always_inline))
     inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
+        set(to, piece);
+        set(from, EMPTY);
+/*
         const uint8_t fromIndex = from.index;
         const uint8_t toIndex = to.index;
         
-        const uint8_t fromRow = 7 - (fromIndex >> 3);
-        const uint8_t toRow = 7 - (toIndex >> 3);
+        // Direct array access usando index (evita conversioni ripetute)
+        const uint8_t fromRank = fromIndex >> 3;
+        const uint8_t fromFile = fromIndex & 7;
+        const uint8_t toRank = toIndex >> 3;
+        const uint8_t toFile = toIndex & 7;
         
-        const uint8_t fromShift = (fromIndex & 7) << 2;
-        const uint8_t toShift = (toIndex & 7) << 2;
+        const uint8_t fromRow = 7 - fromRank;
+        const uint8_t toRow = 7 - toRank;
         
-        // Clear source (1 array write)
-        chessboard[fromRow] &= ~(static_cast<uint32_t>(MASK_PIECE) << fromShift);
-        // Clear and set destination (1 array write)
-        chessboard[toRow] = (chessboard[toRow] & ~(static_cast<uint32_t>(MASK_PIECE) << toShift)) 
-                          | (static_cast<uint32_t>(piece & MASK_PIECE) << toShift);
+        const uint8_t fromShift = fromFile << 2;
+        const uint8_t toShift = toFile << 2;
+        
+        // Get piece from source (1 array access)
+        const uint8_t piece = (chessboard[fromRow] >> fromShift) & MASK_PIECE;
+        
+        // Clear source and set destination (2 array writes)
+        chessboard[fromRow] = (chessboard[fromRow] & ~(MASK_PIECE << fromShift));
+        chessboard[toRow] = (chessboard[toRow] & ~(MASK_PIECE << toShift)) | ((piece & MASK_PIECE) << toShift);
+  */
     }
 
 
@@ -489,39 +501,32 @@ public:
 
     __attribute__((always_inline))
     void addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-        if (piece == EMPTY) [[unlikely]] return;
-        const uint8_t color = (piece & MASK_COLOR) >> 3; // BLACK=1, WHITE=0
-        const uint64_t bit = bitMask(index);
-        // Branchless: use pointer array indexed by piece type
-        // Piece types: PAWN=1, KNIGHT=2, BISHOP=3, ROOK=4, QUEEN=5, KING=6
-        getBBForPiece(piece & MASK_PIECE_TYPE, color) |= bit;
+        if (piece == EMPTY) return;
+        const uint8_t color = (piece & MASK_COLOR) != 0; // BLACK=1, WHITE=0
+        const uint64_t bit = (bitMask(index));
+        switch (piece & MASK_PIECE_TYPE) {
+            case PAWN:   pawns_bb[color]   |= bit; break;
+            case KNIGHT: knights_bb[color] |= bit; break;
+            case BISHOP: bishops_bb[color] |= bit; break;
+            case ROOK:   rooks_bb[color]   |= bit; break;
+            case QUEEN:  queens_bb[color]  |= bit; break;
+            case KING:   kings_bb[color]   |= bit; break;
+        }
     }
 
     __attribute__((always_inline))
     void removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-        if (piece == EMPTY) [[unlikely]] return;
-        const uint8_t color = (piece & MASK_COLOR) >> 3;
-        const uint64_t mask = ~bitMask(index);
-        getBBForPiece(piece & MASK_PIECE_TYPE, color) &= mask;
-    }
-
-    // Lookup: returns reference to the correct bitboard for a given piece type and color
-    __attribute__((always_inline))
-    inline uint64_t& getBBForPiece(uint8_t pieceType, uint8_t colorIndex) noexcept {
-        // Use a flat array of pointers for O(1) branchless access
-        // Index: pieceType (1-6), color (0-1)
-        // Layout: [PAWN_W, PAWN_B, KNIGHT_W, KNIGHT_B, ..., KING_W, KING_B]
-        static_assert(PAWN == 1 && KNIGHT == 2 && BISHOP == 3 && ROOK == 4 && QUEEN == 5 && KING == 6);
-        uint64_t* const table[] = {
-            nullptr, nullptr,                       // 0: EMPTY (unused)
-            &pawns_bb[0], &pawns_bb[1],             // 1: PAWN
-            &knights_bb[0], &knights_bb[1],         // 2: KNIGHT
-            &bishops_bb[0], &bishops_bb[1],         // 3: BISHOP
-            &rooks_bb[0], &rooks_bb[1],             // 4: ROOK
-            &queens_bb[0], &queens_bb[1],           // 5: QUEEN
-            &kings_bb[0], &kings_bb[1],             // 6: KING
-        };
-        return *table[pieceType * 2 + colorIndex];
+        if (piece == EMPTY) return;
+        const uint8_t color = (piece & MASK_COLOR) != 0;
+        const uint64_t mask = ~(bitMask(index));
+        switch (piece & MASK_PIECE_TYPE) {
+            case PAWN:   pawns_bb[color]   &= mask; break;
+            case KNIGHT: knights_bb[color] &= mask; break;
+            case BISHOP: bishops_bb[color] &= mask; break;
+            case ROOK:   rooks_bb[color]   &= mask; break;
+            case QUEEN:  queens_bb[color]  &= mask; break;
+            case KING:   kings_bb[color]   &= mask; break;
+        }
     }
 
     bool moveBB(const Coords& from, const Coords& to) noexcept;
@@ -577,9 +582,6 @@ public:
         return enPassant;
     }
 
-    // Fast accessor for the incrementally-maintained Zobrist hash
-    constexpr uint64_t getHash() const noexcept { return currentHash; }
-
     // ============================================
     // BITBOARDS - Public per prestazioni critiche
     // Accesso diretto richiesto da Engine/MoveValidator in loop hot
@@ -611,7 +613,7 @@ private:
     std::array<uint64_t, 128> repetitionHistory{}; // Ring buffer of recent positions (bounded by 50-move rule)
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     
-    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     // uint8_t whiteKingIndex = 64; // cache king squares for faster inCheck/isSquareAttacked

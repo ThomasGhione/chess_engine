@@ -87,7 +87,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // BALANCED: slight improvement in tactics without major speed penalty
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
+            && (moveIndex > 5)                               // ...first 5 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
             && !wasCapture                                   // ...isn't a capture...
             && !givesCheck                                   // ...doesn't give check...
@@ -98,7 +98,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             // Adaptive reduction: balanced between speed and accuracy
             int64_t reduction = 1;
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            if (moveIndex >= 10) reduction += 2; // -2 if very late (>= 10th move)
+            if (moveIndex >= 9) reduction += 2; // -2 if very late (>= 10th move)
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
@@ -481,9 +481,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Static booleans were never reset across searches, causing missed extensions
     // Fix: handle depth extension in the main search() or use per-search counters
 
-    // OPTIMIZATION: Use incrementally-maintained hash instead of full recomputation
-    // computeHashKey() iterates all 12 bitboards (~200+ cycles). getHash() is O(1).
-    const uint64_t hashKey = b.getHash();
+    // OPTIMIZATION: Compute hash key ONCE per node (used by both TT probe and save)
+    // This avoids duplicate computeHashKey() calls (~50-100 cycles saved per node)
+    const uint64_t hashKey = zobrist::computeHashKey(b);
 
     // Prepare search structures
     AlphaBeta bounds{alpha, beta};

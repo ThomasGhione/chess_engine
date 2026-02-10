@@ -283,25 +283,32 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
 }();
 
 inline constexpr U64 getPawnForwardPushes(int8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
+	// Usa lookup table per target squares, poi filtra con occupancy
+	// PAWN_PUSH_TARGETS[isWhite][sq] contiene 1-step e possibile 2-step
 	const int colorIndex = isWhite ? 1 : 0;
-	const U64 targets = PAWN_PUSH_TARGETS[colorIndex][squareIndex];
+	U64 targets = PAWN_PUSH_TARGETS[colorIndex][squareIndex];
 	
-	if (!targets) [[unlikely]] return 0ULL;
+	if (!targets) [[unlikely]] return 0ULL; // No valid pushes (promotion rank già gestito)
 	
-	// One-step bit: derive from square directly (avoid re-extracting rank/file)
-	const int8_t oneStepSq = squareIndex + (isWhite ? -8 : 8);
-	const U64 oneStepBit = ONE << oneStepSq;
+	// One-step square: sempre il primo bit
+	const int8_t rank = rankOf(squareIndex);
+	const int8_t file = fileOf(squareIndex);
+	const int8_t oneStepRank = rank + (isWhite ? -1 : 1);
+	const U64 oneStepBit = ONE << (oneStepRank * 8 + file);
 	
-	// If one-step is blocked, no moves
+	// Se one-step è bloccato, nessuna mossa possibile
 	if (occupancy & oneStepBit) return 0ULL;
 	
-	// Two-step: only if in targets AND not blocked
-	const U64 twoStepBit = targets ^ oneStepBit; // targets minus oneStep = twoStep (if any)
+	// Filtra targets con occupancy: rimuovi square occupate
+	U64 result = oneStepBit; // one-step è sempre valido se arriviamo qui
+	
+	// Two-step: solo se presenti in targets E one-step era libero E two-step è libero
+	const U64 twoStepBit = targets & ~oneStepBit;
 	if (twoStepBit && !(occupancy & twoStepBit)) {
-		return oneStepBit | twoStepBit;
+		result |= twoStepBit;
 	}
 	
-	return oneStepBit;
+	return result;
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square

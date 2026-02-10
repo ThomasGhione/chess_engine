@@ -29,8 +29,10 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = get(to);
 
-    // Targeted initialization: only set fields we actually use
-    // memset zeroes 40+ bytes including padding; this sets only what's needed (~8 assignments)
+    // Fast init: zero the struct in one call then only write the variable fields.
+    // MoveState is POD/trivially-copyable so memset is safe and typically faster
+    // than many separate assignments or a large aggregate initializer.
+    memset(&st, 0, sizeof(st));
     st.prevActiveColor   = activeColor;
     st.prevHalfMoveClock = halfMoveClock;
     st.prevFullMoveClock = fullMoveClock;
@@ -41,10 +43,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.fromPiece         = moving;
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
-    st.wasEnPassantCapture = false;
-    st.wasCastling       = false;
-    st.promotionPieceType = 0;
-    st.historyWasReset   = false;
 
     // Cache opzionale re
     //st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
@@ -52,21 +50,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     // Reset en passant di default (potrà essere reimpostato per un doppio passo)
     enPassant = Coords{};
-
-    // ===================================================================
-    // INCREMENTAL ZOBRIST HASH UPDATE
-    // Instead of recomputing the full hash from scratch (12+ bitboard scans),
-    // we XOR out the old state and XOR in the new state.
-    // This saves ~200-400 CPU cycles per node.
-    // ===================================================================
-
-    // 1) XOR out old castling rights, old en-passant, old side-to-move
-    currentHash ^= zobrist::TABLES.castling[castle];
-    if (Coords::isInBounds(st.prevEnPassant)) {
-        currentHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
-    }
-    // Side-to-move always flips
-    currentHash ^= zobrist::TABLES.sideToMove;
 
     // --- EN PASSANT CAPTURE ---
     if (movingType == PAWN) {
@@ -90,16 +73,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             set(captured, EMPTY);
             occupancy &= ~(bitMask(capIndex));
             removePieceFromBB(capturedPiece, capIndex);
-            // Incremental hash: XOR out captured pawn
-            currentHash ^= zobrist::TABLES.pieces[capturedPiece][capIndex];
         }
     }
 
     // --- NORMAL CAPTURE SU DESTINAZIONE ---
     if (destBefore != EMPTY && !st.wasEnPassantCapture) {
         removePieceFromBB(destBefore, toIndex);
-        // Incremental hash: XOR out captured piece
-        currentHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
     }
 
     // --- SPOSTAMENTO PEZZO ---
@@ -107,9 +86,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     fastUpdateOccupancyBB(fromIndex, toIndex);
     removePieceFromBB(moving, fromIndex);
     addPieceToBB(moving, toIndex);
-    // Incremental hash: XOR out piece from old square, XOR in at new square
-    currentHash ^= zobrist::TABLES.pieces[moving][fromIndex];
-    currentHash ^= zobrist::TABLES.pieces[moving][toIndex];
 
     // --- ARROCCO: spostamento torre ---
     // OTTIMIZZAZIONE: usa toRank precalcolato invece di to.rank()
@@ -134,9 +110,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             removePieceFromBB(rook, rookFromIndex);
             addPieceToBB(rook, rookToIndex);
-            // Incremental hash: move rook
-            currentHash ^= zobrist::TABLES.pieces[rook][rookFromIndex];
-            currentHash ^= zobrist::TABLES.pieces[rook][rookToIndex];
         }
     }
 
@@ -210,12 +183,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
                 promo = 'q';
             }
             st.promotionPieceType = promo;
-            // Incremental hash: XOR out pawn at toIndex, promote will XOR in new piece
-            currentHash ^= zobrist::TABLES.pieces[moving][toIndex];
             (void)promote(to, static_cast<char>(promo));
-            // XOR in the promoted piece
-            const uint8_t promotedPiece = get(toIndex);
-            currentHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
         }
         
     }
@@ -233,24 +201,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
     activeColor = oppositeColor(activeColor);
 
-    // Finalize incremental hash: XOR in new castling rights and new en-passant
-    currentHash ^= zobrist::TABLES.castling[castle];
-    if (Coords::isInBounds(enPassant)) {
-        currentHash ^= zobrist::TABLES.enPassant[enPassant.file()];
-    }
-
-    // Update repetition history using the incrementally-maintained hash
-    // NO full recompute needed!
-    if (resetHistory) {
-        historySize = 0;
-    }
-    if (historySize >= repetitionHistory.size()) {
-        for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
-            repetitionHistory[i - 1] = repetitionHistory[i];
-        }
-        historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
-    }
-    repetitionHistory[historySize++] = currentHash;
+    updateRepetitionAfterMove(resetHistory);
 }
 
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {
