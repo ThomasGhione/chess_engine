@@ -100,13 +100,15 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Penalize bishops that block pawns directly (opening)
         eval += evalBlockedPawnByBishops(board);
+
+        return eval;
     }
     
     // ===================================================
     // EARLY MIDDLEGAME (moves 10-15)
     // Transition phase: continue development, prepare attacks
     // ===================================================
-    else if (isEarlyMiddlegame) {
+    if (isEarlyMiddlegame) {
         // Continua a incentivare sviluppo
         eval += evalMinorPieceDevelopment(board);
         
@@ -141,13 +143,15 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Penalize bishops that block pawns in early middlegame
         eval += evalBlockedPawnByBishops(board);
+
+        return eval;
     }
     
     // ===================================================
     // MIDDLEGAME (moves 15+, many pieces on board)
     // Focus: tactics, king safety, piece coordination
     // ===================================================
-    else if (isMiddlegame) {
+    if (isMiddlegame) {
         // Full tactical evaluation (molto importante!) - NEEDS attackData
         eval += evalHangingPieces(board, attackData);
         eval += evalTrappedPieces(board, occ);
@@ -182,47 +186,43 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Penalize bishops that block pawns in middlegame
         eval += evalBlockedPawnByBishops(board);
+
+        return eval;
     }
     
     // ===================================================
     // ENDGAME (few pieces left)
     // Focus: pawn promotion, king activity, passed pawns
     // ===================================================
-    else { // isEndgame
-        // Tactical safety still matters - NEEDS attackData
-        eval += evalHangingPieces(board, attackData);
-        
-        // Pawn structure è CRITICO in endgame
-        eval += evalPawnStructure(whitePawns, blackPawns, true);
-        
-        // King activity è fondamentale
-        eval += evalKingActivity(board, true);
-        eval += evalEndgameKingActivity(board);
-        
-        // Piece mobility - NEEDS attackData
-        eval += evalMobility(attackData);
-        eval += evalTrappedPieces(board, occ);
-        
-        // Rook evaluation (still important in endgame)
-        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-        
-        // Endgame mating bonuses: push opponent king to edge for checkmate
-        eval += evalRookEndgamePressure(board);
-        eval += evalQueenEndgamePressure(board);
-        eval += evalDoubleRookEndgame(board);
-        
-        // Minor piece positioning
-        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
-        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
-        
-        // Initiative (meno importante in endgame)
-        eval += evalInitiative(board, true);
-    }
-
-    // REMOVED: Material contempt was doubling material costs.
-    // getMaterialDelta() is already the first component of eval, so adding
-    // a penalty proportional to it again effectively doubled/tripled material value.
-    // The alpha-beta search already prevents speculative sacrifices.
+    // isEndgame
+    // Tactical safety still matters - NEEDS attackData
+    eval += evalHangingPieces(board, attackData);
+    
+    // Pawn structure è CRITICO in endgame
+    eval += evalPawnStructure(whitePawns, blackPawns, true);
+    
+    // King activity è fondamentale
+    eval += evalKingActivity(board, true);
+    eval += evalEndgameKingActivity(board);
+    
+    // Piece mobility - NEEDS attackData
+    eval += evalMobility(attackData);
+    eval += evalTrappedPieces(board, occ);
+    
+    // Rook evaluation (still important in endgame)
+    eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+    
+    // Endgame mating bonuses: push opponent king to edge for checkmate
+    eval += evalRookEndgamePressure(board);
+    eval += evalQueenEndgamePressure(board);
+    eval += evalDoubleRookEndgame(board);
+    
+    // Minor piece positioning
+    eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
+    eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
+    
+    // Initiative (meno importante in endgame)
+    eval += evalInitiative(board, true);
 
     return eval;
 }
