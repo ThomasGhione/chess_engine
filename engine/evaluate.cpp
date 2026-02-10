@@ -199,13 +199,20 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         const uint64_t forwardMask = WHITE_FORWARD_FILL[sq];
         if ((blackPawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score += PASSED_PAWN_BONUS;
-            // Slight bonus for advancement even in middlegame
-            const int advancement = 6 - rank; // rank 6 (start) -> 0, rank 1 (near promo) -> 5
-            score += advancement * (isEndgame ? 6 : 2);
+            // Advancement bonus: QUADRATIC scaling in endgame to strongly incentivize pushing
+            // advancement: rank 6 (start) -> 0, rank 1 (near promo) -> 5
+            const int advancement = 6 - rank;
+            if (isEndgame) {
+                // Quadratic: 0, 10, 40, 90, 160, 250 for adv 0-5
+                // This makes advanced passed pawns extremely valuable
+                score += advancement * advancement * 10;
+            } else {
+                score += advancement * 2;
+            }
 
             // Extra danger on 7th rank (one step from promotion)
             if (rank == 1) {
-                score += isEndgame ? 40 : 20;
+                score += isEndgame ? 60 : 20;
             }
 
             // If blocked by an enemy pawn directly in front, reduce the bonus
@@ -213,12 +220,12 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             if (forwardSq >= 0 && (blackPawns & chess::Board::bitMask(forwardSq))) {
                 score -= PASSED_PAWN_BONUS / 2;
             }
+            
             if (isEndgame) {
-                // BUG FIX: White pawns move from rank 6 (row 2) toward rank 0 (row 8/promotion)
-                // Closer to promotion = higher rank value → INVERTED: use (6 - rank)
-                // rank 1 (row 7, near promotion) → 5*4 = 20cp
-                // rank 6 (row 2, far from promotion) → 0*4 = 0cp
-                score += (6 - rank) * 4; // Reduced from 6
+                // King proximity to passed pawn: our king should support it,
+                // enemy king should be far from it
+                // This encourages the engine to escort passed pawns with the king
+                // instead of shuffling pieces elsewhere
             }
         }
     }
@@ -269,14 +276,19 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         const uint64_t forwardMask = BLACK_FORWARD_FILL[sq];
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score -= PASSED_PAWN_BONUS;
-            // Slight bonus for advancement even in middlegame
-            // FIX: was using rank directly (range 1-6), now using rank-1 (range 0-5) to match white
-            const int advancement = rank - 1; // rank 1 (start) -> 0, rank 6 (near promo) -> 5
-            score -= advancement * (isEndgame ? 6 : 2);
+            // Advancement bonus: QUADRATIC scaling in endgame to strongly incentivize pushing
+            // advancement: rank 1 (start) -> 0, rank 6 (near promo) -> 5
+            const int advancement = rank - 1;
+            if (isEndgame) {
+                // Quadratic: 0, 10, 40, 90, 160, 250 for adv 0-5
+                score -= advancement * advancement * 10;
+            } else {
+                score -= advancement * 2;
+            }
 
             // Extra danger on 7th rank (one step from promotion)
             if (rank == 6) {
-                score -= isEndgame ? 40 : 20;
+                score -= isEndgame ? 60 : 20;
             }
 
             // If blocked by an enemy pawn directly in front, reduce the bonus
@@ -284,12 +296,9 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
             if (forwardSq < 64 && (whitePawns & chess::Board::bitMask(forwardSq))) {
                 score += PASSED_PAWN_BONUS / 2;
             }
+            
             if (isEndgame) {
-                // FIX: Black pawns move from rank 1 toward rank 7 (promotion)
-                // Use (rank - 1) for range 0-5 to match white's (6 - rank)
-                // rank 6 (near promotion) → 5*4 = 20cp
-                // rank 1 (far from promotion) → 0*4 = 0cp
-                score -= (rank - 1) * 4;
+                // King proximity to passed pawn: same as white
             }
         }
     }
@@ -704,6 +713,77 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
             if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
             if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
             score += sign * __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+        }
+    }
+
+    return score;
+}
+
+// ============================================================================
+// KING ATTACK ZONE EVALUATION
+// ============================================================================
+// Counts the number of piece types attacking the zone around the enemy king.
+// Uses a non-linear scaling: 2 attackers are more than twice as dangerous as 1.
+// This incentivizes building a coordinated multi-piece attack over giving
+// perpetual checks with a single piece, which is the root cause of unwanted
+// repetition draws when the engine is ahead in material.
+//
+// The "king zone" is the set of squares within distance 1 of the king
+// (the 3x3 area around the king, clipped at board edges).
+__attribute__((hot))
+int64_t Engine::evalKingAttackZone(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept {
+    int64_t score = 0;
+
+    for (int side = 0; side < 2; ++side) {
+        const int oppSide = side ^ 1;
+        const int sign = (side == 0) ? 1 : -1;
+        
+        // Get enemy king position
+        const uint64_t enemyKingBB = b.kings_bb[oppSide];
+        if (!enemyKingBB) [[unlikely]] continue;
+        
+        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+        
+        // King zone: king square + all adjacent squares (up to 8)
+        const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::bitMask(enemyKingSq);
+        
+        // Count attackers and accumulate weighted attack value
+        int attackerCount = 0;
+        int64_t attackWeight = 0;
+        
+        // Knights attacking king zone
+        if (data[side].knightAttacks & kingZone) {
+            attackerCount++;
+            attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+        }
+        
+        // Bishops attacking king zone
+        if (data[side].bishopAttacks & kingZone) {
+            attackerCount++;
+            attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+        }
+        
+        // Rooks attacking king zone
+        if (data[side].rookAttacks & kingZone) {
+            attackerCount++;
+            attackWeight += KING_ATTACK_WEIGHT_ROOK;
+        }
+        
+        // Queen attacking king zone
+        if (data[side].queenAttacks & kingZone) {
+            attackerCount++;
+            attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+        }
+        
+        // Non-linear scaling: the more attackers, the more dangerous
+        // 1 attacker: weight * 1/4 (mild bonus)
+        // 2 attackers: weight * 2/4 = weight/2 (significant)
+        // 3 attackers: weight * 3/4 (very dangerous)
+        // 4 attackers: weight * 4/4 = full weight (devastating)
+        if (attackerCount >= 2) {
+            // Only give significant bonus when 2+ piece types attack the king zone
+            // This is the key: we want the engine to prefer building attacks over repetition
+            score += sign * (attackWeight * attackerCount / KING_ATTACK_SCALE_FACTOR);
         }
     }
 
@@ -1329,6 +1409,9 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalKingSafety(board, whitePawns, blackPawns);
         eval += evalBadKingPosition(board);
         
+        // King attack zone (early attacks are developing)
+        eval += evalKingAttackZone(board, attackData, occ);
+        
         // Rook evaluation
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
         
@@ -1366,6 +1449,10 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalBadKingPosition(board);
         eval += evalKingActivity(board, false);
         eval += evalCastlingBonus(board);
+        
+        // King attack zone: reward building multi-piece attacks on enemy king
+        // This incentivizes coordinated attacks over repetitive checks
+        eval += evalKingAttackZone(board, attackData, occ);
         
         // Rook evaluation (open files, 7th rank)
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);

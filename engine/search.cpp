@@ -445,6 +445,38 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->quiescenceSearch(b, alpha, beta, ply);
     }
 
+    // =========================================================================
+    // DRAW BY REPETITION DETECTION (inside search tree)
+    // =========================================================================
+    // If the current position has already occurred in the game history, treat it
+    // as a draw. This prevents the engine from entering perpetual check or
+    // shuffling pieces in winning positions.
+    //
+    // CONTEMPT: When ahead in material, return a score slightly worse than 0
+    // to actively discourage drawing. When behind, a draw is acceptable (return 0).
+    // This is similar to Stockfish's "contempt" concept.
+    //
+    // Only check at ply > 0 (not at root) to avoid interfering with root move selection.
+    if (ply > 0 && b.isTwofoldRepetition()) {
+        const int64_t matDelta = getMaterialDelta(b);
+        // Contempt: penalize draw when we have material advantage
+        // White ahead (matDelta > 0): return negative score (bad for white = discourages draw)
+        // Black ahead (matDelta < 0): return positive score (bad for black = discourages draw)
+        // Even material: return 0 (true draw)
+        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+            // Scale contempt by material advantage (bigger lead = more contempt)
+            // Cap at 200cp to avoid distorting search too much
+            const int64_t contempt = std::min(static_cast<int64_t>(200), std::abs(matDelta) / 2);
+            return (matDelta > 0) ? -contempt : contempt;
+        }
+        return 0; // True draw
+    }
+
+    // 50-move rule detection inside search tree
+    if (b.isFiftyMoveRule()) {
+        return 0;
+    }
+
     // REMOVED: Endgame depth extension using static bool - buggy
     // Static booleans were never reset across searches, causing missed extensions
     // Fix: handle depth extension in the main search() or use per-search counters

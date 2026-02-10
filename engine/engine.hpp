@@ -243,6 +243,7 @@ private:
     static int64_t evalMobility(const AttackData data[2]) noexcept;
     static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int64_t evalKingAttackZone(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
 
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();

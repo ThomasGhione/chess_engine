@@ -84,6 +84,16 @@ inline static constexpr int64_t CASTLE_PAWN_SUPPORT_BONUS = 8;   // FIX: was 4 (
 inline static constexpr int64_t KING_EXPOSED_PENALTY = -25;      // ridotto da -40
 inline static constexpr int64_t EARLY_KING_PENALTY = -15;        // ridotto da -20
 
+// King attack zone: bonus for each attacker type near the enemy king
+// Scaled non-linearly: 2 attackers is more than 2x as dangerous as 1
+// These bonuses incentivize building a multi-piece attack over giving perpetual checks
+inline static constexpr int64_t KING_ATTACK_WEIGHT_KNIGHT = 20;  // knight near enemy king
+inline static constexpr int64_t KING_ATTACK_WEIGHT_BISHOP = 20;  // bishop attacking king zone
+inline static constexpr int64_t KING_ATTACK_WEIGHT_ROOK   = 40;  // rook attacking king zone
+inline static constexpr int64_t KING_ATTACK_WEIGHT_QUEEN  = 80;  // queen attacking king zone
+// Non-linear scaling: total_weight * attacker_count / 4 (more attackers = exponential danger)
+inline static constexpr int64_t KING_ATTACK_SCALE_FACTOR  = 4;   // divisor for scaling
+
 // ===================================================
 // CASTLING
 // ===================================================

@@ -568,6 +568,10 @@ public:
     }
     bool isThreefoldRepetition() const noexcept;
 
+    // Check if current position has occurred at least once before (twofold repetition).
+    // Used inside the search tree to detect that continuing this line leads to a draw.
+    bool isTwofoldRepetition() const noexcept;
+
     void fromFenToBoard(const std::string& fen);
 
     std::string fromBoardToFen() const;
