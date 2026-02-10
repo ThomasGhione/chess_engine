@@ -25,6 +25,11 @@ public:
     constexpr explicit Coords(uint8_t idx) noexcept
         : index(idx < 64 ? idx : INVALID_COORDS) {}
 
+    // PERFORMANCE: Unchecked constructor for known-valid indices (engine hot path)
+    // WARNING: caller MUST guarantee idx < 64
+    struct Unchecked {};
+    constexpr Coords(uint8_t idx, Unchecked) noexcept : index(idx) {}
+
     // Costruttore da file e rank (0-7 ciascuno)
     // Formula: index = rank * 8 + file
     constexpr Coords(uint8_t f, uint8_t r) noexcept
