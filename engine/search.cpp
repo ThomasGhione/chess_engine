@@ -87,7 +87,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // BALANCED: slight improvement in tactics without major speed penalty
         const int64_t childDepth = ctx.depth - 1;
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 5)                               // ...first 5 moves at full depth (compromise)
+            && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
             && !wasCapture                                   // ...isn't a capture...
             && !givesCheck                                   // ...doesn't give check...
@@ -98,7 +98,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             // Adaptive reduction: balanced between speed and accuracy
             int64_t reduction = 1;
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            if (moveIndex >= 9) reduction += 2; // -2 if very late (>= 10th move)
+            if (moveIndex >= 10) reduction += 2; // -2 if very late (>= 10th move)
             
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
@@ -367,16 +367,10 @@ void Engine::search(uint64_t depth) noexcept {
         // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.)
         depth += 2;
         this->depthExtendedMaximum = true;
-#ifdef DEBUG
-        std::cout << "[ENDGAME] Depth extended +2 (3 pieces, new depth: " << depth << ")\n";
-#endif
     } else if (totalPieces < 6 && !this->depthExtendedMedium) {
         // Endgame con pochi pezzi (es: K+R+P vs K+P)
         depth += 2;
         this->depthExtendedMedium = true;
-#ifdef DEBUG
-        std::cout << "[ENDGAME] Depth extended +2 (<6 pieces, new depth: " << depth << ")\n";
-#endif
     }
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
