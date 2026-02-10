@@ -189,18 +189,13 @@ public:
     static int64_t evalPieceCoordination(const chess::Board& b) noexcept;
     static int64_t evalOutposts(const chess::Board& b) noexcept;
     static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    static int64_t evalBadKingPosition(const chess::Board& b) noexcept;
     static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
     static int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int64_t evalCastlingBonus(const chess::Board& b) noexcept;
     static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
     static int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
-    static int64_t evalEarlyKing(const chess::Board& b) noexcept;
-    static int64_t evalEarlyRook(const chess::Board& b) noexcept;
-    static int64_t evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept;
     static int64_t evalEarlyQueen(const chess::Board& b) noexcept;
     static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
-    static int64_t evalKnightOnRim(const chess::Board& b) noexcept;
     static int64_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
     static int64_t evalRookEndgamePressure(const chess::Board& b) noexcept;
     static int64_t evalQueenEndgamePressure(const chess::Board& b) noexcept;

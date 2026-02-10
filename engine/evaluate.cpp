@@ -2,6 +2,241 @@
 
 namespace engine {
 
+__attribute__((hot))
+int64_t Engine::evaluate(const chess::Board& board) noexcept {
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
+        //(missing king)
+        return evaluateCheckmate(board);
+    }
+
+    int64_t eval = getMaterialDelta(board);
+
+    // NOTE: Stalemate is NOT checked here because evaluate() is called AFTER we know
+    // there are legal moves (via generateLegalMoves check in searchPosition).
+    // Stalemate detection happens in searchPosition() when moves.is_empty()
+
+    const uint64_t occ = board.getPiecesBitMap();
+    const uint64_t whitePawns = board.pawns_bb[0];
+    const uint64_t blackPawns = board.pawns_bb[1];
+    const int fullMoves = board.getFullMoveClock();
+
+    // ===================================================
+    // GAME PHASE DETECTION
+    // ===================================================
+    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
+                                             board.bishops_bb[0] | board.bishops_bb[1] |
+                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
+                                             board.queens_bb[0]  | board.queens_bb[1]);
+    
+    // Game phase thresholds
+    constexpr int OPENING_MOVES = 10;      // prime 10 mosse = apertura
+    constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
+    constexpr int PIECE_ENDGAME_THRESHOLD = 5;  // TUNED: was 8 (too high, triggered endgame too early)
+    
+    // BUG FIX: Game phases must be MUTUALLY EXCLUSIVE
+    // Priority: endgame (few pieces) > opening (early moves) > early middlegame > middlegame
+    // This ensures one and only one phase is active
+    const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
+    const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
+    const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
+    const bool isMiddlegame = !isEndgame && !isOpening && !isEarlyMiddlegame;
+
+    // ===================================================
+    // PIECE-SQUARE TABLES (always evaluated)
+    // ===================================================
+    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+
+    // ===================================================
+    // BISHOP PAIR BONUS (always evaluated, all phases)
+    // ===================================================
+    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+
+    // ===================================================
+    // LAZY ATTACK DATA (computed only when needed)
+    // OPTIMIZATION: Initialize with isComputed=false, compute on-demand
+    // ===================================================
+    AttackData attackData[2] = {};  // Zero-initialize (isComputed = false)
+    ensureAttackData(attackData, board, occ);
+    // ===================================================
+    // OPENING PHASE (moves 1-10)
+    // Focus: development, king safety, avoid early mistakes
+    // ===================================================
+    if (isOpening) {
+        // CRITICAL: Incentivare sviluppo dei pezzi minori!
+        eval += evalMinorPieceDevelopment(board);
+        
+        // Development penalties (re e torre non sviluppati)
+        eval += evalEarlyKing(board);
+        eval += evalEarlyRook(board);
+        eval += evalEarlyQueen(board);
+        
+        // Castling is CRITICAL in opening
+        eval += evalCastlingBonus(board);
+        
+        // Basic piece safety (avoid hanging pieces) - NEEDS attackData
+        
+        eval += evalHangingPieces(board, attackData);
+        
+        // Center control è FONDAMENTALE in opening
+        eval += evalCentralControl(whitePawns, blackPawns);
+        
+        // Knight positioning (avoid rim)
+        eval += evalKnightOnRim(board);
+        // Penalize non-coordinated minor pieces (promote piece coordination)
+        eval += evalPieceCoordination(board);
+        // Outposts: reward stable knights/bishops supported by pawns and not attacked by enemy pawns
+        eval += evalOutposts(board);
+        
+        // Basic pawn structure (non troppo dettagliato)
+        eval += evalPawnStructure(whitePawns, blackPawns, false);
+        
+        // Mobility bonus (sviluppare pezzi = più mosse) - NEEDS attackData
+        eval += evalMobility(attackData);
+        
+        // Initiative bonus (side to move advantage)
+        eval += evalInitiative(board, false);
+        
+        // Penalize bishops that block pawns directly (opening)
+        eval += evalBlockedPawnByBishops(board);
+    }
+    
+    // ===================================================
+    // EARLY MIDDLEGAME (moves 10-15)
+    // Transition phase: continue development, prepare attacks
+    // ===================================================
+    else if (isEarlyMiddlegame) {
+        // Continua a incentivare sviluppo
+        eval += evalMinorPieceDevelopment(board);
+        
+        // Castling still important
+        eval += evalCastlingBonus(board);
+        
+        // Full tactical evaluation - NEEDS attackData
+        eval += evalHangingPieces(board, attackData);
+        eval += evalTrappedPieces(board, occ);
+        
+        // Pawn structure becomes more important
+        eval += evalPawnStructure(whitePawns, blackPawns, false);
+        eval += evalCentralControl(whitePawns, blackPawns);
+        
+        // Piece activity - NEEDS attackData
+        eval += evalMobility(attackData);
+        eval += evalKnightOnRim(board);
+        eval += evalPieceCoordination(board);
+        eval += evalOutposts(board);
+        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
+        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
+        
+        // King safety starts to matter
+        eval += evalKingSafety(board, whitePawns, blackPawns);
+        eval += evalBadKingPosition(board);
+        
+        // NOTE: King attack zone bonus NOT applied in early middlegame
+        // We want pieces to be developed first, not rush attacks prematurely
+        
+        // Rook evaluation
+        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        
+        // Initiative
+        eval += evalInitiative(board, false);
+        
+        // Penalize bishops that block pawns in early middlegame
+        eval += evalBlockedPawnByBishops(board);
+    }
+    
+    // ===================================================
+    // MIDDLEGAME (moves 15+, many pieces on board)
+    // Focus: tactics, king safety, piece coordination
+    // ===================================================
+    else if (isMiddlegame) {
+        // Full tactical evaluation (molto importante!) - NEEDS attackData
+        eval += evalHangingPieces(board, attackData);
+        eval += evalTrappedPieces(board, occ);
+        
+        // Pawn structure evaluation
+        eval += evalPawnStructure(whitePawns, blackPawns, false);
+        eval += evalCentralControl(whitePawns, blackPawns);
+        eval += evalBlockedCenterWithPieces(board, occ);
+        
+        // Piece activity and positioning - NEEDS attackData
+        eval += evalMobility(attackData);
+        eval += evalKnightOnRim(board);
+        eval += evalPieceCoordination(board);
+        eval += evalOutposts(board);
+        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
+        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
+        
+        // King safety è CRITICO in middlegame
+        eval += evalKingSafety(board, whitePawns, blackPawns);
+        eval += evalBadKingPosition(board);
+        eval += evalKingActivity(board, false);
+        eval += evalCastlingBonus(board);
+        
+        // King attack zone: reward building multi-piece attacks on enemy king
+        // This incentivizes coordinated attacks over repetitive checks
+        eval += evalKingAttackZone(board, attackData, occ);
+        
+        // Rook evaluation (open files, 7th rank)
+        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        // REMOVED: evalPassiveRooks() - double counts with evalRooks() and evalTrappedPieces()
+        
+        // Initiative
+        eval += evalInitiative(board, false);
+        
+        // Penalize bishops that block pawns in middlegame
+        eval += evalBlockedPawnByBishops(board);
+    }
+    
+    // ===================================================
+    // ENDGAME (few pieces left)
+    // Focus: pawn promotion, king activity, passed pawns
+    // ===================================================
+    else { // isEndgame
+        // Tactical safety still matters - NEEDS attackData
+        eval += evalHangingPieces(board, attackData);
+        
+        // Pawn structure è CRITICO in endgame
+        eval += evalPawnStructure(whitePawns, blackPawns, true);
+        
+        // King activity è fondamentale
+        eval += evalKingActivity(board, true);
+        eval += evalEndgameKingActivity(board);
+        
+        // Piece mobility - NEEDS attackData
+        eval += evalMobility(attackData);
+        eval += evalTrappedPieces(board, occ);
+        
+        // Rook evaluation (still important in endgame)
+        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
+        
+        // Endgame mating bonuses: push opponent king to edge for checkmate
+        eval += evalRookEndgamePressure(board);
+        eval += evalQueenEndgamePressure(board);
+        eval += evalDoubleRookEndgame(board);
+        
+        // Minor piece positioning
+        eval += evalKnightOnRim(board);
+        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
+        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
+        
+        // Initiative (meno importante in endgame)
+        eval += evalInitiative(board, true);
+    }
+
+    // REMOVED: Material contempt was doubling material costs.
+    // getMaterialDelta() is already the first component of eval, so adding
+    // a penalty proportional to it again effectively doubled/tripled material value.
+    // The alpha-beta search already prevents speculative sacrifices.
+
+    return eval;
+}
+
 int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
     return static_cast<int64_t>(
           (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
@@ -33,7 +268,6 @@ inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, in
 
 // REMOVED: Using popLSB() instead (defined in board.hpp)
 // REMOVED: Using chess::Board::fileMask() instead (defined in board.hpp)
-
 __attribute__((always_inline))
 inline uint64_t adjacentFilesMask(int file) noexcept {
     uint64_t m = 0;
@@ -317,7 +551,6 @@ int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ)
     return score;
 }
 
-
 int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
 
@@ -360,26 +593,6 @@ int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whi
     return score;
 }
 
-// REMOVED: evalPassiveRooks() - double counts with evalRooks() (open/semi-open files)
-// and evalTrappedPieces() (mobility). Also had bugs:
-// 1. Penalized ALL rooks not on 7th rank (-10cp each)
-// 2. Penalized rooks with own pawn on same file even if rook was in front
-// 3. Mobility <=3 double-counted with evalTrappedPieces()
-__attribute__((hot))
-int64_t Engine::evalPassiveRooks(const chess::Board& b, uint64_t occ) noexcept {
-    return 0; // Disabled - functionality covered by evalRooks() and evalTrappedPieces()
-}
-
-
-__attribute__((hot))
-int64_t Engine::evalKnightOnRim(const chess::Board& b) noexcept {
-    // REMOVED: Double-counted with KNIGHT_VALUES_TABLE (PSQT already penalizes rim squares)
-    // The PSQT values for knights are strongly negative on rim squares (A/H files)
-    // and near-rim squares (B/G files), making this function redundant.
-    return 0;
-}
-
-
 __attribute__((hot))
 int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
     int64_t score = 0;
@@ -406,7 +619,6 @@ int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
 
     return score;
 }
-
 
 __attribute__((hot))
 int64_t Engine::evalOutposts(const chess::Board& b) noexcept {
@@ -444,7 +656,6 @@ int64_t Engine::evalOutposts(const chess::Board& b) noexcept {
 
     return score;
 }
-
 
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
@@ -494,21 +705,6 @@ int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
         __builtin_popcountll(b.bishops_bb[1] & ~BLACK_MINOR_START);
     
     return (whiteDeveloped - blackDeveloped) * DEVELOPMENT_BONUS;
-}
-
-int64_t Engine::evalEarlyKing(const chess::Board& b) noexcept {
-    // REMOVED: Double-counted with evalCastlingBonus() and evalKingSafety().
-    // evalCastlingBonus already rewards castling and penalizes lost castling rights.
-    // evalKingSafety already penalizes exposed kings. This function was
-    // adding a third layer of penalty for the same concept.
-    return 0;
-}
-
-int64_t Engine::evalEarlyRook(const chess::Board& b) noexcept {
-    // REMOVED: Flawed logic — was checking if ANY rook is not on a1/h1 (white) or a8/h8 (black),
-    // but this penalizes natural rook development to open files. Also double-counted
-    // with evalRooks() which handles open/semi-open file evaluation.
-    return 0;
 }
 
 int64_t Engine::evalEarlyQueen(const chess::Board& b) noexcept {
@@ -845,14 +1041,6 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 
     return score;
 }
-
-int64_t Engine::evalBadKingPosition(const chess::Board& b) noexcept {
-    // REMOVED: Double-counted with evalKingSafety() and KING_MIDDLE_GAME_VALUES_TABLE (PSQT).
-    // The PSQT already encodes king safety zones. evalKingSafety() already evaluates
-    // pawn shield and king exposure. This function was adding a third penalty layer.
-    return 0;
-}
-
 
 int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
     constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
@@ -1277,242 +1465,6 @@ int64_t Engine::evalDoubleRookEndgame(const chess::Board& b) noexcept {
     return score;
 }
 
-
-__attribute__((hot))
-int64_t Engine::evaluate(const chess::Board& board) noexcept {
-    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
-        //(missing king)
-        return evaluateCheckmate(board);
-    }
-
-    int64_t eval = getMaterialDelta(board);
-
-    // NOTE: Stalemate is NOT checked here because evaluate() is called AFTER we know
-    // there are legal moves (via generateLegalMoves check in searchPosition).
-    // Stalemate detection happens in searchPosition() when moves.is_empty()
-
-    const uint64_t occ = board.getPiecesBitMap();
-    const uint64_t whitePawns = board.pawns_bb[0];
-    const uint64_t blackPawns = board.pawns_bb[1];
-    const int fullMoves = board.getFullMoveClock();
-
-    // ===================================================
-    // GAME PHASE DETECTION
-    // ===================================================
-    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
-                                             board.bishops_bb[0] | board.bishops_bb[1] |
-                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
-                                             board.queens_bb[0]  | board.queens_bb[1]);
-    
-    // Game phase thresholds
-    constexpr int OPENING_MOVES = 10;      // prime 10 mosse = apertura
-    constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
-    constexpr int PIECE_ENDGAME_THRESHOLD = 5;  // TUNED: was 8 (too high, triggered endgame too early)
-    
-    // BUG FIX: Game phases must be MUTUALLY EXCLUSIVE
-    // Priority: endgame (few pieces) > opening (early moves) > early middlegame > middlegame
-    // This ensures one and only one phase is active
-    const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
-    const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
-    const bool isMiddlegame = !isEndgame && !isOpening && !isEarlyMiddlegame;
-
-    // ===================================================
-    // PIECE-SQUARE TABLES (always evaluated)
-    // ===================================================
-    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
-    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
-    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
-    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
-    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
-    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
-
-    // ===================================================
-    // BISHOP PAIR BONUS (always evaluated, all phases)
-    // ===================================================
-    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
-    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
-
-    // ===================================================
-    // LAZY ATTACK DATA (computed only when needed)
-    // OPTIMIZATION: Initialize with isComputed=false, compute on-demand
-    // ===================================================
-    AttackData attackData[2] = {};  // Zero-initialize (isComputed = false)
-    ensureAttackData(attackData, board, occ);
-    // ===================================================
-    // OPENING PHASE (moves 1-10)
-    // Focus: development, king safety, avoid early mistakes
-    // ===================================================
-    if (isOpening) {
-        // CRITICAL: Incentivare sviluppo dei pezzi minori!
-        eval += evalMinorPieceDevelopment(board);
-        
-        // Development penalties (re e torre non sviluppati)
-        eval += evalEarlyKing(board);
-        eval += evalEarlyRook(board);
-        eval += evalEarlyQueen(board);
-        
-        // Castling is CRITICAL in opening
-        eval += evalCastlingBonus(board);
-        
-        // Basic piece safety (avoid hanging pieces) - NEEDS attackData
-        
-        eval += evalHangingPieces(board, attackData);
-        
-        // Center control è FONDAMENTALE in opening
-        eval += evalCentralControl(whitePawns, blackPawns);
-        
-        // Knight positioning (avoid rim)
-        eval += evalKnightOnRim(board);
-        // Penalize non-coordinated minor pieces (promote piece coordination)
-        eval += evalPieceCoordination(board);
-        // Outposts: reward stable knights/bishops supported by pawns and not attacked by enemy pawns
-        eval += evalOutposts(board);
-        
-        // Basic pawn structure (non troppo dettagliato)
-        eval += evalPawnStructure(whitePawns, blackPawns, false);
-        
-        // Mobility bonus (sviluppare pezzi = più mosse) - NEEDS attackData
-        eval += evalMobility(attackData);
-        
-        // Initiative bonus (side to move advantage)
-        eval += evalInitiative(board, false);
-        
-        // Penalize bishops that block pawns directly (opening)
-        eval += evalBlockedPawnByBishops(board);
-    }
-    
-    // ===================================================
-    // EARLY MIDDLEGAME (moves 10-15)
-    // Transition phase: continue development, prepare attacks
-    // ===================================================
-    else if (isEarlyMiddlegame) {
-        // Continua a incentivare sviluppo
-        eval += evalMinorPieceDevelopment(board);
-        
-        // Castling still important
-        eval += evalCastlingBonus(board);
-        
-        // Full tactical evaluation - NEEDS attackData
-        eval += evalHangingPieces(board, attackData);
-        eval += evalTrappedPieces(board, occ);
-        
-        // Pawn structure becomes more important
-        eval += evalPawnStructure(whitePawns, blackPawns, false);
-        eval += evalCentralControl(whitePawns, blackPawns);
-        
-        // Piece activity - NEEDS attackData
-        eval += evalMobility(attackData);
-        eval += evalKnightOnRim(board);
-        eval += evalPieceCoordination(board);
-        eval += evalOutposts(board);
-        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
-        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
-        
-        // King safety starts to matter
-        eval += evalKingSafety(board, whitePawns, blackPawns);
-        eval += evalBadKingPosition(board);
-        
-        // NOTE: King attack zone bonus NOT applied in early middlegame
-        // We want pieces to be developed first, not rush attacks prematurely
-        
-        // Rook evaluation
-        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-        
-        // Initiative
-        eval += evalInitiative(board, false);
-        
-        // Penalize bishops that block pawns in early middlegame
-        eval += evalBlockedPawnByBishops(board);
-    }
-    
-    // ===================================================
-    // MIDDLEGAME (moves 15+, many pieces on board)
-    // Focus: tactics, king safety, piece coordination
-    // ===================================================
-    else if (isMiddlegame) {
-        // Full tactical evaluation (molto importante!) - NEEDS attackData
-        eval += evalHangingPieces(board, attackData);
-        eval += evalTrappedPieces(board, occ);
-        
-        // Pawn structure evaluation
-        eval += evalPawnStructure(whitePawns, blackPawns, false);
-        eval += evalCentralControl(whitePawns, blackPawns);
-        eval += evalBlockedCenterWithPieces(board, occ);
-        
-        // Piece activity and positioning - NEEDS attackData
-        eval += evalMobility(attackData);
-        eval += evalKnightOnRim(board);
-        eval += evalPieceCoordination(board);
-        eval += evalOutposts(board);
-        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
-        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
-        
-        // King safety è CRITICO in middlegame
-        eval += evalKingSafety(board, whitePawns, blackPawns);
-        eval += evalBadKingPosition(board);
-        eval += evalKingActivity(board, false);
-        eval += evalCastlingBonus(board);
-        
-        // King attack zone: reward building multi-piece attacks on enemy king
-        // This incentivizes coordinated attacks over repetitive checks
-        eval += evalKingAttackZone(board, attackData, occ);
-        
-        // Rook evaluation (open files, 7th rank)
-        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-        // REMOVED: evalPassiveRooks() - double counts with evalRooks() and evalTrappedPieces()
-        
-        // Initiative
-        eval += evalInitiative(board, false);
-        
-        // Penalize bishops that block pawns in middlegame
-        eval += evalBlockedPawnByBishops(board);
-    }
-    
-    // ===================================================
-    // ENDGAME (few pieces left)
-    // Focus: pawn promotion, king activity, passed pawns
-    // ===================================================
-    else { // isEndgame
-        // Tactical safety still matters - NEEDS attackData
-        eval += evalHangingPieces(board, attackData);
-        
-        // Pawn structure è CRITICO in endgame
-        eval += evalPawnStructure(whitePawns, blackPawns, true);
-        
-        // King activity è fondamentale
-        eval += evalKingActivity(board, true);
-        eval += evalEndgameKingActivity(board);
-        
-        // Piece mobility - NEEDS attackData
-        eval += evalMobility(attackData);
-        eval += evalTrappedPieces(board, occ);
-        
-        // Rook evaluation (still important in endgame)
-        eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
-        
-        // Endgame mating bonuses: push opponent king to edge for checkmate
-        eval += evalRookEndgamePressure(board);
-        eval += evalQueenEndgamePressure(board);
-        eval += evalDoubleRookEndgame(board);
-        
-        // Minor piece positioning
-        eval += evalKnightOnRim(board);
-        eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
-        eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
-        
-        // Initiative (meno importante in endgame)
-        eval += evalInitiative(board, true);
-    }
-
-    // REMOVED: Material contempt was doubling material costs.
-    // getMaterialDelta() is already the first component of eval, so adding
-    // a penalty proportional to it again effectively doubled/tripled material value.
-    // The alpha-beta search already prevents speculative sacrifices.
-
-    return eval;
-}
-
 // DEBUG: Trace version of evaluate() that prints each component for the endgame path
 int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
@@ -1595,5 +1547,4 @@ int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
     std::cout << "  [TRACE] TOTAL: " << eval << std::endl;
     return eval;
 }
-
 }; // namespace engine
