@@ -72,8 +72,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalMinorPieceDevelopment(board);
         
         // Development penalties (re e torre non sviluppati)
-        eval += evalEarlyKing(board);
-        eval += evalEarlyRook(board);
         eval += evalEarlyQueen(board);
         
         // Castling is CRITICAL in opening
@@ -86,8 +84,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         // Center control è FONDAMENTALE in opening
         eval += evalCentralControl(whitePawns, blackPawns);
         
-        // Knight positioning (avoid rim)
-        eval += evalKnightOnRim(board);
         // Penalize non-coordinated minor pieces (promote piece coordination)
         eval += evalPieceCoordination(board);
         // Outposts: reward stable knights/bishops supported by pawns and not attacked by enemy pawns
@@ -127,15 +123,12 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Piece activity - NEEDS attackData
         eval += evalMobility(attackData);
-        eval += evalKnightOnRim(board);
-        eval += evalPieceCoordination(board);
         eval += evalOutposts(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         
         // King safety starts to matter
         eval += evalKingSafety(board, whitePawns, blackPawns);
-        eval += evalBadKingPosition(board);
         
         // NOTE: King attack zone bonus NOT applied in early middlegame
         // We want pieces to be developed first, not rush attacks prematurely
@@ -166,7 +159,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // Piece activity and positioning - NEEDS attackData
         eval += evalMobility(attackData);
-        eval += evalKnightOnRim(board);
         eval += evalPieceCoordination(board);
         eval += evalOutposts(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
@@ -174,7 +166,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // King safety è CRITICO in middlegame
         eval += evalKingSafety(board, whitePawns, blackPawns);
-        eval += evalBadKingPosition(board);
         eval += evalKingActivity(board, false);
         eval += evalCastlingBonus(board);
         
@@ -221,7 +212,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalDoubleRookEndgame(board);
         
         // Minor piece positioning
-        eval += evalKnightOnRim(board);
         eval += evalBadBishop(board.bishops_bb[0], whitePawns, 0);
         eval += evalBadBishop(board.bishops_bb[1], blackPawns, 1);
         
@@ -246,7 +236,6 @@ int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
         + (__builtin_popcountll(b.queens_bb[0])  - __builtin_popcountll(b.queens_bb[1]))  * PIECE_VALUES[chess::Board::QUEEN]
         + (__builtin_popcountll(b.kings_bb[0])   - __builtin_popcountll(b.kings_bb[1]))   * PIECE_VALUES[chess::Board::KING]);
 }
-
 
 int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
@@ -1173,7 +1162,6 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
     }
 }
 
-
 int64_t Engine::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
     int64_t score = 0;
 
@@ -1531,9 +1519,6 @@ int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
 
     v = evalDoubleRookEndgame(board);
     eval += v; std::cout << "  [TRACE] +doubleRookEg: " << eval << " (delta=" << v << ")" << std::endl;
-
-    v = evalKnightOnRim(board);
-    eval += v; std::cout << "  [TRACE] +knightOnRim: " << eval << " (delta=" << v << ")" << std::endl;
 
     v = evalBadBishop(board.bishops_bb[0], whitePawns, 0);
     eval += v; std::cout << "  [TRACE] +badBishopW: " << eval << " (delta=" << v << ")" << std::endl;

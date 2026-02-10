@@ -83,12 +83,6 @@ ut::suite performanceEngineSuite = [] {
     auto duration8 = std::chrono::duration_cast<std::chrono::nanoseconds>(end8 - start8).count();
     printf("King activity evaluation took %lu ns\n", duration8);
 
-    auto start9 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evalBadKingPosition(e.board);
-    auto end9 = std::chrono::high_resolution_clock::now();
-    auto duration9 = std::chrono::duration_cast<std::chrono::nanoseconds>(end9 - start9).count();
-    printf("Bad king position evaluation took %lu ns\n", duration9);
-
     auto start10 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) e.evalEndgameKingActivity(e.board);
     auto end10 = std::chrono::high_resolution_clock::now();
