@@ -80,7 +80,6 @@ public:
     static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
     static int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
     static int64_t evalEarlyQueen(const chess::Board& b) noexcept;
-    static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static int64_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
     static int64_t evalRookEndgamePressure(const chess::Board& b) noexcept;
     static int64_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
@@ -113,6 +112,121 @@ public:
             bbBlack &= (bbBlack - 1);
             uint8_t idx = mirrorIndex(sq);
             eval -= table[idx];
+        }
+    }
+    __attribute__((always_inline))
+    inline static constexpr uint64_t adjacentFilesMask(int file) noexcept {
+        uint64_t m = 0;
+        if (file > 0) m |= chess::Board::fileMask(file - 1);
+        if (file < 7) m |= chess::Board::fileMask(file + 1);
+        return m;
+    }
+    inline static constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
+        std::array<uint64_t, 64> result{};
+        for (int sq = 0; sq < 64; ++sq) {
+            const int rank = chess::Board::rankOf(sq);
+            // White pawns move toward decreasing rank (rank 0 is promotion).
+            // Forward squares = all ranks strictly less than current rank.
+            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
+        }
+        return result;
+    }
+
+    inline static constexpr std::array<uint64_t, 64> initBlackForwardFill() {
+        std::array<uint64_t, 64> result{};
+        for (int sq = 0; sq < 64; ++sq) {
+            const int rank = chess::Board::rankOf(sq);
+            // Black pawns move toward increasing rank (rank 7 is promotion).
+            // Forward squares = all ranks strictly greater than current rank.
+            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
+        }
+        return result;
+    }
+    // File masks (already defined in fileMask() but we precalculate for speed)
+    inline static constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            masks[f] = 0x0101010101010101ULL << f;
+        }
+        return masks;
+    }();
+
+    // Adjacent files ONLY (without center file) - optimization for isolated pawn check
+    inline static constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            uint64_t m = 0;
+            if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
+            if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
+            masks[f] = m;
+        }
+        return masks;
+    }();
+
+    // Precalculated adjacent files mask (including center file)
+    inline static constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
+        std::array<uint64_t, 8> masks{};
+        for (int f = 0; f < 8; ++f) {
+            uint64_t m = (0x0101010101010101ULL << f); // center file
+            if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
+            if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
+            masks[f] = m;
+        }
+        return masks;
+    }();
+
+    // King proximity masks (squares at distance <= 2 from each square)
+    inline static constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
+        std::array<uint64_t, 64> masks{};
+        for (int sq = 0; sq < 64; ++sq) {
+            uint64_t mask = 0;
+            const int rank = chess::Board::rankOf(sq);
+            const int file = chess::Board::fileOf(sq);
+            
+            // All squares within Manhattan distance 2
+            for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
+                for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
+                    const int target = (r << 3) | f;
+                    const int dist = std::abs(r - rank) + std::abs(f - file);
+                    if (dist <= 2 && target != sq) {
+                        mask |= chess::Board::bitMask(target);
+                    }
+                }
+            }
+            masks[sq] = mask;
+        }
+        return masks;
+    }();
+
+    template<bool IsEndgame>
+    inline static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept {
+        constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+        return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
+    }
+
+    __attribute__((hot, always_inline))
+    inline int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
+        return isEndgame 
+            ? evalInitiativeImpl<true>(b.getActiveColor()) 
+            : evalInitiativeImpl<false>(b.getActiveColor());
+    }
+
+    template<int Side>
+    inline static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
+        static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
+        
+        const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
+        const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
+        
+        const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
+        const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
+        
+        const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
+        
+        if constexpr (Side == 0) {
+            return score;
+        } else {
+            return -score;
         }
     }
 
@@ -162,7 +276,11 @@ public:
 #endif
 
     int MAX_THREADS;
+    // Dark/Light square masks for bad bishop evaluation
+    inline static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
+    inline static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
     //--- Variabile end
+
 private:
     //--- Structs and enums
     // Helper structures for cleaner function signatures
