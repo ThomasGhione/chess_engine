@@ -135,11 +135,11 @@ namespace print {
         return choice;
     }
 
-    void Menu::clearScreen() noexcept{
+    void Menu::clearScreen() noexcept { //! MIGHT NOT BE NOEXCEPT
         #ifdef _WIN32
-            system("cls");
+            [[maybe_unused]] const int result = std::system("cls");
         #else
-            system("clear");
+            [[maybe_unused]] const int result = std::system("clear");
         #endif
     }
 }

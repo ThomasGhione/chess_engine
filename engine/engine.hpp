@@ -65,7 +65,7 @@ public:
     //--- Constructors end
 
     //--- Method
-    static int manhattan(int a, int b) noexcept;
+    inline static constexpr int manhattan(int a, int b) noexcept { return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3)); };
     static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
     static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
     static int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
@@ -92,22 +92,13 @@ public:
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
-    inline bool isGameOver() const noexcept {
-        return gameResult != ONGOING;
-    }
-    inline bool isMate() const noexcept {
-        return gameResult == WHITE_WINS || gameResult == BLACK_WINS;
-    }
-    bool isStalemate() const noexcept {
-        return gameResult == DRAW;
-    }
+    inline bool isGameOver() const noexcept { return gameResult != ONGOING; }
+    inline bool isMate() const noexcept { return gameResult == WHITE_WINS || gameResult == BLACK_WINS; }
+    bool isStalemate() const noexcept { return gameResult == DRAW; }
     void updateGameResult() noexcept;
-    inline GameResult getGameResult() const noexcept {
-        return gameResult;
-    }
-    inline uint8_t getActiveColor() const noexcept {
-        return board.getActiveColor();
-    }
+    inline GameResult getGameResult() const noexcept { return gameResult; }
+    inline uint8_t getActiveColor() const noexcept { return board.getActiveColor(); }
+    
     __attribute__((always_inline))
     inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
         // White pieces: use index as-is
@@ -255,7 +246,7 @@ private:
     static int64_t evalMobility(const AttackData data[2]) noexcept;
     static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
-    static int64_t evalKingAttackZone(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
+    static int64_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
 
     // Initial best score for min-max search
     // White maximizes: starts from -INF, Black minimizes: starts from +INF

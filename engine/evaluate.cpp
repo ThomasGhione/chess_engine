@@ -175,7 +175,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         
         // King attack zone: reward building multi-piece attacks on enemy king
         // This incentivizes coordinated attacks over repetitive checks
-        eval += evalKingAttackZone(board, attackData, occ);
+        eval += evalKingAttackZone(board, attackData);
         
         // Rook evaluation (open files, 7th rank)
         eval += evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns);
@@ -242,117 +242,113 @@ int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
 }
 
 __attribute__((always_inline))
-inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
-    // White pieces: use index as-is
-    while (bbWhite) {
-        const uint8_t sq = popLSB(bbWhite);
-        eval += table[sq];
-    }
-    // Black pieces: mirror index vertically (inline for performance)
-    while (bbBlack) {
-        const uint8_t sq = popLSB(bbBlack);
-        eval -= table[chess::Board::verticalMirror(sq)];
-    }
-}
-
-// REMOVED: Using popLSB() instead (defined in board.hpp)
-// REMOVED: Using chess::Board::fileMask() instead (defined in board.hpp)
-__attribute__((always_inline))
-inline uint64_t adjacentFilesMask(int file) noexcept {
+inline static constexpr uint64_t adjacentFilesMask(int file) noexcept {
     uint64_t m = 0;
     if (file > 0) m |= chess::Board::fileMask(file - 1);
     if (file < 7) m |= chess::Board::fileMask(file + 1);
     return m;
 }
 
-// Precompute masks for faster pawn evaluation
-namespace {
-    // Forward fill masks for passed pawn detection (compile-time constant)
-    constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
-        std::array<uint64_t, 64> result{};
-        for (int sq = 0; sq < 64; ++sq) {
-            const int rank = chess::Board::rankOf(sq);
-            // White pawns move toward decreasing rank (rank 0 is promotion).
-            // Forward squares = all ranks strictly less than current rank.
-            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
-        }
-        return result;
+
+
+
+
+// ===================================================
+// PRECOMPUTED MASKS FOR FASTER EVALUATION
+// ===================================================
+
+// Forward fill masks for passed pawn detection (compile-time constant)
+inline static constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
+    std::array<uint64_t, 64> result{};
+    for (int sq = 0; sq < 64; ++sq) {
+        const int rank = chess::Board::rankOf(sq);
+        // White pawns move toward decreasing rank (rank 0 is promotion).
+        // Forward squares = all ranks strictly less than current rank.
+        result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
     }
-    
-    constexpr std::array<uint64_t, 64> initBlackForwardFill() {
-        std::array<uint64_t, 64> result{};
-        for (int sq = 0; sq < 64; ++sq) {
-            const int rank = chess::Board::rankOf(sq);
-            // Black pawns move toward increasing rank (rank 7 is promotion).
-            // Forward squares = all ranks strictly greater than current rank.
-            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
-        }
-        return result;
+    return result;
+}
+
+inline static constexpr std::array<uint64_t, 64> initBlackForwardFill() {
+    std::array<uint64_t, 64> result{};
+    for (int sq = 0; sq < 64; ++sq) {
+        const int rank = chess::Board::rankOf(sq);
+        // Black pawns move toward increasing rank (rank 7 is promotion).
+        // Forward squares = all ranks strictly greater than current rank.
+        result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
     }
-    
-    constexpr auto WHITE_FORWARD_FILL = initWhiteForwardFill();
-    constexpr auto BLACK_FORWARD_FILL = initBlackForwardFill();
-    
-    // File masks (already defined in fileMask() but we precalculate for speed)
-    constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            masks[f] = 0x0101010101010101ULL << f;
-        }
-        return masks;
-    }();
-    
-    // Adjacent files ONLY (without center file) - optimization for isolated pawn check
-    constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            uint64_t m = 0;
-            if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
-            if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
-            masks[f] = m;
-        }
-        return masks;
-    }();
-    
-    // Precalculated adjacent files mask (including center file)
-    constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            uint64_t m = (0x0101010101010101ULL << f); // center file
-            if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
-            if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
-            masks[f] = m;
-        }
-        return masks;
-    }();
-    
-    // Dark/Light square masks for bad bishop evaluation
-    constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
-    constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
-    
-    // King proximity masks (squares at distance <= 2 from each square)
-    constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
-        std::array<uint64_t, 64> masks{};
-        for (int sq = 0; sq < 64; ++sq) {
-            uint64_t mask = 0;
-            const int rank = chess::Board::rankOf(sq);
-            const int file = chess::Board::fileOf(sq);
-            
-            // All squares within Manhattan distance 2
-            for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
-                for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
-                    const int target = (r << 3) | f;
-                    const int dist = std::abs(r - rank) + std::abs(f - file);
-                    if (dist <= 2 && target != sq) {
-                        mask |= chess::Board::bitMask(target);
-                    }
+    return result;
+}
+
+inline static constexpr auto WHITE_FORWARD_FILL = initWhiteForwardFill();
+inline static constexpr auto BLACK_FORWARD_FILL = initBlackForwardFill();
+
+// File masks (already defined in fileMask() but we precalculate for speed)
+inline static constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
+    std::array<uint64_t, 8> masks{};
+    for (int f = 0; f < 8; ++f) {
+        masks[f] = 0x0101010101010101ULL << f;
+    }
+    return masks;
+}();
+
+// Adjacent files ONLY (without center file) - optimization for isolated pawn check
+inline static constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
+    std::array<uint64_t, 8> masks{};
+    for (int f = 0; f < 8; ++f) {
+        uint64_t m = 0;
+        if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
+        if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
+        masks[f] = m;
+    }
+    return masks;
+}();
+
+// Precalculated adjacent files mask (including center file)
+inline static constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
+    std::array<uint64_t, 8> masks{};
+    for (int f = 0; f < 8; ++f) {
+        uint64_t m = (0x0101010101010101ULL << f); // center file
+        if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
+        if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
+        masks[f] = m;
+    }
+    return masks;
+}();
+
+// Dark/Light square masks for bad bishop evaluation
+inline static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
+inline static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
+
+// King proximity masks (squares at distance <= 2 from each square)
+inline static constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
+    std::array<uint64_t, 64> masks{};
+    for (int sq = 0; sq < 64; ++sq) {
+        uint64_t mask = 0;
+        const int rank = chess::Board::rankOf(sq);
+        const int file = chess::Board::fileOf(sq);
+        
+        // All squares within Manhattan distance 2
+        for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
+            for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
+                const int target = (r << 3) | f;
+                const int dist = std::abs(r - rank) + std::abs(f - file);
+                if (dist <= 2 && target != sq) {
+                    mask |= chess::Board::bitMask(target);
                 }
             }
-            masks[sq] = mask;
         }
-        return masks;
-    }();
-}
+        masks[sq] = mask;
+    }
+    return masks;
+}();
+
+/* helper ends */
+
+
+
+
+
 
 __attribute__((hot))
 int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
@@ -521,21 +517,33 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
 }
 
 int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
+    // OPTIMIZATION: Constexpr center blocking masks
+    static constexpr uint64_t WHITE_D4_PAWN = chess::Board::bitMask(27);
+    static constexpr uint64_t BLACK_D5_PIECE = chess::Board::bitMask(35);
+    static constexpr uint64_t WHITE_BLOCKED_KNIGHTS = chess::Board::bitMask(18) | chess::Board::bitMask(21);
+    static constexpr uint64_t WHITE_BLOCKED_BISHOPS = chess::Board::bitMask(19) | chess::Board::bitMask(20);
+    
+    static constexpr uint64_t BLACK_D5_PAWN = chess::Board::bitMask(35);
+    static constexpr uint64_t WHITE_D4_PIECE = chess::Board::bitMask(27);
+    static constexpr uint64_t BLACK_BLOCKED_KNIGHTS = chess::Board::bitMask(42) | chess::Board::bitMask(45);
+    static constexpr uint64_t BLACK_BLOCKED_BISHOPS = chess::Board::bitMask(43) | chess::Board::bitMask(44);
+    
+    static constexpr int64_t BLOCKED_CENTER_PENALTY = 15;
+    static constexpr int64_t BLOCKED_PIECE_PENALTY = 10;
+    
     int64_t score = 0;
     
-    // WHITE
-    if ((b.pawns_bb[0] & (chess::Board::bitMask(27))) && (occ & (chess::Board::bitMask(35)))) {
-        if (b.knights_bb[0] & ((chess::Board::bitMask(18)) | (chess::Board::bitMask(21)))) score -= 10;
-        if (b.bishops_bb[0] & ((chess::Board::bitMask(19)) | (chess::Board::bitMask(20)))) score -= 10;
-        score -= 15;
-    }
+    // WHITE: d4 pawn blocked by piece on d5
+    const bool whiteBlocked = (b.pawns_bb[0] & WHITE_D4_PAWN) && (occ & BLACK_D5_PIECE);
+    score -= whiteBlocked * BLOCKED_CENTER_PENALTY;
+    score -= whiteBlocked * static_cast<bool>(b.knights_bb[0] & WHITE_BLOCKED_KNIGHTS) * BLOCKED_PIECE_PENALTY;
+    score -= whiteBlocked * static_cast<bool>(b.bishops_bb[0] & WHITE_BLOCKED_BISHOPS) * BLOCKED_PIECE_PENALTY;
 
-    // BLACK
-    if ((b.pawns_bb[1] & (chess::Board::bitMask(35))) && (occ & (chess::Board::bitMask(27)))) {
-        if (b.knights_bb[1] & ((chess::Board::bitMask(42)) | (chess::Board::bitMask(45)))) score += 10;
-        if (b.bishops_bb[1] & ((chess::Board::bitMask(43)) | (chess::Board::bitMask(44)))) score += 10;
-        score += 15;
-    }
+    // BLACK: d5 pawn blocked by piece on d4
+    const bool blackBlocked = (b.pawns_bb[1] & BLACK_D5_PAWN) && (occ & WHITE_D4_PIECE);
+    score += blackBlocked * BLOCKED_CENTER_PENALTY;
+    score += blackBlocked * static_cast<bool>(b.knights_bb[1] & BLACK_BLOCKED_KNIGHTS) * BLOCKED_PIECE_PENALTY;
+    score += blackBlocked * static_cast<bool>(b.bishops_bb[1] & BLACK_BLOCKED_BISHOPS) * BLOCKED_PIECE_PENALTY;
 
     return score;
 }
@@ -543,40 +551,53 @@ int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ)
 int64_t Engine::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
 
-    // Evaluate white rooks
-    uint64_t rooks = whiteRooks;
-    while (rooks) {
-        const int sq = popLSB(rooks);
+    // OPTIMIZATION: Manual loop unroll (max 2 rooks per side)
+    // White rooks - first rook
+    if (whiteRooks) {
+        const int sq = popLSB(whiteRooks);
         const int file = sq & 7;
         const int rank = sq >> 3;
         const uint64_t fm = FILE_MASKS[file];
-
         const bool ownPawnOnFile = (whitePawns & fm) != 0;
         const bool oppPawnOnFile = (blackPawns & fm) != 0;
-
-        // Branchless: bonus for open/semi-open file
         const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS);
-        score += fileBonus;
-
-        score += (rank == 6) * ROOK_ON_SEVENTH_BONUS;
+        score += fileBonus + (rank == 6) * ROOK_ON_SEVENTH_BONUS;
+        
+        // White rooks - second rook (if exists)
+        if (whiteRooks) {
+            const int sq2 = popLSB(whiteRooks);
+            const int file2 = sq2 & 7;
+            const int rank2 = sq2 >> 3;
+            const uint64_t fm2 = FILE_MASKS[file2];
+            const bool ownPawnOnFile2 = (whitePawns & fm2) != 0;
+            const bool oppPawnOnFile2 = (blackPawns & fm2) != 0;
+            const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS);
+            score += fileBonus2 + (rank2 == 6) * ROOK_ON_SEVENTH_BONUS;
+        }
     }
 
-    // Evaluate black rooks
-    rooks = blackRooks;
-    while (rooks) {
-        const int sq = popLSB(rooks);
+    // Black rooks - first rook
+    if (blackRooks) {
+        const int sq = popLSB(blackRooks);
         const int file = sq & 7;
         const int rank = sq >> 3;
         const uint64_t fm = FILE_MASKS[file];
-
         const bool ownPawnOnFile = (blackPawns & fm) != 0;
         const bool oppPawnOnFile = (whitePawns & fm) != 0;
-
-        // Branchless: bonus for open/semi-open file (negative for black)
         const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? -OPEN_FILE_ROOK_BONUS : -SEMI_OPEN_FILE_ROOK_BONUS);
-        score += fileBonus;
-
-        score += (rank == 1) * (-ROOK_ON_SEVENTH_BONUS);
+        score += fileBonus + (rank == 1) * (-ROOK_ON_SEVENTH_BONUS);
+        
+        // Black rooks - second rook (if exists)
+        if (blackRooks) {
+            const int sq2 = popLSB(blackRooks);
+            const int file2 = sq2 & 7;
+            const int rank2 = sq2 >> 3;
+            const uint64_t fm2 = FILE_MASKS[file2];
+            const bool ownPawnOnFile2 = (blackPawns & fm2) != 0;
+            const bool oppPawnOnFile2 = (whitePawns & fm2) != 0;
+            const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? -OPEN_FILE_ROOK_BONUS : -SEMI_OPEN_FILE_ROOK_BONUS);
+            score += fileBonus2 + (rank2 == 1) * (-ROOK_ON_SEVENTH_BONUS);
+        }
     }
 
     return score;
@@ -586,22 +607,33 @@ __attribute__((hot))
 int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
+    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
+    // White side
+    {
+        uint64_t minors = b.knights_bb[0] | b.bishops_bb[0];
+        if (minors) {
+            const uint64_t friends = b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0];
+            while (minors) {
+                const int sq = popLSB(minors);
+                const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
+                if ((friends & nearby) == 0) {
+                    score -= COORDINATION_PENALTY;  // FIX: COORDINATION_PENALTY is already negative
+                }
+            }
+        }
+    }
 
-        // Minor pieces: knights and bishops
-        uint64_t minors = b.knights_bb[side] | b.bishops_bb[side];
-        if (!minors) continue;
-
-        // All friendly pieces (including pawns) - used to check proximity
-        const uint64_t friends = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side];
-
-        while (minors) {
-            const int sq = popLSB(minors);
-            const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
-            if ((friends & nearby) == 0) {
-                // No friendly piece within Manhattan distance <= 2
-                score += sign * (-COORDINATION_PENALTY);  // FIX: COORDINATION_PENALTY is already negative
+    // Black side
+    {
+        uint64_t minors = b.knights_bb[1] | b.bishops_bb[1];
+        if (minors) {
+            const uint64_t friends = b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1];
+            while (minors) {
+                const int sq = popLSB(minors);
+                const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
+                if ((friends & nearby) == 0) {
+                    score += COORDINATION_PENALTY;  // FIX: COORDINATION_PENALTY is already negative
+                }
             }
         }
     }
@@ -613,32 +645,49 @@ __attribute__((hot))
 int64_t Engine::evalOutposts(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-
-        // Consider knights and bishops for outposts (knights benefit more)
-        uint64_t knights = b.knights_bb[side];
+    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
+    // White side
+    {
+        uint64_t knights = b.knights_bb[0];
         while (knights) {
             const int sq = popLSB(knights);
-            const int opp = side ^ 1;
-
-            // Outpost: supported by a friendly pawn and not attacked by enemy pawns
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[side][sq] & b.pawns_bb[side]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
-
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
             if (supportedByPawn && !attackedByEnemyPawn) {
-                score += sign * OUTPOST_KNIGHT_BONUS; // knight outpost bonus
+                score += OUTPOST_KNIGHT_BONUS;
             }
         }
 
-        uint64_t bishops = b.bishops_bb[side];
+        uint64_t bishops = b.bishops_bb[0];
         while (bishops) {
             const int sq = popLSB(bishops);
-            const int opp = side ^ 1;
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[side][sq] & b.pawns_bb[side]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
             if (supportedByPawn && !attackedByEnemyPawn) {
-                score += sign * (OUTPOST_BISHOP_BONUS / 2); // smaller bonus for bishops
+                score += (OUTPOST_BISHOP_BONUS / 2);
+            }
+        }
+    }
+
+    // Black side
+    {
+        uint64_t knights = b.knights_bb[1];
+        while (knights) {
+            const int sq = popLSB(knights);
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
+            if (supportedByPawn && !attackedByEnemyPawn) {
+                score -= OUTPOST_KNIGHT_BONUS;
+            }
+        }
+
+        uint64_t bishops = b.bishops_bb[1];
+        while (bishops) {
+            const int sq = popLSB(bishops);
+            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
+            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
+            if (supportedByPawn && !attackedByEnemyPawn) {
+                score -= (OUTPOST_BISHOP_BONUS / 2);
             }
         }
     }
@@ -652,37 +701,55 @@ inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
           - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
 }
 
+// OPTIMIZATION: Template dispatcher for initiative (compile-time branch elimination)
+template<bool IsEndgame>
+inline static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept {
+    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+    return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
+}
+
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
-    const int64_t bonus = isEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
-    return (b.getActiveColor() == chess::Board::WHITE) ? bonus : -bonus;
+    // OPTIMIZATION: Template dispatcher for compile-time branch elimination
+    return isEndgame 
+        ? evalInitiativeImpl<true>(b.getActiveColor()) 
+        : evalInitiativeImpl<false>(b.getActiveColor());
+}
+
+// OPTIMIZATION: Template dispatcher for side-dependent evaluation (compile-time branch elimination)
+template<int Side>
+inline static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
+    static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
+    
+    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
+    const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
+    
+    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
+    const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
+    
+    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
+    
+    if constexpr (Side == 0) {
+        return score;
+    } else {
+        return -score;
+    }
 }
 
 __attribute__((hot))
 int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    // OPTIMIZATION: calculate in batches instead of per-bishop loops
-    constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
-    
-    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightPawnCount = __builtin_popcountll(pawns & ~DARK_SQUARES);
-    
-    // Conta alfieri su caselle scure/chiare
-    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-    const int lightBishops = __builtin_popcountll(bishops & ~DARK_SQUARES);
-    
-    // Score = - (dark_bishops * dark_pawns + light_bishops * light_pawns) * 8
-    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
-    
-    return (side == 0) ? score : -score;
+    // OPTIMIZATION: Template dispatcher for compile-time branch elimination
+    return (side == 0) ? evalBadBishopImpl<0>(bishops, pawns) : evalBadBishopImpl<1>(bishops, pawns);
 }
 
 // OPTIMIZATION: reward development using bitboard batches (no loop)
 __attribute__((hot))
 int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
+    // OPTIMIZATION: Constexpr starting position masks
     // Caselle iniziali per i pezzi minori
     // CAUTION: bit 0-7 = rank 8 (BLACK), bit 56-63 = rank 1 (WHITE)
-    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
-    constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
+    static constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
+    static constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
     
     // Conta pezzi sviluppati (fuori dalle caselle iniziali) in una sola operazione
     const int whiteDeveloped = 
@@ -697,19 +764,18 @@ int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
 }
 
 int64_t Engine::evalEarlyQueen(const chess::Board& b) noexcept {
+    // OPTIMIZATION: Constexpr queen starting positions
+    static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59); // d1
+    static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);  // d8
+    static constexpr int64_t EARLY_QUEEN_DEV_PENALTY = 20;
+    
     int64_t score = 0;
 
     // FIX: Was ATTACKED_QUEEN_PENALTY * 8 = -200cp! Way too aggressive.
     // Reduced to a mild -20cp penalty for queen not on starting square.
-    // White queen
-    if (b.queens_bb[0] && !(b.queens_bb[0] & chess::Board::bitMask(59))) {
-        score -= 20; // Mild penalty for early queen development
-    }
-
-    // Black queen
-    if (b.queens_bb[1] && !(b.queens_bb[1] & chess::Board::bitMask(3))) {
-        score += 20; // Mild penalty for early queen development (positive = bad for black)
-    }
+    // OPTIMIZATION: Branchless scoring
+    score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
+    score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
     return score;
 }
@@ -817,7 +883,8 @@ int64_t Engine::evalHangingPieces(const chess::Board& b, const AttackData data[2
 
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
+    // OPTIMIZATION: Static constexpr center mask
+    static constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
     return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
 }
 
@@ -907,7 +974,7 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
 // The "king zone" is the set of squares within distance 1 of the king
 // (the 3x3 area around the king, clipped at board edges).
 __attribute__((hot))
-int64_t Engine::evalKingAttackZone(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept {
+int64_t Engine::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
     int64_t score = 0;
 
     for (int side = 0; side < 2; ++side) {
@@ -979,52 +1046,66 @@ int64_t Engine::evalKingAttackZone(const chess::Board& b, const AttackData data[
     return score;
 }
 
-int Engine::manhattan(int a, int b) noexcept {
-    return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
-}
-
 __attribute__((hot))
 int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
     int64_t score = 0;
 
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-        const uint64_t kingBB = b.kings_bb[side];
-        if (!kingBB) [[unlikely]] continue;
+    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
+    // White side
+    {
+        const uint64_t kingBB = b.kings_bb[0];
+        if (kingBB) [[likely]] {
+            const int ksq = __builtin_ctzll(kingBB);
+            const uint64_t proximityMask = KING_PROXIMITY_MASKS[ksq];
 
-        const int ksq = __builtin_ctzll(kingBB);
-
-        // OPTIMIZATION: use precomputed proximity masks (distance <= 2)
-        // This replaces the expensive manhattan distance loops
-        const uint64_t proximityMask = KING_PROXIMITY_MASKS[ksq];
-
-        // ENDGAME: king activity (count nearby friendly pieces)
-        if (isEndgame) {
-            const uint64_t friends =
-                b.pawns_bb[side]   |
-                b.knights_bb[side] |
-                b.bishops_bb[side] |
-                b.rooks_bb[side]   |
-                b.queens_bb[side];
-            
-            // Single popcount instead of loop with manhattan!
-            const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
-            score += sign * friendsNearKing * KING_ACTIVITY_BONUS;
+            if (isEndgame) {
+                const uint64_t friends =
+                    b.pawns_bb[0]   |
+                    b.knights_bb[0] |
+                    b.bishops_bb[0] |
+                    b.rooks_bb[0]   |
+                    b.queens_bb[0];
+                const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
+                score += friendsNearKing * KING_ACTIVITY_BONUS;
+            } else {
+                const uint64_t enemies =
+                    b.pawns_bb[1]   |
+                    b.knights_bb[1] |
+                    b.bishops_bb[1] |
+                    b.rooks_bb[1]   |
+                    b.queens_bb[1];
+                const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
+                score += enemiesNearKing * KING_SAFETY_PENALTY;
+            }
         }
+    }
 
-        // MIDGAME ONLY: enemy proximity penalty (count nearby enemy pieces)
-        // In endgame, the king needs to attack, so we don't penalize enemy proximity
-        if (!isEndgame) {
-            const uint64_t enemies =
-                b.pawns_bb[side ^ 1]   |
-                b.knights_bb[side ^ 1] |
-                b.bishops_bb[side ^ 1] |
-                b.rooks_bb[side ^ 1]   |
-                b.queens_bb[side ^ 1];
+    // Black side
+    {
+        const uint64_t kingBB = b.kings_bb[1];
+        if (kingBB) [[likely]] {
+            const int ksq = __builtin_ctzll(kingBB);
+            const uint64_t proximityMask = KING_PROXIMITY_MASKS[ksq];
 
-            // Single popcount instead of loop with manhattan!
-            const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
-            score += sign * enemiesNearKing * KING_SAFETY_PENALTY;
+            if (isEndgame) {
+                const uint64_t friends =
+                    b.pawns_bb[1]   |
+                    b.knights_bb[1] |
+                    b.bishops_bb[1] |
+                    b.rooks_bb[1]   |
+                    b.queens_bb[1];
+                const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
+                score -= friendsNearKing * KING_ACTIVITY_BONUS;
+            } else {
+                const uint64_t enemies =
+                    b.pawns_bb[0]   |
+                    b.knights_bb[0] |
+                    b.bishops_bb[0] |
+                    b.rooks_bb[0]   |
+                    b.queens_bb[0];
+                const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
+                score -= enemiesNearKing * KING_SAFETY_PENALTY;
+            }
         }
     }
 
@@ -1032,58 +1113,68 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 }
 
 int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
-    constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
+    // OPTIMIZATION: Constexpr center squares
+    static constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
     int64_t score = 0;
 
-    for (int side = 0; side < 2; ++side) {
-        const uint64_t kbb = b.kings_bb[side];
-        if (!kbb) [[unlikely]] continue;
-
-        const int sq = __builtin_ctzll(kbb);
-        int best = 99;
-        for (int c : CENTER)
-            best = std::min(best, manhattan(sq, c));
-
-        // White king near center (small best) => bonus for white (positive)
-        // Black king near center (small best) => bonus for black (negative)
-        const int centralityBonus = (7 - best) * 10;
-        score += (side == 0 ? centralityBonus : -centralityBonus);
+    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
+    // White side
+    {
+        const uint64_t kbb = b.kings_bb[0];
+        if (kbb) [[likely]] {
+            const int sq = __builtin_ctzll(kbb);
+            // OPTIMIZATION: Manual unroll center distance calculation (4 iterations)
+            int best = manhattan(sq, CENTER[0]);
+            best = std::min(best, manhattan(sq, CENTER[1]));
+            best = std::min(best, manhattan(sq, CENTER[2]));
+            best = std::min(best, manhattan(sq, CENTER[3]));
+            score += (7 - best) * 10;
+        }
     }
+
+    // Black side
+    {
+        const uint64_t kbb = b.kings_bb[1];
+        if (kbb) [[likely]] {
+            const int sq = __builtin_ctzll(kbb);
+            // OPTIMIZATION: Manual unroll center distance calculation (4 iterations)
+            int best = manhattan(sq, CENTER[0]);
+            best = std::min(best, manhattan(sq, CENTER[1]));
+            best = std::min(best, manhattan(sq, CENTER[2]));
+            best = std::min(best, manhattan(sq, CENTER[3]));
+            score -= (7 - best) * 10;
+        }
+    }
+    
     return score;
 }
 
 int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
+    // OPTIMIZATION: Constexpr castling position masks
     // Castling positions (a8=0, h1=63):
     // White: g1=62 (kingside), c1=58 (queenside), f1=61, d1=59
     // Black: g8=6 (kingside), c8=2 (queenside), f8=5, d8=3
-    constexpr uint64_t WHITE_KING_CASTLED  = (chess::Board::bitMask(62) | chess::Board::bitMask(58));
-    constexpr uint64_t WHITE_ROOK_CASTLED  = (chess::Board::bitMask(61) | chess::Board::bitMask(59));
-    constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
-    constexpr uint64_t BLACK_ROOK_CASTLED  = (chess::Board::bitMask(5)  | chess::Board::bitMask(3));
+    static constexpr uint64_t WHITE_KING_CASTLED  = (chess::Board::bitMask(62) | chess::Board::bitMask(58));
+    static constexpr uint64_t WHITE_ROOK_CASTLED  = (chess::Board::bitMask(61) | chess::Board::bitMask(59));
+    static constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
+    static constexpr uint64_t BLACK_ROOK_CASTLED  = (chess::Board::bitMask(5)  | chess::Board::bitMask(3));
+    static constexpr int64_t LOSS_OF_CASTLING_PENALTY = 60;
 
     int64_t score = 0;
 
     // WHITE
-    bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
-    bool whiteCanCastle = b.getCastle(0) || b.getCastle(1); // kingside or queenside
+    const bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
+    const bool whiteCanCastle = b.getCastle(0) || b.getCastle(1); // kingside or queenside
     
-    if (whiteHasCastled) {
-        score += CASTLING_BONUS;
-    } else if (!whiteCanCastle) {
-        // Ha perso il diritto di arroccare senza aver arroccato! PENALITA' GRAVE
-        score -= 60;
-    }
+    score += whiteHasCastled * CASTLING_BONUS;
+    score -= (!whiteHasCastled && !whiteCanCastle) * LOSS_OF_CASTLING_PENALTY;
 
     // BLACK
-    bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
-    bool blackCanCastle = b.getCastle(2) || b.getCastle(3); // kingside or queenside
+    const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
+    const bool blackCanCastle = b.getCastle(2) || b.getCastle(3); // kingside or queenside
     
-    if (blackHasCastled) {
-        score -= CASTLING_BONUS;
-    } else if (!blackCanCastle) {
-        // Ha perso il diritto di arroccare senza aver arroccato! PENALITA' GRAVE
-        score += 60;
-    }
+    score -= blackHasCastled * CASTLING_BONUS;
+    score += (!blackHasCastled && !blackCanCastle) * LOSS_OF_CASTLING_PENALTY;
 
     return score;
 }
@@ -1466,11 +1557,6 @@ int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
     const uint64_t blackPawns = board.pawns_bb[1];
-
-    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
-                                             board.bishops_bb[0] | board.bishops_bb[1] |
-                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
-                                             board.queens_bb[0]  | board.queens_bb[1]);
 
     // PSQT
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (true ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
