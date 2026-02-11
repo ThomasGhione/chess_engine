@@ -413,6 +413,28 @@ ut::suite EndingGameSuite = [] {
       // << "Shouldn't sacrifice the knight (h4 g6), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
   // };
   
+  "critical position 17, avoid sacrificing knight"_test = []{
+    // Position from a real game where the engine sacrificed its knight on f2/g3
+    // for a pawn. This is a bad trade: knight (320) for pawn (100).
+    // Stockfish recommends g5g4 or other quiet moves.
+    engine::Engine e = engine::Engine("kq6/pp3p2/4b2p/1NP1p1p1/2P1n3/Q3P1P1/P1B2PP1/6K1 b - - 8 39");
+    e.depth = 10;
+
+    // Use search() for realistic behavior (iterative deepening + move ordering),
+    // rather than getBestMove() directly which skips iterative deepening.
+    e.search(e.depth);
+    chess::Board::Move bestMove = e.bestMove;
+
+    // The knight on e4 should NOT be sacrificed on g3, f2, or c3
+    // (capturing defended pawns loses material: knight 320 vs pawn 100).
+    const bool isKnightSacrifice = (bestMove.from == chess::Coords("e4")) &&
+      (bestMove.to == chess::Coords("g3") || bestMove.to == chess::Coords("f2") || bestMove.to == chess::Coords("c3"));
+
+    // let's keep this as always fail to make sure we see the move that the engine is trying to play, which should be a knight sacrifice if the bug is present
+    expect(false && !isKnightSacrifice)
+      << "Shouldn't sacrifice the knight, got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
   "critical position 14, avoid sacrificing knight"_test = []{
     engine::Engine e = engine::Engine("r4rk1/ppp2ppp/2nq4/2R1p3/1P6/P2PB2P/5PP1/3QR1K1 b - - 4 22");
 

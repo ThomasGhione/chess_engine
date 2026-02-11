@@ -86,10 +86,17 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LMR: reduce depth for late, non-critical moves
         // BALANCED: slight improvement in tactics without major speed penalty
         const int64_t childDepth = ctx.depth - 1;
+
+        // SEE-based pruning/reduction for BAD captures (e.g., Nxg3 with SEE = -220)
+        // If a capture is clearly losing material (SEE < threshold), reduce its search depth.
+        // This prevents the engine from finding false "compensation" for piece sacrifices
+        // through excessive pawn structure penalties deep in the search tree.
+        const bool isBadCapture = wasCapture && (scoredMove.score < -500);  // Bad captures have scores like -500-XXX_PIECE_VALUE
+
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
             && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
-            && !wasCapture                                   // ...isn't a capture...
+            && (!wasCapture|| isBadCapture)                  // ...isn't a (good) capture...
             && !givesCheck                                   // ...doesn't give check...
             && !this->isKillerMove(m, killerMoves, ctx.ply); // ...isn't a killer move
 
@@ -100,6 +107,9 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
             if (moveIndex >= 10) reduction += 2; // -2 if very late (>= 10th move)
             
+            // Extra reduction for bad captures (SEE-losing): these are rarely good moves
+            // A knight capturing a defended pawn (SEE = -220) should be searched shallowly
+            if (isBadCapture) reduction += 2;
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
