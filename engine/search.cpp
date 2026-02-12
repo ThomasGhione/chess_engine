@@ -92,7 +92,13 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // This prevents the engine from finding false "compensation" for piece sacrifices
         // through excessive pawn structure penalties deep in the search tree.
         const bool isBadCapture = wasCapture && (scoredMove.score < -500);  // Bad captures have scores like -500-XXX_PIECE_VALUE
-
+        const bool isOpening = b.getFullMoveClock() < 14; // Consider first 10 moves as opening (adjustable threshold)
+        const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
+                                             board.bishops_bb[0] | board.bishops_bb[1] |
+                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
+                                             board.queens_bb[0]  | board.queens_bb[1]);
+        const bool isEndgame = (nonPawnMajors <= 5 /*PIECE_ENDGAME_THRESHOLD*/);
+        
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
             && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
@@ -102,14 +108,22 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         int64_t score = 0;
         if (canReduce) {
-            // Adaptive reduction: balanced between speed and accuracy
             int64_t reduction = 1;
+            if (isOpening) {
+                if (moveIndex >= 16) reduction += 2; // -2 if late in opening (after 6th move)
+            }
+            else if (isEndgame) {
+                if (moveIndex >= 16) reduction += 2;
+            }
+            else {
+                if (moveIndex >= 12) reduction += 2; // -2 if very late (>= 10th move)  
+            }
+        
+            // Adaptive reduction: balanced between speed and accuracy
             if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            if (moveIndex >= 10) reduction += 2; // -2 if very late (>= 10th move)
-            
             // Extra reduction for bad captures (SEE-losing): these are rarely good moves
             // A knight capturing a defended pawn (SEE = -220) should be searched shallowly
-            if (isBadCapture) reduction += 2;
+            if (isBadCapture) reduction += 2;    
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
