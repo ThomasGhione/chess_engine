@@ -1,6 +1,8 @@
 #include "engine.hpp"
 
 namespace engine {
+inline static constexpr auto WHITE_FORWARD_FILL = Engine::initWhiteForwardFill();
+inline static constexpr auto BLACK_FORWARD_FILL = Engine::initBlackForwardFill();
 
 __attribute__((hot))
 int64_t Engine::evaluate(const chess::Board& board) noexcept {
@@ -33,9 +35,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     constexpr int EARLY_MG_MOVES = 15;     // mosse 10-15 = early middlegame
     constexpr int PIECE_ENDGAME_THRESHOLD = 5;  // TUNED: was 8 (too high, triggered endgame too early)
     
-    // BUG FIX: Game phases must be MUTUALLY EXCLUSIVE
-    // Priority: endgame (few pieces) > opening (early moves) > early middlegame > middlegame
-    // This ensures one and only one phase is active
     const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
     const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
     const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
@@ -96,7 +95,7 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
         eval += evalMobility(attackData);
         
         // Initiative bonus (side to move advantage)
-        eval += evalInitiative(board, false);
+        eval += Engine::evalInitiative(board, false);
         
         // Penalize bishops that block pawns directly (opening)
         eval += evalBlockedPawnByBishops(board);
@@ -227,128 +226,6 @@ int64_t Engine::evaluate(const chess::Board& board) noexcept {
     return eval;
 }
 
-int64_t Engine::getMaterialDelta(const chess::Board& b) noexcept {
-    return static_cast<int64_t>(
-          (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
-        + (__builtin_popcountll(b.knights_bb[0]) - __builtin_popcountll(b.knights_bb[1])) * PIECE_VALUES[chess::Board::KNIGHT]
-        + (__builtin_popcountll(b.bishops_bb[0]) - __builtin_popcountll(b.bishops_bb[1])) * PIECE_VALUES[chess::Board::BISHOP]
-        + (__builtin_popcountll(b.rooks_bb[0])   - __builtin_popcountll(b.rooks_bb[1]))   * PIECE_VALUES[chess::Board::ROOK]
-        + (__builtin_popcountll(b.queens_bb[0])  - __builtin_popcountll(b.queens_bb[1]))  * PIECE_VALUES[chess::Board::QUEEN]
-        + (__builtin_popcountll(b.kings_bb[0])   - __builtin_popcountll(b.kings_bb[1]))   * PIECE_VALUES[chess::Board::KING]);
-}
-
-int64_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
-    return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
-}
-
-__attribute__((always_inline))
-inline static constexpr uint64_t adjacentFilesMask(int file) noexcept {
-    uint64_t m = 0;
-    if (file > 0) m |= chess::Board::fileMask(file - 1);
-    if (file < 7) m |= chess::Board::fileMask(file + 1);
-    return m;
-}
-
-
-
-
-
-// ===================================================
-// PRECOMPUTED MASKS FOR FASTER EVALUATION
-// ===================================================
-
-// Forward fill masks for passed pawn detection (compile-time constant)
-inline static constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
-    std::array<uint64_t, 64> result{};
-    for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
-        // White pawns move toward decreasing rank (rank 0 is promotion).
-        // Forward squares = all ranks strictly less than current rank.
-        result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
-    }
-    return result;
-}
-
-inline static constexpr std::array<uint64_t, 64> initBlackForwardFill() {
-    std::array<uint64_t, 64> result{};
-    for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
-        // Black pawns move toward increasing rank (rank 7 is promotion).
-        // Forward squares = all ranks strictly greater than current rank.
-        result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
-    }
-    return result;
-}
-
-inline static constexpr auto WHITE_FORWARD_FILL = initWhiteForwardFill();
-inline static constexpr auto BLACK_FORWARD_FILL = initBlackForwardFill();
-
-// File masks (already defined in fileMask() but we precalculate for speed)
-inline static constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
-    std::array<uint64_t, 8> masks{};
-    for (int f = 0; f < 8; ++f) {
-        masks[f] = 0x0101010101010101ULL << f;
-    }
-    return masks;
-}();
-
-// Adjacent files ONLY (without center file) - optimization for isolated pawn check
-inline static constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
-    std::array<uint64_t, 8> masks{};
-    for (int f = 0; f < 8; ++f) {
-        uint64_t m = 0;
-        if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
-        if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
-        masks[f] = m;
-    }
-    return masks;
-}();
-
-// Precalculated adjacent files mask (including center file)
-inline static constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
-    std::array<uint64_t, 8> masks{};
-    for (int f = 0; f < 8; ++f) {
-        uint64_t m = (0x0101010101010101ULL << f); // center file
-        if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
-        if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
-        masks[f] = m;
-    }
-    return masks;
-}();
-
-// Dark/Light square masks for bad bishop evaluation
-inline static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
-inline static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
-
-// King proximity masks (squares at distance <= 2 from each square)
-inline static constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
-    std::array<uint64_t, 64> masks{};
-    for (int sq = 0; sq < 64; ++sq) {
-        uint64_t mask = 0;
-        const int rank = chess::Board::rankOf(sq);
-        const int file = chess::Board::fileOf(sq);
-        
-        // All squares within Manhattan distance 2
-        for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
-            for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
-                const int target = (r << 3) | f;
-                const int dist = std::abs(r - rank) + std::abs(f - file);
-                if (dist <= 2 && target != sq) {
-                    mask |= chess::Board::bitMask(target);
-                }
-            }
-        }
-        masks[sq] = mask;
-    }
-    return masks;
-}();
-
-/* helper ends */
-
-
-
-
-
 
 __attribute__((hot))
 int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
@@ -433,10 +310,6 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
                 score -= PASSED_PAWN_BONUS / 2;
             }
             if (isEndgame) {
-                // BUG FIX: White pawns move from rank 6 (row 2) toward rank 0 (row 8/promotion)
-                // Closer to promotion = higher rank value → INVERTED: use (6 - rank)
-                // rank 1 (row 7, near promotion) → 5*4 = 20cp
-                // rank 6 (row 2, far from promotion) → 0*4 = 0cp
                 score += (6 - rank) * 4; // Reduced from 6
             }
         }
@@ -489,7 +362,6 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
             score -= PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
-            // FIX: was using rank directly (range 1-6), now using rank-1 (range 0-5) to match white
             const int advancement = rank - 1; // rank 1 (start) -> 0, rank 6 (near promo) -> 5
             score -= advancement * (isEndgame ? 6 : 2);
 
@@ -504,10 +376,6 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
                 score += PASSED_PAWN_BONUS / 2;
             }
             if (isEndgame) {
-                // FIX: Black pawns move from rank 1 toward rank 7 (promotion)
-                // Use (rank - 1) for range 0-5 to match white's (6 - rank)
-                // rank 6 (near promotion) → 5*4 = 20cp
-                // rank 1 (far from promotion) → 0*4 = 0cp
                 score -= (rank - 1) * 4;
             }
         }
@@ -517,7 +385,6 @@ int64_t Engine::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool
 }
 
 int64_t Engine::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
-    // OPTIMIZATION: Constexpr center blocking masks
     static constexpr uint64_t WHITE_D4_PAWN = chess::Board::bitMask(27);
     static constexpr uint64_t BLACK_D5_PIECE = chess::Board::bitMask(35);
     static constexpr uint64_t WHITE_BLOCKED_KNIGHTS = chess::Board::bitMask(18) | chess::Board::bitMask(21);
@@ -607,7 +474,6 @@ __attribute__((hot))
 int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
     // White side
     {
         uint64_t minors = b.knights_bb[0] | b.bishops_bb[0];
@@ -617,7 +483,7 @@ int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
                 const int sq = popLSB(minors);
                 const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
                 if ((friends & nearby) == 0) {
-                    score -= COORDINATION_PENALTY;  // FIX: COORDINATION_PENALTY is already negative
+                    score -= COORDINATION_PENALTY;
                 }
             }
         }
@@ -632,7 +498,7 @@ int64_t Engine::evalPieceCoordination(const chess::Board& b) noexcept {
                 const int sq = popLSB(minors);
                 const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
                 if ((friends & nearby) == 0) {
-                    score += COORDINATION_PENALTY;  // FIX: COORDINATION_PENALTY is already negative
+                    score += COORDINATION_PENALTY;
                 }
             }
         }
@@ -645,7 +511,6 @@ __attribute__((hot))
 int64_t Engine::evalOutposts(const chess::Board& b) noexcept {
     int64_t score = 0;
 
-    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
     // White side
     {
         uint64_t knights = b.knights_bb[0];
@@ -701,53 +566,14 @@ inline int64_t Engine::evalMobility(const AttackData data[2]) noexcept {
           - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
 }
 
-// OPTIMIZATION: Template dispatcher for initiative (compile-time branch elimination)
-template<bool IsEndgame>
-inline static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept {
-    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
-    return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-}
-
-__attribute__((hot, always_inline))
-inline int64_t Engine::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
-    // OPTIMIZATION: Template dispatcher for compile-time branch elimination
-    return isEndgame 
-        ? evalInitiativeImpl<true>(b.getActiveColor()) 
-        : evalInitiativeImpl<false>(b.getActiveColor());
-}
-
-// OPTIMIZATION: Template dispatcher for side-dependent evaluation (compile-time branch elimination)
-template<int Side>
-inline static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
-    static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
-    
-    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
-    
-    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-    const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
-    
-    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
-    
-    if constexpr (Side == 0) {
-        return score;
-    } else {
-        return -score;
-    }
-}
 
 __attribute__((hot))
 int64_t Engine::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    // OPTIMIZATION: Template dispatcher for compile-time branch elimination
-    return (side == 0) ? evalBadBishopImpl<0>(bishops, pawns) : evalBadBishopImpl<1>(bishops, pawns);
+    return (side == 0) ? Engine::evalBadBishopImpl<0>(bishops, pawns) : Engine::evalBadBishopImpl<1>(bishops, pawns);
 }
 
-// OPTIMIZATION: reward development using bitboard batches (no loop)
 __attribute__((hot))
 int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
-    // OPTIMIZATION: Constexpr starting position masks
-    // Caselle iniziali per i pezzi minori
-    // CAUTION: bit 0-7 = rank 8 (BLACK), bit 56-63 = rank 1 (WHITE)
     static constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
     static constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
     
@@ -764,16 +590,12 @@ int64_t Engine::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
 }
 
 int64_t Engine::evalEarlyQueen(const chess::Board& b) noexcept {
-    // OPTIMIZATION: Constexpr queen starting positions
     static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59); // d1
     static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);  // d8
     static constexpr int64_t EARLY_QUEEN_DEV_PENALTY = 20;
     
     int64_t score = 0;
 
-    // FIX: Was ATTACKED_QUEEN_PENALTY * 8 = -200cp! Way too aggressive.
-    // Reduced to a mild -20cp penalty for queen not on starting square.
-    // OPTIMIZATION: Branchless scoring
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
@@ -883,7 +705,6 @@ int64_t Engine::evalHangingPieces(const chess::Board& b, const AttackData data[2
 
 __attribute__((hot, always_inline))
 inline int64_t Engine::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    // OPTIMIZATION: Static constexpr center mask
     static constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
     return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
 }
@@ -907,7 +728,6 @@ int64_t Engine::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint6
         if (!hasCastled) {
             score += sign * (-KING_NON_CASTLING_PENALTY);
             
-            // OPTIMIZATION: Penalize moving kingside/queenside pawns before castling
             // This weakens king safety if castling rights are still available
             const bool canCastleKingside = (side == 0) ? b.getCastle(0) : b.getCastle(2);
             const bool canCastleQueenside = (side == 0) ? b.getCastle(1) : b.getCastle(3);
@@ -990,9 +810,6 @@ int64_t Engine::evalKingAttackZone(const chess::Board& b, const AttackData data[
         // King zone: king square + all adjacent squares (up to 8)
         const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::bitMask(enemyKingSq);
         
-        // CRITICAL FIX: Only count DEVELOPED pieces attacking the king zone
-        // Pieces are "developed" if they're not on their starting squares
-        // This prevents rewarding attacks before pieces are actually developed
         constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 1 & 2 (bit 56-63 + 48-55)
         constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL; // rank 8 & 7 (bit 0-7 + 8-15)
         
@@ -1050,7 +867,6 @@ __attribute__((hot))
 int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
     int64_t score = 0;
 
-    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
     // White side
     {
         const uint64_t kingBB = b.kings_bb[0];
@@ -1113,17 +929,14 @@ int64_t Engine::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept
 }
 
 int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
-    // OPTIMIZATION: Constexpr center squares
     static constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
     int64_t score = 0;
 
-    // OPTIMIZATION: Manual unroll side loop (only 2 iterations)
     // White side
     {
         const uint64_t kbb = b.kings_bb[0];
         if (kbb) [[likely]] {
             const int sq = __builtin_ctzll(kbb);
-            // OPTIMIZATION: Manual unroll center distance calculation (4 iterations)
             int best = manhattan(sq, CENTER[0]);
             best = std::min(best, manhattan(sq, CENTER[1]));
             best = std::min(best, manhattan(sq, CENTER[2]));
@@ -1137,7 +950,6 @@ int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
         const uint64_t kbb = b.kings_bb[1];
         if (kbb) [[likely]] {
             const int sq = __builtin_ctzll(kbb);
-            // OPTIMIZATION: Manual unroll center distance calculation (4 iterations)
             int best = manhattan(sq, CENTER[0]);
             best = std::min(best, manhattan(sq, CENTER[1]));
             best = std::min(best, manhattan(sq, CENTER[2]));
@@ -1150,7 +962,6 @@ int64_t Engine::evalEndgameKingActivity(const chess::Board& b) noexcept {
 }
 
 int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
-    // OPTIMIZATION: Constexpr castling position masks
     // Castling positions (a8=0, h1=63):
     // White: g1=62 (kingside), c1=58 (queenside), f1=61, d1=59
     // Black: g8=6 (kingside), c8=2 (queenside), f8=5, d8=3
@@ -1181,14 +992,11 @@ int64_t Engine::evalCastlingBonus(const chess::Board& b) noexcept {
 
 __attribute__((hot))
 void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    // OPTIMIZATION: initialize to zero with memset (faster)
     std::memset(data, 0, 2 * sizeof(AttackData));
 
-    // OPTIMIZATION: process both sides to improve cache locality
     for (int side = 0; side < 2; ++side) {
         AttackData& d = data[side];
         
-        // OPTIMIZATION: compute own occupancy ONCE per side (reused for all pieces)
         const uint64_t ownOcc = (side == 0) 
             ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
             : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
@@ -1221,7 +1029,6 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(bishops);
             const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
             d.bishopAttacks |= attacks;
-            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
             d.bishopMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.bishopAttacks;
@@ -1232,7 +1039,6 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(rooks);
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             d.rookAttacks |= attacks;
-            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
             d.rookMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.rookAttacks;
@@ -1243,7 +1049,6 @@ void Engine::computeAttackData(AttackData data[2], const chess::Board& b, uint64
             const int sq = popLSB(queens);
             const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
             d.queenAttacks |= attacks;
-            // FIX: mobility includes captures (enemy pieces), exclude only own pieces
             d.queenMobility += __builtin_popcountll(attacks & ~ownOcc);
         }
         d.allAttacks |= d.queenAttacks;
@@ -1314,9 +1119,6 @@ int64_t Engine::evalRookEndgamePressure(const chess::Board& b) noexcept {
         const bool sideHasAdvantage = (side == 0) ? whiteHasRookAdvantage : blackHasRookAdvantage;
         if (!sideHasAdvantage) continue;
 
-        // BUGFIX: Only apply mating pressure if opponent has very limited material.
-        // If opponent has a queen or significant pieces, a single rook advantage
-        // is NOT enough for a mating net.
         const int oppSide = side ^ 1;
         const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
         const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
@@ -1477,10 +1279,6 @@ int64_t Engine::evalDoubleRookEndgame(const chess::Board& b) noexcept {
         
         if (ourRooks < 2 || ourRooks <= oppRooks) continue;
 
-        // BUGFIX: Only apply mating pressure if opponent has very limited material.
-        // If opponent has a queen or significant other pieces, the rook advantage
-        // alone is NOT a mating net. This was generating -806cp penalties in positions
-        // where opponent had Q+R+B, causing the engine to sacrifice pieces.
         const int oppSide = side ^ 1;
         const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
         const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
@@ -1575,7 +1373,6 @@ int64_t Engine::evaluateTrace(const chess::Board& board) noexcept {
     const char* phase = isEndgame ? "ENDGAME" : isOpening ? "OPENING" : isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
     std::cout << "  [TRACE] phase: " << phase << " (nonPawnMajors=" << nonPawnMajors << ", fullMoves=" << fullMoves << ")" << std::endl;
 
-    // PSQT (BUG FIX: was hardcoded to endgame tables with `true ?`)
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
     addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
     addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
