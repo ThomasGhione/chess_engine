@@ -93,56 +93,77 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
         this->board.undoMove(firstMove, state);
 
-        bestScore = score;
-        bestMove = firstMove;
-        updateBound(score, alpha, beta, usIsWhite);
+        this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
 
-    // Mosse successive: ricerca parallela con null window
-    std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
+    if (moves.size <= 1) [[unlikely]] return bestMove;
 
+    // CRITICAL FIX: Save original alpha/beta before the parallel loop
+    // All threads must see the same window to guarantee determinism
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;
 
-    // Parallel section: one task per move (except first)
-    #pragma omp parallel
-    {
-        #pragma omp single nowait
+    // std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
+    std::array<int64_t, 218> threadScores; // 218 = max moves 
+    threadScores.fill(Engine::initialBest(usIsWhite));
+
+    // Task-based root parallelism (work-stealing, better load balance)
+    // Bound the number of threads to MAX_THREADS and the number of moves
+    int candidateThreads = static_cast<int>(moves.size - 1);
+    if (candidateThreads < 1) candidateThreads = 1;
+    const int threadsToUse = (this->MAX_THREADS < candidateThreads) ? this->MAX_THREADS : candidateThreads;
+
+    if (threadsToUse <= 1) {
+        // Sequential fallback (avoid OpenMP overhead)
+        for (int i = 1; i < moves.size; ++i) {
+            chess::Board threadBoard = this->board;
+            const auto m = moves[i]; // copy to avoid referencing container inside tasks
+            chess::Board::MoveState state;
+
+            doMoveWithPromotion(threadBoard, m, state);
+            int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+            threadBoard.undoMove(m, state);
+
+            threadScores[i] = score;
+        }
+    } else {
+        // Parallel region with chunked tasks to reduce task overhead and copies
+        // We create tasks that process a contiguous range of moves. Each task copies the board ONCE
+        // and evaluates all moves in the chunk sequentially. We use taskgroup to
+        // wait for all tasks deterministically before merging results.
+        const int totalJobs = static_cast<int>(moves.size - 1);
+        int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
+        const int chunk = std::min(16, estimatedChunk); // cap chunk size to avoid too-large tasks
+
+        #pragma omp parallel num_threads(threadsToUse)        
         {
-            for (int i = 1; i < moves.size; ++i) {
-                #pragma omp task firstprivate(i)
+            #pragma omp single nowait
+            {
+                #pragma omp taskgroup
                 {
-                    // Thread-local copy of the board to avoid race conditions
-                    chess::Board threadBoard = this->board;
-                    const auto& m = moves[i];
-                    const bool isWhite = (threadBoard.getActiveColor() == chess::Board::WHITE);
+                    for (int start = 1; start <= totalJobs; start += chunk) {
+                        const int end = std::min(start + chunk, static_cast<int>(moves.size));
+                        #pragma omp task firstprivate(start, end)
+                        {
+                            // Make ONE copy of the board for this task using copy ctor (safe)
+                            chess::Board threadBoard = this->board;
 
-                    // Early skip if move is unlikely to improve alpha/beta
-                    // This reduces overhead on obviously bad moves (e.g., hanging pieces)
-                    int64_t nullAlpha = isWhite ? originalAlpha : originalBeta - 1;
-                    int64_t nullBeta  = isWhite ? originalAlpha + 1 : originalBeta;
+                            for (int i = start; i < end; ++i) {
+                                const auto m = moves[i]; // local copy
+                                chess::Board::MoveState state;
 
-                    // Optional: copy killer/history heuristics if needed
-                    {
-                        chess::Board::MoveState state;
-                        threadBoard.doMove(m, state, isPromotionMove(threadBoard, m) ? 'q' : '\0');
+                                doMoveWithPromotion(threadBoard, m, state);
+                                int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+                                threadBoard.undoMove(m, state);
 
-                        int64_t score = this->searchPosition(threadBoard, this->depth - 1, nullAlpha, nullBeta, currPly, false, false);
-                        threadBoard.undoMove(m, state);
-
-                        // Re-search with full window if fail-high/fail-low
-                        if (score > nullAlpha && score < nullBeta) {
-                            threadBoard.doMove(m, state, isPromotionMove(threadBoard, m) ? 'q' : '\0');
-                            score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
-                            threadBoard.undoMove(m, state);
-                        }
-
-                        threadScores[i] = score;
+                                threadScores[i] = score;
+                            }
+                        } // task
                     }
-                } // task
-            }
-        } // single
-    } // parallel
+                } // taskgroup
+            } // single
+        } // parallel
+    }
 
     // Merge results deterministically (in ordine sequenziale, senza race)
     for (int i = 1; i < moves.size; ++i) {

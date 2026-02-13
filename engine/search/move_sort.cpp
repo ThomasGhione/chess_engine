@@ -86,19 +86,24 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // Esempio: QxP → 100 + 400 < 900 → TRUE (skip SEE, ritorna -800)
         // Esempio: QxR → 500 + 400 < 900 → FALSE (calcola SEE completo!)
         // Esempio: RxP → 100 + 400 < 500 → FALSE (calcola SEE)
-        return PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType];
+        return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType]);
     }
 
-    // Itera attraverso tutti gli attaccanti in ordine di valore
     while (depth < MAX_SEE_DEPTH) {
-        const uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
-        if (attacker == 64) break; // Nessun altro attaccante
+        // Trova l'attaccante meno prezioso verso la casella target
+        uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
+        if (attacker == 64) break;
 
-        const uint8_t currentAttackerType = b.get(attacker) & chess::Board::MASK_PIECE_TYPE;
+        // Determine attacker type using the piece bitboards AND the simulated occupancy
+        // (safer than querying b.get(...) which reflects the original board only).
         const uint64_t attackerMask = chess::Board::bitMask(attacker);
-
-        // Aggiorna la occupazione rimuovendo l'attaccante (simula la cattura)
-        occ ^= attackerMask;
+        uint8_t currentAttackerType = chess::Board::PAWN; // default/fallback
+        if ((b.pawns_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::PAWN;
+        else if ((b.knights_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KNIGHT;
+        else if ((b.bishops_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::BISHOP;
+        else if ((b.rooks_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::ROOK;
+        else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
+        else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
 
         // In questo ply si cattura il pezzo che era rimasto sulla casa target
         // (cioè il pezzo dell'ultimo catturante).
@@ -123,7 +128,6 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     return gain[0];
 }
-
 
 MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     const MoveList<chess::Board::Move>& moves,
@@ -291,16 +295,19 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             }
         }
 
+        // NOTE: Stalemate check removed from move ordering (too expensive: doMove/undoMove per move!)
+        // Stalemate is now handled ONLY in searchPosition() terminal node evaluation
+        // This is much faster and still prevents stalemate in winning positions
+
+        // King move penalties (riduci priorità mosse re in opening se non arrocco)
         if (fromPieceType == chess::Board::KING) {
-            // NOTE: legacy heuristic preserved for king moves (optional ordering tweak)
-            if (fullMoveClock < 10 && !inCheck) {
-                const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
-                const bool isCastling = (fileDelta == 2);
-                if (fullMoveClock < 10 && !inCheck && !isCastling) {
-                    score -= 500; // penalità moderata
-                } else if (isCastling) {
-                    score += 1000; // bonus arrocco
-                }
+            const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
+            const bool isCastling = (fileDelta == 2);
+
+            if (fullMoveClock < 10 && !inCheck && !isCastling) {
+                score -= 500; // penalità moderata
+            } else if (isCastling) {
+                score += 1000; // bonus arrocco
             }
         }
 

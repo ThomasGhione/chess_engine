@@ -6,16 +6,10 @@ int64_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
 }
 
+__attribute__((hot, always_inline))
 int64_t Evaluator::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    // Central squares: d4, e4, d5, e5 (indices 27, 28, 35, 36)
-    static constexpr uint64_t CENTER_MASK = 
-        chess::Board::bitMask(27) | chess::Board::bitMask(28) |
-        chess::Board::bitMask(35) | chess::Board::bitMask(36);
-    
-    const int whiteControl = __builtin_popcountll(whitePawns & CENTER_MASK);
-    const int blackControl = __builtin_popcountll(blackPawns & CENTER_MASK);
-    
-    return (whiteControl - blackControl) * CENTER_CONTROL_BONUS;
+    static constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL; // e4,d4,e5,d5
+    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
 }
 
 int64_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
