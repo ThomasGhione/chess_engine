@@ -132,14 +132,16 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
         }
         
         // Non-linear scaling: the more attackers, the more dangerous
-        // REDUCED: Now requires 2+ attackers AND reduces the scale factor
-        // 2 attackers: weight * 2/6 = weight/3 (moderate bonus)
-        // 3 attackers: weight * 3/6 = weight/2 (significant)
-        // 4 attackers: weight * 4/6 = 2*weight/3 (devastating)
+        // FORMULA QUADRATICA: attackerCount^2 incentivizes multi-piece attacks
+        // 1 attacker: 1^2 * weight / 8 = weight/8 (small)
+        // 2 attackers: 2^2 * weight / 8 = 4*weight/8 = weight/2 (4x stronger than 1!)
+        // 3 attackers: 3^2 * weight / 8 = 9*weight/8 (9x stronger than 1!)
+        // 4 attackers: 4^2 * weight / 8 = 16*weight/8 = 2*weight (devastating!)
         if (attackerCount >= 2) {
             // Only give significant bonus when 2+ piece types attack the king zone
-            // REDUCED: Divided by 6 instead of 4 to be less aggressive
-            score += sign * (attackWeight * attackerCount / 6);
+            // Quadratic scaling: attackerCount^2 * attackWeight / 8
+            const int64_t attackDanger = (attackerCount * attackerCount * attackWeight) / 8;
+            score += sign * attackDanger;
         }
     }
 

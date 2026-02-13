@@ -78,14 +78,15 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
     // EARLY-EXIT: Solo per catture OVVIAMENTE perdenti (es. QxP con riconquista garantita)
-    // Soglia CONSERVATIVA: solo se vittima + 400cp < attaccante
+    // Soglia CONSERVATIVA: solo se vittima + 200cp < attaccante
     // Questo salta il calcolo SEE solo per catture chiaramente cattive (es. QxP, QxN)
     // ma calcola SEE completo per QxR, RxP, etc. che potrebbero essere buone.
-    // FIX BUG: soglia precedente (-200cp) marcava QxR come perdente quando è +400!
-    if (PIECE_VALUES[capturedType] + 400 < PIECE_VALUES[capturedOnTargetType]) {
-        // Esempio: QxP → 100 + 400 < 900 → TRUE (skip SEE, ritorna -800)
-        // Esempio: QxR → 500 + 400 < 900 → FALSE (calcola SEE completo!)
-        // Esempio: RxP → 100 + 400 < 500 → FALSE (calcola SEE)
+    // TUNED: ridotto da 400cp a 200cp per evitare di marcare catture valide come "dubbie"
+    if (PIECE_VALUES[capturedType] + 200 < PIECE_VALUES[capturedOnTargetType]) {
+        // Esempio: QxP → 100 + 200 < 900 → TRUE (skip SEE, ritorna -800)
+        // Esempio: QxR → 500 + 200 < 900 → FALSE (calcola SEE completo!)
+        // Esempio: RxP → 100 + 200 < 500 → TRUE (skip SEE, ritorna -400)
+        // Esempio: NxP → 100 + 200 < 320 → TRUE (skip SEE, ritorna -220)
         return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType]);
     }
 

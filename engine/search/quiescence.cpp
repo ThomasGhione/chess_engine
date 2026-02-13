@@ -160,8 +160,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[toPieceType];
-            // Increase futility margin to be more conservative about skipping captures
-            constexpr int64_t FUTILITY_MARGIN = 300; // Safety margin for positional compensation
+            // TUNED: Reduced from 300cp to 150cp for better tactical accuracy
+            // Higher margin (300cp) was skipping tactically strong captures
+            constexpr int64_t FUTILITY_MARGIN = 150; // Safety margin for positional compensation
             
             // Check if this capture can possibly improve our position enough
             if (usIsWhite) {

@@ -22,7 +22,7 @@ inline static constexpr int64_t MATE_SCORE   = 1'000'000;
 inline static constexpr int64_t DOUBLED_PAWN_PENALTY = -12;      // TUNED: was -20 (too harsh, caused avoidance of good pawn structures)
 inline static constexpr int64_t ISOLATED_PAWN_PENALTY = -18;     // aumentato
 // BACKWARD_PAWN_PENALTY removed - was never implemented in evalPawnStructure()
-inline static constexpr int64_t PASSED_PAWN_BONUS = 25;          // REDUCED from 40 (was too high, caused bad sacrifices)
+inline static constexpr int64_t PASSED_PAWN_BONUS = 32;          // REDUCED from 40 (was too high, caused bad sacrifices)
 inline static constexpr int64_t CENTER_CONTROL_BONUS = 15;       // REDUCED from 25 (was too high)
 
 // ===================================================
@@ -85,14 +85,13 @@ inline static constexpr int64_t KING_EXPOSED_PENALTY = -25;      // ridotto da -
 inline static constexpr int64_t EARLY_KING_PENALTY = -15;        // ridotto da -20
 
 // King attack zone: bonus for each attacker type near the enemy king
-// Scaled non-linearly: 2 attackers is more than 2x as dangerous as 1
-// These bonuses incentivize building a multi-piece attack over giving perpetual checks
+// Scaled QUADRATICALLY: 2 attackers is 4x as dangerous as 1, 3 attackers is 9x as dangerous
+// Formula: (attackerCount^2 * totalWeight) / 8
+// This incentivizes coordinated multi-piece attacks over perpetual checks
 inline static constexpr int64_t KING_ATTACK_WEIGHT_KNIGHT = 20;  // knight near enemy king
 inline static constexpr int64_t KING_ATTACK_WEIGHT_BISHOP = 20;  // bishop attacking king zone
 inline static constexpr int64_t KING_ATTACK_WEIGHT_ROOK   = 40;  // rook attacking king zone
 inline static constexpr int64_t KING_ATTACK_WEIGHT_QUEEN  = 80;  // queen attacking king zone
-// Non-linear scaling: total_weight * attacker_count / 4 (more attackers = exponential danger)
-inline static constexpr int64_t KING_ATTACK_SCALE_FACTOR  = 4;   // divisor for scaling
 
 // ===================================================
 // CASTLING

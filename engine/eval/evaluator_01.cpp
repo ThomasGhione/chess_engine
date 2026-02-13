@@ -429,8 +429,9 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             
             if (isBlocked) {
                 // Check for supporting pawns (diagonally behind on adjacent files)
-                const bool hasSupport = (file < 7 && (blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
-                                       (file > 0 && (blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
+                // FIXED: Corrected file bounds - sq-7 is behind-left (file decreases), sq-9 is behind-right (file increases)
+                const bool hasSupport = (file > 0 && (blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
+                                       (file < 7 && (blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
                 
                 if (!hasSupport) {
                     score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
