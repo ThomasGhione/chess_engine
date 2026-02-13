@@ -1,6 +1,7 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <filesystem>
@@ -32,11 +33,7 @@ namespace engine {
 // ===================================================
 
 /// Pop least significant bit and return its index
-[[nodiscard]] inline uint8_t popLSB(uint64_t& bb) noexcept {
-    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
-    bb &= (bb - 1);
-    return index;
-}
+[[nodiscard]] uint8_t popLSB(uint64_t& bb) noexcept;
 class Engine final {
 public:
     // Structs and enums
@@ -65,7 +62,7 @@ public:
     //--- Constructors end
 
     //--- Method
-    inline static constexpr int manhattan(int a, int b) noexcept { return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3)); };
+    static constexpr int manhattan(int a, int b) noexcept;
     static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
     static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
     static int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
@@ -91,144 +88,33 @@ public:
     void search(uint64_t depth) noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
-    inline bool isGameOver() const noexcept { return gameResult != ONGOING; }
-    inline bool isMate() const noexcept { return gameResult == WHITE_WINS || gameResult == BLACK_WINS; }
-    bool isStalemate() const noexcept { return gameResult == DRAW; }
+    bool isGameOver() const noexcept;
+    bool isMate() const noexcept;
+    bool isStalemate() const noexcept;
     void updateGameResult() noexcept;
-    inline GameResult getGameResult() const noexcept { return gameResult; }
-    inline uint8_t getActiveColor() const noexcept { return board.getActiveColor(); }
+    GameResult getGameResult() const noexcept;
+    uint8_t getActiveColor() const noexcept;
     
-    __attribute__((always_inline))
-    inline void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
-        // White pieces: use index as-is
-        while (bbWhite) {
-            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbWhite));
-            bbWhite &= (bbWhite - 1);
-            eval += table[sq];
-        }
-        // Black pieces: mirror index vertically
-        while (bbBlack) {
-            uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbBlack));
-            bbBlack &= (bbBlack - 1);
-            uint8_t idx = mirrorIndex(sq);
-            eval -= table[idx];
-        }
-    }
-    __attribute__((always_inline))
-    inline static constexpr uint64_t adjacentFilesMask(int file) noexcept {
-        uint64_t m = 0;
-        if (file > 0) m |= chess::Board::fileMask(file - 1);
-        if (file < 7) m |= chess::Board::fileMask(file + 1);
-        return m;
-    }
-    inline static constexpr std::array<uint64_t, 64> initWhiteForwardFill() {
-        std::array<uint64_t, 64> result{};
-        for (int sq = 0; sq < 64; ++sq) {
-            const int rank = chess::Board::rankOf(sq);
-            // White pawns move toward decreasing rank (rank 0 is promotion).
-            // Forward squares = all ranks strictly less than current rank.
-            result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
-        }
-        return result;
-    }
-
-    inline static constexpr std::array<uint64_t, 64> initBlackForwardFill() {
-        std::array<uint64_t, 64> result{};
-        for (int sq = 0; sq < 64; ++sq) {
-            const int rank = chess::Board::rankOf(sq);
-            // Black pawns move toward increasing rank (rank 7 is promotion).
-            // Forward squares = all ranks strictly greater than current rank.
-            result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
-        }
-        return result;
-    }
+    void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept;
+    static constexpr uint64_t adjacentFilesMask(int file) noexcept;
+    static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
+    static constexpr std::array<uint64_t, 64> initBlackForwardFill();
     // File masks (already defined in fileMask() but we precalculate for speed)
-    inline static constexpr std::array<uint64_t, 8> FILE_MASKS = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            masks[f] = 0x0101010101010101ULL << f;
-        }
-        return masks;
-    }();
-
+    static const std::array<uint64_t, 8> FILE_MASKS;
     // Adjacent files ONLY (without center file) - optimization for isolated pawn check
-    inline static constexpr std::array<uint64_t, 8> ADJACENT_FILES_ONLY = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            uint64_t m = 0;
-            if (f > 0) m |= (0x0101010101010101ULL << (f - 1));
-            if (f < 7) m |= (0x0101010101010101ULL << (f + 1));
-            masks[f] = m;
-        }
-        return masks;
-    }();
-
+    static const std::array<uint64_t, 8> ADJACENT_FILES_ONLY;
     // Precalculated adjacent files mask (including center file)
-    inline static constexpr std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS = []() constexpr {
-        std::array<uint64_t, 8> masks{};
-        for (int f = 0; f < 8; ++f) {
-            uint64_t m = (0x0101010101010101ULL << f); // center file
-            if (f > 0) m |= (0x0101010101010101ULL << (f - 1)); // left
-            if (f < 7) m |= (0x0101010101010101ULL << (f + 1)); // right
-            masks[f] = m;
-        }
-        return masks;
-    }();
-
+    static const std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS;
     // King proximity masks (squares at distance <= 2 from each square)
-    inline static constexpr std::array<uint64_t, 64> KING_PROXIMITY_MASKS = []() constexpr {
-        std::array<uint64_t, 64> masks{};
-        for (int sq = 0; sq < 64; ++sq) {
-            uint64_t mask = 0;
-            const int rank = chess::Board::rankOf(sq);
-            const int file = chess::Board::fileOf(sq);
-            
-            // All squares within Manhattan distance 2
-            for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
-                for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
-                    const int target = (r << 3) | f;
-                    const int dist = std::abs(r - rank) + std::abs(f - file);
-                    if (dist <= 2 && target != sq) {
-                        mask |= chess::Board::bitMask(target);
-                    }
-                }
-            }
-            masks[sq] = mask;
-        }
-        return masks;
-    }();
+    static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
 
     template<bool IsEndgame>
-    inline static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept {
-        constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
-        return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-    }
+    static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept;
 
-    __attribute__((hot, always_inline))
-    inline int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
-        return isEndgame 
-            ? evalInitiativeImpl<true>(b.getActiveColor()) 
-            : evalInitiativeImpl<false>(b.getActiveColor());
-    }
+    int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
 
     template<int Side>
-    inline static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
-        static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
-        
-        const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-        const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
-        
-        const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-        const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
-        
-        const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
-        
-        if constexpr (Side == 0) {
-            return score;
-        } else {
-            return -score;
-        }
-    }
+    static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
 
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
@@ -277,8 +163,8 @@ public:
 
     int MAX_THREADS;
     // Dark/Light square masks for bad bishop evaluation
-    inline static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
-    inline static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
+    static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
+    static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
     //--- Variabile end
 
 private:
@@ -353,12 +239,7 @@ private:
     // Helper function to compute attack data once
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     // Lazy evaluation: compute only if needed
-    __attribute__((always_inline))
-    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-        if (!data[0].isComputed) {
-            computeAttackData(data, b, occ);
-        }
-    }
+    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
 
     // Evaluation helper functions using precomputed attack data
     static int64_t evalMobility(const AttackData data[2]) noexcept;
@@ -369,66 +250,39 @@ private:
     // Initial best score for min-max search
     // White maximizes: starts from -INF, Black minimizes: starts from +INF
     template<bool IsWhite>
-    static constexpr int64_t initialBest() noexcept {
-        return IsWhite ? NEG_INF : POS_INF;
-    }
+    static constexpr int64_t initialBest() noexcept;
     // Runtime version (when color is not known at compile time)
-    static constexpr int64_t initialBest(bool isWhite) noexcept {
-        return isWhite ? NEG_INF : POS_INF;
-    }
+    static constexpr int64_t initialBest(bool isWhite) noexcept;
     
     // Compare if newScore is better than currentBest (color-aware)
     // White: newScore > currentBest (maximize)
     // Black: newScore < currentBest (minimize)
     template<bool IsWhite>
-    static constexpr bool isBetter(int64_t newScore, int64_t currentBest) noexcept {
-        return IsWhite ? (newScore > currentBest) : (newScore < currentBest);
-    }
+    static constexpr bool isBetter(int64_t newScore, int64_t currentBest) noexcept;
     // Runtime version
-    static constexpr bool isBetter(int64_t newScore, int64_t currentBest, bool isWhite) noexcept {
-        return isWhite ? (newScore > currentBest) : (newScore < currentBest);
-    }
+    static constexpr bool isBetter(int64_t newScore, int64_t currentBest, bool isWhite) noexcept;
     
     // Check if we have a beta cutoff (position too good, opponent won't allow it)
     // White (maximizer): score >= beta
     // Black (minimizer): score <= alpha
-    __attribute__((always_inline))
-    static inline bool isBetaCutoff(int64_t score, int64_t alpha, int64_t beta, bool isWhite) noexcept {
-        return isWhite ? (score >= beta) : (score <= alpha);
-    }
+    static inline bool isBetaCutoff(int64_t score, int64_t alpha, int64_t beta, bool isWhite) noexcept;
     
     // Update alpha or beta bound based on score
     // White (maximizer): alpha = max(alpha, score)
     // Black (minimizer): beta = min(beta, score)
-    __attribute__((always_inline))
-    static inline void updateBound(int64_t score, int64_t& alpha, int64_t& beta, bool isWhite) noexcept {
-        if (isWhite) {
-            if (score > alpha) alpha = score;
-        } else {
-            if (score < beta) beta = score;
-        }
-    }
+    static inline void updateBound(int64_t score, int64_t& alpha, int64_t& beta, bool isWhite) noexcept;
     
     // Check delta pruning condition
     // White: standPat + margin < alpha (can't reach alpha even with best capture)
     // Black: standPat - margin > beta (can't reach beta even with best capture)
-    __attribute__((always_inline))
-    static inline bool shouldDeltaPrune(int64_t standPat, int64_t margin, int64_t alpha, int64_t beta, bool isWhite) noexcept {
-        return isWhite ? (standPat + margin < alpha) : (standPat - margin > beta);
-    }
+    static inline bool shouldDeltaPrune(int64_t standPat, int64_t margin, int64_t alpha, int64_t beta, bool isWhite) noexcept;
     
     // Return the cutoff value when beta cutoff occurs
     // White: return beta, Black: return alpha
-    __attribute__((always_inline))
-    static inline int64_t cutoffValue(int64_t alpha, int64_t beta, bool isWhite) noexcept {
-        return isWhite ? beta : alpha;
-    }
+    static inline int64_t cutoffValue(int64_t alpha, int64_t beta, bool isWhite) noexcept;
 
     // Fast access to piece values (inline for zero-cost abstraction)
-    __attribute__((always_inline))
-    static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept {
-        return PIECE_VALUES[pieceType & chess::Board::MASK_PIECE_TYPE];
-    }
+    static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 
     void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
@@ -458,5 +312,14 @@ private:
     MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false) const noexcept;
     //--- Method end
 }; //class Engine final
+
 } // namespace engine
+
+#include "inl/bitboard_helpers_01.inl"
+#include "inl/precomputed_masks_02.inl"
+#include "inl/evaluation_helpers_03.inl"
+#include "inl/search_bounds_04.inl"
+#include "inl/search_cutoffs_05.inl"
+#include "inl/accessors_06.inl"
+
 #endif
