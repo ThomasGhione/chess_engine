@@ -1,11 +1,5 @@
 namespace engine {
 
-inline void Engine::ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    if (!data[0].isComputed) {
-        computeAttackData(data, b, occ);
-    }
-}
-
 template<bool IsWhite>
 inline constexpr int64_t Engine::initialBest() noexcept {
     return IsWhite ? NEG_INF : POS_INF;

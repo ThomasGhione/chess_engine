@@ -64,23 +64,6 @@ public:
     //--- Method
     static constexpr int manhattan(int a, int b) noexcept;
     static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-    static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    static int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalPieceCoordination(const chess::Board& b) noexcept;
-    static int64_t evalOutposts(const chess::Board& b) noexcept;
-    static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
-    static int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalCastlingBonus(const chess::Board& b) noexcept;
-    static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
-    static int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
-    static int64_t evalEarlyQueen(const chess::Board& b) noexcept;
-    static int64_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
-    static int64_t evalRookEndgamePressure(const chess::Board& b) noexcept;
-    static int64_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
-    static int64_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
 
     void reset() noexcept;
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
@@ -95,7 +78,6 @@ public:
     GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
     
-    void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept;
     static constexpr uint64_t adjacentFilesMask(int file) noexcept;
     static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
     static constexpr std::array<uint64_t, 64> initBlackForwardFill();
@@ -108,15 +90,14 @@ public:
     // King proximity masks (squares at distance <= 2 from each square)
     static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
 
-    template<bool IsEndgame>
-    static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept;
-
-    int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
-
-    template<int Side>
-    static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
-
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    // Exposed for perf tests (delegates to Evaluator)
+    static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
+    static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
 
     // DEBUG: Trace version of evaluate that prints each component
     int64_t evaluateTrace(const chess::Board& board) noexcept;
@@ -184,24 +165,6 @@ private:
         int64_t beta;
     };
 
-    // Attack data structure for evaluation optimization
-    struct AttackData {
-        uint64_t allAttacks;
-        uint64_t pawnAttacks;
-        uint64_t knightAttacks;
-        uint64_t bishopAttacks;
-        uint64_t rookAttacks;
-        uint64_t queenAttacks;
-
-        int64_t knightMobility;
-        int64_t bishopMobility;
-        int64_t rookMobility;
-        int64_t queenMobility;
-
-        bool isComputed; // Lazy evaluation flag
-    };
-    //--- Structs and enums end
-
     //--- Variabile
     GameResult gameResult = Engine::ONGOING;
     constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
@@ -234,18 +197,6 @@ private:
         0       // unused = 7
     };
     //--- Variabile end
-
-    //--- Method
-    // Helper function to compute attack data once
-    static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
-    // Lazy evaluation: compute only if needed
-    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
-
-    // Evaluation helper functions using precomputed attack data
-    static int64_t evalMobility(const AttackData data[2]) noexcept;
-    static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
-    static int64_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
 
     // Initial best score for min-max search
     // White maximizes: starts from -INF, Black minimizes: starts from +INF
@@ -317,7 +268,6 @@ private:
 
 #include "inl/bitboard_helpers_01.inl"
 #include "inl/precomputed_masks_02.inl"
-#include "inl/evaluation_helpers_03.inl"
 #include "inl/search_bounds_04.inl"
 #include "inl/search_cutoffs_05.inl"
 #include "inl/accessors_06.inl"

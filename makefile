@@ -52,7 +52,7 @@ NAME_APP_WIN = chess.exe
 
 # Path dei file separati
 MAIN_SRC = main.cpp
-ENGINE_SRCS = $(wildcard ./engine/*.cpp)
+ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp)
 COORDS_SRCS = $(wildcard ./coords/*.cpp)
 PRINTER_SRCS = $(wildcard ./printer/*.cpp)
 DRIVER_SRCS = $(wildcard ./driver/*.cpp)
@@ -66,7 +66,7 @@ ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
                   $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Path dei file header (escludendo stockfish e test utils)
-ENGINE_HDRS = $(wildcard ./engine/*.hpp)
+ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp)
 COORDS_HDRS = $(wildcard ./coords/*.hpp)
 PRINTER_HDRS = $(wildcard ./printer/*.hpp)
 DRIVER_HDRS = $(wildcard ./driver/*.hpp)
