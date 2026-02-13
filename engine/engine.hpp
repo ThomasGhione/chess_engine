@@ -6,6 +6,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 #include <unordered_map>
 #include <algorithm>
 #include <string>
@@ -271,5 +272,6 @@ private:
 #include "inl/search_bounds_04.inl"
 #include "inl/search_cutoffs_05.inl"
 #include "inl/accessors_06.inl"
+#include "inl/search_helpers_07.inl"
 
 #endif
