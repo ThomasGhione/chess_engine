@@ -4,59 +4,46 @@
 #include <cstring>
 namespace engine {
 
-int64_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
     int64_t score = 0;
 
-    // OPTIMIZATION: Manual loop unroll (max 2 rooks per side)
-    // White rooks - first rook
-    if (whiteRooks) {
-        const int sq = popLSB(whiteRooks);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
-        const uint64_t fm = FILE_MASKS[file];
-        const bool ownPawnOnFile = (whitePawns & fm) != 0;
-        const bool oppPawnOnFile = (blackPawns & fm) != 0;
-        const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS);
-        score += fileBonus + (rank == 6) * ROOK_ON_SEVENTH_BONUS;
-        
-        // White rooks - second rook (if exists)
-        if (whiteRooks) {
-            const int sq2 = popLSB(whiteRooks);
-            const int file2 = sq2 & 7;
-            const int rank2 = sq2 >> 3;
-            const uint64_t fm2 = FILE_MASKS[file2];
-            const bool ownPawnOnFile2 = (whitePawns & fm2) != 0;
-            const bool oppPawnOnFile2 = (blackPawns & fm2) != 0;
-            const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS);
-            score += fileBonus2 + (rank2 == 6) * ROOK_ON_SEVENTH_BONUS;
-        }
+    const int sign = (color == 0) ? 1 : -1;
+    const int targetRank = (color == 0) ? 6 : 1;
+
+    if (!rooks) {
+      return score;
+    }
+    const int sq = popLSB(rooks);
+
+    const int file = sq & 7;
+    const int rank = sq >> 3;
+    const uint64_t fm = FILE_MASKS[file];
+    const bool ownPawnOnFile = (ownPawns & fm) != 0;
+    const bool oppPawnOnFile = (oppPawns & fm) != 0;
+    const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+    score += fileBonus + (rank == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
+
+    if (!rooks) {
+      return score;
     }
 
-    // Black rooks - first rook
-    if (blackRooks) {
-        const int sq = popLSB(blackRooks);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
-        const uint64_t fm = FILE_MASKS[file];
-        const bool ownPawnOnFile = (blackPawns & fm) != 0;
-        const bool oppPawnOnFile = (whitePawns & fm) != 0;
-        const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? -OPEN_FILE_ROOK_BONUS : -SEMI_OPEN_FILE_ROOK_BONUS);
-        score += fileBonus + (rank == 1) * (-ROOK_ON_SEVENTH_BONUS);
-        
-        // Black rooks - second rook (if exists)
-        if (blackRooks) {
-            const int sq2 = popLSB(blackRooks);
-            const int file2 = sq2 & 7;
-            const int rank2 = sq2 >> 3;
-            const uint64_t fm2 = FILE_MASKS[file2];
-            const bool ownPawnOnFile2 = (blackPawns & fm2) != 0;
-            const bool oppPawnOnFile2 = (whitePawns & fm2) != 0;
-            const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? -OPEN_FILE_ROOK_BONUS : -SEMI_OPEN_FILE_ROOK_BONUS);
-            score += fileBonus2 + (rank2 == 1) * (-ROOK_ON_SEVENTH_BONUS);
-        }
-    }
+    const int sq2 = popLSB(rooks);
+    const int file2 = sq2 & 7;
+    const int rank2 = sq2 >> 3;
+    const uint64_t fm2 = FILE_MASKS[file2];
+    const bool ownPawnOnFile2 = (ownPawns & fm2) != 0;
+    const bool oppPawnOnFile2 = (oppPawns & fm2) != 0;
+    const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+    score += fileBonus2 + (rank2 == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
 
     return score;
+}
+
+int64_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    const int64_t whiteRookScore = Evaluator::evalRooksForColor(0, whiteRooks, whitePawns, blackPawns);
+    const int64_t blackRookScore = Evaluator::evalRooksForColor(1, blackRooks, blackPawns, whitePawns);
+
+    return whiteRookScore + blackRookScore;;
 }
 
 int64_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
