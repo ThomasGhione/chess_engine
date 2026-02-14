@@ -33,69 +33,58 @@ int64_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     return score;
 }
 
+inline uint64_t Evaluator::knightAttacksLookup(int sq, uint64_t) noexcept {
+    return pieces::KNIGHT_ATTACKS[sq];
+}
+
+template<uint64_t (*AttackFn)(int, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
+inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept {
+    int64_t score = 0;
+    while (piecesBb) {
+        const int sq = popLSB(piecesBb);
+        const uint64_t attacks = AttackFn(sq, occ);
+        const int mobility = __builtin_popcountll(attacks & mobilityMask);
+        if (mobility == 0) [[unlikely]] score -= sign * (PinnedPenalty + TRAPPED_EXTRA_SEVERITY);
+        else if (mobility <= 3) score -= sign * LowMobPenalty;
+    }
+    return score;
+}
+
+inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
+    int64_t sideScore = 0;
+    const uint64_t ownOcc = (side == 0)
+        ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
+        : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+
+    sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
+        b.knights_bb[side], occ, ~occ, sign);
+
+    // Bishops, Rooks, Queens: calcola solo se pochi pezzi (risparmia magic bitboard lookups)
+    const int pieceCount = __builtin_popcountll(b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]);
+    
+    if (pieceCount <= 0) [[unlikely]] {
+      return sideScore;
+    }
+
+    sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, PINNED_BISHOP_PENALTY, LOW_MOBILITY_BISHOP_PENALTY>(
+        b.bishops_bb[side], occ, ~ownOcc, sign);
+
+    sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, PINNED_ROOK_PENALTY, LOW_MOBILITY_ROOK_PENALTY>(
+        b.rooks_bb[side], occ, ~ownOcc, sign);
+
+    sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, PINNED_QUEEN_PENALTY, LOW_MOBILITY_QUEEN_PENALTY>(
+        b.queens_bb[side], occ, ~ownOcc, sign);
+
+    return sideScore;
+}
+
 int64_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
     // NOTE: This function needs per-piece mobility, not aggregate mobility from AttackData
     // We still need to iterate through individual pieces to check if each one is trapped
     int64_t score = 0;
 
-    // Small extra penalty to make truly trapped pieces slightly worse than the
-    // base PINNED_* penalties. This keeps tuning local to the evaluation
-    // function and avoids changing global constants.
-    constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
-
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-
-        // Knights: use a precomputed lookup table (no magic bitboards)
-        uint64_t knights = b.knights_bb[side];
-        while (knights) {
-            const int sq = popLSB(knights);
-            const int mobility = __builtin_popcountll((pieces::KNIGHT_ATTACKS[sq]) & ~occ);
-            if (mobility == 0) [[unlikely]] score -= sign * (PINNED_KNIGHT_PENALTY + TRAPPED_EXTRA_SEVERITY);
-            else if (mobility <= 3) score -= sign * LOW_MOBILITY_KNIGHT_PENALTY;
-        }
-
-        // Bishops, Rooks, Queens: calcola solo se pochi pezzi (risparmia magic bitboard lookups)
-        const int pieceCount = __builtin_popcountll(b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]);
-        
-        if (pieceCount > 0) [[likely]] {
-            // Bishops - magic bitboards
-            uint64_t bishops = b.bishops_bb[side];
-            while (bishops) {
-                const int sq = popLSB(bishops);
-                const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
-                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
-                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
-                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_BISHOP_PENALTY + TRAPPED_EXTRA_SEVERITY);
-                else if (mobility <= 3) score -= sign * LOW_MOBILITY_BISHOP_PENALTY;
-            }
-
-            // Rooks - magic bitboards
-            uint64_t rooks = b.rooks_bb[side];
-            while (rooks) {
-                const int sq = popLSB(rooks);
-                const uint64_t attacks = pieces::getRookAttacks(sq, occ);
-                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
-                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
-                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_ROOK_PENALTY + TRAPPED_EXTRA_SEVERITY);
-                else if (mobility <= 3) score -= sign * LOW_MOBILITY_ROOK_PENALTY;
-            }
-
-            // Queens - magic bitboards
-            uint64_t queens = b.queens_bb[side];
-            while (queens) {
-                const int sq = popLSB(queens);
-                const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
-                const uint64_t ownOcc = (side == 0) ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-                                         : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
-                const int mobility = __builtin_popcountll(attacks & ~ownOcc);
-                if (mobility == 0) [[unlikely]] score -= sign * (PINNED_QUEEN_PENALTY + TRAPPED_EXTRA_SEVERITY);
-                else if (mobility <= 3) score -= sign * LOW_MOBILITY_QUEEN_PENALTY;
-            }
-        }
-    }
+    score += evalTrappedPiecesSide(b, occ, 0, 1);
+    score += evalTrappedPiecesSide(b, occ, 1, -1);
 
     return score;
 }

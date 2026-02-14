@@ -82,6 +82,7 @@ private:
 
     static inline constexpr int64_t NEG_INF = std::numeric_limits<int64_t>::min();
     static inline constexpr int64_t POS_INF = std::numeric_limits<int64_t>::max();
+    static inline constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
     // Variabili end
 
     // Metodi
@@ -99,6 +100,11 @@ private:
 
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+
+    static inline uint64_t knightAttacksLookup(int sq, uint64_t) noexcept;
+    template<uint64_t (*AttackFn)(int, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
+    static inline int64_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
+    static inline int64_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
 
     static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
