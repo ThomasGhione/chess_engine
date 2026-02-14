@@ -135,6 +135,10 @@ private:
     static constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
+    static inline int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
+    static inline int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    static inline int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    static inline int64_t evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     // Metodi end
 };
 
