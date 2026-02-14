@@ -73,65 +73,40 @@ int64_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
     return whiteCoordinationScore + blackCoordinationScore;
 }
 
-int64_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
+inline int64_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
     int64_t score = 0;
+    const int sign = (color == 0) ? 1 : -1;
+    const int opp = color ^ 1;
 
-    // White side
-    {
-        uint64_t knights = b.knights_bb[0];
-        while (knights) {
-            const int sq = popLSB(knights);
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
-            if (supportedByPawn && !attackedByEnemyPawn) {
-                score += OUTPOST_KNIGHT_BONUS;
-            }
-        }
-
-        uint64_t bishops = b.bishops_bb[0];
-        while (bishops) {
-            const int sq = popLSB(bishops);
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
-            if (supportedByPawn && !attackedByEnemyPawn) {
-                score += (OUTPOST_BISHOP_BONUS / 2);
-            }
+    uint64_t knights = b.knights_bb[color];
+    while (knights) {
+        const int sq = popLSB(knights);
+        const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[color][sq] & b.pawns_bb[color]) != 0;
+        const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
+        if (supportedByPawn && !attackedByEnemyPawn) {
+            score += sign * OUTPOST_KNIGHT_BONUS;
         }
     }
 
-    // Black side
-    {
-        uint64_t knights = b.knights_bb[1];
-        while (knights) {
-            const int sq = popLSB(knights);
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
-            if (supportedByPawn && !attackedByEnemyPawn) {
-                score -= OUTPOST_KNIGHT_BONUS;
-            }
-        }
-
-        uint64_t bishops = b.bishops_bb[1];
-        while (bishops) {
-            const int sq = popLSB(bishops);
-            const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[1][sq] & b.pawns_bb[1]) != 0;
-            const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[0][sq] & b.pawns_bb[0]) != 0;
-            if (supportedByPawn && !attackedByEnemyPawn) {
-                score -= (OUTPOST_BISHOP_BONUS / 2);
-            }
+    uint64_t bishops = b.bishops_bb[color];
+    while (bishops) {
+        const int sq = popLSB(bishops);
+        const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[color][sq] & b.pawns_bb[color]) != 0;
+        const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
+        if (supportedByPawn && !attackedByEnemyPawn) {
+            score += sign * (OUTPOST_BISHOP_BONUS / 2);
         }
     }
 
     return score;
 }
 
-int64_t Evaluator::evalMobility(const AttackData data[2]) noexcept {
-    return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
-          - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
+int64_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
+    const int64_t whiteOutpostScore = Evaluator::evalOutpostsForColor(b, 0);
+    const int64_t blackOutpostScore = Evaluator::evalOutpostsForColor(b, 1);
+
+    return whiteOutpostScore + blackOutpostScore;
 }
 
-int64_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
-    return (side == 0) ? Evaluator::evalBadBishopImpl<0>(bishops, pawns) : Evaluator::evalBadBishopImpl<1>(bishops, pawns);
-}
 
 } // namespace engine
