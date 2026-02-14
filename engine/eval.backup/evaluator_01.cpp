@@ -1,7 +1,10 @@
 #include "evaluator.hpp"
 #include "../piecevaluetables.hpp"
-
+#include <algorithm>
+#include <cstring>
 namespace engine {
+
+
 
 const std::array<uint64_t, 8> Evaluator::FILE_MASKS = []() constexpr {
     std::array<uint64_t, 8> masks{};
