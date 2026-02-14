@@ -15,6 +15,9 @@
 
 namespace engine {
 
+// Forward declaration for bitboard helper
+[[nodiscard]] uint8_t popLSB(uint64_t& bb) noexcept;
+
 class Evaluator final {
 public:
     // Costruttore
@@ -108,6 +111,8 @@ private:
     static inline int64_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
     template<int64_t Bonus>
     static inline int64_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
+    template<bool IsEndgame>
+    static inline int64_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
 
     static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
