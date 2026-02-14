@@ -61,3 +61,9 @@ inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& 
         computeAttackData(data, b, occ);
     }
 }
+
+inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
+    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
+    bb &= (bb - 1);
+    return index;
+}

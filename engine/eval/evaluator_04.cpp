@@ -1,7 +1,5 @@
 #include "evaluator.hpp"
 #include "../piecevaluetables.hpp"
-#include <algorithm>
-#include <cstring>
 namespace engine {
 
 int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
@@ -145,39 +143,6 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
         }
     }
 
-    return score;
-}
-
-int64_t Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
-    static constexpr int CENTER[4] = {27, 28, 35, 36}; // d4 e4 d5 e5
-    int64_t score = 0;
-
-    // White side
-    {
-        const uint64_t kbb = b.kings_bb[0];
-        if (kbb) [[likely]] {
-            const int sq = __builtin_ctzll(kbb);
-            int best = manhattan(sq, CENTER[0]);
-            best = std::min(best, manhattan(sq, CENTER[1]));
-            best = std::min(best, manhattan(sq, CENTER[2]));
-            best = std::min(best, manhattan(sq, CENTER[3]));
-            score += (7 - best) * 10;
-        }
-    }
-
-    // Black side
-    {
-        const uint64_t kbb = b.kings_bb[1];
-        if (kbb) [[likely]] {
-            const int sq = __builtin_ctzll(kbb);
-            int best = manhattan(sq, CENTER[0]);
-            best = std::min(best, manhattan(sq, CENTER[1]));
-            best = std::min(best, manhattan(sq, CENTER[2]));
-            best = std::min(best, manhattan(sq, CENTER[3]));
-            score -= (7 - best) * 10;
-        }
-    }
-    
     return score;
 }
 

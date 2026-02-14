@@ -24,6 +24,7 @@
 
 #include "basebonuspenaltyvalues.hpp"
 #include "piecevaluetables.hpp"
+#include "inl/bitboard_helpers_01.inl"
 #include "../tt/transposition_table.hpp"
 #include "movelist.hpp"
 
@@ -33,8 +34,6 @@ namespace engine {
 // BITBOARD HELPERS
 // ===================================================
 
-/// Pop least significant bit and return its index
-[[nodiscard]] uint8_t popLSB(uint64_t& bb) noexcept;
 class Engine final {
 public:
     // Structs and enums
@@ -63,7 +62,7 @@ public:
     //--- Constructors end
 
     //--- Method
-    static constexpr int manhattan(int a, int b) noexcept;
+    //static constexpr int manhattan(int a, int b) noexcept;
     static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
 
     void reset() noexcept;

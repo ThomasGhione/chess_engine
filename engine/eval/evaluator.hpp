@@ -12,11 +12,9 @@
 
 #include "../../board/board.hpp"
 #include "../basebonuspenaltyvalues.hpp"
+#include "../inl/bitboard_helpers_01.inl"
 
 namespace engine {
-
-// Forward declaration for bitboard helper
-[[nodiscard]] uint8_t popLSB(uint64_t& bb) noexcept;
 
 class Evaluator final {
 public:
@@ -113,6 +111,8 @@ private:
     static inline int64_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
     template<bool IsEndgame>
     static inline int64_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
+    template<int Side>
+    static inline int64_t evalEndgameKingActivitySide(const chess::Board& b) noexcept;
 
     static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
@@ -133,6 +133,8 @@ private:
     static int64_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
     static int64_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
     static constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
+
+    static inline uint8_t popLSB(uint64_t& bb) noexcept;
     // Metodi end
 };
 
