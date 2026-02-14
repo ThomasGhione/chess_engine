@@ -106,6 +106,8 @@ private:
     static inline int64_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
     static inline int64_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
     static inline int64_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
+    template<int64_t Bonus>
+    static inline int64_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
 
     static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
