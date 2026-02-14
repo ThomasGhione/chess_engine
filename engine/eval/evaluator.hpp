@@ -100,7 +100,8 @@ private:
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
 
-    static int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
+    static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
+    static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
     static int64_t evalMobility(const AttackData data[2]) noexcept;
     static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;

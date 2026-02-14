@@ -1,10 +1,9 @@
 #include "evaluator.hpp"
 #include "../piecevaluetables.hpp"
-#include <algorithm>
-#include <cstring>
+
 namespace engine {
 
-int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
+inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
     int64_t score = 0;
 
     const int sign = (color == 0) ? 1 : -1;
@@ -43,43 +42,35 @@ int64_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t 
     const int64_t whiteRookScore = Evaluator::evalRooksForColor(0, whiteRooks, whitePawns, blackPawns);
     const int64_t blackRookScore = Evaluator::evalRooksForColor(1, blackRooks, blackPawns, whitePawns);
 
-    return whiteRookScore + blackRookScore;;
+    return whiteRookScore + blackRookScore;
+}
+
+inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
+    int64_t score = 0;
+    const int sign = (color == 0) ? -1 : 1;
+
+    uint64_t minors = b.knights_bb[color] | b.bishops_bb[color];
+    if (!minors) {
+      return score;
+    }
+
+
+    const uint64_t friends = b.pawns_bb[color] | b.knights_bb[color] | b.bishops_bb[color] | b.rooks_bb[color] | b.queens_bb[color];
+    while (minors) {
+        const int sq = popLSB(minors);
+        const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
+        if ((friends & nearby) == 0) {
+            score += sign * COORDINATION_PENALTY;
+        }
+    }
+    return score;
 }
 
 int64_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
-    int64_t score = 0;
+    const int64_t whiteCoordinationScore = Evaluator::evalPieceCoordinationForColor(b, 0);
+    const int64_t blackCoordinationScore = Evaluator::evalPieceCoordinationForColor(b, 1);
 
-    // White side
-    {
-        uint64_t minors = b.knights_bb[0] | b.bishops_bb[0];
-        if (minors) {
-            const uint64_t friends = b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0];
-            while (minors) {
-                const int sq = popLSB(minors);
-                const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
-                if ((friends & nearby) == 0) {
-                    score -= COORDINATION_PENALTY;
-                }
-            }
-        }
-    }
-
-    // Black side
-    {
-        uint64_t minors = b.knights_bb[1] | b.bishops_bb[1];
-        if (minors) {
-            const uint64_t friends = b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1];
-            while (minors) {
-                const int sq = popLSB(minors);
-                const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
-                if ((friends & nearby) == 0) {
-                    score += COORDINATION_PENALTY;
-                }
-            }
-        }
-    }
-
-    return score;
+    return whiteCoordinationScore + blackCoordinationScore;
 }
 
 int64_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
