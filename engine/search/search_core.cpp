@@ -47,10 +47,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // through excessive pawn structure penalties deep in the search tree.
         const bool isBadCapture = wasCapture && (scoredMove.score < -500);  // Bad captures have scores like -500-XXX_PIECE_VALUE
         const bool isOpening = b.getFullMoveClock() < 14; // Consider first 10 moves as opening (adjustable threshold)
-        const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
-                                             board.bishops_bb[0] | board.bishops_bb[1] |
-                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
-                                             board.queens_bb[0]  | board.queens_bb[1]);
+        // BUGFIX: Use 'b' (local board parameter) instead of 'board' (this->board member)
+        const int nonPawnMajors = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
+                                             b.bishops_bb[0] | b.bishops_bb[1] |
+                                             b.rooks_bb[0]   | b.rooks_bb[1]   |
+                                             b.queens_bb[0]  | b.queens_bb[1]);
         const bool isEndgame = (nonPawnMajors <= 5 /*PIECE_ENDGAME_THRESHOLD*/);
         
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
@@ -83,7 +84,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             
             // Re-search at full depth if the reduced search looks promising
-            if (score > bounds.alpha && score < bounds.beta) {
+            // BUGFIX: Correct LMR re-search condition for minimax (not negamax)
+            // White: re-search if score > alpha (reduction was too aggressive, move is good)
+            // Black: re-search if score < beta (reduction was too aggressive, move is good)
+            const bool shouldResearch = usIsWhite ? (score > bounds.alpha) : (score < bounds.beta);
+            if (shouldResearch) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             }
         } else {
@@ -94,8 +99,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         this->updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
-        // Beta cutoff: update killer moves and history, then break
-        if (bounds.alpha >= bounds.beta) {
+        // Beta cutoff: check if the score causes a cutoff, then update killer/history
+        // BUGFIX: Use isBetaCutoff() instead of checking bounds.alpha >= bounds.beta
+        // bounds.alpha >= bounds.beta means window collapsed (different condition!)
+        if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
                                                       bounds.alpha, bounds.beta, history, killerMoves, ctx.previousMove);
