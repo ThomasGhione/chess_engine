@@ -33,11 +33,11 @@ int64_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     return score;
 }
 
-inline uint64_t Evaluator::knightAttacksLookup(int sq, uint64_t) noexcept {
+inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
     return pieces::KNIGHT_ATTACKS[sq];
 }
 
-template<uint64_t (*AttackFn)(int, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
 inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept {
     int64_t score = 0;
     while (piecesBb) {
