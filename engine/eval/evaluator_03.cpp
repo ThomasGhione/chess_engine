@@ -89,38 +89,4 @@ int64_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexce
     return score;
 }
 
-int64_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept {
-    int64_t score = 0;
-
-    for (int side = 0; side < 2; ++side) {
-        const int sign = (side == 0) ? 1 : -1;
-        const int opp  = side ^ 1;
-
-        // Use precomputed attack maps!
-        uint64_t enemyAttacks = data[opp].allAttacks;
-        uint64_t friendlyDef = data[side].allAttacks;
-
-        // Hanging pieces (attacked but undefended)
-        // IMPORTANTE: i penalty sono già negativi, quindi usiamo += con sign
-        uint64_t hanging;
-
-        hanging = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
-        score += sign * __builtin_popcountll(hanging) * HANGING_PAWN_PENALTY;
-
-        hanging = b.knights_bb[side] & enemyAttacks & ~friendlyDef;
-        score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
-
-        hanging = b.bishops_bb[side] & enemyAttacks & ~friendlyDef;
-        score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
-
-        hanging = b.rooks_bb[side] & enemyAttacks & ~friendlyDef;
-        score += sign * __builtin_popcountll(hanging) * HANGING_ROOK_PENALTY;
-
-        hanging = b.queens_bb[side] & enemyAttacks & ~friendlyDef;
-        score += sign * __builtin_popcountll(hanging) * HANGING_QUEEN_PENALTY;
-    }
-
-    return score;
-}
-
 } // namespace engine
