@@ -7,18 +7,20 @@ namespace engine {
 // HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
 // IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!
 // La SEE nella search già valuta gli scambi, quindi qui serve solo un "warning"
+// BUGFIX: Ridotte ulteriormente per evitare doppia contabilità con SEE
+// L'engine non deve "giustificare" catture losing con "rimozione hanging penalty"
 // ===================================================
-// ridotto! (era -90, troppo alto)
-inline static constexpr int64_t HANGING_PAWN_PENALTY   = -30;
+// TUNED: Reduced from -30 to -20 (SEE already handles material exchanges)
+inline static constexpr int64_t HANGING_PAWN_PENALTY   = -20;
 
-// TUNED: was -80 (too punitive, SEE already handles exchanges)
-inline static constexpr int64_t HANGING_MINOR_PENALTY  = -55;
+// TUNED: Reduced from -55 to -40 (avoid double-counting with SEE)
+inline static constexpr int64_t HANGING_MINOR_PENALTY  = -40;
 
-// TUNED: was -120 (too punitive)
-inline static constexpr int64_t HANGING_ROOK_PENALTY   = -85;
+// TUNED: Reduced from -85 to -60
+inline static constexpr int64_t HANGING_ROOK_PENALTY   = -60;
 
-// TUNED: was -200 (too punitive)
-inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -140;
+// TUNED: Reduced from -140 to -100
+inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -100;
 
 // Pawn-specific penalties (additional checks beyond hanging)
 // ridotto da -25

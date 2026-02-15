@@ -100,8 +100,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         : (ourPawns & 0x000000000000FF00ULL); // Rank 2 for black
     
     if (nearPromoPawns) {
-        // Add promotion potential to delta (Queen - Pawn = extra 800cp upside)
-        deltaMargin += (QUEEN_VALUE - PAWN_VALUE);
+        // BUGFIX: Reduced from 800cp to 300cp to avoid exploring suicidal lines
+        // Original (Queen - Pawn = 800cp) was too permissive, allowing -17 pawn deficits!
+        // New value (300cp) still accounts for promotion potential without suicide
+        deltaMargin += 300; // Modest promotion bonus (was 800cp)
     }
     
     // Factor 2: Material deficit - if we're losing, allow more speculative lines
@@ -141,10 +143,15 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     MoveList<ScoredMove> orderedMoves;
     
     // Dynamic SEE pruning threshold based on depth and material balance
-    // LESS AGGRESSIVE: allow more slightly-losing captures to find tactics
-    // Shallow qsearch (ply < 20): allow losing captures up to -16cp (was -15cp)
-    // Deep qsearch (ply >= 20): allow slightly losing captures up to 0cp
-    int64_t seeThreshold = (ply < 20) ? -16 : 0;
+    // BUGFIX: More conservative thresholds to avoid pawn sacrifices
+    // Only accept WINNING or EVEN captures in critical positions
+    // Shallow qsearch (ply < 10): accept only SEE >= 0 (no losing captures)
+    // Mid qsearch (10-20): accept up to -8cp loss (very small tactical complications)
+    // Deep qsearch (ply >= 20): accept neutral captures only (SEE >= 0)
+    int64_t seeThreshold = 0; // Default: only neutral/winning captures
+    if (ply >= 10 && ply < 20) {
+        seeThreshold = -8; // Allow tiny tactical losses in mid-qsearch only
+    }
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -160,9 +167,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[toPieceType];
-            // TUNED: Reduced from 300cp to 150cp for better tactical accuracy
-            // Higher margin (300cp) was skipping tactically strong captures
-            constexpr int64_t FUTILITY_MARGIN = 150; // Safety margin for positional compensation
+            // BUGFIX: Increased from 150cp to 250cp to account for positional compensation
+            // Higher margin prevents engine from sacrificing material for false positional gains
+            // (hanging pieces removal, coordination improvement, etc. are already in eval)
+            constexpr int64_t FUTILITY_MARGIN = 250; // Safety margin for positional compensation
             
             // Check if this capture can possibly improve our position enough
             if (usIsWhite) {
