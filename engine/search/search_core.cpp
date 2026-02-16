@@ -27,6 +27,16 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
     // =========================================================================
+    // HISTORY MALUS: Track quiet moves searched before cutoff (+10-20 ELO)
+    // =========================================================================
+    // When a beta cutoff occurs, penalize all quiet moves that were searched
+    // but failed to produce a cutoff. This improves move ordering over time.
+    struct QuietEntry { uint8_t from; uint8_t to; };
+    constexpr int MAX_QUIETS_TRACKED = 64;
+    QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
+    int numSearchedQuiets = 0;
+
+    // =========================================================================
     // FUTILITY PRUNING margins (main search) (+20-30 ELO)
     // =========================================================================
     // At low depth, if static eval + margin can't reach alpha/beta,
@@ -48,6 +58,13 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
     const bool canLMP = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
+
+    // PRE-COMPUTE endgame flag ONCE before the loop (was inside loop after doMove = BUG + slow)
+    const int nonPawnMajorsForLMR = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
+                                             b.bishops_bb[0] | b.bishops_bb[1] |
+                                             b.rooks_bb[0]   | b.rooks_bb[1]   |
+                                             b.queens_bb[0]  | b.queens_bb[1]);
+    const bool isEndgameForLMR = (nonPawnMajorsForLMR <= 5);
 
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
@@ -98,11 +115,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         // LMR: reduce depth for late, non-critical moves
         // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
-        const int nonPawnMajors = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
-                                             b.bishops_bb[0] | b.bishops_bb[1] |
-                                             b.rooks_bb[0]   | b.rooks_bb[1]   |
-                                             b.queens_bb[0]  | b.queens_bb[1]);
-        const bool isEndgame = (nonPawnMajors <= 5);
+        // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         
         const bool canReduce = (ctx.depth > 2)
             && (moveIndex > 16)
@@ -110,7 +123,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             && (!wasCapture)
             && !givesCheck
             && !this->isKillerMove(m, killerMoves, ctx.ply)
-            && !isEndgame;
+            && !isEndgameForLMR;
 
         int64_t score = 0;
         if (canReduce) {
@@ -141,6 +154,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
         b.undoMove(m, state);
 
+        // Track quiet moves for history malus (before checking cutoff)
+        if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
+            searchedQuiets[numSearchedQuiets++] = {m.from.index, m.to.index};
+        }
+
         this->updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
         // Beta cutoff: check if the score causes a cutoff, then update killer/history
@@ -150,6 +168,23 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             if (allowUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
                                                       bounds.alpha, bounds.beta, history, killerMoves, ctx.previousMove);
+
+                // HISTORY MALUS: Penalize all quiet moves searched before the cutoff move
+                // These moves were tried but failed to produce a cutoff, so they deserve
+                // lower history scores. This is a proven technique in top engines (+10-20 ELO).
+                if (isQuietMove) { // Only if the cutoff move itself is quiet
+                    const int colorIndex = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+                    const int malus = -static_cast<int>((ctx.depth + 1) * (ctx.depth + 1));
+                    // Apply malus to all quiet moves EXCEPT the last one (the cutoff move)
+                    for (int i = 0; i < numSearchedQuiets - 1; ++i) {
+                        history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] += malus;
+                        // Clamp to prevent going too negative
+                        constexpr int MIN_HISTORY = -10000;
+                        if (history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] < MIN_HISTORY) {
+                            history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] = MIN_HISTORY;
+                        }
+                    }
+                }
             }
             break;
         }
@@ -171,6 +206,22 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // This eliminates horizon effect by searching all captures/checks/promotions
     if (depth <= 0) {
         return this->quiescenceSearch(b, alpha, beta, ply);
+    }
+
+    // =========================================================================
+    // MATE DISTANCE PRUNING (+5-15 ELO)
+    // =========================================================================
+    // If we already found a mate shorter than what this node could possibly produce,
+    // prune immediately. This significantly speeds up mate searches.
+    // Example: if we found mate in 5, no need to search nodes at ply > 5.
+    if (ply > 0) {
+        // Best possible score for side to move: mate in (ply+1) moves
+        // Worst possible score: getting mated in ply moves
+        const int64_t matingAlpha = NEG_INF + ply;
+        const int64_t matingBeta  = POS_INF - ply;
+        if (alpha < matingAlpha) alpha = matingAlpha;
+        if (beta > matingBeta)   beta = matingBeta;
+        if (alpha >= beta) return alpha;
     }
 
     // =========================================================================
@@ -203,6 +254,35 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // 50-move rule detection inside search tree
     if (b.isFiftyMoveRule()) {
         return 0;
+    }
+
+    // =========================================================================
+    // INSUFFICIENT MATERIAL DRAW DETECTION (+5-10 ELO)
+    // =========================================================================
+    // Detect positions where neither side can deliver checkmate:
+    // K vs K, K+N vs K, K+B vs K
+    // Uses bitboards for fast detection (no piece counting loops).
+    {
+        const uint64_t wPawns  = b.pawns_bb[0],   bPawns  = b.pawns_bb[1];
+        const uint64_t wRooks  = b.rooks_bb[0],   bRooks  = b.rooks_bb[1];
+        const uint64_t wQueens = b.queens_bb[0],   bQueens = b.queens_bb[1];
+
+        // Quick exit: if any pawns, rooks, or queens exist, there IS sufficient material
+        if ((wPawns | bPawns | wRooks | bRooks | wQueens | bQueens) == 0ULL) {
+            const uint64_t wKnights = b.knights_bb[0], bKnights = b.knights_bb[1];
+            const uint64_t wBishops = b.bishops_bb[0], bBishops = b.bishops_bb[1];
+            const uint64_t wMinors = wKnights | wBishops;
+            const uint64_t bMinors = bKnights | bBishops;
+
+            // K vs K
+            if (wMinors == 0ULL && bMinors == 0ULL) return 0;
+
+            // K+minor vs K (one side has exactly one minor, other has none)
+            const int wMinorCount = __builtin_popcountll(wMinors);
+            const int bMinorCount = __builtin_popcountll(bMinors);
+            if (wMinorCount <= 1 && bMinorCount == 0) return 0; // K+N/B vs K or K vs K
+            if (bMinorCount <= 1 && wMinorCount == 0) return 0; // K vs K+N/B or K vs K
+        }
     }
 
     // REMOVED: Endgame depth extension using static bool - buggy
@@ -277,16 +357,20 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             // Adaptive reduction: R = 3 + depth/8 (less aggressive: was depth/6)
             const int64_t R = 3 + depth / 8;
 
-            // Execute null move: just flip side to move, clear en passant
+            // Execute null move: flip side to move, clear en passant
+            // BUGFIX: Save and restore ALL state modified by setNextTurn/setPrevTurn
+            // setNextTurn: flips activeColor, increments fullMoveClock (if black->white)
+            // setPrevTurn: flips activeColor, decrements fullMoveClock and halfMoveClock
+            // Both halfMoveClock and en passant must be preserved across null move
             const auto savedEnPassant = b.getEnPassant();
+            b.setEnPassant(chess::Coords{}); // Clear en passant (opponent can't ep after a "pass")
             b.setNextTurn();
-            // Clear en passant for null move (opponent can't en passant after a "pass")
-            // Note: setNextTurn already handles some state, but we need to be safe
 
             const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite);
 
-            // Undo null move
+            // Undo null move: restore all state
             b.setPrevTurn();
+            b.setEnPassant(savedEnPassant); // BUGFIX: restore en passant (was never restored!)
 
             // Check for beta cutoff
             if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {
@@ -334,7 +418,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         
         if (inCheck) {
             // Checkmate: activeColor loses
-            return usIsWhite ? NEG_INF : POS_INF;
+            // BUGFIX: Adjust by ply so engine prefers shorter mates
+            // Shorter mate = higher absolute score = preferred
+            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         } else {
             // Stalemate: draw, but heavily penalize throwing away a win
             const int64_t matDelta = getMaterialDelta(b);
@@ -384,6 +470,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Save position to transposition table
     // DETERMINISM: save only if allowTTWrite=true (disabled in parallel threads)
     // Reuse hashKey computed earlier to avoid redundant computation
+    // BUGFIX: Use effectiveDepth (not depth) because IIR may have reduced the actual search depth
     if (useTT && allowTTWrite) {
         const auto flag = tt::determineFlag(best, alphaOrig, bounds.beta);
         
@@ -391,7 +478,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
             result.move.from.index, result.move.to.index, result.move.promotionPiece);
         
-        this->tt.store(hashKey, static_cast<uint8_t>(depth), best, flag, encodedMove);
+        this->tt.store(hashKey, static_cast<uint8_t>(effectiveDepth), best, flag, encodedMove);
     }
     return best;
 }

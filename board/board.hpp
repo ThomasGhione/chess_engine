@@ -582,6 +582,11 @@ public:
         return enPassant;
     }
 
+    // Imposta la casa di en-passant. Usato da NMP per save/restore.
+    void setEnPassant(const Coords& ep) noexcept {
+        enPassant = ep;
+    }
+
     // ============================================
     // BITBOARDS - Public per prestazioni critiche
     // Accesso diretto richiesto da Engine/MoveValidator in loop hot
