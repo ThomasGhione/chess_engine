@@ -51,10 +51,7 @@ void Engine::reset() noexcept {
     nodesSearched = 0;
     
     // Reset endgame depth extension flags
-    // REMOVED: depthExtendedEarly (was too aggressive)
-    depthExtendedMedium = false;
-    depthExtendedLate = false;
-    depthExtendedMaximum = false;
+    depthExtended = false; 
     
     // Reset move history
     moveHistory.clear();

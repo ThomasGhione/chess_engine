@@ -31,8 +31,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     // At low depth, if static eval + margin can't reach alpha/beta,
     // skip quiet moves entirely. Only apply to non-PV, non-check positions.
-    constexpr int64_t FUTILITY_MARGINS[] = {0, 150, 300, 500}; // depth 0,1,2,3
-    const bool canFutilityPrune = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    // CONSERVATIVE: depth <= 2 only (was 3). Higher margins to avoid
+    // cutting tactical positions. At depth 2, margin=400cp (~rook value)
+    // ensures we only prune truly hopeless quiet moves.
+    constexpr int64_t FUTILITY_MARGINS[] = {0, 200, 400}; // depth 0,1,2
+    const bool canFutilityPrune = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
 
     // =========================================================================
@@ -40,8 +43,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     // At low depth, skip very late quiet moves entirely.
     // These moves are ordered so low that they're almost certainly not going to improve.
-    constexpr int LMP_THRESHOLDS[] = {0, 8, 14, 22, 32}; // depth 0,1,2,3,4
-    const bool canLMP = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 4 && ctx.depth >= 1;
+    // CONSERVATIVE: depth <= 3 (was 4), higher thresholds to preserve tactical chances.
+    // At depth 1, allow 12 moves (was 8). A tactic could be the 9th or 10th move.
+    constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
+    const bool canLMP = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
 
     int moveIndex = 0;
@@ -100,7 +105,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool isEndgame = (nonPawnMajors <= 5);
         
         const bool canReduce = (ctx.depth > 2)
-            && (moveIndex > 14)
+            && (moveIndex > 16)
             && !isPromo
             && (!wasCapture)
             && !givesCheck
@@ -110,11 +115,14 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR
-            constexpr double LMR_C = 2.5;
+            // Higher divisor = less reduction = more conservative
+            constexpr double LMR_C = 2.75;
             int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
                                                    * std::log(static_cast<double>(moveIndex)) 
                                                    / LMR_C);
-            reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 2);
+            // Cap reduction: never reduce more than depth-3 (was depth-2)
+            // This ensures at least 3 plies of real search remain
+            reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 3);
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
@@ -244,15 +252,22 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             b.knights_bb[usIsWhite ? 0 : 1] | b.bishops_bb[usIsWhite ? 0 : 1] |
             b.rooks_bb[usIsWhite ? 0 : 1]   | b.queens_bb[usIsWhite ? 0 : 1]);
         
-        const bool canNullMove = !inCheck                   // not in check
-            && ply > 0                                      // not at root
-            && depth >= 3                                   // sufficient depth
-            && nonPawnMajors >= 2                           // at least 2 non-pawn pieces (avoid zugzwang)
-            && (usIsWhite ? (staticEval >= beta) : (staticEval <= alpha)); // static eval already >= beta
+        // NMP CONDITIONS (conservative to avoid zugzwang):
+        // - Not in check (illegal)
+        // - Not at root
+        // - depth >= 4 (need sufficient depth for reduced search to be meaningful)
+        // - At least 3 non-pawn pieces (stronger zugzwang protection)
+        // - NO static eval pre-condition: let the null move search decide
+        //   (the old condition `staticEval >= beta` was redundant with RFP
+        //    and prevented NMP from finding cutoffs in many positions)
+        const bool canNullMove = !inCheck
+            && ply > 0
+            && depth >= 4
+            && nonPawnMajors >= 3;
 
         if (canNullMove) {
-            // Adaptive reduction: R = 3 + depth/6 (deeper search = more aggressive pruning)
-            const int64_t R = 3 + depth / 6;
+            // Adaptive reduction: R = 3 + depth/8 (less aggressive: was depth/6)
+            const int64_t R = 3 + depth / 8;
 
             // Execute null move: just flip side to move, clear en passant
             const auto savedEnPassant = b.getEnPassant();
@@ -269,7 +284,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {
                 // Verification search at reduced depth to avoid zugzwang blunders
                 // Only verify if depth is high enough (otherwise overhead > benefit)
-                if (depth >= 6) {
+                // depth >= 10: verification is expensive, only do it at high depth
+                if (depth >= 10) {
                     const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite);
                     if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
                         return usIsWhite ? beta : alpha;
@@ -287,10 +303,13 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // =========================================================================
     // If the static eval is so far above beta that even a big margin can't
     // bring it below beta, prune immediately. Much cheaper than NMP.
-    // Only at low depth where static eval is a reliable proxy.
+    // Only at very low depth where static eval is a reliable proxy.
+    // CONSERVATIVE: depth <= 3 only (was 4), margin 85cp/depth (was 100)
+    // At depth 3, margin = 255cp (~knight value). This avoids cutting
+    // positions where the opponent has a tactical shot worth a piece.
     {
-        constexpr int64_t RFP_MARGIN_PER_DEPTH = 100; // 100cp per depth level
-        if (!inCheck && ply > 0 && depth <= 4) {
+        constexpr int64_t RFP_MARGIN_PER_DEPTH = 85; // 85cp per depth level
+        if (!inCheck && ply > 0 && depth <= 3) {
             const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
             if (usIsWhite) {
                 if (staticEval - rfpMargin >= beta) return staticEval;
@@ -338,9 +357,11 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // If there's no hash move from TT (the first move score < 100000, which is hash move bonus),
     // reduce depth by 1. Without a hash move, PVS is much less efficient and we'd waste
     // time searching with poor move ordering. IIR compensates by searching shallower.
+    // CONSERVATIVE: depth >= 6 (was 4). At depth 4-5, reducing to 3-4 combined with
+    // RFP/futility makes the search too shallow and misses tactics.
     const bool hasHashMove = (!orderedScoredMoves.is_empty() && orderedScoredMoves[0].score >= 100000);
     int64_t effectiveDepth = depth;
-    if (!hasHashMove && depth >= 4 && ply > 0) {
+    if (!hasHashMove && depth >= 6 && ply > 0) {
         effectiveDepth -= 1;
         ctx.depth = effectiveDepth;
     }

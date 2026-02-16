@@ -125,11 +125,7 @@ public:
     int64_t eval = 0;
 
     // Endgame depth extension flags (set once per game)
-    // Progressive extensions: fewer pieces = deeper search
-    // REMOVED: depthExtendedEarly (was too aggressive, slowed search)
-    bool depthExtendedMedium = false;  // +2 extension for <6 pieces (middle endgame)
-    bool depthExtendedLate = false;    // +3 extension for <=4 pieces (late endgame)
-    bool depthExtendedMaximum = false; // +4 extension for 3 pieces (tablebase zone)
+    bool depthExtended = false;
 
     // Transposition table
     tt::TranspositionTable tt;

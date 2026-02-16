@@ -232,19 +232,9 @@ void Engine::search(uint64_t depth) noexcept {
     // Usando flag per garantire che ogni aumento sia applicato UNA SOLA VOLTA
     const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
     
-    // Progressive depth extensions based on material
-    if (totalPieces == 3 && !this->depthExtendedMaximum) {
-        // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.) - Tablebase zone
-        depth += 3;
-        this->depthExtendedMaximum = true;
-    } else if (totalPieces == 4 && !this->depthExtendedLate) {
-        // Late endgame: K+R vs K, K+Q vs K+P, etc.
-        depth += 2;
-        this->depthExtendedLate = true;
-    } else if (totalPieces == 5 && !this->depthExtendedMedium) {
-        // Middle endgame: few pieces (K+R+P vs K+P, K+Q vs K+R, etc.)
+    if (totalPieces < 6 && !this->depthExtended) {
         depth += 1;
-        this->depthExtendedMedium = true;
+        this->depthExtended = true;
     }
     // REMOVED: depthExtendedEarly (< 10 pieces, +1 depth)
     // Was too aggressive - triggered too early and slowed down search significantly
@@ -279,7 +269,7 @@ void Engine::search(uint64_t depth) noexcept {
         // =========================================================================
         // ASPIRATION WINDOW SEARCH
         // =========================================================================
-        if (currentDepth <= 3) {
+        if (currentDepth <= 4) {
             // At low depths, use full window (score is not reliable yet)
             bestMove = this->getBestMove(moves, searchBestMoveForWhite);
         } else {
@@ -300,7 +290,9 @@ void Engine::search(uint64_t depth) noexcept {
                 windowDelta *= 2;
                 
                 // If window is too wide, fall back to full window
-                if (windowDelta > 500) {
+                // CONSERVATIVE: 800cp (was 500). Tactical swings of 600-700cp
+                // (e.g. queen sacrifice leading to mate) should still use aspiration
+                if (windowDelta > 800) {
                     bestMove = this->getBestMove(moves, searchBestMoveForWhite);
                     break;
                 }
