@@ -30,28 +30,28 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(53) | chess::Board::bitMask(54) | chess::Board::bitMask(55);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 20; // TUNED: increased from 6cp (was too weak, king safety critical)
+                    score -= movedPawns * 12; // BALANCED: was 20 (3 pawns = 60cp, too much)
                 }
                 
                 // Queenside castling pawns: b2(49), c2(50), d2(51)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(49) | chess::Board::bitMask(50) | chess::Board::bitMask(51);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 20; // TUNED: increased from 6cp (was too weak, king safety critical)
+                    score -= movedPawns * 12; // BALANCED: was 20
                 }
             } else { // BLACK
                 // Kingside castling pawns: f7(13), g7(14), h7(15)
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(13) | chess::Board::bitMask(14) | chess::Board::bitMask(15);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 20; // TUNED: increased from 6cp (black weakened = good for white)
+                    score += movedPawns * 12; // BALANCED: was 20
                 }
                 
                 // Queenside castling pawns: b7(9), c7(10), d7(11)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(9) | chess::Board::bitMask(10) | chess::Board::bitMask(11);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 20; // TUNED: increased from 6cp (black weakened = good for white)
+                    score += movedPawns * 12; // BALANCED: was 20
                 }
             }
         }
@@ -164,14 +164,13 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
         
         // Non-linear scaling: the more attackers, the more dangerous
         // FORMULA QUADRATICA: attackerCount^2 incentivizes multi-piece attacks
-        // 1 attacker: 1^2 * weight / 8 = weight/8 (small)
-        // 2 attackers: 2^2 * weight / 8 = 4*weight/8 = weight/2 (4x stronger than 1!)
-        // 3 attackers: 3^2 * weight / 8 = 9*weight/8 (9x stronger than 1!)
-        // 4 attackers: 4^2 * weight / 8 = 16*weight/8 = 2*weight (devastating!)
+        // With ORIGINAL weights and divisor 12:
+        // 2 attackers (N+B): (4 * (20+20)) / 12 = 13cp (very safe)
+        // 2 attackers (N+R): (4 * (20+40)) / 12 = 20cp (still < pawn)
+        // 3 attackers (N+B+R): (9 * (20+20+40)) / 12 = 60cp (strong but < pawn)
+        // 4 attackers (N+B+R+Q): (16 * 160) / 12 = 213cp (devastating, deserved!)
         if (attackerCount >= 2) {
-            // Only give significant bonus when 2+ piece types attack the king zone
-            // Quadratic scaling: attackerCount^2 * attackWeight / 8
-            const int64_t attackDanger = (attackerCount * attackerCount * attackWeight) / 8;
+            const int64_t attackDanger = (attackerCount * attackerCount * attackWeight) / 12;
             score += sign * attackDanger;
         }
     }

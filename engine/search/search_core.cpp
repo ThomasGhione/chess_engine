@@ -252,18 +252,26 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             b.knights_bb[usIsWhite ? 0 : 1] | b.bishops_bb[usIsWhite ? 0 : 1] |
             b.rooks_bb[usIsWhite ? 0 : 1]   | b.queens_bb[usIsWhite ? 0 : 1]);
         
-        // NMP CONDITIONS (conservative to avoid zugzwang):
+        // NMP CONDITIONS (conservative to avoid zugzwang and bad sacrifices):
         // - Not in check (illegal)
         // - Not at root
         // - depth >= 4 (need sufficient depth for reduced search to be meaningful)
         // - At least 3 non-pawn pieces (stronger zugzwang protection)
-        // - NO static eval pre-condition: let the null move search decide
-        //   (the old condition `staticEval >= beta` was redundant with RFP
-        //    and prevented NMP from finding cutoffs in many positions)
+        // - Static eval is not too far below beta (with margin)
+        //   Without this, NMP can prune positions where we just sacrificed material
+        //   and the opponent has a strong reply. The margin allows NMP when we're
+        //   slightly worse but not when we're clearly losing.
+        //   Margin: 200cp = allows NMP even if slightly behind, but blocks it
+        //   after unsound material sacrifices.
+        const bool evalOk = usIsWhite 
+            ? (staticEval >= beta - 200)
+            : (staticEval <= alpha + 200);
+        
         const bool canNullMove = !inCheck
             && ply > 0
             && depth >= 4
-            && nonPawnMajors >= 3;
+            && nonPawnMajors >= 3
+            && evalOk;
 
         if (canNullMove) {
             // Adaptive reduction: R = 3 + depth/8 (less aggressive: was depth/6)
