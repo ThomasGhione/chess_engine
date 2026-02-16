@@ -233,21 +233,19 @@ void Engine::search(uint64_t depth) noexcept {
     // Progressive depth extensions based on material
     if (totalPieces == 3 && !this->depthExtendedMaximum) {
         // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.) - Tablebase zone
-        depth += 5;
-        this->depthExtendedMaximum = true;
-    } else if (totalPieces <= 4 && !this->depthExtendedLate) {
-        // Late endgame: K+R vs K, K+Q vs K+P, etc.
-        depth += 4;
-        this->depthExtendedLate = true;
-    } else if (totalPieces < 6 && !this->depthExtendedMedium) {
-        // Middle endgame: few pieces (K+R+P vs K+P, K+Q vs K+R, etc.)
         depth += 3;
-        this->depthExtendedMedium = true;
-    } else if (totalPieces < 10 && !this->depthExtendedEarly) {
-        // Early endgame: transition phase (R+N vs R, Q vs R+N, etc.)
+        this->depthExtendedMaximum = true;
+    } else if (totalPieces == 4 && !this->depthExtendedLate) {
+        // Late endgame: K+R vs K, K+Q vs K+P, etc.
         depth += 2;
-        this->depthExtendedEarly = true;
+        this->depthExtendedLate = true;
+    } else if (totalPieces == 5 && !this->depthExtendedMedium) {
+        // Middle endgame: few pieces (K+R+P vs K+P, K+Q vs K+R, etc.)
+        depth += 1;
+        this->depthExtendedMedium = true;
     }
+    // REMOVED: depthExtendedEarly (< 10 pieces, +1 depth)
+    // Was too aggressive - triggered too early and slowed down search significantly
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
     

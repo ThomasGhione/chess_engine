@@ -56,8 +56,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // IMPORTANT: Skip this pruning if we're in check (must search all evasions)
-    // TUNED: Very conservative margin to avoid missing deep tactics
-    constexpr int64_t EARLY_DELTA_MARGIN = 1600; // Queen + bigger margin (less aggressive pruning)
+    // CRITICAL: Reduced margin - only explore realistic recovery chances
+    constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
     
     const bool inCheck = b.inCheck(activeColor);
     
@@ -100,21 +100,22 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         : (ourPawns & 0x000000000000FF00ULL); // Rank 2 for black
     
     if (nearPromoPawns) {
-        // BUGFIX: Reduced from 800cp to 300cp to avoid exploring suicidal lines
-        // Original (Queen - Pawn = 800cp) was too permissive, allowing -17 pawn deficits!
-        // New value (300cp) still accounts for promotion potential without suicide
-        deltaMargin += 300; // Modest promotion bonus (was 800cp)
+        // CRITICAL: Minimal bonus - promotion is not guaranteed!
+        // Was 300cp (too permissive for speculative pawn pushes)
+        // Now 150cp: realistic bonus for actual promotion threat
+        deltaMargin += 150; // Conservative promotion bonus
     }
     
     // Factor 2: Material deficit - if we're losing, allow more speculative lines
     // Use standPat as proxy for material balance
+    // CRITICAL: Reduced margins - losing doesn't justify wild sacrifices!
     const int64_t materialBalance = usIsWhite ? standPat : -standPat;
-    if (materialBalance < -300) {
-        // Losing by 3+ pawns: add 200cp to delta (need comebacks)
-        deltaMargin += 200;
-    } else if (materialBalance < -150) {
-        // Losing by 1.5 pawns: add 100cp
-        deltaMargin += 100;
+    if (materialBalance < -400) {
+        // Losing by 4+ pawns: add 150cp to delta (desperate but realistic)
+        deltaMargin += 150;
+    } else if (materialBalance < -200) {
+        // Losing by 2 pawns: add 75cp (modest comeback attempt)
+        deltaMargin += 75;
     }
     
     // Factor 3: Depth penalty - deeper in qsearch = more conservative

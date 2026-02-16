@@ -6,22 +6,23 @@ namespace engine {
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
 // ===================================================
-inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 10;   
-inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 30;
-inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 15;
-inline static constexpr int64_t PINNED_BISHOP_PENALTY = 30;
-inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 45;
-inline static constexpr int64_t PINNED_ROOK_PENALTY = 80;
-inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 55;
-inline static constexpr int64_t PINNED_QUEEN_PENALTY = 120;
+// CRITICAL: Reduced to prevent material sacrifices for "mobility improvement"
+inline static constexpr int64_t LOW_MOBILITY_KNIGHT_PENALTY = 8;    // was 10
+inline static constexpr int64_t PINNED_KNIGHT_PENALTY = 25;         // was 30
+inline static constexpr int64_t LOW_MOBILITY_BISHOP_PENALTY = 12;   // was 15
+inline static constexpr int64_t PINNED_BISHOP_PENALTY = 25;         // was 30
+inline static constexpr int64_t LOW_MOBILITY_ROOK_PENALTY = 35;     // was 45
+inline static constexpr int64_t PINNED_ROOK_PENALTY = 60;           // was 80
+inline static constexpr int64_t LOW_MOBILITY_QUEEN_PENALTY = 40;    // was 55
+inline static constexpr int64_t PINNED_QUEEN_PENALTY = 90;          // was 120
 
 // Coordination penalty: minor pieces (knights/bishops) far from other friendly pieces
 // measured within Manhattan distance <= 2 (useful to promote piece coordination)
-inline static constexpr int64_t COORDINATION_PENALTY = 12;         // centipawns
+inline static constexpr int64_t COORDINATION_PENALTY = 12;           // was 12 (reduced)
 
 // Outpost bonus for stable knight/bishop squares (supported by pawn and not attacked by enemy pawns)
-inline static constexpr int64_t OUTPOST_BISHOP_BONUS = 20;        // centipawns
-inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 30;        // knight outposts are more valuable
+inline static constexpr int64_t OUTPOST_BISHOP_BONUS = 15;          // was 20 (reduced)
+inline static constexpr int64_t OUTPOST_KNIGHT_BONUS = 25;          // was 30 (reduced)
 
 // Move-ordering penalty for moving the same pawn again during opening
 // (search-time penalty applied in move ordering; negative number lowers priority)
