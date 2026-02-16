@@ -32,7 +32,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
     // INCREASED: Allow deeper tactical search for better combination vision
-    constexpr uint8_t MAX_QSEARCH_DEPTH = 20;
+    constexpr uint8_t MAX_QSEARCH_DEPTH = 64;
     if (ply >= MAX_QSEARCH_DEPTH) {
         return standPat; // Cutoff profondità - return stand-pat to avoid re-evaluation
     }
@@ -56,8 +56,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // IMPORTANT: Skip this pruning if we're in check (must search all evasions)
-    // LESS AGGRESSIVE: increased margin to avoid missing tactical tricks
-    constexpr int64_t EARLY_DELTA_MARGIN = 1000; // Queen + bigger margin
+    // TUNED: Very conservative margin to avoid missing deep tactics
+    constexpr int64_t EARLY_DELTA_MARGIN = 1600; // Queen + bigger margin (less aggressive pruning)
     
     const bool inCheck = b.inCheck(activeColor);
     
@@ -143,14 +143,15 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     MoveList<ScoredMove> orderedMoves;
     
     // Dynamic SEE pruning threshold based on depth and material balance
-    // BUGFIX: More conservative thresholds to avoid pawn sacrifices
-    // Only accept WINNING or EVEN captures in critical positions
-    // Shallow qsearch (ply < 10): accept only SEE >= 0 (no losing captures)
-    // Mid qsearch (10-20): accept up to -8cp loss (very small tactical complications)
+    // TUNED: More permissive thresholds to explore tactical complications
+    // Shallow qsearch (ply < 10): accept slightly losing captures (SEE >= -50)
+    // Mid qsearch (10-20): accept up to -30cp loss (tactical complications)
     // Deep qsearch (ply >= 20): accept neutral captures only (SEE >= 0)
     int64_t seeThreshold = 0; // Default: only neutral/winning captures
-    if (ply >= 10 && ply < 20) {
-        seeThreshold = -8; // Allow tiny tactical losses in mid-qsearch only
+    if (ply < 10) {
+        seeThreshold = -50; // Allow small tactical sacrifices in shallow qsearch
+    } else if (ply >= 10 && ply < 20) {
+        seeThreshold = -30; // Allow modest tactical losses in mid-qsearch
     }
     
     for (const auto& m : tacticalMoves) {
@@ -167,10 +168,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[toPieceType];
-            // BUGFIX: Increased from 150cp to 250cp to account for positional compensation
-            // Higher margin prevents engine from sacrificing material for false positional gains
-            // (hanging pieces removal, coordination improvement, etc. are already in eval)
-            constexpr int64_t FUTILITY_MARGIN = 250; // Safety margin for positional compensation
+            // TUNED: Conservative margin to avoid missing tactical opportunities
+            // Higher margin = less pruning = more thorough search
+            constexpr int64_t FUTILITY_MARGIN = 380; // Safety margin for positional compensation (less aggressive)
             
             // Check if this capture can possibly improve our position enough
             if (usIsWhite) {
@@ -197,7 +197,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            constexpr int64_t MOVE_DELTA_MARGIN = 200; // Safety margin for positional gains
+            // TUNED: Higher margin = less pruning = more thorough search
+            constexpr int64_t MOVE_DELTA_MARGIN = 350; // Safety margin for positional gains (less aggressive)
             
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
                 continue; // Per-move delta pruning

@@ -53,7 +53,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool isEndgame = (nonPawnMajors <= 5 /*PIECE_ENDGAME_THRESHOLD*/);
         
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 12)                              // ...first 14 moves at full depth (compromise)
+            && (moveIndex > 16)                              // TUNED: first 16 moves at full depth (less aggressive pruning)
             && !isPromo                                      // ...isn't a promotion...
             && (!wasCapture)                                 // ...isn't aapture...
             && !givesCheck                                   // ...doesn't give check...
@@ -63,7 +63,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             int64_t reduction = 1;
-            if (isOpening && moveIndex >= 16) 
+            if (isOpening && moveIndex >= 20) 
                 ++reduction; // -2 if late in opening (after 6th move)
             else 
                 ++reduction; // -2 if very late (>= 12th move)  

@@ -30,28 +30,28 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(53) | chess::Board::bitMask(54) | chess::Board::bitMask(55);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 6; // penalità per pedone mosso
+                    score -= movedPawns * 20; // TUNED: increased from 6cp (was too weak, king safety critical)
                 }
                 
                 // Queenside castling pawns: b2(49), c2(50), d2(51)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(49) | chess::Board::bitMask(50) | chess::Board::bitMask(51);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 6; // penalità per pedone mosso
+                    score -= movedPawns * 20; // TUNED: increased from 6cp (was too weak, king safety critical)
                 }
             } else { // BLACK
                 // Kingside castling pawns: f7(13), g7(14), h7(15)
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(13) | chess::Board::bitMask(14) | chess::Board::bitMask(15);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 6; // bonus per WHITE (black indebolito)
+                    score += movedPawns * 20; // TUNED: increased from 6cp (black weakened = good for white)
                 }
                 
                 // Queenside castling pawns: b7(9), c7(10), d7(11)
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(9) | chess::Board::bitMask(10) | chess::Board::bitMask(11);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 6; // bonus per WHITE (black indebolito)
+                    score += movedPawns * 20; // TUNED: increased from 6cp (black weakened = good for white)
                 }
             }
         }
