@@ -24,6 +24,21 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         return this->evaluate(b);
     }
 
+    // =========================================================================
+    // TT PROBE IN QUIESCENCE SEARCH (+10-20 ELO)
+    // =========================================================================
+    // Probe the TT before doing any work. If we have a stored result for this
+    // position at sufficient depth, we can return immediately. This avoids
+    // re-evaluating identical tactical positions that arise via transpositions.
+    const uint64_t hashKey = zobrist::computeHashKey(b);
+    {
+        int64_t ttScore = 0;
+        // Probe at depth 0 (qsearch is depth <= 0)
+        if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) {
+            return ttScore;
+        }
+    }
+
     // Stand-pat: current static evaluation
     // evaluate() returns score from white's perspective (positive = white winning)
     const int64_t standPat = this->evaluate(b);

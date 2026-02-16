@@ -284,8 +284,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
                     const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
                     int64_t histScore = history[colorIndex][m.from.index][m.to.index];
-                    // Increased range: 0-2000 (was 0-1000) for better move differentiation
-                    score = std::min(static_cast<int64_t>(2000), std::max(static_cast<int64_t>(0), histScore));
+                    // Map history to [-2000, 4000] range for better move differentiation
+                    // Negative history = moves that consistently fail = ordered below neutral
+                    score = std::min(static_cast<int64_t>(4000), std::max(static_cast<int64_t>(-2000), histScore));
                 }
                 // Discourage moving the same pawn twice in the opening: small negative ordering penalty
                 // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move

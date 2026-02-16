@@ -118,7 +118,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         
         const bool canReduce = (ctx.depth > 2)
-            && (moveIndex > 16)
+            && (moveIndex >= 3)
             && !isPromo
             && (!wasCapture)
             && !givesCheck
@@ -140,15 +140,16 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             
-            // Re-search at full depth if the reduced search looks promising
+            // Re-search at full depth+window if the reduced/null-window search looks promising
             const bool shouldResearch = usIsWhite 
-                ? (score > bounds.alpha && score < bounds.beta) 
-                : (score < bounds.beta && score > bounds.alpha);
+                ? (score > bounds.alpha) 
+                : (score < bounds.beta);
             
             if (shouldResearch) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             }
         } else {
+            // First move: search with full window (PV node)
             score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
         }
 
@@ -359,18 +360,22 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
             // Execute null move: flip side to move, clear en passant
             // BUGFIX: Save and restore ALL state modified by setNextTurn/setPrevTurn
-            // setNextTurn: flips activeColor, increments fullMoveClock (if black->white)
-            // setPrevTurn: flips activeColor, decrements fullMoveClock and halfMoveClock
-            // Both halfMoveClock and en passant must be preserved across null move
+            // setPrevTurn() decrements both fullMoveClock AND halfMoveClock!
+            // We must save/restore them to avoid corrupting game state (50-move rule).
             const auto savedEnPassant = b.getEnPassant();
+            const auto savedHalfMoveClock = b.getHalfMoveClock();
+            const auto savedFullMoveClock = b.getFullMoveClock();
             b.setEnPassant(chess::Coords{}); // Clear en passant (opponent can't ep after a "pass")
             b.setNextTurn();
 
             const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite);
 
-            // Undo null move: restore all state
+            // Undo null move: restore ALL state precisely
             b.setPrevTurn();
-            b.setEnPassant(savedEnPassant); // BUGFIX: restore en passant (was never restored!)
+            b.setEnPassant(savedEnPassant);
+            // CRITICAL BUGFIX: Restore halfMoveClock and fullMoveClock
+            // setPrevTurn() decrements them, corrupting the 50-move rule counter
+            b.restoreClocks(savedHalfMoveClock, savedFullMoveClock);
 
             // Check for beta cutoff
             if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {

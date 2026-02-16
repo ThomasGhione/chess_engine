@@ -137,13 +137,12 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
         const int64_t depthPlusOne = depth + 1;
         const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
         
-        captureHistory[colorIndex][toIndex][toPieceType] += bonus;
-        
-        // Cap to prevent overflow
+        // GRAVITY FORMULA: prevents overflow and naturally saturates
+        // h += bonus - h * |bonus| / MAX_CAPTURE_HISTORY
         constexpr int MAX_CAPTURE_HISTORY = 10000;
-        if (captureHistory[colorIndex][toIndex][toPieceType] > MAX_CAPTURE_HISTORY) {
-            captureHistory[colorIndex][toIndex][toPieceType] = MAX_CAPTURE_HISTORY;
-        }
+        auto& ch = captureHistory[colorIndex][toIndex][toPieceType];
+        ch += bonus - ch * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+        
         return; // Don't process as quiet move
     }
 
@@ -171,20 +170,15 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // If already km1, do nothing (avoid duplicates)
 
     // HISTORY HEURISTIC: Bonus based on depth
-    // bonus = (depth + 1) * (depth + 1) can be optimized for small depths
+    // GRAVITY FORMULA: h += bonus - h * |bonus| / MAX_HISTORY
+    // Prevents overflow naturally and allows negative values
     const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
     const int64_t depthPlusOne = depth + 1;
     const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
     
-    // OPTIMIZATION: Direct array access (already optimized)
-    history[colorIndex][fromIndex][toIndex] += bonus;
-    
-    // Cap history values to prevent overflow and stale data dominance
-    // After ~30-40 beta cutoffs at depth 10, values would saturate at cap
-    constexpr int MAX_HISTORY = 10000;
-    if (history[colorIndex][fromIndex][toIndex] > MAX_HISTORY) {
-        history[colorIndex][fromIndex][toIndex] = MAX_HISTORY;
-    }
+    constexpr int MAX_HISTORY = 16384;
+    auto& h = history[colorIndex][fromIndex][toIndex];
+    h += bonus - h * std::abs(bonus) / MAX_HISTORY;
 }
 
 } // namespace engine

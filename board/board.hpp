@@ -202,6 +202,12 @@ public:
     void setEnPassant(const Coords& ep) noexcept {
         enPassant = ep;
     }
+
+    // Restore clocks after null move (setPrevTurn corrupts them)
+    void restoreClocks(uint16_t hmc, uint16_t fmc) noexcept {
+        halfMoveClock = hmc;
+        fullMoveClock = fmc;
+    }
     // Metodi end
 
     // Variabili start
