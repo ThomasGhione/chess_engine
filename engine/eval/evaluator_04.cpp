@@ -102,31 +102,64 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
             : (b.bishops_bb[side] & ~BLACK_MINOR_START);
         
         // Count attackers and accumulate weighted attack value
+        // BUGFIX: Count INDIVIDUAL pieces attacking king zone, not just piece types!
+        // Before: 2 knights attacking = 1 attacker. Now: 2 knights = 2 attackers.
         int attackerCount = 0;
         int64_t attackWeight = 0;
         
-        // Knights attacking king zone (only if developed)
-        if (developedKnights && (data[side].knightAttacks & kingZone)) {
-            attackerCount++;
-            attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+        // Knights attacking king zone (count each knight individually)
+        {
+            uint64_t knightsAttacking = developedKnights;
+            while (knightsAttacking) {
+                const int sq = __builtin_ctzll(knightsAttacking);
+                knightsAttacking &= knightsAttacking - 1;
+                if (pieces::KNIGHT_ATTACKS[sq] & kingZone) {
+                    attackerCount++;
+                    attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+                }
+            }
         }
         
-        // Bishops attacking king zone (only if developed)
-        if (developedBishops && (data[side].bishopAttacks & kingZone)) {
-            attackerCount++;
-            attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+        // Bishops attacking king zone (count each bishop individually)
+        {
+            uint64_t bishopsAttacking = developedBishops;
+            while (bishopsAttacking) {
+                const int sq = __builtin_ctzll(bishopsAttacking);
+                bishopsAttacking &= bishopsAttacking - 1;
+                const uint64_t occ = b.getPiecesBitMap();
+                if (pieces::getBishopAttacks(sq, occ) & kingZone) {
+                    attackerCount++;
+                    attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+                }
+            }
         }
         
-        // Rooks attacking king zone (rooks are naturally less developed early, so allow them)
-        if (data[side].rookAttacks & kingZone) {
-            attackerCount++;
-            attackWeight += KING_ATTACK_WEIGHT_ROOK;
+        // Rooks attacking king zone (count each rook individually)
+        {
+            uint64_t rooksAttacking = b.rooks_bb[side];
+            while (rooksAttacking) {
+                const int sq = __builtin_ctzll(rooksAttacking);
+                rooksAttacking &= rooksAttacking - 1;
+                const uint64_t occ = b.getPiecesBitMap();
+                if (pieces::getRookAttacks(sq, occ) & kingZone) {
+                    attackerCount++;
+                    attackWeight += KING_ATTACK_WEIGHT_ROOK;
+                }
+            }
         }
         
-        // Queen attacking king zone (allow, but queen early is penalized elsewhere)
-        if (data[side].queenAttacks & kingZone) {
-            attackerCount++;
-            attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+        // Queen attacking king zone (count each queen individually)
+        {
+            uint64_t queensAttacking = b.queens_bb[side];
+            while (queensAttacking) {
+                const int sq = __builtin_ctzll(queensAttacking);
+                queensAttacking &= queensAttacking - 1;
+                const uint64_t occ = b.getPiecesBitMap();
+                if (pieces::getQueenAttacks(sq, occ) & kingZone) {
+                    attackerCount++;
+                    attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+                }
+            }
         }
         
         // Non-linear scaling: the more attackers, the more dangerous

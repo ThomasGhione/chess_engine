@@ -16,8 +16,10 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
-    int64_t alpha = NEG_INF;
-    int64_t beta  = POS_INF;
+    return getBestMove(moves, usIsWhite, NEG_INF, POS_INF);
+}
+
+chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite, int64_t alpha, int64_t beta) noexcept {
     int64_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
@@ -197,9 +199,9 @@ void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
 void Engine::search(uint64_t depth) noexcept {
     if (depth == 0) return;
 
-    // Increment TT generation to invalidate old entries from previous searches
-    // This ensures deterministic behavior across multiple searches
-    // incrementTTGeneration();
+    // Increment TT generation to age old entries from previous searches
+    // This ensures the replacement policy favors fresh entries
+    this->tt.incrementGeneration();
 
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
     if (moves.is_empty()) {
@@ -249,29 +251,71 @@ void Engine::search(uint64_t depth) noexcept {
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
     
-    // --- ITERATIVE DEEPENING ---
+    // --- ITERATIVE DEEPENING with ASPIRATION WINDOWS ---
     // Cerca a profondità crescenti (1, 2, 3, ..., depth)
     // Migliora il move ordering per le profondità successive
+    //
+    // ASPIRATION WINDOWS (+30-50 ELO):
+    // Instead of searching with [-INF, +INF], use a narrow window around
+    // the score from the previous iteration. If the search fails (score outside
+    // the window), re-search with progressively wider windows.
+    // This dramatically reduces the search tree when the score is stable.
     chess::Board::Move bestMove = moves[0];
+    int64_t prevScore = 0; // Score from previous iteration
     
     for (uint64_t currentDepth = 1; currentDepth <= depth; ++currentDepth) {
         this->depth = currentDepth;
         
         // Move ordering: porta la best move della iterazione precedente in testa
-        // Usa rotate custom ottimizzata per preservare l'ordinamento relativo
-        // CRITICAL: std::swap would break ordering! (the 2nd-best would end up at the i-th position)
         if (currentDepth > 1) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
-                    // Rotate custom: [A,B,C,D*,E] -> [D*,A,B,C,E] Ordinamento preservato
-                    // (invece di swap: [D*,B,C,A,E]  A va in posizione sbagliata!)
                     chess::Board::Move::rotate(moves, i);
                     break;
                 }
             }
         }
         
-        bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+        // =========================================================================
+        // ASPIRATION WINDOW SEARCH
+        // =========================================================================
+        if (currentDepth <= 3) {
+            // At low depths, use full window (score is not reliable yet)
+            bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+        } else {
+            // Use aspiration window centered on previous iteration's score
+            constexpr int64_t INITIAL_WINDOW = 50; // Start with ±50cp window
+            int64_t windowDelta = INITIAL_WINDOW;
+            
+            int64_t aspAlpha = prevScore - windowDelta;
+            int64_t aspBeta  = prevScore + windowDelta;
+            
+            // Search with narrow window
+            bestMove = this->getBestMove(moves, searchBestMoveForWhite, aspAlpha, aspBeta);
+            
+            // Check if search failed outside the window
+            // If eval is outside [aspAlpha, aspBeta], we need to re-search with wider window
+            while (this->eval <= aspAlpha || this->eval >= aspBeta) {
+                // Widen the window exponentially
+                windowDelta *= 2;
+                
+                // If window is too wide, fall back to full window
+                if (windowDelta > 500) {
+                    bestMove = this->getBestMove(moves, searchBestMoveForWhite);
+                    break;
+                }
+                
+                // Re-search with wider window
+                if (this->eval <= aspAlpha) {
+                    aspAlpha = prevScore - windowDelta;
+                } else {
+                    aspBeta = prevScore + windowDelta;
+                }
+                bestMove = this->getBestMove(moves, searchBestMoveForWhite, aspAlpha, aspBeta);
+            }
+        }
+        
+        prevScore = this->eval; // Save score for next iteration's aspiration window
     }
     
     // Ripristina la profondità originale

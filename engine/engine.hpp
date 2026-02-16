@@ -111,6 +111,7 @@ public:
     MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
+    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
     //--- Method end
 
     //--- Variabile
@@ -135,7 +136,7 @@ public:
 
     uint64_t nodesSearched = 0; 
     int32_t UCI_DEPTH = 0;
-    static constexpr int32_t DEFAULTDEPTH = 8;
+    static constexpr int32_t DEFAULTDEPTH = 10;
     static constexpr int32_t MAX_PLY = 64;
     std::string moveHistory = "";
 
@@ -161,6 +162,8 @@ private:
         int ply;
         uint8_t activeColor;
         const chess::Board::Move* previousMove = nullptr; // For counter-move history
+        int64_t staticEval = 0;   // Static evaluation for pruning decisions
+        bool inCheck = false;      // Whether the side to move is in check
     };
 
     struct AlphaBeta {

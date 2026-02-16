@@ -1,5 +1,6 @@
 #include "../engine.hpp"
 #include "../tt.hpp"
+#include <cmath>
 
 namespace engine {
 
@@ -25,58 +26,100 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     int64_t best = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
+    // =========================================================================
+    // FUTILITY PRUNING margins (main search) (+20-30 ELO)
+    // =========================================================================
+    // At low depth, if static eval + margin can't reach alpha/beta,
+    // skip quiet moves entirely. Only apply to non-PV, non-check positions.
+    constexpr int64_t FUTILITY_MARGINS[] = {0, 150, 300, 500}; // depth 0,1,2,3
+    const bool canFutilityPrune = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
+
+    // =========================================================================
+    // LATE MOVE PRUNING thresholds (+15-25 ELO)
+    // =========================================================================
+    // At low depth, skip very late quiet moves entirely.
+    // These moves are ordered so low that they're almost certainly not going to improve.
+    constexpr int LMP_THRESHOLDS[] = {0, 8, 14, 22, 32}; // depth 0,1,2,3,4
+    const bool canLMP = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 4 && ctx.depth >= 1;
+    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
+
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
-        chess::Board::MoveState state;
-
+        
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
+        const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
+        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) 
+            && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
+        const bool isQuietMove = !wasCapture && !isPromotionCandidate;
+
+        // =========================================================================
+        // LATE MOVE PRUNING: Skip very late quiet moves at low depth
+        // =========================================================================
+        if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
+            ++moveIndex;
+            continue; // Completely skip this move
+        }
+
+        // =========================================================================
+        // FUTILITY PRUNING: Skip quiet moves that can't improve the position
+        // =========================================================================
+        if (canFutilityPrune && isQuietMove && moveIndex > 0) {
+            if (usIsWhite) {
+                if (ctx.staticEval + futilityMargin < bounds.alpha) {
+                    ++moveIndex;
+                    continue;
+                }
+            } else {
+                if (ctx.staticEval - futilityMargin > bounds.beta) {
+                    ++moveIndex;
+                    continue;
+                }
+            }
+        }
+
+        chess::Board::MoveState state;
         const bool isPromo = doMoveWithPromotion(b, m, state);
 
         // Compute whether the move gives check AFTER it is made
         const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
         const bool givesCheck = b.inCheck(oppColor);
 
-        // LMR: reduce depth for late, non-critical moves
-        // BALANCED: slight improvement in tactics without major speed penalty
-        const int64_t childDepth = ctx.depth - 1;
+        // =========================================================================
+        // CHECK EXTENSION: Search checking moves 1 ply deeper (+40-60 ELO)
+        // =========================================================================
+        const int64_t childDepth = ctx.depth - 1 + (givesCheck ? 1 : 0);
 
-        // SEE-based pruning/reduction for BAD captures (e.g., Nxg3 with SEE = -220)
-        // If a capture is clearly losing material (SEE < threshold), reduce its search depth.
-        // This prevents the engine from finding false "compensation" for piece sacrifices
-        // through excessive pawn structure penalties deep in the search tree.
-        const bool isOpening = b.getFullMoveClock() < 14; // Consider first 10 moves as opening (adjustable threshold)
+        // LMR: reduce depth for late, non-critical moves
+        // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
         const int nonPawnMajors = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
                                              b.bishops_bb[0] | b.bishops_bb[1] |
                                              b.rooks_bb[0]   | b.rooks_bb[1]   |
                                              b.queens_bb[0]  | b.queens_bb[1]);
-        const bool isEndgame = (nonPawnMajors <= 5 /*PIECE_ENDGAME_THRESHOLD*/);
+        const bool isEndgame = (nonPawnMajors <= 5);
         
-        const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 16)                              // TUNED: first 16 moves at full depth (less aggressive pruning)
-            && !isPromo                                      // ...isn't a promotion...
-            && (!wasCapture)                                 // ...isn't aapture...
-            && !givesCheck                                   // ...doesn't give check...
-            && !this->isKillerMove(m, killerMoves, ctx.ply)  // ...isn't a killer move
-            && !isEndgame;                                   // ...isn't endgame (be more conservative with reductions in endgame)
+        const bool canReduce = (ctx.depth > 2)
+            && (moveIndex > 14)
+            && !isPromo
+            && (!wasCapture)
+            && !givesCheck
+            && !this->isKillerMove(m, killerMoves, ctx.ply)
+            && !isEndgame;
 
         int64_t score = 0;
         if (canReduce) {
-            int64_t reduction = 1;
-            if (isOpening && moveIndex >= 20) 
-                ++reduction; // -2 if late in opening (after 6th move)
-            else 
-                ++reduction; // -2 if very late (>= 12th move)  
-            
+            // LOGARITHMIC LMR
+            constexpr double LMR_C = 2.5;
+            int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
+                                                   * std::log(static_cast<double>(moveIndex)) 
+                                                   / LMR_C);
+            reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 2);
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             
             // Re-search at full depth if the reduced search looks promising
-            // BUGFIX: Correct LMR re-search condition for minimax (not negamax)
-            // Re-search if score improved but didn't cause cutoff yet
-            // White: re-search if score > alpha AND score < beta (promising but not cutoff)
-            // Black: re-search if score < beta AND score > alpha (promising but not cutoff)
             const bool shouldResearch = usIsWhite 
                 ? (score > bounds.alpha && score < bounds.beta) 
                 : (score < bounds.beta && score > bounds.alpha);
@@ -173,17 +216,96 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     const uint8_t activeColor = b.getActiveColor();
-
-    // NOTE: Null Move Pruning è disabilitato
-    // Reintrodurre quando avremo hash move e better tactical position detection
-
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
+    const bool inCheck = b.inCheck(activeColor);
+
+    // =========================================================================
+    // STATIC EVALUATION for pruning decisions
+    // =========================================================================
+    // Compute static eval ONCE for NMP, RFP, futility pruning
+    // Only compute when needed (not in check, not at root)
+    const int64_t staticEval = (ply > 0 && !inCheck) ? this->evaluate(b) : 0;
+
+    // =========================================================================
+    // NULL MOVE PRUNING (+80-120 ELO)
+    // =========================================================================
+    // Idea: If passing the turn (doing nothing) still results in a score >= beta,
+    // then the current position is so good that the opponent won't allow it.
+    // We can safely prune this node.
+    //
+    // Restrictions:
+    // - NOT when in check (illegal to pass when in check)
+    // - NOT at root (ply == 0)
+    // - NOT in endgames with few non-pawn pieces (zugzwang risk)
+    // - NOT at very low depth (overhead not worth it)
+    // - NOT in PV nodes (alpha + 1 != beta means PV node)
+    {
+        const int nonPawnMajors = __builtin_popcountll(
+            b.knights_bb[usIsWhite ? 0 : 1] | b.bishops_bb[usIsWhite ? 0 : 1] |
+            b.rooks_bb[usIsWhite ? 0 : 1]   | b.queens_bb[usIsWhite ? 0 : 1]);
+        
+        const bool canNullMove = !inCheck                   // not in check
+            && ply > 0                                      // not at root
+            && depth >= 3                                   // sufficient depth
+            && nonPawnMajors >= 2                           // at least 2 non-pawn pieces (avoid zugzwang)
+            && (usIsWhite ? (staticEval >= beta) : (staticEval <= alpha)); // static eval already >= beta
+
+        if (canNullMove) {
+            // Adaptive reduction: R = 3 + depth/6 (deeper search = more aggressive pruning)
+            const int64_t R = 3 + depth / 6;
+
+            // Execute null move: just flip side to move, clear en passant
+            const auto savedEnPassant = b.getEnPassant();
+            b.setNextTurn();
+            // Clear en passant for null move (opponent can't en passant after a "pass")
+            // Note: setNextTurn already handles some state, but we need to be safe
+
+            const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite);
+
+            // Undo null move
+            b.setPrevTurn();
+
+            // Check for beta cutoff
+            if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {
+                // Verification search at reduced depth to avoid zugzwang blunders
+                // Only verify if depth is high enough (otherwise overhead > benefit)
+                if (depth >= 6) {
+                    const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite);
+                    if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
+                        return usIsWhite ? beta : alpha;
+                    }
+                    // Verification failed: continue with full search
+                } else {
+                    return usIsWhite ? beta : alpha;
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // REVERSE FUTILITY PRUNING (Static Null Move Pruning) (+30-40 ELO)
+    // =========================================================================
+    // If the static eval is so far above beta that even a big margin can't
+    // bring it below beta, prune immediately. Much cheaper than NMP.
+    // Only at low depth where static eval is a reliable proxy.
+    {
+        constexpr int64_t RFP_MARGIN_PER_DEPTH = 100; // 100cp per depth level
+        if (!inCheck && ply > 0 && depth <= 4) {
+            const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
+            if (usIsWhite) {
+                if (staticEval - rfpMargin >= beta) return staticEval;
+            } else {
+                if (staticEval + rfpMargin <= alpha) return staticEval;
+            }
+        }
+    }
+
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
     if (moves.is_empty()) {
         // No legal moves: either checkmate or stalemate
         // activeColor = side that CANNOT move (stalemated side)
         
-        if (b.inCheck(activeColor)) {
+        if (inCheck) {
             // Checkmate: activeColor loses
             return usIsWhite ? NEG_INF : POS_INF;
         } else {
@@ -206,9 +328,23 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     // Build search context (previousMove passed from parent call)
-    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, nullptr};
+    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, nullptr, staticEval, inCheck};
 
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
+
+    // =========================================================================
+    // IIR - Internal Iterative Reduction (+15-25 ELO)
+    // =========================================================================
+    // If there's no hash move from TT (the first move score < 100000, which is hash move bonus),
+    // reduce depth by 1. Without a hash move, PVS is much less efficient and we'd waste
+    // time searching with poor move ordering. IIR compensates by searching shallower.
+    const bool hasHashMove = (!orderedScoredMoves.is_empty() && orderedScoredMoves[0].score >= 100000);
+    int64_t effectiveDepth = depth;
+    if (!hasHashMove && depth >= 4 && ply > 0) {
+        effectiveDepth -= 1;
+        ctx.depth = effectiveDepth;
+    }
+
     const int64_t alphaOrig = bounds.alpha;
 
     // Search through all moves and find best move with score

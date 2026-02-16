@@ -31,8 +31,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    // INCREASED: Allow deeper tactical search for better combination vision
-    constexpr uint8_t MAX_QSEARCH_DEPTH = 64;
+    // DEPTH LIMIT: Prevent qsearch explosion
+    // 32 plies of tactical search is more than sufficient for any position
+    constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
     if (ply >= MAX_QSEARCH_DEPTH) {
         return standPat; // Cutoff profondità - return stand-pat to avoid re-evaluation
     }
