@@ -132,7 +132,7 @@ public:
 
     uint64_t nodesSearched = 0; 
     int32_t UCI_DEPTH = 0;
-    static constexpr int32_t DEFAULTDEPTH = 10;
+    static constexpr int32_t DEFAULTDEPTH = 8;
     static constexpr int32_t MAX_PLY = 64;
     std::string moveHistory = "";
 

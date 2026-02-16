@@ -53,27 +53,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool isEndgame = (nonPawnMajors <= 5 /*PIECE_ENDGAME_THRESHOLD*/);
         
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
-            && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
+            && (moveIndex > 12)                              // ...first 14 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
             && (!wasCapture)                                 // ...isn't aapture...
             && !givesCheck                                   // ...doesn't give check...
-            && !this->isKillerMove(m, killerMoves, ctx.ply); // ...isn't a killer move
+            && !this->isKillerMove(m, killerMoves, ctx.ply)  // ...isn't a killer move
+            && !isEndgame;                                   // ...isn't endgame (be more conservative with reductions in endgame)
 
         int64_t score = 0;
         if (canReduce) {
             int64_t reduction = 1;
-            if (isOpening) {
-                if (moveIndex >= 16) reduction += 2; // -2 if late in opening (after 6th move)
-            }
-            else if (isEndgame) {
-                if (moveIndex >= 16) reduction += 2;
-            }
-            else {
-                if (moveIndex >= 12) reduction += 2; // -2 if very late (>= 10th move)  
-            }
-        
-            // Adaptive reduction: balanced between speed and accuracy
-            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6   
+            if (isOpening && moveIndex >= 16) 
+                ++reduction; // -2 if late in opening (after 6th move)
+            else 
+                ++reduction; // -2 if very late (>= 12th move)  
+            
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
