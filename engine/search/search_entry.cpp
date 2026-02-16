@@ -225,18 +225,28 @@ void Engine::search(uint64_t depth) noexcept {
     }
 
     // --- ENDGAME DEPTH EXTENSION (UNA VOLTA PER PARTITA) ---
-    // Aumenta la profondità di ricerca negli endgame
-    // Usando flag per garantire che l'aumento sia applicato UNA SOLA VOLTA nella partita
+    // Aumenta progressivamente la profondità di ricerca negli endgame
+    // Più pezzi vengono rimossi, più la search diventa profonda
+    // Usando flag per garantire che ogni aumento sia applicato UNA SOLA VOLTA
     const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
     
+    // Progressive depth extensions based on material
     if (totalPieces == 3 && !this->depthExtendedMaximum) {
-        // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.)
-        depth += 2;
+        // 2 re + 1 pezzo (K+P vs K, K+Q vs K, etc.) - Tablebase zone
+        depth += 5;
         this->depthExtendedMaximum = true;
+    } else if (totalPieces <= 4 && !this->depthExtendedLate) {
+        // Late endgame: K+R vs K, K+Q vs K+P, etc.
+        depth += 4;
+        this->depthExtendedLate = true;
     } else if (totalPieces < 6 && !this->depthExtendedMedium) {
-        // Endgame con pochi pezzi (es: K+R+P vs K+P)
-        depth += 2;
+        // Middle endgame: few pieces (K+R+P vs K+P, K+Q vs K+R, etc.)
+        depth += 3;
         this->depthExtendedMedium = true;
+    } else if (totalPieces < 10 && !this->depthExtendedEarly) {
+        // Early endgame: transition phase (R+N vs R, Q vs R+N, etc.)
+        depth += 2;
+        this->depthExtendedEarly = true;
     }
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
