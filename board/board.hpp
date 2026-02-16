@@ -197,6 +197,11 @@ public:
     void fromFenToBoard(const std::string& fen);
     std::string fromBoardToFen() const;
     Coords getEnPassant() const noexcept;
+
+    // Imposta la casa di en-passant. Usato da NMP per save/restore.
+    void setEnPassant(const Coords& ep) noexcept {
+        enPassant = ep;
+    }
     // Metodi end
 
     // Variabili start
@@ -255,6 +260,7 @@ public:
         for (int i = 0; i < 64; ++i) masks[i] = (1ULL << i);
         return masks;
     }();
+
 
     std::array<uint64_t, 2> pawns_bb   = {0ULL, 0ULL};
     std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
