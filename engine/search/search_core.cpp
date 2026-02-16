@@ -45,9 +45,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // If a capture is clearly losing material (SEE < threshold), reduce its search depth.
         // This prevents the engine from finding false "compensation" for piece sacrifices
         // through excessive pawn structure penalties deep in the search tree.
-        const bool isBadCapture = wasCapture && (scoredMove.score < -500);  // Bad captures have scores like -500-XXX_PIECE_VALUE
         const bool isOpening = b.getFullMoveClock() < 14; // Consider first 10 moves as opening (adjustable threshold)
-        // BUGFIX: Use 'b' (local board parameter) instead of 'board' (this->board member)
         const int nonPawnMajors = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
                                              b.bishops_bb[0] | b.bishops_bb[1] |
                                              b.rooks_bb[0]   | b.rooks_bb[1]   |
@@ -57,7 +55,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool canReduce = (ctx.depth > 2)               // only reduce if depth > 2...
             && (moveIndex > 6)                               // ...first 6 moves at full depth (compromise)
             && !isPromo                                      // ...isn't a promotion...
-            && (!wasCapture|| isBadCapture)                  // ...isn't a (good) capture...
+            && (!wasCapture)                                 // ...isn't aapture...
             && !givesCheck                                   // ...doesn't give check...
             && !this->isKillerMove(m, killerMoves, ctx.ply); // ...isn't a killer move
 
@@ -75,19 +73,20 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             }
         
             // Adaptive reduction: balanced between speed and accuracy
-            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6
-            // Extra reduction for bad captures (SEE-losing): these are rarely good moves
-            // A knight capturing a defended pawn (SEE = -220) should be searched shallowly
-            if (isBadCapture) reduction += 2;    
+            if (ctx.depth >= 6) reduction += 2; // -2 if depth >= 6   
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             
             // Re-search at full depth if the reduced search looks promising
             // BUGFIX: Correct LMR re-search condition for minimax (not negamax)
-            // White: re-search if score > alpha (reduction was too aggressive, move is good)
-            // Black: re-search if score < beta (reduction was too aggressive, move is good)
-            const bool shouldResearch = usIsWhite ? (score > bounds.alpha) : (score < bounds.beta);
+            // Re-search if score improved but didn't cause cutoff yet
+            // White: re-search if score > alpha AND score < beta (promising but not cutoff)
+            // Black: re-search if score < beta AND score > alpha (promising but not cutoff)
+            const bool shouldResearch = usIsWhite 
+                ? (score > bounds.alpha && score < bounds.beta) 
+                : (score < bounds.beta && score > bounds.alpha);
+            
             if (shouldResearch) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
             }
