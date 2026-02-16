@@ -5,29 +5,22 @@ namespace engine {
 
 // ===================================================
 // HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
-// IMPORTANTE: NON devono essere troppo alte altrimenti l'engine ha paura di catturare!
-// La SEE nella search già valuta gli scambi, quindi qui serve solo un "warning"
-// BUGFIX: Ridotte ulteriormente per evitare doppia contabilità con SEE
-// L'engine non deve "giustificare" catture losing con "rimozione hanging penalty"
+// CRITICAL FIX: Further reduced to prevent false material compensation
+// The engine should NOT think "I sacrifice a pawn to remove hanging penalty"
+// SEE already handles tactical exchanges - these are just subtle warnings
 // ===================================================
-// TUNED: Reduced from -30 to -20 (SEE already handles material exchanges)
-inline static constexpr int64_t HANGING_PAWN_PENALTY   = -20;
+inline static constexpr int64_t HANGING_PAWN_PENALTY   = -12;  // was -20 (reduced)
 
-// TUNED: Reduced from -55 to -40 (avoid double-counting with SEE)
-inline static constexpr int64_t HANGING_MINOR_PENALTY  = -40;
+inline static constexpr int64_t HANGING_MINOR_PENALTY  = -25;  // was -40 (reduced)
 
-// TUNED: Reduced from -85 to -60
-inline static constexpr int64_t HANGING_ROOK_PENALTY   = -60;
+inline static constexpr int64_t HANGING_ROOK_PENALTY   = -35;  // was -60 (reduced)
 
-// TUNED: Reduced from -140 to -100
-inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -100;
+inline static constexpr int64_t HANGING_QUEEN_PENALTY  = -50;  // was -100 (reduced)
 
 // Pawn-specific penalties (additional checks beyond hanging)
-// ridotto da -25
-inline static constexpr int64_t UNDEFENDED_PAWN_PENALTY = -15;
+inline static constexpr int64_t UNDEFENDED_PAWN_PENALTY = -10; // was -15 (reduced)
 
-// ridotto da -15
-inline static constexpr int64_t ATTACKED_PAWN_PENALTY = -8;
+inline static constexpr int64_t ATTACKED_PAWN_PENALTY = -5;    // was -8 (reduced)
 
 } // namespace engine
 
