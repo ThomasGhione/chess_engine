@@ -205,7 +205,24 @@ void Engine::search(uint64_t depth) noexcept {
 
     MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
     if (moves.is_empty()) {
-        this->eval = this->evaluate(this->board);
+        // Root terminal position: update game state explicitly.
+        // evaluate() does not handle stalemate, so set eval from game result.
+        this->updateGameResult();
+        switch (this->gameResult) {
+            case GameResult::DRAW:
+                this->eval = 0;
+                break;
+            case GameResult::WHITE_WINS:
+                this->eval = POS_INF;
+                break;
+            case GameResult::BLACK_WINS:
+                this->eval = NEG_INF;
+                break;
+            case GameResult::ONGOING:
+            default:
+                this->eval = this->evaluate(this->board);
+                break;
+        }
         return;
     }
 

@@ -64,5 +64,25 @@ ut::suite engineSuite = [] {
       << "In questo momento siamo a delta: " << materialDelta;
   };
 
-};
+  "search root stalemate sets draw state"_test = [] {
+    // Black to move, stalemate.
+    engine::Engine e("7k/5K2/6Q1/8/8/8/8/8 b - - 0 1");
+    e.search(4);
 
+    expect(e.isGameOver()) << "Expected game over in root stalemate\n";
+    expect(e.isStalemate()) << "Expected stalemate at root\n";
+    expect(e.eval == static_cast<int64_t>(0)) << "Expected draw eval 0 for root stalemate, got " << e.eval << '\n';
+  };
+
+  "search root checkmate sets mate state"_test = [] {
+    // Black to move, checkmated by White.
+    engine::Engine e("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1");
+    e.search(4);
+
+    expect(e.isGameOver()) << "Expected game over in root checkmate\n";
+    expect(e.isMate()) << "Expected mate at root\n";
+    expect(e.getGameResult() == engine::Engine::WHITE_WINS) << "Expected WHITE_WINS game result\n";
+    expect(e.eval > static_cast<int64_t>(1000000)) << "Expected large positive mate eval, got " << e.eval << '\n';
+  };
+
+};
