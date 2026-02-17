@@ -116,33 +116,32 @@ inline constexpr ZobristTables ZOBRIST = makeZobristTables();
 
 } // namespace detail
 
+inline void xorPiecesFromBitboard(uint64_t bb, uint8_t idx, uint64_t& hashKey) noexcept {
+    while (bb) {
+        const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+        bb &= (bb - 1);
+        hashKey ^= detail::ZOBRIST.piece[idx][sq];
+    }
+}
+
 inline uint64_t computeHashKey(const chess::Board& board) {
     uint64_t hashKey = 0ULL;
 
-    // Pieces using bitboards indexed by piece type/color
-    auto xorPiecesFromBB = [&](uint64_t bb, uint8_t idx) {
-        while (bb) {
-            const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
-            bb &= (bb - 1);
-            hashKey ^= detail::ZOBRIST.piece[idx][sq];
-        }
-    };
-
     // White pieces (color index 0) - indici 1..6
-    xorPiecesFromBB(board.pawns_bb[0],   1);
-    xorPiecesFromBB(board.knights_bb[0], 2);
-    xorPiecesFromBB(board.bishops_bb[0], 3);
-    xorPiecesFromBB(board.rooks_bb[0],   4);
-    xorPiecesFromBB(board.queens_bb[0],  5);
-    xorPiecesFromBB(board.kings_bb[0],   6);
+    xorPiecesFromBitboard(board.pawns_bb[0],   1, hashKey);
+    xorPiecesFromBitboard(board.knights_bb[0], 2, hashKey);
+    xorPiecesFromBitboard(board.bishops_bb[0], 3, hashKey);
+    xorPiecesFromBitboard(board.rooks_bb[0],   4, hashKey);
+    xorPiecesFromBitboard(board.queens_bb[0],  5, hashKey);
+    xorPiecesFromBitboard(board.kings_bb[0],   6, hashKey);
 
     // Black pieces (color index 1) - indici 9..14
-    xorPiecesFromBB(board.pawns_bb[1],   9);
-    xorPiecesFromBB(board.knights_bb[1], 10);
-    xorPiecesFromBB(board.bishops_bb[1], 11);
-    xorPiecesFromBB(board.rooks_bb[1],   12);
-    xorPiecesFromBB(board.queens_bb[1],  13);
-    xorPiecesFromBB(board.kings_bb[1],   14);
+    xorPiecesFromBitboard(board.pawns_bb[1],   9, hashKey);
+    xorPiecesFromBitboard(board.knights_bb[1], 10, hashKey);
+    xorPiecesFromBitboard(board.bishops_bb[1], 11, hashKey);
+    xorPiecesFromBitboard(board.rooks_bb[1],   12, hashKey);
+    xorPiecesFromBitboard(board.queens_bb[1],  13, hashKey);
+    xorPiecesFromBitboard(board.kings_bb[1],   14, hashKey);
 
     // Side to move: XOR if black to move (branchless)
     const uint64_t stmMask = static_cast<uint64_t>(-(board.getActiveColor() == chess::Board::BLACK));

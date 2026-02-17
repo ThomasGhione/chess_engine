@@ -79,6 +79,10 @@ public:
     uint8_t getActiveColor() const noexcept;
     
     static constexpr uint64_t adjacentFilesMask(int file) noexcept;
+    static constexpr std::array<uint64_t, 8> initFileMasks() noexcept;
+    static constexpr std::array<uint64_t, 8> initAdjacentFilesOnly() noexcept;
+    static constexpr std::array<uint64_t, 8> initAdjacentAndFileMasks() noexcept;
+    static constexpr std::array<uint64_t, 64> initKingProximityMasks() noexcept;
     static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
     static constexpr std::array<uint64_t, 64> initBlackForwardFill();
     // File masks (already defined in fileMask() but we precalculate for speed)
@@ -256,6 +260,16 @@ private:
     void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept;
     void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) noexcept;
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept;
+    void addTacticalMovesFromMask(const chess::Board& b,
+                                  MoveList<chess::Board::Move>& moves,
+                                  uint8_t from,
+                                  uint64_t mask,
+                                  bool isPawn,
+                                  bool isWhiteToMove,
+                                  bool includeChecks,
+                                  const chess::Coords& enPassant,
+                                  bool inCheck) const noexcept;
+    uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr) noexcept;

@@ -69,6 +69,10 @@ private:
 
     static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
     static constexpr std::array<uint64_t, 64> initBlackForwardFill();
+    static constexpr std::array<uint64_t, 8> initFileMasks() noexcept;
+    static constexpr std::array<uint64_t, 8> initAdjacentFilesOnly() noexcept;
+    static constexpr std::array<uint64_t, 8> initAdjacentAndFileMasks() noexcept;
+    static constexpr std::array<uint64_t, 64> initKingProximityMasks() noexcept;
 
     static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
     static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;

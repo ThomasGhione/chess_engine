@@ -3,50 +3,47 @@
 
 namespace engine {
 
+uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept {
+    // Limit piece bitboards to the simulated occupancy so that pieces
+    // that were "captured" in the simulated exchange aren't considered
+    // as attackers in subsequent steps.
+    const uint64_t pawns_bb = b.pawns_bb[sideLocal] & occLocal;
+    const uint64_t knights_bb = b.knights_bb[sideLocal] & occLocal;
+    const uint64_t bishops_queens_bb = (b.bishops_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
+    const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
+    const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
+
+    uint64_t bb;
+
+    // Pawns
+    bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
+    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+
+    // Knights
+    bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
+    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+
+    // Bishops/Queens (diagonal) - compute bishop attacks only now
+    bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
+    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+
+    // Rooks/Queens (orthogonal) - compute rook attacks only if needed
+    bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
+    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+
+    // Kings (last)
+    bb = kings_bb & pieces::KING_ATTACKS[sq];
+    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+
+    return 64; // no attacker
+}
+
 // Static Exchange Evaluation (SEE) - Quick version
 // Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
 // OPTIMIZATION: stop at the first favorable exchange for the passive side (early exit)
 int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
-
-    // Micro-ottimizzazione SEE: identifichiamo il meno prezioso controllando
-    // i tipi di attaccanti in ordine (pawn -> knight -> bishop -> rook -> queen -> king)
-    // e calcolando gli attacchi degli slider solo quando strettamente necessario.
-    auto getLeastValuableAttackerTo = [&](uint8_t sq, uint64_t occLocal, int sideLocal) noexcept -> uint8_t {
-        // Limit piece bitboards to the simulated occupancy so that pieces
-        // that were "captured" in the simulated exchange aren't considered
-        // as attackers in subsequent steps.
-        const uint64_t pawns_bb = b.pawns_bb[sideLocal] & occLocal;
-        const uint64_t knights_bb = b.knights_bb[sideLocal] & occLocal;
-        const uint64_t bishops_queens_bb = (b.bishops_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
-        const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
-        const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
-
-        uint64_t bb;
-
-        // Pawns
-        bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
-        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
-
-        // Knights
-        bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
-        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
-
-        // Bishops/Queens (diagonal) - compute bishop attacks only now
-        bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
-        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
-
-        // Rooks/Queens (orthogonal) - compute rook attacks only if needed
-        bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
-        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
-
-        // Kings (last)
-        bb = kings_bb & pieces::KING_ATTACKS[sq];
-        if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
-
-        return 64; // nessun attaccante
-    };
 
     const int sideActive = b.getActiveColor() == chess::Board::WHITE ? 0 : 1;
     const int sidePassive = sideActive ^ 1;
@@ -95,7 +92,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     while (depth < MAX_SEE_DEPTH) {
         // Trova l'attaccante meno prezioso verso la casella target
-        uint8_t attacker = getLeastValuableAttackerTo(toSq, occ, side);
+        uint8_t attacker = this->getLeastValuableAttackerTo(b, toSq, occ, side);
         if (attacker == 64) break;
 
         // Determine attacker type using the piece bitboards AND the simulated occupancy

@@ -3,6 +3,62 @@
 
 namespace engine {
 
+void Engine::addTacticalMovesFromMask(const chess::Board& b,
+                                      MoveList<chess::Board::Move>& moves,
+                                      uint8_t from,
+                                      uint64_t mask,
+                                      bool isPawn,
+                                      bool isWhiteToMove,
+                                      bool includeChecks,
+                                      const chess::Coords& enPassant,
+                                      bool inCheck) const noexcept {
+    const chess::Coords fromC{from};
+
+    while (mask) {
+        const uint8_t to = __builtin_ctzll(mask);
+        mask &= (mask - 1);
+
+        const chess::Coords toC{to};
+        const bool isEnPassant = isPawn
+            && chess::Coords::isInBounds(enPassant)
+            && (toC == enPassant)
+            && (b.get(toC) == chess::Board::EMPTY);
+        const bool isCapture = (b.get(toC) != chess::Board::EMPTY) || isEnPassant;
+        const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhiteToMove));
+
+        if (!b.canMoveToBB(fromC, toC, inCheck)) {
+            continue;
+        }
+
+        if (isPromotion) {
+            // Keep all legal underpromotions for tactical accuracy in qsearch.
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+            continue;
+        }
+
+        bool shouldAdd = isCapture;
+
+        const uint8_t moverColor = b.getActiveColor();
+        const uint8_t oppColor = chess::Board::oppositeColor(moverColor);
+        if (!shouldAdd && includeChecks) {
+            chess::Board::MoveState tmpState;
+            const auto checkMove = chess::Board::Move{fromC, toC, '\0'};
+            const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
+            if (const_cast<chess::Board&>(b).inCheck(oppColor)) {
+                shouldAdd = true;
+            }
+            const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
+        }
+
+        if (shouldAdd) {
+            moves.emplace_back(chess::Board::Move{fromC, toC});
+        }
+    }
+}
+
 MoveList<chess::Board::Move>
 Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     MoveList<chess::Board::Move> moves;
@@ -122,55 +178,6 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     
     const bool inCheck = b.inCheck(color);
 
-    // Helper to add tactical moves (captures, promotions, and optionally checks)
-    auto addTacticalMovesFromMask = [&](uint8_t from, uint64_t mask, bool isPawn) {
-        const chess::Coords fromC{from};
-        
-        while (mask) {
-            const uint8_t to = __builtin_ctzll(mask);
-            mask &= (mask - 1);
-            
-            const chess::Coords toC{to};
-            const bool isEnPassant = isPawn
-                && chess::Coords::isInBounds(enPassant)
-                && (toC == enPassant)
-                && (b.get(toC) == chess::Board::EMPTY);
-            const bool isCapture = (b.get(toC) != chess::Board::EMPTY) || isEnPassant;
-            const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhite));
-
-            if (!b.canMoveToBB(fromC, toC, inCheck)) {
-                continue;
-            }
-
-            if (isPromotion) {
-                // Keep all legal underpromotions for tactical accuracy in qsearch.
-                moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
-                moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
-                moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
-                moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
-                continue;
-            }
-
-            // Only add if it's a capture, or (if includeChecks) a check.
-            bool shouldAdd = isCapture;
-
-            if (!shouldAdd && includeChecks) {
-                // Check if this move gives check (expensive doMove/undoMove)
-                chess::Board::MoveState tmpState;
-                const auto checkMove = chess::Board::Move{fromC, toC, '\0'};
-                const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
-                if (const_cast<chess::Board&>(b).inCheck(isWhite ? chess::Board::BLACK : chess::Board::WHITE)) {
-                    shouldAdd = true;
-                }
-                const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
-            }
-            
-            if (shouldAdd) {
-                moves.emplace_back(chess::Board::Move{fromC, toC});
-            }
-        }
-    };
-
     // ================= PAWNS (captures and promotions) =================
     uint64_t bb = pawns;
     while (bb) {
@@ -197,7 +204,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
             }
         }
         
-        addTacticalMovesFromMask(from, attacks, true);
+        addTacticalMovesFromMask(b, moves, from, attacks, true, isWhite, includeChecks, enPassant, inCheck);
     }
 
     // ================= KNIGHTS (captures only) =================
@@ -205,7 +212,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
-        addTacticalMovesFromMask(from, attacks, false);
+        addTacticalMovesFromMask(b, moves, from, attacks, false, isWhite, includeChecks, enPassant, inCheck);
     }
 
     // ================= BISHOPS (captures only) =================
@@ -213,7 +220,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
-        addTacticalMovesFromMask(from, attacks, false);
+        addTacticalMovesFromMask(b, moves, from, attacks, false, isWhite, includeChecks, enPassant, inCheck);
     }
 
     // ================= ROOKS (captures only) =================
@@ -221,7 +228,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
-        addTacticalMovesFromMask(from, attacks, false);
+        addTacticalMovesFromMask(b, moves, from, attacks, false, isWhite, includeChecks, enPassant, inCheck);
     }
 
     // ================= QUEENS (captures only) =================
@@ -229,14 +236,14 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
-        addTacticalMovesFromMask(from, attacks, false);
+        addTacticalMovesFromMask(b, moves, from, attacks, false, isWhite, includeChecks, enPassant, inCheck);
     }
 
     // ================= KING (captures only) =================
     if (kings) {
         const uint8_t from = __builtin_ctzll(kings); // King: no need for poplsb (only one)
         uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
-        addTacticalMovesFromMask(from, attacks, false);
+        addTacticalMovesFromMask(b, moves, from, attacks, false, isWhite, includeChecks, enPassant, inCheck);
     }
 
     return moves;

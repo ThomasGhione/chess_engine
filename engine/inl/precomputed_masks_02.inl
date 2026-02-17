@@ -1,14 +1,14 @@
 namespace engine {
 
-inline const std::array<uint64_t, 8> Engine::FILE_MASKS = []() constexpr {
+inline constexpr std::array<uint64_t, 8> Engine::initFileMasks() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
         masks[f] = 0x0101010101010101ULL << f;
     }
     return masks;
-}();
+}
 
-inline const std::array<uint64_t, 8> Engine::ADJACENT_FILES_ONLY = []() constexpr {
+inline constexpr std::array<uint64_t, 8> Engine::initAdjacentFilesOnly() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
         uint64_t m = 0;
@@ -17,9 +17,9 @@ inline const std::array<uint64_t, 8> Engine::ADJACENT_FILES_ONLY = []() constexp
         masks[f] = m;
     }
     return masks;
-}();
+}
 
-inline const std::array<uint64_t, 8> Engine::ADJACENT_AND_FILE_MASKS = []() constexpr {
+inline constexpr std::array<uint64_t, 8> Engine::initAdjacentAndFileMasks() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
         uint64_t m = (0x0101010101010101ULL << f);
@@ -28,9 +28,9 @@ inline const std::array<uint64_t, 8> Engine::ADJACENT_AND_FILE_MASKS = []() cons
         masks[f] = m;
     }
     return masks;
-}();
+}
 
-inline const std::array<uint64_t, 64> Engine::KING_PROXIMITY_MASKS = []() constexpr {
+inline constexpr std::array<uint64_t, 64> Engine::initKingProximityMasks() noexcept {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
         uint64_t mask = 0;
@@ -49,6 +49,11 @@ inline const std::array<uint64_t, 64> Engine::KING_PROXIMITY_MASKS = []() conste
         masks[sq] = mask;
     }
     return masks;
-}();
+}
+
+inline const std::array<uint64_t, 8> Engine::FILE_MASKS = Engine::initFileMasks();
+inline const std::array<uint64_t, 8> Engine::ADJACENT_FILES_ONLY = Engine::initAdjacentFilesOnly();
+inline const std::array<uint64_t, 8> Engine::ADJACENT_AND_FILE_MASKS = Engine::initAdjacentAndFileMasks();
+inline const std::array<uint64_t, 64> Engine::KING_PROXIMITY_MASKS = Engine::initKingProximityMasks();
 
 } // namespace engine
