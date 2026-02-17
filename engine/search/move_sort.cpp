@@ -251,8 +251,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 // Balances tactical strength with performance overhead
                 if (moveIndex < 8) {
                     chess::Board::MoveState tmpState;
-                    const bool isPromo = isPromotionMove(b, m);
-                    b.doMove(m, tmpState, isPromo ? 'q' : '\0');
+                    doMoveWithPromotion(b, m, tmpState);
                     const bool givesCheck = b.inCheck(b.getActiveColor());
                     b.undoMove(m, tmpState);
                     
@@ -265,6 +264,15 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 if (score == 0 && fromPieceType == chess::Board::PAWN) {
                     if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
                         score = 7000;
+
+                        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
+                        uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
+                        if (promo == 'r') promoType = chess::Board::ROOK;
+                        else if (promo == 'b') promoType = chess::Board::BISHOP;
+                        else if (promo == 'n') promoType = chess::Board::KNIGHT;
+
+                        // Tie-break promotions naturally: Q > R > B > N
+                        score += PIECE_VALUES[promoType];
                     }
                 }
 

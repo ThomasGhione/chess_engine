@@ -41,7 +41,12 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
 __attribute__((always_inline))
 inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     const bool isPromo = isPromotionMove(b, m);
-    b.doMove(m, state, isPromo ? 'q' : '\0');
+    char promoChoice = '\0';
+    if (isPromo) {
+        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
+        promoChoice = (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') ? promo : 'q';
+    }
+    b.doMove(m, state, promoChoice);
     return isPromo;
 }
 

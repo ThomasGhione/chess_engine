@@ -132,23 +132,35 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
             const chess::Coords toC{to};
             const bool isCapture = (b.get(toC) != chess::Board::EMPTY);
             const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhite));
-            
-            // Only add if it's a capture, promotion, or (if includeChecks) a check
-            bool shouldAdd = (isCapture || isPromotion);
-            
+
+            if (!b.canMoveToBB(fromC, toC, inCheck)) {
+                continue;
+            }
+
+            if (isPromotion) {
+                // Keep all legal underpromotions for tactical accuracy in qsearch.
+                moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
+                moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
+                moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
+                moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+                continue;
+            }
+
+            // Only add if it's a capture, or (if includeChecks) a check.
+            bool shouldAdd = isCapture;
+
             if (!shouldAdd && includeChecks) {
                 // Check if this move gives check (expensive doMove/undoMove)
-                if (b.canMoveToBB(fromC, toC, inCheck)) {
-                    chess::Board::MoveState tmpState;
-                    const_cast<chess::Board&>(b).doMove({fromC, toC, '\0'}, tmpState, isPawn && isPromotion ? 'q' : '\0');
-                    if (const_cast<chess::Board&>(b).inCheck(isWhite ? chess::Board::BLACK : chess::Board::WHITE)) {
-                        shouldAdd = true;
-                    }
-                    const_cast<chess::Board&>(b).undoMove({fromC, toC, '\0'}, tmpState);
+                chess::Board::MoveState tmpState;
+                const auto checkMove = chess::Board::Move{fromC, toC, '\0'};
+                const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
+                if (const_cast<chess::Board&>(b).inCheck(isWhite ? chess::Board::BLACK : chess::Board::WHITE)) {
+                    shouldAdd = true;
                 }
+                const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
             }
             
-            if (shouldAdd && b.canMoveToBB(fromC, toC, inCheck)) {
+            if (shouldAdd) {
                 moves.emplace_back(chess::Board::Move{fromC, toC});
             }
         }
@@ -162,15 +174,15 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
         // Pawn attacks (captures only)
         uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
         
-        // Pawn forward pushes (only if promotion rank)
+        // Pawn forward pushes from the rank immediately before promotion
         const uint8_t rank = from / 8;
-        const uint8_t promotionRank = isWhite ? 6 : 1; // Rank 7 for white, rank 2 for black (0-indexed)
-        if (rank == promotionRank) {
+        const uint8_t prePromotionRank = isWhite ? 1 : 6;
+        if (rank == prePromotionRank) {
             // Check forward push for promotion
-            const int direction = isWhite ? 8 : -8;
-            const uint8_t frontSq = from + direction;
-            if (!(occ & chess::Board::bitMask(frontSq))) {
-                attacks |= chess::Board::bitMask(frontSq);
+            const int direction = isWhite ? -8 : 8;
+            const int frontSq = static_cast<int>(from) + direction;
+            if (frontSq >= 0 && frontSq < 64 && !(occ & chess::Board::bitMask(static_cast<uint8_t>(frontSq)))) {
+                attacks |= chess::Board::bitMask(static_cast<uint8_t>(frontSq));
             }
         }
         

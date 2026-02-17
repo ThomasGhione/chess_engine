@@ -28,7 +28,12 @@ void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, 
 void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept {
     if (pieceType == chess::Board::PAWN) {
         if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
-            score += PIECE_VALUES[chess::Board::QUEEN];
+            const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
+            uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
+            if (promo == 'r') promoType = chess::Board::ROOK;
+            else if (promo == 'b') promoType = chess::Board::BISHOP;
+            else if (promo == 'n') promoType = chess::Board::KNIGHT;
+            score += PIECE_VALUES[promoType];
         }
     }
 }
@@ -36,7 +41,7 @@ void Engine::addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, b
 // Helper to add check bonus
 void Engine::addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept {
     chess::Board::MoveState tmpState;
-    b.doMove(m, tmpState, isPromotionMove(b, m) ? 'q' : 0);
+    doMoveWithPromotion(b, m, tmpState);
     if (b.inCheck(!usIsWhite)) {
         score += CHECK_BONUS;
     }
