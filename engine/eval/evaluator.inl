@@ -84,25 +84,6 @@ inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noex
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
 }
 
-template<int Side>
-inline constexpr int64_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
-    static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
-
-    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
-
-    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-    const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
-
-    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
-
-    if constexpr (Side == 0) {
-        return score;
-    } else {
-        return -score;
-    }
-}
-
 inline constexpr int64_t Evaluator::getPieceValue(uint8_t pieceType) noexcept {
     return PIECE_VALUES[pieceType & chess::Board::MASK_PIECE_TYPE];
 }
