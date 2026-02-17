@@ -118,6 +118,7 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     
     // Opponent occupancy: all pieces minus our pieces
     const uint64_t oppOcc = occ & ~ownOcc;
+    const chess::Coords enPassant = b.getEnPassant();
     
     const bool inCheck = b.inCheck(color);
 
@@ -130,7 +131,11 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
             mask &= (mask - 1);
             
             const chess::Coords toC{to};
-            const bool isCapture = (b.get(toC) != chess::Board::EMPTY);
+            const bool isEnPassant = isPawn
+                && chess::Coords::isInBounds(enPassant)
+                && (toC == enPassant)
+                && (b.get(toC) == chess::Board::EMPTY);
+            const bool isCapture = (b.get(toC) != chess::Board::EMPTY) || isEnPassant;
             const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhite));
 
             if (!b.canMoveToBB(fromC, toC, inCheck)) {
@@ -173,6 +178,12 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
         
         // Pawn attacks (captures only)
         uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
+        if (chess::Coords::isInBounds(enPassant)) {
+            const uint64_t epMask = chess::Board::bitMask(enPassant.index);
+            if (pieces::PAWN_ATTACKS[isWhite][from] & epMask) {
+                attacks |= epMask;
+            }
+        }
         
         // Pawn forward pushes from the rank immediately before promotion
         const uint8_t rank = from / 8;

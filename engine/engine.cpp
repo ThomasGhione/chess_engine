@@ -124,7 +124,9 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-    const bool isCapture = (toPieceType != chess::Board::EMPTY);
+    const bool isEpCapture = isEnPassantCapture(b, m);
+    const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+    const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
     
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex = m.to.index;
@@ -138,7 +140,7 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
         // GRAVITY FORMULA: prevents overflow and naturally saturates
         // h += bonus - h * |bonus| / MAX_CAPTURE_HISTORY
         constexpr int MAX_CAPTURE_HISTORY = 10000;
-        auto& ch = captureHistory[colorIndex][toIndex][toPieceType];
+        auto& ch = captureHistory[colorIndex][toIndex][victimType];
         ch += bonus - ch * std::abs(bonus) / MAX_CAPTURE_HISTORY;
         
         return; // Don't process as quiet move

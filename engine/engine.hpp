@@ -169,8 +169,9 @@ private:
 
     //--- Variabile
     GameResult gameResult = Engine::ONGOING;
-    constexpr static int64_t NEG_INF = std::numeric_limits<int64_t>::min();
-    constexpr static int64_t POS_INF = std::numeric_limits<int64_t>::max();
+    // Keep search bounds within int32 range so TT store/probe can preserve mate scores.
+    constexpr static int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
+    constexpr static int64_t POS_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::max() - 1);
     
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
@@ -257,7 +258,7 @@ private:
     void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true) noexcept;
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr) noexcept;
     int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     

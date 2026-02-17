@@ -174,7 +174,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-        const bool isCapture = (toPieceType != chess::Board::EMPTY);
+        const bool isEpCapture = isEnPassantCapture(b, m);
+        const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
         
         int64_t score = 0;
         
@@ -185,7 +187,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // ============================================================================
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
-            const int64_t capturedValue = PIECE_VALUES[toPieceType];
+            const int64_t capturedValue = PIECE_VALUES[victimType];
             // CRITICAL FIX: Reduced to minimal margin - material is KING!
             // Engine was overvaluing positional compensation for material losses
             // 100cp = 1 pawn is the MAXIMUM acceptable positional swing in qsearch

@@ -178,7 +178,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         const uint8_t toPiece = b.get(m.to);
         const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
-        const bool isCapture = (toPieceType != chess::Board::EMPTY);
+        const bool isEpCapture = isEnPassantCapture(b, m);
+        const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
 
         // =========================================================
         // MOVE ORDERING PRIORITY (from highest to lowest):
@@ -208,7 +210,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 
                 // Add capture history bonus (0-500 range)
                 const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
-                const int64_t capHist = captureHistory[colorIndex][m.to.index][toPieceType];
+                const int64_t capHist = captureHistory[colorIndex][m.to.index][victimType];
                 score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
                 // Total: 10000-19500
             } else {

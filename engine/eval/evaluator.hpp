@@ -81,8 +81,9 @@ private:
     static const std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS;
     static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
 
-    static inline constexpr int64_t NEG_INF = std::numeric_limits<int64_t>::min();
-    static inline constexpr int64_t POS_INF = std::numeric_limits<int64_t>::max();
+    // Keep mate scores TT-compatible (TT stores int32 scores).
+    static inline constexpr int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
+    static inline constexpr int64_t POS_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::max() - 1);
     static inline constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
     // Variabili end
 

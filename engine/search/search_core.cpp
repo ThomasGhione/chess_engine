@@ -70,7 +70,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
         
-        const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY);
+        const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) 
             && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
@@ -138,7 +138,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 3);
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
-            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
+            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
             
             // Re-search at full depth+window if the reduced/null-window search looks promising
             const bool shouldResearch = usIsWhite 
@@ -146,11 +146,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
                 : (score < bounds.beta);
             
             if (shouldResearch) {
-                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
             }
         } else {
             // First move: search with full window (PV node)
-            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite);
+            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
         }
 
         b.undoMove(m, state);
@@ -195,7 +195,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     return ScoredMove{bestMove, best};
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite) noexcept {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite, const chess::Board::Move* previousMove) noexcept {
     this->nodesSearched++;
 
     // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
@@ -368,7 +368,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             b.setEnPassant(chess::Coords{}); // Clear en passant (opponent can't ep after a "pass")
             b.setNextTurn();
 
-            const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite);
+            const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, nullptr);
 
             // Undo null move: restore ALL state precisely
             b.setPrevTurn();
@@ -383,7 +383,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
                 // Only verify if depth is high enough (otherwise overhead > benefit)
                 // depth >= 10: verification is expensive, only do it at high depth
                 if (depth >= 10) {
-                    const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite);
+                    const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr);
                     if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
                         return usIsWhite ? beta : alpha;
                     }
@@ -445,8 +445,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
-    // Build search context (previousMove passed from parent call)
-    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, nullptr, staticEval, inCheck};
+    // Build search context (previousMove = move played by parent to reach this node)
+    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, previousMove, staticEval, inCheck};
 
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
 
