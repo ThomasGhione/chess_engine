@@ -109,9 +109,14 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         const bool givesCheck = b.inCheck(oppColor);
 
         // =========================================================================
-        // CHECK EXTENSION: Search checking moves 1 ply deeper (+40-60 ELO)
+        // CHECK EXTENSION (SELECTIVE, DETERMINISTIC)
         // =========================================================================
-        const int64_t childDepth = ctx.depth - 1 + (givesCheck ? 1 : 0);
+        // Avoid extending every checking move: that can stall depth reduction in
+        // long checking sequences and hurt both speed and tactical stability.
+        // Extend only forcing checks and only near the horizon.
+        const bool isForcingCheck = givesCheck && (wasCapture || isPromo || moveIndex < 3);
+        const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
+        const int64_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0);
 
         // LMR: reduce depth for late, non-critical moves
         // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
