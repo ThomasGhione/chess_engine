@@ -57,8 +57,8 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
     
     // Score doubled pawns (vectorizable)
     for (int f = 0; f < 8; ++f) {
-        if (whiteFileCounts[f] > 1) score += (whiteFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
-        if (blackFileCounts[f] > 1) score -= (blackFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+        if (whiteFileCounts[f] > 1) score += (whiteFileCounts[f] - 1) * engine::DOUBLED_PAWN_PENALTY;
+        if (blackFileCounts[f] > 1) score -= (blackFileCounts[f] - 1) * engine::DOUBLED_PAWN_PENALTY;
     }
     
     // Evaluate WHITE pawns (isolated + passed in ONE loop)
@@ -71,7 +71,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         // Isolated pawn check (no friendly pawns on adjacent files) - OPTIMIZED
         const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
         if ((whitePawns & adjFilesMask) == 0) [[unlikely]] {
-            score += ISOLATED_PAWN_PENALTY;
+            score += engine::ISOLATED_PAWN_PENALTY;
         }
         
         // Pawn chain bonus: supported pawn (has pawn protecting it diagonally behind)
@@ -98,7 +98,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
                                        (file < 7 && (whitePawns & chess::Board::bitMask(sq + 9)) != 0);     // Behind-right
                 
                 if (!hasSupport) {
-                    score += ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
+                    score += engine::ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
                 }
             }
         }
@@ -107,7 +107,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const uint64_t adjAndFileMask = ADJACENT_AND_FILE_MASKS[file];
         const uint64_t forwardMask = WHITE_FORWARD_FILL[sq];
         if ((blackPawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
-            score += PASSED_PAWN_BONUS;
+            score += engine::PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
             const int advancement = 6 - rank; // rank 6 (start) -> 0, rank 1 (near promo) -> 5
             score += advancement * (isEndgame ? 6 : 2);
@@ -120,7 +120,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             // If blocked by an enemy pawn directly in front, reduce the bonus
             const int forwardSq = sq - 8;
             if (forwardSq >= 0 && (blackPawns & chess::Board::bitMask(forwardSq))) {
-                score -= PASSED_PAWN_BONUS / 2;
+                score -= engine::PASSED_PAWN_BONUS / 2;
             }
             if (isEndgame) {
                 score += (6 - rank) * 4; // Reduced from 6
@@ -138,7 +138,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         // Isolated pawn check - OPTIMIZED
         const uint64_t adjFilesMask = ADJACENT_FILES_ONLY[file];
         if ((blackPawns & adjFilesMask) == 0) [[unlikely]] {
-            score -= ISOLATED_PAWN_PENALTY;
+            score -= engine::ISOLATED_PAWN_PENALTY;
         }
         
         // Pawn chain bonus: supported pawn (has pawn protecting it diagonally behind)
@@ -164,7 +164,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
                                        (file < 7 && sq >= 9 && (blackPawns & chess::Board::bitMask(static_cast<uint8_t>(sq - 9))) != 0);     // Behind-right
                 
                 if (!hasSupport) {
-                    score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
+                    score -= engine::ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
                 }
             }
         }
@@ -173,7 +173,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const uint64_t adjAndFileMask = ADJACENT_AND_FILE_MASKS[file];
         const uint64_t forwardMask = BLACK_FORWARD_FILL[sq];
         if ((whitePawns & adjAndFileMask & forwardMask) == 0) [[unlikely]] {
-            score -= PASSED_PAWN_BONUS;
+            score -= engine::PASSED_PAWN_BONUS;
             // Slight bonus for advancement even in middlegame
             const int advancement = rank - 1; // rank 1 (start) -> 0, rank 6 (near promo) -> 5
             score -= advancement * (isEndgame ? 6 : 2);
@@ -186,7 +186,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             // If blocked by an enemy pawn directly in front, reduce the bonus
             const int forwardSq = sq + 8;
             if (forwardSq < 64 && (whitePawns & chess::Board::bitMask(forwardSq))) {
-                score += PASSED_PAWN_BONUS / 2;
+                score += engine::PASSED_PAWN_BONUS / 2;
             }
             if (isEndgame) {
                 score -= (rank - 1) * 4;

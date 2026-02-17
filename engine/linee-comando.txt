@@ -1,0 +1,176 @@
+eval/evaluator_06.cpp:37:    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+eval/evaluator_06.cpp:38:    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+eval/evaluator_06.cpp:39:    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+eval/evaluator_06.cpp:40:    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+eval/evaluator_06.cpp:41:    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+eval/evaluator_06.cpp:45:    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+eval/evaluator_06.cpp:46:    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+eval/evaluator_07.cpp:11:    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
+eval/evaluator_pieceCoordination.cpp:19:            score += sign * COORDINATION_PENALTY;
+eval/evaluator_03.cpp:18:    return (whiteDeveloped - blackDeveloped) * DEVELOPMENT_BONUS;
+eval/evaluator_generic.cpp:115:    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+eval/evaluator_generic.cpp:116:    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+eval/evaluator_generic.cpp:117:    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+eval/evaluator_generic.cpp:118:    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+eval/evaluator_generic.cpp:119:    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+eval/evaluator_generic.cpp:123:    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+eval/evaluator_generic.cpp:124:    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+eval/evaluator_08.cpp:21:    score += sign * __builtin_popcountll(hanging) * HANGING_PAWN_PENALTY;
+eval/evaluator_08.cpp:24:    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+eval/evaluator_08.cpp:27:    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+eval/evaluator_08.cpp:30:    score += sign * __builtin_popcountll(hanging) * HANGING_ROOK_PENALTY;
+eval/evaluator_08.cpp:33:    score += sign * __builtin_popcountll(hanging) * HANGING_QUEEN_PENALTY;
+eval/evaluator_04.cpp:22:            score += sign * (-KING_NON_CASTLING_PENALTY);
+eval/evaluator_04.cpp:65:            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+eval/evaluator_04.cpp:71:            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+eval/evaluator_04.cpp:118:                    attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+eval/evaluator_04.cpp:132:                    attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+eval/evaluator_04.cpp:146:                    attackWeight += KING_ATTACK_WEIGHT_ROOK;
+eval/evaluator_04.cpp:160:                    attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+eval/evaluator_04.cpp:197:    score += whiteHasCastled * CASTLING_BONUS;
+eval/evaluator_04.cpp:204:    score -= blackHasCastled * CASTLING_BONUS;
+eval/evaluator_trappedPiece.cpp:27:    sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
+eval/evaluator_trappedPiece.cpp:37:    sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, PINNED_BISHOP_PENALTY, LOW_MOBILITY_BISHOP_PENALTY>(
+eval/evaluator_trappedPiece.cpp:40:    sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, PINNED_ROOK_PENALTY, LOW_MOBILITY_ROOK_PENALTY>(
+eval/evaluator_trappedPiece.cpp:43:    sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, PINNED_QUEEN_PENALTY, LOW_MOBILITY_QUEEN_PENALTY>(
+eval/evaluator_rooks.cpp:20:    const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+eval/evaluator_rooks.cpp:21:    score += fileBonus + (rank == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
+eval/evaluator_rooks.cpp:33:    const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+eval/evaluator_rooks.cpp:34:    score += fileBonus2 + (rank2 == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
+eval/evaluator_outposts.cpp:23:    score += evalOutpostsPieces<OUTPOST_KNIGHT_BONUS>(b.knights_bb[color], color, opp, sign, b);
+eval/evaluator_outposts.cpp:24:    score += evalOutpostsPieces<OUTPOST_BISHOP_BONUS / 2>(b.bishops_bb[color], color, opp, sign, b);
+eval/evaluator_kingActivity.cpp:21:        return sign * friendsNearKing * KING_ACTIVITY_BONUS;
+eval/evaluator_kingActivity.cpp:32:    return sign * enemiesNearKing * KING_SAFETY_PENALTY;
+eval/evaluator.inl:83:    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+eval/evaluator_01.cpp:60:        if (whiteFileCounts[f] > 1) score += (whiteFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+eval/evaluator_01.cpp:61:        if (blackFileCounts[f] > 1) score -= (blackFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+eval/evaluator_01.cpp:74:            score += ISOLATED_PAWN_PENALTY;
+eval/evaluator_01.cpp:101:                    score += ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
+eval/evaluator_01.cpp:110:            score += PASSED_PAWN_BONUS;
+eval/evaluator_01.cpp:123:                score -= PASSED_PAWN_BONUS / 2;
+eval/evaluator_01.cpp:141:            score -= ISOLATED_PAWN_PENALTY;
+eval/evaluator_01.cpp:167:                    score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
+eval/evaluator_01.cpp:176:            score -= PASSED_PAWN_BONUS;
+eval/evaluator_01.cpp:189:                score += PASSED_PAWN_BONUS / 2;
+eval/evaluator_05.cpp:168:        // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS)
+eval/evaluator_05.cpp:169:        const int64_t edgeBonus = ROOK_EG_EDGE_BONUS;
+eval/evaluator_05.cpp:184:            score += sign * proximityBonus * ROOK_EG_PRESSURE_BONUS / 14;
+inl/evaluation_helpers_03.inl:19:    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+search/move_ordering.cpp:14:        score += MVV_TABLE[toPieceType];  // MVV-only: just victim value
+search/move_ordering.cpp:21:            score += MVV_TABLE[chess::Board::PAWN];
+search/move_ordering.cpp:46:        score += CHECK_BONUS;
+search/move_ordering.cpp:59:        score += KILLER1_BONUS;
+search/move_ordering.cpp:61:        score += KILLER2_BONUS;
+search/move_ordering.cpp:80:        score -= KING_NON_CASTLING_PENALTY;
+search/move_ordering.cpp:82:        score += CASTLING_BONUS;
+search/move_sort.cpp:326:                        score += ORDERING_PENALTY_SAME_PAWN_OPENING; // negative value lowers priority
+search/quiescence.cpp:109:    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+search/quiescence.cpp:142:        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+search/search_core.cpp:273:        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+search/search_core.cpp:470:            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+search.backup/move_sort.cpp:293:                        score += ORDERING_PENALTY_SAME_PAWN_OPENING; // negative value lowers priority
+search.backup/move_ordering.cpp:14:        score += MVV_TABLE[toPieceType];  // MVV-only: just victim value
+search.backup/move_ordering.cpp:21:            score += MVV_TABLE[chess::Board::PAWN];
+search.backup/move_ordering.cpp:41:        score += CHECK_BONUS;
+search.backup/move_ordering.cpp:54:        score += KILLER1_BONUS;
+search.backup/move_ordering.cpp:56:        score += KILLER2_BONUS;
+search.backup/move_ordering.cpp:75:        score -= KING_NON_CASTLING_PENALTY;
+search.backup/move_ordering.cpp:77:        score += CASTLING_BONUS;
+search.backup/quiescence.cpp:93:    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+search.backup/quiescence.cpp:104:        deltaMargin += (QUEEN_VALUE - PAWN_VALUE);
+search.backup/quiescence.cpp:123:        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+search.backup/search_core.cpp:143:        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+search.backup/search_core.cpp:193:            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+linee-comando.txt:1:eval/evaluator_06.cpp:37:    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+linee-comando.txt:2:eval/evaluator_06.cpp:38:    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+linee-comando.txt:3:eval/evaluator_06.cpp:39:    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+linee-comando.txt:4:eval/evaluator_06.cpp:40:    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+linee-comando.txt:5:eval/evaluator_06.cpp:41:    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+linee-comando.txt:6:eval/evaluator_06.cpp:45:    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+linee-comando.txt:7:eval/evaluator_06.cpp:46:    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+linee-comando.txt:8:eval/evaluator_07.cpp:11:    return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * CENTER_CONTROL_BONUS;
+linee-comando.txt:9:eval/evaluator_pieceCoordination.cpp:19:            score += sign * COORDINATION_PENALTY;
+linee-comando.txt:10:eval/evaluator_03.cpp:18:    return (whiteDeveloped - blackDeveloped) * DEVELOPMENT_BONUS;
+linee-comando.txt:11:eval/evaluator_generic.cpp:115:    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
+linee-comando.txt:12:eval/evaluator_generic.cpp:116:    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
+linee-comando.txt:13:eval/evaluator_generic.cpp:117:    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
+linee-comando.txt:14:eval/evaluator_generic.cpp:118:    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
+linee-comando.txt:15:eval/evaluator_generic.cpp:119:    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
+linee-comando.txt:16:eval/evaluator_generic.cpp:123:    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
+linee-comando.txt:17:eval/evaluator_generic.cpp:124:    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+linee-comando.txt:18:eval/evaluator_08.cpp:21:    score += sign * __builtin_popcountll(hanging) * HANGING_PAWN_PENALTY;
+linee-comando.txt:19:eval/evaluator_08.cpp:24:    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+linee-comando.txt:20:eval/evaluator_08.cpp:27:    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+linee-comando.txt:21:eval/evaluator_08.cpp:30:    score += sign * __builtin_popcountll(hanging) * HANGING_ROOK_PENALTY;
+linee-comando.txt:22:eval/evaluator_08.cpp:33:    score += sign * __builtin_popcountll(hanging) * HANGING_QUEEN_PENALTY;
+linee-comando.txt:23:eval/evaluator.inl:32:    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+linee-comando.txt:24:eval/evaluator_01.cpp:106:        if (whiteFileCounts[f] > 1) score += (whiteFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+linee-comando.txt:25:eval/evaluator_01.cpp:107:        if (blackFileCounts[f] > 1) score -= (blackFileCounts[f] - 1) * DOUBLED_PAWN_PENALTY;
+linee-comando.txt:26:eval/evaluator_01.cpp:120:            score += ISOLATED_PAWN_PENALTY;
+linee-comando.txt:27:eval/evaluator_01.cpp:147:                    score += ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated (they have adjacent pawns)
+linee-comando.txt:28:eval/evaluator_01.cpp:156:            score += PASSED_PAWN_BONUS;
+linee-comando.txt:29:eval/evaluator_01.cpp:169:                score -= PASSED_PAWN_BONUS / 2;
+linee-comando.txt:30:eval/evaluator_01.cpp:187:            score -= ISOLATED_PAWN_PENALTY;
+linee-comando.txt:31:eval/evaluator_01.cpp:214:                    score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
+linee-comando.txt:32:eval/evaluator_01.cpp:223:            score -= PASSED_PAWN_BONUS;
+linee-comando.txt:33:eval/evaluator_01.cpp:236:                score += PASSED_PAWN_BONUS / 2;
+linee-comando.txt:34:eval/evaluator_04.cpp:22:            score += sign * (-KING_NON_CASTLING_PENALTY);
+linee-comando.txt:35:eval/evaluator_04.cpp:65:            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+linee-comando.txt:36:eval/evaluator_04.cpp:71:            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+linee-comando.txt:37:eval/evaluator_04.cpp:118:                    attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+linee-comando.txt:38:eval/evaluator_04.cpp:132:                    attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+linee-comando.txt:39:eval/evaluator_04.cpp:146:                    attackWeight += KING_ATTACK_WEIGHT_ROOK;
+linee-comando.txt:40:eval/evaluator_04.cpp:160:                    attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+linee-comando.txt:41:eval/evaluator_04.cpp:197:    score += whiteHasCastled * CASTLING_BONUS;
+linee-comando.txt:42:eval/evaluator_04.cpp:204:    score -= blackHasCastled * CASTLING_BONUS;
+linee-comando.txt:43:eval/evaluator_trappedPiece.cpp:27:    sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
+linee-comando.txt:44:eval/evaluator_trappedPiece.cpp:37:    sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, PINNED_BISHOP_PENALTY, LOW_MOBILITY_BISHOP_PENALTY>(
+linee-comando.txt:45:eval/evaluator_trappedPiece.cpp:40:    sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, PINNED_ROOK_PENALTY, LOW_MOBILITY_ROOK_PENALTY>(
+linee-comando.txt:46:eval/evaluator_trappedPiece.cpp:43:    sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, PINNED_QUEEN_PENALTY, LOW_MOBILITY_QUEEN_PENALTY>(
+linee-comando.txt:47:eval/evaluator_rooks.cpp:20:    const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+linee-comando.txt:48:eval/evaluator_rooks.cpp:21:    score += fileBonus + (rank == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
+linee-comando.txt:49:eval/evaluator_rooks.cpp:33:    const int64_t fileBonus2 = (!ownPawnOnFile2) * ((!oppPawnOnFile2) ? OPEN_FILE_ROOK_BONUS : SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+linee-comando.txt:50:eval/evaluator_rooks.cpp:34:    score += fileBonus2 + (rank2 == targetRank) * (sign * ROOK_ON_SEVENTH_BONUS);
+linee-comando.txt:51:eval/evaluator_outposts.cpp:23:    score += evalOutpostsPieces<OUTPOST_KNIGHT_BONUS>(b.knights_bb[color], color, opp, sign, b);
+linee-comando.txt:52:eval/evaluator_outposts.cpp:24:    score += evalOutpostsPieces<OUTPOST_BISHOP_BONUS / 2>(b.bishops_bb[color], color, opp, sign, b);
+linee-comando.txt:53:eval/evaluator_05.cpp:165:        // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS)
+linee-comando.txt:54:eval/evaluator_05.cpp:166:        const int64_t edgeBonus = ROOK_EG_EDGE_BONUS;
+linee-comando.txt:55:eval/evaluator_05.cpp:181:            score += sign * proximityBonus * ROOK_EG_PRESSURE_BONUS / 14;
+linee-comando.txt:56:eval/evaluator_kingActivity.cpp:21:        return sign * friendsNearKing * KING_ACTIVITY_BONUS;
+linee-comando.txt:57:eval/evaluator_kingActivity.cpp:32:    return sign * enemiesNearKing * KING_SAFETY_PENALTY;
+linee-comando.txt:58:inl/evaluation_helpers_03.inl:19:    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+linee-comando.txt:59:search/quiescence.cpp:109:    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+linee-comando.txt:60:search/quiescence.cpp:142:        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+linee-comando.txt:61:search/search_core.cpp:246:        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+linee-comando.txt:62:search/search_core.cpp:433:            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+linee-comando.txt:63:search/move_ordering.cpp:14:        score += MVV_TABLE[toPieceType];  // MVV-only: just victim value
+linee-comando.txt:64:search/move_ordering.cpp:21:            score += MVV_TABLE[chess::Board::PAWN];
+linee-comando.txt:65:search/move_ordering.cpp:46:        score += CHECK_BONUS;
+linee-comando.txt:66:search/move_ordering.cpp:59:        score += KILLER1_BONUS;
+linee-comando.txt:67:search/move_ordering.cpp:61:        score += KILLER2_BONUS;
+linee-comando.txt:68:search/move_ordering.cpp:80:        score -= KING_NON_CASTLING_PENALTY;
+linee-comando.txt:69:search/move_ordering.cpp:82:        score += CASTLING_BONUS;
+linee-comando.txt:70:search/move_sort.cpp:305:                        score += ORDERING_PENALTY_SAME_PAWN_OPENING; // negative value lowers priority
+linee-comando.txt:71:search.backup/move_sort.cpp:293:                        score += ORDERING_PENALTY_SAME_PAWN_OPENING; // negative value lowers priority
+linee-comando.txt:72:search.backup/move_ordering.cpp:14:        score += MVV_TABLE[toPieceType];  // MVV-only: just victim value
+linee-comando.txt:73:search.backup/move_ordering.cpp:21:            score += MVV_TABLE[chess::Board::PAWN];
+linee-comando.txt:74:search.backup/move_ordering.cpp:41:        score += CHECK_BONUS;
+linee-comando.txt:75:search.backup/move_ordering.cpp:54:        score += KILLER1_BONUS;
+linee-comando.txt:76:search.backup/move_ordering.cpp:56:        score += KILLER2_BONUS;
+linee-comando.txt:77:search.backup/move_ordering.cpp:75:        score -= KING_NON_CASTLING_PENALTY;
+linee-comando.txt:78:search.backup/move_ordering.cpp:77:        score += CASTLING_BONUS;
+linee-comando.txt:79:search.backup/quiescence.cpp:93:    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+linee-comando.txt:80:search.backup/quiescence.cpp:104:        deltaMargin += (QUEEN_VALUE - PAWN_VALUE);
+linee-comando.txt:81:search.backup/quiescence.cpp:123:        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+linee-comando.txt:82:search.backup/search_core.cpp:143:        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+linee-comando.txt:83:search.backup/search_core.cpp:193:            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+linee-comando.txt:84:piecevaluetables.hpp:21:inline constexpr std::array<int64_t, 64> PAWN_VALUES_TABLE{
+linee-comando.txt:85:piecevaluetables.hpp:42:inline constexpr std::array<int64_t, 64> KNIGHT_VALUES_TABLE{
+linee-comando.txt:86:piecevaluetables.hpp:53:inline constexpr std::array<int64_t, 64> BISHOP_VALUES_TABLE{
+linee-comando.txt:87:piecevaluetables.hpp:64:inline constexpr std::array<int64_t, 64> ROOK_VALUES_TABLE{
+linee-comando.txt:88:piecevaluetables.hpp:75:inline constexpr std::array<int64_t, 64> QUEEN_VALUES_TABLE{
+piecevaluetables.hpp:21:inline constexpr std::array<int64_t, 64> PAWN_VALUES_TABLE{
+piecevaluetables.hpp:42:inline constexpr std::array<int64_t, 64> KNIGHT_VALUES_TABLE{
+piecevaluetables.hpp:53:inline constexpr std::array<int64_t, 64> BISHOP_VALUES_TABLE{
+piecevaluetables.hpp:64:inline constexpr std::array<int64_t, 64> ROOK_VALUES_TABLE{
+piecevaluetables.hpp:75:inline constexpr std::array<int64_t, 64> QUEEN_VALUES_TABLE{

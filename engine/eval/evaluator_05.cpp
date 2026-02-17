@@ -166,7 +166,7 @@ int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
 
         // Scale the edge bonus based on number of rooks:
         // - 1 Rook: base bonus (ROOK_EG_EDGE_BONUS)
-        const int64_t edgeBonus = ROOK_EG_EDGE_BONUS;
+        const int64_t edgeBonus = engine::ROOK_EG_EDGE_BONUS;
         
         // Gradually increase bonus as enemy king approaches edge
         // 0 (center) -> 7 (edge)
@@ -181,7 +181,7 @@ int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
             // For single rook, king support is essential.
             // Base: 14 - distance (bonus increases as king gets closer)
             const int proximityBonus = std::max(0, 14 - kingDist);
-            score += sign * proximityBonus * ROOK_EG_PRESSURE_BONUS / 14;
+            score += sign * proximityBonus * engine::ROOK_EG_PRESSURE_BONUS / 14;
         }
     }
 

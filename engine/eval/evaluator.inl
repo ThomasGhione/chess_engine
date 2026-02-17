@@ -80,7 +80,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
 
 template<bool IsEndgame>
 inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+    constexpr int64_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
 }
 

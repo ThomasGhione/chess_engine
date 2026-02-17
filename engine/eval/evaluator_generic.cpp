@@ -113,15 +113,15 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     // PIECE-SQUARE TABLES (always evaluated)
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
-    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
-    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
-    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
-    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
-    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+    addPsqt(board.knights_bb[0], board.knights_bb[1], engine::KNIGHT_VALUES_TABLE.data(), eval);
+    addPsqt(board.bishops_bb[0], board.bishops_bb[1], engine::BISHOP_VALUES_TABLE.data(), eval);
+    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   engine::ROOK_VALUES_TABLE.data(), eval);
+    addPsqt(board.queens_bb[0],  board.queens_bb[1],  engine::QUEEN_VALUES_TABLE.data(), eval);
+    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
     // BISHOP PAIR BONUS (always evaluated, all phases)
-    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
-    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += engine::BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= engine::BISHOP_PAIR_BONUS;
 
     // LAZY ATTACK DATA (computed only when needed)
     AttackData attackData[2] = {};  // Zero-initialize (isComputed = false)

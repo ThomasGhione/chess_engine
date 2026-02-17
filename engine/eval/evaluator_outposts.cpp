@@ -20,8 +20,8 @@ inline int64_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color)
     const int sign = (color == 0) ? 1 : -1;
     const int opp = color ^ 1;
 
-    score += evalOutpostsPieces<OUTPOST_KNIGHT_BONUS>(b.knights_bb[color], color, opp, sign, b);
-    score += evalOutpostsPieces<OUTPOST_BISHOP_BONUS / 2>(b.bishops_bb[color], color, opp, sign, b);
+    score += evalOutpostsPieces<engine::OUTPOST_KNIGHT_BONUS>(b.knights_bb[color], color, opp, sign, b);
+    score += evalOutpostsPieces<engine::OUTPOST_BISHOP_BONUS / 2>(b.bishops_bb[color], color, opp, sign, b);
 
     return score;
 }

@@ -19,7 +19,7 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
         const bool hasCastled = onCastlingSquare && rightsLost;
         
         if (!hasCastled) {
-            score += sign * (-KING_NON_CASTLING_PENALTY);
+            score += sign * (-engine::KING_NON_CASTLING_PENALTY);
             
             // This weakens king safety if castling rights are still available
             const bool canCastleKingside = (side == 0) ? b.getCastle(0) : b.getCastle(2);
@@ -62,13 +62,13 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
             if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
             if (sq >= 7 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
             if (sq >= 9 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq - 9);
-            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+            score += sign * __builtin_popcountll(whitePawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
         } else {
             // Black king: pawns in front are towards higher indices (north)
             if (sq <= 55) shieldSquares |= chess::Board::bitMask(sq + 8);
             if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
             if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
-            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+            score += sign * __builtin_popcountll(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
         }
     }
 
@@ -115,7 +115,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
                 knightsAttacking &= knightsAttacking - 1;
                 if (pieces::KNIGHT_ATTACKS[sq] & kingZone) {
                     attackerCount++;
-                    attackWeight += KING_ATTACK_WEIGHT_KNIGHT;
+                    attackWeight += engine::KING_ATTACK_WEIGHT_KNIGHT;
                 }
             }
         }
@@ -129,7 +129,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
                 const uint64_t occ = b.getPiecesBitMap();
                 if (pieces::getBishopAttacks(sq, occ) & kingZone) {
                     attackerCount++;
-                    attackWeight += KING_ATTACK_WEIGHT_BISHOP;
+                    attackWeight += engine::KING_ATTACK_WEIGHT_BISHOP;
                 }
             }
         }
@@ -143,7 +143,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
                 const uint64_t occ = b.getPiecesBitMap();
                 if (pieces::getRookAttacks(sq, occ) & kingZone) {
                     attackerCount++;
-                    attackWeight += KING_ATTACK_WEIGHT_ROOK;
+                    attackWeight += engine::KING_ATTACK_WEIGHT_ROOK;
                 }
             }
         }
@@ -157,7 +157,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
                 const uint64_t occ = b.getPiecesBitMap();
                 if (pieces::getQueenAttacks(sq, occ) & kingZone) {
                     attackerCount++;
-                    attackWeight += KING_ATTACK_WEIGHT_QUEEN;
+                    attackWeight += engine::KING_ATTACK_WEIGHT_QUEEN;
                 }
             }
         }
@@ -194,14 +194,14 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     const bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
     const bool whiteCanCastle = b.getCastle(0) || b.getCastle(1); // kingside or queenside
     
-    score += whiteHasCastled * CASTLING_BONUS;
+    score += whiteHasCastled * engine::CASTLING_BONUS;
     score -= (!whiteHasCastled && !whiteCanCastle) * LOSS_OF_CASTLING_PENALTY;
 
     // BLACK
     const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
     const bool blackCanCastle = b.getCastle(2) || b.getCastle(3); // kingside or queenside
     
-    score -= blackHasCastled * CASTLING_BONUS;
+    score -= blackHasCastled * engine::CASTLING_BONUS;
     score += (!blackHasCastled && !blackCanCastle) * LOSS_OF_CASTLING_PENALTY;
 
     return score;

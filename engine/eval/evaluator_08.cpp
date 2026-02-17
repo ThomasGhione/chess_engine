@@ -18,19 +18,19 @@ inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     uint64_t friendlyDef = data[side].allAttacks;
 
     uint64_t hanging = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
-    score += sign * __builtin_popcountll(hanging) * HANGING_PAWN_PENALTY;
+    score += sign * __builtin_popcountll(hanging) * engine::HANGING_PAWN_PENALTY;
 
     hanging = b.knights_bb[side] & enemyAttacks & ~friendlyDef;
-    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+    score += sign * __builtin_popcountll(hanging) * engine::HANGING_MINOR_PENALTY;
 
     hanging = b.bishops_bb[side] & enemyAttacks & ~friendlyDef;
-    score += sign * __builtin_popcountll(hanging) * HANGING_MINOR_PENALTY;
+    score += sign * __builtin_popcountll(hanging) * engine::HANGING_MINOR_PENALTY;
 
     hanging = b.rooks_bb[side] & enemyAttacks & ~friendlyDef;
-    score += sign * __builtin_popcountll(hanging) * HANGING_ROOK_PENALTY;
+    score += sign * __builtin_popcountll(hanging) * engine::HANGING_ROOK_PENALTY;
 
     hanging = b.queens_bb[side] & enemyAttacks & ~friendlyDef;
-    score += sign * __builtin_popcountll(hanging) * HANGING_QUEEN_PENALTY;
+    score += sign * __builtin_popcountll(hanging) * engine::HANGING_QUEEN_PENALTY;
 
     return score;
 }

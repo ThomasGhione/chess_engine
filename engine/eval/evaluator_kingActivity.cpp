@@ -18,7 +18,7 @@ inline int64_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
             b.rooks_bb[side]   |
             b.queens_bb[side];
         const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
-        return sign * friendsNearKing * KING_ACTIVITY_BONUS;
+        return sign * friendsNearKing * engine::KING_ACTIVITY_BONUS;
     }
 
     const int opp = side ^ 1;
@@ -29,7 +29,7 @@ inline int64_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
         b.rooks_bb[opp]   |
         b.queens_bb[opp];
     const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
-    return sign * enemiesNearKing * KING_SAFETY_PENALTY;
+    return sign * enemiesNearKing * engine::KING_SAFETY_PENALTY;
 }
 
 int64_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {

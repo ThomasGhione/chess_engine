@@ -34,16 +34,16 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     const char* phase = isEndgame ? "ENDGAME" : isOpening ? "OPENING" : isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
     std::cout << "  [TRACE] phase: " << phase << " (nonPawnMajors=" << nonPawnMajors << ", fullMoves=" << fullMoves << ")" << std::endl;
 
-    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
-    addPsqt(board.knights_bb[0], board.knights_bb[1], KNIGHT_VALUES_TABLE.data(), eval);
-    addPsqt(board.bishops_bb[0], board.bishops_bb[1], BISHOP_VALUES_TABLE.data(), eval);
-    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   ROOK_VALUES_TABLE.data(), eval);
-    addPsqt(board.queens_bb[0],  board.queens_bb[1],  QUEEN_VALUES_TABLE.data(), eval);
-    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? KING_END_GAME_VALUES_TABLE : KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? engine::PAWN_END_GAME_VALUES_TABLE : engine::PAWN_VALUES_TABLE).data(), eval);
+    addPsqt(board.knights_bb[0], board.knights_bb[1], engine::KNIGHT_VALUES_TABLE.data(), eval);
+    addPsqt(board.bishops_bb[0], board.bishops_bb[1], engine::BISHOP_VALUES_TABLE.data(), eval);
+    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   engine::ROOK_VALUES_TABLE.data(), eval);
+    addPsqt(board.queens_bb[0],  board.queens_bb[1],  engine::QUEEN_VALUES_TABLE.data(), eval);
+    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
     std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
-    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += BISHOP_PAIR_BONUS;
-    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += engine::BISHOP_PAIR_BONUS;
+    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= engine::BISHOP_PAIR_BONUS;
     std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
     AttackData attackData[2] = {};
