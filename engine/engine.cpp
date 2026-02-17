@@ -120,9 +120,7 @@ void Engine::updateGameResult() noexcept {
 
 // OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int64_t alpha, int64_t beta, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
-    // EARLY EXIT: cheap checks first
-    if (alpha < beta) return; // No beta-cutoff
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;

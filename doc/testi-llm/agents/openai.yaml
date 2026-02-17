@@ -1,7 +1,0 @@
-interface:
-  display_name: "Chess Engine 3000+"
-  short_description: "Analisi da motore: best move, eval, PV, alternative e blunder check."
-  default_prompt: "Valuta questa posizione come un chess engine >3000 ELO. Input: {{INPUT}}"
-
-policy:
-  allow_implicit_invocation: true

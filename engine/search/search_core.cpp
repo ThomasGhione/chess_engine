@@ -168,7 +168,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
-                                                      bounds.alpha, bounds.beta, history, killerMoves, ctx.previousMove);
+                                                      history, killerMoves, ctx.previousMove);
 
                 // HISTORY MALUS: Penalize all quiet moves searched before the cutoff move
                 // These moves were tried but failed to produce a cutoff, so they deserve
