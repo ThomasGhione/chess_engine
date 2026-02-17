@@ -83,7 +83,7 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     if (!kings) [[unlikely]] return moves; // No king found, return empty move list
     
 
-    const uint8_t from = popLSB(const_cast<uint64_t&>(kings));
+    const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
     const chess::Coords fromC{from};
 
     // King moves MUST always check legality (can't move to attacked squares)

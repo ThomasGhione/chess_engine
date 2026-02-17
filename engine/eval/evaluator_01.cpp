@@ -144,8 +144,8 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         // Pawn chain bonus: supported pawn (has pawn protecting it diagonally behind)
         // Black pawns: "behind" = lower rank (protected from diagonal behind)
         {
-            const bool protectedByLeft = (file > 0 && (blackPawns & chess::Board::bitMask(sq - 7)));   // Behind-left
-            const bool protectedByRight = (file < 7 && (blackPawns & chess::Board::bitMask(sq - 9)));  // Behind-right
+            const bool protectedByLeft = (file > 0 && sq >= 7 && (blackPawns & chess::Board::bitMask(static_cast<uint8_t>(sq - 7))));   // Behind-left
+            const bool protectedByRight = (file < 7 && sq >= 9 && (blackPawns & chess::Board::bitMask(static_cast<uint8_t>(sq - 9))));  // Behind-right
             
             if (protectedByLeft || protectedByRight) {
                 score -= 15;  // Bonus for Black chain (subtract because Black is negative)
@@ -160,9 +160,8 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             
             if (isBlocked) {
                 // Check for supporting pawns (diagonally behind on adjacent files)
-                // FIXED: Corrected file bounds - sq-7 is behind-left (file decreases), sq-9 is behind-right (file increases)
-                const bool hasSupport = (file > 0 && (blackPawns & chess::Board::bitMask(sq - 7)) != 0) ||  // Behind-left
-                                       (file < 7 && (blackPawns & chess::Board::bitMask(sq - 9)) != 0);     // Behind-right
+                const bool hasSupport = (file > 0 && sq >= 7 && (blackPawns & chess::Board::bitMask(static_cast<uint8_t>(sq - 7))) != 0) ||  // Behind-left
+                                       (file < 7 && sq >= 9 && (blackPawns & chess::Board::bitMask(static_cast<uint8_t>(sq - 9))) != 0);     // Behind-right
                 
                 if (!hasSupport) {
                     score -= ISOLATED_PAWN_PENALTY / 2;  // Lighter penalty than isolated
