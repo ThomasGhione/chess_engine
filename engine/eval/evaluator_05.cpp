@@ -16,9 +16,12 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
         
         // Pawns - usa lookup table (no magic bitboards)
         uint64_t pawns = b.pawns_bb[side];
+        // pieces::PAWN_ATTACKS is indexed by isWhite bool (0=black, 1=white),
+        // while side is 0=white, 1=black.
+        const bool isWhite = (side == 0);
         while (pawns) {
             const int sq = popLSB(pawns);
-            d.pawnAttacks |= pieces::PAWN_ATTACKS[side][sq];
+            d.pawnAttacks |= pieces::PAWN_ATTACKS[isWhite][sq];
         }
         d.allAttacks = d.pawnAttacks;
 
