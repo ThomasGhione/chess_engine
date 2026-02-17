@@ -45,7 +45,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // cutting tactical positions. At depth 2, margin=400cp (~rook value)
     // ensures we only prune truly hopeless quiet moves.
     constexpr int64_t FUTILITY_MARGINS[] = {0, 200, 400}; // depth 0,1,2
-    const bool canFutilityPrune = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
+    const bool canFutilityPrune = !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
 
     // =========================================================================
@@ -56,7 +56,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // CONSERVATIVE: depth <= 3 (was 4), higher thresholds to preserve tactical chances.
     // At depth 1, allow 12 moves (was 8). A tactic could be the 9th or 10th move.
     constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
-    const bool canLMP = !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    const bool canLMP = !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
 
     // PRE-COMPUTE endgame flag ONCE before the loop (was inside loop after doMove = BUG + slow)
@@ -69,6 +69,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
+        const bool isFirstMove = (moveIndex == 0);
         
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
@@ -130,6 +131,19 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             && !this->isKillerMove(m, killerMoves, ctx.ply)
             && !isEndgameForLMR;
 
+        // PVS windowing:
+        // - First move: full window (PV candidate)
+        // - Other moves: null window, then re-search full window only on fail-high/low
+        int64_t searchAlpha = bounds.alpha;
+        int64_t searchBeta = bounds.beta;
+        if (!isFirstMove) {
+            if (usIsWhite) {
+                searchBeta = bounds.alpha + 1;
+            } else {
+                searchAlpha = bounds.beta - 1;
+            }
+        }
+
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR
@@ -143,19 +157,31 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 3);
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
-            score = this->searchPosition(b, reducedDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
+            score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
             
-            // Re-search at full depth+window if the reduced/null-window search looks promising
-            const bool shouldResearch = usIsWhite 
-                ? (score > bounds.alpha) 
-                : (score < bounds.beta);
+            // Re-search at full depth + full window only if null-window failed.
+            const bool shouldResearch = !isFirstMove && (usIsWhite
+                ? (score > searchAlpha)
+                : (score < searchBeta));
             
             if (shouldResearch) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
+            } else if (isFirstMove) {
+                // Reduced first move is not expected (canReduce guards moveIndex>=3),
+                // but keep behavior robust in case heuristics change.
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
             }
         } else {
-            // First move: search with full window (PV node)
-            score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
+            score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
+
+            if (!isFirstMove) {
+                const bool shouldResearch = usIsWhite
+                    ? (score > searchAlpha)
+                    : (score < searchBeta);
+                if (shouldResearch) {
+                    score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m);
+                }
+            }
         }
 
         b.undoMove(m, state);
@@ -213,6 +239,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     if (depth <= 0) {
         return this->quiescenceSearch(b, alpha, beta, ply);
     }
+
+    // PV node detection (full window vs null window), deterministic by construction.
+    const bool isPVNode = (beta > alpha + 1);
 
     // =========================================================================
     // MATE DISTANCE PRUNING (+5-15 ELO)
@@ -353,7 +382,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             ? (staticEval >= beta - 200)
             : (staticEval <= alpha + 200);
         
-        const bool canNullMove = !inCheck
+        const bool canNullMove = !isPVNode
+            && !inCheck
             && ply > 0
             && depth >= 4
             && nonPawnMajors >= 3
@@ -411,7 +441,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // positions where the opponent has a tactical shot worth a piece.
     {
         constexpr int64_t RFP_MARGIN_PER_DEPTH = 85; // 85cp per depth level
-        if (!inCheck && ply > 0 && depth <= 3) {
+        if (!isPVNode && !inCheck && ply > 0 && depth <= 3) {
             const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
             if (usIsWhite) {
                 if (staticEval - rfpMargin >= beta) return staticEval;
@@ -451,7 +481,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     // Build search context (previousMove = move played by parent to reach this node)
-    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, previousMove, staticEval, inCheck};
+    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, previousMove, staticEval, inCheck, isPVNode};
 
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
 

@@ -164,6 +164,7 @@ private:
         const chess::Board::Move* previousMove = nullptr; // For counter-move history
         int64_t staticEval = 0;   // Static evaluation for pruning decisions
         bool inCheck = false;      // Whether the side to move is in check
+        bool isPVNode = false;     // True for full-window nodes (no null-window pruning)
     };
 
     struct AlphaBeta {
