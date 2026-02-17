@@ -36,35 +36,28 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
 
-    // =========================================================================
-    // FUTILITY PRUNING margins (main search) (+20-30 ELO)
-    // =========================================================================
-    // At low depth, if static eval + margin can't reach alpha/beta,
-    // skip quiet moves entirely. Only apply to non-PV, non-check positions.
-    // CONSERVATIVE: depth <= 2 only (was 3). Higher margins to avoid
-    // cutting tactical positions. At depth 2, margin=400cp (~rook value)
-    // ensures we only prune truly hopeless quiet moves.
-    constexpr int64_t FUTILITY_MARGINS[] = {0, 200, 400}; // depth 0,1,2
-    const bool canFutilityPrune = !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
-    const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
-
-    // =========================================================================
-    // LATE MOVE PRUNING thresholds (+15-25 ELO)
-    // =========================================================================
-    // At low depth, skip very late quiet moves entirely.
-    // These moves are ordered so low that they're almost certainly not going to improve.
-    // CONSERVATIVE: depth <= 3 (was 4), higher thresholds to preserve tactical chances.
-    // At depth 1, allow 12 moves (was 8). A tactic could be the 9th or 10th move.
-    constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
-    const bool canLMP = !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
-    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
-
     // PRE-COMPUTE endgame flag ONCE before the loop (was inside loop after doMove = BUG + slow)
     const int nonPawnMajorsForLMR = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
                                              b.bishops_bb[0] | b.bishops_bb[1] |
                                              b.rooks_bb[0]   | b.rooks_bb[1]   |
                                              b.queens_bb[0]  | b.queens_bb[1]);
     const bool isEndgameForLMR = (nonPawnMajorsForLMR <= 5);
+
+    // =========================================================================
+    // FUTILITY PRUNING margins (main search) (+20-30 ELO)
+    // =========================================================================
+    // Disable in endgames: pawn races/zugzwang make static-eval based pruning risky.
+    constexpr int64_t FUTILITY_MARGINS[] = {0, 200, 400}; // depth 0,1,2
+    const bool canFutilityPrune = !ctx.isPVNode && !isEndgameForLMR && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
+    const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
+
+    // =========================================================================
+    // LATE MOVE PRUNING thresholds (+15-25 ELO)
+    // =========================================================================
+    // Disable in endgames to preserve critical pawn pushes and king triangulation.
+    constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
+    const bool canLMP = !ctx.isPVNode && !isEndgameForLMR && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
 
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
@@ -341,6 +334,13 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const uint8_t activeColor = b.getActiveColor();
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
     const bool inCheck = b.inCheck(activeColor);
+    const int nonPawnMajorsAll = __builtin_popcountll(
+        b.knights_bb[0] | b.knights_bb[1] |
+        b.bishops_bb[0] | b.bishops_bb[1] |
+        b.rooks_bb[0]   | b.rooks_bb[1]   |
+        b.queens_bb[0]  | b.queens_bb[1]);
+    const bool isPawnEndgameForPruning =
+        ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
 
     // =========================================================================
     // STATIC EVALUATION for pruning decisions
@@ -441,7 +441,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // positions where the opponent has a tactical shot worth a piece.
     {
         constexpr int64_t RFP_MARGIN_PER_DEPTH = 85; // 85cp per depth level
-        if (!isPVNode && !inCheck && ply > 0 && depth <= 3) {
+        // Disable in pawn endgames: static-eval pruning often misses
+        // pawn races, triangulation and waiting-move zugzwang motifs.
+        if (!isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3) {
             const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
             if (usIsWhite) {
                 if (staticEval - rfpMargin >= beta) return staticEval;

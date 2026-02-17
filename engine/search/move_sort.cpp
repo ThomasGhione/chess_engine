@@ -143,6 +143,12 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     // Pre-calcolo variabili costose fuori dal loop
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
+    const int nonPawnMajors = __builtin_popcountll(
+        b.knights_bb[0] | b.knights_bb[1] |
+        b.bishops_bb[0] | b.bishops_bb[1] |
+        b.rooks_bb[0]   | b.rooks_bb[1]   |
+        b.queens_bb[0]  | b.queens_bb[1]);
+    const bool isEndgameOrdering = (nonPawnMajors <= 5);
 
     // HASH MOVE: Retrieve from TT for highest priority
     uint16_t encodedHashMove = 0;
@@ -295,9 +301,25 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                     // Negative history = moves that consistently fail = ordered below neutral
                     score = std::min(static_cast<int64_t>(4000), std::max(static_cast<int64_t>(-2000), histScore));
                 }
+
+                // In endgames prioritize pawn pushes slightly, especially advanced ones.
+                // This is ordering-only: it does not force pushes, but avoids searching
+                // king shuffles before obvious pawn-race candidates.
+                if (fromPieceType == chess::Board::PAWN && isEndgameOrdering) {
+                    const int fromFile = chess::Board::fileOf(m.from.index);
+                    const int toFile = chess::Board::fileOf(m.to.index);
+                    if (fromFile == toFile) {
+                        const int toRank = chess::Board::rankOf(m.to.index);
+                        const int advancement = usIsWhite ? (6 - toRank) : (toRank - 1);
+                        if (advancement > 0) {
+                            score += 20 + advancement * 12;
+                        }
+                    }
+                }
+
                 // Discourage moving the same pawn twice in the opening: small negative ordering penalty
                 // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
-                if (fromPieceType == chess::Board::PAWN && fullMoveClock < 8) {
+                if (fromPieceType == chess::Board::PAWN && !isEndgameOrdering && fullMoveClock < 8) {
                     const int fromRank = chess::Board::rankOf(m.from.index);
                     const int pawnStartRank = usIsWhite ? 6 : 1; // white pawns start on rank index 6, black on 1
                     if (fromRank != pawnStartRank) {
