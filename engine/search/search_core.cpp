@@ -466,6 +466,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     const int64_t alphaOrig = bounds.alpha;
+    const int64_t betaOrig = bounds.beta;
 
     // Search through all moves and find best move with score
     // BUGFIX: Propagate allowTTWrite to searchMoves so parallel threads never write TT at any depth
@@ -475,9 +476,11 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Save position to transposition table
     // DETERMINISM: save only if allowTTWrite=true (disabled in parallel threads)
     // Reuse hashKey computed earlier to avoid redundant computation
-    // BUGFIX: Use effectiveDepth (not depth) because IIR may have reduced the actual search depth
     if (useTT && allowTTWrite) {
-        const auto flag = tt::determineFlag(best, alphaOrig, bounds.beta);
+        // Use the ORIGINAL search window for TT flag classification.
+        // Using the mutated bounds (especially beta at minimizing nodes)
+        // can incorrectly downgrade EXACT entries to LOWERBOUND.
+        const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
         
         // Encode best move for TT storage
         const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
