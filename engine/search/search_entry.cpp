@@ -25,14 +25,11 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
 
-    // Parallelismo YBWC: attivato solo se:
-    // - Abbastanza mosse (>= 10) per giustificare overhead threads
-    // - Profondità sufficiente (>= DEFAULTDEPTH- 2 ) per beneficio reale
-    // - NON in endgame (>= 6 pezzi) dove ricerca sequenziale è più efficiente
-    const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
+    // Parallel YBWC is enabled only when:
+    // - enough moves (>= 10) to amortize threading overhead
+    // - sufficient depth (>= DEFAULTDEPTH - 2) for real speedup
     const bool useYBWC = (moves.size >= 10 && 
-                          this->depth >= (Engine::DEFAULTDEPTH - 2) &&
-                          totalPieces >= 6);
+                          this->depth >= (Engine::DEFAULTDEPTH - 2));
     
     if (!useYBWC) {
         // Sequential search con PVS (Principal Variation Search)
@@ -253,19 +250,6 @@ void Engine::search(uint64_t depth) noexcept {
             }
         }
     }
-
-    // --- ENDGAME DEPTH EXTENSION (UNA VOLTA PER PARTITA) ---
-    // Aumenta progressivamente la profondità di ricerca negli endgame
-    // Più pezzi vengono rimossi, più la search diventa profonda
-    // Usando flag per garantire che ogni aumento sia applicato UNA SOLA VOLTA
-    const int totalPieces = __builtin_popcountll(this->board.getPiecesBitMap());
-    
-    if (totalPieces < 6 && !this->depthExtended) {
-        depth += 1;
-        this->depthExtended = true;
-    }
-    // REMOVED: depthExtendedEarly (< 10 pieces, +1 depth)
-    // Was too aggressive - triggered too early and slowed down search significantly
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
     

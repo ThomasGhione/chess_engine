@@ -52,9 +52,6 @@ void Engine::reset() noexcept {
     nodesSearched = 0;
     bestMove = chess::Board::Move{};
     
-    // Reset endgame depth extension flags
-    depthExtended = false; 
-    
     // Reset move history
     moveHistory.clear();
     

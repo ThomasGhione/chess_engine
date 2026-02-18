@@ -46,28 +46,37 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
 
-    // PRE-COMPUTE endgame flag ONCE before the loop (was inside loop after doMove = BUG + slow)
+    // Pre-compute endgame buckets once before the loop.
     const int nonPawnMajorsForLMR = __builtin_popcountll(b.knights_bb[0] | b.knights_bb[1] |
                                              b.bishops_bb[0] | b.bishops_bb[1] |
                                              b.rooks_bb[0]   | b.rooks_bb[1]   |
                                              b.queens_bb[0]  | b.queens_bb[1]);
-    const bool isEndgameForLMR = (nonPawnMajorsForLMR <= 5);
+    // Delicate endings (pure minor/pawn/king races): keep pruning conservative.
+    const bool isDelicateEndgame = (nonPawnMajorsForLMR <= 2);
+    // Broad ending bucket used for softer margins/thresholds.
+    const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
     // =========================================================================
     // FUTILITY PRUNING margins (main search) (+20-30 ELO)
     // =========================================================================
-    // Disable in endgames: pawn races/zugzwang make static-eval based pruning risky.
-    constexpr int64_t FUTILITY_MARGINS[] = {0, 200, 400}; // depth 0,1,2
-    const bool canFutilityPrune = !ctx.isPVNode && !isEndgameForLMR && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
-    const int64_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
+    // In late endgames keep pruning active but with tighter margins.
+    constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 200, 400}; // depth 0,1,2
+    constexpr int64_t FUTILITY_MARGINS_EG[] = {0, 120, 240}; // depth 0,1,2
+    const bool canFutilityPrune = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
+    const int64_t futilityMargin = canFutilityPrune
+        ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
+        : 0;
 
     // =========================================================================
     // LATE MOVE PRUNING thresholds (+15-25 ELO)
     // =========================================================================
-    // Disable in endgames to preserve critical pawn pushes and king triangulation.
-    constexpr int LMP_THRESHOLDS[] = {0, 12, 20, 30}; // depth 0,1,2,3
-    const bool canLMP = !ctx.isPVNode && !isEndgameForLMR && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
-    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.depth] : 999;
+    // In late endgames, prune later (higher threshold) to avoid dropping key pawn moves.
+    constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
+    constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38}; // depth 0,1,2,3
+    const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    const int lmpThreshold = canLMP
+        ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
+        : 999;
 
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
@@ -126,13 +135,15 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
         // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         
+        const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 5 : 3;
         const bool canReduce = (ctx.depth > 2)
-            && (moveIndex >= 3)
+            && (moveIndex >= lmrMinMoveIndex)
             && !isPromo
             && (!wasCapture)
             && !givesCheck
             && !this->isKillerMove(m, killerMoves, ctx.ply)
-            && !isEndgameForLMR;
+            && !isDelicateEndgame;
 
         // PVS windowing:
         // - First move: full window (PV candidate)
@@ -158,6 +169,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             // Cap reduction: never reduce more than depth-3 (was depth-2)
             // This ensures at least 3 plies of real search remain
             reduction = std::clamp(reduction, static_cast<int64_t>(1), ctx.depth - 3);
+            // In late endgames, keep LMR very conservative.
+            if (inConservativeEndgameLMR) {
+                reduction = std::min<int64_t>(reduction, 1);
+            }
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
             score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
@@ -446,7 +461,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     // =========================================================================
-    // REVERSE FUTILITY PRUNING (Static Null Move Pruning) (+30-40 ELO)
+    // REVERSE FUTILITY PRUNING (Static Null Move Pruning)
     // =========================================================================
     // If the static eval is so far above beta that even a big margin can't
     // bring it below beta, prune immediately. Much cheaper than NMP.

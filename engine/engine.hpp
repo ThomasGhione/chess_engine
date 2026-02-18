@@ -128,9 +128,6 @@ public:
     uint64_t depth;
     int64_t eval = 0;
 
-    // Endgame depth extension flags (set once per game)
-    bool depthExtended = false;
-
     // Transposition table
     tt::TranspositionTable tt;
 
