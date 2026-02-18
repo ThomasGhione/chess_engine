@@ -16,7 +16,7 @@ inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
         const int sq = popLSB(minors);
         const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
         if ((friends & nearby) == 0) {
-            score += sign * COORDINATION_PENALTY;
+            score += sign * engine::COORDINATION_PENALTY;
         }
     }
     return score;

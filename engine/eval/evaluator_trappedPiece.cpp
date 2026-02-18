@@ -34,13 +34,13 @@ inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
       return sideScore;
     }
 
-    sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, PINNED_BISHOP_PENALTY, LOW_MOBILITY_BISHOP_PENALTY>(
+    sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, engine::PINNED_BISHOP_PENALTY, engine::LOW_MOBILITY_BISHOP_PENALTY>(
         b.bishops_bb[side], occ, ~ownOcc, sign);
 
-    sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, PINNED_ROOK_PENALTY, LOW_MOBILITY_ROOK_PENALTY>(
+    sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, engine::PINNED_ROOK_PENALTY, engine::LOW_MOBILITY_ROOK_PENALTY>(
         b.rooks_bb[side], occ, ~ownOcc, sign);
 
-    sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, PINNED_QUEEN_PENALTY, LOW_MOBILITY_QUEEN_PENALTY>(
+    sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, engine::PINNED_QUEEN_PENALTY, engine::LOW_MOBILITY_QUEEN_PENALTY>(
         b.queens_bb[side], occ, ~ownOcc, sign);
 
     return sideScore;

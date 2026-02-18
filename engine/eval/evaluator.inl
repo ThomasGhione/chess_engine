@@ -80,27 +80,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
 
 template<bool IsEndgame>
 inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    constexpr int64_t bonus = IsEndgame ? INIT_BONUS_EG : INIT_BONUS_MG;
+    constexpr int64_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-}
-
-template<int Side>
-inline constexpr int64_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
-    static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
-
-    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
-
-    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-    const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
-
-    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
-
-    if constexpr (Side == 0) {
-        return score;
-    } else {
-        return -score;
-    }
 }
 
 inline constexpr int64_t Evaluator::getPieceValue(uint8_t pieceType) noexcept {

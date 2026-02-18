@@ -15,7 +15,7 @@ int64_t Evaluator::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
         __builtin_popcountll(b.knights_bb[1] & ~BLACK_MINOR_START) +
         __builtin_popcountll(b.bishops_bb[1] & ~BLACK_MINOR_START);
     
-    return (whiteDeveloped - blackDeveloped) * DEVELOPMENT_BONUS;
+    return (whiteDeveloped - blackDeveloped) * engine::DEVELOPMENT_BONUS;
 }
 
 int64_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
