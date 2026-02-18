@@ -167,7 +167,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
-    // BUGFIX: Only probe TT if useTT is true (parallel threads must NOT read shared TT)
     if (useTT && this->handleSearchPrelude(depth, bounds, score, hashKey)) {
         return score;
     }
@@ -212,7 +211,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t alphaOrig = bounds.alpha;
 
     // Search through all moves and find best move with score
-    // BUGFIX: Propagate allowTTWrite to searchMoves so parallel threads never write TT at any depth
     ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowTTWrite);
     int64_t best = result.score;
 

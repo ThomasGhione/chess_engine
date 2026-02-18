@@ -21,7 +21,6 @@ inline static constexpr int64_t KING_EXPOSED_PENALTY = -25;
 inline static constexpr int64_t EARLY_KING_PENALTY = -20;    // was -25
 
 // King attack zone: bonus for each attacker type near the enemy king
-// CRITICAL FIX: Reverted to ORIGINAL values (before doubling).
 // With quadratic scaling, doubled values were giving 4x the intended bonus:
 // 2 attackers with doubled weights: (4 * (40+80))/8 = 60cp
 // 2 attackers with original weights: (4 * (20+40))/8 = 30cp

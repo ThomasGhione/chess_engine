@@ -75,7 +75,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             // Alpha-beta cutoff
             if (alpha >= beta) break;
         }
-        // BUGFIX: Store eval for sequential path (was missing, always returned 0)
         this->eval = bestScore;
         return bestMove;
     }
@@ -98,7 +97,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     if (moves.size <= 1) [[unlikely]] return bestMove;
 
-    // CRITICAL FIX: Save original alpha/beta before the parallel loop
     // All threads must see the same window to guarantee determinism
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;

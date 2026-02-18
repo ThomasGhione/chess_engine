@@ -63,7 +63,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                 score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly);
                 
                 // PVS re-search: se null window fallisce, ri-cerca con finestra piena
-                // BUGFIX: Correct PVS re-search condition for minimax (not negamax)
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
                 const bool shouldResearch = usIsWhite ? (score > alpha) : (score < beta);
@@ -79,10 +78,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
 
             // Beta cutoff check after updateMinMax
-            // BUGFIX: Use isBetaCutoff() instead of checking alpha >= beta
             if (isBetaCutoff(bestScore, alpha, beta, usIsWhite)) break;
         }
-        // BUGFIX: Store eval for sequential path (was missing, always returned 0)
         this->eval = bestScore;
         return bestMove;
     }
@@ -105,7 +102,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     if (moves.size <= 1) [[unlikely]] return bestMove;
 
-    // CRITICAL FIX: Save original alpha/beta before the parallel loop
     // All threads must see the same window to guarantee determinism
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;

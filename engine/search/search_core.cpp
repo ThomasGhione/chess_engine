@@ -187,7 +187,6 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         this->updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
         // Beta cutoff: check if the score causes a cutoff, then update killer/history
-        // BUGFIX: Use isBetaCutoff() instead of checking bounds.alpha >= bounds.beta
         // bounds.alpha >= bounds.beta means window collapsed (different condition!)
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowUpdates) {
@@ -326,7 +325,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
-    // BUGFIX: Only probe TT if useTT is true (parallel threads must NOT read shared TT)
     if (useTT && this->handleSearchPrelude(depth, bounds, score, hashKey)) {
         return score;
     }
@@ -394,7 +392,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             const int64_t R = 3 + depth / 8;
 
             // Execute null move: flip side to move, clear en passant
-            // BUGFIX: Save and restore ALL state modified by setNextTurn/setPrevTurn
             // setPrevTurn() decrements both fullMoveClock AND halfMoveClock!
             // We must save/restore them to avoid corrupting game state (50-move rule).
             const auto savedEnPassant = b.getEnPassant();
@@ -408,7 +405,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             // Undo null move: restore ALL state precisely
             b.setPrevTurn();
             b.setEnPassant(savedEnPassant);
-            // CRITICAL BUGFIX: Restore halfMoveClock and fullMoveClock
             // setPrevTurn() decrements them, corrupting the 50-move rule counter
             b.restoreClocks(savedHalfMoveClock, savedFullMoveClock);
 
@@ -458,10 +454,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         // No legal moves: either checkmate or stalemate
         // activeColor = side that CANNOT move (stalemated side)
         
-        if (inCheck) {
-            // Checkmate: activeColor loses
-            // BUGFIX: Adjust by ply so engine prefers shorter mates
-            // Shorter mate = higher absolute score = preferred
+        if (inCheck) { // checkmate condition (shorter mate = better)
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         } else {
             // Stalemate: draw, but heavily penalize throwing away a win
@@ -506,7 +499,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t betaOrig = bounds.beta;
 
     // Search through all moves and find best move with score
-    // BUGFIX: Propagate allowTTWrite to searchMoves so parallel threads never write TT at any depth
     ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowTTWrite);
     int64_t best = result.score;
 

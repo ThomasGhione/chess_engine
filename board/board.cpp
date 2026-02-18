@@ -49,11 +49,6 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     // Move the piece
     updateChessboard(from, to, static_cast<piece_id>(moving));
     fastUpdateOccupancyBB(fromIndex, toIndex);
-
-    // CRITICAL FIX: NON chiamare updateOccupancyBB() completo!
-    // fastUpdateOccupancyBB + removePieceFromBB/addPieceToBB sono sufficienti
-    // updateOccupancyBB() scansiona tutte le 64 caselle → ~200-300 cicli CPU sprecati!
-    // RIMOSSO: updateOccupancyBB();
     
     // Update per-piece bitboards incrementally
     if (destBefore != EMPTY) {

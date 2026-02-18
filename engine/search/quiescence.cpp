@@ -116,15 +116,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         : (ourPawns & 0x000000000000FF00ULL); // Rank 2 for black
     
     if (nearPromoPawns) {
-        // CRITICAL: Minimal bonus - promotion is not guaranteed!
-        // Was 300cp (too permissive for speculative pawn pushes)
-        // Now 150cp: realistic bonus for actual promotion threat
         deltaMargin += 150; // Conservative promotion bonus
     }
     
     // Factor 2: Material deficit - if we're losing, allow more speculative lines
-    // Use standPat as proxy for material balance
-    // CRITICAL: Reduced margins - losing doesn't justify wild sacrifices!
     const int64_t materialBalance = usIsWhite ? standPat : -standPat;
     if (materialBalance < -400) {
         // Losing by 4+ pawns: add 150cp to delta (desperate but realistic)
@@ -135,7 +130,6 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
     
     // Factor 3: Depth penalty - deeper in qsearch = more conservative
-    // Reduce delta by 50cp per 5 plies to limit explosion
     const int qsearchDepth = ply - this->depth; // Approximate qsearch depth
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
@@ -160,7 +154,6 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     MoveList<ScoredMove> orderedMoves;
     
     // Dynamic SEE pruning threshold based on depth and material balance
-    // CRITICAL FIX: Accept only WINNING or EQUAL material exchanges!
     // The engine should NOT speculate with losing captures hoping for positional comp
     // Shallow qsearch (ply < 10): SEE >= -15cp (only tiny tactical losses)
     // Mid qsearch (10-20): SEE >= -8cp (very conservative)
@@ -188,21 +181,18 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[victimType];
-            // CRITICAL FIX: Reduced to minimal margin - material is KING!
-            // Engine was overvaluing positional compensation for material losses
-            // 100cp = 1 pawn is the MAXIMUM acceptable positional swing in qsearch
             constexpr int64_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
             
             // Check if this capture can possibly improve our position enough
             if (usIsWhite) {
                 // White to move: if standPat + capturedValue + margin < alpha, skip
                 if (standPat + capturedValue + FUTILITY_MARGIN < alpha) {
-                    continue; // Futility pruning
+                    continue;
                 }
             } else {
                 // Black to move: if standPat - capturedValue - margin > beta, skip
                 if (standPat - capturedValue - FUTILITY_MARGIN > beta) {
-                    continue; // Futility pruning
+                    continue;
                 }
             }
             
@@ -218,7 +208,6 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            // CRITICAL FIX: Reduced margin - stop accepting speculative sacrifices!
             constexpr int64_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
             
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
