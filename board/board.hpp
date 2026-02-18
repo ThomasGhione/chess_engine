@@ -186,10 +186,12 @@ public:
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
     bool canMoveToBB(const Coords& from, const Coords& to, bool inCheck) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
     bool isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
+    bool isDoubleCheck(uint8_t color) const noexcept;
     bool hasAnyLegalMove(uint8_t color) const noexcept;
     bool isStalemate(uint8_t color) const noexcept;
     bool isFiftyMoveRule() const noexcept;
@@ -279,7 +281,6 @@ public:
     // Variabili end
 private:
     // Metodi start
-    [[nodiscard]] inline bool isDoubleCheck(uint8_t movingColor) const noexcept;
     [[nodiscard]] inline bool isPawnMoveLegal(
         uint8_t fromIndex, 
         uint8_t toIndex,

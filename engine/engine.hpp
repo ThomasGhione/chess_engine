@@ -269,6 +269,17 @@ private:
                                   bool includeChecks,
                                   const chess::Coords& enPassant,
                                   bool inCheck) const noexcept;
+    void addNonPawnMovesFromMaskFast(const chess::Board& b,
+                                     MoveList<chess::Board::Move>& moves,
+                                     uint8_t from,
+                                     uint64_t mask,
+                                     bool inCheck) const noexcept;
+    void addPawnMovesFromMaskFast(const chess::Board& b,
+                                  MoveList<chess::Board::Move>& moves,
+                                  uint8_t from,
+                                  uint64_t mask,
+                                  bool inCheck,
+                                  uint8_t promotionRank) const noexcept;
     uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 

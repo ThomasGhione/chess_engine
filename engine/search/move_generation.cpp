@@ -26,7 +26,7 @@ void Engine::addTacticalMovesFromMask(const chess::Board& b,
         const bool isCapture = (b.get(toC) != chess::Board::EMPTY) || isEnPassant;
         const bool isPromotion = isPawn && (toC.rank() == chess::Board::promotionRank(isWhiteToMove));
 
-        if (!b.canMoveToBB(fromC, toC, inCheck)) {
+        if (!b.isLegalPseudoMove(from, to, inCheck)) {
             continue;
         }
 
@@ -77,7 +77,11 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     const uint64_t kings   = b.kings_bb[side];
 
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
+    const uint64_t oppOcc = occ & ~ownOcc;
+    const chess::Coords enPassant = b.getEnPassant();
     const bool inCheck = b.inCheck(color);
+    const bool inDoubleCheck = inCheck && b.isDoubleCheck(color);
+    const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
 
     // ================= KING =================
     if (!kings) [[unlikely]] return moves; // No king found, return empty move list
@@ -90,17 +94,24 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
     while (mask) {
         const uint8_t to = popLSB(mask);
-        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
+        if (b.isLegalPseudoMove(from, to, inCheck)) {
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
     }
 
-    // Castling: always needs legality check
-    const uint8_t f = from & 7;
-    if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
-        moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
-    if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
-        moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
+    // Castling: illegal when in check.
+    if (!inCheck) {
+        const uint8_t f = from & 7;
+        if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
+        if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
+    }
+
+    // In double-check only king moves are legal.
+    if (inDoubleCheck) {
+        return moves;
+    }
     
 
     // NOTE: All generated moves call canMoveToBB to verify legality
@@ -110,39 +121,89 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     uint64_t bb = pawns;
     while (bb) {
         const uint8_t from = popLSB(bb);
-        uint64_t mask = pieces::PAWN_ATTACKS[isWhite][from] | pieces::getPawnForwardPushes(from, isWhite, occ);
-        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+        uint64_t mask = pieces::getPawnForwardPushes(from, isWhite, occ);
+        uint64_t caps = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
+        if (chess::Coords::isInBounds(enPassant)) {
+            const uint64_t epMask = chess::Board::bitMask(enPassant.index);
+            if (pieces::PAWN_ATTACKS[isWhite][from] & epMask) {
+                caps |= epMask;
+            }
+        }
+        mask |= caps;
+        addPawnMovesFromMaskFast(b, moves, from, mask, inCheck, promotionRank);
     }
 
     bb = knights;
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
-        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+        addNonPawnMovesFromMaskFast(b, moves, from, mask, inCheck);
     }
 
     bb = bishops;
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
-        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+        addNonPawnMovesFromMaskFast(b, moves, from, mask, inCheck);
     }
 
     bb = rooks;
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
-        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+        addNonPawnMovesFromMaskFast(b, moves, from, mask, inCheck);
     }
 
     bb = queens;
     while (bb) {
         const uint8_t from = popLSB(bb);
         uint64_t mask = pieces::getQueenAttacks(from, occ) & ~ownOcc;
-        addMovesFromMask_fast(b, moves, from, mask, ownOcc, inCheck);
+        addNonPawnMovesFromMaskFast(b, moves, from, mask, inCheck);
     }
 
     return moves;
+}
+
+void Engine::addNonPawnMovesFromMaskFast(const chess::Board& b,
+                                         MoveList<chess::Board::Move>& moves,
+                                         uint8_t from,
+                                         uint64_t mask,
+                                         bool inCheck) const noexcept {
+    if (!mask) [[unlikely]] return;
+    const chess::Coords fromC{from};
+    while (mask) {
+        const uint8_t to = __builtin_ctzll(mask);
+        mask &= (mask - 1);
+        if (b.isLegalPseudoMove(from, to, inCheck)) {
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
+        }
+    }
+}
+
+void Engine::addPawnMovesFromMaskFast(const chess::Board& b,
+                                      MoveList<chess::Board::Move>& moves,
+                                      uint8_t from,
+                                      uint64_t mask,
+                                      bool inCheck,
+                                      uint8_t promotionRank) const noexcept {
+    if (!mask) [[unlikely]] return;
+    const chess::Coords fromC{from};
+    while (mask) {
+        const uint8_t to = __builtin_ctzll(mask);
+        mask &= (mask - 1);
+        const chess::Coords toC{to};
+        if (!b.isLegalPseudoMove(from, to, inCheck)) {
+            continue;
+        }
+        if (chess::Board::rankOf(to) == promotionRank) {
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
+            moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+        } else {
+            moves.emplace_back(chess::Board::Move{fromC, toC});
+        }
+    }
 }
 
 // ============================================================================

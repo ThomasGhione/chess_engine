@@ -267,6 +267,91 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
     return false;
 }
 
+bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
+    const uint8_t fromPiece = get(fromIndex);
+    const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
+    const uint8_t movingColor = fromPiece & MASK_COLOR;
+
+    const uint8_t destPiece = get(toIndex);
+    const uint8_t destColor = destPiece & MASK_COLOR;
+
+    if (destPiece != EMPTY && destColor == movingColor) [[unlikely]] {
+        return false;
+    }
+
+    if (inChk && fromType != KING) [[unlikely]] {
+        if (isDoubleCheck(movingColor)) [[unlikely]] {
+            return false;
+        }
+    }
+
+    const uint64_t toBit = Board::bitMask(toIndex);
+    switch (fromType) {
+        case PAWN: {
+            const uint8_t side = colorToIndex(movingColor);
+            const uint8_t oppSide = side ^ 1;
+            const uint8_t oppColor = oppositeColor(movingColor);
+            const uint64_t kingBB = kings_bb[side];
+            if (!kingBB) [[unlikely]] return false;
+            const uint8_t kingSq = __builtin_ctzll(kingBB);
+
+            const bool fileChanged = (fileOf(fromIndex) != fileOf(toIndex));
+            const bool isEnPassant = (destPiece == EMPTY)
+                && fileChanged
+                && Coords::isInBounds(enPassant)
+                && (toIndex == enPassant.index);
+
+            // Safety guards: caller may provide broad pawn masks.
+            if (fileChanged) {
+                if (!isEnPassant && destPiece == EMPTY) return false;
+            } else {
+                if (destPiece != EMPTY) return false;
+            }
+
+            if (isEnPassant) {
+                const bool isWhite = (movingColor == WHITE);
+                const int8_t epDir = isWhite ? 8 : -8;
+                const uint8_t capturedPawnIdx = static_cast<uint8_t>(toIndex + epDir);
+
+                uint64_t occNew = occupancy;
+                occNew &= ~Board::bitMask(fromIndex);
+                occNew &= ~Board::bitMask(capturedPawnIdx);
+                occNew |= toBit;
+
+                return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                             pawns_bb[oppSide] & ~Board::bitMask(capturedPawnIdx),
+                                             knights_bb[oppSide],
+                                             bishops_bb[oppSide],
+                                             rooks_bb[oppSide],
+                                             queens_bb[oppSide],
+                                             kings_bb[oppSide]);
+            }
+
+            uint64_t occNew = occupancy;
+            occNew &= ~Board::bitMask(fromIndex);
+            occNew |= toBit;
+            const uint64_t excludeMask = (destPiece != EMPTY && destColor == oppColor) ? toBit : 0ULL;
+
+            return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                         pawns_bb[oppSide] & ~excludeMask,
+                                         knights_bb[oppSide] & ~excludeMask,
+                                         bishops_bb[oppSide] & ~excludeMask,
+                                         rooks_bb[oppSide] & ~excludeMask,
+                                         queens_bb[oppSide] & ~excludeMask,
+                                         kings_bb[oppSide] & ~excludeMask);
+        }
+        case KNIGHT:
+        case BISHOP:
+        case ROOK:
+        case QUEEN:
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+        case KING:
+            return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
+        default:
+            return false;
+    }
+}
+
 // ============================================
 // HELPER FUNCTIONS FOR canMoveToBB
 // ============================================
@@ -551,15 +636,14 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcep
     if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
-    // Early exit: if no sliding pieces of this color, no attack possible
-    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) return false;
+    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
+    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
+    if (!rookLike && !bishopLike) return false;
 
-    // Sliding pieces check (expensive)
-    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occupancy);
-    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occupancy);
+    if (rookLike && (pieces::getRookAttacks(targetIndex, occupancy) & rookLike)) return true;
+    if (bishopLike && (pieces::getBishopAttacks(targetIndex, occupancy) & bishopLike)) return true;
 
-    return ((rooks_bb[side] | queens_bb[side]) & rookMask)
-         | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
+    return false;
 }
 
 
@@ -572,16 +656,16 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
     if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
     if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
 
-    // Early exit: if no sliding pieces, no attack possible
-    if (!(rooks_bb[side] | bishops_bb[side] | queens_bb[side])) return false;
-
     // Sliding pieces with modified occupancy
     const uint64_t occMinus = occupancy & ~Board::bitMask(excludeSquare);
-    const uint64_t rookMask   = pieces::getRookAttacks(targetIndex, occMinus);
-    const uint64_t bishopMask = pieces::getBishopAttacks(targetIndex, occMinus);
+    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
+    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
+    if (!rookLike && !bishopLike) return false;
 
-    return ((rooks_bb[side] | queens_bb[side]) & rookMask)
-         | ((bishops_bb[side] | queens_bb[side]) & bishopMask);
+    if (rookLike && (pieces::getRookAttacks(targetIndex, occMinus) & rookLike)) return true;
+    if (bishopLike && (pieces::getBishopAttacks(targetIndex, occMinus) & bishopLike)) return true;
+
+    return false;
 }
 
 
@@ -590,6 +674,8 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 // Used for castling to avoid 3 separate isSquareAttacked calls
 bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
     const int side = colorToIndex(byColor);
+    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
+    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
     
     // Check each square in the mask
     while (squaresMask) {
@@ -601,13 +687,8 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
         if (pieces::KNIGHT_ATTACKS[sq] & knights_bb[side]) return false;
         if (pieces::KING_ATTACKS[sq] & kings_bb[side]) return false;
         
-        const uint64_t rookMask   = pieces::getRookAttacks(sq, occupancy);
-        const uint64_t bishopMask = pieces::getBishopAttacks(sq, occupancy);
-        
-        if (((rooks_bb[side] | queens_bb[side]) & rookMask) | 
-            ((bishops_bb[side] | queens_bb[side]) & bishopMask)) {
-            return false;
-        }
+        if (rookLike && (pieces::getRookAttacks(sq, occupancy) & rookLike)) return false;
+        if (bishopLike && (pieces::getBishopAttacks(sq, occupancy) & bishopLike)) return false;
     }
     
     return true; // All squares safe
@@ -625,12 +706,12 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
     
-    // Early exit: if no sliding pieces, no attack possible
-    if (!(rooks | bishops | queens)) return false;
-    
-    // Sliding pieces
-    if (pieces::getRookAttacks(kingSq, occ) & (rooks | queens)) return true;
-    if (pieces::getBishopAttacks(kingSq, occ) & (bishops | queens)) return true;
+    const uint64_t rookLike = rooks | queens;
+    const uint64_t bishopLike = bishops | queens;
+    if (!rookLike && !bishopLike) return false;
+
+    if (rookLike && (pieces::getRookAttacks(kingSq, occ) & rookLike)) return true;
+    if (bishopLike && (pieces::getBishopAttacks(kingSq, occ) & bishopLike)) return true;
     
     return false;
 }
@@ -670,7 +751,7 @@ template<uint8_t PieceType>
         while (movesMask) {
             const uint8_t to = __builtin_ctzll(movesMask);
             movesMask &= movesMask - 1;
-            if (board->canMoveToBB(Coords{from}, Coords{to}, inCheck)) return true;
+            if (board->isLegalPseudoMove(from, to, inCheck)) return true;
         }
     }
     return false;
@@ -682,6 +763,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const int oppSide = side ^ 1;
 
     const bool inChk = inCheck(color);
+    const bool inDoubleChk = inChk && isDoubleCheck(color);
 
     // Pre-calculate occupancy masks
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
@@ -710,6 +792,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
     }
 
+    // In double-check only king moves are legal. If king had no legal move, there is no legal move.
+    if (inDoubleChk) {
+        return false;
+    }
+
     // --- KNIGHTS (cheap, no magic bitboards) ---
     if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, occupancy, inChk)) {
         return true;
@@ -727,7 +814,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (push) {
             const uint8_t to = __builtin_ctzll(push);
             push &= push - 1;
-            if (canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
+            if (isLegalPseudoMove(from, to, inChk)) return true;
         }
 
         // Pawn captures
@@ -735,7 +822,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (caps) {
             const uint8_t to = __builtin_ctzll(caps);
             caps &= caps - 1;
-            if (canMoveToBB(Coords{from}, Coords{to}, inChk)) return true;
+            if (isLegalPseudoMove(from, to, inChk)) return true;
         }
     }
 
