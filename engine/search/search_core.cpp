@@ -4,6 +4,16 @@
 
 namespace engine {
 
+int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
+    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+        return 0;
+    }
+
+    // Penalize stalemate when the side with material advantage allows it.
+    constexpr int64_t STALEMATE_PENALTY = 5000;
+    return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
+}
+
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
     // REMOVED: Direct evaluate() call at depth<=0
@@ -417,10 +427,18 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
                 if (depth >= 10) {
                     const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr, counter);
                     if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
+                        // Avoid pruning a stalemate node before terminal handling.
+                        if (!b.hasAnyLegalMove(activeColor)) {
+                            return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+                        }
                         return usIsWhite ? beta : alpha;
                     }
                     // Verification failed: continue with full search
                 } else {
+                    // Avoid pruning a stalemate node before terminal handling.
+                    if (!b.hasAnyLegalMove(activeColor)) {
+                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+                    }
                     return usIsWhite ? beta : alpha;
                 }
             }
@@ -443,9 +461,21 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         if (!isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3) {
             const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
             if (usIsWhite) {
-                if (staticEval - rfpMargin >= beta) return staticEval;
+                if (staticEval - rfpMargin >= beta) {
+                    // Avoid pruning a stalemate node before terminal handling.
+                    if (!b.hasAnyLegalMove(activeColor)) {
+                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+                    }
+                    return staticEval;
+                }
             } else {
-                if (staticEval + rfpMargin <= alpha) return staticEval;
+                if (staticEval + rfpMargin <= alpha) {
+                    // Avoid pruning a stalemate node before terminal handling.
+                    if (!b.hasAnyLegalMove(activeColor)) {
+                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+                    }
+                    return staticEval;
+                }
             }
         }
     }
@@ -458,21 +488,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         if (inCheck) { // checkmate condition (shorter mate = better)
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         } else {
-            // Stalemate: draw, but heavily penalize throwing away a win
-            const int64_t matDelta = getMaterialDelta(b);
-            
-            if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
-                return 0; // Balanced material: true draw
-            }
-            
-            // Use reasonable penalty: worse than losing a Queen (900 cp) but not absurd
-            // 5000 cp = 50 pawns = clearly terrible, but won't dominate deep searches
-            constexpr int64_t STALEMATE_PENALTY = 5000;
-            
-            // Return from White's perspective
-            // If White ahead (matDelta > 0) and position is stalemate: bad for White
-            // If Black ahead (matDelta < 0) and position is stalemate: good for White
-            return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
+            return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
         }
     }
 

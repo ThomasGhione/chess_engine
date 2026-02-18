@@ -74,21 +74,9 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int depth = 1;
     int side = sidePassive; // il prossimo a catturare è l'avversario
 
-    // EARLY-EXIT: Solo per catture OVVIAMENTE perdenti (es. QxP con riconquista garantita)
-    // TUNED: Soglia MOLTO conservativa (600cp) per evitare false positives da X-ray/pins
-    // Threshold aumentato da 400cp a 600cp per maggiore safety
-    // Skip SEE solo per casi EVIDENTEMENTE pessimi senza possibili complicazioni
-    // IMPORTANTE: Early-exit può ignorare X-ray attacks e pinned pieces!
-    // Esempio problematico: QxR con R difesa, ma torre bianca dietro la regina (X-ray)
-    // Con threshold 400cp: 500+400=900 (skip), con 600cp: 500+600=1100>900 (calcola!)
-    if (PIECE_VALUES[capturedType] + 600 < PIECE_VALUES[capturedOnTargetType]) {
-        // Esempio: QxP → 100 + 600 < 900 → TRUE (skip SEE, ritorna -800) ✓ ancora skip
-        // Esempio: QxN → 320 + 600 < 900 → FALSE (calcola SEE completo!) ✓ NEW: calcola
-        // Esempio: QxR → 500 + 600 < 900 → FALSE (calcola SEE completo!) ✓
-        // Esempio: RxP → 100 + 600 < 500 → FALSE (calcola SEE completo!) ✓
-        // Esempio: NxP → 100 + 600 < 320 → FALSE (calcola SEE completo!) ✓
-        return static_cast<int64_t>(PIECE_VALUES[capturedType] - PIECE_VALUES[capturedOnTargetType]);
-    }
+    // Do not use piece-value early exits here.
+    // They can misclassify captures like QxP as losing without checking
+    // recaptures, pins, x-rays and overloaded defenders.
 
     while (depth < MAX_SEE_DEPTH) {
         // Trova l'attaccante meno prezioso verso la casella target
