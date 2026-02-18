@@ -256,7 +256,7 @@ void Engine::search(uint64_t depth) noexcept {
     // Cerca a profondità crescenti (1, 2, 3, ..., depth)
     // Migliora il move ordering per le profondità successive
     //
-    // ASPIRATION WINDOWS (+30-50 ELO):
+    // ASPIRATION WINDOWS 
     // Instead of searching with [-INF, +INF], use a narrow window around
     // the score from the previous iteration. If the search fails (score outside
     // the window), re-search with progressively wider windows.

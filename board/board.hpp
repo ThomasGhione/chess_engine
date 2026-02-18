@@ -183,6 +183,8 @@ public:
     bool moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept;
     void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
     void undoMove(const Move& m, const MoveState& state) noexcept;
+    void doNullMove(MoveState& state) noexcept;
+    void undoNullMove(const MoveState& state) noexcept;
     bool canMoveToBB(const Coords& from, const Coords& to, bool inCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;

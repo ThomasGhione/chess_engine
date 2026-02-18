@@ -5,11 +5,8 @@
 namespace engine {
 
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
-    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
-        return 0;
-    }
-    // Penalize stalemate when the side with material advantage allows it.
-    constexpr int64_t STALEMATE_PENALTY = 5000;
+    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
+    constexpr int64_t STALEMATE_PENALTY = 5000; // penalize stalemate when the side with material advantage allows it.
     return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
 }
 
@@ -209,8 +206,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
                                                       history, killerMoves, ctx.previousMove);
 
                 // HISTORY MALUS: Penalize all quiet moves searched before the cutoff move
-                // These moves were tried but failed to produce a cutoff, so they deserve
-                // lower history scores. This is a proven technique in top engines (+10-20 ELO).
+                // These moves were tried but failed to produce a cutoff, so they deserve lower history score
                 if (isQuietMove) { // Only if the cutoff move itself is quiet
                     const int colorIndex = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
                     const int malus = -static_cast<int>((ctx.depth + 1) * (ctx.depth + 1));
@@ -233,7 +229,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     return ScoredMove{bestMove, best};
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite, const chess::Board::Move* previousMove, uint64_t* nodeCounter) noexcept {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite, const chess::Board::Move* previousMove, uint64_t* nodeCounter, bool allowNullMove) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
@@ -297,7 +293,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     }
 
     // =========================================================================
-    // INSUFFICIENT MATERIAL DRAW DETECTION (+5-10 ELO)
+    // INSUFFICIENT MATERIAL DRAW DETECTION 
     // =========================================================================
     // Detect positions where neither side can deliver checkmate:
     // K vs K, K+N vs K, K+B vs K
@@ -385,7 +381,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             ? (staticEval >= beta - 200)
             : (staticEval <= alpha + 200);
         
-        const bool canNullMove = !isPVNode
+        const bool canNullMove = allowNullMove
+            && !isPVNode
             && !inCheck
             && ply > 0
             && depth >= 4
@@ -395,22 +392,15 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         if (canNullMove) {
             const int64_t R = 3 + depth / 8; // Adaptive reduction
 
-            // Execute null move: flip side to move, clear en passant
-            // setPrevTurn() decrements both fullMoveClock AND halfMoveClock!
-            // We must save/restore them to avoid corrupting game state (50-move rule).
-            const auto savedEnPassant = b.getEnPassant();
-            const auto savedHalfMoveClock = b.getHalfMoveClock();
-            const auto savedFullMoveClock = b.getFullMoveClock();
-            b.setEnPassant(chess::Coords{}); // Clear en passant (opponent can't ep after a "pass")
-            b.setNextTurn();
+            // Execute/undo null move through Board APIs so hash/repetition stay coherent.
+            chess::Board::MoveState nullState;
+            b.doNullMove(nullState);
 
-            const int64_t nullScore = this->searchPosition(b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, nullptr, counter);
+            const int64_t nullScore = this->searchPosition(
+                b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, nullptr, counter, false);
 
             // Undo null move: restore ALL state precisely
-            b.setPrevTurn();
-            b.setEnPassant(savedEnPassant);
-            // setPrevTurn() decrements them, corrupting the 50-move rule counter
-            b.restoreClocks(savedHalfMoveClock, savedFullMoveClock);
+            b.undoNullMove(nullState);
 
             // Check for beta cutoff
             if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {
@@ -418,7 +408,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
                 // Only verify if depth is high enough (otherwise overhead > benefit)
                 // depth >= 10: verification is expensive, only do it at high depth
                 if (depth >= 10) {
-                    const int64_t verifyScore = this->searchPosition(b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr, counter);
+                    // Disable null-move in verification to prevent recursive NMP chains.
+                    const int64_t verifyScore = this->searchPosition(
+                        b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr, counter, false);
                     if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
                         // Avoid pruning a stalemate node before terminal handling.
                         if (!b.hasAnyLegalMove(activeColor)) {

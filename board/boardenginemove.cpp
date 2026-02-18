@@ -260,5 +260,41 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     currentHash = st.prevHistoryHead;
 }
 
+void Board::doNullMove(MoveState& st) noexcept {
+    st.prevActiveColor   = activeColor;
+    st.prevHalfMoveClock = halfMoveClock;
+    st.prevFullMoveClock = fullMoveClock;
+    st.prevEnPassant     = enPassant;
+    st.prevCastle        = castle;
+    st.prevHasMoved      = hasMoved;
+    st.prevHistorySize   = historySize;
+    st.prevHistoryHead   = currentHash;
+
+    // Null move clears en-passant rights and just passes the turn.
+    enPassant = Coords{};
+
+    if (halfMoveClock < 255) {
+        ++halfMoveClock;
+    }
+    if (activeColor == BLACK && fullMoveClock < 255) {
+        ++fullMoveClock;
+    }
+    activeColor = oppositeColor(activeColor);
+
+    // Keep hash/repetition coherent with the null-move position.
+    updateRepetitionAfterMove(false);
+}
+
+void Board::undoNullMove(const MoveState& st) noexcept {
+    activeColor   = st.prevActiveColor;
+    halfMoveClock = st.prevHalfMoveClock;
+    fullMoveClock = st.prevFullMoveClock;
+    enPassant     = st.prevEnPassant;
+    castle        = st.prevCastle;
+    hasMoved      = st.prevHasMoved;
+    historySize   = st.prevHistorySize;
+    currentHash   = st.prevHistoryHead;
+}
+
 
 }
