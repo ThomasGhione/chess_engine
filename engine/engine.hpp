@@ -283,6 +283,17 @@ private:
                                   bool inCheck,
                                   bool inDoubleCheck,
                                   uint8_t promotionRank) const noexcept;
+    static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
+    void computeCheckEvasionMasks(const chess::Board& b,
+                                  uint8_t activeColor,
+                                  bool inCheck,
+                                  bool inDoubleCheck,
+                                  uint64_t& outCheckersMask,
+                                  uint64_t& outEvasionMask) const noexcept;
+    void computePinRays(const chess::Board& b,
+                        uint8_t activeColor,
+                        uint64_t& outPinnedMask,
+                        std::array<uint64_t, 64>& outPinRayBySquare) const noexcept;
     uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
