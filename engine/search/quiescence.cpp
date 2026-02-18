@@ -192,7 +192,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
     // Generate only captures/promotions in qsearch (no non-capture checks).
     // In-check nodes are already handled above with full legal evasions.
-    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, false);
+    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, false, true, false, false);
     
     // No tactical moves: return stand-pat (quiet position reached)
     if (tacticalMoves.is_empty()) {

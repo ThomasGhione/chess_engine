@@ -270,6 +270,13 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
     const uint8_t fromPiece = get(fromIndex);
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
+    const bool inDoubleChk = inChk && (fromType != KING) && isDoubleCheck(fromPiece & MASK_COLOR);
+    return isLegalPseudoMove(fromIndex, toIndex, inChk, inDoubleChk);
+}
+
+bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bool inDoubleChk) const noexcept {
+    const uint8_t fromPiece = get(fromIndex);
+    const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
     const uint8_t destPiece = get(toIndex);
@@ -279,10 +286,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) co
         return false;
     }
 
-    if (inChk && fromType != KING) [[unlikely]] {
-        if (isDoubleCheck(movingColor)) [[unlikely]] {
-            return false;
-        }
+    if (inChk && inDoubleChk && fromType != KING) [[unlikely]] {
+        return false;
     }
 
     const uint64_t toBit = Board::bitMask(toIndex);
@@ -740,7 +745,8 @@ template<uint8_t PieceType>
     uint64_t pieceBB,
     uint64_t ownOcc,
     uint64_t occupancy,
-    bool inCheck
+    bool inCheck,
+    bool inDoubleCheck
 ) noexcept {
     while (pieceBB) {
         const uint8_t from = __builtin_ctzll(pieceBB);
@@ -751,7 +757,7 @@ template<uint8_t PieceType>
         while (movesMask) {
             const uint8_t to = __builtin_ctzll(movesMask);
             movesMask &= movesMask - 1;
-            if (board->isLegalPseudoMove(from, to, inCheck)) return true;
+            if (board->isLegalPseudoMove(from, to, inCheck, inDoubleCheck)) return true;
         }
     }
     return false;
@@ -798,7 +804,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     // --- KNIGHTS (cheap, no magic bitboards) ---
-    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
         return true;
     }
 
@@ -814,7 +820,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (push) {
             const uint8_t to = __builtin_ctzll(push);
             push &= push - 1;
-            if (isLegalPseudoMove(from, to, inChk)) return true;
+            if (isLegalPseudoMove(from, to, inChk, inDoubleChk)) return true;
         }
 
         // Pawn captures
@@ -822,22 +828,22 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (caps) {
             const uint8_t to = __builtin_ctzll(caps);
             caps &= caps - 1;
-            if (isLegalPseudoMove(from, to, inChk)) return true;
+            if (isLegalPseudoMove(from, to, inChk, inDoubleChk)) return true;
         }
     }
 
     // --- BISHOPS ---
-    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
         return true;
     }
 
     // --- ROOKS ---
-    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
         return true;
     }
 
     // --- QUEENS ---
-    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, occupancy, inChk)) {
+    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
         return true;
     }
 

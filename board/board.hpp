@@ -187,6 +187,7 @@ public:
     void undoNullMove(const MoveState& state) noexcept;
     bool canMoveToBB(const Coords& from, const Coords& to, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
     bool isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept;
