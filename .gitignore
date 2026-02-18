@@ -1,6 +1,7 @@
 .vscode
 *.out
 *.o
+*.d
 *.log
 *.png
 *.csv
