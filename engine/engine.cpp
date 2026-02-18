@@ -45,10 +45,12 @@ Engine::Engine(const std::string& fen)
 void Engine::reset() noexcept {
     board = chess::Board();
     depth = DEFAULTDEPTH;
+    UCI_DEPTH = 0;
     eval = 0;
     gameResult = ONGOING;
     isPlayerWhite = true;
     nodesSearched = 0;
+    bestMove = chess::Board::Move{};
     
     // Reset endgame depth extension flags
     depthExtended = false; 
@@ -72,6 +74,16 @@ void Engine::reset() noexcept {
 
     // Reset history heuristic
     std::memset(history, 0, sizeof(history));
+
+    // Reset counter-move history
+    for (int from = 0; from < 64; ++from) {
+        for (int to = 0; to < 64; ++to) {
+            counterMoves[from][to] = chess::Board::Move{};
+        }
+    }
+
+    // Reset capture history
+    std::memset(captureHistory, 0, sizeof(captureHistory));
 }
 
 

@@ -23,6 +23,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     int64_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
+    uint64_t localNodes = 0;
 
     // Parallelismo YBWC: attivato solo se:
     // - Abbastanza mosse (>= 10) per giustificare overhead threads
@@ -48,7 +49,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             int64_t score;
             if (i == 0) {
                 // Prima mossa: cerca con finestra piena (PV node)
-                score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+                score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
             } else {
                 // Mosse successive: cerca con null window
                 int64_t nullAlpha, nullBeta;
@@ -60,14 +61,14 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                     nullBeta = beta;
                 }
                 
-                score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly);
+                score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly, true, true, nullptr, &localNodes);
                 
                 // PVS re-search: se null window fallisce, ri-cerca con finestra piena
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
                 const bool shouldResearch = usIsWhite ? (score > alpha) : (score < beta);
                 if (shouldResearch) {
-                    score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+                    score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
                 }
             }
 
@@ -80,6 +81,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             // Beta cutoff check after updateMinMax
             if (isBetaCutoff(bestScore, alpha, beta, usIsWhite)) break;
         }
+        this->nodesSearched += localNodes;
         this->eval = bestScore;
         return bestMove;
     }
@@ -92,7 +94,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         
         doMoveWithPromotion(this->board, firstMove, state);
         
-        int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly);
+        int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
         
         // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
         this->board.undoMove(firstMove, state);
@@ -100,7 +102,11 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
 
-    if (moves.size <= 1) [[unlikely]] return bestMove;
+    if (moves.size <= 1) [[unlikely]] {
+        this->nodesSearched += localNodes;
+        this->eval = bestScore;
+        return bestMove;
+    }
 
     // All threads must see the same window to guarantee determinism
     const int64_t originalAlpha = alpha;
@@ -109,6 +115,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     // std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
     std::array<int64_t, 218> threadScores; // 218 = max moves 
     threadScores.fill(Engine::initialBest(usIsWhite));
+    std::array<uint64_t, 218> threadNodeCounts {};
 
     // Task-based root parallelism (work-stealing, better load balance)
     // Bound the number of threads to MAX_THREADS and the number of moves
@@ -124,10 +131,12 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             chess::Board::MoveState state;
 
             doMoveWithPromotion(threadBoard, m, state);
-            int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+            uint64_t workerNodes = 0;
+            int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false, nullptr, &workerNodes);
             threadBoard.undoMove(m, state);
 
             threadScores[i] = score;
+            threadNodeCounts[i] = workerNodes;
         }
     } else {
         // Parallel region with chunked tasks to reduce task overhead and copies
@@ -154,12 +163,14 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                             for (int i = start; i < end; ++i) {
                                 const auto m = moves[i]; // local copy
                                 chess::Board::MoveState state;
+                                uint64_t workerNodes = 0;
 
                                 doMoveWithPromotion(threadBoard, m, state);
-                                int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false);
+                                int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false, nullptr, &workerNodes);
                                 threadBoard.undoMove(m, state);
 
                                 threadScores[i] = score;
+                                threadNodeCounts[i] = workerNodes;
                             }
                         } // task
                     }
@@ -180,6 +191,10 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         updateBound(score, alpha, beta, usIsWhite);
     }
 
+    for (int i = 1; i < moves.size; ++i) {
+        localNodes += threadNodeCounts[i];
+    }
+    this->nodesSearched += localNodes;
     this->eval = bestScore;
     return bestMove;
 }

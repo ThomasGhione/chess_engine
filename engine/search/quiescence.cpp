@@ -16,8 +16,9 @@ namespace engine {
 //
 // NOTE: We do NOT generate checks (non-capture) as they cause tree explosion
 // Most modern engines only search captures + promotions in qsearch
-int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept {
-    this->nodesSearched++;
+int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT, uint64_t* nodeCounter) noexcept {
+    uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
+    ++(*counter);
 
     // SAFETY: prevent stack overflow
     if (ply >= MAX_PLY - 1) {
@@ -30,12 +31,14 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // Probe the TT before doing any work. If we have a stored result for this
     // position at sufficient depth, we can return immediately. This avoids
     // re-evaluating identical tactical positions that arise via transpositions.
-    const uint64_t hashKey = zobrist::computeHashKey(b);
-    {
-        int64_t ttScore = 0;
-        // Probe at depth 0 (qsearch is depth <= 0)
-        if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) {
-            return ttScore;
+    if (useTT) {
+        const uint64_t hashKey = zobrist::computeHashKey(b);
+        {
+            int64_t ttScore = 0;
+            // Probe at depth 0 (qsearch is depth <= 0)
+            if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) {
+                return ttScore;
+            }
         }
     }
 
@@ -250,7 +253,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         
         // MINIMAX: recursively search with same alpha-beta window
         // The side switches automatically because b.doMove() changes activeColor
-        const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1);
+        const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
         
         b.undoMove(m, state);
         

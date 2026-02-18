@@ -165,6 +165,7 @@ private:
         int64_t staticEval = 0;   // Static evaluation for pruning decisions
         bool inCheck = false;      // Whether the side to move is in check
         bool isPVNode = false;     // True for full-window nodes (no null-window pruning)
+        uint64_t* nodeCounter = nullptr; // Per-search counter (thread-local ownership)
     };
 
     struct AlphaBeta {
@@ -273,8 +274,8 @@ private:
     uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr) noexcept;
-    int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply) noexcept;
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr) noexcept;
+    int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     
     // Quiescence helper: generates only tactical moves (captures, promotions)
