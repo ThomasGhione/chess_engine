@@ -26,7 +26,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
 
     // =========================================================================
-    // TT PROBE IN QUIESCENCE SEARCH (+10-20 ELO)
+    // TT PROBE IN QUIESCENCE SEARCH
     // =========================================================================
     // Probe the TT before doing any work. If we have a stored result for this
     // position at sufficient depth, we can return immediately. This avoids
@@ -42,22 +42,73 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         }
     }
 
-    // Stand-pat: current static evaluation
-    // evaluate() returns score from white's perspective (positive = white winning)
-    const int64_t standPat = this->evaluate(b);
-    
+    const uint8_t activeColor = b.getActiveColor();
+    const bool usIsWhite = (activeColor == chess::Board::WHITE);
+    const bool inCheck = b.inCheck(activeColor);
+
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    // DEPTH LIMIT: Prevent qsearch explosion
-    // 32 plies of tactical search is more than sufficient for any position
     constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
     if (ply >= MAX_QSEARCH_DEPTH) {
-        return standPat; // Cutoff profondità - return stand-pat to avoid re-evaluation
+        // Do not return a stand-pat score from an in-check node without checking
+        // whether this is actually checkmate.
+        if (inCheck) {
+            MoveList<chess::Board::Move> evasions = this->generateLegalMoves(b);
+            if (evasions.is_empty()) {
+                return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
+            }
+        }
+        return this->evaluate(b);
     }
-    
-    const uint8_t activeColor = b.getActiveColor();
-    const bool usIsWhite = (activeColor == chess::Board::WHITE);
+
+    // In-check nodes cannot use stand-pat or delta pruning.
+    // We must search all legal evasions.
+    if (inCheck) {
+        MoveList<chess::Board::Move> evasions = this->generateLegalMoves(b);
+        if (evasions.is_empty()) {
+            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
+        }
+
+        int64_t best = Engine::initialBest(usIsWhite);
+        // Two-pass evasion ordering:
+        // 1) forcing evasions (captures/promotions), 2) quiet evasions.
+        // This improves alpha-beta cutoffs in tactical check sequences.
+        for (int pass = 0; pass < 2; ++pass) {
+            for (const auto& m : evasions) {
+                const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+                const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEnPassantCapture(b, m);
+                const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
+                const bool isPromotion = (fromPieceType == chess::Board::PAWN)
+                    && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
+                const bool isForcing = isCapture || isPromotion;
+
+                if ((pass == 0 && !isForcing) || (pass == 1 && isForcing)) {
+                    continue;
+                }
+
+                chess::Board::MoveState state;
+                doMoveWithPromotion(b, m, state);
+                const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+                b.undoMove(m, state);
+
+                if (Engine::isBetter(score, best, usIsWhite)) {
+                    best = score;
+                }
+
+                updateBound(score, alpha, beta, usIsWhite);
+                if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+                    return cutoffValue(alpha, beta, usIsWhite);
+                }
+            }
+        }
+
+        return best;
+    }
+
+    // Stand-pat: current static evaluation
+    // evaluate() returns score from white's perspective (positive = white winning)
+    const int64_t standPat = this->evaluate(b);
 
     // Beta cutoff: position is too good for the active player
     if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
@@ -74,25 +125,20 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // If stand-pat is so bad that even the best possible capture (Queen = 900cp)
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
-    // IMPORTANT: Skip this pruning if we're in check (must search all evasions)
-    // CRITICAL: Reduced margin - only explore realistic recovery chances
+    // In-check nodes are handled above and never reach this section.
     constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
-    
-    const bool inCheck = b.inCheck(activeColor);
-    
-    if (!inCheck) {
-        if (usIsWhite) {
-            // White to move: if standPat + margin < alpha, no capture can help
-            if (standPat + EARLY_DELTA_MARGIN < alpha) {
-                // Early pruning - don't store in TT (too frequent, overhead not worth it)
-                return alpha; // Early delta cutoff
-            }
-        } else {
-            // Black to move: if standPat - margin > beta, no capture can help
-            if (standPat - EARLY_DELTA_MARGIN > beta) {
-                // Early pruning - don't store in TT (too frequent, overhead not worth it)
-                return beta; // Early delta cutoff
-            }
+
+    if (usIsWhite) {
+        // White to move: if standPat + margin < alpha, no capture can help
+        if (standPat + EARLY_DELTA_MARGIN < alpha) {
+            // Early pruning - don't store in TT (too frequent, overhead not worth it)
+            return alpha; // Early delta cutoff
+        }
+    } else {
+        // Black to move: if standPat - margin > beta, no capture can help
+        if (standPat - EARLY_DELTA_MARGIN > beta) {
+            // Early pruning - don't store in TT (too frequent, overhead not worth it)
+            return beta; // Early delta cutoff
         }
     }
 
@@ -144,9 +190,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         return cutoffValue(alpha, beta, usIsWhite);
     }
 
-    // Generate tactical moves (captures, promotions) with checks for pawn tactics
-    // Include checks to discover check-based pawn sacrifices and tactics
-    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, true);
+    // Generate only captures/promotions in qsearch (no non-capture checks).
+    // In-check nodes are already handled above with full legal evasions.
+    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, false);
     
     // No tactical moves: return stand-pat (quiet position reached)
     if (tacticalMoves.is_empty()) {
