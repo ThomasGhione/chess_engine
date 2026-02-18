@@ -326,7 +326,7 @@ private:
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
     void rebuildRepetitionHistory() noexcept;
-    void updateRepetitionAfterMove(bool resetHistory) noexcept;
+    void updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
     // Metodi end
     
     // Variabili start

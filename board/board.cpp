@@ -763,8 +763,10 @@ void Board::rebuildRepetitionHistory() noexcept {
     repetitionHistory[historySize++] = currentHash;
 }
 
-void Board::updateRepetitionAfterMove(bool resetHistory) noexcept {
-    currentHash = zobrist::computeHashKey(*this);
+void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
+    if (recomputeHash) {
+        currentHash = zobrist::computeHashKey(*this);
+    }
     if (resetHistory) {
         historySize = 0;
     }

@@ -40,6 +40,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
 
+    uint64_t newHash = currentHash;
+    if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
+        newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
+    }
+    newHash ^= zobrist::TABLES.pieces[moving][fromIndex];
+
     enPassant = Coords{};
 
     // --- EN PASSANT CAPTURE ---
@@ -63,12 +69,14 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             set(captured, EMPTY);
             occupancy &= ~(bitMask(capIndex));
             removePieceFromBB(capturedPiece, capIndex);
+            newHash ^= zobrist::TABLES.pieces[capturedPiece][capIndex];
         }
     }
 
     // --- NORMAL CAPTURE SU DESTINAZIONE ---
     if (destBefore != EMPTY && !st.wasEnPassantCapture) {
         removePieceFromBB(destBefore, toIndex);
+        newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
     }
 
     // --- SPOSTAMENTO PEZZO ---
@@ -76,6 +84,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     fastUpdateOccupancyBB(fromIndex, toIndex);
     removePieceFromBB(moving, fromIndex);
     addPieceToBB(moving, toIndex);
+    newHash ^= zobrist::TABLES.pieces[moving][toIndex];
 
     // --- ARROCCO: spostamento torre ---
     if (movingType == KING && fromRank == toRank) {
@@ -99,6 +108,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
             removePieceFromBB(rook, rookFromIndex);
             addPieceToBB(rook, rookToIndex);
+            newHash ^= zobrist::TABLES.pieces[rook][rookFromIndex];
+            newHash ^= zobrist::TABLES.pieces[rook][rookToIndex];
         }
     }
 
@@ -172,6 +183,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             }
             st.promotionPieceType = promo;
             (void)promote(to, static_cast<char>(promo));
+            uint8_t promotedPiece = QUEEN | movingColor;
+            if (promo == 'r') promotedPiece = ROOK | movingColor;
+            else if (promo == 'b') promotedPiece = BISHOP | movingColor;
+            else if (promo == 'n') promotedPiece = KNIGHT | movingColor;
+            newHash ^= zobrist::TABLES.pieces[moving][toIndex];
+            newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
         }
         
     }
@@ -188,8 +205,18 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         ++fullMoveClock;
     }
     activeColor = oppositeColor(activeColor);
+    newHash ^= zobrist::TABLES.sideToMove;
 
-    updateRepetitionAfterMove(resetHistory);
+    if (castle != st.prevCastle) {
+        newHash ^= zobrist::TABLES.castling[st.prevCastle];
+        newHash ^= zobrist::TABLES.castling[castle];
+    }
+    if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+        newHash ^= zobrist::TABLES.enPassant[enPassant.file()];
+    }
+    currentHash = newHash;
+
+    updateRepetitionAfterMove(resetHistory, false);
 }
 
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {
@@ -269,6 +296,10 @@ void Board::doNullMove(MoveState& st) noexcept {
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
+    uint64_t newHash = currentHash;
+    if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
+        newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
+    }
 
     // Null move clears en-passant rights and just passes the turn.
     enPassant = Coords{};
@@ -280,9 +311,11 @@ void Board::doNullMove(MoveState& st) noexcept {
         ++fullMoveClock;
     }
     activeColor = oppositeColor(activeColor);
+    newHash ^= zobrist::TABLES.sideToMove;
+    currentHash = newHash;
 
     // Keep hash/repetition coherent with the null-move position.
-    updateRepetitionAfterMove(false);
+    updateRepetitionAfterMove(false, false);
 }
 
 void Board::undoNullMove(const MoveState& st) noexcept {
