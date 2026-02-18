@@ -74,17 +74,26 @@ namespace uci {
     }
 
     void UCI::position(const std::string& command) noexcept {
-        engine.reset();
-        
+        // UCI "position" must not reset the whole engine state:
+        // reset TT/history only on "ucinewgame".
         if (command.find("startpos") == 0) {
+            engine.board = chess::Board();
+            engine.bestMove = chess::Board::Move{};
+            engine.moveHistory.clear();
+
             auto movesPos = command.find("moves");
             if (movesPos != std::string::npos) {
                 parseMoves(command.substr(movesPos));
             }
+
+            engine.updateGameResult();
             return;
         }
         else if (command.find("fen") == 0) {
             auto movesPos = command.find("moves");
+            engine.bestMove = chess::Board::Move{};
+            engine.moveHistory.clear();
+
             if (movesPos == std::string::npos) {
                 parseFEN(command.substr(4));
             }
@@ -92,6 +101,8 @@ namespace uci {
                 parseFEN(command.substr(4, movesPos - 4));
                 parseMoves(command.substr(command.find("moves")));
             }
+
+            engine.updateGameResult();
         }
     }
 
