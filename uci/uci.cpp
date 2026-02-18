@@ -160,7 +160,7 @@ namespace uci {
 
         std::string movesList = moves.substr(6);
 
-        int delimiterPos = 0;
+        std::string::size_type delimiterPos = 0;
         while ((delimiterPos = movesList.find(' ')) != std::string::npos) {
             std::string move = movesList.substr(0, delimiterPos);
 

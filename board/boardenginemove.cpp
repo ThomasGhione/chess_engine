@@ -28,7 +28,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = get(to);
 
-    memset(&st, 0, sizeof(st));
+    std::memset(static_cast<void*>(&st), 0, sizeof(st));
     st.prevActiveColor   = activeColor;
     st.prevHalfMoveClock = halfMoveClock;
     st.prevFullMoveClock = fullMoveClock;
