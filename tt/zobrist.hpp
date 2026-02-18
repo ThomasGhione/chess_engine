@@ -75,6 +75,13 @@ namespace zobrist {
         }
     }
 
+    inline bool hasPseudoLegalEnPassantCapture(const chess::Board& board, const chess::Coords& epSquare) noexcept {
+        if (!chess::Coords::isInBounds(epSquare)) return false;
+        const int sideToMove = chess::Board::colorToIndex(board.getActiveColor());
+        const uint64_t candidatePawns = pieces::PAWN_ATTACKERS_TO[sideToMove][epSquare.index] & board.pawns_bb[sideToMove];
+        return candidatePawns != 0ULL;
+    }
+
     // Calcolo chiave hash da Board
     inline uint64_t computeHashKey(const chess::Board& board) {
         uint64_t hashKey = 0ULL;
@@ -108,13 +115,13 @@ namespace zobrist {
             (board.getCastle(3) ? 8u : 0u);
         hashKey ^= TABLES.castling[castlingMask];
 
-        // En-passant (branchless: XOR if valid EP square)
-        // FIX: check bounds BEFORE accessing file() to avoid out-of-bounds
+        // En-passant hashing (standard):
+        // include EP file only if side to move has at least one pawn that can
+        // pseudo-legally capture on the EP square.
         const chess::Coords epSquare = board.getEnPassant();
-        const bool epValid = chess::Coords::isInBounds(epSquare);
-        const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(epValid));
-        // Only access file() if epSquare is valid, otherwise use 0 (masked out anyway)
-        const uint8_t epFile = epValid ? epSquare.file() : 0;
+        const bool epHashable = hasPseudoLegalEnPassantCapture(board, epSquare);
+        const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(epHashable));
+        const uint8_t epFile = epHashable ? epSquare.file() : 0;
         hashKey ^= TABLES.enPassant[epFile] & epMask;
 
         return hashKey;

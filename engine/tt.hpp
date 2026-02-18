@@ -155,10 +155,19 @@ inline uint64_t computeHashKey(const chess::Board& board) {
         (board.getCastle(3) ? 8u : 0u);
     hashKey ^= detail::ZOBRIST.castling[castlingMask];
 
-    // En-passant: single EP square
+    // En-passant hashing (standard):
+    // include EP file only if side to move has at least one pawn that can
+    // pseudo-legally capture on the EP square.
     const chess::Coords epSquare = board.getEnPassant();
-    const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(chess::Coords::isInBounds(epSquare)));
-    hashKey ^= detail::ZOBRIST.enPassant[epSquare.file()] & epMask;
+    bool epHashable = false;
+    if (chess::Coords::isInBounds(epSquare)) {
+        const int sideToMove = chess::Board::colorToIndex(board.getActiveColor());
+        const uint64_t candidatePawns = pieces::PAWN_ATTACKERS_TO[sideToMove][epSquare.index] & board.pawns_bb[sideToMove];
+        epHashable = (candidatePawns != 0ULL);
+    }
+    const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(epHashable));
+    const uint8_t epFile = epHashable ? epSquare.file() : 0;
+    hashKey ^= detail::ZOBRIST.enPassant[epFile] & epMask;
 
     return hashKey;
 }

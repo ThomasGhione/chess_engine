@@ -166,10 +166,18 @@ namespace tt {
         Entry* bucket = &(*table_)[bucketIndex * ENTRIES_PER_BUCKET];
 
         Entry* replaceEntry = &bucket[0];
+        Entry* emptyEntry = nullptr;
         int bestReplaceScore = -1000000;
 
         for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
             Entry& entry = bucket[i];
+
+            // INVALID entries are empty slots (their key/depth may contain stale data).
+            // Never treat them as key matches.
+            if (entry.flag == Entry::INVALID) {
+                if (emptyEntry == nullptr) emptyEntry = &entry;
+                continue;
+            }
 
             if (entry.key == key) {
                 if (depth >= entry.depth || flag == Entry::EXACT) {
@@ -190,11 +198,12 @@ namespace tt {
             }
         }
 
-        replaceEntry->key = key;
-        replaceEntry->depth = depth;
-        replaceEntry->score = score;
-        replaceEntry->flag  = flag;
-        replaceEntry->age   = generation_;
+        Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
+        target->key = key;
+        target->depth = depth;
+        target->score = score;
+        target->flag  = flag;
+        target->age   = generation_;
     }
 
     // NEW: Probe with hash move retrieval
@@ -250,10 +259,18 @@ namespace tt {
         Entry* bucket = &(*table_)[bucketIndex * ENTRIES_PER_BUCKET];
 
         Entry* replaceEntry = &bucket[0];
+        Entry* emptyEntry = nullptr;
         int bestReplaceScore = -1000000;
 
         for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
             Entry& entry = bucket[i];
+
+            // INVALID entries are empty slots (their key/depth may contain stale data).
+            // Never treat them as key matches.
+            if (entry.flag == Entry::INVALID) {
+                if (emptyEntry == nullptr) emptyEntry = &entry;
+                continue;
+            }
 
             if (entry.key == key) {
                 if (depth >= entry.depth || flag == Entry::EXACT) {
@@ -275,12 +292,13 @@ namespace tt {
             }
         }
 
-        replaceEntry->key = key;
-        replaceEntry->depth = depth;
-        replaceEntry->score = score;
-        replaceEntry->flag  = flag;
-        replaceEntry->age   = generation_;
-        replaceEntry->bestMove = bestMove;
+        Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
+        target->key = key;
+        target->depth = depth;
+        target->score = score;
+        target->flag  = flag;
+        target->age   = generation_;
+        target->bestMove = bestMove;
     }
 
     // Overload int64_t → int32_t (conversioni gestite da TT)
