@@ -1,16 +1,16 @@
-# Piccola nota: @Comando non scrive il comando ma solo l'output
-
 SHELL := /bin/bash
 
-# Flag per avere l'esecuzione parallela
-NUMBER_OF_CORES = $(nproc)
+NUMBER_OF_CORES := $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
+ifeq ($(MAKELEVEL),0)
+ifeq ($(filter -j%,$(MAKEFLAGS)),)
 MAKEFLAGS += -j$(NUMBER_OF_CORES)
+endif
+endif
 
 # Variabili compilatore
 CXX = g++
 TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
 
-# PRODFLAGS OTTIMIZZATE: Match MinGW performance
 # -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
 # -march=native: Use all CPU features (SSE4.2, AVX2, BMI2, POPCNT)
 # -mtune=native: Optimize instruction scheduling for your CPU
@@ -19,27 +19,15 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
 # -funroll-loops: Unroll hot loops (good for bitboard operations)
 # Balanced production flags (safety + speed)
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -mtune=native \
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -fopenmp -march=native -mtune=native \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
 		-ffunction-sections -fdata-sections -fomit-frame-pointer
 
-# Ultra-aggressive speed flags (ignore size, relax FP semantics). Use when you want maximum throughput.
-# Notes:
-# - Removes DEBUG macro and enables NDEBUG for faster asserts
-# - -Ofast + -ffast-math enable non-IEEE FP optimizations (safe here: engine is integer-heavy)
-# - -fno-exceptions/-fno-rtti drop RTTI/exception tables; ensure codebase doesn't rely on them
-# - Link-time optimization kept automatic
-ULTRAFLAGS = -std=c++23 -O3 -Ofast -march=native -mtune=native -flto=auto -fopenmp \
-		-ffast-math -fno-math-errno -fno-trapping-math -fno-signed-zeros -fno-rounding-math \
-		-funsafe-math-optimizations -freciprocal-math -ffinite-math-only -funroll-loops \
-		-ffunction-sections -fdata-sections -fomit-frame-pointer -fno-plt -pipe \
-		-fno-rtti -fno-exceptions -DNDEBUG
-# -DDEBUG
 # Uncomment if codebase is exception-free
 
 # Cross-compiler per Windows (installare mingw-w64)
 WIN_CXX = x86_64-w64-mingw32-g++
-WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -DDEBUG -fopenmp -flto=4 -fext-numeric-literals
+WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -fopenmp -flto=4 -fext-numeric-literals
 
 # Tool di analisi statica locali
 CPPCHECK = script/cppcheck-2.19.0/cppcheck
@@ -117,10 +105,14 @@ ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
 PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
 
+# File di dipendenza auto-generati (header dependencies)
+DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d)
+
 # Target principali
-.PHONY: prod prod_ultra prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default per usare make secco
+all: PRODFLAGS += -DDEBUG
 all: prod
 
 # Produzione parallela
@@ -128,12 +120,8 @@ all: prod
 prod: $(NAME_APP)
 	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
 
-# Produzione ultra-ottimizzata (no safety, massima velocita')
-# Compilazione monolitica per evitare mix di .o con flag diversi
-prod_ultra:
-	@printf "\nCompiling ULTRA build..."
-	$(CXX) $(ULTRAFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
-	@printf "\n✅ Build completato (ULTRA): $(NAME_APP)\n\n"
+# Alias esplicito per build parallela
+parallel_prod: prod
 
 # Produzione Windows (cross-compile da Linux)
 prod_windows:
@@ -149,7 +137,7 @@ prod_sequential:
 
 # Comando per generare eseguibile per il debug
 # Aggiunge il flag -g per mettere le informazioni di debug
-debug: PRODFLAGS += -g
+debug: PRODFLAGS += -DDEBUG -g
 debug: $(NAME_APP)
 	@printf "\n✅ Build debug completato: $(NAME_APP)\n\n"
 
@@ -164,9 +152,9 @@ perf: $(PERF_APP)
 # Comando per eseguire tutti i test (funzionali + performance)
 all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
-	-./$(TEST_APP)
+	./$(TEST_APP)
 	@printf "\n=== Running performance tests ===\n"
-	-./$(PERF_APP)
+	./$(PERF_APP)
 	@printf "\n✅ All tests completed\n\n"
 
 # Generazione file finale 'chess'
@@ -177,7 +165,7 @@ $(NAME_APP): $(ALL_OBJS)
 # Creazione dei file .o
 %.o: %.cpp
 	@printf "\nCompiling $<..."
-	$(CXX) $(PRODFLAGS) -c $< -o $@
+	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
 
 # Generazione file finale 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
@@ -195,6 +183,8 @@ analyze: analyze-setup
 	@$(MAKE) analyze-clang-tidy
 	@$(MAKE) analyze-iwyu
 	@$(MAKE) analyze-scan-build
+	@$(MAKE) analyze-gcc-analyzer
+	@$(MAKE) analyze-cppclean
 	@$(MAKE) analyze-lizard
 	@$(MAKE) analyze-summary
 
@@ -209,8 +199,12 @@ analyze-setup:
 	@printf "=== STATIC ANALYSIS REPORT ===\n" > doc/output-analisi/analisi.log
 	@printf "Date: %s\n" "$$(date '+%Y-%m-%d %H:%M:%S')" >> doc/output-analisi/analisi.log
 	@printf "Files analyzed: %s\n\n" $(words $(ALL_ANALYSIS_FILES)) >> doc/output-analisi/analisi.log
-	@bear -- $(MAKE) prod > /dev/null 2>&1
-	@printf "[0/5] Generating compilation database\n"
+	@if command -v bear >/dev/null 2>&1; then \
+		bear -- $(MAKE) prod > /dev/null 2>&1; \
+	else \
+		printf "⚠️  bear non trovato: skip compile_commands.json generation\n"; \
+	fi
+	@printf "[0/7] Generating compilation database\n"
 
 analyze-cppcheck:
 	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
@@ -302,6 +296,24 @@ analyze-summary:
 	@cat doc/prompt-llm-riassunto-analisi-statica.txt
 	@printf "\n\n=== END PROMPT ===\n"
 
+# Alias per analisi complessità
+complexity: analyze-lizard
+
+# Memory leak detection con report salvato su file
+test-valgrind: $(TEST_APP)
+	@mkdir -p doc/output-analisi
+	@if ! command -v valgrind >/dev/null 2>&1; then \
+		printf "❌ valgrind non trovato. Installa con: sudo apt install valgrind\n"; \
+		exit 1; \
+	fi
+	@printf "\nRunning valgrind on $(TEST_APP)...\n"
+	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+		--error-exitcode=1 ./$(TEST_APP) > doc/output-analisi/valgrind-report.txt 2>&1
+	@printf "✅ Valgrind report: doc/output-analisi/valgrind-report.txt\n\n"
+
+# Include dependency files generated by -MMD -MP
+-include $(DEPFILES)
+
 # Pulizia solo dei file oggetto e binari
 cls-compile-files:
 	rm -f $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
@@ -325,7 +337,6 @@ help:
 	@printf "\n=== Chess Build System ===\n"
 	@printf "\n📦 BUILD TARGETS:\n"
 	@printf "  make prod           - Compilazione monolitica (veloce prima volta)\n"
-	@printf "  make prod_ultra     - Build monolitica con flag massimi per performance (Ofast, fast-math, no RTTI/exceptions)\n"
 	@printf "  make prod_windows   - Cross-compilazione Windows (richiede mingw-w64)\n"
 	@printf "  make debug          - Compilazione con debug symbols\n"
 	@printf "  make test           - Compilazione e test funzionali\n"

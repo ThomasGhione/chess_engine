@@ -108,11 +108,8 @@ namespace driver {
             std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
     #endif
 
-            // Print the updated board after successful move
-            std::cout << "[DEBUG] About to print updated board...\n";
             std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
-            std::cout << "[DEBUG] Board printed successfully.\n";
-
+            
             error = false;
         }  
 
