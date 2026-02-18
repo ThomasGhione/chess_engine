@@ -18,7 +18,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t fromIndex = from.toIndex();
     const uint8_t toIndex   = to.toIndex();
     
-    // OTTIMIZZAZIONE CRITICA: Precalcola file/rank UNA VOLTA invece di chiamarle ripetutamente
     const uint8_t fromFile = fromIndex & 7;
     const uint8_t fromRank = fromIndex >> 3;
     const uint8_t toFile = toIndex & 7;
@@ -29,9 +28,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = get(to);
 
-    // Fast init: zero the struct in one call then only write the variable fields.
-    // MoveState is POD/trivially-copyable so memset is safe and typically faster
-    // than many separate assignments or a large aggregate initializer.
     memset(&st, 0, sizeof(st));
     st.prevActiveColor   = activeColor;
     st.prevHalfMoveClock = halfMoveClock;
@@ -44,16 +40,10 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
 
-    // Cache opzionale re
-    //st.prevWhiteKingIndex = kings_bb[0] ? __builtin_ctzll(kings_bb[0]) : 64;
-    //st.prevBlackKingIndex = kings_bb[1] ? __builtin_ctzll(kings_bb[1]) : 64;
-
-    // Reset en passant di default (potrà essere reimpostato per un doppio passo)
     enPassant = Coords{};
 
     // --- EN PASSANT CAPTURE ---
     if (movingType == PAWN) {
-        // OTTIMIZZAZIONE: usa fromFile/toFile precalcolati invece di from.file()/to.file()
         if (fromFile != toFile && destBefore == EMPTY &&
             Coords::isInBounds(st.prevEnPassant) &&
             toIndex == st.prevEnPassant.toIndex()) {
@@ -88,7 +78,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     addPieceToBB(moving, toIndex);
 
     // --- ARROCCO: spostamento torre ---
-    // OTTIMIZZAZIONE: usa toRank precalcolato invece di to.rank()
     if (movingType == KING && fromRank == toRank) {
         const int8_t df = static_cast<int8_t>(toFile - fromFile);
         if (df == 2 || df == -2) {
@@ -114,7 +103,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
 
     // --- UPDATE DIRITTI DI ARROCCO / hasMoved ---
-    // OTTIMIZZAZIONE: usa fromFile/fromRank precalcolati
     if (movingType == KING) {
         const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3
         const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
@@ -208,7 +196,6 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     const Coords& from = m.from;
     const Coords& to   = m.to;
 
-    // OTTIMIZZAZIONE: precalcola indici una sola volta
     const uint8_t fromIndex = from.toIndex();
     const uint8_t toIndex   = to.toIndex();
 

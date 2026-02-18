@@ -51,35 +51,22 @@ void Engine::reset() noexcept {
     isPlayerWhite = true;
     nodesSearched = 0;
     bestMove = chess::Board::Move{};
-    
-    // Reset move history
     moveHistory.clear();
-    
 #ifdef DEBUG
     ttProbes = 0;
     ttHits = 0;
 #endif
-
-    // Reset TT
     this->tt.clear();
-
-    // Reset killer moves
     for (int ply = 0; ply < MAX_PLY; ++ply) {
         killerMoves[0][ply] = chess::Board::Move{};
         killerMoves[1][ply] = chess::Board::Move{};
     }
-
-    // Reset history heuristic
     std::memset(history, 0, sizeof(history));
-
-    // Reset counter-move history
     for (int from = 0; from < 64; ++from) {
         for (int to = 0; to < 64; ++to) {
             counterMoves[from][to] = chess::Board::Move{};
         }
     }
-
-    // Reset capture history
     std::memset(captureHistory, 0, sizeof(captureHistory));
 }
 
@@ -87,9 +74,9 @@ void Engine::reset() noexcept {
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     bool result;
-    if (promotionPiece == '\0') [[likely]] {
+    if (promotionPiece == '\0') {
         result = this->board.moveBB(from, to);
-    } else [[unlikely]] {
+    } else {
         result = this->board.moveBB(from, to, promotionPiece);
     }
     
@@ -98,9 +85,9 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
         moveHistory.reserve(moveHistory.size() + 6); // "e2e4\n" = 5 chars max
         moveHistory += from.toString();
         moveHistory += to.toString();
-        if (promotionPiece == '\0') [[likely]] {
+        if (promotionPiece == '\0') {
             moveHistory += '\n';
-        } else [[unlikely]] {
+        } else {
             moveHistory += promotionPiece;
             moveHistory += '\n';
         }
@@ -127,7 +114,6 @@ void Engine::updateGameResult() noexcept {
 }
 
 
-// OPTIMIZED: Simplified killer logic, bitwise operations for bonus calculation
 __attribute__((hot))
 void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
@@ -180,7 +166,6 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
 
     // HISTORY HEURISTIC: Bonus based on depth
     // GRAVITY FORMULA: h += bonus - h * |bonus| / MAX_HISTORY
-    // Prevents overflow naturally and allows negative values
     const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
     const int64_t depthPlusOne = depth + 1;
     const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);

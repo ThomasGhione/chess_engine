@@ -6,7 +6,6 @@ namespace engine {
 // Helper to add MVV (Most Valuable Victim) bonus for captures
 // Simplified from MVV-LVA: only victim matters, attacker is irrelevant (SEE handles exchange eval)
 void Engine::addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept {
-
     const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
     const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
@@ -75,7 +74,6 @@ void Engine::addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bo
     const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
     const bool isCastling = (fileDelta == 2);
 
-    // Penalizza mosse del re in apertura se non sotto scacco e non arrocco
     if (fullMoveClock < 10 && !inCheck && !isCastling) {
         score -= KING_NON_CASTLING_PENALTY;
     } else if (isCastling) { 

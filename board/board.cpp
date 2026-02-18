@@ -88,7 +88,6 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     }
 
     // Update castling rights for king/rook moves or rook captures
-    // OTTIMIZZAZIONE: usa bitwise ops dirette invece di lambda
     if (movingType == KING) {
         const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;  // bits 0-1 or bits 2-3
         const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;  // bit 0 or bit 3

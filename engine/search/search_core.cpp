@@ -8,7 +8,6 @@ int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
         return 0;
     }
-
     // Penalize stalemate when the side with material advantage allows it.
     constexpr int64_t STALEMATE_PENALTY = 5000;
     return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
@@ -16,17 +15,8 @@ int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
 
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
-    // REMOVED: Direct evaluate() call at depth<=0
-    // Now handled by quiescenceSearch() in searchPosition()
-    // This eliminates horizon effect and tactical blunders
-
     // Transposition table lookup (hashKey already computed by caller to avoid duplication)
-    // Prefetch TT only if deep enough to justify overhead
-    // depth >= 2: balanced (avoids overhead on shallow/qsearch nodes)
-    // Empirical tests show ~5% speedup vs depth >= 0 or depth >= 3
     if (depth >= 2) this->tt.prefetch(hashKey);
-    
-
     return this->tt.probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, score);
 }
 
@@ -37,7 +27,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
 
     // =========================================================================
-    // HISTORY MALUS: Track quiet moves searched before cutoff (+10-20 ELO)
+    // HISTORY MALUS: Track quiet moves searched before cutoff
     // =========================================================================
     // When a beta cutoff occurs, penalize all quiet moves that were searched
     // but failed to produce a cutoff. This improves move ordering over time.
@@ -57,7 +47,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
     // =========================================================================
-    // FUTILITY PRUNING margins (main search) (+20-30 ELO)
+    // FUTILITY PRUNING margins (main search)
     // =========================================================================
     // In late endgames keep pruning active but with tighter margins.
     constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 200, 400}; // depth 0,1,2
@@ -68,7 +58,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         : 0;
 
     // =========================================================================
-    // LATE MOVE PRUNING thresholds (+15-25 ELO)
+    // LATE MOVE PRUNING thresholds
     // =========================================================================
     // In late endgames, prune later (higher threshold) to avoid dropping key pawn moves.
     constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
@@ -252,8 +242,6 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return this->evaluate(b);
     }
 
-    // QUIESCENCE SEARCH: when depth <= 0, switch to tactical-only search
-    // This eliminates horizon effect by searching all captures/checks/promotions
     if (depth <= 0) {
         return this->quiescenceSearch(b, alpha, beta, ply, useTT, counter);
     }
@@ -262,11 +250,10 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const bool isPVNode = (beta > alpha + 1);
 
     // =========================================================================
-    // MATE DISTANCE PRUNING (+5-15 ELO)
+    // MATE DISTANCE PRUNING
     // =========================================================================
     // If we already found a mate shorter than what this node could possibly produce,
     // prune immediately. This significantly speeds up mate searches.
-    // Example: if we found mate in 5, no need to search nodes at ply > 5.
     if (ply > 0) {
         // Best possible score for side to move: mate in (ply+1) moves
         // Worst possible score: getting mated in ply moves
@@ -304,8 +291,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return 0; // True draw
     }
 
-    // 50-move rule detection inside search tree
-    if (b.isFiftyMoveRule()) {
+    if (b.isFiftyMoveRule()) [[unlikely]] { // 50-move rule detection inside search tree
+
         return 0;
     }
 
@@ -338,16 +325,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
-    // REMOVED: Endgame depth extension using static bool - buggy
-    // Static booleans were never reset across searches, causing missed extensions
-    // Fix: handle depth extension in the main search() or use per-search counters
-
-    // OPTIMIZATION: Compute hash key ONCE per node (used by both TT probe and save)
-    // This avoids duplicate computeHashKey() calls (~50-100 cycles saved per node)
     const uint64_t hashKey = zobrist::computeHashKey(b);
-
-    // Prepare search structures
-    AlphaBeta bounds{alpha, beta};
+    AlphaBeta bounds{alpha, beta}; // Prepare search structures
     int64_t score = 0;
 
     // Handle terminal nodes, check extensions, and transposition table lookups
@@ -374,7 +353,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t staticEval = (ply > 0 && !inCheck) ? this->evaluate(b) : 0;
 
     // =========================================================================
-    // NULL MOVE PRUNING (+80-120 ELO)
+    // NULL MOVE PRUNING
     // =========================================================================
     // Idea: If passing the turn (doing nothing) still results in a score >= beta,
     // then the current position is so good that the opponent won't allow it.
@@ -414,8 +393,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             && evalOk;
 
         if (canNullMove) {
-            // Adaptive reduction: R = 3 + depth/8 (less aggressive: was depth/6)
-            const int64_t R = 3 + depth / 8;
+            const int64_t R = 3 + depth / 8; // Adaptive reduction
 
             // Execute null move: flip side to move, clear en passant
             // setPrevTurn() decrements both fullMoveClock AND halfMoveClock!
@@ -513,7 +491,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
 
     // =========================================================================
-    // IIR - Internal Iterative Reduction (+15-25 ELO)
+    // IIR - Internal Iterative Reduction
     // =========================================================================
     // If there's no hash move from TT (the first move score < 100000, which is hash move bonus),
     // reduce depth by 1. Without a hash move, PVS is much less efficient and we'd waste
@@ -535,18 +513,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     int64_t best = result.score;
 
     // Save position to transposition table
-    // DETERMINISM: save only if allowTTWrite=true (disabled in parallel threads)
-    // Reuse hashKey computed earlier to avoid redundant computation
     if (useTT && allowTTWrite) {
-        // Use the ORIGINAL search window for TT flag classification.
-        // Using the mutated bounds (especially beta at minimizing nodes)
-        // can incorrectly downgrade EXACT entries to LOWERBOUND.
         const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
         
-        // Encode best move for TT storage
         const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
             result.move.from.index, result.move.to.index, result.move.promotionPiece);
-        
+
         this->tt.store(hashKey, static_cast<uint8_t>(effectiveDepth), best, flag, encodedMove);
     }
     return best;

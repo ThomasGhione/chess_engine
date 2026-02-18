@@ -40,7 +40,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             const auto& m = moves[i];
             chess::Board::MoveState state;
             
-            // OTTIMIZZAZIONE: precalcola isPromo UNA VOLTA
             doMoveWithPromotion(this->board, m, state);
             
             int64_t score;

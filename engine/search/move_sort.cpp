@@ -39,8 +39,6 @@ uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
 }
 
 // Static Exchange Evaluation (SEE) - Quick version
-// Restituisce il guadagno netto materiale della cattura (positivo = buona, negativo = perdente)
-// OPTIMIZATION: stop at the first favorable exchange for the passive side (early exit)
 int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
