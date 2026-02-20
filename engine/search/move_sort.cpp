@@ -3,6 +3,14 @@
 
 namespace engine {
 
+static inline bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
+    return a.from.index == b.from.index && a.to.index == b.to.index;
+}
+
+static inline bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
+    return m.from.index == from && m.to.index == to;
+}
+
 uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept {
     // Limit piece bitboards to the simulated occupancy so that pieces
     // that were "captured" in the simulated exchange aren't considered
@@ -151,7 +159,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         
         // Validate hash move is in legal moves list (guards against TT collisions)
         for (const auto& m : moves) {
-            if (m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
+            if (sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
                 hashMoveIsLegal = true;
                 break;
             }
@@ -186,7 +194,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // Check if this is the hash move (highest priority!)
         // Only assign high priority if hash move was validated as legal
-        if (hashMoveIsLegal && m.from.index == hashFrom && m.to.index == hashTo && m.promotionPiece == hashPromo) {
+        if (hashMoveIsLegal && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
             score = 100000; // Highest priority
         } else if (isCapture) {
             // CAPTURES: priorità basata su SEE + capture history
@@ -218,10 +226,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 const auto& km1 = killerMoves[0][ply];
                 const auto& km2 = killerMoves[1][ply];
 
-                if (m.from.index == km1.from.index && m.to.index == km1.to.index) {
+                if (sameFromTo(m, km1)) {
                     score = 9000;
                     isKiller = true;
-                } else if (m.from.index == km2.from.index && m.to.index == km2.to.index) {
+                } else if (sameFromTo(m, km2)) {
                     score = 8500;
                     isKiller = true;
                 }
@@ -230,7 +238,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             // Check for counter-move (response to opponent's previous move)
             if (!isKiller && previousMove != nullptr && previousMove->from.index < 64) {
                 const auto& counter = counterMoves[previousMove->from.index][previousMove->to.index];
-                if (counter.from.index < 64 && m.from.index == counter.from.index && m.to.index == counter.to.index) {
+                if (counter.from.index < 64 && sameFromTo(m, counter)) {
                     score = 8200; // Between killer moves and checks
                     isCounterMove = true;
                 }
@@ -252,19 +260,17 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 }
                 
                 // Promotion bonus (se non è cattura e non dà scacco già rilevato)
-                if (score == 0 && fromPieceType == chess::Board::PAWN) {
-                    if (m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
-                        score = 7000;
+                if (score == 0 && isPromotionMove(b, m)) {
+                    score = 7000;
 
-                        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
-                        uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
-                        if (promo == 'r') promoType = chess::Board::ROOK;
-                        else if (promo == 'b') promoType = chess::Board::BISHOP;
-                        else if (promo == 'n') promoType = chess::Board::KNIGHT;
+                    const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
+                    uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
+                    if (promo == 'r') promoType = chess::Board::ROOK;
+                    else if (promo == 'b') promoType = chess::Board::BISHOP;
+                    else if (promo == 'n') promoType = chess::Board::KNIGHT;
 
-                        // Tie-break promotions naturally: Q > R > B > N
-                        score += PIECE_VALUES[promoType];
-                    }
+                    // Tie-break promotions naturally: Q > R > B > N
+                    score += PIECE_VALUES[promoType];
                 }
 
                 // Discourage placing a bishop directly in front of own pawn (blocks pawn advance)

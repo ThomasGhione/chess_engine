@@ -24,7 +24,7 @@
 
 #include "basebonuspenaltyvalues.hpp"
 #include "piecevaluetables.hpp"
-#include "inl/bitboard_helpers_01.inl"
+#include "inl/bitboard_helpers.inl"
 #include "../tt/transposition_table.hpp"
 #include "movelist.hpp"
 
@@ -249,6 +249,8 @@ private:
     static int64_t stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept;
 
     // Search helpers
+    int64_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
+                                int currPly, bool useTT, bool allowTTWrite, uint64_t* nodeCounter) noexcept;
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
                           bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite = true) noexcept;
@@ -271,11 +273,11 @@ private:
 
 } // namespace engine
 
-#include "inl/bitboard_helpers_01.inl"
-#include "inl/precomputed_masks_02.inl"
-#include "inl/search_bounds_04.inl"
-#include "inl/search_cutoffs_05.inl"
-#include "inl/accessors_06.inl"
-#include "inl/search_helpers_07.inl"
+#include "inl/bitboard_helpers.inl"
+#include "inl/precomputed_masks.inl"
+#include "inl/search_bounds.inl"
+#include "inl/search_cutoffs.inl"
+#include "inl/accessors.inl"
+#include "inl/search_helpers.inl"
 
 #endif

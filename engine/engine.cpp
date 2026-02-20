@@ -57,16 +57,10 @@ void Engine::reset() noexcept {
     ttHits = 0;
 #endif
     this->tt.clear();
-    for (int ply = 0; ply < MAX_PLY; ++ply) {
-        killerMoves[0][ply] = chess::Board::Move{};
-        killerMoves[1][ply] = chess::Board::Move{};
-    }
+    const chess::Board::Move emptyMove{};
+    std::fill_n(&killerMoves[0][0], 2 * MAX_PLY, emptyMove);
     std::memset(history, 0, sizeof(history));
-    for (int from = 0; from < 64; ++from) {
-        for (int to = 0; to < 64; ++to) {
-            counterMoves[from][to] = chess::Board::Move{};
-        }
-    }
+    std::fill_n(&counterMoves[0][0], 64 * 64, emptyMove);
     std::memset(captureHistory, 0, sizeof(captureHistory));
 }
 
@@ -149,18 +143,10 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     auto& km1 = killerMoves[0][ply];
     auto& km2 = killerMoves[1][ply];
     const bool isAlreadyKm1 = (fromIndex == km1.from.index) & (toIndex == km1.to.index);
-    const bool isAlreadyKm2 = (fromIndex == km2.from.index) & (toIndex == km2.to.index);
     
     if (!isAlreadyKm1) {
-        // If it's km2, promote it to km1
-        if (isAlreadyKm2) {
-            km2 = km1;
-            km1 = m;
-        } else {
-            // New killer: shift and insert
-            km2 = km1;
-            km1 = m;
-        }
+        km2 = km1;
+        km1 = m;
     }
     // If already km1, do nothing (avoid duplicates)
 

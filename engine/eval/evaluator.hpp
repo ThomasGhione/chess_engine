@@ -12,7 +12,7 @@
 
 #include "../../board/board.hpp"
 #include "../basebonuspenaltyvalues.hpp"
-#include "../inl/bitboard_helpers_01.inl"
+#include "../inl/bitboard_helpers.inl"
 
 namespace engine {
 

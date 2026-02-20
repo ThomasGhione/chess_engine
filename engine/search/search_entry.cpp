@@ -3,6 +3,15 @@
 
 namespace engine {
 
+static inline bool shouldResearchRootPVS(bool usIsWhite, int64_t score, int64_t alphaBound, int64_t betaBound) noexcept {
+    return usIsWhite ? (score > alphaBound) : (score < betaBound);
+}
+
+static inline void rootNullWindow(bool usIsWhite, int64_t alpha, int64_t beta, int64_t& outAlpha, int64_t& outBeta) noexcept {
+    outAlpha = usIsWhite ? alpha : (beta - 1);
+    outBeta = usIsWhite ? (alpha + 1) : beta;
+}
+
 void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                           chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept {
     // Update best score and move if this is better
@@ -13,6 +22,15 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     
     // Update alpha/beta bounds
     updateBound(score, alpha, beta, usIsWhite);
+}
+
+int64_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
+                                    int currPly, bool useTT, bool allowTTWrite, uint64_t* nodeCounter) noexcept {
+    chess::Board::MoveState state;
+    doMoveWithPromotion(b, m, state);
+    const int64_t score = this->searchPosition(b, this->depth - 1, alpha, beta, currPly, useTT, allowTTWrite, nullptr, nodeCounter);
+    b.undoMove(m, state);
+    return score;
 }
 
 chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
@@ -38,38 +56,25 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         
         for (int i = 0; i < moves.size; ++i) {
             const auto& m = moves[i];
-            chess::Board::MoveState state;
-            
-            doMoveWithPromotion(this->board, m, state);
-            
-            int64_t score;
+            int64_t score = 0;
             if (i == 0) {
                 // Prima mossa: cerca con finestra piena (PV node)
-                score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
+                score = this->searchRootMoveScore(this->board, m, alpha, beta, currPly, true, true, &localNodes);
             } else {
                 // Mosse successive: cerca con null window
-                int64_t nullAlpha, nullBeta;
-                if (usIsWhite) {
-                    nullAlpha = alpha;
-                    nullBeta = alpha + 1; // Null window per white (maximizer)
-                } else {
-                    nullAlpha = beta - 1; // Null window per black (minimizer)
-                    nullBeta = beta;
-                }
+                int64_t nullAlpha = 0, nullBeta = 0;
+                rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
                 
-                score = this->searchPosition(this->board, this->depth - 1, nullAlpha, nullBeta, currPly, true, true, nullptr, &localNodes);
+                score = this->searchRootMoveScore(this->board, m, nullAlpha, nullBeta, currPly, true, true, &localNodes);
                 
                 // PVS re-search: se null window fallisce, ri-cerca con finestra piena
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
-                const bool shouldResearch = usIsWhite ? (score > alpha) : (score < beta);
+                const bool shouldResearch = shouldResearchRootPVS(usIsWhite, score, alpha, beta);
                 if (shouldResearch) {
-                    score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
+                    score = this->searchRootMoveScore(this->board, m, alpha, beta, currPly, true, true, &localNodes);
                 }
             }
-
-            // Undo move before processing next one
-            this->board.undoMove(m, state);
 
             // Update best move and alpha-beta bounds
             this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
@@ -86,15 +91,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     // Prima mossa: ricerca completa con finestra piena
     {
         const auto& firstMove = moves[0];
-        chess::Board::MoveState state;
-        
-        doMoveWithPromotion(this->board, firstMove, state);
-        
-        int64_t score = this->searchPosition(this->board, this->depth - 1, alpha, beta, currPly, true, true, nullptr, &localNodes);
-        
-        // CRITICAL: Undo BEFORE launching parallel threads to avoid races on copying this->board
-        this->board.undoMove(firstMove, state);
-
+        const int64_t score = this->searchRootMoveScore(this->board, firstMove, alpha, beta, currPly, true, true, &localNodes);
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
 
@@ -124,12 +121,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         for (int i = 1; i < moves.size; ++i) {
             chess::Board threadBoard = this->board;
             const auto m = moves[i]; // copy to avoid referencing container inside tasks
-            chess::Board::MoveState state;
-
-            doMoveWithPromotion(threadBoard, m, state);
             uint64_t workerNodes = 0;
-            int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false, nullptr, &workerNodes);
-            threadBoard.undoMove(m, state);
+            const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
 
             threadScores[i] = score;
             threadNodeCounts[i] = workerNodes;
@@ -158,12 +151,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
                             for (int i = start; i < end; ++i) {
                                 const auto m = moves[i]; // local copy
-                                chess::Board::MoveState state;
                                 uint64_t workerNodes = 0;
-
-                                doMoveWithPromotion(threadBoard, m, state);
-                                int64_t score = this->searchPosition(threadBoard, this->depth - 1, originalAlpha, originalBeta, currPly, false, false, nullptr, &workerNodes);
-                                threadBoard.undoMove(m, state);
+                                const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
 
                                 threadScores[i] = score;
                                 threadNodeCounts[i] = workerNodes;
