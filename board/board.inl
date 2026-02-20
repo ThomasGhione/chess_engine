@@ -17,6 +17,238 @@ inline constexpr uint8_t Board::backRank() noexcept { return IsWhite ? 0 : 7; }
 template<bool IsWhite>
 inline constexpr uint8_t Board::seventhRank() noexcept { return IsWhite ? 6 : 1; }
 
+inline constexpr bool Board::isCaptureKind(MoveKind kind) noexcept {
+    return kind == MoveKind::Capture || kind == MoveKind::PromotionCapture;
+}
+
+inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
+    return kind == MoveKind::PromotionQuiet || kind == MoveKind::PromotionCapture;
+}
+
+inline Board::MoveKind Board::classifyMoveKind(
+    uint8_t movingType,
+    uint8_t movingColor,
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t destBefore,
+    const Coords& prevEnPassant
+) noexcept {
+    const uint8_t fromFile = fromIndex & 7;
+    const uint8_t fromRank = fromIndex >> 3;
+    const uint8_t toFile = toIndex & 7;
+    const uint8_t toRank = toIndex >> 3;
+
+    if (movingType == KING && fromRank == toRank) {
+        const int8_t df = static_cast<int8_t>(toFile - fromFile);
+        if (df == 2 || df == -2) {
+            return MoveKind::Castling;
+        }
+    }
+
+    if (movingType == PAWN) {
+        const bool isEnPassant = (fromFile != toFile)
+            && (destBefore == EMPTY)
+            && Coords::isInBounds(prevEnPassant)
+            && (toIndex == prevEnPassant.index);
+        if (isEnPassant) {
+            return MoveKind::EnPassant;
+        }
+
+        const bool isPromotion = (toRank == promotionRank(movingColor == WHITE));
+        if (isPromotion) {
+            return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
+        }
+
+        const int8_t dr = static_cast<int8_t>(toRank - fromRank);
+        if (dr == 2 || dr == -2) {
+            return MoveKind::DoublePawnPush;
+        }
+    }
+
+    if (destBefore != EMPTY) {
+        return MoveKind::Capture;
+    }
+
+    return MoveKind::Quiet;
+}
+
+inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
+    const uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
+    if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') {
+        return promo;
+    }
+    return static_cast<uint8_t>('q');
+}
+
+inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept {
+    if (promo == 'r') return ROOK | movingColor;
+    if (promo == 'b') return BISHOP | movingColor;
+    if (promo == 'n') return KNIGHT | movingColor;
+    return QUEEN | movingColor;
+}
+
+template<Board::MoveKind Kind>
+inline void Board::doMoveByKind(
+    const Coords& from,
+    const Coords& to,
+    MoveState& st,
+    uint8_t moving,
+    uint8_t movingType,
+    uint8_t movingColor,
+    uint8_t destBefore,
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t fromFile,
+    uint8_t fromRank,
+    uint8_t toFile,
+    uint8_t toRank,
+    char promotionChoice
+) noexcept {
+    if constexpr (Kind == MoveKind::EnPassant) {
+        st.wasEnPassantCapture = true;
+        const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
+        const uint8_t capIndex = static_cast<uint8_t>(toIndex + captureOffset);
+        const uint8_t capturedPiece = get(capIndex);
+        st.capturedPiece = capturedPiece;
+        st.enPassantCapturedIndex = capIndex;
+
+        set(capIndex, EMPTY);
+        occupancy &= ~bitMask(capIndex);
+        removePieceFromBB(capturedPiece, capIndex);
+    }
+
+    if constexpr (isCaptureKind(Kind)) {
+        removePieceFromBB(destBefore, toIndex);
+    }
+
+    updateChessboard(from, to, static_cast<piece_id>(moving));
+    fastUpdateOccupancyBB(fromIndex, toIndex);
+    removePieceFromBB(moving, fromIndex);
+    addPieceToBB(moving, toIndex);
+
+    if constexpr (Kind == MoveKind::Castling) {
+        st.wasCastling = true;
+        const uint8_t rookFromFile = (toFile > fromFile) ? 7 : 0;
+        const uint8_t rookToFile   = (toFile > fromFile) ? 5 : 3;
+        const uint8_t rookFromIndex = static_cast<uint8_t>((toRank << 3) | rookFromFile);
+        const uint8_t rookToIndex   = static_cast<uint8_t>((toRank << 3) | rookToFile);
+        st.rookFromIndex = rookFromIndex;
+        st.rookToIndex   = rookToIndex;
+
+        const uint8_t rook = get(rookFromIndex);
+        set(rookToIndex, static_cast<piece_id>(rook));
+        set(rookFromIndex, EMPTY);
+        fastUpdateOccupancyBB(rookFromIndex, rookToIndex);
+        removePieceFromBB(rook, rookFromIndex);
+        addPieceToBB(rook, rookToIndex);
+    }
+
+    if (movingType == KING) {
+        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;
+        const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;
+        castle &= ~castleMask;
+        hasMoved |= kingBit;
+    } else if (movingType == ROOK) {
+        const bool isInitialSquare = (movingColor == WHITE)
+            ? (fromRank == 7 && (fromFile == 0 || fromFile == 7))
+            : (fromRank == 0 && (fromFile == 0 || fromFile == 7));
+
+        if (isInitialSquare) {
+            if (movingColor == WHITE) {
+                if (fromFile == 0) {
+                    castle &= ~(1u << 1);
+                    hasMoved |= (1u << 1);
+                } else {
+                    castle &= ~(1u << 0);
+                    hasMoved |= (1u << 2);
+                }
+            } else {
+                if (fromFile == 0) {
+                    castle &= ~(1u << 3);
+                    hasMoved |= (1u << 4);
+                } else {
+                    castle &= ~(1u << 2);
+                    hasMoved |= (1u << 5);
+                }
+            }
+        }
+    }
+
+    if constexpr (isCaptureKind(Kind)) {
+        if ((destBefore & MASK_PIECE_TYPE) == ROOK) {
+            const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
+                ? (toRank == 7 && (toFile == 0 || toFile == 7))
+                : (toRank == 0 && (toFile == 0 || toFile == 7));
+
+            if (isInitialSquare) {
+                if ((destBefore & MASK_COLOR) == WHITE) {
+                    castle &= (toFile == 0) ? ~(1u << 1) : ~(1u << 0);
+                } else {
+                    castle &= (toFile == 0) ? ~(1u << 3) : ~(1u << 2);
+                }
+            }
+        }
+    }
+
+    if constexpr (Kind == MoveKind::DoublePawnPush) {
+        enPassant = Coords{fromFile, static_cast<uint8_t>((fromRank + toRank) >> 1)};
+    }
+
+    if constexpr (isPromotionKind(Kind)) {
+        const uint8_t promo = normalizePromotionChoice(promotionChoice);
+        st.promotionPieceType = promo;
+        (void)promote(to, static_cast<char>(promo));
+    }
+}
+
+template<Board::MoveKind Kind>
+inline void Board::undoMoveByKind(
+    const Coords& from,
+    const Coords& to,
+    const MoveState& st,
+    uint8_t& pieceOnTo,
+    uint8_t fromIndex,
+    uint8_t toIndex
+) noexcept {
+    if constexpr (isPromotionKind(Kind)) {
+        const uint8_t color = pieceOnTo & MASK_COLOR;
+        const uint8_t pawnPiece = (PAWN | color);
+        removePieceFromBB(pieceOnTo, toIndex);
+        addPieceToBB(pawnPiece, toIndex);
+        set(toIndex, static_cast<piece_id>(pawnPiece));
+        pieceOnTo = pawnPiece;
+    }
+
+    updateChessboard(to, from, static_cast<piece_id>(pieceOnTo));
+    fastUpdateOccupancyBB(toIndex, fromIndex);
+    removePieceFromBB(pieceOnTo, toIndex);
+    addPieceToBB(pieceOnTo, fromIndex);
+
+    if constexpr (Kind == MoveKind::EnPassant) {
+        const uint8_t capIndex = st.enPassantCapturedIndex;
+        set(capIndex, static_cast<piece_id>(st.capturedPiece));
+        occupancy |= bitMask(capIndex);
+        addPieceToBB(st.capturedPiece, capIndex);
+    } else if constexpr (isCaptureKind(Kind)) {
+        if (st.capturedPiece != EMPTY) {
+            set(toIndex, static_cast<piece_id>(st.capturedPiece));
+            occupancy |= bitMask(toIndex);
+            addPieceToBB(st.capturedPiece, toIndex);
+        }
+    }
+
+    if constexpr (Kind == MoveKind::Castling) {
+        const uint8_t rookFromIndex = st.rookFromIndex;
+        const uint8_t rookToIndex   = st.rookToIndex;
+        const uint8_t rook = get(rookToIndex);
+        set(rookFromIndex, static_cast<piece_id>(rook));
+        set(rookToIndex, EMPTY);
+        fastUpdateOccupancyBB(rookToIndex, rookFromIndex);
+        removePieceFromBB(rook, rookToIndex);
+        addPieceToBB(rook, rookFromIndex);
+    }
+}
+
 inline constexpr uint8_t Board::verticalMirror(uint8_t sq) noexcept {
     return sq ^ 56;  // XOR with 0b111000 flips bits 3-5 (rank)
 }

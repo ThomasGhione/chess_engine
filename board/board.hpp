@@ -41,6 +41,16 @@ public:
     WHITE  = 0x0, // 0000
     };
 
+    enum class MoveKind : uint8_t {
+        Quiet = 0,
+        Capture,
+        DoublePawnPush,
+        EnPassant,
+        Castling,
+        PromotionQuiet,
+        PromotionCapture
+    };
+
     struct Move {
         Coords from;
         Coords to;
@@ -84,6 +94,7 @@ public:
         uint8_t rookFromIndex{};        // rook start square index in castling
         uint8_t rookToIndex{};          // rook destination square index in castling
         bool    historyWasReset{};      // true if repetition history was reset by the move
+        MoveKind moveKind{MoveKind::Quiet};
     };
     // Struct e enum end
     
@@ -313,6 +324,44 @@ private:
         uint8_t destPiece,
         uint8_t destColor
     ) const noexcept;
+    [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
+    [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
+    [[nodiscard]] static inline MoveKind classifyMoveKind(
+        uint8_t movingType,
+        uint8_t movingColor,
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t destBefore,
+        const Coords& prevEnPassant
+    ) noexcept;
+    [[nodiscard]] static inline uint8_t normalizePromotionChoice(char promotionChoice) noexcept;
+    [[nodiscard]] static inline uint8_t promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
+    template<MoveKind Kind>
+    inline void doMoveByKind(
+        const Coords& from,
+        const Coords& to,
+        MoveState& st,
+        uint8_t moving,
+        uint8_t movingType,
+        uint8_t movingColor,
+        uint8_t destBefore,
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t fromFile,
+        uint8_t fromRank,
+        uint8_t toFile,
+        uint8_t toRank,
+        char promotionChoice
+    ) noexcept;
+    template<MoveKind Kind>
+    inline void undoMoveByKind(
+        const Coords& from,
+        const Coords& to,
+        const MoveState& st,
+        uint8_t& pieceOnTo,
+        uint8_t fromIndex,
+        uint8_t toIndex
+    ) noexcept;
 
     bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
