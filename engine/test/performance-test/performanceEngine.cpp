@@ -102,9 +102,9 @@ ut::suite performanceEngineSuite = [] {
       pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns, static_cast<bool>(i & 1));
     }
     auto end2 = std::chrono::high_resolution_clock::now();
-    auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
+    auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
     benchmarkSink ^= pawnSink;
-    printf("Pawn structure evaluation took %lld µs\n", static_cast<long long>(duration2));
+    printf("Pawn structure evaluation took %lld ms\n", static_cast<long long>(duration2));
 
     auto start3 = std::chrono::high_resolution_clock::now();
     int64_t kingSafetySink = 0;
@@ -113,9 +113,9 @@ ut::suite performanceEngineSuite = [] {
       kingSafetySink += engine::Evaluator::evalKingSafety(pos.board, pos.whitePawns, pos.blackPawns);
     }
     auto end3 = std::chrono::high_resolution_clock::now();
-    auto duration3 = std::chrono::duration_cast<std::chrono::microseconds>(end3 - start3).count();
+    auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end3 - start3).count();
     benchmarkSink ^= kingSafetySink;
-    printf("King safety evaluation took %lld µs\n", static_cast<long long>(duration3));
+    printf("King safety evaluation took %lld ms\n", static_cast<long long>(duration3));
 
     auto start7 = std::chrono::high_resolution_clock::now();
     int64_t rooksSink = 0;
@@ -124,9 +124,9 @@ ut::suite performanceEngineSuite = [] {
       rooksSink += engine::Evaluator::evalRooks(pos.whiteRooks, pos.blackRooks, pos.whitePawns, pos.blackPawns);
     }
     auto end7 = std::chrono::high_resolution_clock::now();
-    auto duration7 = std::chrono::duration_cast<std::chrono::microseconds>(end7 - start7).count();
+    auto duration7 = std::chrono::duration_cast<std::chrono::milliseconds>(end7 - start7).count();
     benchmarkSink ^= rooksSink;
-    printf("Rooks evaluation took %lld µs\n", static_cast<long long>(duration7));
+    printf("Rooks evaluation took %lld ms\n", static_cast<long long>(duration7));
 
     auto start8 = std::chrono::high_resolution_clock::now();
     int64_t kingActivitySink = 0;
@@ -135,9 +135,9 @@ ut::suite performanceEngineSuite = [] {
       kingActivitySink += engine::Evaluator::evalKingActivity(pos.board, false);
     }
     auto end8 = std::chrono::high_resolution_clock::now();
-    auto duration8 = std::chrono::duration_cast<std::chrono::microseconds>(end8 - start8).count();
+    auto duration8 = std::chrono::duration_cast<std::chrono::milliseconds>(end8 - start8).count();
     benchmarkSink ^= kingActivitySink;
-    printf("King activity evaluation took %lld µs\n", static_cast<long long>(duration8));
+    printf("King activity evaluation took %lld ms\n", static_cast<long long>(duration8));
 
     auto start10 = std::chrono::high_resolution_clock::now();
     int64_t endgameKingActivitySink = 0;
@@ -146,9 +146,9 @@ ut::suite performanceEngineSuite = [] {
       endgameKingActivitySink += engine::Evaluator::evalEndgameKingActivity(pos.board);
     }
     auto end10 = std::chrono::high_resolution_clock::now();
-    auto duration10 = std::chrono::duration_cast<std::chrono::microseconds>(end10 - start10).count();
+    auto duration10 = std::chrono::duration_cast<std::chrono::milliseconds>(end10 - start10).count();
     benchmarkSink ^= endgameKingActivitySink;
-    printf("Endgame king activity evaluation took %lld µs\n", static_cast<long long>(duration10));
+    printf("Endgame king activity evaluation took %lld ms\n", static_cast<long long>(duration10));
 
     // evalPassedPawnScaling() removed - scaling is now integrated into evalPawnStructure()
 
@@ -159,9 +159,9 @@ ut::suite performanceEngineSuite = [] {
       badBishopSink += engine::Evaluator::evalBadBishop(pos.whiteBishops, pos.whitePawns, 0);
     }
     auto end12 = std::chrono::high_resolution_clock::now();
-    auto duration12 = std::chrono::duration_cast<std::chrono::microseconds>(end12 - start12).count();
+    auto duration12 = std::chrono::duration_cast<std::chrono::milliseconds>(end12 - start12).count();
     benchmarkSink ^= badBishopSink;
-    printf("Bad bishop evaluation took %lld µs\n", static_cast<long long>(duration12));
+    printf("Bad bishop evaluation took %lld ms\n", static_cast<long long>(duration12));
     printf("Benchmark sink: %lld\n", static_cast<long long>(benchmarkSink));
 
     expect(true);
