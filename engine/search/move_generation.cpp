@@ -227,7 +227,6 @@ static void addTacticalMovesFromMask(const chess::Board& b,
         }
 
         if (isPromotion) {
-            // Keep all legal underpromotions for tactical accuracy in qsearch.
             moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
             moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
             moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});

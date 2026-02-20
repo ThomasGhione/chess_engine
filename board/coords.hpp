@@ -10,7 +10,6 @@ class Coords {
 public:
     constexpr static uint8_t INVALID_COORDS = 255;
 
-    // Storage efficiente: solo 1 byte invece di 2
     // Convenzione Board: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
 
     uint8_t index = INVALID_COORDS;

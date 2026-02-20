@@ -182,7 +182,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
 void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
     // Execute the best move found, handling promotions
-    // CORRECTED: use the promotion piece from the move, default to 'q' if promotion but no piece specified
     const bool isPromo = isPromotionMove(this->board, bestMove);
     const char promoPiece = isPromo ? (bestMove.promotionPiece != '\0' ? bestMove.promotionPiece : 'q') : '\0';
     (void)this->board.moveBB(bestMove.from, bestMove.to, promoPiece);
@@ -286,8 +285,6 @@ void Engine::search(uint64_t depth) noexcept {
                 windowDelta *= 2;
                 
                 // If window is too wide, fall back to full window
-                // CONSERVATIVE: 800cp (was 500). Tactical swings of 600-700cp
-                // (e.g. queen sacrifice leading to mate) should still use aspiration
                 if (windowDelta > 800) {
                     bestMove = this->getBestMove(moves, searchBestMoveForWhite);
                     break;

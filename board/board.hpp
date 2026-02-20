@@ -19,7 +19,7 @@ using board = std::array<uint32_t, 8>;
 class Board {
 public:
 
-    // Struct e enum start
+    // Structs and enums start
     enum CastlingBits : uint8_t {
         WHITE_KINGSIDE  = 0,  // Bit 0 in castle bitmask
         WHITE_QUEENSIDE = 1,  // Bit 1
@@ -56,12 +56,12 @@ public:
         Coords to;
         char promotionPiece = '\0'; // 'q', 'r', 'b', 'n' or '\0' for no promotion
         
-        // Operatore di confronto per iterative deepening move ordering
+        // Comparison operator for iterative deepening move ordering
         bool operator==(const Move& other) const noexcept;
         
         // Optimized custom rotate: move moves[index] to moves[0]
         // and shift moves[0..index-1] one position to the right
-        // Esempio: rotate([A,B,C,D,E], 3) -> [D,A,B,C,E]
+        // Example: rotate([A,B,C,D,E], 3) -> [D,A,B,C,E]
         template<typename MoveContainer>
         static void rotate(MoveContainer& moves, size_t index) noexcept;
 
@@ -96,15 +96,15 @@ public:
         bool    historyWasReset{};      // true if repetition history was reset by the move
         MoveKind moveKind{MoveKind::Quiet};
     };
-    // Struct e enum end
+    // Structs and enums end
     
-    // Costruttori start 
+    // Constructors start
     Board() noexcept;
     explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept;
     explicit Board(const std::string& fen);
-    // Costruttori end
+    // Constructors end
 
-    // Metodi start
+    // Methods start
     static constexpr uint8_t oppositeColor(uint8_t color) noexcept;
     static constexpr uint8_t colorToIndex(uint8_t color) noexcept;
     static constexpr int colorBoolToIndex(bool isWhite) noexcept;
@@ -216,7 +216,7 @@ public:
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
 
-    // Imposta la casa di en-passant. Usato da NMP per save/restore.
+    // Set the en-passant square. Used by NMP for save/restore.
     void setEnPassant(const Coords& ep) noexcept {
         enPassant = ep;
     }
@@ -226,9 +226,9 @@ public:
         halfMoveClock = hmc;
         fullMoveClock = fmc;
     }
-    // Metodi end
+    // Methods end
 
-    // Variabili start
+    // Variables start
     static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
     static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
     static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
@@ -292,9 +292,9 @@ public:
     std::array<uint64_t, 2> rooks_bb   = {0ULL, 0ULL};
     std::array<uint64_t, 2> queens_bb  = {0ULL, 0ULL};
     std::array<uint64_t, 2> kings_bb   = {0ULL, 0ULL};
-    // Variabili end
+    // Variables end
 private:
-    // Metodi start
+    // Methods start
     [[nodiscard]] static inline bool isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept;
     [[nodiscard]] inline bool isKingSafeAfterMove(
         uint8_t movingColor,
@@ -389,9 +389,9 @@ private:
     std::string enPassantToFen() const;
     void rebuildRepetitionHistory() noexcept;
     void updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
-    // Metodi end
+    // Methods end
     
-    // Variabili start
+    // Variables start
 
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
 
@@ -406,7 +406,7 @@ private:
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
-    // Variabili end
+    // Variables end
 }; // Class Board
 
 #include "board.inl"

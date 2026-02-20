@@ -1,7 +1,7 @@
-
 // --------------------------
 // API Helpers (engineapi)
 // --------------------------
+
 __attribute__((always_inline))
 inline constexpr bool Board::isCaptureKind(MoveKind kind) noexcept {
     return kind == MoveKind::Capture || kind == MoveKind::PromotionCapture;

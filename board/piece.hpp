@@ -23,7 +23,7 @@ constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},
 // MAGIC BITBOARDS
 // ===================================================
 
-// Dimensioni lookup tables
+// Lookup table sizes
 constexpr size_t ROOK_LOOKUP_SIZE = 102400;    // ~800 KB
 constexpr size_t BISHOP_LOOKUP_SIZE = 5248;    // ~40 KB
 
@@ -75,7 +75,7 @@ inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = []{
 // MAGIC BITBOARDS - HELPER FUNCTIONS
 // ===================================================
 
-// Genera una specifica occupancy pattern da un indice
+// Generate a specific occupancy pattern from an index
 inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint64_t mask) noexcept {
     uint64_t occupancy = 0ULL;
     for (int i = 0; i < bitCount; ++i) {
@@ -88,28 +88,28 @@ inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint
     return occupancy;
 }
 
-// Calcola attacks per Rook in modo classico (ground truth)
+// Compute rook attacks in the classic way (ground truth)
 inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
     uint64_t attacks = 0ULL;
     int8_t file = fileOf(square);
     int8_t rank = rankOf(square);
 
-    // Nord (rank decreases)
+    // North (rank decreases)
     for (int8_t r = rank - 1; r >= 0; --r) {
         attacks |= (1ULL << (r * 8 + file));
         if (occupancy & (1ULL << (r * 8 + file))) break;
     }
-    // Sud (rank increases)
+    // South (rank increases)
     for (int8_t r = rank + 1; r < 8; ++r) {
         attacks |= (1ULL << (r * 8 + file));
         if (occupancy & (1ULL << (r * 8 + file))) break;
     }
-    // Est (file increases)
+    // East (file increases)
     for (int8_t f = file + 1; f < 8; ++f) {
         attacks |= (1ULL << (rank * 8 + f));
         if (occupancy & (1ULL << (rank * 8 + f))) break;
     }
-    // Ovest (file decreases)
+    // West (file decreases)
     for (int8_t f = file - 1; f >= 0; --f) {
         attacks |= (1ULL << (rank * 8 + f));
         if (occupancy & (1ULL << (rank * 8 + f))) break;
@@ -118,7 +118,7 @@ inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t 
     return attacks;
 }
 
-// Calcola attacks per Bishop in modo classico (ground truth)
+// Compute bishop attacks in the classic way (ground truth)
 inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
     uint64_t attacks = 0ULL;
     int8_t file = fileOf(square);
@@ -180,7 +180,7 @@ inline void populateBishopAttackTable(int square) noexcept {
     }
 }
 
-// Inizializza tutte le magic bitboards (chiamare all'avvio del programma)
+// Initialize all magic bitboards (call at program startup)
 inline void initMagicBitboards() noexcept {
     for (int sq = 0; sq < 64; ++sq) {
         populateRookAttackTable(sq);
@@ -217,7 +217,7 @@ inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
 	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 attackBitboard = 0ULL;
-	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
+	// Coords convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack "forward" (rank decreases), Black pawns attack "backward" (rank increases)
 	int8_t newRank = rank + (isWhite ? -1 : 1);
 	
@@ -233,8 +233,8 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 }
 
 
-// Lookup table per target squares dei pawn pushes (senza considerare occupancy)
-// table[isWhite][square] = bitboard con 1-step e 2-step target squares
+// Lookup table for pawn push target squares (without occupancy checks)
+// table[isWhite][square] = bitboard with 1-step and 2-step target squares
 // Note: at runtime you still need to check occupancy to validate moves
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_SINGLE_PUSH_TARGETS = []{
     std::array<std::array<uint64_t, 64>, 2> table{};
@@ -311,7 +311,7 @@ inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64
 inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexcept {
 	int8_t tf = fileOf(targetIndex), tr = rankOf(targetIndex);
 	U64 attackers = 0ULL;
-	// Coords convention: rank 0 = riga 8, rank 7 = riga 1
+	// Coords convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack from rank+1 (one rank "lower" numerically), Black pawns attack from rank-1
 	int8_t fromRank = tr + (isWhite ? 1 : -1);
 	if (fromRank >= 0 && fromRank < 8) {

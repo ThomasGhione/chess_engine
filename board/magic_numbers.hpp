@@ -8,11 +8,11 @@
 // MAGIC BITBOARDS - HARDCODED DATA
 // =============================================================================
 //
-// Questo file contiene i dati pre-calcolati per l'implementazione delle
-// magic bitboards per Torre e Alfiere.
+// This file contains precomputed data for implementing
+// magic bitboards for rooks and bishops.
 //
-// FONTE MAGIC NUMBERS: magic-bits library (https://github.com/goutham/magic-bits)
-// MASKS: Calcolate usando rookRelevantMask() e bishopRelevantMask()
+// MAGIC NUMBER SOURCE: magic-bits library (https://github.com/goutham/magic-bits)
+// MASKS: Computed using rookRelevantMask() and bishopRelevantMask()
 //
 // =============================================================================
 
@@ -79,11 +79,11 @@ inline constexpr std::array<uint64_t, 64> BISHOP_MAGICS = {
 // =============================================================================
 // ROOK RELEVANT OCCUPANCY MASKS
 // =============================================================================
-// Masks che definiscono quali square influenzano gli attacks della Torre
+// Masks defining which squares influence rook attacks
 // for each square. Excludes board edges that cannot block.
 //
-// Formula: Rank + File, ESCLUSI i bordi (file A/H, rank 1/8)
-// Bit count: 10-12 bit per square (dipende dalla posizione)
+// Formula: Rank + file, excluding edges (file A/H, rank 1/8)
+// Bit count: 10-12 bits per square (depends on the position)
 
 inline constexpr std::array<uint64_t, 64> ROOK_MASKS = {
     0x000101010101017EULL,  // A8 (sq 0)
@@ -155,10 +155,10 @@ inline constexpr std::array<uint64_t, 64> ROOK_MASKS = {
 // =============================================================================
 // BISHOP RELEVANT OCCUPANCY MASKS
 // =============================================================================
-// Masks che definiscono quali square influenzano gli attacks dell'Alfiere
+// Masks defining which squares influence bishop attacks
 // for each square. Excludes board edges.
 //
-// Formula: Diagonali (NE, NW, SE, SW), ESCLUSI i bordi
+// Formula: Diagonals (NE, NW, SE, SW), excluding edges
 // Bit count: 5-9 bits per square (fewer on edges, more in the center)
 
 inline constexpr std::array<uint64_t, 64> BISHOP_MASKS = {

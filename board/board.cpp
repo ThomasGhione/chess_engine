@@ -8,28 +8,23 @@ bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
     return moveBB(from, to, '\0');
 }
 
-// Promote a pawn at 'at' using the provided choice char: 'q','r','b','n' (case-insensitive).
-// Returns false if the piece is not a pawn on its promotion rank, otherwise promotes and returns true.
 bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t piece = get(at);
     const uint8_t type = piece & MASK_PIECE_TYPE;
-    if (type != PAWN) [[unlikely]] return false; // must be a pawn
+    if (type != PAWN) [[unlikely]] 
+        return false; // must be a pawn
+    
     const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
-    // Verify pawn is on promotion rank according to color
-    const uint8_t rank = rankOf(at.index);
-    if (rank != promotionRank(color == WHITE)) [[unlikely]] return false;
+    if (rankOf(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
+        return false;
 
     const uint8_t promo = normalizePromotionChoice(choice);
     const uint8_t newPiece = promotedPieceFromChoice(promo, color);
     
-    // Update bitboards: remove pawn, add promoted piece
     const uint8_t atIndex = at.index;
     removePieceFromBB(piece, atIndex);
     addPieceToBB(newPiece, atIndex);
-    
-    // Update chessboard array
     set(at, static_cast<piece_id>(newPiece));
-    // Occupancy remains unchanged (piece stays on the same square)
     return true;
 }
 
@@ -452,12 +447,11 @@ void Board::rebuildRepetitionHistory() noexcept {
 }
 
 void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
-    if (recomputeHash) {
+    if (recomputeHash) 
         currentHash = zobrist::computeHashKey(*this);
-    }
-    if (resetHistory) {
+
+    if (resetHistory) 
         historySize = 0;
-    }
     
     if (historySize >= repetitionHistory.size()) {
         // Shift all entries one position to the left (discard oldest)
@@ -485,7 +479,6 @@ bool Board::isThreefoldRepetition() const noexcept {
 bool Board::isTwofoldRepetition() const noexcept {
     if (historySize == 0) return false;
     const uint64_t target = currentHash;
-    // Search history for ANY previous occurrence of this position
     for (uint8_t i = historySize - 1; i > 0; --i) {
         if (repetitionHistory[i - 1] == target) {
             return true; // Position seen at least once before
