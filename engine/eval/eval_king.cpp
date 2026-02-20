@@ -68,6 +68,7 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
 int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
     (void)data;
     int64_t score = 0;
+    const uint64_t occ = b.getPiecesBitMap();
 
     for (int side = 0; side < 2; ++side) {
         const int oppSide = side ^ 1;
@@ -92,56 +93,14 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
         int attackerCount = 0;
         int64_t attackWeight = 0;
 
-        {
-            uint64_t knightsAttacking = developedKnights;
-            while (knightsAttacking) {
-                const int sq = __builtin_ctzll(knightsAttacking);
-                knightsAttacking &= knightsAttacking - 1;
-                if (pieces::KNIGHT_ATTACKS[sq] & kingZone) {
-                    attackerCount++;
-                    attackWeight += engine::KING_ATTACK_WEIGHT_KNIGHT;
-                }
-            }
-        }
-
-        {
-            uint64_t bishopsAttacking = developedBishops;
-            while (bishopsAttacking) {
-                const int sq = __builtin_ctzll(bishopsAttacking);
-                bishopsAttacking &= bishopsAttacking - 1;
-                const uint64_t occ = b.getPiecesBitMap();
-                if (pieces::getBishopAttacks(sq, occ) & kingZone) {
-                    attackerCount++;
-                    attackWeight += engine::KING_ATTACK_WEIGHT_BISHOP;
-                }
-            }
-        }
-
-        {
-            uint64_t rooksAttacking = b.rooks_bb[side];
-            while (rooksAttacking) {
-                const int sq = __builtin_ctzll(rooksAttacking);
-                rooksAttacking &= rooksAttacking - 1;
-                const uint64_t occ = b.getPiecesBitMap();
-                if (pieces::getRookAttacks(sq, occ) & kingZone) {
-                    attackerCount++;
-                    attackWeight += engine::KING_ATTACK_WEIGHT_ROOK;
-                }
-            }
-        }
-
-        {
-            uint64_t queensAttacking = b.queens_bb[side];
-            while (queensAttacking) {
-                const int sq = __builtin_ctzll(queensAttacking);
-                queensAttacking &= queensAttacking - 1;
-                const uint64_t occ = b.getPiecesBitMap();
-                if (pieces::getQueenAttacks(sq, occ) & kingZone) {
-                    attackerCount++;
-                    attackWeight += engine::KING_ATTACK_WEIGHT_QUEEN;
-                }
-            }
-        }
+        accumulateKingZoneAttackers<knightAttacksLookup, engine::KING_ATTACK_WEIGHT_KNIGHT>(
+            developedKnights, kingZone, occ, attackerCount, attackWeight);
+        accumulateKingZoneAttackers<pieces::getBishopAttacks, engine::KING_ATTACK_WEIGHT_BISHOP>(
+            developedBishops, kingZone, occ, attackerCount, attackWeight);
+        accumulateKingZoneAttackers<pieces::getRookAttacks, engine::KING_ATTACK_WEIGHT_ROOK>(
+            b.rooks_bb[side], kingZone, occ, attackerCount, attackWeight);
+        accumulateKingZoneAttackers<pieces::getQueenAttacks, engine::KING_ATTACK_WEIGHT_QUEEN>(
+            b.queens_bb[side], kingZone, occ, attackerCount, attackWeight);
 
         if (attackerCount >= 2) {
             const int64_t attackDanger = (attackerCount * attackerCount * attackWeight) / 12;

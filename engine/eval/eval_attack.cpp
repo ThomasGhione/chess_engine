@@ -92,10 +92,6 @@ int64_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData dat
     return scoreBlack + scoreWhite;
 }
 
-inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
-    return pieces::KNIGHT_ATTACKS[sq];
-}
-
 template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
 inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept {
     int64_t score = 0;

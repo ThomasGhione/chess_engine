@@ -99,3 +99,19 @@ inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
     bb &= (bb - 1);
     return index;
 }
+
+inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
+    return pieces::KNIGHT_ATTACKS[sq];
+}
+
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
+inline void Evaluator::accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
+                                                   int& attackerCount, int64_t& attackWeight) noexcept {
+    while (piecesBb) {
+        const int sq = popLSB(piecesBb);
+        if (AttackFn(sq, occ) & kingZone) {
+            ++attackerCount;
+            attackWeight += Weight;
+        }
+    }
+}

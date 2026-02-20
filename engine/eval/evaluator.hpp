@@ -24,7 +24,9 @@ public:
 
     // Metodi statici
     static int64_t evaluate(const chess::Board& board) noexcept;
+
     static int64_t evaluateTrace(const chess::Board& board) noexcept;
+    
     static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
     static int64_t getMaterialDelta(const chess::Board& b) noexcept;
 
@@ -108,6 +110,9 @@ private:
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
 
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
+    static inline void accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
+                                                   int& attackerCount, int64_t& attackWeight) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
     static inline int64_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
     static inline int64_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
@@ -142,6 +147,8 @@ private:
     static constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
+    static void traceTerm(int64_t& eval, int64_t delta, const char* label) noexcept;
+
     static inline int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     static inline int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     static inline int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
