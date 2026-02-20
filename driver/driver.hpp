@@ -47,6 +47,9 @@ namespace driver {
             bool vsBot = false;
 
             void parse(int argc, char *argv[]) noexcept;
+            static bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept;
+            static void printInvalidOption() noexcept;
+            bool applyUciMoveToBoard(const std::string& uciMove, bool verboseDebug = false) noexcept;
 
             bool loadGame() noexcept;
             void saveGame() noexcept; // botColor: true = bot is white, false = bot is black

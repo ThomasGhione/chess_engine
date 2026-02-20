@@ -28,10 +28,120 @@
 
 namespace driver {
 
+    static std::string buildStockfishPositionCommand(const std::string& fen, int moveTimeMs) {
+        std::ostringstream cmd;
+        cmd << "position fen " << fen << "\n";
+        cmd << "go movetime " << moveTimeMs << "\n";
+        return cmd.str();
+    }
+
+    static std::pair<std::string, std::string> extractBestMoveFromOutput(const std::string& output) {
+        const std::string token = "bestmove ";
+        const auto pos = output.find(token);
+        if (pos == std::string::npos) return {"", output};
+        const auto end = output.find('\n', pos);
+        const std::string line = output.substr(pos + token.size(), end - (pos + token.size()));
+        const auto spacePos = line.find(' ');
+        return {line.substr(0, spacePos), output};
+    }
+
+    template <typename SendFn, typename ReadReadyFn>
+    static bool initializeStockfishUciSession(SendFn&& send, ReadReadyFn&& readReadyOutput) {
+        if (!send("uci\n") || !send("isready\n")) {
+            return false;
+        }
+        const std::string initOutput = readReadyOutput();
+        if (initOutput.find("readyok") == std::string::npos) {
+            return false;
+        }
+        return send("ucinewgame\n");
+    }
+
+    template <typename SendFn, typename ReadOutputFn>
+    static std::pair<std::string, std::string> runStockfishRequest(const std::string& fen, int moveTimeMs,
+                                                                   SendFn&& send, ReadOutputFn&& readOutput) {
+        const std::string cmd = buildStockfishPositionCommand(fen, moveTimeMs);
+        if (!send(cmd)) {
+            return {"", ""};
+        }
+        return extractBestMoveFromOutput(readOutput());
+    }
+
     Driver::Driver(print::Menu& m, engine::Engine& e) 
         : menu(m)
         , engine(e) 
     {}
+
+    bool Driver::parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
+        if (colorArg == nullptr) return false;
+        std::string color = colorArg;
+        std::transform(color.begin(), color.end(), color.begin(), ::tolower);
+        if (color == "w") {
+            outIsWhite = true;
+            return true;
+        }
+        if (color == "b") {
+            outIsWhite = false;
+            return true;
+        }
+        return false;
+    }
+
+    void Driver::printInvalidOption() noexcept {
+        std::cout << "Invalid option. Please select a valid option.\n";
+    }
+
+    bool Driver::applyUciMoveToBoard(const std::string& uciMove, bool verboseDebug) noexcept {
+        if (verboseDebug) {
+            std::cout << "[DEBUG] Applying UCI move: '" << uciMove << "' (length: " << uciMove.size() << ")\n";
+            std::cout.flush();
+        }
+
+        if (uciMove.size() < 4) {
+            if (verboseDebug) {
+                std::cerr << "[ERROR] UCI move too short\n";
+            }
+            return false;
+        }
+
+        const std::string fromStr = uciMove.substr(0, 2);
+        const std::string toStr   = uciMove.substr(2, 2);
+        const bool hasPromo       = uciMove.size() >= 5;
+        const char promo = hasPromo
+            ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
+            : '\0';
+
+        if (verboseDebug) {
+            std::cout << "[DEBUG] From: " << fromStr << ", To: " << toStr
+                      << ", HasPromo: " << hasPromo << ", Promo: " << (promo ? promo : '?') << "\n";
+            std::cout.flush();
+        }
+
+        chess::Coords fromCoords(fromStr);
+        chess::Coords toCoords(toStr);
+        if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
+            if (verboseDebug) {
+                std::cerr << "[ERROR] Coordinates out of bounds\n";
+            }
+            return false;
+        }
+
+        if (verboseDebug) {
+            std::cout << "[DEBUG] Calling movePiece...\n";
+            std::cout.flush();
+        }
+
+        const bool result = hasPromo
+            ? engine.movePiece(fromCoords, toCoords, promo)
+            : engine.movePiece(fromCoords, toCoords);
+
+        if (verboseDebug) {
+            std::cout << "[DEBUG] movePiece returned: " << result << "\n";
+            std::cout.flush();
+        }
+
+        return result;
+    }
 
     void Driver::startGame(int argc, char *argv[]) noexcept {
 
@@ -57,7 +167,7 @@ namespace driver {
                             // Back to main menu
                             break;
                         default:
-                            std::cout << "Invalid option. Please select a valid option.\n";
+                            printInvalidOption();
                             break;
                     }
                     break;
@@ -116,7 +226,7 @@ namespace driver {
                                     // Back to main menu
                                     break;
                                 default:
-                                    std::cout << "Invalid option. Please select a valid option.\n";
+                                    printInvalidOption();
                                     break;
                             }
                             break;
@@ -136,7 +246,7 @@ namespace driver {
                                     // Back to main menu
                                     break;
                                 default:
-                                    std::cout << "Invalid option. Please select a valid option.\n";
+                                    printInvalidOption();
                                     break;
                             }
                             break;
@@ -153,7 +263,7 @@ namespace driver {
                             break;
 
                         default:
-                            std::cout << "Invalid option. Please select a valid option.\n";
+                            printInvalidOption();
                             break;
                     }
                     
@@ -166,7 +276,7 @@ namespace driver {
                     break;
 
                 default:
-                    std::cout << "Invalid option. Please select a valid option.\n";
+                    printInvalidOption();
                     break;
             }
         } 
@@ -187,19 +297,12 @@ namespace driver {
                 exit(EXIT_FAILURE);
             }
 
-            std::string color = argv[COLOR];
-            std::transform(color.begin(), color.end(), color.begin(), ::tolower);
-            
-            if (color == "w") {
-                this->botVsStockfish(true);
-            } 
-            else if (color == "b") {
-                this->botVsStockfish(false);
-            } 
-            else {
+            bool isWhite = false;
+            if (!parseColorOption(argv[COLOR], isWhite)) {
                 std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
                 exit(EXIT_FAILURE);
             }
+            this->botVsStockfish(isWhite);
         }
         else if (mode == "-bvb" || mode == "3") {
             this->botVsBot();
@@ -213,19 +316,12 @@ namespace driver {
                 exit(EXIT_FAILURE);
             }
 
-            std::string color = argv[COLOR];
-            std::transform(color.begin(), color.end(), color.begin(), ::tolower);
-
-            if (color == "w") {
-                this->playGameVsEngine(true);
-            } 
-            else if (color == "b") {
-                this->playGameVsEngine(false);
-            } 
-            else {
+            bool isWhite = false;
+            if (!parseColorOption(argv[COLOR], isWhite)) {
                 std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
                 exit(EXIT_FAILURE);
             }
+            this->playGameVsEngine(isWhite);
         } 
         else if (mode == "uci" || mode == "-uci" || mode == "--uci") {
             auto uciInterface = uci::UCI(this->engine);
@@ -500,31 +596,19 @@ namespace driver {
             CloseHandle(proc->processInfo.hThread);
             proc->processInfo.hThread = nullptr;
 
-            if (!writeToStockfish(*proc, "uci\n") || !writeToStockfish(*proc, "isready\n")) {
-                std::cerr << "Failed to initialize Stockfish.\n";
-                return nullptr;
-            }
-
-            const std::string initOutput = readUntilToken(*proc, "readyok", 400);
-            if (initOutput.find("readyok") == std::string::npos) {
+            const bool initOk = initializeStockfishUciSession(
+                [&](const std::string& cmd) { return writeToStockfish(*proc, cmd); },
+                [&]() { return readUntilToken(*proc, "readyok", 400); }
+            );
+            if (!initOk) {
                 std::cerr << "Stockfish did not report readyok.\n";
                 return nullptr;
             }
 
-            writeToStockfish(*proc, "ucinewgame\n");
             return proc;
         };
 
         auto runStockfish = [&](StockfishProcess& sf, const std::string& fen) -> std::pair<std::string, std::string> {
-            std::ostringstream cmd;
-            cmd << "position fen " << fen << "\n";
-            cmd << "go movetime " << stockfishMoveTimeMs << "\n";
-
-            if (!writeToStockfish(sf, cmd.str())) {
-                std::cerr << "[ERROR] Failed to write command to Stockfish\n";
-                return {"", ""};
-            }
-
             // Check if process is still running
             DWORD exitCode;
             if (GetExitCodeProcess(sf.processInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
@@ -532,57 +616,18 @@ namespace driver {
                 return {"", ""};
             }
 
-            const std::string output = readUntilToken(sf, "bestmove", 800);
-            const std::string token = "bestmove ";
-            const auto pos = output.find(token);
-            if (pos == std::string::npos) {
+            const auto [bestMove, output] = runStockfishRequest(
+                fen,
+                stockfishMoveTimeMs,
+                [&](const std::string& cmd) { return writeToStockfish(sf, cmd); },
+                [&]() { return readUntilToken(sf, "bestmove", 800); }
+            );
+
+            if (bestMove.empty()) {
                 std::cerr << "[ERROR] Stockfish did not return bestmove. Output: " << output.substr(0, 300) << "\n";
                 return {"", output};
             }
-            const auto end = output.find('\n', pos);
-            const std::string line = output.substr(pos + token.size(), end - (pos + token.size()));
-            const auto spacePos = line.find(' ');
-            return {line.substr(0, spacePos), output};
-        };
-
-        auto applyUciMoveToBoard = [&](const std::string& uciMove) {
-            std::cout << "[DEBUG] Applying UCI move: '" << uciMove << "' (length: " << uciMove.size() << ")\n";
-            std::cout.flush();
-            
-            if (uciMove.size() < 4) {
-                std::cerr << "[ERROR] UCI move too short\n";
-                return false;
-            }
-
-            const std::string fromStr = uciMove.substr(0, 2);
-            const std::string toStr   = uciMove.substr(2, 2);
-            const bool hasPromo       = uciMove.size() >= 5;
-            const char promo = hasPromo
-                ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
-                : '\0';
-
-            std::cout << "[DEBUG] From: " << fromStr << ", To: " << toStr 
-                      << ", HasPromo: " << hasPromo << ", Promo: " << (promo ? promo : '?') << "\n";
-            std::cout.flush();
-
-            chess::Coords fromCoords(fromStr);
-            chess::Coords toCoords(toStr);
-            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-                std::cerr << "[ERROR] Coordinates out of bounds\n";
-                return false;
-            }
-
-            std::cout << "[DEBUG] Calling movePiece...\n";
-            std::cout.flush();
-            
-            bool result = hasPromo
-                ? engine.movePiece(fromCoords, toCoords, promo)
-                : engine.movePiece(fromCoords, toCoords);
-            
-            std::cout << "[DEBUG] movePiece returned: " << result << "\n";
-            std::cout.flush();
-            
-            return result;
+            return {bestMove, output};
         };
 
         auto sfProc = startStockfish();
@@ -607,7 +652,7 @@ namespace driver {
                     return;
                 }
 
-                if (!applyUciMoveToBoard(bestMove)) {
+                if (!this->applyUciMoveToBoard(bestMove, true)) {
                     std::cerr << "[ERROR] Failed to apply Stockfish move: " << bestMove << "\n";
                     return;
                 }
@@ -702,76 +747,52 @@ namespace driver {
             proc->out = childOut;
             proc->pid = pid;
 
-            // Init UCI and wait readyok
-            fputs("uci\n", proc->in);
-            fputs("isready\n", proc->in);
-            fflush(proc->in);
-
-            std::array<char, 512> buffer{};
-            bool ready = false;
-            for (int i = 0; i < 400 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc->out); ++i) {
-                std::string line(buffer.data());
-                if (line.find("readyok") != std::string::npos) {
-                    ready = true;
-                    break;
+            const bool initOk = initializeStockfishUciSession(
+                [&](const std::string& cmd) {
+                    const int rc = fputs(cmd.c_str(), proc->in);
+                    fflush(proc->in);
+                    return rc >= 0;
+                },
+                [&]() {
+                    std::array<char, 512> buffer{};
+                    std::string output;
+                    for (int i = 0; i < 400 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc->out); ++i) {
+                        output += buffer.data();
+                        if (std::string(buffer.data()).find("readyok") != std::string::npos) {
+                            break;
+                        }
+                    }
+                    return output;
                 }
-            }
-            if (!ready) {
+            );
+            if (!initOk) {
                 std::cerr << "Stockfish did not report readyok.\n";
                 return nullptr;
             }
-
-            fputs("ucinewgame\n", proc->in);
-            fflush(proc->in);
             return proc;
         };
 
         auto runStockfish = [&](StockfishProcess& sf, const std::string& fen) -> std::pair<std::string, std::string> {
-            std::array<char, 512> buffer{};
-            std::string output;
-
-            std::ostringstream cmd;
-            cmd << "position fen " << fen << "\n";
-            cmd << "go movetime " << stockfishMoveTimeMs << "\n";
-
-            fputs(cmd.str().c_str(), sf.in);
-            fflush(sf.in);
-
-            for (int i = 0; i < 800 && fgets(buffer.data(), static_cast<int>(buffer.size()), sf.out); ++i) {
-                output += buffer.data();
-                if (std::string(buffer.data()).rfind("bestmove", 0) == 0) {
-                    break;
+            return runStockfishRequest(
+                fen,
+                stockfishMoveTimeMs,
+                [&](const std::string& cmd) {
+                    const int rc = fputs(cmd.c_str(), sf.in);
+                    fflush(sf.in);
+                    return rc >= 0;
+                },
+                [&]() {
+                    std::array<char, 512> buffer{};
+                    std::string output;
+                    for (int i = 0; i < 800 && fgets(buffer.data(), static_cast<int>(buffer.size()), sf.out); ++i) {
+                        output += buffer.data();
+                        if (std::string(buffer.data()).rfind("bestmove", 0) == 0) {
+                            break;
+                        }
+                    }
+                    return output;
                 }
-            }
-
-            const std::string token = "bestmove ";
-            const auto pos = output.find(token);
-            if (pos == std::string::npos) return {"", output};
-            const auto end = output.find('\n', pos);
-            const std::string line = output.substr(pos + token.size(), end - (pos + token.size()));
-            const auto spacePos = line.find(' ');
-            return {line.substr(0, spacePos), output};
-        };
-
-        auto applyUciMoveToBoard = [&](const std::string& uciMove) {
-            if (uciMove.size() < 4) return false;
-
-            const std::string fromStr = uciMove.substr(0, 2);
-            const std::string toStr   = uciMove.substr(2, 2);
-            const bool hasPromo       = uciMove.size() >= 5;
-            const char promo = hasPromo
-                ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
-                : '\0';
-
-            chess::Coords fromCoords(fromStr);
-            chess::Coords toCoords(toStr);
-            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-                return false;
-            }
-
-            return hasPromo
-                ? engine.movePiece(fromCoords, toCoords, promo)
-                : engine.movePiece(fromCoords, toCoords);
+            );
         };
 
         auto sfProc = startStockfish();
@@ -795,7 +816,7 @@ namespace driver {
                     return;
                 }
 
-                if (!applyUciMoveToBoard(bestMove)) {
+                if (!this->applyUciMoveToBoard(bestMove)) {
                     std::cerr << "Failed to apply Stockfish move: " << bestMove << "\n";
                     return;
                 }
@@ -942,27 +963,6 @@ namespace driver {
             std::cerr << "[DEBUG] Move sent and flushed\n";
         };
 
-        auto applyUciMoveToBoard = [&](const std::string& uciMove) {
-            if (uciMove.size() < 4) return false;
-
-            const std::string fromStr = uciMove.substr(0, 2);
-            const std::string toStr   = uciMove.substr(2, 2);
-            const bool hasPromo       = uciMove.size() >= 5;
-            const char promo = hasPromo
-                ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4])))
-                : '\0';
-
-            chess::Coords fromCoords(fromStr);
-            chess::Coords toCoords(toStr);
-            if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-                return false;
-            }
-
-            return hasPromo
-                ? engine.movePiece(fromCoords, toCoords, promo)
-                : engine.movePiece(fromCoords, toCoords);
-        };
-
         auto parseAlphaMove = [](const std::string& line) -> std::string {
             const std::string token = "Engine plays:";
             const auto pos = line.find(token);
@@ -1107,7 +1107,7 @@ namespace driver {
                         break;
                     }
 
-                    if (!applyUciMoveToBoard(alphaMove)) {
+                    if (!this->applyUciMoveToBoard(alphaMove)) {
                         std::cerr << "[Error] Failed to apply Alpha move: " << alphaMove << "\n";
                         result = engine::Engine::DRAW;
                         break;
