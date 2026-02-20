@@ -1,8 +1,5 @@
 #include "board.hpp"
 #include "../tt/zobrist.hpp"
-#ifdef DEBUG
-#include <iostream>
-#endif
 
 namespace chess {
 
@@ -22,17 +19,8 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t rank = rankOf(at.index);
     if (rank != promotionRank(color == WHITE)) [[unlikely]] return false;
 
-    choice = static_cast<char>(std::tolower(static_cast<unsigned char>(choice)));
-    uint8_t newType = QUEEN; // default promotion
-    switch (choice) {
-        case 'q': newType = QUEEN;  break;
-        case 'r': newType = ROOK;   break;
-        case 'b': newType = BISHOP; break;
-        case 'n': newType = KNIGHT; break;
-        // default to queen
-    }
-
-    const uint8_t newPiece = newType | color;
+    const uint8_t promo = normalizePromotionChoice(choice);
+    const uint8_t newPiece = promotedPieceFromChoice(promo, color);
     
     // Update bitboards: remove pawn, add promoted piece
     const uint8_t atIndex = at.index;
@@ -61,12 +49,7 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
 }
 
 bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {
-    const uint8_t fromIndex = from.index;
-    const uint8_t toIndex = to.index;
-    const uint8_t fromPiece = get(fromIndex);
-    const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
-    const bool inDoubleChk = inChk && (fromType != KING) && isDoubleCheck(fromPiece & MASK_COLOR);
-    return isLegalPseudoMove(fromIndex, toIndex, inChk, inDoubleChk);
+    return isLegalPseudoMove(from.index, to.index, inChk);
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
@@ -307,23 +290,13 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 // Returns true if all squares are safe, false if ANY square is attacked
 // Used for castling to avoid 3 separate isSquareAttacked calls
 bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
-    const int side = colorToIndex(byColor);
-    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
-    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
-    
-    while (squaresMask) { // Check each square in the mask
+    while (squaresMask) {
         const uint8_t sq = __builtin_ctzll(squaresMask);
-        squaresMask &= squaresMask - 1; // Clear LSB
-        
-        if (pieces::PAWN_ATTACKERS_TO[side][sq] & pawns_bb[side]) return false;
-        if (pieces::KNIGHT_ATTACKS[sq] & knights_bb[side]) return false;
-        if (pieces::KING_ATTACKS[sq] & kings_bb[side]) return false;
-        
-        if (rookLike && (pieces::getRookAttacks(sq, occupancy) & rookLike)) return false;
-        if (bishopLike && (pieces::getBishopAttacks(sq, occupancy) & bishopLike)) return false;
+        squaresMask &= squaresMask - 1;
+        if (isSquareAttacked(sq, byColor)) return false;
     }
     
-    return true; // All squares safe
+    return true;
 }
 
 // Helper: check if king at kingSq is attacked using custom bitboards
@@ -348,15 +321,12 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
 }
 
 __attribute__((hot))
-bool Board::inCheck(uint8_t color) const noexcept { // is the given color currently in check?
+bool Board::inCheck(uint8_t color) const noexcept {
     const uint8_t side = colorToIndex(color);
     const uint64_t kingBB = kings_bb[side];
 
-    if (!kingBB) [[unlikely]] return false; // no king found (invalid position) -> treat as not in check
-
-    const uint8_t kingIndex = __builtin_ctzll(kingBB);
-    const uint8_t opp = oppositeColor(color);
-    return isSquareAttacked(kingIndex, opp);
+    if (!kingBB) [[unlikely]] return false;
+    return isSquareAttacked(__builtin_ctzll(kingBB), oppositeColor(color));
 }
 
 

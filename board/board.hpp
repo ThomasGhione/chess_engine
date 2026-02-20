@@ -342,6 +342,8 @@ private:
     ) noexcept;
     [[nodiscard]] static inline uint8_t normalizePromotionChoice(char promotionChoice) noexcept;
     [[nodiscard]] static inline uint8_t promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
+    inline void snapshotState(MoveState& st) const noexcept;
+    inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(
         const Coords& from,

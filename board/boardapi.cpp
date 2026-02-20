@@ -1,6 +1,5 @@
 #include "board.hpp"
 #include "../tt/zobrist.hpp"
-#include <cstring>
 
 
 namespace chess {
@@ -27,17 +26,10 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const uint8_t movingColor = moving & MASK_COLOR;
     const uint8_t destBefore  = get(to);
 
-    std::memset(static_cast<void*>(&st), 0, sizeof(st));
-    st.prevActiveColor   = activeColor;
-    st.prevHalfMoveClock = halfMoveClock;
-    st.prevFullMoveClock = fullMoveClock;
-    st.prevEnPassant     = enPassant;
-    st.prevCastle        = castle;
-    st.prevHasMoved      = hasMoved;
+    st = MoveState{};
+    snapshotState(st);
     st.capturedPiece     = destBefore;
     st.fromPiece         = moving;
-    st.prevHistorySize   = historySize;
-    st.prevHistoryHead   = currentHash;
     st.moveKind          = classifyMoveKind(movingType, movingColor, fromIndex, toIndex, destBefore, st.prevEnPassant);
 
     uint64_t newHash = currentHash;
@@ -97,7 +89,6 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
     newHash ^= zobrist::TABLES.pieces[moving][toIndex];
 
-    // --- CLOCKS E SIDE TO MOVE ---
     const bool resetHistory = (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture);
     st.historyWasReset = resetHistory;
     if (resetHistory) {
@@ -158,37 +149,19 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
             break;
     }
 
-    // --- RIPRISTINA GAME STATE ---
-    activeColor   = st.prevActiveColor;
-    halfMoveClock = st.prevHalfMoveClock;
-    fullMoveClock = st.prevFullMoveClock;
-    enPassant     = st.prevEnPassant;
-    castle        = st.prevCastle;
-    hasMoved      = st.prevHasMoved;
-
-    // FIX: Restore repetition history correctly
-    // Simply restore the saved state - no need to recompute hash
-    historySize = st.prevHistorySize;
-    currentHash = st.prevHistoryHead;
+    restoreState(st);
 }
 
 __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
+    st = MoveState{};
+    snapshotState(st);
     st.moveKind          = MoveKind::Quiet;
-    st.prevActiveColor   = activeColor;
-    st.prevHalfMoveClock = halfMoveClock;
-    st.prevFullMoveClock = fullMoveClock;
-    st.prevEnPassant     = enPassant;
-    st.prevCastle        = castle;
-    st.prevHasMoved      = hasMoved;
-    st.prevHistorySize   = historySize;
-    st.prevHistoryHead   = currentHash;
     uint64_t newHash = currentHash;
     if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
         newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
     }
 
-    // Null move clears en-passant rights and just passes the turn.
     enPassant = Coords{};
 
     if (halfMoveClock < 255) {
@@ -201,20 +174,12 @@ void Board::doNullMove(MoveState& st) noexcept {
     newHash ^= zobrist::TABLES.sideToMove;
     currentHash = newHash;
 
-    // Keep hash/repetition coherent with the null-move position.
     updateRepetitionAfterMove(false, false);
 }
 
 __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
-    activeColor   = st.prevActiveColor;
-    halfMoveClock = st.prevHalfMoveClock;
-    fullMoveClock = st.prevFullMoveClock;
-    enPassant     = st.prevEnPassant;
-    castle        = st.prevCastle;
-    hasMoved      = st.prevHasMoved;
-    historySize   = st.prevHistorySize;
-    currentHash   = st.prevHistoryHead;
+    restoreState(st);
 }
 
 

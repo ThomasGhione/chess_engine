@@ -2,10 +2,12 @@
 // --------------------------
 // API Helpers (engineapi)
 // --------------------------
+__attribute__((always_inline))
 inline constexpr bool Board::isCaptureKind(MoveKind kind) noexcept {
     return kind == MoveKind::Capture || kind == MoveKind::PromotionCapture;
 }
 
+__attribute__((always_inline))
 inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
     return kind == MoveKind::PromotionQuiet || kind == MoveKind::PromotionCapture;
 }
@@ -57,6 +59,7 @@ inline Board::MoveKind Board::classifyMoveKind(
     return MoveKind::Quiet;
 }
 
+__attribute__((always_inline))
 inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
     const uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
     if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') {
@@ -65,6 +68,7 @@ inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
     return static_cast<uint8_t>('q');
 }
 
+__attribute__((always_inline))
 inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept {
     if (promo == 'r') return ROOK | movingColor;
     if (promo == 'b') return BISHOP | movingColor;
@@ -72,6 +76,31 @@ inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor
     return QUEEN | movingColor;
 }
 
+__attribute__((always_inline))
+inline void Board::snapshotState(MoveState& st) const noexcept {
+    st.prevActiveColor   = activeColor;
+    st.prevHalfMoveClock = halfMoveClock;
+    st.prevFullMoveClock = fullMoveClock;
+    st.prevEnPassant     = enPassant;
+    st.prevCastle        = castle;
+    st.prevHasMoved      = hasMoved;
+    st.prevHistorySize   = historySize;
+    st.prevHistoryHead   = currentHash;
+}
+
+__attribute__((always_inline))
+inline void Board::restoreState(const MoveState& st) noexcept {
+    activeColor   = st.prevActiveColor;
+    halfMoveClock = st.prevHalfMoveClock;
+    fullMoveClock = st.prevFullMoveClock;
+    enPassant     = st.prevEnPassant;
+    castle        = st.prevCastle;
+    hasMoved      = st.prevHasMoved;
+    historySize   = st.prevHistorySize;
+    currentHash   = st.prevHistoryHead;
+}
+
+__attribute__((always_inline))
 inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
     static constexpr std::array<uint8_t, 4> ROOK_START_SQUARES = {
         WHITE_ROOK_A_START,
