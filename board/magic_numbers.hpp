@@ -19,7 +19,7 @@
 namespace pieces {
 
 // =============================================================================
-// ROOK MAGIC NUMBERS (64 valori)
+// ROOK MAGIC NUMBERS
 // =============================================================================
 
 inline constexpr std::array<uint64_t, 64> ROOK_MAGICS = {
@@ -48,7 +48,7 @@ inline constexpr std::array<uint64_t, 64> ROOK_MAGICS = {
 };
 
 // =============================================================================
-// BISHOP MAGIC NUMBERS (64 valori)
+// BISHOP MAGIC NUMBERS
 // =============================================================================
 
 inline constexpr std::array<uint64_t, 64> BISHOP_MAGICS = {
@@ -77,10 +77,10 @@ inline constexpr std::array<uint64_t, 64> BISHOP_MAGICS = {
 };
 
 // =============================================================================
-// ROOK RELEVANT OCCUPANCY MASKS (64 valori)
+// ROOK RELEVANT OCCUPANCY MASKS
 // =============================================================================
 // Masks che definiscono quali square influenzano gli attacks della Torre
-// per ogni square. Esclude i bordi della scacchiera che non bloccano.
+// for each square. Excludes board edges that cannot block.
 //
 // Formula: Rank + File, ESCLUSI i bordi (file A/H, rank 1/8)
 // Bit count: 10-12 bit per square (dipende dalla posizione)
@@ -153,13 +153,13 @@ inline constexpr std::array<uint64_t, 64> ROOK_MASKS = {
 };
 
 // =============================================================================
-// BISHOP RELEVANT OCCUPANCY MASKS (64 valori)
+// BISHOP RELEVANT OCCUPANCY MASKS
 // =============================================================================
 // Masks che definiscono quali square influenzano gli attacks dell'Alfiere
-// per ogni square. Esclude i bordi della scacchiera.
+// for each square. Excludes board edges.
 //
 // Formula: Diagonali (NE, NW, SE, SW), ESCLUSI i bordi
-// Bit count: 5-9 bit per square (meno negli angoli, più al centro)
+// Bit count: 5-9 bits per square (fewer on edges, more in the center)
 
 inline constexpr std::array<uint64_t, 64> BISHOP_MASKS = {
     0x0040201008040200ULL,  // A8 (sq 0)

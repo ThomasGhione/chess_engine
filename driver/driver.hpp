@@ -22,7 +22,7 @@ namespace driver {
                                            "Daniele Ferretti", 
                                            "Simone Tomasella" };
                 std::string platforms[1] = { "Linux x86_64" }; // supported platforms
-                // TODO: servono davvero?
+                // TODO: are these really needed?
                 // size_t defaultThreads = 4;
                 // size_t defaultTTSizeMB = 64;
                 // bool debugMode = false;

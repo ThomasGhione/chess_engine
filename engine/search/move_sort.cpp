@@ -93,10 +93,10 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const int sideActive = b.getActiveColor() == chess::Board::WHITE ? 0 : 1;
     const int sidePassive = sideActive ^ 1;
 
-    // Valore del pezzo catturato inizialmente
+    // Value of the initially captured piece
     uint8_t capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
     if (capturedType == chess::Board::EMPTY) {
-        // En passant: cattura un pedone
+        // En passant: captures a pawn
         capturedType = chess::Board::PAWN;
     }
 
@@ -111,20 +111,20 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     // Simula scambio su occupazione locale
     uint64_t occ = b.getPiecesBitMap();
-    occ ^= chess::Board::bitMask(fromSq); // rimuovi il pezzo che fa la prima cattura dalla sua casa
+    occ ^= chess::Board::bitMask(fromSq); // remove the piece that makes the first capture from its square
 
-    // Il pezzo ora “in presa” sulla casa target, dopo la mossa iniziale, è il nostro attaccante iniziale.
+    // After the initial move, the piece now "on target" is our initial attacker.
     uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
 
     int depth = 1;
-    int side = sidePassive; // il prossimo a catturare è l'avversario
+    int side = sidePassive; // the opponent captures next
 
     // Do not use piece-value early exits here.
     // They can misclassify captures like QxP as losing without checking
     // recaptures, pins, x-rays and overloaded defenders.
 
     while (depth < MAX_SEE_DEPTH) {
-        // Trova l'attaccante meno prezioso verso la casella target
+        // Find the least valuable attacker toward the target square
         uint8_t attacker = this->getLeastValuableAttackerTo(b, toSq, occ, side);
         if (attacker == 64) break;
 
@@ -139,15 +139,15 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
         else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
 
-        // In questo ply si cattura il pezzo che era rimasto sulla casa target
-        // (cioè il pezzo dell'ultimo catturante).
+        // At this ply, capture the piece left on the target square
+        // (i.e. the previous capturer).
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
         // Rimuovi l'attaccante dall'occupancy
         occ ^= attackerMask;
 
-        // Ora sulla casa target rimane il pezzo che ha appena catturato: sarà lui
-        // a poter essere catturato nel ply successivo.
+        // The piece that just captured now stays on target and can be
+        // captured on the next ply.
         capturedOnTargetType = currentAttackerType;
 
         // Cambia lato
@@ -155,7 +155,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         depth++;
     }
 
-    // Negamax: propaga il miglior risultato all'indietro
+    // Negamax: propagate the best result backward
     while (--depth > 0) {
         gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
     }
@@ -233,15 +233,15 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         // =========================================================
         // MOVE ORDERING PRIORITY (from highest to lowest):
-        // 1. Hash move (from TT) → 100000
-        // 2. Good captures (SEE >= 0) → 10000 + MVV (1000-9000)
-        // 3. Killer move 1 → 9000
-        // 4. Killer move 2 → 8500
-        // 5. Counter-move (response to prev move) → 8200
-        // 6. Checks (non-capture, lazy: first 8 moves) → 8000
-        // 7. Promotions (non-capture) → 7000
-        // 8. History heuristic → 0-2000
-        // 9. Bad captures (SEE < 0) → -10000 + SEE
+        // 1. Hash move (from TT) -> 100000
+        // 2. Good captures (SEE >= 0) -> 10000 + MVV (1000-9000)
+        // 3. Killer move 1 -> 9000
+        // 4. Killer move 2 -> 8500
+        // 5. Counter-move (response to prev move) -> 8200
+        // 6. Checks (non-capture, lazy: first 8 moves) -> 8000
+        // 7. Promotions (non-capture) -> 7000
+        // 8. History heuristic -> 0-2000
+        // 9. Bad captures (SEE < 0) -> -10000 + SEE
         // =========================================================
 
         // Check if this is the hash move (highest priority!)
@@ -295,7 +295,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 }
             }
 
-            // Se non è killer o counter-move, controlla altre eurystiche
+            // If not a killer or counter-move, evaluate other heuristics
             if (!isKiller && !isCounterMove) {
                 // LAZY CHECK DETECTION: only for first 8 non-capture moves
                 // Balances tactical strength with performance overhead
@@ -318,7 +318,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                     }
                 }
                 
-                // Promotion bonus (se non è cattura e non dà scacco già rilevato)
+                // Promotion bonus (if it's not a capture and no check was already detected)
                 if (score == 0 && isPromotionCandidate) {
                     score = 7000;
 
@@ -383,7 +383,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         // Stalemate is now handled ONLY in searchPosition() terminal node evaluation
         // This is much faster and still prevents stalemate in winning positions
 
-        // King move penalties (riduci priorità mosse re in opening se non arrocco)
+        // King move penalties (lower king-move priority in the opening if not castling)
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
             const bool isCastling = (fileDelta == 2);
@@ -391,7 +391,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
                 score -= 500; // penalità moderata
             } else if (isCastling) {
-                score += 1000; // bonus arrocco
+                score += 1000; // castling bonus
             }
         }
 

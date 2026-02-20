@@ -47,23 +47,23 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     
     if (!useYBWC) {
         // Sequential search con PVS (Principal Variation Search)
-        // Prima mossa: finestra piena
-        // Mosse successive: null window, re-search se fallisce
+        // First move: full window
+        // Next moves: null window, then re-search if needed
         
         for (int i = 0; i < moves.size; ++i) {
             const auto& m = moves[i];
             int64_t score = 0;
             if (i == 0) {
-                // Prima mossa: cerca con finestra piena (PV node)
+                // First move: search with full window (PV node)
                 score = this->searchRootMoveScore(this->board, m, alpha, beta, currPly, true, true, &localNodes);
             } else {
-                // Mosse successive: cerca con null window
+                // Next moves: search with null window
                 int64_t nullAlpha = 0, nullBeta = 0;
                 rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
                 
                 score = this->searchRootMoveScore(this->board, m, nullAlpha, nullBeta, currPly, true, true, &localNodes);
                 
-                // PVS re-search: se null window fallisce, ri-cerca con finestra piena
+                // PVS re-search: if null-window fails, re-search with full window
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
                 const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
@@ -84,7 +84,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     }
 
     // --- YBWC Parallel - FIXED per determinismo ---
-    // Prima mossa: ricerca completa con finestra piena
+    // First move: full-window search
     {
         const auto& firstMove = moves[0];
         const int64_t score = this->searchRootMoveScore(this->board, firstMove, alpha, beta, currPly, true, true, &localNodes);
@@ -160,7 +160,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         } // parallel
     }
 
-    // Merge results deterministically (in ordine sequenziale, senza race)
+    // Merge results deterministically (sequential order, no race)
     for (int i = 1; i < moves.size; ++i) {
         const int64_t score = threadScores[i];
         const auto& m = moves[i];
@@ -238,8 +238,8 @@ void Engine::search(uint64_t depth) noexcept {
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
     
     // --- ITERATIVE DEEPENING with ASPIRATION WINDOWS ---
-    // Cerca a profondità crescenti (1, 2, 3, ..., depth)
-    // Migliora il move ordering per le profondità successive
+    // Search at increasing depths (1, 2, 3, ..., depth)
+    // Improve move ordering for subsequent depths
     //
     // ASPIRATION WINDOWS 
     // Instead of searching with [-INF, +INF], use a narrow window around
@@ -306,7 +306,7 @@ void Engine::search(uint64_t depth) noexcept {
         prevScore = this->eval; // Save score for next iteration's aspiration window
     }
     
-    // Ripristina la profondità originale
+    // Restore the original depth
     this->depth = depth;
 
     this->doMoveInBoard(bestMove);

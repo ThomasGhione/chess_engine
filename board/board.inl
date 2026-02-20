@@ -90,7 +90,7 @@ inline bool Board::Move::operator==(const Move& other) const noexcept {
 template<typename MoveContainer>
 inline void Board::Move::rotate(MoveContainer& moves, size_t index) noexcept {
     Move temp = moves[index];
-    // Shifta tutte le mosse [0..index-1] una posizione a destra
+    // Shift all moves [0..index-1] one position to the right
     for (size_t i = index; i > 0; --i) {
         moves[i] = moves[i - 1];
     }

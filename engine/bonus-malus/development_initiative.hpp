@@ -15,7 +15,7 @@ namespace engine {
 // Combined with development and king attack, this exceeded pawn value
 inline static constexpr int64_t INIT_BONUS_MG = 6;
 
-// bonus iniziativa end-game
+// Endgame initiative bonus
 inline static constexpr int64_t INIT_BONUS_EG = 3;
 
 inline static constexpr int64_t EARLY_ROOK_PENALTY = -30;

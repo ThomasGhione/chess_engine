@@ -301,7 +301,7 @@ namespace tt {
         target->bestMove = bestMove;
     }
 
-    // Overload int64_t → int32_t (conversioni gestite da TT)
+    // Overload int64_t -> int32_t (conversioni gestite da TT)
     inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept {
         const int32_t alpha32 = static_cast<int32_t>(
             std::max<int64_t>(alpha - ADJUSTMENT, INT32_MIN + 1));

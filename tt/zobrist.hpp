@@ -22,8 +22,8 @@ namespace zobrist {
     };
 
     // Costanti per dimensioni array
-    constexpr std::size_t PIECE_TYPES = 16;    // 16 tipi di pezzo (0=empty, 1-6=white, 9-14=black)
-    constexpr std::size_t SQUARES = 64;         // 64 caselle
+    constexpr std::size_t PIECE_TYPES = 16;    // 16 piece types (0=empty, 1-6=white, 9-14=black)
+    constexpr std::size_t SQUARES = 64;         // 64 squares
     constexpr std::size_t CASTLING_STATES = 16; // 16 stati castling (bitmask KQkq: 0-15)
     constexpr std::size_t FILES = 8;            // 8 colonne per en-passant
 
@@ -40,7 +40,7 @@ namespace zobrist {
         Tables t{};
         XorShift64 rng(0x123456789ABCDEF0ULL);
 
-        // Pezzi: 16 tipi × 64 caselle
+        // Pieces: 16 types × 64 squares
         for (std::size_t pieceType = 0; pieceType < PIECE_TYPES; ++pieceType) {
             for (std::size_t square = 0; square < SQUARES; ++square) {
                 t.pieces[pieceType][square] = rng.next();
@@ -66,7 +66,7 @@ namespace zobrist {
     // Tabelle globali compile-time
     inline constexpr Tables TABLES = makeTables();
 
-    // Helper per XOR pezzi da bitboard (più leggibile e riusabile)
+    // Helper to XOR pieces from bitboards (more readable and reusable)
     inline void xorPiecesFromBitboard(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) {
         while (bitboard) {
             const uint8_t square = static_cast<uint8_t>(__builtin_ctzll(bitboard));

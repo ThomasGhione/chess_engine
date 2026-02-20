@@ -184,7 +184,7 @@ private:
     int history[2][64][64] = {};
 
     // Counter-move history: tracks best response to opponent's previous move
-    // counterMoves[prevFrom][prevTo] → best response move
+    // counterMoves[prevFrom][prevTo] -> best response move
     // Improves move ordering in tactical sequences
     chess::Board::Move counterMoves[64][64] {};
 

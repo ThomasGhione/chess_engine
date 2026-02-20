@@ -59,8 +59,8 @@ public:
         // Operatore di confronto per iterative deepening move ordering
         bool operator==(const Move& other) const noexcept;
         
-        // Rotate custom ottimizzata: sposta moves[index] in moves[0]
-        // e shifta moves[0..index-1] una posizione a destra
+        // Optimized custom rotate: move moves[index] to moves[0]
+        // and shift moves[0..index-1] one position to the right
         // Esempio: rotate([A,B,C,D,E], 3) -> [D,A,B,C,E]
         template<typename MoveContainer>
         static void rotate(MoveContainer& moves, size_t index) noexcept;

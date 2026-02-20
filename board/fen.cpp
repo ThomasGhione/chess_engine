@@ -71,7 +71,7 @@ Coords Board::parseEnPassant(const std::string& enPassantSection) {
     }
     uint8_t file = static_cast<uint8_t>(fileChar - 'a');
     // Board convention: rank 0 = row 8 (top), rank 7 = row 1 (bottom)
-    // FEN uses '1'-'8' where '8' is the top row → we need to invert
+    // FEN uses '1'-'8' where '8' is the top row -> we need to invert
     uint8_t rank = static_cast<uint8_t>('8' - rankChar);
     return Coords(file, rank);
 }
@@ -185,9 +185,9 @@ std::string Board::castlingToFen() const {
 std::string Board::enPassantToFen() const {
     if (Coords::isInBounds(enPassant)) {
         std::string ep;
-        // file: 0-7 → 'a'-'h'
+        // file: 0-7 -> 'a'-'h'
         ep.push_back(static_cast<char>('a' + enPassant.file()));
-        // rank: 0-7 → '8'-'1' (Board convention: rank 0 = row 8)
+        // rank: 0-7 -> '8'-'1' (Board convention: rank 0 = row 8)
         ep.push_back(static_cast<char>('8' - enPassant.rank()));
         return ep;
     }

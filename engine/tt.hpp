@@ -61,7 +61,7 @@ inline uint8_t getCurrentGeneration() {
     return globalTTData().generation;
 }
 
-// Zobrist: 16 pezzi x 64 caselle + side-to-move, castling, en-passant.
+// Zobrist: 16 pieces x 64 squares + side-to-move, castling, en-passant.
 // Tutte le chiavi sono pre-calcolate a compile time.
 namespace detail {
 
@@ -89,7 +89,7 @@ constexpr ZobristTables makeZobristTables() {
     ZobristTables t{};
     XorShift64 rng(0x123456789ABCDEF0ULL);
 
-    // Pezzi (16 indici: tipi+colori) x 64 caselle
+    // Pieces (16 indexes: type+color) x 64 squares
     for (int p = 0; p < 16; ++p) {
         for (int sq = 0; sq < 64; ++sq) {
             t.piece[p][sq] = rng.next();

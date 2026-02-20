@@ -22,10 +22,10 @@ static void addPawnMovesFromMaskFast(const chess::Board& b,
                                      uint8_t promotionRank,
                                      const chess::Coords& enPassant) noexcept;
 
-// costruisce una bitboard con solo le case tra from e to:
-// Se from == to oppure non sono allineate (stessa colonna, stessa riga, o stessa diagonale), ritorna 0.
-// Se sono allineate, cammina lungo la direzione e setta le case intermedie.
-// Esclude esplicitamente la casa to (e di fatto non include neanche from).
+// Builds a bitboard containing only squares between from and to:
+// If from == to, or they are not aligned (same file, rank, or diagonal), returns 0.
+// If aligned, it walks along the direction and sets intermediate squares.
+// Explicitly excludes target square to (and also excludes from).
 static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
     if (from == to) return 0ULL;
 
@@ -64,7 +64,7 @@ static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
 }
 
 // Ritorna una maschera con i bit delle case su cui si può muovere o intercettare
-// per evadere il check (evasionMask).
+// to evade check (evasionMask).
 static void computeCheckEvasionMasks(const chess::Board& b,
                                      uint8_t activeColor,
                                      bool inCheck,
@@ -113,7 +113,7 @@ static void computeCheckEvasionMasks(const chess::Board& b,
     }
 }
 
-// Ritorna una maschera con i bit dei pezzi che bloccano il re (pinnedMask) 
+// Returns a mask with bits for pieces pinned to the king (pinnedMask)
 // e un array che per ogni casa contiene la maschera del raggio di pin (pinRayBySquare).
 static void computePinRays(const chess::Board& b,
                            uint8_t activeColor,

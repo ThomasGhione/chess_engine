@@ -148,7 +148,7 @@ inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_
     return attacks;
 }
 
-// Popola attack table per una square (Rook) - versione ottimizzata
+// Fill attack table for one square (Rook) - optimized version
 inline void populateRookAttackTable(int square) noexcept {
     const MagicParams& p = ROOK_PARAMS[square];
     const int bitCount = __builtin_popcountll(p.mask);
@@ -164,7 +164,7 @@ inline void populateRookAttackTable(int square) noexcept {
     }
 }
 
-// Popola attack table per una square (Bishop) - versione ottimizzata
+// Fill attack table for one square (Bishop) - optimized version
 inline void populateBishopAttackTable(int square) noexcept {
     const MagicParams& p = BISHOP_PARAMS[square];
     const int bitCount = __builtin_popcountll(p.mask);
@@ -213,7 +213,7 @@ inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
     return getRookAttacks(sq, occ) | getBishopAttacks(sq, occ);
 }
 
-// ==================== ATTACK MAPS (color-agnostic salvo pedone) ====================
+// ==================== ATTACK MAPS (color-agnostic except for pawns) ====================
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
 	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 	U64 attackBitboard = 0ULL;
@@ -235,7 +235,7 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 
 // Lookup table per target squares dei pawn pushes (senza considerare occupancy)
 // table[isWhite][square] = bitboard con 1-step e 2-step target squares
-// Nota: a runtime devi ancora controllare occupancy per validare le mosse
+// Note: at runtime you still need to check occupancy to validate moves
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_SINGLE_PUSH_TARGETS = []{
     std::array<std::array<uint64_t, 64>, 2> table{};
 

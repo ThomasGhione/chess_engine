@@ -39,7 +39,7 @@ PERF_APP = tests/perf
 NAME_APP_WIN = chess.exe
 OUTPUT_DIR = output
 
-# Path dei file separati
+# File paths by module
 MAIN_SRC = main.cpp
 ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/search/*.cpp)
 COORDS_SRCS = $(wildcard ./coords/*.cpp)
@@ -50,11 +50,11 @@ GAMESTATUS_SRCS = $(wildcard ./gamestatus/*.cpp)
 BOARD_SRCS = $(wildcard ./board/*.cpp)
 UCI_SRCS = $(wildcard ./uci/*.cpp)
 
-# Path dei file in unica variabile
+# Module source paths in a single variable
 ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
                   $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
-# Path dei file header (escludendo stockfish e test utils)
+# Header file paths (excluding stockfish and test utils)
 ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp) $(wildcard ./engine/search/*.hpp)
 COORDS_HDRS = $(wildcard ./coords/*.hpp)
 PRINTER_HDRS = $(wildcard ./printer/*.hpp)
@@ -64,19 +64,19 @@ GAMESTATUS_HDRS = $(wildcard ./gamestatus/*.hpp)
 BOARD_HDRS = $(wildcard ./board/*.hpp)
 UCI_HDRS = $(wildcard ./uci/*.hpp)
 
-# Path di tutti gli header
+# All header paths
 ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
                   $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
 
-# Tutti i file da analizzare (.cpp e .hpp)
+# All files to analyze (.cpp and .hpp)
 ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
 
-# Trucchetto per avere i path dei file .o in output/
+# Helper to generate .o paths inside output/
 MAIN_OBJ = $(OUTPUT_DIR)/$(MAIN_SRC:.cpp=.o)
 MODULE_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_MODULE_SRCS:.cpp=.o))
 ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
 
-# Path dei file di test
+# Test file paths
 TEST_MAIN_SRC = tests/mainTest.cpp
 TEST_ENGINE_SRCS = $(wildcard ./engine/test/*.cpp)
 TEST_COORDS_SRCS = $(wildcard ./coords/test/*.cpp)
@@ -86,71 +86,71 @@ TEST_PIECE_SRCS = $(wildcard ./piece/test/*.cpp)
 TEST_GAMESTATUS_SRCS = $(wildcard ./gamestatus/test/*.cpp)
 TEST_BOARD_SRCS = $(wildcard ./board/test/*.cpp)
 
-# Path dei file di test in unica variabile
+# Test file paths in a single variable
 ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_COORDS_SRCS) $(TEST_PRINTER_SRCS) \
 											 $(TEST_DRIVER_SRCS) $(TEST_PIECE_SRCS) $(TEST_GAMESTATUS_SRCS) \
 											 $(TEST_BOARD_SRCS)
 
-# Path dei file .o di test in output/
+# Test .o file paths in output/
 TEST_MAIN_OBJ = $(OUTPUT_DIR)/$(TEST_MAIN_SRC:.cpp=.o)
 TEST_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_TEST_MODULE_SRCS:.cpp=.o))
 
-# Path dei file di performance test
+# Performance-test file paths
 PERF_MAIN_SRC = tests/mainPerformanceTest.cpp
 PERF_ENGINE_SRCS = $(wildcard ./engine/test/performance-test/*.cpp)
 
-# Path dei file di performance test in unica variabile
+# Performance-test paths in a single variable
 ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
 
-# Path dei file .o di performance test in output/
+# Performance-test .o paths in output/
 PERF_MAIN_OBJ = $(OUTPUT_DIR)/$(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_PERF_MODULE_SRCS:.cpp=.o))
 
-# File di dipendenza auto-generati (header dependencies)
+# Auto-generated dependency files (header dependencies)
 DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d)
 
-# Target principali
+# Main targets
 .PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
-# Default per usare make secco
+# Default target for plain `make`
 all: PRODFLAGS += -DDEBUG
 all: prod
 
-# Produzione parallela
-# Nota: Piu' veloce dopo la prima volta ma lascia i file .o
+# Parallel production build
+# Note: faster after the first build but keeps .o files
 prod: $(NAME_APP)
 	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
 
-# Alias esplicito per build parallela
+# Explicit alias for parallel build
 parallel_prod: prod
 
-# Produzione Windows (cross-compile da Linux)
+# Windows production build (cross-compile from Linux)
 prod_windows:
 	@printf "\nCompiling Windows binary..."
 	$(WIN_CXX) $(WIN_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP_WIN)
 	@printf "\n✅ Build completato: $(NAME_APP_WIN)\n\n"
 
-# Produzione sequenziale
-# Nota: Non e' piu' lento ma non genera i file .o
+# Sequential production build
+# Note: no slower, but does not generate .o files
 prod_sequential:
 	$(CXX) $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
 	@printf "\n✅ Build completato: $(NAME_APP)\n\n"
 
-# Comando per generare eseguibile per il debug
-# Aggiunge il flag -g per mettere le informazioni di debug
+# Build command for debug executable
+# Adds -g to include debug symbols
 debug: PRODFLAGS += -DDEBUG -g
 debug: $(NAME_APP)
 	@printf "\n✅ Build debug completato: $(NAME_APP)\n\n"
 
-# Comando per generare eseguibile per il test
+# Build command for test executable
 test: $(TEST_APP)
 	@printf "\n✅ Test compilato: $(TEST_APP)\n\n"
 
-# Comando per generare eseguibile per performance test
+# Build command for performance-test executable
 perf: $(PERF_APP)
 	@printf "\n✅ Performance test compilato: $(PERF_APP)\n\n"
 
-# Comando per eseguire tutti i test (funzionali + performance)
+# Command to run all tests (functional + performance)
 all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
 	./$(TEST_APP)
@@ -158,23 +158,23 @@ all-tests: test perf
 	./$(PERF_APP)
 	@printf "\n✅ All tests completed\n\n"
 
-# Generazione file finale 'chess'
+# Final executable generation: 'chess'
 $(NAME_APP): $(ALL_OBJS)
 	@printf "\nLinking $(NAME_APP)..."
 	$(CXX) $(PRODFLAGS) $(ALL_OBJS) -o $(NAME_APP)
 
-# Creazione dei file .o
+# .o file generation
 $(OUTPUT_DIR)/%.o: %.cpp
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
 
-# Generazione file finale 'outputTest'
+# Final executable generation: 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	@printf "\nLinking test $(TEST_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
 
-# Generazione file finale 'outputPerformance'
+# Final executable generation: 'outputPerformance'
 $(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
@@ -316,12 +316,12 @@ test-valgrind: $(TEST_APP)
 # Include dependency files generated by -MMD -MP
 -include $(DEPFILES)
 
-# Pulizia solo dei file oggetto e binari
+# Clean object files and binaries only
 cls-compile-files:
 	rm -rf $(OUTPUT_DIR)
 	rm -f $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
 
-# Pulizia dei file temporanei
+# Clean temporary files
 cls: cls-compile-files
 	@printf "\nCleaning..."
 	rm -f doc/main-doc.{aux,log,pdf,toc}
@@ -363,7 +363,7 @@ help:
 	@printf "  - valgrind: install with 'sudo apt install valgrind'\n"
 	@printf "\n==================================\n"
 
-# Per mostrare le variabili
+# Print variables
 .PHONY: debug-vars
 debug-vars:
 	@printf "\n"

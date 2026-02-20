@@ -515,7 +515,7 @@ namespace driver {
         } 
     }
 
-    // TODO TO BE UPDATED FOR NEW MODES
+    // TODO: update for new modes
     void Driver::parse(int argc, char *argv[]) noexcept {
         if (argc == NO_ARGS || argc > MAX_PARAM_LENGTH) {
             return;
@@ -581,7 +581,7 @@ namespace driver {
             }
         }
 
-        // TODO aggiungere controlli/eccezioni per il fen
+        // TODO: add checks/exceptions for FEN parsing
     
         SaveFile.close();
 

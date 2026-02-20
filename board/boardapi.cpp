@@ -122,7 +122,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex   = to.index;
 
-    uint8_t pieceOnTo = get(toIndex);  // usa index-based
+    uint8_t pieceOnTo = get(toIndex);  // use index-based access
 
     switch (st.moveKind) {
         case MoveKind::Capture:

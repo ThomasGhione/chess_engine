@@ -8,7 +8,7 @@ namespace engine {
 // CASTLING
 // ===================================================
 
-// // aumentato leggermente (l'arrocco è importante!)
+// Slightly increased (castling is important)
 inline static constexpr int64_t CASTLING_BONUS = 35;
 
 // TUNED: was 20 (too high, redundant with evalCastlingBonus)
