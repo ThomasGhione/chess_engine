@@ -199,6 +199,7 @@ public:
     bool canMoveToBB(const Coords& from, const Coords& to, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck, bool inDoubleCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
     bool isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept;
@@ -213,6 +214,7 @@ public:
     void fromFenToBoard(const std::string& fen);
     std::string fromBoardToFen() const;
     Coords getEnPassant() const noexcept;
+    constexpr uint64_t getHash() const noexcept { return currentHash; }
 
     // Imposta la casa di en-passant. Usato da NMP per save/restore.
     void setEnPassant(const Coords& ep) noexcept {
@@ -371,7 +373,7 @@ private:
         uint8_t toIndex
     ) noexcept;
 
-    bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
+    bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
                               uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept;
     bool isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept;

@@ -302,7 +302,6 @@ inline bool Board::isKingSafeAfterMove(
     if (!kingBB) [[unlikely]] return false;
 
     const uint8_t oppSide = side ^ 1;
-    const uint8_t oppColor = oppositeColor(movingColor);
     const uint8_t kingSq = __builtin_ctzll(kingBB);
 
     uint64_t occNew = occupancy;
@@ -310,7 +309,7 @@ inline bool Board::isKingSafeAfterMove(
     occNew |= bitMask(toIndex);
 
     if (capturedEnemyMask == 0ULL) {
-        return !isKingAttackedCustom(kingSq, oppColor, occNew,
+        return !isKingAttackedCustom(kingSq, oppSide, occNew,
                                      pawns_bb[oppSide],
                                      knights_bb[oppSide],
                                      bishops_bb[oppSide],
@@ -319,7 +318,7 @@ inline bool Board::isKingSafeAfterMove(
                                      kings_bb[oppSide]);
     }
 
-    return !isKingAttackedCustom(kingSq, oppColor, occNew,
+    return !isKingAttackedCustom(kingSq, oppSide, occNew,
                                  pawns_bb[oppSide] & ~capturedEnemyMask,
                                  knights_bb[oppSide] & ~capturedEnemyMask,
                                  bishops_bb[oppSide] & ~capturedEnemyMask,
@@ -339,7 +338,6 @@ inline bool Board::isKingSafeAfterEnPassant(
     if (!kingBB) [[unlikely]] return false;
 
     const uint8_t oppSide = side ^ 1;
-    const uint8_t oppColor = oppositeColor(movingColor);
     const uint8_t kingSq = __builtin_ctzll(kingBB);
     const uint64_t capturedPawnMask = bitMask(capturedPawnIndex);
 
@@ -348,7 +346,7 @@ inline bool Board::isKingSafeAfterEnPassant(
     occNew &= ~capturedPawnMask;
     occNew |= bitMask(toIndex);
 
-    return !isKingAttackedCustom(kingSq, oppColor, occNew,
+    return !isKingAttackedCustom(kingSq, oppSide, occNew,
                                  pawns_bb[oppSide] & ~capturedPawnMask,
                                  knights_bb[oppSide],
                                  bishops_bb[oppSide],

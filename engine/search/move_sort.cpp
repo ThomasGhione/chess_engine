@@ -11,6 +11,45 @@ static inline bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t
     return m.from.index == from && m.to.index == to;
 }
 
+static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
+                                                const chess::Board::Move& m,
+                                                uint8_t fromPieceType,
+                                                int usSide,
+                                                uint8_t oppKingSq,
+                                                uint64_t occ) noexcept {
+    const uint64_t fromBit = chess::Board::bitMask(m.from.index);
+    const uint64_t toBit = chess::Board::bitMask(m.to.index);
+    const uint64_t occAfter = (occ & ~fromBit) | toBit;
+
+    uint64_t pawns = b.pawns_bb[usSide];
+    uint64_t knights = b.knights_bb[usSide];
+    uint64_t bishops = b.bishops_bb[usSide];
+    uint64_t rooks = b.rooks_bb[usSide];
+    uint64_t queens = b.queens_bb[usSide];
+    uint64_t kings = b.kings_bb[usSide];
+
+    switch (fromPieceType) {
+        case chess::Board::PAWN:   pawns = (pawns & ~fromBit) | toBit; break;
+        case chess::Board::KNIGHT: knights = (knights & ~fromBit) | toBit; break;
+        case chess::Board::BISHOP: bishops = (bishops & ~fromBit) | toBit; break;
+        case chess::Board::ROOK:   rooks = (rooks & ~fromBit) | toBit; break;
+        case chess::Board::QUEEN:  queens = (queens & ~fromBit) | toBit; break;
+        case chess::Board::KING:   kings = (kings & ~fromBit) | toBit; break;
+        default: break;
+    }
+
+    if (pieces::PAWN_ATTACKERS_TO[usSide][oppKingSq] & pawns) return true;
+    if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights) return true;
+    if (pieces::KING_ATTACKS[oppKingSq] & kings) return true;
+
+    const uint64_t rookLike = rooks | queens;
+    if (rookLike && (pieces::getRookAttacks(oppKingSq, occAfter) & rookLike)) return true;
+    const uint64_t bishopLike = bishops | queens;
+    if (bishopLike && (pieces::getBishopAttacks(oppKingSq, occAfter) & bishopLike)) return true;
+
+    return false;
+}
+
 uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept {
     // Limit piece bitboards to the simulated occupancy so that pieces
     // that were "captured" in the simulated exchange aren't considered
@@ -143,6 +182,14 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         b.rooks_bb[0]   | b.rooks_bb[1]   |
         b.queens_bb[0]  | b.queens_bb[1]);
     const bool isEndgameOrdering = (nonPawnMajors <= 5);
+    const int usSide = chess::Board::colorBoolToIndex(usIsWhite);
+    const int oppSide = usSide ^ 1;
+    const uint64_t occ = b.getPiecesBitMap();
+    const uint64_t oppKingBB = b.kings_bb[oppSide];
+    const uint8_t oppKingSq = oppKingBB ? static_cast<uint8_t>(__builtin_ctzll(oppKingBB)) : 64;
+    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
+    const chess::Coords enPassant = b.getEnPassant();
+    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
 
     // HASH MOVE: Retrieve from TT for highest priority
     uint16_t encodedHashMove = 0;
@@ -175,9 +222,14 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 
         const uint8_t toPiece = b.get(m.to);
         const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
-        const bool isEpCapture = isEnPassantCapture(b, m);
+        const bool isEpCapture = hasEnPassant
+            && fromPieceType == chess::Board::PAWN
+            && toPieceType == chess::Board::EMPTY
+            && (m.to == enPassant)
+            && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         // =========================================================
         // MOVE ORDERING PRIORITY (from highest to lowest):
@@ -203,11 +255,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             if (see >= 0) {
                 // GOOD CAPTURE: alta priorità (prima di killer/quiet)
                 score = 10000;
-                addMVVLVABonus(m, b, score); // +MVV (1000-9000)
+                score += MVV_TABLE[victimType];
                 
                 // Add capture history bonus (0-500 range)
-                const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
-                const int64_t capHist = captureHistory[colorIndex][m.to.index][victimType];
+                const int64_t capHist = captureHistory[usSide][m.to.index][victimType];
                 score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
                 // Total: 10000-19500
             } else {
@@ -248,19 +299,27 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             if (!isKiller && !isCounterMove) {
                 // LAZY CHECK DETECTION: only for first 8 non-capture moves
                 // Balances tactical strength with performance overhead
-                if (moveIndex < 8) {
-                    chess::Board::MoveState tmpState;
-                    doMoveWithPromotion(b, m, tmpState);
-                    const bool givesCheck = b.inCheck(b.getActiveColor());
-                    b.undoMove(m, tmpState);
-                    
+                if (moveIndex < 8 && oppKingSq < 64) {
+                    bool givesCheck = false;
+                    const bool isCastling = (fromPieceType == chess::Board::KING)
+                        && (std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index)) == 2);
+                    if (isPromotionCandidate || isCastling) {
+                        chess::Board::MoveState tmpState;
+                        doMoveWithPromotion(b, m, tmpState);
+                        givesCheck = b.inCheck(b.getActiveColor());
+                        b.undoMove(m, tmpState);
+                    } else {
+                        givesCheck = givesCheckAfterQuietMoveFast(
+                            b, m, fromPieceType, usSide, oppKingSq, occ);
+                    }
+
                     if (givesCheck) {
                         score = 8000; // High priority for checking moves
                     }
                 }
                 
                 // Promotion bonus (se non è cattura e non dà scacco già rilevato)
-                if (score == 0 && fromPieceType == chess::Board::PAWN && isPromotionMove(b, m)) {
+                if (score == 0 && isPromotionCandidate) {
                     score = 7000;
 
                     const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
@@ -287,8 +346,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 
                 // History heuristic (per quiet moves normali)
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
-                    const int colorIndex = chess::Board::colorBoolToIndex(usIsWhite);
-                    int64_t histScore = history[colorIndex][m.from.index][m.to.index];
+                    int64_t histScore = history[usSide][m.from.index][m.to.index];
                     // Map history to [-2000, 4000] range for better move differentiation
                     // Negative history = moves that consistently fail = ordered below neutral
                     score = std::min(static_cast<int64_t>(4000), std::max(static_cast<int64_t>(-2000), histScore));

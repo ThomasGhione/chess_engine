@@ -3,9 +3,23 @@
 
 namespace engine {
 
-static inline bool isForcingEvasion(const chess::Board& b, const chess::Board::Move& m) noexcept {
-    return isPromotionMove(b, m) || isEnPassantCapture(b, m)
-        || ((b.get(m.to) & chess::Board::MASK_PIECE_TYPE) != chess::Board::EMPTY);
+static inline bool isForcingEvasion(const chess::Board& b,
+                                    const chess::Board::Move& m,
+                                    const chess::Coords& enPassant,
+                                    bool hasEnPassant) noexcept {
+    const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+    if (toPieceType != chess::Board::EMPTY) return true;
+
+    const uint8_t fromPiece = b.get(m.from);
+    const uint8_t fromType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+    if (fromType != chess::Board::PAWN) return false;
+
+    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank((fromPiece & chess::Board::MASK_COLOR) == chess::Board::WHITE));
+    if (isPromotion) return true;
+
+    return hasEnPassant
+        && (m.to == enPassant)
+        && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
 }
 
 // ============================================================================
@@ -37,7 +51,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // position at sufficient depth, we can return immediately. This avoids
     // re-evaluating identical tactical positions that arise via transpositions.
     if (useTT) {
-        const uint64_t hashKey = zobrist::computeHashKey(b);
+        const uint64_t hashKey = b.getHash();
         {
             int64_t ttScore = 0;
             // Probe at depth 0 (qsearch is depth <= 0)
@@ -49,6 +63,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
     const uint8_t activeColor = b.getActiveColor();
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
+    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
+    const chess::Coords enPassant = b.getEnPassant();
+    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
     const bool inCheck = b.inCheck(activeColor);
 
     // ============================================================================
@@ -81,7 +98,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         // This improves alpha-beta cutoffs in tactical check sequences.
         for (int pass = 0; pass < 2; ++pass) {
             for (const auto& m : evasions) {
-                const bool isForcing = isForcingEvasion(b, m);
+                const bool isForcing = isForcingEvasion(b, m, enPassant, hasEnPassant);
 
                 if ((pass == 0 && !isForcing) || (pass == 1 && isForcing)) {
                     continue;
@@ -201,8 +218,14 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     const int64_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
     for (const auto& m : tacticalMoves) {
+        const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-        const bool isEpCapture = isEnPassantCapture(b, m);
+        const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
+        const bool isEpCapture = hasEnPassant
+            && fromPieceType == chess::Board::PAWN
+            && toPieceType == chess::Board::EMPTY
+            && (m.to == enPassant)
+            && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
         
@@ -244,11 +267,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Score by MVV + SEE for better ordering
             // SEE-based ordering: captures with better SEE explored first
             score = 10000 + see; // Base + SEE value (can be negative for losing captures)
-            addMVVLVABonus(m, b, score); // Add MVV bonus on top
+            score += MVV_TABLE[victimType];
             // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
-            if (isPromotionMove(b, m)) {
+            if (isPromotion) {
                 score = 9000; // Promotion (high priority)
             } else {
                 continue;

@@ -4,6 +4,24 @@
 namespace engine {
 
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
+    struct AttackCacheEntry {
+        uint64_t key = 0ULL;
+        AttackData value[2]{};
+        uint8_t valid = 0;
+    };
+
+    constexpr size_t ATTACK_CACHE_SIZE = 1u << 11;
+    constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
+    thread_local std::array<AttackCacheEntry, ATTACK_CACHE_SIZE> attackCache{};
+
+    const uint64_t cacheKey = b.getHash();
+    AttackCacheEntry& cached = attackCache[(cacheKey * 0x9E3779B97F4A7C15ULL) & ATTACK_CACHE_MASK];
+    if (cached.valid && cached.key == cacheKey) {
+        data[0] = cached.value[0];
+        data[1] = cached.value[1];
+        return;
+    }
+
     std::memset(data, 0, 2 * sizeof(AttackData));
 
     for (int side = 0; side < 2; ++side) {
@@ -59,6 +77,11 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
 
         d.isComputed = true;
     }
+
+    cached.key = cacheKey;
+    cached.value[0] = data[0];
+    cached.value[1] = data[1];
+    cached.valid = 1;
 }
 
 int64_t Evaluator::evalMobility(const AttackData data[2]) noexcept {

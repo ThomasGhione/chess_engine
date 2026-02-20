@@ -295,7 +295,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
-    const uint64_t hashKey = zobrist::computeHashKey(b);
+    const uint64_t hashKey = b.getHash();
     AlphaBeta bounds{alpha, beta}; // Prepare search structures
     int64_t score = 0;
 

@@ -54,13 +54,20 @@ bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const 
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
     const uint8_t fromPiece = get(fromIndex);
+    if (fromPiece == EMPTY) [[unlikely]] return false;
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const bool inDoubleChk = inChk && (fromType != KING) && isDoubleCheck(fromPiece & MASK_COLOR);
-    return isLegalPseudoMove(fromIndex, toIndex, inChk, inDoubleChk);
+    return isLegalPseudoMove(fromIndex, toIndex, fromPiece, inChk, inDoubleChk);
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bool inDoubleChk) const noexcept {
     const uint8_t fromPiece = get(fromIndex);
+    return isLegalPseudoMove(fromIndex, toIndex, fromPiece, inChk, inDoubleChk);
+}
+
+bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
+    if (fromPiece == EMPTY) [[unlikely]] return false;
+
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
@@ -270,7 +277,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
 // ------------------------------------------------------------
 bool Board::isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept {
     const uint8_t side = colorToIndex(byColor);
-    return isKingAttackedCustom(targetIndex, byColor, occ,
+    return isKingAttackedCustom(targetIndex, side, occ,
                                 pawns_bb[side], knights_bb[side], bishops_bb[side],
                                 rooks_bb[side], queens_bb[side], kings_bb[side]);
 }
@@ -302,12 +309,10 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
 
 // Helper: check if king at kingSq is attacked using custom bitboards
 // Used internally to avoid code duplication when simulating moves
-bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
+bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
                                  uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept {
-    const uint8_t side = colorToIndex(byColor);
-
-    if (pieces::PAWN_ATTACKERS_TO[side][kingSq] & pawns) return true;
+    if (pieces::PAWN_ATTACKERS_TO[bySide][kingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
     
