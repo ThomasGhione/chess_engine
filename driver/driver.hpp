@@ -48,6 +48,7 @@ namespace driver {
 
             void parse(int argc, char *argv[]) noexcept;
             static bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept;
+            static bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept;
             static void printInvalidOption() noexcept;
             bool applyUciMoveToBoard(const std::string& uciMove, bool verboseDebug = false) noexcept;
 
@@ -66,6 +67,8 @@ namespace driver {
             
             void playerTurn() noexcept;
             void engineTurn() noexcept;
+            bool playOneTurn(bool playerTurn) noexcept;
+            void playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept;
 
     };
 }

@@ -87,6 +87,19 @@ namespace driver {
         return false;
     }
 
+    bool Driver::parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
+        if (argc < Driver::MAX_PARAM_LENGTH) {
+            std::cout << missingArgMessage << "\n";
+            return false;
+        }
+
+        if (!Driver::parseColorOption(argv[Driver::COLOR], outIsWhite)) {
+            std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
+            return false;
+        }
+        return true;
+    }
+
     void Driver::printInvalidOption() noexcept {
         std::cout << "Invalid option. Please select a valid option.\n";
     }
@@ -176,24 +189,6 @@ namespace driver {
                 case '2': {
                     this->playGameVsHuman();
                     break;
-
-                    /*
-                    uint8_t twoPlayerChoice = menu.playWithPlayerMenu();
-                    Driver::quit(std::string(1, twoPlayerChoice));
-
-                    switch (twoPlayerChoice) {
-                        case '1':
-                            this->playGameVsHuman();
-                            break;
-                        case '2':
-                            // Back to main menu
-                            break;
-                        default:
-                            std::cout << "Invalid option. Please select a valid option.\n";
-                            break;
-                    }
-                    break;
-                    */
                 }
 
                 case '3':
@@ -292,14 +287,10 @@ namespace driver {
         std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
 
         if (mode == "-bvs" || mode == "4") {
-            if (argc < MAX_PARAM_LENGTH) {
-                std::cout << "Error: Please specify 'w' for white or 'b' for black to choose engine color.\n";
-                exit(EXIT_FAILURE);
-            }
-
             bool isWhite = false;
-            if (!parseColorOption(argv[COLOR], isWhite)) {
-                std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
+            if (!parseRequiredColorArg(argc, argv,
+                                       "Error: Please specify 'w' for white or 'b' for black to choose engine color.",
+                                       isWhite)) {
                 exit(EXIT_FAILURE);
             }
             this->botVsStockfish(isWhite);
@@ -311,14 +302,10 @@ namespace driver {
             this->playGameVsHuman();
         } 
         else if (mode == "-pvb" || mode == "11") {
-            if (argc < MAX_PARAM_LENGTH) {
-                std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
-                exit(EXIT_FAILURE);
-            }
-
             bool isWhite = false;
-            if (!parseColorOption(argv[COLOR], isWhite)) {
-                std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
+            if (!parseRequiredColorArg(argc, argv,
+                                       "Error: Please specify 'w' for white or 'b' for black when playing against the engine.",
+                                       isWhite)) {
                 exit(EXIT_FAILURE);
             }
             this->playGameVsEngine(isWhite);
@@ -1141,77 +1128,45 @@ namespace driver {
         std::cout << "Last 25 games: Beta plays Black\n";
         std::cout << "Press any key (except 'S') to start or continue between games...\n\n";
 
-        // Play 25 games with Beta as White
-        for (int gameNum = 1; gameNum <= 25; ++gameNum) {
-            // Restart Alpha process for each game
+        for (int gameNum = 1; gameNum <= 50; ++gameNum) {
+            const bool betaIsWhiteForGame = (gameNum <= 25);
+            if (gameNum == 26) {
+                std::cout << "\nFirst 25 games completed. Starting second half...\n\n";
+            }
+
             auto alphaProc = startAlpha();
             if (!alphaProc || !alphaProc->valid()) {
                 std::cerr << "Failed to start alpha engine for game " << gameNum << ", counting as draw\n";
                 stats.draws++;
-                stats.drawsWithBetaWhite++;
-                std::cout << "Game " << gameNum << "/50 (Beta=White)... Draw (Alpha failed to start)\n";
-                continue; // Skip to next game instead of breaking
+                if (betaIsWhiteForGame) stats.drawsWithBetaWhite++;
+                else stats.drawsWithBetaBlack++;
+                std::cout << "Game " << gameNum << "/50 (Beta=" << (betaIsWhiteForGame ? "White" : "Black")
+                          << ")... Draw (Alpha failed to start)\n";
+                continue;
             }
-            
-            std::cout << "Game " << gameNum << "/50 (Beta=White)... ";
-            std::cout.flush();
-            
-            const auto [result, wasStalled] = playOneGame(*alphaProc, true);
-            
-            if (wasStalled) {
-                stats.alphaStalls++;
-            }
-            
-            if (result == engine::Engine::WHITE_WINS) {
-                stats.betaWins++;
-                stats.betaWinsAsWhite++;
-                std::cout << "Beta wins\n";
-            } else if (result == engine::Engine::BLACK_WINS) {
-                stats.alphaWins++;
-                stats.alphaWinsAsBlack++;
-                std::cout << "Alpha wins\n";
-            } else {
-                stats.draws++;
-                stats.drawsWithBetaWhite++;
-                std::cout << "Draw\n";
-            }
-        }
 
-        std::cout << "\nFirst 25 games completed. Starting second half...\n\n";
-
-        // Play 25 games with Beta as Black
-        for (int gameNum = 26; gameNum <= 50; ++gameNum) {
-            // Restart Alpha process for each game
-            auto alphaProc = startAlpha();
-            if (!alphaProc || !alphaProc->valid()) {
-                std::cerr << "Failed to start alpha engine for game " << gameNum << ", counting as draw\n";
-                stats.draws++;
-                stats.drawsWithBetaBlack++;
-                std::cout << "Game " << gameNum << "/50 (Beta=Black)... Draw (Alpha failed to start)\n";
-                continue; // Skip to next game instead of breaking
-            }
-            
-            std::cout << "Game " << gameNum << "/50 (Beta=Black)... ";
+            std::cout << "Game " << gameNum << "/50 (Beta=" << (betaIsWhiteForGame ? "White" : "Black") << ")... ";
             std::cout.flush();
-            
-            const auto [result, wasStalled] = playOneGame(*alphaProc, false);
-            
-            if (wasStalled) {
-                stats.alphaStalls++;
-            }
-            
-            if (result == engine::Engine::BLACK_WINS) {
+
+            const auto [result, wasStalled] = playOneGame(*alphaProc, betaIsWhiteForGame);
+            if (wasStalled) stats.alphaStalls++;
+
+            if ((betaIsWhiteForGame && result == engine::Engine::WHITE_WINS) ||
+                (!betaIsWhiteForGame && result == engine::Engine::BLACK_WINS)) {
                 stats.betaWins++;
-                stats.betaWinsAsBlack++;
+                if (betaIsWhiteForGame) stats.betaWinsAsWhite++;
+                else stats.betaWinsAsBlack++;
                 std::cout << "Beta wins\n";
-            } else if (result == engine::Engine::WHITE_WINS) {
-                stats.alphaWins++;
-                stats.alphaWinsAsWhite++;
-                std::cout << "Alpha wins\n";
-            } else {
+            } else if (result == engine::Engine::DRAW) {
                 stats.draws++;
-                stats.drawsWithBetaBlack++;
+                if (betaIsWhiteForGame) stats.drawsWithBetaWhite++;
+                else stats.drawsWithBetaBlack++;
                 std::cout << "Draw\n";
+            } else {
+                stats.alphaWins++;
+                if (betaIsWhiteForGame) stats.alphaWinsAsBlack++;
+                else stats.alphaWinsAsWhite++;
+                std::cout << "Alpha wins\n";
             }
         }
 
