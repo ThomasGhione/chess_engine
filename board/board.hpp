@@ -324,6 +324,10 @@ private:
         uint8_t destPiece,
         uint8_t destColor
     ) const noexcept;
+    template<uint8_t PieceType, bool Add>
+    inline void updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept;
+    template<bool Add>
+    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline MoveKind classifyMoveKind(
