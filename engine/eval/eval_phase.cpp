@@ -106,7 +106,6 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
     const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
     const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
-    const bool isMiddlegame = !isEndgame && !isOpening && !isEarlyMiddlegame;
 
     addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
     addPsqt(board.knights_bb[0], board.knights_bb[1], engine::KNIGHT_VALUES_TABLE.data(), eval);
@@ -129,7 +128,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
         return evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
     }
 
-    if (isMiddlegame) {
+    if (!isEndgame) {
         return evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
     }
 

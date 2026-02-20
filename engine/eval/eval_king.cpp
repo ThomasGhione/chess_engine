@@ -208,10 +208,9 @@ inline int64_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
 }
 
 int64_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
-    if (isEndgame) {
-        return evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1);
-    }
-    return evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
+    return isEndgame
+        ? (evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1))
+        : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
 }
 
 template<int Side>
@@ -230,10 +229,7 @@ inline int64_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noe
 }
 
 int64_t Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
-    int64_t scoreWhite = evalEndgameKingActivitySide<0>(b);
-    int64_t scoreBlack = evalEndgameKingActivitySide<1>(b);
-
-    return scoreBlack + scoreWhite;
+    return evalEndgameKingActivitySide<0>(b) + evalEndgameKingActivitySide<1>(b);
 }
 
 } // namespace engine

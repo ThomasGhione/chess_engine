@@ -58,16 +58,13 @@ static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
     return mask;
 }
 
-// Ritorna una maschera con i bit dei pezzi che attaccano il re (checkersMask) 
-// e una maschera con i bit delle case su cui si può muovere o intercettare 
+// Ritorna una maschera con i bit delle case su cui si può muovere o intercettare
 // per evadere il check (evasionMask).
 static void computeCheckEvasionMasks(const chess::Board& b,
                                      uint8_t activeColor,
                                      bool inCheck,
                                      bool inDoubleCheck,
-                                     uint64_t& outCheckersMask,
                                      uint64_t& outEvasionMask) noexcept {
-    outCheckersMask = 0ULL;
     outEvasionMask = ~0ULL;
 
     if (!inCheck) return;
@@ -83,23 +80,24 @@ static void computeCheckEvasionMasks(const chess::Board& b,
     const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
     const uint64_t occ = b.getPiecesBitMap();
 
-    outCheckersMask |= pieces::PAWN_ATTACKERS_TO[us][kingSq] & b.pawns_bb[them];
-    outCheckersMask |= pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them];
-    outCheckersMask |= pieces::KING_ATTACKS[kingSq] & b.kings_bb[them];
-    outCheckersMask |= pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
-    outCheckersMask |= pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
+    uint64_t checkersMask = 0ULL;
+    checkersMask |= pieces::PAWN_ATTACKERS_TO[us][kingSq] & b.pawns_bb[them];
+    checkersMask |= pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them];
+    checkersMask |= pieces::KING_ATTACKS[kingSq] & b.kings_bb[them];
+    checkersMask |= pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
+    checkersMask |= pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
 
-    if (inDoubleCheck || __builtin_popcountll(outCheckersMask) > 1) {
+    if (inDoubleCheck || __builtin_popcountll(checkersMask) > 1) {
         outEvasionMask = 0ULL;
         return;
     }
 
-    if (!outCheckersMask) [[unlikely]] {
+    if (!checkersMask) [[unlikely]] {
         outEvasionMask = ~0ULL;
         return;
     }
 
-    const uint8_t checkerSq = static_cast<uint8_t>(__builtin_ctzll(outCheckersMask));
+    const uint8_t checkerSq = static_cast<uint8_t>(__builtin_ctzll(checkersMask));
     const uint8_t checkerType = b.get(checkerSq) & chess::Board::MASK_PIECE_TYPE;
 
     outEvasionMask = chess::Board::bitMask(checkerSq);
@@ -268,9 +266,8 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     const bool inCheck = b.inCheck(color);
     const bool inDoubleCheck = inCheck && b.isDoubleCheck(color);
     const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
-    [[maybe_unused]] uint64_t checkersMask = 0ULL;
     uint64_t evasionMask = ~0ULL;
-    computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, checkersMask, evasionMask);
+    computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, evasionMask);
     uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare{};
     computePinRays(b, color, pinnedMask, pinRayBySquare);
@@ -457,9 +454,8 @@ MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b
     const bool inDoubleCheck = inCheck
         ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
         : false;
-    [[maybe_unused]] uint64_t checkersMask = 0ULL;
     uint64_t evasionMask = ~0ULL;
-    computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, checkersMask, evasionMask);
+    computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, evasionMask);
 
     // In double-check only king moves are legal; tactical generator only needs king captures.
     if (inDoubleCheck) {

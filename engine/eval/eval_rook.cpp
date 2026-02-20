@@ -39,10 +39,14 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
 }
 
 int64_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    const int64_t whiteRookScore = Evaluator::evalRooksForColor(0, whiteRooks, whitePawns, blackPawns);
-    const int64_t blackRookScore = Evaluator::evalRooksForColor(1, blackRooks, blackPawns, whitePawns);
-
-    return whiteRookScore + blackRookScore;
+    const uint64_t rooksBySide[2] = {whiteRooks, blackRooks};
+    const uint64_t ownPawnsBySide[2] = {whitePawns, blackPawns};
+    const uint64_t oppPawnsBySide[2] = {blackPawns, whitePawns};
+    int64_t score = 0;
+    for (int side = 0; side < 2; ++side) {
+        score += evalRooksForColor(side, rooksBySide[side], ownPawnsBySide[side], oppPawnsBySide[side]);
+    }
+    return score;
 }
 
 int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {

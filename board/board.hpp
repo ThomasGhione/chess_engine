@@ -374,6 +374,7 @@ private:
     bool isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
                               uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept;
+    bool isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept;
     uint8_t charToPiece(char symbol);
     bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     uint8_t parseActiveColor(const std::string& activeSection);

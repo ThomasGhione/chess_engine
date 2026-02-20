@@ -238,6 +238,9 @@ private:
     // White: return beta, Black: return alpha
     static inline int64_t cutoffValue(int64_t alpha, int64_t beta, bool isWhite) noexcept;
 
+    // True when a null-window search failed and needs full-window re-search.
+    static inline bool shouldResearchPVS(int64_t score, int64_t alphaBound, int64_t betaBound, bool isWhite) noexcept;
+
     // Fast access to piece values (inline for zero-cost abstraction)
     static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 

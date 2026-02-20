@@ -3,10 +3,6 @@
 
 namespace engine {
 
-static inline bool shouldResearchRootPVS(bool usIsWhite, int64_t score, int64_t alphaBound, int64_t betaBound) noexcept {
-    return usIsWhite ? (score > alphaBound) : (score < betaBound);
-}
-
 static inline void rootNullWindow(bool usIsWhite, int64_t alpha, int64_t beta, int64_t& outAlpha, int64_t& outBeta) noexcept {
     outAlpha = usIsWhite ? alpha : (beta - 1);
     outBeta = usIsWhite ? (alpha + 1) : beta;
@@ -70,7 +66,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                 // PVS re-search: se null window fallisce, ri-cerca con finestra piena
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
-                const bool shouldResearch = shouldResearchRootPVS(usIsWhite, score, alpha, beta);
+                const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
                 if (shouldResearch) {
                     score = this->searchRootMoveScore(this->board, m, alpha, beta, currPly, true, true, &localNodes);
                 }

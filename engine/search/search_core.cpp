@@ -4,10 +4,6 @@
 
 namespace engine {
 
-static inline bool shouldResearchPVS(bool usIsWhite, int64_t score, int64_t alphaBound, int64_t betaBound) noexcept {
-    return usIsWhite ? (score > alphaBound) : (score < betaBound);
-}
-
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
     constexpr int64_t STALEMATE_PENALTY = 5000; // penalize stalemate when the side with material advantage allows it.
@@ -154,7 +150,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
             
             // Re-search at full depth + full window only if null-window failed.
-            const bool shouldResearch = !isFirstMove && shouldResearchPVS(usIsWhite, score, searchAlpha, searchBeta);
+            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
             
             if (shouldResearch) {
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
@@ -163,7 +159,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
-                const bool shouldResearch = shouldResearchPVS(usIsWhite, score, searchAlpha, searchBeta);
+                const bool shouldResearch = shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
                 if (shouldResearch) {
                     score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
                 }

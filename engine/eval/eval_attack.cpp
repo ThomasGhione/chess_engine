@@ -8,10 +8,8 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
 
     for (int side = 0; side < 2; ++side) {
         AttackData& d = data[side];
-
-        const uint64_t ownOcc = (side == 0)
-            ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-            : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+        const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
+                                b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
 
         uint64_t pawns = b.pawns_bb[side];
         const bool isWhite = (side == 0);
@@ -91,7 +89,6 @@ inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
 int64_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept {
     const int64_t scoreWhite = evalHangingPiecesSide(b, data, 0, 1);
     const int64_t scoreBlack = evalHangingPiecesSide(b, data, 1, -1);
-
     return scoreBlack + scoreWhite;
 }
 
@@ -114,9 +111,8 @@ inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t o
 
 inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
     int64_t sideScore = 0;
-    const uint64_t ownOcc = (side == 0)
-        ? (b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0] | b.queens_bb[0] | b.kings_bb[0])
-        : (b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1] | b.queens_bb[1] | b.kings_bb[1]);
+    const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
+                            b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
 
     sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
         b.knights_bb[side], occ, ~occ, sign);
@@ -141,10 +137,9 @@ inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
 
 int64_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
     int64_t score = 0;
-
-    score += evalTrappedPiecesSide(b, occ, 0, 1);
-    score += evalTrappedPiecesSide(b, occ, 1, -1);
-
+    for (int side = 0; side < 2; ++side) {
+        score += evalTrappedPiecesSide(b, occ, side, (side == 0) ? 1 : -1);
+    }
     return score;
 }
 

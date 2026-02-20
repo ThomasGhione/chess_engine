@@ -28,10 +28,11 @@ inline int64_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color)
 }
 
 int64_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
-    const int64_t whiteOutpostScore = Evaluator::evalOutpostsForColor(b, 0);
-    const int64_t blackOutpostScore = Evaluator::evalOutpostsForColor(b, 1);
-
-    return whiteOutpostScore + blackOutpostScore;
+    int64_t score = 0;
+    for (int side = 0; side < 2; ++side) {
+        score += evalOutpostsForColor(b, side);
+    }
+    return score;
 }
 
 inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
@@ -55,10 +56,11 @@ inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
 }
 
 int64_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
-    const int64_t whiteCoordinationScore = Evaluator::evalPieceCoordinationForColor(b, 0);
-    const int64_t blackCoordinationScore = Evaluator::evalPieceCoordinationForColor(b, 1);
-
-    return whiteCoordinationScore + blackCoordinationScore;
+    int64_t score = 0;
+    for (int side = 0; side < 2; ++side) {
+        score += evalPieceCoordinationForColor(b, side);
+    }
+    return score;
 }
 
 } // namespace engine
