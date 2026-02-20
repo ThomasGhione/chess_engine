@@ -20,7 +20,7 @@ constexpr int8_t KNIGHT_OFFSET[8][2] = { {1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-
 constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1},{0,1} };
 
 // ===================================================
-// MAGIC BITBOARDS - OPTIMIZED LAYOUT (no pointers, constexpr friendly)
+// MAGIC BITBOARDS
 // ===================================================
 
 // Dimensioni lookup tables
@@ -32,11 +32,10 @@ inline std::array<uint64_t, ROOK_LOOKUP_SIZE> ROOK_ATTACK_LOOKUP;
 inline std::array<uint64_t, BISHOP_LOOKUP_SIZE> BISHOP_ATTACK_LOOKUP;
 
 // ===================================================
-// MAGIC BITBOARDS - OPTIMIZED LAYOUT (AoS for cache locality)
+// MAGIC BITBOARDS
 // ===================================================
 
-// Struct aligned to 32 bytes to ensure single cache-line access per square
-struct alignas(32) MagicParams {
+struct MagicParams {
     uint64_t mask;
     uint64_t magic;
     uint32_t shift;
@@ -190,39 +189,29 @@ inline void initMagicBitboards() noexcept {
 }
 
 // ===================================================
-// PIECE ATTACKS - MAXIMUM OPTIMIZATION (cache-friendly, no pointers, constexpr math)
+// PIECE ATTACKS
 // ===================================================
 
 // NOTE: use uint8_t for sq (0..63) to avoid sign-extension and UB-ish corner cases with int8_t indexing.
 
-// ROOK ATTACKS - Accesso diretto con offset pre-calcolato
+__attribute__((hot, always_inline))
 inline U64 getRookAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = ROOK_PARAMS[sq];
-    const uint32_t index = static_cast<uint32_t>(
-        ((occ & p.mask) * p.magic) >> p.shift
-    );
+    const uint32_t index = static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
     return ROOK_ATTACK_LOOKUP[p.offset + index];
 }
 
-// BISHOP ATTACKS - Accesso diretto con offset pre-calcolato
+__attribute__((hot, always_inline))
 inline U64 getBishopAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = BISHOP_PARAMS[sq];
-    const uint32_t index = static_cast<uint32_t>(
-        ((occ & p.mask) * p.magic) >> p.shift
-    );
+    const uint32_t index = static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
     return BISHOP_ATTACK_LOOKUP[p.offset + index];
 }
 
-// QUEEN ATTACKS - Combinazione ottimizzata rook + bishop
+__attribute__((hot, always_inline))
 inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
     return getRookAttacks(sq, occ) | getBishopAttacks(sq, occ);
 }
-
-// Compatibility overloads (minimize call-site changes):
-// inline U64 getRookAttacks(int8_t sq, U64 occ) noexcept { return getRookAttacks(static_cast<uint8_t>(sq), occ); }
-// inline U64 getBishopAttacks(int8_t sq, U64 occ) noexcept { return getBishopAttacks(static_cast<uint8_t>(sq), occ); }
-// inline U64 getQueenAttacks(int8_t sq, U64 occ) noexcept { return getQueenAttacks(static_cast<uint8_t>(sq), occ); }
-
 
 // ==================== ATTACK MAPS (color-agnostic salvo pedone) ====================
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
@@ -247,7 +236,7 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 // Lookup table per target squares dei pawn pushes (senza considerare occupancy)
 // table[isWhite][square] = bitboard con 1-step e 2-step target squares
 // Nota: a runtime devi ancora controllare occupancy per validare le mosse
-inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
+inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_SINGLE_PUSH_TARGETS = []{
     std::array<std::array<uint64_t, 64>, 2> table{};
 
     for (int sq = 0; sq < 64; ++sq) {
@@ -258,57 +247,63 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
         if (rank > 0) { // Can move up (rank decreases)
             uint64_t oneStep = ONE << ((rank - 1) * 8 + file);
             table[1][sq] = oneStep;
-            
-            // Two-step from starting rank (rank 6 = row 2)
-            if (rank == 6 && rank >= 2) {
-                uint64_t twoStep = ONE << ((rank - 2) * 8 + file);
-                table[1][sq] |= twoStep;
-            }
         }
         
         // Black pawns (isWhite=0, index 0)
         if (rank < 7) { // Can move down (rank increases)
             uint64_t oneStep = ONE << ((rank + 1) * 8 + file);
             table[0][sq] = oneStep;
-            
-            // Two-step from starting rank (rank 1 = row 7)
-            if (rank == 1 && rank <= 5) {
-                uint64_t twoStep = ONE << ((rank + 2) * 8 + file);
-                table[0][sq] |= twoStep;
-            }
         }
     }
 
     return table;
 }();
 
-inline constexpr U64 getPawnForwardPushes(int8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
-	// Usa lookup table per target squares, poi filtra con occupancy
-	// PAWN_PUSH_TARGETS[isWhite][sq] contiene 1-step e possibile 2-step
-	const int colorIndex = isWhite ? 1 : 0;
-	U64 targets = PAWN_PUSH_TARGETS[colorIndex][squareIndex];
-	
-	if (!targets) [[unlikely]] return 0ULL; // No valid pushes (promotion rank già gestito)
-	
-	// One-step square: sempre il primo bit
-	const int8_t rank = rankOf(squareIndex);
-	const int8_t file = fileOf(squareIndex);
-	const int8_t oneStepRank = rank + (isWhite ? -1 : 1);
-	const U64 oneStepBit = ONE << (oneStepRank * 8 + file);
-	
-	// Se one-step è bloccato, nessuna mossa possibile
-	if (occupancy & oneStepBit) return 0ULL;
-	
-	// Filtra targets con occupancy: rimuovi square occupate
-	U64 result = oneStepBit; // one-step è sempre valido se arriviamo qui
-	
-	// Two-step: solo se presenti in targets E one-step era libero E two-step è libero
-	const U64 twoStepBit = targets & ~oneStepBit;
-	if (twoStepBit && !(occupancy & twoStepBit)) {
-		result |= twoStepBit;
-	}
-	
-	return result;
+inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_DOUBLE_PUSH_TARGETS = []{
+    std::array<std::array<uint64_t, 64>, 2> table{};
+
+    for (int sq = 0; sq < 64; ++sq) {
+        const int8_t rank = rankOf(sq);
+        const int8_t file = fileOf(sq);
+
+        // White start rank: rank 6 (row 2).
+        if (rank == 6) {
+            table[1][sq] = ONE << ((rank - 2) * 8 + file);
+        }
+
+        // Black start rank: rank 1 (row 7).
+        if (rank == 1) {
+            table[0][sq] = ONE << ((rank + 2) * 8 + file);
+        }
+    }
+
+    return table;
+}();
+
+inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
+    std::array<std::array<uint64_t, 64>, 2> table{};
+    for (int c = 0; c < 2; ++c) {
+        for (int sq = 0; sq < 64; ++sq) {
+            table[c][sq] = PAWN_SINGLE_PUSH_TARGETS[c][sq] | PAWN_DOUBLE_PUSH_TARGETS[c][sq];
+        }
+    }
+    return table;
+}();
+
+__attribute__((hot, always_inline))
+inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
+    const int colorIndex = static_cast<int>(isWhite);
+    const U64 oneStepBit = PAWN_SINGLE_PUSH_TARGETS[colorIndex][squareIndex];
+    if (!oneStepBit || (occupancy & oneStepBit)) [[unlikely]] {
+        return 0ULL;
+    }
+
+    U64 result = oneStepBit;
+    const U64 twoStepBit = PAWN_DOUBLE_PUSH_TARGETS[colorIndex][squareIndex];
+    if (twoStepBit && !(occupancy & twoStepBit)) {
+        result |= twoStepBit;
+    }
+    return result;
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square
@@ -407,29 +402,25 @@ inline constexpr std::array<uint64_t, 64> KING_ATTACKS = []{
 
 
 // ==================== PIECE MOVE DISPATCH TABLE ====================
-// Optimized dispatch per piece type usando template specialization
-// Elimina branch misprediction con jump table del compilatore
-
-// Template dispatch per compile-time specialization
 template<uint8_t PieceType>
-[[nodiscard]] inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy) noexcept {
-    // Note: PAWN escluso - richiede parametro color, gestito separatamente
-    if constexpr (PieceType == 0x2) return KNIGHT_ATTACKS[index];                    // KNIGHT
-    if constexpr (PieceType == 0x3) return getBishopAttacks(index, occupancy);       // BISHOP
-    if constexpr (PieceType == 0x4) return getRookAttacks(index, occupancy);         // ROOK
-    if constexpr (PieceType == 0x5) return getQueenAttacks(index, occupancy);        // QUEEN
-    if constexpr (PieceType == 0x6) return KING_ATTACKS[index];                      // KING
+[[nodiscard]] __attribute__((hot, always_inline))
+inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy) noexcept {
+    if constexpr (PieceType == 0x2) return KNIGHT_ATTACKS[index];              // KNIGHT
+    if constexpr (PieceType == 0x3) return getBishopAttacks(index, occupancy); // BISHOP
+    if constexpr (PieceType == 0x4) return getRookAttacks(index, occupancy);   // ROOK
+    if constexpr (PieceType == 0x5) return getQueenAttacks(index, occupancy);  // QUEEN
+    if constexpr (PieceType == 0x6) return KING_ATTACKS[index];                // KING
     return 0ULL;
 }
 
-// Runtime dispatch tramite jump table (compilatore ottimizza in switch efficiente)
-[[nodiscard]] inline uint64_t dispatchPieceMoves(uint8_t pieceType, uint8_t index, uint64_t occupancy) noexcept {
+[[nodiscard]] __attribute__((hot, always_inline))
+inline uint64_t dispatchPieceMoves(uint8_t pieceType, uint8_t index, uint64_t occupancy) noexcept {
     switch (pieceType) {
-        case 0x2: return generateMovesByType<0x2>(index, occupancy); // KNIGHT
-        case 0x3: return generateMovesByType<0x3>(index, occupancy); // BISHOP
-        case 0x4: return generateMovesByType<0x4>(index, occupancy); // ROOK
-        case 0x5: return generateMovesByType<0x5>(index, occupancy); // QUEEN
-        case 0x6: return generateMovesByType<0x6>(index, occupancy); // KING
+        case 0x2: return KNIGHT_ATTACKS[index];              // KNIGHT
+        case 0x3: return getBishopAttacks(index, occupancy); // BISHOP
+        case 0x4: return getRookAttacks(index, occupancy);   // ROOK
+        case 0x5: return getQueenAttacks(index, occupancy);  // QUEEN
+        case 0x6: return KING_ATTACKS[index];                // KING
         default:  return 0ULL;
     }
 }

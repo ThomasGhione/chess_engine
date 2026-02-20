@@ -21,9 +21,6 @@ namespace pieces {
 // =============================================================================
 // ROOK MAGIC NUMBERS (64 valori)
 // =============================================================================
-// Magic numbers per perfect hashing delle occupancy per le Torri.
-// Ogni square ha un magic number che garantisce nessuna collisione
-// per tutte le possibili configurazioni di occupancy rilevanti.
 
 inline constexpr std::array<uint64_t, 64> ROOK_MAGICS = {
     612498416294952992ULL, 2377936612260610304ULL, 36037730568766080ULL,
@@ -53,7 +50,6 @@ inline constexpr std::array<uint64_t, 64> ROOK_MAGICS = {
 // =============================================================================
 // BISHOP MAGIC NUMBERS (64 valori)
 // =============================================================================
-// Magic numbers per perfect hashing delle occupancy per gli Alfieri.
 
 inline constexpr std::array<uint64_t, 64> BISHOP_MAGICS = {
     9368648609924554880ULL, 9009475591934976ULL, 4504776450605056ULL,

@@ -10,7 +10,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         uint8_t isEndgame = 0;
     };
 
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
+    constexpr size_t PAWN_CACHE_SIZE = 1u << 13; // 8192 entries, ~128KB total (fits in L1 cache)
     constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
     thread_local std::array<PawnEvalCacheEntry, PAWN_CACHE_SIZE> pawnCache{};
 
