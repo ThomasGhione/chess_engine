@@ -37,6 +37,7 @@ NAME_APP = chess
 TEST_APP = tests/test
 PERF_APP = tests/perf
 NAME_APP_WIN = chess.exe
+OUTPUT_DIR = output
 
 # Path dei file separati
 MAIN_SRC = main.cpp
@@ -70,9 +71,9 @@ ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
 # Tutti i file da analizzare (.cpp e .hpp)
 ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
 
-# Trucchetto per avere i path dei file .o
-MAIN_OBJ = main.o
-MODULE_OBJS = $(ALL_MODULE_SRCS:.cpp=.o)
+# Trucchetto per avere i path dei file .o in output/
+MAIN_OBJ = $(OUTPUT_DIR)/$(MAIN_SRC:.cpp=.o)
+MODULE_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_MODULE_SRCS:.cpp=.o))
 ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
 
 # Path dei file di test
@@ -90,9 +91,9 @@ ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_COORDS_SRCS) $(TEST_PRINTER_SR
 											 $(TEST_DRIVER_SRCS) $(TEST_PIECE_SRCS) $(TEST_GAMESTATUS_SRCS) \
 											 $(TEST_BOARD_SRCS)
 
-# Path dei file .o di test
-TEST_MAIN_OBJ = $(TEST_MAIN_SRC:.cpp=.o)
-TEST_OBJS = $(ALL_TEST_MODULE_SRCS:.cpp=.o)
+# Path dei file .o di test in output/
+TEST_MAIN_OBJ = $(OUTPUT_DIR)/$(TEST_MAIN_SRC:.cpp=.o)
+TEST_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_TEST_MODULE_SRCS:.cpp=.o))
 
 # Path dei file di performance test
 PERF_MAIN_SRC = tests/mainPerformanceTest.cpp
@@ -101,9 +102,9 @@ PERF_ENGINE_SRCS = $(wildcard ./engine/test/performance-test/*.cpp)
 # Path dei file di performance test in unica variabile
 ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
 
-# Path dei file .o di performance test
-PERF_MAIN_OBJ = $(PERF_MAIN_SRC:.cpp=.o)
-PERF_OBJS = $(ALL_PERF_MODULE_SRCS:.cpp=.o)
+# Path dei file .o di performance test in output/
+PERF_MAIN_OBJ = $(OUTPUT_DIR)/$(PERF_MAIN_SRC:.cpp=.o)
+PERF_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_PERF_MODULE_SRCS:.cpp=.o))
 
 # File di dipendenza auto-generati (header dependencies)
 DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d)
@@ -163,8 +164,9 @@ $(NAME_APP): $(ALL_OBJS)
 	$(CXX) $(PRODFLAGS) $(ALL_OBJS) -o $(NAME_APP)
 
 # Creazione dei file .o
-%.o: %.cpp
+$(OUTPUT_DIR)/%.o: %.cpp
 	@printf "\nCompiling $<..."
+	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
 
 # Generazione file finale 'outputTest'
@@ -316,7 +318,8 @@ test-valgrind: $(TEST_APP)
 
 # Pulizia solo dei file oggetto e binari
 cls-compile-files:
-	rm -f $(ALL_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
+	rm -rf $(OUTPUT_DIR)
+	rm -f $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
 
 # Pulizia dei file temporanei
 cls: cls-compile-files

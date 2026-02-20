@@ -2,6 +2,7 @@
 *.out
 *.o
 *.d
+/output/
 *.log
 *.png
 *.csv
