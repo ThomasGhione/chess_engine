@@ -20,7 +20,7 @@
 #include "../printer/menu.hpp"
 #include "../printer/prints.hpp"
 #include "../board/board.hpp"
-#include "../coords/coords.hpp"
+#include "../board/coords.hpp"
 
 #include "basebonuspenaltyvalues.hpp"
 #include "piecevaluetables.hpp"

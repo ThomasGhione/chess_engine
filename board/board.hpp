@@ -9,8 +9,8 @@
 #include <algorithm>
 #include <cstddef>
 
-#include "../coords/coords.hpp"
-#include "../piece/piece.hpp" // bitmap utilities
+#include "./coords.hpp"
+#include "./piece.hpp" // bitmap utilities
 
 namespace chess {
 

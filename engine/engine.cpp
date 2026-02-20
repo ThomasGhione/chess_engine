@@ -1,5 +1,5 @@
 #include "engine.hpp"
-#include "../piece/piece.hpp"
+#include "../board/piece.hpp"
 
 namespace engine {
 
