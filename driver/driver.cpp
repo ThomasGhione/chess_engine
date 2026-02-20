@@ -45,26 +45,264 @@ namespace driver {
         return {line.substr(0, spacePos), output};
     }
 
-    template <typename SendFn, typename ReadReadyFn>
-    static bool initializeStockfishUciSession(SendFn&& send, ReadReadyFn&& readReadyOutput) {
-        if (!send("uci\n") || !send("isready\n")) {
-            return false;
+    struct StockfishProcess {
+#ifdef _WIN32
+        HANDLE inputWrite {nullptr};
+        HANDLE outputRead {nullptr};
+        PROCESS_INFORMATION processInfo{};
+#else
+        FILE* in {nullptr};
+        FILE* out {nullptr};
+        pid_t pid {-1};
+#endif
+
+        ~StockfishProcess() {
+#ifdef _WIN32
+            if (inputWrite) CloseHandle(inputWrite);
+            if (outputRead) CloseHandle(outputRead);
+            if (processInfo.hThread) CloseHandle(processInfo.hThread);
+            if (processInfo.hProcess) {
+                const DWORD waitResult = WaitForSingleObject(processInfo.hProcess, 50);
+                if (waitResult == WAIT_TIMEOUT) {
+                    TerminateProcess(processInfo.hProcess, 0);
+                }
+                CloseHandle(processInfo.hProcess);
+            }
+#else
+            if (in) fclose(in);
+            if (out) fclose(out);
+            if (pid > 0) {
+                kill(pid, SIGTERM);
+                int status = 0;
+                waitpid(pid, &status, 0);
+            }
+#endif
         }
-        const std::string initOutput = readReadyOutput();
-        if (initOutput.find("readyok") == std::string::npos) {
-            return false;
+
+        bool valid() const noexcept {
+#ifdef _WIN32
+            return inputWrite && outputRead && processInfo.hProcess;
+#else
+            return in && out && pid > 0;
+#endif
         }
-        return send("ucinewgame\n");
+    };
+
+    static bool writeStockfishCommand(StockfishProcess& sf, const std::string& cmd) noexcept {
+#ifdef _WIN32
+        DWORD written = 0;
+        return WriteFile(sf.inputWrite, cmd.c_str(), static_cast<DWORD>(cmd.size()), &written, nullptr) != 0;
+#else
+        const int rc = fputs(cmd.c_str(), sf.in);
+        fflush(sf.in);
+        return rc >= 0;
+#endif
     }
 
-    template <typename SendFn, typename ReadOutputFn>
-    static std::pair<std::string, std::string> runStockfishRequest(const std::string& fen, int moveTimeMs,
-                                                                   SendFn&& send, ReadOutputFn&& readOutput) {
-        const std::string cmd = buildStockfishPositionCommand(fen, moveTimeMs);
-        if (!send(cmd)) {
+    static std::string readStockfishOutputUntil(StockfishProcess& sf, const std::string& token, int maxIterations) {
+        std::array<char, 512> buffer{};
+        std::string output;
+
+#ifdef _WIN32
+        for (int i = 0; i < maxIterations; ++i) {
+            DWORD available = 0;
+            if (!PeekNamedPipe(sf.outputRead, nullptr, 0, nullptr, &available, nullptr)) {
+                std::cerr << "[WARNING] PeekNamedPipe failed after " << i << " iterations\n";
+                break;
+            }
+
+            if (available == 0) {
+                Sleep(2);
+                continue;
+            }
+
+            DWORD bytesRead = 0;
+            if (!ReadFile(sf.outputRead, buffer.data(), static_cast<DWORD>(buffer.size() - 1), &bytesRead, nullptr) || bytesRead == 0) {
+                std::cerr << "[WARNING] ReadFile failed after " << i << " iterations\n";
+                break;
+            }
+
+            buffer[bytesRead] = '\0';
+            output.append(buffer.data(), bytesRead);
+
+            if (output.find(token) != std::string::npos) break;
+        }
+#else
+        for (int i = 0; i < maxIterations && fgets(buffer.data(), static_cast<int>(buffer.size()), sf.out); ++i) {
+            output += buffer.data();
+            if (output.find(token) != std::string::npos) break;
+        }
+#endif
+
+        if (output.find(token) == std::string::npos) {
+            std::cerr << "[WARNING] Token '" << token << "' not found. Output so far: " << output.substr(0, 200) << "\n";
+        }
+
+        return output;
+    }
+
+    static bool isStockfishRunning(const StockfishProcess& sf) noexcept {
+#ifdef _WIN32
+        DWORD exitCode = 0;
+        if (!GetExitCodeProcess(sf.processInfo.hProcess, &exitCode)) return false;
+        return exitCode == STILL_ACTIVE;
+#else
+        return sf.pid > 0;
+#endif
+    }
+
+    static std::unique_ptr<StockfishProcess> spawnStockfishProcess(const std::string& stockfishPath) noexcept {
+#ifdef _WIN32
+        SECURITY_ATTRIBUTES sa{};
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+
+        HANDLE childStdInRead = nullptr;
+        HANDLE childStdInWrite = nullptr;
+        HANDLE childStdOutRead = nullptr;
+        HANDLE childStdOutWrite = nullptr;
+
+        if (!CreatePipe(&childStdOutRead, &childStdOutWrite, &sa, 0)) {
+            std::cerr << "CreatePipe (stdout) failed. Error: " << GetLastError() << "\n";
+            return nullptr;
+        }
+        if (!SetHandleInformation(childStdOutRead, HANDLE_FLAG_INHERIT, 0)) {
+            std::cerr << "SetHandleInformation (stdout read) failed. Error: " << GetLastError() << "\n";
+            CloseHandle(childStdOutRead);
+            CloseHandle(childStdOutWrite);
+            return nullptr;
+        }
+
+        if (!CreatePipe(&childStdInRead, &childStdInWrite, &sa, 0)) {
+            std::cerr << "CreatePipe (stdin) failed. Error: " << GetLastError() << "\n";
+            CloseHandle(childStdOutRead);
+            CloseHandle(childStdOutWrite);
+            return nullptr;
+        }
+        if (!SetHandleInformation(childStdInWrite, HANDLE_FLAG_INHERIT, 0)) {
+            std::cerr << "SetHandleInformation (stdin write) failed. Error: " << GetLastError() << "\n";
+            CloseHandle(childStdOutRead);
+            CloseHandle(childStdOutWrite);
+            CloseHandle(childStdInRead);
+            CloseHandle(childStdInWrite);
+            return nullptr;
+        }
+
+        STARTUPINFOA si{};
+        si.cb = sizeof(si);
+        si.hStdError = childStdOutWrite;
+        si.hStdOutput = childStdOutWrite;
+        si.hStdInput = childStdInRead;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        PROCESS_INFORMATION pi{};
+        std::string cmdLine = stockfishPath;
+        if (!CreateProcessA(
+                nullptr,
+                cmdLine.data(),
+                nullptr,
+                nullptr,
+                TRUE,
+                CREATE_NO_WINDOW,
+                nullptr,
+                nullptr,
+                &si,
+                &pi)) {
+            std::cerr << "Failed to launch Stockfish. Error: " << GetLastError() << "\n";
+            CloseHandle(childStdOutRead);
+            CloseHandle(childStdOutWrite);
+            CloseHandle(childStdInRead);
+            CloseHandle(childStdInWrite);
+            return nullptr;
+        }
+
+        CloseHandle(childStdOutWrite);
+        CloseHandle(childStdInRead);
+
+        auto proc = std::make_unique<StockfishProcess>();
+        proc->inputWrite = childStdInWrite;
+        proc->outputRead = childStdOutRead;
+        proc->processInfo = pi;
+        CloseHandle(proc->processInfo.hThread);
+        proc->processInfo.hThread = nullptr;
+        return proc;
+#else
+        int toChild[2];
+        int fromChild[2];
+        if (pipe(toChild) != 0 || pipe(fromChild) != 0) {
+            std::perror("pipe");
+            return nullptr;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            std::perror("fork");
+            close(toChild[0]); close(toChild[1]);
+            close(fromChild[0]); close(fromChild[1]);
+            return nullptr;
+        }
+
+        if (pid == 0) {
+            dup2(toChild[0], STDIN_FILENO);
+            dup2(fromChild[1], STDOUT_FILENO);
+            close(toChild[0]); close(toChild[1]);
+            close(fromChild[0]); close(fromChild[1]);
+            execl(stockfishPath.c_str(), stockfishPath.c_str(), (char*)nullptr);
+            std::perror("execl");
+            _exit(1);
+        }
+
+        close(toChild[0]);
+        close(fromChild[1]);
+
+        FILE* childIn = fdopen(toChild[1], "w");
+        FILE* childOut = fdopen(fromChild[0], "r");
+        if (!childIn || !childOut) {
+            std::cerr << "Error: fdopen failed for Stockfish pipes.\n";
+            if (childIn) fclose(childIn);
+            if (childOut) fclose(childOut);
+            kill(pid, SIGTERM);
+            int status = 0;
+            waitpid(pid, &status, 0);
+            return nullptr;
+        }
+
+        auto proc = std::make_unique<StockfishProcess>();
+        proc->in = childIn;
+        proc->out = childOut;
+        proc->pid = pid;
+        return proc;
+#endif
+    }
+
+    static std::unique_ptr<StockfishProcess> startStockfishSession(const std::string& stockfishPath) noexcept {
+        auto proc = spawnStockfishProcess(stockfishPath);
+        if (!proc || !proc->valid()) return nullptr;
+
+        if (!writeStockfishCommand(*proc, "uci\n") || !writeStockfishCommand(*proc, "isready\n")) {
+            return nullptr;
+        }
+        const std::string initOutput = readStockfishOutputUntil(*proc, "readyok", 400);
+        if (initOutput.find("readyok") == std::string::npos) {
+            std::cerr << "Stockfish did not report readyok.\n";
+            return nullptr;
+        }
+        if (!writeStockfishCommand(*proc, "ucinewgame\n")) {
+            return nullptr;
+        }
+        return proc;
+    }
+
+    static std::pair<std::string, std::string> runStockfishRequest(StockfishProcess& sf, const std::string& fen, int moveTimeMs) {
+        if (!isStockfishRunning(sf)) {
             return {"", ""};
         }
-        return extractBestMoveFromOutput(readOutput());
+
+        const std::string cmd = buildStockfishPositionCommand(fen, moveTimeMs);
+        if (!writeStockfishCommand(sf, cmd)) {
+            return {"", ""};
+        }
+        return extractBestMoveFromOutput(readStockfishOutputUntil(sf, "bestmove", 800));
     }
 
     Driver::Driver(print::Menu& m, engine::Engine& e) 
@@ -430,201 +668,22 @@ namespace driver {
 
     void Driver::botVsStockfish(const bool botColor) noexcept {
 #ifdef _WIN32
-        // botColor: true = our engine plays White, false = our engine plays Black
         const std::string stockfishPath = "./stockfish/windows/stockfish-windows-x86-64-avx2.exe";
-        const int stockfishMoveTimeMs = 200; // tweak if needed
-        
-        // Fresh game state for each match
+        constexpr bool verboseApply = true;
+#else
+        const std::string stockfishPath = "./stockfish/linux/stockfish-ubuntu-x86-64-avx2";
+        constexpr bool verboseApply = false;
+#endif // _WIN32
+        const int stockfishMoveTimeMs = 200;
+
         engine.reset();
         engine.isPlayerWhite = botColor;
 
-        struct StockfishProcess {
-            HANDLE inputWrite {nullptr};
-            HANDLE outputRead {nullptr};
-            PROCESS_INFORMATION processInfo{};
-
-            ~StockfishProcess() {
-                if (inputWrite) {
-                    CloseHandle(inputWrite);
-                }
-                if (outputRead) {
-                    CloseHandle(outputRead);
-                }
-                if (processInfo.hThread) {
-                    CloseHandle(processInfo.hThread);
-                }
-                if (processInfo.hProcess) {
-                    const DWORD waitResult = WaitForSingleObject(processInfo.hProcess, 50);
-                    if (waitResult == WAIT_TIMEOUT) {
-                        TerminateProcess(processInfo.hProcess, 0);
-                    }
-                    CloseHandle(processInfo.hProcess);
-                }
-            }
-
-            bool valid() const noexcept {
-                return inputWrite && outputRead && processInfo.hProcess;
-            }
-        };
-
-        auto writeToStockfish = [](StockfishProcess& sf, const std::string& cmd) {
-            DWORD written = 0;
-            return WriteFile(sf.inputWrite, cmd.c_str(), static_cast<DWORD>(cmd.size()), &written, nullptr) != 0;
-        };
-
-        auto readUntilToken = [](StockfishProcess& sf, const std::string& token, int maxIterations) {
-            std::array<char, 512> buffer{};
-            std::string output;
-
-            for (int i = 0; i < maxIterations; ++i) {
-                DWORD available = 0;
-                if (!PeekNamedPipe(sf.outputRead, nullptr, 0, nullptr, &available, nullptr)) {
-                    std::cerr << "[WARNING] PeekNamedPipe failed after " << i << " iterations\n";
-                    break;
-                }
-
-                if (available == 0) {
-                    Sleep(2);
-                    continue;
-                }
-
-                DWORD bytesRead = 0;
-                if (!ReadFile(sf.outputRead, buffer.data(), static_cast<DWORD>(buffer.size() - 1), &bytesRead, nullptr) || bytesRead == 0) {
-                    std::cerr << "[WARNING] ReadFile failed after " << i << " iterations\n";
-                    break;
-                }
-
-                buffer[bytesRead] = '\0';
-                output.append(buffer.data(), bytesRead);
-
-                if (output.find(token) != std::string::npos) {
-                    break;
-                }
-            }
-
-            if (output.find(token) == std::string::npos) {
-                std::cerr << "[WARNING] Token '" << token << "' not found. Output so far: " << output.substr(0, 200) << "\n";
-            }
-
-            return output;
-        };
-
-        auto startStockfish = [&]() -> std::unique_ptr<StockfishProcess> {
-            SECURITY_ATTRIBUTES sa{};
-            sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-            sa.bInheritHandle = TRUE;
-
-            HANDLE childStdInRead = nullptr;
-            HANDLE childStdInWrite = nullptr;
-            HANDLE childStdOutRead = nullptr;
-            HANDLE childStdOutWrite = nullptr;
-
-            if (!CreatePipe(&childStdOutRead, &childStdOutWrite, &sa, 0)) {
-                std::cerr << "CreatePipe (stdout) failed. Error: " << GetLastError() << "\n";
-                return nullptr;
-            }
-            if (!SetHandleInformation(childStdOutRead, HANDLE_FLAG_INHERIT, 0)) {
-                std::cerr << "SetHandleInformation (stdout read) failed. Error: " << GetLastError() << "\n";
-                CloseHandle(childStdOutRead);
-                CloseHandle(childStdOutWrite);
-                return nullptr;
-            }
-
-            if (!CreatePipe(&childStdInRead, &childStdInWrite, &sa, 0)) {
-                std::cerr << "CreatePipe (stdin) failed. Error: " << GetLastError() << "\n";
-                CloseHandle(childStdOutRead);
-                CloseHandle(childStdOutWrite);
-                return nullptr;
-            }
-            if (!SetHandleInformation(childStdInWrite, HANDLE_FLAG_INHERIT, 0)) {
-                std::cerr << "SetHandleInformation (stdin write) failed. Error: " << GetLastError() << "\n";
-                CloseHandle(childStdOutRead);
-                CloseHandle(childStdOutWrite);
-                CloseHandle(childStdInRead);
-                CloseHandle(childStdInWrite);
-                return nullptr;
-            }
-
-            STARTUPINFOA si{};
-            si.cb = sizeof(si);
-            si.hStdError = childStdOutWrite;
-            si.hStdOutput = childStdOutWrite;
-            si.hStdInput = childStdInRead;
-            si.dwFlags |= STARTF_USESTDHANDLES;
-
-            PROCESS_INFORMATION pi{};
-            std::string cmdLine = stockfishPath;
-            if (!CreateProcessA(
-                    nullptr,
-                    cmdLine.data(),
-                    nullptr,
-                    nullptr,
-                    TRUE,
-                    CREATE_NO_WINDOW,
-                    nullptr,
-                    nullptr,
-                    &si,
-                    &pi)) {
-                std::cerr << "Failed to launch Stockfish. Error: " << GetLastError() << "\n";
-                CloseHandle(childStdOutRead);
-                CloseHandle(childStdOutWrite);
-                CloseHandle(childStdInRead);
-                CloseHandle(childStdInWrite);
-                return nullptr;
-            }
-
-            CloseHandle(childStdOutWrite);
-            CloseHandle(childStdInRead);
-
-            auto proc = std::make_unique<StockfishProcess>();
-            proc->inputWrite = childStdInWrite;
-            proc->outputRead = childStdOutRead;
-            proc->processInfo = pi;
-            CloseHandle(proc->processInfo.hThread);
-            proc->processInfo.hThread = nullptr;
-
-            const bool initOk = initializeStockfishUciSession(
-                [&](const std::string& cmd) { return writeToStockfish(*proc, cmd); },
-                [&]() { return readUntilToken(*proc, "readyok", 400); }
-            );
-            if (!initOk) {
-                std::cerr << "Stockfish did not report readyok.\n";
-                return nullptr;
-            }
-
-            return proc;
-        };
-
-        auto runStockfish = [&](StockfishProcess& sf, const std::string& fen) -> std::pair<std::string, std::string> {
-            // Check if process is still running
-            DWORD exitCode;
-            if (GetExitCodeProcess(sf.processInfo.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
-                std::cerr << "[ERROR] Stockfish process has terminated with exit code " << exitCode << "\n";
-                return {"", ""};
-            }
-
-            const auto [bestMove, output] = runStockfishRequest(
-                fen,
-                stockfishMoveTimeMs,
-                [&](const std::string& cmd) { return writeToStockfish(sf, cmd); },
-                [&]() { return readUntilToken(sf, "bestmove", 800); }
-            );
-
-            if (bestMove.empty()) {
-                std::cerr << "[ERROR] Stockfish did not return bestmove. Output: " << output.substr(0, 300) << "\n";
-                return {"", output};
-            }
-            return {bestMove, output};
-        };
-
-        auto sfProc = startStockfish();
-        if (!sfProc) {
-            return;
-        }
+        auto sfProc = startStockfishSession(stockfishPath);
+        if (!sfProc) return;
 
         while (!this->engine.isGameOver()) {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
-
             if (engineToMove) {
                 this->engineTurn();
                 std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
@@ -632,192 +691,34 @@ namespace driver {
             } else {
                 std::cout << "Waiting for Stockfish move..." << std::endl;
                 const std::string fen = engine.board.getCurrentFen();
-                const auto [bestMove, sfOutput] = runStockfish(*sfProc, fen);
+                const auto [bestMove, output] = runStockfishRequest(*sfProc, fen, stockfishMoveTimeMs);
+
                 if (bestMove.empty()) {
                     std::cerr << "[ERROR] Stockfish did not return a move. Aborting match.\n";
                     std::cerr << "Current FEN: " << fen << "\n";
+                    if (!output.empty()) {
+                        std::cerr << "Output: " << output.substr(0, 300) << "\n";
+                    }
                     return;
                 }
 
-                if (!this->applyUciMoveToBoard(bestMove, true)) {
+                if (!this->applyUciMoveToBoard(bestMove, verboseApply)) {
                     std::cerr << "[ERROR] Failed to apply Stockfish move: " << bestMove << "\n";
                     return;
                 }
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
-                std::cout.flush();
                 std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
                 std::cout.flush();
             }
 
             if (this->engine.isGameOver()) {
-                std::cout << "Game over detected, calling endGame()...\n";
-                std::cout.flush();
                 endGame();
                 break;
             }
         }
 
-        writeToStockfish(*sfProc, "quit\n");
-#else
-        // botColor: true = our engine plays White, false = our engine plays Black
-        const std::string stockfishPath = "./stockfish/linux/stockfish-ubuntu-x86-64-avx2";
-        const int stockfishMoveTimeMs = 200; // tweak if needed
-        
-        // Fresh game state for each match
-        engine.reset();
-        engine.isPlayerWhite = botColor;
-
-        struct StockfishProcess {
-            FILE* in {nullptr};
-            FILE* out {nullptr};
-            pid_t pid {-1};
-
-            ~StockfishProcess() {
-                if (in) fclose(in);
-                if (out) fclose(out);
-                if (pid > 0) {
-                    kill(pid, SIGTERM);
-                    int status = 0;
-                    waitpid(pid, &status, 0);
-                }
-            }
-
-            bool valid() const noexcept { return in && out && pid > 0; }
-        };
-
-        auto startStockfish = [&]() -> std::unique_ptr<StockfishProcess> {
-            int toChild[2];
-            int fromChild[2];
-            if (pipe(toChild) != 0 || pipe(fromChild) != 0) {
-                std::perror("pipe");
-                return nullptr;
-            }
-
-            pid_t pid = fork();
-            if (pid < 0) {
-                std::perror("fork");
-                close(toChild[0]); close(toChild[1]);
-                close(fromChild[0]); close(fromChild[1]);
-                return nullptr;
-            }
-
-            if (pid == 0) {
-                // Child: connect pipes and exec stockfish
-                dup2(toChild[0], STDIN_FILENO);
-                dup2(fromChild[1], STDOUT_FILENO);
-                close(toChild[0]); close(toChild[1]);
-                close(fromChild[0]); close(fromChild[1]);
-                execl(stockfishPath.c_str(), stockfishPath.c_str(), (char*)nullptr);
-                std::perror("execl");
-                _exit(1);
-            }
-
-            // Parent
-            close(toChild[0]);
-            close(fromChild[1]);
-
-            FILE* childIn = fdopen(toChild[1], "w");
-            FILE* childOut = fdopen(fromChild[0], "r");
-            if (!childIn || !childOut) {
-                std::cerr << "Error: fdopen failed for Stockfish pipes.\n";
-                if (childIn) fclose(childIn);
-                if (childOut) fclose(childOut);
-                kill(pid, SIGTERM);
-                int status = 0;
-                waitpid(pid, &status, 0);
-                return nullptr;
-            }
-
-            auto proc = std::make_unique<StockfishProcess>();
-            proc->in = childIn;
-            proc->out = childOut;
-            proc->pid = pid;
-
-            const bool initOk = initializeStockfishUciSession(
-                [&](const std::string& cmd) {
-                    const int rc = fputs(cmd.c_str(), proc->in);
-                    fflush(proc->in);
-                    return rc >= 0;
-                },
-                [&]() {
-                    std::array<char, 512> buffer{};
-                    std::string output;
-                    for (int i = 0; i < 400 && fgets(buffer.data(), static_cast<int>(buffer.size()), proc->out); ++i) {
-                        output += buffer.data();
-                        if (std::string(buffer.data()).find("readyok") != std::string::npos) {
-                            break;
-                        }
-                    }
-                    return output;
-                }
-            );
-            if (!initOk) {
-                std::cerr << "Stockfish did not report readyok.\n";
-                return nullptr;
-            }
-            return proc;
-        };
-
-        auto runStockfish = [&](StockfishProcess& sf, const std::string& fen) -> std::pair<std::string, std::string> {
-            return runStockfishRequest(
-                fen,
-                stockfishMoveTimeMs,
-                [&](const std::string& cmd) {
-                    const int rc = fputs(cmd.c_str(), sf.in);
-                    fflush(sf.in);
-                    return rc >= 0;
-                },
-                [&]() {
-                    std::array<char, 512> buffer{};
-                    std::string output;
-                    for (int i = 0; i < 800 && fgets(buffer.data(), static_cast<int>(buffer.size()), sf.out); ++i) {
-                        output += buffer.data();
-                        if (std::string(buffer.data()).rfind("bestmove", 0) == 0) {
-                            break;
-                        }
-                    }
-                    return output;
-                }
-            );
-        };
-
-        auto sfProc = startStockfish();
-        if (!sfProc) {
-            return;
-        }
-
-        while (!this->engine.isGameOver()) {
-            const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
-
-            if (engineToMove) {
-                // Our engine move
-                this->engineTurn();
-                std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
-            } else {
-                // Stockfish move
-                const std::string fen = engine.board.getCurrentFen();
-                const auto [bestMove, sfOutput] = runStockfish(*sfProc, fen);
-                if (bestMove.empty()) {
-                    std::cerr << "Stockfish did not return a move. Aborting match.\n";
-                    return;
-                }
-
-                if (!this->applyUciMoveToBoard(bestMove)) {
-                    std::cerr << "Failed to apply Stockfish move: " << bestMove << "\n";
-                    return;
-                }
-
-                std::cout << "Stockfish plays: " << bestMove << "\n";
-                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
-            }
-
-            if (this->engine.isGameOver()) {
-                endGame();
-                return;
-            }
-        }
-#endif // _WIN32
+        writeStockfishCommand(*sfProc, "quit\n");
     }
 
 
