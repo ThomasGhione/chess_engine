@@ -4,6 +4,10 @@
 
 namespace engine {
 
+static inline bool shouldResearchPVS(bool usIsWhite, int64_t score, int64_t alphaBound, int64_t betaBound) noexcept {
+    return usIsWhite ? (score > alphaBound) : (score < betaBound);
+}
+
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
     constexpr int64_t STALEMATE_PENALTY = 5000; // penalize stalemate when the side with material advantage allows it.
@@ -87,18 +91,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // =========================================================================
         // FUTILITY PRUNING: Skip quiet moves that can't improve the position
         // =========================================================================
-        if (canFutilityPrune && isQuietMove && moveIndex > 0) {
-            if (usIsWhite) {
-                if (ctx.staticEval + futilityMargin < bounds.alpha) {
-                    ++moveIndex;
-                    continue;
-                }
-            } else {
-                if (ctx.staticEval - futilityMargin > bounds.beta) {
-                    ++moveIndex;
-                    continue;
-                }
-            }
+        if (canFutilityPrune && isQuietMove && moveIndex > 0
+            && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
+            ++moveIndex;
+            continue;
         }
 
         chess::Board::MoveState state;
@@ -135,15 +131,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // PVS windowing:
         // - First move: full window (PV candidate)
         // - Other moves: null window, then re-search full window only on fail-high/low
-        int64_t searchAlpha = bounds.alpha;
-        int64_t searchBeta = bounds.beta;
-        if (!isFirstMove) {
-            if (usIsWhite) {
-                searchBeta = bounds.alpha + 1;
-            } else {
-                searchAlpha = bounds.beta - 1;
-            }
-        }
+        const int64_t searchAlpha = isFirstMove ? bounds.alpha : (usIsWhite ? bounds.alpha : (bounds.beta - 1));
+        const int64_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? (bounds.alpha + 1) : bounds.beta);
 
         int64_t score = 0;
         if (canReduce) {
@@ -165,24 +154,16 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
             
             // Re-search at full depth + full window only if null-window failed.
-            const bool shouldResearch = !isFirstMove && (usIsWhite
-                ? (score > searchAlpha)
-                : (score < searchBeta));
+            const bool shouldResearch = !isFirstMove && shouldResearchPVS(usIsWhite, score, searchAlpha, searchBeta);
             
             if (shouldResearch) {
-                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
-            } else if (isFirstMove) {
-                // Reduced first move is not expected (canReduce guards moveIndex>=3),
-                // but keep behavior robust in case heuristics change.
                 score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
             }
         } else {
             score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
-                const bool shouldResearch = usIsWhite
-                    ? (score > searchAlpha)
-                    : (score < searchBeta);
+                const bool shouldResearch = shouldResearchPVS(usIsWhite, score, searchAlpha, searchBeta);
                 if (shouldResearch) {
                     score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
                 }
@@ -287,10 +268,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         return 0; // True draw
     }
 
-    if (b.isFiftyMoveRule()) [[unlikely]] { // 50-move rule detection inside search tree
-
-        return 0;
-    }
+    if (b.isFiftyMoveRule()) [[unlikely]] return 0; // 50-move rule detection inside search tree
 
     // =========================================================================
     // INSUFFICIENT MATERIAL DRAW DETECTION 
@@ -377,9 +355,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         //   slightly worse but not when we're clearly losing.
         //   Margin: 200cp = allows NMP even if slightly behind, but blocks it
         //   after unsound material sacrifices.
-        const bool evalOk = usIsWhite 
-            ? (staticEval >= beta - 200)
-            : (staticEval <= alpha + 200);
+        const int64_t nmpEvalGate = usIsWhite ? (staticEval + 200) : (staticEval - 200);
+        const bool evalOk = isBetaCutoff(nmpEvalGate, alpha, beta, usIsWhite);
         
         const bool canNullMove = allowNullMove
             && !isPVNode
@@ -403,7 +380,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             b.undoNullMove(nullState);
 
             // Check for beta cutoff
-            if (usIsWhite ? (nullScore >= beta) : (nullScore <= alpha)) {
+            if (isBetaCutoff(nullScore, alpha, beta, usIsWhite)) {
+                bool confirmedCutoff = true;
                 // Verification search at reduced depth to avoid zugzwang blunders
                 // Only verify if depth is high enough (otherwise overhead > benefit)
                 // depth >= 10: verification is expensive, only do it at high depth
@@ -411,20 +389,15 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
                     // Disable null-move in verification to prevent recursive NMP chains.
                     const int64_t verifyScore = this->searchPosition(
                         b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr, counter, false);
-                    if (usIsWhite ? (verifyScore >= beta) : (verifyScore <= alpha)) {
-                        // Avoid pruning a stalemate node before terminal handling.
-                        if (!b.hasAnyLegalMove(activeColor)) {
-                            return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-                        }
-                        return usIsWhite ? beta : alpha;
-                    }
-                    // Verification failed: continue with full search
-                } else {
+                    confirmedCutoff = isBetaCutoff(verifyScore, alpha, beta, usIsWhite);
+                }
+
+                if (confirmedCutoff) {
                     // Avoid pruning a stalemate node before terminal handling.
                     if (!b.hasAnyLegalMove(activeColor)) {
                         return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
                     }
-                    return usIsWhite ? beta : alpha;
+                    return cutoffValue(alpha, beta, usIsWhite);
                 }
             }
         }
@@ -445,22 +418,13 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         // pawn races, triangulation and waiting-move zugzwang motifs.
         if (!isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3) {
             const int64_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
-            if (usIsWhite) {
-                if (staticEval - rfpMargin >= beta) {
-                    // Avoid pruning a stalemate node before terminal handling.
-                    if (!b.hasAnyLegalMove(activeColor)) {
-                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-                    }
-                    return staticEval;
+            const int64_t rfpScore = usIsWhite ? (staticEval - rfpMargin) : (staticEval + rfpMargin);
+            if (isBetaCutoff(rfpScore, alpha, beta, usIsWhite)) {
+                // Avoid pruning a stalemate node before terminal handling.
+                if (!b.hasAnyLegalMove(activeColor)) {
+                    return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
                 }
-            } else {
-                if (staticEval + rfpMargin <= alpha) {
-                    // Avoid pruning a stalemate node before terminal handling.
-                    if (!b.hasAnyLegalMove(activeColor)) {
-                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-                    }
-                    return staticEval;
-                }
+                return staticEval;
             }
         }
     }

@@ -3,6 +3,11 @@
 
 namespace engine {
 
+static inline bool isForcingEvasion(const chess::Board& b, const chess::Board::Move& m) noexcept {
+    return isPromotionMove(b, m) || isEnPassantCapture(b, m)
+        || ((b.get(m.to) & chess::Board::MASK_PIECE_TYPE) != chess::Board::EMPTY);
+}
+
 // ============================================================================
 // QUIESCENCE SEARCH - Eliminates horizon effect
 // ============================================================================
@@ -76,12 +81,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         // This improves alpha-beta cutoffs in tactical check sequences.
         for (int pass = 0; pass < 2; ++pass) {
             for (const auto& m : evasions) {
-                const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-                const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEnPassantCapture(b, m);
-                const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-                const bool isPromotion = (fromPieceType == chess::Board::PAWN)
-                    && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
-                const bool isForcing = isCapture || isPromotion;
+                const bool isForcing = isForcingEvasion(b, m);
 
                 if ((pass == 0 && !isForcing) || (pass == 1 && isForcing)) {
                     continue;
@@ -128,18 +128,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // In-check nodes are handled above and never reach this section.
     constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
 
-    if (usIsWhite) {
-        // White to move: if standPat + margin < alpha, no capture can help
-        if (standPat + EARLY_DELTA_MARGIN < alpha) {
-            // Early pruning - don't store in TT (too frequent, overhead not worth it)
-            return alpha; // Early delta cutoff
-        }
-    } else {
-        // Black to move: if standPat - margin > beta, no capture can help
-        if (standPat - EARLY_DELTA_MARGIN > beta) {
-            // Early pruning - don't store in TT (too frequent, overhead not worth it)
-            return beta; // Early delta cutoff
-        }
+    if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
+        // Early pruning - don't store in TT (too frequent, overhead not worth it)
+        return usIsWhite ? alpha : beta; // Early delta cutoff (fail-low bound)
     }
 
     // ============================================================================
@@ -207,12 +198,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // Shallow qsearch (ply < 10): SEE >= -15cp (only tiny tactical losses)
     // Mid qsearch (10-20): SEE >= -8cp (very conservative)
     // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
-    int64_t seeThreshold = 0; // Default: only neutral/winning captures
-    if (ply < 10) {
-        seeThreshold = -15; // Minimal tactical losses in shallow qsearch
-    } else if (ply >= 10 && ply < 20) {
-        seeThreshold = -8;  // Very strict in mid-qsearch
-    }
+    const int64_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
     for (const auto& m : tacticalMoves) {
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -233,16 +219,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             constexpr int64_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
             
             // Check if this capture can possibly improve our position enough
-            if (usIsWhite) {
-                // White to move: if standPat + capturedValue + margin < alpha, skip
-                if (standPat + capturedValue + FUTILITY_MARGIN < alpha) {
-                    continue;
-                }
-            } else {
-                // Black to move: if standPat - capturedValue - margin > beta, skip
-                if (standPat - capturedValue - FUTILITY_MARGIN > beta) {
-                    continue;
-                }
+            if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha, beta, usIsWhite)) {
+                continue;
             }
             
             const int64_t see = staticExchangeEvaluation(b, m);
@@ -270,8 +248,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
-            const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-            if (fromPieceType == chess::Board::PAWN && m.to.rank() == chess::Board::promotionRank(usIsWhite)) {
+            if (isPromotionMove(b, m)) {
                 score = 9000; // Promotion (high priority)
             } else {
                 continue;
