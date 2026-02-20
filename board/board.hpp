@@ -408,6 +408,7 @@ private:
 }; // Class Board
 
 #include "board.inl"
+#include "boardapi.inl"
 
 } // namespace chess
 
