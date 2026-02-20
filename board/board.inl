@@ -280,6 +280,73 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
     occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
 }
 
+inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept {
+    return (bb & (bb - 1)) != 0ULL;
+}
+
+inline bool Board::addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept {
+    if (!attackSet) return false;
+    if (hasAtLeastTwoBits(attackSet)) return true;
+    ++attackers;
+    return attackers >= 2;
+}
+
+inline bool Board::isKingSafeAfterMove(
+    uint8_t movingColor,
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint64_t capturedEnemyMask
+) const noexcept {
+    const uint8_t side = colorToIndex(movingColor);
+    const uint64_t kingBB = kings_bb[side];
+    if (!kingBB) [[unlikely]] return false;
+
+    const uint8_t oppSide = side ^ 1;
+    const uint8_t oppColor = oppositeColor(movingColor);
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
+
+    uint64_t occNew = occupancy;
+    occNew &= ~bitMask(fromIndex);
+    occNew |= bitMask(toIndex);
+
+    return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                 pawns_bb[oppSide] & ~capturedEnemyMask,
+                                 knights_bb[oppSide] & ~capturedEnemyMask,
+                                 bishops_bb[oppSide] & ~capturedEnemyMask,
+                                 rooks_bb[oppSide] & ~capturedEnemyMask,
+                                 queens_bb[oppSide] & ~capturedEnemyMask,
+                                 kings_bb[oppSide] & ~capturedEnemyMask);
+}
+
+inline bool Board::isKingSafeAfterEnPassant(
+    uint8_t movingColor,
+    uint8_t fromIndex,
+    uint8_t toIndex,
+    uint8_t capturedPawnIndex
+) const noexcept {
+    const uint8_t side = colorToIndex(movingColor);
+    const uint64_t kingBB = kings_bb[side];
+    if (!kingBB) [[unlikely]] return false;
+
+    const uint8_t oppSide = side ^ 1;
+    const uint8_t oppColor = oppositeColor(movingColor);
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    const uint64_t capturedPawnMask = bitMask(capturedPawnIndex);
+
+    uint64_t occNew = occupancy;
+    occNew &= ~bitMask(fromIndex);
+    occNew &= ~capturedPawnMask;
+    occNew |= bitMask(toIndex);
+
+    return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                 pawns_bb[oppSide] & ~capturedPawnMask,
+                                 knights_bb[oppSide],
+                                 bishops_bb[oppSide],
+                                 rooks_bb[oppSide],
+                                 queens_bb[oppSide],
+                                 kings_bb[oppSide]);
+}
+
 template<uint8_t PieceType, bool Add>
 inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
     if constexpr (PieceType == PAWN) {
@@ -423,6 +490,68 @@ inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor
     return QUEEN | movingColor;
 }
 
+inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
+    static constexpr std::array<uint8_t, 4> ROOK_START_SQUARES = {
+        WHITE_ROOK_A_START,
+        WHITE_ROOK_H_START,
+        BLACK_ROOK_A_START,
+        BLACK_ROOK_H_START
+    };
+    for (uint8_t slot = 0; slot < ROOK_START_SQUARES.size(); ++slot) {
+        if (ROOK_START_SQUARES[slot] == index) return slot;
+    }
+    return 0xFF;
+}
+
+inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {
+    static constexpr std::array<uint8_t, 4> ROOK_CASTLE_CLEAR_MASKS = {
+        static_cast<uint8_t>(1u << WHITE_QUEENSIDE),
+        static_cast<uint8_t>(1u << WHITE_KINGSIDE),
+        static_cast<uint8_t>(1u << BLACK_QUEENSIDE),
+        static_cast<uint8_t>(1u << BLACK_KINGSIDE)
+    };
+    static constexpr std::array<uint8_t, 4> ROOK_HAS_MOVED_BITS = {
+        static_cast<uint8_t>(1u << 1),
+        static_cast<uint8_t>(1u << 2),
+        static_cast<uint8_t>(1u << 4),
+        static_cast<uint8_t>(1u << 5)
+    };
+
+    const uint8_t slot = rookStartSlot(rookStartIndex);
+    if (slot == 0xFF) return;
+
+    castle &= static_cast<uint8_t>(~ROOK_CASTLE_CLEAR_MASKS[slot]);
+    if (setHasMovedBit) {
+        hasMoved |= ROOK_HAS_MOVED_BITS[slot];
+    }
+}
+
+inline void Board::updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept {
+    if (movingType == KING) {
+        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;
+        const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;
+        castle &= static_cast<uint8_t>(~castleMask);
+        hasMoved |= kingBit;
+        return;
+    }
+
+    if (movingType == ROOK) {
+        clearCastlingByRookStart(fromIndex, true);
+    }
+}
+
+inline void Board::updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint8_t toIndex) noexcept {
+    if ((capturedPiece & MASK_PIECE_TYPE) != ROOK) return;
+
+    const uint8_t slot = rookStartSlot(toIndex);
+    if (slot == 0xFF) return;
+
+    const uint8_t capturedColor = capturedPiece & MASK_COLOR;
+    if ((capturedColor == WHITE && slot >= 2) || (capturedColor == BLACK && slot < 2)) return;
+
+    clearCastlingByRookStart(toIndex, false);
+}
+
 template<Board::MoveKind Kind>
 inline void Board::doMoveByKind(
     const Coords& from,
@@ -479,51 +608,10 @@ inline void Board::doMoveByKind(
         addPieceToBB(rook, rookToIndex);
     }
 
-    if (movingType == KING) {
-        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;
-        const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;
-        castle &= ~castleMask;
-        hasMoved |= kingBit;
-    } else if (movingType == ROOK) {
-        const bool isInitialSquare = (movingColor == WHITE)
-            ? (fromRank == 7 && (fromFile == 0 || fromFile == 7))
-            : (fromRank == 0 && (fromFile == 0 || fromFile == 7));
-
-        if (isInitialSquare) {
-            if (movingColor == WHITE) {
-                if (fromFile == 0) {
-                    castle &= ~(1u << 1);
-                    hasMoved |= (1u << 1);
-                } else {
-                    castle &= ~(1u << 0);
-                    hasMoved |= (1u << 2);
-                }
-            } else {
-                if (fromFile == 0) {
-                    castle &= ~(1u << 3);
-                    hasMoved |= (1u << 4);
-                } else {
-                    castle &= ~(1u << 2);
-                    hasMoved |= (1u << 5);
-                }
-            }
-        }
-    }
+    updateCastlingRightsOnPieceMove(movingType, movingColor, fromIndex);
 
     if constexpr (isCaptureKind(Kind)) {
-        if ((destBefore & MASK_PIECE_TYPE) == ROOK) {
-            const bool isInitialSquare = ((destBefore & MASK_COLOR) == WHITE)
-                ? (toRank == 7 && (toFile == 0 || toFile == 7))
-                : (toRank == 0 && (toFile == 0 || toFile == 7));
-
-            if (isInitialSquare) {
-                if ((destBefore & MASK_COLOR) == WHITE) {
-                    castle &= (toFile == 0) ? ~(1u << 1) : ~(1u << 0);
-                } else {
-                    castle &= (toFile == 0) ? ~(1u << 3) : ~(1u << 2);
-                }
-            }
-        }
+        updateCastlingRightsOnRookCapture(destBefore, toIndex);
     }
 
     if constexpr (Kind == MoveKind::DoublePawnPush) {

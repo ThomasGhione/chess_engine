@@ -293,20 +293,19 @@ public:
     // Variabili end
 private:
     // Metodi start
-    [[nodiscard]] inline bool isPawnMoveLegal(
-        uint8_t fromIndex, 
-        uint8_t toIndex,
-        uint64_t toBit,
+    [[nodiscard]] static inline bool isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept;
+    [[nodiscard]] inline bool isKingSafeAfterMove(
         uint8_t movingColor,
-        uint8_t destPiece,
-        uint8_t destColor
-    ) const noexcept;
-    [[nodiscard]] inline bool isPawnEnPassantLegal(
         uint8_t fromIndex,
         uint8_t toIndex,
-        uint8_t movingColor
+        uint64_t capturedEnemyMask
     ) const noexcept;
-    [[nodiscard]] static inline bool isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept;
+    [[nodiscard]] inline bool isKingSafeAfterEnPassant(
+        uint8_t movingColor,
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint8_t capturedPawnIndex
+    ) const noexcept;
     [[nodiscard]] inline bool isKingMoveLegal(
         uint8_t fromIndex,
         uint8_t toIndex,
@@ -324,6 +323,12 @@ private:
         uint8_t destPiece,
         uint8_t destColor
     ) const noexcept;
+    [[nodiscard]] static inline bool hasAtLeastTwoBits(uint64_t bb) noexcept;
+    [[nodiscard]] static inline bool addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept;
+    [[nodiscard]] static inline uint8_t rookStartSlot(uint8_t index) noexcept;
+    inline void clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept;
+    inline void updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept;
+    inline void updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint8_t toIndex) noexcept;
     template<uint8_t PieceType, bool Add>
     inline void updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept;
     template<bool Add>
