@@ -62,48 +62,4 @@ inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, ch
     return isPromo;
 }
 
-// OVERLOAD ottimizzato: implementazione diretta invece di delegare
-__attribute__((always_inline))
-inline void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept {
-    // Update best score if this is better
-    if (Engine::isBetter(score, best, usIsWhite)) {
-        best = score;
-    }
-    
-    // Update alpha/beta bounds
-    updateBound(score, alpha, beta, usIsWhite);
-}
-
-__attribute__((always_inline))
-inline void addMovesFromMask_fast(const chess::Board& b, MoveList<chess::Board::Move>& moves, const uint8_t from, 
-                                  uint64_t mask, const uint64_t ownOcc, const bool inCheck) noexcept {
-    mask &= ~ownOcc;
-    if (!mask) [[unlikely]] return; // Early exit se nessuna mossa
-
-    const chess::Coords fromC{from};
-    const uint8_t fromPieceType = b.get(from) & chess::Board::MASK_PIECE_TYPE;
-    const uint8_t color = b.getActiveColor();
-    const int promotionRank = chess::Board::promotionRank(color == chess::Board::WHITE);
-
-    // SEMPRE verifica legalità con canMoveToBB
-    // Questo è necessario per gestire correttamente pin e mosse illegali
-    while (mask) {
-        const uint8_t to = __builtin_ctzll(mask);
-        mask &= (mask - 1);
-
-        if (b.canMoveToBB(fromC, chess::Coords{to}, inCheck)) {
-            // Check if this is a pawn promotion move
-            if (fromPieceType == chess::Board::PAWN && chess::Board::rankOf(to) == promotionRank) {
-                // CORRECTED: generate all 4 promotion moves (q, r, b, n)
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'q'});
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'r'});
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'b'});
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}, 'n'});
-            } else {
-                moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
-            }
-        }
-    }
-}
-
 } // namespace engine

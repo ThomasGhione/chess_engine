@@ -3,11 +3,25 @@
 
 namespace engine {
 
+static void addNonPawnMovesFromMaskFast(const chess::Board& b,
+                                        MoveList<chess::Board::Move>& moves,
+                                        uint8_t from,
+                                        uint64_t mask,
+                                        bool inCheck,
+                                        bool inDoubleCheck) noexcept;
+static void addPawnMovesFromMaskFast(const chess::Board& b,
+                                     MoveList<chess::Board::Move>& moves,
+                                     uint8_t from,
+                                     uint64_t mask,
+                                     bool inCheck,
+                                     bool inDoubleCheck,
+                                     uint8_t promotionRank) noexcept;
+
 // costruisce una bitboard con solo le case tra from e to:
 // Se from == to oppure non sono allineate (stessa colonna, stessa riga, o stessa diagonale), ritorna 0.
 // Se sono allineate, cammina lungo la direzione e setta le case intermedie.
 // Esclude esplicitamente la casa to (e di fatto non include neanche from).
-inline uint64_t Engine::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
+static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
     if (from == to) return 0ULL;
 
     const int fromFile = chess::Board::fileOf(from);
@@ -47,12 +61,12 @@ inline uint64_t Engine::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept 
 // Ritorna una maschera con i bit dei pezzi che attaccano il re (checkersMask) 
 // e una maschera con i bit delle case su cui si può muovere o intercettare 
 // per evadere il check (evasionMask).
-void Engine::computeCheckEvasionMasks(const chess::Board& b,
-                                      uint8_t activeColor,
-                                      bool inCheck,
-                                      bool inDoubleCheck,
-                                      uint64_t& outCheckersMask,
-                                      uint64_t& outEvasionMask) const noexcept {
+static void computeCheckEvasionMasks(const chess::Board& b,
+                                     uint8_t activeColor,
+                                     bool inCheck,
+                                     bool inDoubleCheck,
+                                     uint64_t& outCheckersMask,
+                                     uint64_t& outEvasionMask) noexcept {
     outCheckersMask = 0ULL;
     outEvasionMask = ~0ULL;
 
@@ -98,10 +112,10 @@ void Engine::computeCheckEvasionMasks(const chess::Board& b,
 
 // Ritorna una maschera con i bit dei pezzi che bloccano il re (pinnedMask) 
 // e un array che per ogni casa contiene la maschera del raggio di pin (pinRayBySquare).
-void Engine::computePinRays(const chess::Board& b,
-                            uint8_t activeColor,
-                            uint64_t& outPinnedMask,
-                            std::array<uint64_t, 64>& outPinRayBySquare) const noexcept {
+static void computePinRays(const chess::Board& b,
+                           uint8_t activeColor,
+                           uint64_t& outPinnedMask,
+                           std::array<uint64_t, 64>& outPinRayBySquare) noexcept {
     outPinnedMask = 0ULL;
     outPinRayBySquare.fill(0ULL);
 
@@ -166,16 +180,16 @@ void Engine::computePinRays(const chess::Board& b,
     }
 }
 
-void Engine::addTacticalMovesFromMask(const chess::Board& b,
-                                      MoveList<chess::Board::Move>& moves,
-                                      uint8_t from,
-                                      uint64_t mask,
-                                      bool isPawn,
-                                      bool isWhiteToMove,
-                                      bool includeChecks,
-                                      const chess::Coords& enPassant,
-                                      bool inCheck,
-                                      bool inDoubleCheck) const noexcept {
+static void addTacticalMovesFromMask(const chess::Board& b,
+                                     MoveList<chess::Board::Move>& moves,
+                                     uint8_t from,
+                                     uint64_t mask,
+                                     bool isPawn,
+                                     bool isWhiteToMove,
+                                     bool includeChecks,
+                                     const chess::Coords& enPassant,
+                                     bool inCheck,
+                                     bool inDoubleCheck) noexcept {
     const chess::Coords fromC{from};
 
     while (mask) {
@@ -360,12 +374,12 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     return moves;
 }
 
-void Engine::addNonPawnMovesFromMaskFast(const chess::Board& b,
-                                         MoveList<chess::Board::Move>& moves,
-                                         uint8_t from,
-                                         uint64_t mask,
-                                         bool inCheck,
-                                         bool inDoubleCheck) const noexcept {
+static void addNonPawnMovesFromMaskFast(const chess::Board& b,
+                                        MoveList<chess::Board::Move>& moves,
+                                        uint8_t from,
+                                        uint64_t mask,
+                                        bool inCheck,
+                                        bool inDoubleCheck) noexcept {
     if (!mask) [[unlikely]] return;
     const chess::Coords fromC{from};
     while (mask) {
@@ -377,13 +391,13 @@ void Engine::addNonPawnMovesFromMaskFast(const chess::Board& b,
     }
 }
 
-void Engine::addPawnMovesFromMaskFast(const chess::Board& b,
-                                      MoveList<chess::Board::Move>& moves,
-                                      uint8_t from,
-                                      uint64_t mask,
-                                      bool inCheck,
-                                      bool inDoubleCheck,
-                                      uint8_t promotionRank) const noexcept {
+static void addPawnMovesFromMaskFast(const chess::Board& b,
+                                     MoveList<chess::Board::Move>& moves,
+                                     uint8_t from,
+                                     uint64_t mask,
+                                     bool inCheck,
+                                     bool inDoubleCheck,
+                                     uint8_t promotionRank) noexcept {
     if (!mask) [[unlikely]] return;
     const chess::Coords fromC{from};
     while (mask) {

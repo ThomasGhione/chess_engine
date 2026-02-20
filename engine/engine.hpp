@@ -244,7 +244,6 @@ private:
     void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
-    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& best) noexcept;
 
     void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
     static int64_t stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept;
@@ -256,44 +255,6 @@ private:
     
     // Move scoring helpers
     void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;
-    void addPromotionBonus(const chess::Board::Move& m, uint8_t pieceType, bool usIsWhite, int64_t& score) noexcept;
-    void addCheckBonus(const chess::Board::Move& m, chess::Board& b, bool usIsWhite, int64_t& score) noexcept;
-    void addKillerAndHistoryBonus(const chess::Board::Move& m, int ply, bool usIsWhite, int64_t& score) noexcept;
-    void addKingMoveBonus(const chess::Board::Move& m, uint8_t pieceType, bool inCheck, int fullMoveClock, int64_t& score) noexcept;
-    void addTacticalMovesFromMask(const chess::Board& b,
-                                  MoveList<chess::Board::Move>& moves,
-                                  uint8_t from,
-                                  uint64_t mask,
-                                  bool isPawn,
-                                  bool isWhiteToMove,
-                                  bool includeChecks,
-                                  const chess::Coords& enPassant,
-                                  bool inCheck,
-                                  bool inDoubleCheck) const noexcept;
-    void addNonPawnMovesFromMaskFast(const chess::Board& b,
-                                     MoveList<chess::Board::Move>& moves,
-                                     uint8_t from,
-                                     uint64_t mask,
-                                     bool inCheck,
-                                     bool inDoubleCheck) const noexcept;
-    void addPawnMovesFromMaskFast(const chess::Board& b,
-                                  MoveList<chess::Board::Move>& moves,
-                                  uint8_t from,
-                                  uint64_t mask,
-                                  bool inCheck,
-                                  bool inDoubleCheck,
-                                  uint8_t promotionRank) const noexcept;
-    static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
-    void computeCheckEvasionMasks(const chess::Board& b,
-                                  uint8_t activeColor,
-                                  bool inCheck,
-                                  bool inDoubleCheck,
-                                  uint64_t& outCheckersMask,
-                                  uint64_t& outEvasionMask) const noexcept;
-    void computePinRays(const chess::Board& b,
-                        uint8_t activeColor,
-                        uint64_t& outPinnedMask,
-                        std::array<uint64_t, 64>& outPinRayBySquare) const noexcept;
     uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
