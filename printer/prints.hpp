@@ -7,7 +7,7 @@
 
 //#include "../includes.hpp"
 //#include "../engine/engine.hpp"
-//#include "../piece/piece.hpp"
+//#include "../board/piece.hpp"
 //#include "../coords/coords.hpp"
 //#include "../board/board.hpp"
 
