@@ -314,14 +314,11 @@ private:
     ) const noexcept;
     [[nodiscard]] inline bool canCastleToSquare(uint8_t fromIndex, uint8_t toIndex, uint8_t movingColor) const noexcept;
     [[nodiscard]] inline bool canCastleGeneric(bool isWhite, uint8_t fromIndex, bool isKingside) const noexcept;
-    [[nodiscard]] inline bool canCastleKingside(bool isWhite, uint8_t fromIndex) const noexcept;
-    [[nodiscard]] inline bool canCastleQueenside(bool isWhite, uint8_t fromIndex) const noexcept;
     [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(
         uint8_t fromIndex,
         uint8_t toIndex,
         uint8_t movingColor,
-        uint8_t destPiece,
-        uint8_t destColor
+        uint8_t destPiece
     ) const noexcept;
     [[nodiscard]] static inline bool hasAtLeastTwoBits(uint64_t bb) noexcept;
     [[nodiscard]] static inline bool addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept;

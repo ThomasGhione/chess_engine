@@ -82,9 +82,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
     const uint8_t destPiece = get(toIndex);
-    const uint8_t destColor = destPiece & MASK_COLOR;
 
-    if (destPiece != EMPTY && destColor == movingColor) [[unlikely]] {
+    if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]] {
         return false;
     }
 
@@ -115,7 +114,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
                 return isKingSafeAfterEnPassant(movingColor, fromIndex, toIndex, capturedPawnIdx);
             }
 
-            const uint64_t capturedEnemyMask = (destPiece != EMPTY && destColor != movingColor) ? toBit : 0ULL;
+            const uint64_t capturedEnemyMask = (destPiece != EMPTY && (destPiece & MASK_COLOR) != movingColor) ? toBit : 0ULL;
             return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
         }
         case KNIGHT:
@@ -124,7 +123,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
         case QUEEN: {
             const uint64_t bitMap = pieces::dispatchPieceMoves(fromType, fromIndex, occupancy);
             if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece, destColor);
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case KING:
             return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
@@ -223,8 +222,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
     // Calculate file delta
     const int df = static_cast<int>(fileOf(toIndex)) - 4;
     
-    if (df == 2) return canCastleKingside(isWhite, fromIndex);
-    if (df == -2) return canCastleQueenside(isWhite, fromIndex);
+    if (df == 2) return canCastleGeneric(isWhite, fromIndex, true);
+    if (df == -2) return canCastleGeneric(isWhite, fromIndex, false);
     
     return false;
 }
@@ -270,25 +269,14 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
     return isCastlePathSafe(castlePath, oppColor);
 }
 
-// Kingside castling validation
-[[nodiscard]] inline bool Board::canCastleKingside(bool isWhite, uint8_t fromIndex) const noexcept {
-    return canCastleGeneric(isWhite, fromIndex, true);
-}
-
-// Queenside castling validation
-[[nodiscard]] inline bool Board::canCastleQueenside(bool isWhite, uint8_t fromIndex) const noexcept {
-    return canCastleGeneric(isWhite, fromIndex, false);
-}
-
 // King safety check for non-king, non-pawn pieces
 [[nodiscard]] inline bool Board::verifyKingSafetyForSimplePiece(
     uint8_t fromIndex,
     uint8_t toIndex,
     uint8_t movingColor,
-    uint8_t destPiece,
-    uint8_t destColor
+    uint8_t destPiece
 ) const noexcept {
-    const uint64_t capturedEnemyMask = (destPiece != EMPTY && destColor != movingColor)
+    const uint64_t capturedEnemyMask = (destPiece != EMPTY && (destPiece & MASK_COLOR) != movingColor)
         ? Board::bitMask(toIndex)
         : 0ULL;
     return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
@@ -299,47 +287,23 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
 // ------------------------------------------------------------
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
-    const int side = colorToIndex(byColor);
-
-    // Fast path: check non-sliding pieces first (cheaper)
-    if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
-    if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
-    if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
-
-    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
-    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
-    if (!rookLike && !bishopLike) return false;
-
-    if (rookLike && (pieces::getRookAttacks(targetIndex, occupancy) & rookLike)) return true;
-    if (bishopLike && (pieces::getBishopAttacks(targetIndex, occupancy) & bishopLike)) return true;
-
-    return false;
+    const uint8_t side = colorToIndex(byColor);
+    return isKingAttackedCustom(targetIndex, byColor, occupancy,
+                                pawns_bb[side], knights_bb[side], bishops_bb[side],
+                                rooks_bb[side], queens_bb[side], kings_bb[side]);
 }
 
 
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const int side = colorToIndex(byColor);
-
-    // Fast path: check non-sliding pieces first
-    if (pieces::PAWN_ATTACKERS_TO[side][targetIndex] & pawns_bb[side]) return true;
-    if (pieces::KNIGHT_ATTACKS[targetIndex] & knights_bb[side]) return true;
-    if (pieces::KING_ATTACKS[targetIndex] & kings_bb[side]) return true;
-
-    // Sliding pieces with modified occupancy
+    const uint8_t side = colorToIndex(byColor);
     const uint64_t occMinus = occupancy & ~Board::bitMask(excludeSquare);
-    const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
-    const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
-    if (!rookLike && !bishopLike) return false;
-
-    if (rookLike && (pieces::getRookAttacks(targetIndex, occMinus) & rookLike)) return true;
-    if (bishopLike && (pieces::getBishopAttacks(targetIndex, occMinus) & bishopLike)) return true;
-
-    return false;
+    return isKingAttackedCustom(targetIndex, byColor, occMinus,
+                                pawns_bb[side], knights_bb[side], bishops_bb[side],
+                                rooks_bb[side], queens_bb[side], kings_bb[side]);
 }
 
 
-// Optimized: check if ALL squares in mask are safe (not attacked by byColor)
 // Returns true if all squares are safe, false if ANY square is attacked
 // Used for castling to avoid 3 separate isSquareAttacked calls
 bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
@@ -347,12 +311,10 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
     const uint64_t rookLike = rooks_bb[side] | queens_bb[side];
     const uint64_t bishopLike = bishops_bb[side] | queens_bb[side];
     
-    // Check each square in the mask
-    while (squaresMask) {
+    while (squaresMask) { // Check each square in the mask
         const uint8_t sq = __builtin_ctzll(squaresMask);
         squaresMask &= squaresMask - 1; // Clear LSB
         
-        // Early exit on first attacked square
         if (pieces::PAWN_ATTACKERS_TO[side][sq] & pawns_bb[side]) return false;
         if (pieces::KNIGHT_ATTACKS[sq] & knights_bb[side]) return false;
         if (pieces::KING_ATTACKS[sq] & kings_bb[side]) return false;
@@ -370,8 +332,7 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
                                  uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept {
     const uint8_t side = colorToIndex(byColor);
-    
-    // Fast path: non-sliding pieces
+
     if (pieces::PAWN_ATTACKERS_TO[side][kingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
@@ -386,15 +347,12 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t byColor, uint64_t occ,
     return false;
 }
 
-// Is the given color currently in check?
 __attribute__((hot))
-bool Board::inCheck(uint8_t color) const noexcept {
-    // Find king square using king bitboards (convert to array index)
+bool Board::inCheck(uint8_t color) const noexcept { // is the given color currently in check?
     const uint8_t side = colorToIndex(color);
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false; // no king found (invalid position) -> treat as not in check
-    
 
     const uint8_t kingIndex = __builtin_ctzll(kingBB);
     const uint8_t opp = oppositeColor(color);
@@ -402,9 +360,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
 }
 
 
-// Helper template per simple pieces con pattern identico (Knight, Bishop, Rook, Queen)
-// Elimina duplicazione codice in hasAnyLegalMove
-template<uint8_t PieceType>
+template<uint8_t PieceType> // helper template per simple pieces con pattern identico (Knight, Bishop, Rook, Queen)
 [[nodiscard]] static inline bool hasLegalMovesForPieceType(
     const Board* board,
     uint64_t pieceBB,
@@ -417,7 +373,7 @@ template<uint8_t PieceType>
         const uint8_t from = __builtin_ctzll(pieceBB);
         pieceBB &= pieceBB - 1;
         
-        // Use dispatch table for move generation
+        // use dispatch table for move generation
         uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
         while (movesMask) {
             const uint8_t to = __builtin_ctzll(movesMask);
@@ -453,8 +409,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             if (canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
         }
         
-        // Castling (only if not in check)
-        if (!inChk) {
+        if (!inChk) { // Castling (only if not in check)
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
                 if (canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
@@ -463,8 +418,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
     }
 
-    // In double-check only king moves are legal. If king had no legal move, there is no legal move.
-    if (inDoubleChk) {
+    if (inDoubleChk) { // in double-check only king moves are legal
         return false;
     }
 
@@ -528,8 +482,7 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
     if (resetHistory) {
         historySize = 0;
     }
-    // FIX: Check BEFORE incrementing to avoid out-of-bounds write
-    // If we're at capacity, shift the array (ring buffer behavior)
+    
     if (historySize >= repetitionHistory.size()) {
         // Shift all entries one position to the left (discard oldest)
         for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
