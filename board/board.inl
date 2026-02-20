@@ -309,6 +309,16 @@ inline bool Board::isKingSafeAfterMove(
     occNew &= ~bitMask(fromIndex);
     occNew |= bitMask(toIndex);
 
+    if (capturedEnemyMask == 0ULL) {
+        return !isKingAttackedCustom(kingSq, oppColor, occNew,
+                                     pawns_bb[oppSide],
+                                     knights_bb[oppSide],
+                                     bishops_bb[oppSide],
+                                     rooks_bb[oppSide],
+                                     queens_bb[oppSide],
+                                     kings_bb[oppSide]);
+    }
+
     return !isKingAttackedCustom(kingSq, oppColor, occNew,
                                  pawns_bb[oppSide] & ~capturedEnemyMask,
                                  knights_bb[oppSide] & ~capturedEnemyMask,

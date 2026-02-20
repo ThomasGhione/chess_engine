@@ -10,6 +10,7 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
         AttackData& d = data[side];
         const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                                 b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
+        const uint64_t mobilityMask = ~ownOcc;
 
         uint64_t pawns = b.pawns_bb[side];
         const bool isWhite = (side == 0);
@@ -24,7 +25,7 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
             const int sq = popLSB(knights);
             const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
             d.knightAttacks |= attacks;
-            const int mobility = __builtin_popcountll(attacks & ~ownOcc);
+            const int mobility = __builtin_popcountll(attacks & mobilityMask);
             d.knightMobility += mobility;
         }
         d.allAttacks |= d.knightAttacks;
@@ -34,7 +35,7 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
             const int sq = popLSB(bishops);
             const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
             d.bishopAttacks |= attacks;
-            d.bishopMobility += __builtin_popcountll(attacks & ~ownOcc);
+            d.bishopMobility += __builtin_popcountll(attacks & mobilityMask);
         }
         d.allAttacks |= d.bishopAttacks;
 
@@ -43,7 +44,7 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
             const int sq = popLSB(rooks);
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
             d.rookAttacks |= attacks;
-            d.rookMobility += __builtin_popcountll(attacks & ~ownOcc);
+            d.rookMobility += __builtin_popcountll(attacks & mobilityMask);
         }
         d.allAttacks |= d.rookAttacks;
 
@@ -52,7 +53,7 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
             const int sq = popLSB(queens);
             const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
             d.queenAttacks |= attacks;
-            d.queenMobility += __builtin_popcountll(attacks & ~ownOcc);
+            d.queenMobility += __builtin_popcountll(attacks & mobilityMask);
         }
         d.allAttacks |= d.queenAttacks;
 

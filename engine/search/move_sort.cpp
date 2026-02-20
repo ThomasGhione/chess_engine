@@ -260,7 +260,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 }
                 
                 // Promotion bonus (se non è cattura e non dà scacco già rilevato)
-                if (score == 0 && isPromotionMove(b, m)) {
+                if (score == 0 && fromPieceType == chess::Board::PAWN && isPromotionMove(b, m)) {
                     score = 7000;
 
                     const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
