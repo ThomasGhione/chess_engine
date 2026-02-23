@@ -290,20 +290,44 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
     return table;
 }();
 
+// Occupancy bits relevant to pawn forward pushes:
+// bit0 = one-step destination occupied
+// bit1 = two-step destination occupied
+inline constexpr std::array<std::array<std::array<uint64_t, 4>, 64>, 2> PAWN_FORWARD_PUSH_LOOKUP = []{
+    std::array<std::array<std::array<uint64_t, 4>, 64>, 2> table{};
+
+    for (int c = 0; c < 2; ++c) {
+        for (int sq = 0; sq < 64; ++sq) {
+            const uint64_t oneStep = PAWN_SINGLE_PUSH_TARGETS[c][sq];
+            const uint64_t twoStep = PAWN_DOUBLE_PUSH_TARGETS[c][sq];
+            for (int occBits = 0; occBits < 4; ++occBits) {
+                uint64_t result = 0ULL;
+                const bool oneBlocked = (occBits & 0x1) != 0;
+                const bool twoBlocked = (occBits & 0x2) != 0;
+
+                if (oneStep && !oneBlocked) {
+                    result |= oneStep;
+                    if (twoStep && !twoBlocked) {
+                        result |= twoStep;
+                    }
+                }
+
+                table[c][sq][occBits] = result;
+            }
+        }
+    }
+
+    return table;
+}();
+
 __attribute__((hot, always_inline))
 inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
     const int colorIndex = static_cast<int>(isWhite);
     const U64 oneStepBit = PAWN_SINGLE_PUSH_TARGETS[colorIndex][squareIndex];
-    if (!oneStepBit || (occupancy & oneStepBit)) [[unlikely]] {
-        return 0ULL;
-    }
-
-    U64 result = oneStepBit;
     const U64 twoStepBit = PAWN_DOUBLE_PUSH_TARGETS[colorIndex][squareIndex];
-    if (twoStepBit && !(occupancy & twoStepBit)) {
-        result |= twoStepBit;
-    }
-    return result;
+    const unsigned occBits = static_cast<unsigned>((occupancy & oneStepBit) != 0ULL)
+        | (static_cast<unsigned>((occupancy & twoStepBit) != 0ULL) << 1);
+    return PAWN_FORWARD_PUSH_LOOKUP[colorIndex][squareIndex][occBits];
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square
@@ -322,7 +346,7 @@ inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexce
 }
 
 inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
-	if (squareIndex < 0 || squareIndex >= 64) return 0ULL;
+	if (squareIndex < 0 || squareIndex >= 64) [[unlikely]] return 0ULL;
 
 	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 
@@ -337,7 +361,7 @@ inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
 }
 
 inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
-	if (squareIndex < 0 || squareIndex >= 64) return 0ULL;
+	if (squareIndex < 0 || squareIndex >= 64) [[unlikely]] return 0ULL;
 	
     int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 
