@@ -92,18 +92,19 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
 
+        MoveList<chess::Board::Move> forcingEvasions;
+        MoveList<chess::Board::Move> quietEvasions;
+        for (const auto& m : evasions) {
+            if (isForcingEvasion(b, m, enPassant, hasEnPassant)) {
+                forcingEvasions.emplace_back(m);
+            } else {
+                quietEvasions.emplace_back(m);
+            }
+        }
+
         int64_t best = Engine::initialBest(usIsWhite);
-        // Two-pass evasion ordering:
-        // 1) forcing evasions (captures/promotions), 2) quiet evasions.
-        // This improves alpha-beta cutoffs in tactical check sequences.
-        for (int pass = 0; pass < 2; ++pass) {
-            for (const auto& m : evasions) {
-                const bool isForcing = isForcingEvasion(b, m, enPassant, hasEnPassant);
-
-                if ((pass == 0 && !isForcing) || (pass == 1 && isForcing)) {
-                    continue;
-                }
-
+        auto searchEvasionSet = [&](const MoveList<chess::Board::Move>& evasionSet) -> bool {
+            for (const auto& m : evasionSet) {
                 chess::Board::MoveState state;
                 doMoveWithPromotion(b, m, state);
                 const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
@@ -115,10 +116,17 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
                 updateBound(score, alpha, beta, usIsWhite);
                 if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-                    return cutoffValue(alpha, beta, usIsWhite);
+                    return true;
                 }
             }
-        }
+            return false;
+        };
+
+        // Two-pass evasion ordering:
+        // 1) forcing evasions (captures/promotions), 2) quiet evasions.
+        // This improves alpha-beta cutoffs in tactical check sequences.
+        if (searchEvasionSet(forcingEvasions)) return cutoffValue(alpha, beta, usIsWhite);
+        if (searchEvasionSet(quietEvasions)) return cutoffValue(alpha, beta, usIsWhite);
 
         return best;
     }

@@ -63,6 +63,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
         : 999; // effectively disable LMP when not applicable
 
+    const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
         const auto& m = scoredMove.move;
@@ -94,9 +95,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         chess::Board::MoveState state;
         const bool isPromo = doMoveWithPromotion(b, m, state);
 
-        // Compute whether the move gives check AFTER it is made
-        const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
-        const bool givesCheck = b.inCheck(oppColor);
+        // LMR: reduce depth for late, non-critical moves
+        // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
+        // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
+        const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 5 : 3;
+        const bool lmrStructuralCandidate = (ctx.depth > 2)
+            && (moveIndex >= lmrMinMoveIndex)
+            && !isPromo
+            && (!wasCapture)
+            && !isDelicateEndgame;
+
+        const bool forcingCandidate = (wasCapture || isPromo || moveIndex < 3);
+        const bool needsCheckInfo =
+            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
+        const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
         // =========================================================================
         // CHECK EXTENSION (SELECTIVE, DETERMINISTIC)
@@ -104,23 +117,12 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // Avoid extending every checking move: that can stall depth reduction in
         // long checking sequences and hurt both speed and tactical stability.
         // Extend only forcing checks and only near the horizon.
-        const bool isForcingCheck = givesCheck && (wasCapture || isPromo || moveIndex < 3);
+        const bool isForcingCheck = givesCheck && forcingCandidate;
         const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
         const int64_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0);
-
-        // LMR: reduce depth for late, non-critical moves
-        // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
-        // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
-        
-        const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 5 : 3;
-        const bool canReduce = (ctx.depth > 2)
-            && (moveIndex >= lmrMinMoveIndex)
-            && !isPromo
-            && (!wasCapture)
+        const bool canReduce = lmrStructuralCandidate
             && !givesCheck
-            && !this->isKillerMove(m, killerMoves, ctx.ply)
-            && !isDelicateEndgame;
+            && !this->isKillerMove(m, killerMoves, ctx.ply);
 
         // PVS windowing:
         // - First move: full window (PV candidate)
