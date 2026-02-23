@@ -82,6 +82,14 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint64_t toBit = Board::bitMask(toIndex);
     switch (fromType) {
         case PAWN: {
+            const bool isWhite = (movingColor == WHITE);
+            const int fromFile = static_cast<int>(fileOf(fromIndex));
+            const int toFile = static_cast<int>(fileOf(toIndex));
+            const int fromRank = static_cast<int>(rankOf(fromIndex));
+            const int toRank = static_cast<int>(rankOf(toIndex));
+            const int fileDiff = toFile - fromFile;
+            const int rankDiff = toRank - fromRank;
+            const int forward = isWhite ? -1 : 1;
             const bool fileChanged = (fileOf(fromIndex) != fileOf(toIndex));
             const bool isEnPassant = (destPiece == EMPTY)
                 && fileChanged
@@ -90,8 +98,18 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 
             // Safety guards: caller may provide broad pawn masks.
             if (fileChanged) {
+                // Diagonal pawn move must be exactly one file and one forward rank.
+                if ((fileDiff < -1 || fileDiff > 1) || rankDiff != forward) return false;
                 if (!isEnPassant && destPiece == EMPTY) return false;
             } else {
+                // Forward pawn move must be 1 step, or 2 steps from initial rank.
+                if (rankDiff != forward && rankDiff != 2 * forward) return false;
+                if (rankDiff == 2 * forward) {
+                    const int startRank = isWhite ? 6 : 1;
+                    if (fromRank != startRank) return false;
+                    const uint8_t midIndex = static_cast<uint8_t>(fromIndex + (isWhite ? -8 : 8));
+                    if (get(midIndex) != EMPTY) return false;
+                }
                 if (destPiece != EMPTY) return false;
             }
 
