@@ -83,8 +83,9 @@ int64_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
 }
 
 int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
-    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
-        return evaluateCheckmate(board);
+    const uint8_t activeColor = board.getActiveColor();
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(activeColor)) [[unlikely]] {
+        return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
     }
 
     int64_t eval = getMaterialDelta(board);

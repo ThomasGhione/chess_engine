@@ -77,17 +77,20 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
     uint64_t blackAdjAndFilePawns[8] = {};
 
     for (int f = 0; f < 8; ++f) {
-        const int whiteOnFile = __builtin_popcountll(whitePawns & FILE_MASKS[f]);
-        const int blackOnFile = __builtin_popcountll(blackPawns & FILE_MASKS[f]);
+        const uint64_t fileMask = FILE_MASKS[f];
+        const uint64_t adjacentMask = ADJACENT_FILES_ONLY[f];
+        const uint64_t adjacentAndFileMask = ADJACENT_AND_FILE_MASKS[f];
+        const int whiteOnFile = __builtin_popcountll(whitePawns & fileMask);
+        const int blackOnFile = __builtin_popcountll(blackPawns & fileMask);
 
         if (whiteOnFile > 1) score += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
         if (blackOnFile > 1) score -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
 
-        whiteIsolatedOnFile[f] = static_cast<uint8_t>((whitePawns & ADJACENT_FILES_ONLY[f]) == 0ULL);
-        blackIsolatedOnFile[f] = static_cast<uint8_t>((blackPawns & ADJACENT_FILES_ONLY[f]) == 0ULL);
+        whiteIsolatedOnFile[f] = static_cast<uint8_t>((whitePawns & adjacentMask) == 0ULL);
+        blackIsolatedOnFile[f] = static_cast<uint8_t>((blackPawns & adjacentMask) == 0ULL);
 
-        whiteAdjAndFilePawns[f] = whitePawns & ADJACENT_AND_FILE_MASKS[f];
-        blackAdjAndFilePawns[f] = blackPawns & ADJACENT_AND_FILE_MASKS[f];
+        whiteAdjAndFilePawns[f] = whitePawns & adjacentAndFileMask;
+        blackAdjAndFilePawns[f] = blackPawns & adjacentAndFileMask;
     }
 
     uint64_t wp = whitePawns;
@@ -96,6 +99,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const int file = sq & 7;
         const int rank = sq >> 3;
         const bool hasSupport = (whitePawns & WHITE_SUPPORT_MASKS[sq]) != 0ULL;
+        const uint64_t blackForwardAdjFile = blackAdjAndFilePawns[file];
 
         if (whiteIsolatedOnFile[file]) [[unlikely]] {
             score += engine::ISOLATED_PAWN_PENALTY;
@@ -111,7 +115,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             }
         }
 
-        if ((blackAdjAndFilePawns[file] & WHITE_FORWARD_FILL[sq]) == 0ULL) [[unlikely]] {
+        if ((blackForwardAdjFile & WHITE_FORWARD_FILL[sq]) == 0ULL) [[unlikely]] {
             score += engine::PASSED_PAWN_BONUS;
             const int advancement = 6 - rank;
             score += advancement * passedAdvancementScale;
@@ -128,6 +132,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const int file = sq & 7;
         const int rank = sq >> 3;
         const bool hasSupport = (blackPawns & BLACK_SUPPORT_MASKS[sq]) != 0ULL;
+        const uint64_t whiteForwardAdjFile = whiteAdjAndFilePawns[file];
 
         if (blackIsolatedOnFile[file]) [[unlikely]] {
             score -= engine::ISOLATED_PAWN_PENALTY;
@@ -143,7 +148,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
             }
         }
 
-        if ((whiteAdjAndFilePawns[file] & BLACK_FORWARD_FILL[sq]) == 0ULL) [[unlikely]] {
+        if ((whiteForwardAdjFile & BLACK_FORWARD_FILL[sq]) == 0ULL) [[unlikely]] {
             score -= engine::PASSED_PAWN_BONUS;
             const int advancement = rank - 1;
             score -= advancement * passedAdvancementScale;

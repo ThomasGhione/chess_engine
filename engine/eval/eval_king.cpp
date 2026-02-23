@@ -4,22 +4,25 @@ namespace engine {
 
 int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     int64_t score = 0;
+    const bool whiteCastleKs = b.getCastle(0);
+    const bool whiteCastleQs = b.getCastle(1);
+    const bool blackCastleKs = b.getCastle(2);
+    const bool blackCastleQs = b.getCastle(3);
 
     for (int side = 0; side < 2; ++side) {
         const uint64_t kingBB = b.kings_bb[side];
         if (!kingBB) [[unlikely]] continue;
         const int sq = __builtin_ctzll(kingBB);
         const int sign = (side == 0) ? 1 : -1;
+        const bool canCastleKingside = (side == 0) ? whiteCastleKs : blackCastleKs;
+        const bool canCastleQueenside = (side == 0) ? whiteCastleQs : blackCastleQs;
 
-        const bool rightsLost = !b.getCastle(side == 0 ? 0 : 2) && !b.getCastle(side == 0 ? 1 : 3);
+        const bool rightsLost = !canCastleKingside && !canCastleQueenside;
         const bool onCastlingSquare = (side == 0) ? (sq == 62 || sq == 58) : (sq == 6 || sq == 2);
         const bool hasCastled = onCastlingSquare && rightsLost;
 
         if (!hasCastled) {
             score += sign * (-engine::KING_NON_CASTLING_PENALTY);
-
-            const bool canCastleKingside = (side == 0) ? b.getCastle(0) : b.getCastle(2);
-            const bool canCastleQueenside = (side == 0) ? b.getCastle(1) : b.getCastle(3);
 
             if (side == 0) {
                 if (canCastleKingside) {
@@ -119,15 +122,19 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     static constexpr int64_t LOSS_OF_CASTLING_PENALTY = 60;
 
     int64_t score = 0;
+    const bool whiteCastleKs = b.getCastle(0);
+    const bool whiteCastleQs = b.getCastle(1);
+    const bool blackCastleKs = b.getCastle(2);
+    const bool blackCastleQs = b.getCastle(3);
 
     const bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
-    const bool whiteCanCastle = b.getCastle(0) || b.getCastle(1);
+    const bool whiteCanCastle = whiteCastleKs || whiteCastleQs;
 
     score += whiteHasCastled * engine::CASTLING_BONUS;
     score -= (!whiteHasCastled && !whiteCanCastle) * LOSS_OF_CASTLING_PENALTY;
 
     const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
-    const bool blackCanCastle = b.getCastle(2) || b.getCastle(3);
+    const bool blackCanCastle = blackCastleKs || blackCastleQs;
 
     score -= blackHasCastled * engine::CASTLING_BONUS;
     score += (!blackHasCastled && !blackCanCastle) * LOSS_OF_CASTLING_PENALTY;

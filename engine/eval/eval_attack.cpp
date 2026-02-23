@@ -134,24 +134,24 @@ inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
     int64_t sideScore = 0;
     const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                             b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
+    const uint64_t mobilityMask = ~occ;
+    const uint64_t mobilityOwnMask = ~ownOcc;
 
     sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
-        b.knights_bb[side], occ, ~occ, sign);
+        b.knights_bb[side], occ, mobilityMask, sign);
 
-    const int pieceCount = __builtin_popcountll(b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]);
-
-    if (pieceCount <= 0) [[unlikely]] {
+    if ((b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]) == 0ULL) [[unlikely]] {
       return sideScore;
     }
 
     sideScore += evalTrappedPiecesGeneric<pieces::getBishopAttacks, engine::PINNED_BISHOP_PENALTY, engine::LOW_MOBILITY_BISHOP_PENALTY>(
-        b.bishops_bb[side], occ, ~ownOcc, sign);
+        b.bishops_bb[side], occ, mobilityOwnMask, sign);
 
     sideScore += evalTrappedPiecesGeneric<pieces::getRookAttacks, engine::PINNED_ROOK_PENALTY, engine::LOW_MOBILITY_ROOK_PENALTY>(
-        b.rooks_bb[side], occ, ~ownOcc, sign);
+        b.rooks_bb[side], occ, mobilityOwnMask, sign);
 
     sideScore += evalTrappedPiecesGeneric<pieces::getQueenAttacks, engine::PINNED_QUEEN_PENALTY, engine::LOW_MOBILITY_QUEEN_PENALTY>(
-        b.queens_bb[side], occ, ~ownOcc, sign);
+        b.queens_bb[side], occ, mobilityOwnMask, sign);
 
     return sideScore;
 }
