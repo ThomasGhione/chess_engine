@@ -101,10 +101,9 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const int64_t originalAlpha = alpha;
     const int64_t originalBeta = beta;
 
-    // std::vector<int64_t> threadScores(moves.size, Engine::initialBest(usIsWhite));
-    std::array<int64_t, 218> threadScores; // 218 = max moves 
+    std::array<int64_t, MAX_MOVES> threadScores;
     threadScores.fill(Engine::initialBest(usIsWhite));
-    std::array<uint64_t, 218> threadNodeCounts {};
+    std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
 
     // Task-based root parallelism (work-stealing, better load balance)
     // Bound the number of threads to MAX_THREADS and the number of moves
@@ -168,7 +167,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
             bestScore = score;
             bestMove = m;
         }
-        // Update alpha/beta bounds
         updateBound(score, alpha, beta, usIsWhite);
     }
 
