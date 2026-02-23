@@ -19,9 +19,9 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
 # -funroll-loops: Unroll hot loops (good for bitboard operations)
 # Balanced production flags (safety + speed)
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -fopenmp -march=native -mtune=native \
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
-		-ffunction-sections -fdata-sections -fomit-frame-pointer
+		-ffunction-sections -fdata-sections 
 
 # Uncomment if codebase is exception-free
 
@@ -113,7 +113,7 @@ DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OB
 .PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default target for plain `make`
-all: PRODFLAGS += -DDEBUG
+all: PRODFLAGS += -DDEBUG -fomit-frame-pointer -O3
 all: prod
 
 # Parallel production build
@@ -138,7 +138,7 @@ prod_sequential:
 
 # Build command for debug executable
 # Adds -g to include debug symbols
-debug: PRODFLAGS += -DDEBUG -g
+debug: PRODFLAGS += -DDEBUG -g -pg -O1
 debug: $(NAME_APP)
 	@printf "\n✅ Build debug completato: $(NAME_APP)\n\n"
 
