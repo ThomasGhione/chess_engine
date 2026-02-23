@@ -3,6 +3,9 @@
 
 namespace engine {
 
+static constexpr size_t ATTACK_CACHE_SIZE = 1u << 11;
+static constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
+
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
     struct AttackCacheEntry {
         uint64_t key = 0ULL;
@@ -10,8 +13,6 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
         uint8_t valid = 0;
     };
 
-    constexpr size_t ATTACK_CACHE_SIZE = 1u << 11;
-    constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
     thread_local std::array<AttackCacheEntry, ATTACK_CACHE_SIZE> attackCache{};
 
     const uint64_t cacheKey = b.getHash();

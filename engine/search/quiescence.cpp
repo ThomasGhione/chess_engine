@@ -71,7 +71,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
+    static constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
     if (ply >= MAX_QSEARCH_DEPTH) {
         // Do not return a stand-pat score from an in-check node without checking
         // whether this is actually checkmate.
@@ -143,7 +143,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // In-check nodes are handled above and never reach this section.
-    constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
+    static constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
 
     if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
         // Early pruning - don't store in TT (too frequent, overhead not worth it)
@@ -239,7 +239,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
             const int64_t capturedValue = PIECE_VALUES[victimType];
-            constexpr int64_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
+            static constexpr int64_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
             
             // Check if this capture can possibly improve our position enough
             if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha, beta, usIsWhite)) {
@@ -258,7 +258,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            constexpr int64_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
+            static constexpr int64_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
             
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
                 continue; // Per-move delta pruning
