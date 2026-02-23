@@ -312,7 +312,7 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
     
     const uint64_t rookLike = rooks | queens;
     const uint64_t bishopLike = bishops | queens;
-    if (!rookLike && !bishopLike) return false;
+    if ((rookLike | bishopLike) == 0ULL) [[likely]] return false;
 
     if (rookLike && (pieces::getRookAttacks(kingSq, occ) & rookLike)) return true;
     if (bishopLike && (pieces::getBishopAttacks(kingSq, occ) & bishopLike)) return true;
@@ -326,7 +326,11 @@ bool Board::inCheck(uint8_t color) const noexcept {
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false;
-    return isSquareAttacked(__builtin_ctzll(kingBB), oppositeColor(color));
+    const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t bySide = side ^ 1;
+    return isKingAttackedCustom(kingSq, bySide, occupancy,
+                                pawns_bb[bySide], knights_bb[bySide], bishops_bb[bySide],
+                                rooks_bb[bySide], queens_bb[bySide], kings_bb[bySide]);
 }
 
 
