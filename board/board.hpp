@@ -196,6 +196,7 @@ public:
     void undoMove(const Move& m, const MoveState& state) noexcept;
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
+    bool canMoveTo(const uint8_t fromIndex, const uint8_t toIndex, bool inChk) const noexcept;
     bool canMoveTo(const Coords& from, const Coords& to, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck) const noexcept;

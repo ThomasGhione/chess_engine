@@ -43,6 +43,10 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
     return true;
 }
 
+bool Board::canMoveTo(const uint8_t fromIndex, const uint8_t toIndex, bool inChk) const noexcept {
+    return isLegalPseudoMove(fromIndex, toIndex, inChk);
+}
+
 bool Board::canMoveTo(const Coords& from, const Coords& to, bool inChk) const noexcept {
     return isLegalPseudoMove(from.index, to.index, inChk);
 }
@@ -380,14 +384,14 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (canMoveTo(Coords{king}, Coords{to}, inChk)) return true;
+            if (canMoveTo(king, to, inChk)) return true;
         }
         
         if (!inChk) { // Castling (only if not in check)
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
-                if (canMoveTo(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
-                if (canMoveTo(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
+                if (canMoveTo(eIndex, static_cast<uint8_t>(eIndex + 2), inChk)) return true;
+                if (canMoveTo(eIndex, static_cast<uint8_t>(eIndex - 2), inChk)) return true;
             }
         }
     }

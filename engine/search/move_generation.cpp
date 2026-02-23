@@ -364,19 +364,17 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
         }
     }
 
-    // Castling: illegal when in check.
-    if (!inCheck) {
+    if (!inCheck) { // castling: illegal when in check.
         const uint8_t f = from & 7;
-        if (f <= 5 && b.canMoveTo(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
-        if (f >= 2 && b.canMoveTo(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
+        if (f <= 5 && b.canMoveTo(from, static_cast<uint8_t>(from + 2), inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
+        if (f >= 2 && b.canMoveTo(from, static_cast<uint8_t>(from - 2), inCheck))
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from - 2)}});
     }
 
     // In double-check only king moves are legal.
-    if (inDoubleCheck) {
-        return moves;
-    }
+    if (inDoubleCheck) return moves;
+    
 
     uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare{};
