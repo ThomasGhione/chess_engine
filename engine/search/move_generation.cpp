@@ -308,9 +308,9 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
     // Castling: illegal when in check.
     if (!inCheck) {
         const uint8_t f = from & 7;
-        if (f <= 5 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
+        if (f <= 5 && b.canMoveTo(fromC, chess::Coords{uint8_t(from + 2)}, inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from + 2)}});
-        if (f >= 2 && b.canMoveToBB(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
+        if (f >= 2 && b.canMoveTo(fromC, chess::Coords{uint8_t(from - 2)}, inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{uint8_t(from - 2)}});
     }
 

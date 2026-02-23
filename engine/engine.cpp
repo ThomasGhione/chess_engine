@@ -69,9 +69,9 @@ __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     bool result;
     if (promotionPiece == '\0') {
-        result = this->board.moveBB(from, to);
+        result = this->board.move(from, to);
     } else {
-        result = this->board.moveBB(from, to, promotionPiece);
+        result = this->board.move(from, to, promotionPiece);
     }
     
     if (result) [[likely]] {

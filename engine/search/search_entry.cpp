@@ -141,7 +141,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                         const int end = std::min(start + chunk, static_cast<int>(moves.size));
                         #pragma omp task firstprivate(start, end)
                         {
-                            // Make ONE copy of the board for this task using copy ctor (safe)
                             chess::Board threadBoard = this->board;
 
                             for (int i = start; i < end; ++i) {
@@ -176,13 +175,6 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     this->nodesSearched += localNodes;
     this->eval = bestScore;
     return bestMove;
-}
-
-void Engine::doMoveInBoard(chess::Board::Move bestMove) noexcept {
-    // Execute the best move found, handling promotions
-    const bool isPromo = isPromotionMove(this->board, bestMove);
-    const char promoPiece = isPromo ? (bestMove.promotionPiece != '\0' ? bestMove.promotionPiece : 'q') : '\0';
-    (void)this->board.moveBB(bestMove.from, bestMove.to, promoPiece);
 }
 
 void Engine::search(uint64_t depth) noexcept {
@@ -301,10 +293,10 @@ void Engine::search(uint64_t depth) noexcept {
         prevScore = this->eval; // Save score for next iteration's aspiration window
     }
     
-    // Restore the original depth
-    this->depth = depth;
+    this->depth = depth; // Restore the original depth
 
-    this->doMoveInBoard(bestMove);
+    (void)this->board.move(bestMove.from, bestMove.to, 
+        isPromotionMove(this->board, bestMove) ? (bestMove.promotionPiece != '\0' ? bestMove.promotionPiece : 'q') : '\0');
     this->updateGameResult();
     this->bestMove = bestMove;
 
@@ -313,16 +305,12 @@ void Engine::search(uint64_t depth) noexcept {
 
 #ifdef DEBUG
     std::string moveStr = chess::Coords::toAlgebric(bestMove.from) + chess::Coords::toAlgebric(bestMove.to);
-    // CORRECTED: include promotion piece in UCI notation if present
     if (bestMove.promotionPiece != '\0') {
         moveStr += bestMove.promotionPiece;
     }
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
-/*
-    std::cout << "[DEBUG] TT probes: " << ttProbes
-              << ", hits: " << ttHits
-              << "\n";
-*/
+    // std::cout << "[DEBUG] TT probes: " << ttProbes << ", hits: " << ttHits << "\n";
+
 #endif
 }
 

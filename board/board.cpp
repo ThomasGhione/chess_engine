@@ -4,8 +4,8 @@
 namespace chess {
 
 
-bool Board::moveBB(const Coords& from, const Coords& to) noexcept {
-    return moveBB(from, to, '\0');
+bool Board::move(const Coords& from, const Coords& to) noexcept {
+    return move(from, to, '\0');
 }
 
 bool Board::promote(const Coords& at, char choice) noexcept {
@@ -29,12 +29,12 @@ bool Board::promote(const Coords& at, char choice) noexcept {
 }
 
 // Overload: execute move and, if a pawn reaches last rank, promote using provided choice
-bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
+bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
     const uint8_t fromIndex = from.index;
     const uint8_t moving = get(fromIndex);
     const uint8_t movingColor = moving & MASK_COLOR;
 
-    if (!canMoveToBB(from, to, inCheck(movingColor))) {
+    if (!canMoveTo(from, to, inCheck(movingColor))) {
         return false;
     }
 
@@ -43,7 +43,7 @@ bool Board::moveBB(const Coords& from, const Coords& to, char promotionChoice) n
     return true;
 }
 
-bool Board::canMoveToBB(const Coords& from, const Coords& to, bool inChk) const noexcept {
+bool Board::canMoveTo(const Coords& from, const Coords& to, bool inChk) const noexcept {
     return isLegalPseudoMove(from.index, to.index, inChk);
 }
 
@@ -56,8 +56,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) co
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bool inDoubleChk) const noexcept {
-    const uint8_t fromPiece = get(fromIndex);
-    return isLegalPseudoMove(fromIndex, toIndex, fromPiece, inChk, inDoubleChk);
+    return isLegalPseudoMove(fromIndex, toIndex, get(fromIndex), inChk, inDoubleChk);
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
@@ -118,7 +117,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 }
 
 // ============================================
-// HELPER FUNCTIONS FOR canMoveToBB
+// HELPER FUNCTIONS FOR canMoveTo
 // ============================================
 
 // Lazy double-check detection - called ONLY when inChk=true && fromType != KING
@@ -377,14 +376,14 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (canMoveToBB(Coords{king}, Coords{to}, inChk)) return true;
+            if (canMoveTo(Coords{king}, Coords{to}, inChk)) return true;
         }
         
         if (!inChk) { // Castling (only if not in check)
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
-                if (canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
-                if (canMoveToBB(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
+                if (canMoveTo(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex + 2)}, inChk)) return true;
+                if (canMoveTo(Coords{eIndex}, Coords{static_cast<uint8_t>(eIndex - 2)}, inChk)) return true;
             }
         }
     }
@@ -394,7 +393,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     // --- KNIGHTS (cheap, no magic bitboards) ---
-    if (hasLegalMovesForPieceType<0x2>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
+    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
         return true;
     }
 
@@ -423,19 +422,16 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     // --- BISHOPS ---
-    if (hasLegalMovesForPieceType<0x3>(this, bishops_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
+    if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
-    }
 
     // --- ROOKS ---
-    if (hasLegalMovesForPieceType<0x4>(this, rooks_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
+    if (hasLegalMovesForPieceType<ROOK>(this, rooks_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
-    }
 
     // --- QUEENS ---
-    if (hasLegalMovesForPieceType<0x5>(this, queens_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
+    if (hasLegalMovesForPieceType<QUEEN>(this, queens_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
-    }
 
     return false;
 }

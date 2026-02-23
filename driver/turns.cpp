@@ -105,7 +105,7 @@ namespace driver {
     #ifdef DEBUG
             auto chrono_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-            std::cout << "[DEBUG] MoveBB executed in " << elapsed.count() << " microseconds.\n";
+            std::cout << "[DEBUG] move executed in " << elapsed.count() << " microseconds.\n";
     #endif
 
             std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";

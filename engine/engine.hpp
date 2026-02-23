@@ -244,7 +244,6 @@ private:
     // Fast access to piece values (inline for zero-cost abstraction)
     static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 
-    void doMoveInBoard(chess::Board::Move bestMove) noexcept;
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
 
