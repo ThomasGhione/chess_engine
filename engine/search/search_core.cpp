@@ -46,8 +46,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     // FUTILITY PRUNING margins (main search)
     // =========================================================================
-    constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 200, 400}; // depth 0,1,2
-    constexpr int64_t FUTILITY_MARGINS_EG[] = {0, 120, 240}; // depth 0,1,2
+    static constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 200, 400}; // depth 0,1,2
+    static constexpr int64_t FUTILITY_MARGINS_EG[] = {0, 120, 240}; // depth 0,1,2
     const bool canFutilityPrune = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int64_t futilityMargin = canFutilityPrune
         ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
@@ -56,8 +56,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     // LATE MOVE PRUNING thresholds
     // =========================================================================
-    constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
-    constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38}; // depth 0,1,2,3
+    static constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
+    static constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38}; // depth 0,1,2,3
     const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
     const int lmpThreshold = canLMP
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])

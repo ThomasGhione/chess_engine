@@ -98,8 +98,8 @@ inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     int64_t score = 0;
     const int opp  = side ^ 1;
 
-    uint64_t enemyAttacks = data[opp].allAttacks;
-    uint64_t friendlyDef = data[side].allAttacks;
+    const uint64_t enemyAttacks = data[opp].allAttacks;
+    const uint64_t friendlyDef = data[side].allAttacks;
 
     score += evalHangingPiecePenalty(b.pawns_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_PAWN_PENALTY);
     score += evalHangingPiecePenalty(b.knights_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);

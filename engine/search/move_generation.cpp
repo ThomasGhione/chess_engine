@@ -132,7 +132,7 @@ static void computePinRays(const chess::Board& b,
     const int kingFile = chess::Board::fileOf(kingSq);
     const int kingRank = chess::Board::rankOf(kingSq);
 
-    constexpr int DIRS[8][2] = {
+    static constexpr int DIRS[8][2] = {
         {0, 1}, {0, -1}, {1, 0}, {-1, 0},
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
