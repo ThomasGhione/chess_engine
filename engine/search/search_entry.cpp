@@ -83,7 +83,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         return bestMove;
     }
 
-    // --- YBWC Parallel - FIXED per determinismo ---
+    // --- YBWC Parallel ---
     // First move: full-window search
     {
         const auto& firstMove = moves[0];
@@ -216,12 +216,11 @@ void Engine::search(uint64_t depth) noexcept {
     // Prevent stale data from dominating move ordering
     // Divide all history values by 2 at the start of each new search
     // This gives recent data more weight while preserving good moves
-    for (int c = 0; c < 2; ++c) {
-        for (int from = 0; from < 64; ++from) {
-            for (int to = 0; to < 64; ++to) {
-                this->history[c][from][to] >>= 1; // Divide by 2 (fast bit shift)
-            }
-        }
+    int* historyFlat = &this->history[0][0][0];
+    constexpr int HISTORY_CELLS = 2 * 64 * 64;
+    #pragma omp simd
+    for (int i = 0; i < HISTORY_CELLS; ++i) {
+        historyFlat[i] >>= 1; // Divide by 2
     }
 
     const bool searchBestMoveForWhite = (this->board.getActiveColor() == chess::Board::WHITE);
