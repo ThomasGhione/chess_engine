@@ -1,1 +1,0 @@
-[stockfishchess.org](https://stockfishchess.org/)
