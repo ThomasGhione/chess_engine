@@ -406,7 +406,7 @@ namespace driver {
                 
                 case '1': {
                     uint8_t colorChoice = menu.playWithEngineMenu();
-                    Driver::quit(std::string(1, colorChoice));
+                    this->quit(std::string(1, colorChoice));
                     switch (colorChoice) {
                         case '1':
                             this->playGameVsEngine(true);
@@ -437,7 +437,7 @@ namespace driver {
 
                 case '4': {
                     uint8_t extraMenuChoice = menu.extraMenu();
-                    Driver::quit(std::string(1, extraMenuChoice));
+                    this->quit(std::string(1, extraMenuChoice));
 
                     switch (extraMenuChoice) {
                         case '1':
@@ -445,8 +445,10 @@ namespace driver {
                             break;
 
                         case '2': {
+                            if (!this->checkAndDownloadStockfish()) break;
+                            
                             uint8_t botStockfishChoice = menu.playBotVsStockfishMenu();
-                            Driver::quit(std::string(1, botStockfishChoice));
+                            this->quit(std::string(1, botStockfishChoice));
 
                             switch (botStockfishChoice) {
                                 case '1':
@@ -467,7 +469,7 @@ namespace driver {
 
                         case '3': {
                             uint8_t betaAlphaChoice = menu.playBetaVsAlphaMenu();
-                            Driver::quit(std::string(1, betaAlphaChoice));
+                            this->quit(std::string(1, betaAlphaChoice));
                             switch (betaAlphaChoice) {
                                 case '1':
                                     this->betaVsAlpha(true);
