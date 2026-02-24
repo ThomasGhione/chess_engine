@@ -1,6 +1,7 @@
 #include "driver.hpp"
 
 namespace driver {
+
     bool Driver::playOneTurn(bool playerTurn) noexcept {
         if (playerTurn) this->playerTurn();
         else this->engineTurn();
@@ -41,4 +42,5 @@ namespace driver {
     void Driver::botVsBot() noexcept {
         this->playAlternatingTurns(false, false, true);
     }
-}
+
+} // namespace driver

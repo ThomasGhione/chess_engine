@@ -66,9 +66,9 @@ namespace driver {
                 continue;
             }
 
-    #ifdef DEBUG
+#ifdef DEBUG
             auto chrono_start = std::chrono::high_resolution_clock::now();
-    #endif  
+#endif  
 
             const uint8_t pieceType  = piece & chess::Board::MASK_PIECE_TYPE;
             const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
@@ -102,11 +102,11 @@ namespace driver {
                 continue;
             }
 
-    #ifdef DEBUG
+#ifdef DEBUG
             auto chrono_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
             std::cout << "[DEBUG] move executed in " << elapsed.count() << " microseconds.\n";
-    #endif
+#endif
 
             std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
             

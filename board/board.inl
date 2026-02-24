@@ -46,39 +46,20 @@ inline Board::Board(const std::string& fen) {
 // ==============================
 // Geometry Helpers
 // ==============================
-inline constexpr uint8_t Board::verticalMirror(uint8_t sq) noexcept {
-    return sq ^ 56;  // XOR with 0b111000 flips bits 3-5 (rank)
-}
+inline constexpr uint8_t Board::verticalMirror(uint8_t sq) noexcept { return sq ^ 56; } // XOR with 0b111000 flips bits 3-5 (rank) 
+inline constexpr uint8_t Board::horizontalMirror(uint8_t sq) noexcept { return sq ^ 7; } // XOR with 0b000111 flips bits 0-2 (file) 
 
-inline constexpr uint8_t Board::horizontalMirror(uint8_t sq) noexcept {
-    return sq ^ 7;   // XOR with 0b000111 flips bits 0-2 (file)
-}
+inline constexpr uint64_t Board::fileMask(int file) noexcept { return FILE_MASKS[file]; }
+inline constexpr uint64_t Board::rankMask(int rank) noexcept { return RANK_MASKS[rank]; }
 
-inline constexpr uint64_t Board::fileMask(int file) noexcept {
-    return FILE_MASKS[file];
-}
 
-inline constexpr uint64_t Board::rankMask(int rank) noexcept {
-    return RANK_MASKS[rank];
-}
-
-inline constexpr uint64_t Board::fileMaskFromSquare(uint8_t sq) noexcept {
-    return FILE_MASKS[sq & 7];  // Extract file (bits 0-2)
-}
-
-inline constexpr uint64_t Board::rankMaskFromSquare(uint8_t sq) noexcept {
-    return RANK_MASKS[sq >> 3];  // Extract rank (bits 3-5)
-}
+inline constexpr uint64_t Board::fileMaskFromSquare(uint8_t sq) noexcept { return FILE_MASKS[sq & 7]; }  // Extract file (bits 0-2)
+inline constexpr uint64_t Board::rankMaskFromSquare(uint8_t sq) noexcept { return RANK_MASKS[sq >> 3]; }  // Extract rank (bits 3-5)
 
 inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
 
-inline constexpr uint8_t Board::fileOf(uint8_t sq) noexcept {
-    return sq & 7;  // Extract bits 0-2
-}
-
-inline constexpr uint8_t Board::rankOf(uint8_t sq) noexcept {
-    return sq >> 3;  // Extract bits 3-5
-}
+inline constexpr uint8_t Board::fileOf(uint8_t sq) noexcept { return sq & 7; } // Extract bits 0-2 
+inline constexpr uint8_t Board::rankOf(uint8_t sq) noexcept { return sq >> 3; } // Extract bits 3-5 
 
 // ==============================
 // Move Value Helpers
@@ -135,6 +116,8 @@ inline uint8_t Board::get(const std::string& square) const noexcept {
 inline std::string Board::getCurrentFen() const noexcept { return fromBoardToFen(); };
 
 inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
+
+inline Coords Board::getEnPassant() const noexcept { return enPassant; }
 
 inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
     return (castle & (1u << index));
@@ -280,9 +263,7 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
     occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
 }
 
-inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept {
-    return (bb & (bb - 1)) != 0ULL;
-}
+inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept { return (bb & (bb - 1)) != 0ULL; }
 
 inline bool Board::addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept {
     if (!attackSet) return false;
@@ -393,7 +374,7 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) return;
+    if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
     const uint64_t bit = bitMask(index);
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
@@ -401,7 +382,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) return;
+    if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
     const uint64_t bit = bitMask(index);
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit);
@@ -419,8 +400,4 @@ inline bool Board::isFiftyMoveRule() const noexcept { return halfMoveClock >= 10
 
 inline bool Board::isDraw(uint8_t color) const noexcept {
     return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition();
-}
-
-inline Coords Board::getEnPassant() const noexcept {
-    return enPassant;
 }

@@ -82,15 +82,9 @@ struct Coords {
     // ============== UTILITY STATIC METHODS ==============
 
     static constexpr bool isValid(uint8_t x) noexcept { return x < 8; }
-    static constexpr bool isLetter(char c) noexcept {
-        return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H');
-    }
-    static constexpr bool isNumber(char c) noexcept {
-        return c >= '1' && c <= '8';
-    }
-    static constexpr bool isInBounds(const Coords& coords) noexcept {
-        return coords.isValid();
-    }
+    static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
+    static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
+    static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }
 
     // ============== CONVERSION METHODS ==============
 
@@ -99,13 +93,9 @@ struct Coords {
         if (!this->isValid()) [[unlikely]] return "??";
 
         std::string result(2, ' ');
-        const uint8_t f = this->file();
-        const uint8_t r = this->rank();
 
-        // file: 0-7 -> 'a'-'h'
-        result[0] = static_cast<char>('a' + f);
-        // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
-        result[1] = static_cast<char>('8' - r);
+        result[0] = static_cast<char>('a' + this->file()); // file: 0-7 -> 'a'-'h'
+        result[1] = static_cast<char>('8' - this->rank()); // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
 
         return result;
     }
