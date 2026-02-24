@@ -7,10 +7,10 @@
 namespace print {
 
 class Prints {
-public:
-  static std::string getPrintableBoard(const std::string& FEN);
-  static std::string getBasicBoard(const chess::Board& board);
-  static std::string getBitBoard(const pieces::U64& bitboard);
+    public:
+        static std::string getPrintableBoard(const std::string& FEN);
+        static std::string getBasicBoard(const chess::Board& board);
+        static std::string getBitBoard(const pieces::U64& bitboard);
 };
 
 }
