@@ -2,13 +2,6 @@ inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
     return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
 }
 
-inline constexpr uint64_t Evaluator::adjacentFilesMask(int file) noexcept {
-    uint64_t m = 0;
-    if (file > 0) m |= chess::Board::fileMask(file - 1);
-    if (file < 7) m |= chess::Board::fileMask(file + 1);
-    return m;
-}
-
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
@@ -82,10 +75,6 @@ template<bool IsEndgame>
 inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
     constexpr int64_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-}
-
-inline constexpr int64_t Evaluator::getPieceValue(uint8_t pieceType) noexcept {
-    return PIECE_VALUES[pieceType & chess::Board::MASK_PIECE_TYPE];
 }
 
 inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {

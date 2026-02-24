@@ -69,7 +69,11 @@ ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
                   $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
 
 # All files to analyze (.cpp and .hpp)
-ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
+ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
+                  	$(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) \
+			$(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
+			$(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS)
+
 
 # Helper to generate .o paths inside output/
 MAIN_OBJ = $(OUTPUT_DIR)/$(MAIN_SRC:.cpp=.o)
@@ -209,10 +213,10 @@ analyze-setup:
 	@printf "[0/7] Generating compilation database\n"
 
 analyze-cppcheck:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "1. CPPCHECK ANALYSIS\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> doc/output-analisi/analisi.log 2>&1
+	@printf "\n========================================\n" >> analisi.log
+	@printf "1. CPPCHECK ANALYSIS\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
+	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> analisi.log 2>&1
 	@printf "[1/7] Running cppcheck terminated\n"
 
 analyze-clang-tidy:
@@ -326,7 +330,7 @@ cls: cls-compile-files
 	@printf "\nCleaning..."
 	rm -f doc/main-doc.{aux,log,pdf,toc}
 	rm -f compile_commands.json
-	rm -rf doc/output-analisi
+	#rm -rf doc/output-analisi
 	rm -rf gmon.out
 	@printf "\n✅ Clean completato\n\n"
 

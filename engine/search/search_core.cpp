@@ -415,7 +415,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         }
     }
 
-    MoveList<chess::Board::Move> moves = this->generateLegalMoves(b);
+    MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(b);
     if (moves.is_empty()) {
         // No legal moves: either checkmate or stalemate
         // activeColor = side that CANNOT move (stalemated side)

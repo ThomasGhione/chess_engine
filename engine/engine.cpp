@@ -141,10 +141,12 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     }
     // KILLER MOVES: Update avoiding duplicates
     auto& km1 = killerMoves[0][ply];
-    auto& km2 = killerMoves[1][ply];
-    const bool isAlreadyKm1 = (fromIndex == km1.from.index) & (toIndex == km1.to.index);
+
+    // Note: Prima era solo &
+    const bool isAlreadyKm1 = (fromIndex == km1.from.index) && (toIndex == km1.to.index);
     
     if (!isAlreadyKm1) {
+	auto& km2 = killerMoves[1][ply];
         km2 = km1;
         km1 = m;
     }

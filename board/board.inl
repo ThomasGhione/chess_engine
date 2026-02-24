@@ -12,14 +12,6 @@ inline constexpr uint8_t Board::promotionRank() noexcept { return IsWhite ? 0 : 
 
 inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
 
-inline constexpr bool Board::isPromotionRank(uint8_t rank, bool isWhite) noexcept { return rank == promotionRank(isWhite); }
-
-template<bool IsWhite>
-inline constexpr uint8_t Board::backRank() noexcept { return IsWhite ? 0 : 7; }
-
-template<bool IsWhite>
-inline constexpr uint8_t Board::seventhRank() noexcept { return IsWhite ? 6 : 1; }
-
 // ==============================
 // Constructors
 // ==============================
@@ -46,15 +38,6 @@ inline Board::Board(const std::string& fen) {
 // ==============================
 // Geometry Helpers
 // ==============================
-inline constexpr uint8_t Board::verticalMirror(uint8_t sq) noexcept { return sq ^ 56; } // XOR with 0b111000 flips bits 3-5 (rank) 
-inline constexpr uint8_t Board::horizontalMirror(uint8_t sq) noexcept { return sq ^ 7; } // XOR with 0b000111 flips bits 0-2 (file) 
-
-inline constexpr uint64_t Board::fileMask(int file) noexcept { return FILE_MASKS[file]; }
-inline constexpr uint64_t Board::rankMask(int rank) noexcept { return RANK_MASKS[rank]; }
-
-
-inline constexpr uint64_t Board::fileMaskFromSquare(uint8_t sq) noexcept { return FILE_MASKS[sq & 7]; }  // Extract file (bits 0-2)
-inline constexpr uint64_t Board::rankMaskFromSquare(uint8_t sq) noexcept { return RANK_MASKS[sq >> 3]; }  // Extract rank (bits 3-5)
 
 inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
 
@@ -123,10 +106,6 @@ inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
     return (castle & (1u << index));
 }
 
-inline constexpr bool Board::getHasMoved(uint8_t index) const noexcept {
-    return (hasMoved & (1u << index));
-}
-
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(const Coords& pos) const noexcept {
     return (get(pos) & MASK_COLOR) ? BLACK : WHITE;
@@ -137,7 +116,6 @@ inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
     return (get(index) & MASK_COLOR) ? BLACK : WHITE;
 }
 
-inline constexpr uint16_t Board::getHalfMoveClock() const noexcept { return halfMoveClock; }
 inline constexpr uint16_t Board::getFullMoveClock() const noexcept { return fullMoveClock; }
 
 __attribute__((hot, always_inline))
@@ -158,37 +136,12 @@ inline void Board::set(uint8_t row, uint8_t col, piece_id value) noexcept {
     chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
 }
 
-inline void Board::setNextTurn() noexcept {
-    if (activeColor == WHITE) {
-        activeColor = BLACK;
-    } else {
-        activeColor = WHITE;        
-        ++fullMoveClock;
-    }
-}
-
-inline void Board::setPrevTurn() noexcept {
-    if (activeColor == BLACK) {
-        activeColor = WHITE;
-    } else {
-        activeColor = BLACK;
-        if (fullMoveClock > 1) {
-            fullMoveClock--;
-        }
-    }
-    if (halfMoveClock > 0) {
-        halfMoveClock--;
-    }
-}
-
 inline constexpr uint8_t Board::operator[](const Coords& coords) const noexcept { return get(coords); }
 inline uint8_t Board::operator[](const Coords& coords) noexcept { return get(coords); }
 inline constexpr uint8_t Board::operator[](uint8_t index) const noexcept { return get(index); } // assert index 0-63
 inline uint8_t Board::operator[](uint8_t index) noexcept { return get(index); }
 inline constexpr bool Board::operator==(const Board& other) const noexcept { return chessboard == other.chessboard; }
 inline constexpr bool Board::operator!=(const Board& other) const noexcept { return chessboard != other.chessboard; }
-
-inline constexpr size_t Board::CHESSBOARD_SIZE() noexcept { return sizeof(chessboard); } // 32 byte
 
 // ==============================
 // Board Internals

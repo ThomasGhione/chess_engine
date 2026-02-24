@@ -150,7 +150,7 @@ static void computePinRays(const chess::Board& b,
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
 
-    for (const auto& dir : DIRS) {
+    for (const auto* dir : DIRS) {
         const int df = dir[0];
         const int dr = dir[1];
         const bool orthogonal = (df == 0 || dr == 0);
@@ -312,7 +312,7 @@ static inline void addTacticalMovesFromMaskInCheck(const chess::Board& b,
 }
 
 MoveList<chess::Board::Move>
-Engine::generateLegalMoves(const chess::Board& b) const noexcept {
+Engine::generateLegalMoves(const chess::Board& b) noexcept {
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
@@ -542,7 +542,7 @@ static void addPawnMovesFromMaskFast(const chess::Board& b,
 // This is a simplified version of generateLegalMoves() optimized for qsearch
 MoveList<chess::Board::Move> Engine::generateTacticalMoves(const chess::Board& b, bool includeChecks,
                                                            bool inCheckKnown, bool inCheckValue,
-                                                           bool inDoubleCheckValue) const noexcept {
+                                                           bool inDoubleCheckValue) noexcept {
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();

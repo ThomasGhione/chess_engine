@@ -24,8 +24,4 @@ inline bool Engine::shouldResearchPVS(int64_t score, int64_t alphaBound, int64_t
     return isWhite ? (score > alphaBound) : (score < betaBound);
 }
 
-inline constexpr int64_t Engine::getPieceValue(uint8_t pieceType) noexcept {
-    return PIECE_VALUES[pieceType & chess::Board::MASK_PIECE_TYPE];
-}
-
 } // namespace engine

@@ -95,11 +95,9 @@ namespace tt {
 
         // Generation management
         void incrementGeneration() { ++generation_; }
-        uint8_t getCurrentGeneration() const { return generation_; }
 
         // Utility
         void clear();
-        size_t getMemoryUsage() const { return sizeof(*table_); }
 
         // Prevent copying, allow moving
         TranspositionTable(const TranspositionTable&) = delete;

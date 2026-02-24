@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <numeric>
 #include <string>
 #include <cstring>
 #include <omp.h>
@@ -111,7 +112,7 @@ public:
     static void ensureMagicTablesInitialized() noexcept;
 
     // Legal move generation (bitboard-based)
-    MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) const noexcept;
+    static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
     MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
@@ -258,8 +259,7 @@ private:
                           bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite = true) noexcept;
     
     // Move scoring helpers
-    void addMVVLVABonus(const chess::Board::Move& m, const chess::Board& b, int64_t& score) noexcept;
-    uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept;
+    static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
 
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
@@ -267,9 +267,9 @@ private:
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     
     // Quiescence helper: generates only tactical moves (captures, promotions)
-    MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false,
+    static MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false,
                                                        bool inCheckKnown = false, bool inCheckValue = false,
-                                                       bool inDoubleCheckValue = false) const noexcept;
+                                                       bool inDoubleCheckValue = false) noexcept;
     //--- Method end
 }; //class Engine final
 

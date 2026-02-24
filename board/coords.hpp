@@ -60,25 +60,6 @@ struct Coords {
 
     // ============== SETTERS / UPDATERS ==============
 
-    constexpr bool update(const Coords& other) noexcept {
-        if (!other.isValid()) [[unlikely]] return false;
-        this->index = other.index;
-        return true;
-    }
-
-    constexpr bool update(uint8_t f, uint8_t r) noexcept {
-        if (f >= 8 || r >= 8) [[unlikely]] return false;
-        this->index = r * 8 + f;
-        return true;
-    }
-
-    // Update from index
-    constexpr bool update(uint8_t idx) noexcept {
-        if (idx >= 64) [[unlikely]] return false;
-        this->index = idx;
-        return true;
-    }
-
     // ============== UTILITY STATIC METHODS ==============
 
     static constexpr bool isValid(uint8_t x) noexcept { return x < 8; }

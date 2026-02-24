@@ -312,7 +312,7 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
 // Used internally to avoid code duplication when simulating moves
 bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
-                                 uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept {
+                                 uint64_t rooks, uint64_t queens, uint64_t kings) noexcept {
     if (pieces::PAWN_ATTACKERS_TO[bySide][kingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;

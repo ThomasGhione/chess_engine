@@ -107,9 +107,8 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
 
     // Task-based root parallelism (work-stealing, better load balance)
     // Bound the number of threads to MAX_THREADS and the number of moves
-    int candidateThreads = static_cast<int>(moves.size - 1);
-    if (candidateThreads < 1) candidateThreads = 1;
-    const int threadsToUse = (this->MAX_THREADS < candidateThreads) ? this->MAX_THREADS : candidateThreads;
+    int candidateThreads = std::max(1, static_cast<int>(moves.size) - 1);
+    const int threadsToUse = std::min(this->MAX_THREADS, candidateThreads);
 
     if (threadsToUse <= 1) {
         // Sequential fallback (avoid OpenMP overhead)
@@ -169,9 +168,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
         updateBound(score, alpha, beta, usIsWhite);
     }
 
-    for (int i = 1; i < moves.size; ++i) {
-        localNodes += threadNodeCounts[i];
-    }
+    localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.end(), localNodes);
     this->nodesSearched += localNodes;
     this->eval = bestScore;
     return bestMove;
@@ -184,7 +181,7 @@ void Engine::search(uint64_t depth) noexcept {
     // This ensures the replacement policy favors fresh entries
     this->tt.incrementGeneration();
 
-    MoveList<chess::Board::Move> moves = this->generateLegalMoves(this->board);
+    MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(this->board);
     if (moves.is_empty()) {
         // Root terminal position: update game state explicitly.
         // evaluate() does not handle stalemate, so set eval from game result.

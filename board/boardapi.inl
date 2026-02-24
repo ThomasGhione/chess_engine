@@ -108,10 +108,13 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
         BLACK_ROOK_A_START,
         BLACK_ROOK_H_START
     };
-    for (uint8_t slot = 0; slot < ROOK_START_SQUARES.size(); ++slot) {
-        if (ROOK_START_SQUARES[slot] == index) return slot;
+    auto it = std::find(ROOK_START_SQUARES.begin(), ROOK_START_SQUARES.end(), index);
+
+    uint8_t returnValue = 0xFF;
+    if(it != ROOK_START_SQUARES.end()){
+      returnValue = std::distance(ROOK_START_SQUARES.begin(), it);
     }
-    return 0xFF;
+    return returnValue;
 }
 
 inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {

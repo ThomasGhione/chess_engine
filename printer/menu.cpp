@@ -56,30 +56,6 @@ namespace print {
         return choice;
     }
 
-    // It goes straight to a new game
-    uint32_t Menu::playWithPlayerMenu() noexcept {
-
-        /*
-        static const std::string prompt = "\n\n==================== TWO PLAYERS MENU ====================\n\n1. New Game\n2. Load Game\n3. Back to Main Menu\n\nSelect an option (1-3): ";
-
-        std::cout << prompt;
-
-        uint8_t choice;
-        std::cin >> choice;
-
-        while (choice < '1' || choice > '3') {
-            std::cout << "Invalid option. Please select a valid option (1-3): ";
-            std::cin >> choice;
-        }
-
-        clearScreen();
-        return choice;
-        */
-
-        // Always starts a new game, this function needs to be changed later when multiple loaded games are supported
-        return 1; 
-    }
-
     // It can return:
     // 1 -> Bot plays as White
     // 2 -> Bot plays as Black

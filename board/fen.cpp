@@ -42,22 +42,6 @@ uint8_t Board::parseActiveColor(const std::string& activeSection) {
     }
     return WHITE;
 }
-std::vector<bool> Board::parseCastling(const std::string& castlingSection) {
-    // Legacy helper kept for compatibility but no longer used for internal storage.
-    std::vector<bool> castleVec(4, false);
-    if (castlingSection == "-") return castleVec;
-
-    for (char c : castlingSection) {
-        switch (c) {
-            case 'K': castleVec[0] = true; break;
-            case 'Q': castleVec[1] = true; break;
-            case 'k': castleVec[2] = true; break;
-            case 'q': castleVec[3] = true; break;
-            default: break; // carattere ignoto: ignoriamo
-        }
-    }
-    return castleVec;
-}
 // Reads the en passant target square section of the FEN
 Coords Board::parseEnPassant(const std::string& enPassantSection) {
     if (enPassantSection.size() != 2 || enPassantSection == "-") {
@@ -168,7 +152,7 @@ std::string Board::boardToFenPieces() const {
 }
 
 // Maps internal piece type codes to FEN characters
-char Board::pieceTypeToChar(uint8_t pieceType) const {
+char Board::pieceTypeToChar(uint8_t pieceType) {
     return PIECE_TYPE_TO_CHAR[pieceType & MASK_PIECE_TYPE];
 }
 

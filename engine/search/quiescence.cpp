@@ -76,7 +76,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         // Do not return a stand-pat score from an in-check node without checking
         // whether this is actually checkmate.
         if (inCheck) {
-            MoveList<chess::Board::Move> evasions = this->generateLegalMoves(b);
+            MoveList<chess::Board::Move> evasions = Engine::generateLegalMoves(b);
             if (evasions.is_empty()) {
                 return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
             }
@@ -87,7 +87,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // In-check nodes cannot use stand-pat or delta pruning.
     // We must search all legal evasions.
     if (inCheck) {
-        MoveList<chess::Board::Move> evasions = this->generateLegalMoves(b);
+        MoveList<chess::Board::Move> evasions = Engine::generateLegalMoves(b);
         if (evasions.is_empty()) {
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
@@ -208,7 +208,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
     // Generate only captures/promotions in qsearch (no non-capture checks).
     // In-check nodes are already handled above with full legal evasions.
-    MoveList<chess::Board::Move> tacticalMoves = this->generateTacticalMoves(b, false, true, false, false);
+    MoveList<chess::Board::Move> tacticalMoves = Engine::generateTacticalMoves(b, false, true, false, false);
     
     // No tactical moves: return stand-pat (quiet position reached)
     if (tacticalMoves.is_empty()) {

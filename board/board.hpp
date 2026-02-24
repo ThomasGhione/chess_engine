@@ -175,8 +175,6 @@ public:
     std::string getCurrentFen() const noexcept;
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
-    constexpr bool getHasMoved(uint8_t index) const noexcept;
-    constexpr uint16_t getHalfMoveClock() const noexcept;
     constexpr uint16_t getFullMoveClock() const noexcept;
     void setNextTurn() noexcept;
     void setPrevTurn() noexcept;
@@ -220,16 +218,6 @@ public:
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
 
-    // Set the en-passant square. Used by NMP for save/restore.
-    void setEnPassant(const Coords& ep) noexcept {
-        enPassant = ep;
-    }
-
-    // Restore clocks after null move (setPrevTurn corrupts them)
-    void restoreClocks(uint16_t hmc, uint16_t fmc) noexcept {
-        halfMoveClock = hmc;
-        fullMoveClock = fmc;
-    }
     // Methods end
 
     // Variables start
@@ -377,18 +365,18 @@ private:
         uint8_t toIndex
     ) noexcept;
 
-    bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
+    static bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
-                              uint64_t rooks, uint64_t queens, uint64_t kings) const noexcept;
+                              uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
     bool isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept;
-    uint8_t charToPiece(char symbol);
-    bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
-    uint8_t parseActiveColor(const std::string& activeSection);
+    static uint8_t charToPiece(char symbol);
+    static bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
+    static uint8_t parseActiveColor(const std::string& activeSection);
     std::vector<bool> parseCastling(const std::string& castlingSection);
-    Coords parseEnPassant(const std::string& enPassantSection);
-    uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
+    static Coords parseEnPassant(const std::string& enPassantSection);
+    static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string boardToFenPieces() const;
-    char pieceTypeToChar(uint8_t pieceType) const;
+    static char pieceTypeToChar(uint8_t pieceType);
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
     void rebuildRepetitionHistory() noexcept;

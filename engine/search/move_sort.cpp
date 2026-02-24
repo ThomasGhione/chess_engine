@@ -50,7 +50,7 @@ static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
     return false;
 }
 
-uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) const noexcept {
+uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept {
     // Limit piece bitboards to the simulated occupancy so that pieces
     // that were "captured" in the simulated exchange aren't considered
     // as attackers in subsequent steps.
@@ -125,7 +125,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     while (depth < MAX_SEE_DEPTH) {
         // Find the least valuable attacker toward the target square
-        uint8_t attacker = this->getLeastValuableAttackerTo(b, toSq, occ, side);
+        uint8_t attacker = Engine::getLeastValuableAttackerTo(b, toSq, occ, side);
         if (attacker == 64) break;
 
         // Determine attacker type using the piece bitboards AND the simulated occupancy
@@ -205,12 +205,10 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
         
         // Validate hash move is in legal moves list (guards against TT collisions)
-        for (const auto& m : moves) {
-            if (sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
-                hashMoveIsLegal = true;
-                break;
-            }
-        }
+        hashMoveIsLegal = std::any_of(moves.begin(), moves.end(),
+            [hashFrom, hashTo, hashPromo](const auto& m) {
+                return sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo;
+            });
     }
 
     int moveIndex = 0; // Track move count for lazy check detection

@@ -49,18 +49,6 @@ inline TTGlobal& globalTTData() {
     return data;
 }
 
-inline TTEntry* globalTT() {
-    return globalTTData().table;
-}
-
-inline void incrementTTGeneration() {
-    ++globalTTData().generation;
-}
-
-inline uint8_t getCurrentGeneration() {
-    return globalTTData().generation;
-}
-
 // Zobrist: 16 pieces x 64 squares + side-to-move, castling, en-passant.
 // Tutte le chiavi sono pre-calcolate a compile time.
 namespace detail {
@@ -172,106 +160,7 @@ inline uint64_t computeHashKey(const chess::Board& board) {
     return hashKey;
 }
 
-// Prefetch a TT bucket to reduce cache misses (call before probe/store)
-inline void prefetchTT(uint64_t key) {
-    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
-    const TTEntry* bucket = &globalTT()[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
-    __builtin_prefetch(bucket, 0, 3); // Read prefetch, high temporal locality
-}
-
-// Store with replacement policy: prefer higher depth and use age as a tie-breaker
-inline void storeTTEntry(TTEntry* ttTable,
-                         uint64_t key,
-                         uint8_t depth,
-                         int16_t score,
-                         uint8_t flag) {
-
-    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
-    TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
-    
-    const uint8_t generation = getCurrentGeneration();
-
-    TTEntry* replaceEntry = &bucket[0];
-    int bestReplaceScore = -1000000;
-
-    // Search for an existing entry or the best candidate to replace
-    for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
-        TTEntry& entry = bucket[i];
-        
-    // If the same key is found, update it (prefer deeper entries)
-        if (entry.key == key) {
-            if (depth >= entry.depth || flag == TTEntry::EXACT) {
-                entry.depth = depth;
-                entry.score = score;
-                entry.flag  = flag;
-                entry.age   = generation;
-            }
-            return;
-        }
-
-    // Compute replacement score: prefer older entries or entries with smaller depth
-        const int ageDiff = static_cast<int>(generation - entry.age) & 0xFF;
-        const int replaceScore = (ageDiff * 256) - static_cast<int>(entry.depth) * 4;
-        
-        if (replaceScore > bestReplaceScore) {
-            bestReplaceScore = replaceScore;
-            replaceEntry = &entry;
-        }
-    }
-
-    // Replace the selected entry
-    replaceEntry->key = key;
-    replaceEntry->depth = depth;
-    replaceEntry->score = score;
-    replaceEntry->flag  = flag;
-    replaceEntry->age   = generation;
-}
-
-// Optimized probe using bucket search
-inline bool probeTT(const TTEntry* ttTable,
-                    uint64_t key,
-                    uint8_t depth,
-                    int16_t alpha,
-                    int16_t beta,
-                    int16_t& outScore) {
-
-    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (TTEntry::BUCKET_COUNT - 1);
-    const TTEntry* bucket = &ttTable[bucketIndex * TTEntry::ENTRIES_PER_BUCKET];
-    
-    // Cerca in tutte le entry del bucket
-    for (std::size_t i = 0; i < TTEntry::ENTRIES_PER_BUCKET; ++i) {
-        const TTEntry& entry = bucket[i];
-        
-        if (entry.flag == TTEntry::INVALID) continue;  // empty entry, skip
-        if (entry.key != key) continue;                // different key
-        if (entry.depth < depth) continue;             // insufficient depth
-
-        const int16_t score = entry.score;
-        
-        switch (entry.flag) {
-            case TTEntry::EXACT:
-                outScore = score;
-                return true;
-            case TTEntry::LOWERBOUND:
-                if (score >= beta) {
-                    outScore = score;
-                    return true;
-                }
-                break;
-            case TTEntry::UPPERBOUND:
-                if (score <= alpha) {
-                    outScore = score;
-                    return true;
-                }
-                break;
-        }
-        
-        // Entry found but not usable for cutoff
-        return false;
-    }
-    
-    return false;
-}
+// (This function has been removed as it is not used)
 
 } // namespace engine
 

@@ -19,10 +19,6 @@ static inline char pieceToSymbol(uint8_t piece) noexcept {
     }
 }
 
-std::string Prints::getPrintableBoard(const std::string& FEN) {
-    return "Scacchiera: " + FEN;
-}
-
 std::string Prints::getBasicBoard(const Board& board) {
     std::string result = "  a b c d e f g h\n";
     for (int row = 7; row >= 0; --row) {
@@ -37,20 +33,5 @@ std::string Prints::getBasicBoard(const Board& board) {
     return result;
 }
 
-std::string Prints::getBitBoard(const pieces::U64& bitboard) {
-    std::string res;
-    constexpr auto size = 8 * (8 * 2 + 1);
-    res.reserve(size);
-
-    for (int rank = 7; rank >= 0; --rank) {
-        for (int file = 0; file < 8; ++file) {
-            const uint64_t square = static_cast<uint64_t>(rank * 8 + file);
-            const uint64_t mask = 1ULL << square;
-            res.append((bitboard & mask) ? "1 " : ". ");
-        }
-        res.push_back('\n');
-    }
-    return res;
-}
 
 } // namespace print
