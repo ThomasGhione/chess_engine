@@ -65,7 +65,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]]
         return false;
 
-    if (inDoubleChk && fromType != KING) [[unlikely]]
+    if (inChk && inDoubleChk && fromType != KING) [[unlikely]]
         return false;
 
     const uint64_t toBit = Board::bitMask(toIndex);
@@ -179,8 +179,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (fromIndex == toIndex) [[unlikely]] return false;
 
     const uint8_t oppColor = oppositeColor(movingColor);
-    const uint8_t fileDelta = fileOf(toIndex) - fileOf(fromIndex);
-    const uint8_t rankDelta = rankOf(toIndex) - rankOf(fromIndex);
+    const int fileDelta = fileOf(toIndex) - fileOf(fromIndex);
+    const int rankDelta = rankOf(toIndex) - rankOf(fromIndex);
 
     // Handle castling explicitly when king moves two files on same rank
     if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
