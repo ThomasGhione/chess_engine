@@ -366,9 +366,9 @@ Engine::generateLegalMoves(const chess::Board& b) const noexcept {
 
     if (!inCheck) { // castling: illegal when in check.
         const uint8_t f = from & 7;
-        if (f <= 5 && b.canMoveTo(from, static_cast<uint8_t>(from + 2), inCheck))
+        if (f <= 5 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from + 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
-        if (f >= 2 && b.canMoveTo(from, static_cast<uint8_t>(from - 2), inCheck))
+        if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from - 2)}});
     }
 

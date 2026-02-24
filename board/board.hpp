@@ -180,24 +180,27 @@ public:
     constexpr uint16_t getFullMoveClock() const noexcept;
     void setNextTurn() noexcept;
     void setPrevTurn() noexcept;
+    
     constexpr uint8_t operator[](const Coords& coords) const noexcept;
     uint8_t operator[](const Coords& coords) noexcept;
     constexpr uint8_t operator[](uint8_t index) const noexcept; // assert index 0-63
     uint8_t operator[](uint8_t index) noexcept;
     constexpr bool operator==(const Board& other) const noexcept;
     constexpr bool operator!=(const Board& other) const noexcept;
+    
     static constexpr size_t CHESSBOARD_SIZE() noexcept; // 32 byte
+    
     uint64_t getPiecesBitMap() const noexcept;
     void updateOccupancyBB() noexcept;
-    bool move(const Coords& from, const Coords& to) noexcept;
-    bool promote(const Coords& at, char choice) noexcept;
-    bool move(const Coords& from, const Coords& to, char promotionChoice) noexcept;
+    
     void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
     void undoMove(const Move& m, const MoveState& state) noexcept;
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
-    bool canMoveTo(const uint8_t fromIndex, const uint8_t toIndex, bool inChk) const noexcept;
-    bool canMoveTo(const Coords& from, const Coords& to, bool inCheck) const noexcept;
+    
+    bool move(const Coords& from, const Coords& to) noexcept;
+    bool move(const Coords& from, const Coords& to, char promotionChoice) noexcept;
+    bool promote(const Coords& at, char choice) noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck, bool inDoubleCheck) const noexcept;

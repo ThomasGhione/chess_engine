@@ -34,21 +34,12 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
     const uint8_t moving = get(fromIndex);
     const uint8_t movingColor = moving & MASK_COLOR;
 
-    if (!canMoveTo(from, to, inCheck(movingColor))) {
+    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(movingColor), false))
         return false;
-    }
 
     MoveState st{};
     doMove(Move{from, to, promotionChoice}, st, promotionChoice);
     return true;
-}
-
-bool Board::canMoveTo(const uint8_t fromIndex, const uint8_t toIndex, bool inChk) const noexcept {
-    return isLegalPseudoMove(fromIndex, toIndex, inChk);
-}
-
-bool Board::canMoveTo(const Coords& from, const Coords& to, bool inChk) const noexcept {
-    return isLegalPseudoMove(from.index, to.index, inChk);
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
@@ -71,13 +62,11 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 
     const uint8_t destPiece = get(toIndex);
 
-    if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]] {
+    if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]]
         return false;
-    }
 
-    if (inChk && inDoubleChk && fromType != KING) [[unlikely]] {
+    if (inDoubleChk && fromType != KING) [[unlikely]]
         return false;
-    }
 
     const uint64_t toBit = Board::bitMask(toIndex);
     switch (fromType) {
@@ -99,7 +88,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             // Safety guards: caller may provide broad pawn masks.
             if (fileChanged) {
                 // Diagonal pawn move must be exactly one file and one forward rank.
-                if ((fileDiff < -1 || fileDiff > 1) || rankDiff != forward) return false;
+                if ((fileDiff < -1 || fileDiff > 1) || rankDiff != forward) [[unlikely]] return false;
                 if (!isEnPassant && destPiece == EMPTY) return false;
             } else {
                 // Forward pawn move must be 1 step, or 2 steps from initial rank.
@@ -139,7 +128,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 }
 
 // ============================================
-// HELPER FUNCTIONS FOR canMoveTo
+// HELPER FUNCTIONS FOR isLegalPseudoMove
 // ============================================
 
 // Lazy double-check detection - called ONLY when inChk=true && fromType != KING
@@ -190,8 +179,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (fromIndex == toIndex) [[unlikely]] return false;
 
     const uint8_t oppColor = oppositeColor(movingColor);
-    const int fileDelta = static_cast<int>(fileOf(toIndex)) - static_cast<int>(fileOf(fromIndex));
-    const int rankDelta = static_cast<int>(rankOf(toIndex)) - static_cast<int>(rankOf(fromIndex));
+    const uint8_t fileDelta = fileOf(toIndex) - fileOf(fromIndex);
+    const uint8_t rankDelta = rankOf(toIndex) - rankOf(fromIndex);
 
     // Handle castling explicitly when king moves two files on same rank
     if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
@@ -257,18 +246,15 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint8_t rookIdx = isKingside ? (fromIndex + 3) : (fromIndex - 4);
     
     // Check empty squares (always check 2, for queenside check 3rd)
-    if (get(sq1) != EMPTY || get(sq2) != EMPTY) {
+    if (get(sq1) != EMPTY || get(sq2) != EMPTY)
         return false;
-    }
     
-    if (!isKingside && get(fromIndex - 3) != EMPTY) {
+    if (!isKingside && get(fromIndex - 3) != EMPTY)
         return false;
-    }
     
     // Check rook presence
-    if ((rooks_bb[side] & Board::bitMask(rookIdx)) == 0ULL) {
+    if ((rooks_bb[side] & Board::bitMask(rookIdx)) == 0ULL)
         return false;
-    }
     
     // Check castle path safety
     const uint64_t castlePath = Board::bitMask(fromIndex) | Board::bitMask(sq1) | Board::bitMask(sq2);
@@ -319,7 +305,6 @@ bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexce
         squaresMask &= squaresMask - 1;
         if (isSquareAttacked(sq, byColor)) return false;
     }
-    
     return true;
 }
 
@@ -402,28 +387,24 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (canMoveTo(king, to, inChk)) return true;
+            if (isLegalPseudoMove(king, to, inChk, false)) return true;
         }
         
         if (!inChk) { // Castling (only if not in check)
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
-                if (canMoveTo(eIndex, static_cast<uint8_t>(eIndex + 2), inChk)) return true;
-                if (canMoveTo(eIndex, static_cast<uint8_t>(eIndex - 2), inChk)) return true;
+                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex + 2), inChk, false)) return true;
+                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex - 2), inChk, false)) return true;
             }
         }
     }
 
-    if (inDoubleChk) { // in double-check only king moves are legal
-        return false;
-    }
+    if (inDoubleChk) return false; // in double-check only king moves are legal
 
-    // --- KNIGHTS (cheap, no magic bitboards) ---
-    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk)) {
+
+    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
-    }
 
-    // --- PAWNS (most common pieces, optimized loop) ---
     const bool isWhite = (side == 0);
     uint64_t pawns = pawns_bb[side];
     while (pawns) {
@@ -447,15 +428,12 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
     }
 
-    // --- BISHOPS ---
     if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
 
-    // --- ROOKS ---
     if (hasLegalMovesForPieceType<ROOK>(this, rooks_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
 
-    // --- QUEENS ---
     if (hasLegalMovesForPieceType<QUEEN>(this, queens_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
         return true;
 
