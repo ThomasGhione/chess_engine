@@ -13,6 +13,6 @@ perf
 chess.exe
 /tests/test
 /tests/perf
-/games/*.txt
-/saves/*.txt
+/games/
+/saves/
 /stockfish/

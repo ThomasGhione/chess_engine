@@ -561,6 +561,10 @@ namespace driver {
     }
 
     bool Driver::loadGame() noexcept{
+        if (!std::filesystem::exists("saves")) {
+            std::filesystem::create_directories("saves");
+        }
+
         std::ifstream SaveFile("saves/save.txt");
         if (!SaveFile.is_open()) {
             std::cerr << "Error: Unable to open save file.\n";
@@ -595,7 +599,7 @@ namespace driver {
 
     void Driver::saveGame() noexcept {
         if (!std::filesystem::exists("saves")) {
-            std::filesystem::create_directory("saves");
+            std::filesystem::create_directories("saves");
         }
 
         if (std::filesystem::exists("saves/save.txt")) {
