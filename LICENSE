@@ -21,14 +21,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---
-
-Third-party component notice
-
-This project bundles Stockfish (folder `stockfish/`), which is
-Copyright (C) 2004-2023 The Stockfish developers and released under the
-GNU General Public License v3.0 or later. Both the Linux binary
-(`stockfish/linux/stockfish-ubuntu-x86-64-avx2`) and the Windows binary
-(`stockfish/windows/stockfish-windows-x86-64-avx2.exe`) are distributed
-under their own license; see `stockfish/Copying.txt` for the full terms.
-Nothing in this notice alters the terms of the MIT License for the rest
-of this project’s code.
