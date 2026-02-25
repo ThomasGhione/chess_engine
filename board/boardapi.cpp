@@ -35,8 +35,11 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const MoveKind kind = st.moveKind;
     switch (kind) {
         case MoveKind::Capture:
-                doMoveByKind<MoveKind::Capture>(from, to, st, moving, movingType, movingColor, destBefore,
+            doMoveByKind<MoveKind::Capture>(from, to, st, moving, movingType, movingColor, destBefore,
                                             fromIndex, toIndex, promotionChoice);
+            if (destBefore != EMPTY) {
+                newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
+            }
             break;
         case MoveKind::DoublePawnPush:
             doMoveByKind<MoveKind::DoublePawnPush>(from, to, st, moving, movingType, movingColor, destBefore,
@@ -67,7 +70,9 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         case MoveKind::PromotionCapture:
             doMoveByKind<MoveKind::PromotionCapture>(from, to, st, moving, movingType, movingColor, destBefore,
                                                      fromIndex, toIndex, promotionChoice);
-            newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
+            if (destBefore != EMPTY) {
+                newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
+            }
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
                 newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
@@ -79,7 +84,9 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
                                           fromIndex, toIndex, promotionChoice);
             break;
     }
-    newHash ^= zobrist::TABLES.pieces[moving][toIndex];
+    if (!isPromotionKind(kind)) {
+        newHash ^= zobrist::TABLES.pieces[moving][toIndex];
+    }
 
     const bool resetHistory = (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture);
     st.historyWasReset = resetHistory;

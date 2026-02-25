@@ -20,48 +20,49 @@ inline Board::MoveKind Board::classifyMoveKind(
     uint8_t destBefore,
     const Coords& prevEnPassant
 ) noexcept {
+    if (movingType == KING) {
+        if ((fromIndex >> 3) == (toIndex >> 3)) {
+            const int8_t df = static_cast<int8_t>((toIndex & 7) - (fromIndex & 7));
+            if (df == 2 || df == -2) {
+                return MoveKind::Castling;
+            }
+        }
+        return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
+    }
+
+    if (movingType != PAWN) {
+        return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
+    }
+
     const uint8_t fromFile = fromIndex & 7;
-    const uint8_t fromRank = fromIndex >> 3;
     const uint8_t toFile = toIndex & 7;
+    if (fromFile != toFile
+        && destBefore == EMPTY
+        && Coords::isInBounds(prevEnPassant)
+        && toIndex == prevEnPassant.index) {
+        return MoveKind::EnPassant;
+    }
+
     const uint8_t toRank = toIndex >> 3;
-
-    if (movingType == KING && fromRank == toRank) {
-        const int8_t df = static_cast<int8_t>(toFile - fromFile);
-        if (df == 2 || df == -2) {
-            return MoveKind::Castling;
-        }
+    if (toRank == promotionRank(movingColor == WHITE)) {
+        return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
     }
 
-    if (movingType == PAWN) {
-        const bool isEnPassant = (fromFile != toFile)
-            && (destBefore == EMPTY)
-            && Coords::isInBounds(prevEnPassant)
-            && (toIndex == prevEnPassant.index);
-        if (isEnPassant) {
-            return MoveKind::EnPassant;
-        }
-
-        const bool isPromotion = (toRank == promotionRank(movingColor == WHITE));
-        if (isPromotion) {
-            return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
-        }
-
-        const int8_t dr = static_cast<int8_t>(toRank - fromRank);
-        if (dr == 2 || dr == -2) {
-            return MoveKind::DoublePawnPush;
-        }
+    const int8_t dr = static_cast<int8_t>((toIndex >> 3) - (fromIndex >> 3));
+    if (dr == 2 || dr == -2) {
+        return MoveKind::DoublePawnPush;
     }
 
-    if (destBefore != EMPTY) {
-        return MoveKind::Capture;
-    }
-
-    return MoveKind::Quiet;
+    return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
 }
 
 __attribute__((always_inline))
 inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
-    const uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
+    uint8_t promo = static_cast<uint8_t>(promotionChoice);
+    if (promo >= 'A' && promo <= 'Z') {
+        promo = static_cast<uint8_t>(promo | 0x20);
+    }
+
     if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') [[likely]] {
         return promo;
     }
@@ -131,19 +132,13 @@ inline void Board::restoreState(const MoveState& st) noexcept {
 
 __attribute__((always_inline))
 inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
-    static constexpr std::array<uint8_t, 4> ROOK_START_SQUARES = {
-        WHITE_ROOK_A_START,
-        WHITE_ROOK_H_START,
-        BLACK_ROOK_A_START,
-        BLACK_ROOK_H_START
-    };
-    auto it = std::find(ROOK_START_SQUARES.begin(), ROOK_START_SQUARES.end(), index);
-
-    uint8_t returnValue = 0xFF;
-    if (it != ROOK_START_SQUARES.end()){
-      returnValue = std::distance(ROOK_START_SQUARES.begin(), it);
+    switch (index) {
+        case WHITE_ROOK_A_START: return 0;
+        case WHITE_ROOK_H_START: return 1;
+        case BLACK_ROOK_A_START: return 2;
+        case BLACK_ROOK_H_START: return 3;
+        default: return 0xFF;
     }
-    return returnValue;
 }
 
 inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {

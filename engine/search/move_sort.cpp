@@ -11,6 +11,18 @@ static inline bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t
     return m.from.index == from && m.to.index == to;
 }
 
+static inline bool containsMoveWithPromotion(const MoveList<chess::Board::Move>& moves,
+                                             uint8_t from,
+                                             uint8_t to,
+                                             char promotionPiece) noexcept {
+    for (const auto& m : moves) {
+        if (sameFromTo(m, from, to) && m.promotionPiece == promotionPiece) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
                                                 const chess::Board::Move& m,
                                                 uint8_t fromPieceType,
@@ -203,12 +215,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     
     if (encodedHashMove != 0) {
         tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
-        
+
         // Validate hash move is in legal moves list (guards against TT collisions)
-        hashMoveIsLegal = std::any_of(moves.begin(), moves.end(),
-            [hashFrom, hashTo, hashPromo](const auto& m) {
-                return sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo;
-            });
+        hashMoveIsLegal = containsMoveWithPromotion(moves, hashFrom, hashTo, hashPromo);
     }
 
     int moveIndex = 0; // Track move count for lazy check detection

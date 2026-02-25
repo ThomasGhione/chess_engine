@@ -103,30 +103,41 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         }
 
         int64_t best = Engine::initialBest(usIsWhite);
-        auto searchEvasionSet = [&](const MoveList<chess::Board::Move>& evasionSet) -> bool {
-            for (const auto& m : evasionSet) {
-                chess::Board::MoveState state;
-                doMoveWithPromotion(b, m, state);
-                const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
-                b.undoMove(m, state);
-
-                if (Engine::isBetter(score, best, usIsWhite)) {
-                    best = score;
-                }
-
-                updateBound(score, alpha, beta, usIsWhite);
-                if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-                    return true;
-                }
-            }
-            return false;
-        };
 
         // Two-pass evasion ordering:
         // 1) forcing evasions (captures/promotions), 2) quiet evasions.
         // This improves alpha-beta cutoffs in tactical check sequences.
-        if (searchEvasionSet(forcingEvasions)) return cutoffValue(alpha, beta, usIsWhite);
-        if (searchEvasionSet(quietEvasions)) return cutoffValue(alpha, beta, usIsWhite);
+        for (const auto& m : forcingEvasions) {
+            chess::Board::MoveState state;
+            doMoveWithPromotion(b, m, state);
+            const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+            b.undoMove(m, state);
+
+            if (Engine::isBetter(score, best, usIsWhite)) {
+                best = score;
+            }
+
+            updateBound(score, alpha, beta, usIsWhite);
+            if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+                return cutoffValue(alpha, beta, usIsWhite);
+            }
+        }
+
+        for (const auto& m : quietEvasions) {
+            chess::Board::MoveState state;
+            doMoveWithPromotion(b, m, state);
+            const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+            b.undoMove(m, state);
+
+            if (Engine::isBetter(score, best, usIsWhite)) {
+                best = score;
+            }
+
+            updateBound(score, alpha, beta, usIsWhite);
+            if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+                return cutoffValue(alpha, beta, usIsWhite);
+            }
+        }
 
         return best;
     }

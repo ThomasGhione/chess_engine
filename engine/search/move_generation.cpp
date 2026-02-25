@@ -92,7 +92,7 @@ static void computeCheckEvasionMasks(const chess::Board& b,
     checkersMask |= pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
     checkersMask |= pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
 
-    if (inDoubleCheck || __builtin_popcountll(checkersMask) > 1) {
+    if (inDoubleCheck || ((checkersMask & (checkersMask - 1)) != 0ULL)) {
         outEvasionMask = 0ULL;
         return;
     }
