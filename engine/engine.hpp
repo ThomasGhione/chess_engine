@@ -26,7 +26,7 @@
 #include "basebonuspenaltyvalues.hpp"
 #include "piecevaluetables.hpp"
 #include "inl/bitboard_helpers.inl"
-#include "../tt/transposition_table.hpp"
+#include "../tt/tt.hpp"
 #include "movelist.hpp"
 
 namespace engine {

@@ -1,5 +1,5 @@
 #include "../engine.hpp"
-#include "../tt.hpp"
+#include "../../tt/ttentry.hpp"
 #include <cmath>
 
 namespace engine {
