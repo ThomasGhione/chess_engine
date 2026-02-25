@@ -8,22 +8,34 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         uint64_t blackPawns = 0ULL;
         int64_t score = 0;
         uint8_t isEndgame = 0;
+        uint8_t valid = 0;
+        uint16_t stamp = 0;
     };
 
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13; // 8192 entries, ~128KB total (fits in L1 cache)
+    constexpr size_t PAWN_CACHE_SIZE = 1u << 13; // 8192 buckets
+    constexpr size_t PAWN_CACHE_WAYS = 2;        // 2-way set-associative
     constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
-    thread_local std::array<PawnEvalCacheEntry, PAWN_CACHE_SIZE> pawnCache{};
+    thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
+    thread_local uint16_t pawnCacheStamp = 0;
 
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
         static_cast<uint64_t>(isEndgame);
-    PawnEvalCacheEntry& cacheEntry = pawnCache[cacheHash & PAWN_CACHE_MASK];
+    std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
     const uint8_t endgameTag = static_cast<uint8_t>(isEndgame);
-    if (cacheEntry.whitePawns == whitePawns
-        && cacheEntry.blackPawns == blackPawns
-        && cacheEntry.isEndgame == endgameTag) {
-        return cacheEntry.score;
+
+    const uint16_t currentStamp = ++pawnCacheStamp;
+
+    for (size_t way = 0; way < PAWN_CACHE_WAYS; ++way) {
+        PawnEvalCacheEntry& cacheEntry = cacheBucket[way];
+        if (cacheEntry.valid
+            && cacheEntry.whitePawns == whitePawns
+            && cacheEntry.blackPawns == blackPawns
+            && cacheEntry.isEndgame == endgameTag) {
+            cacheEntry.stamp = currentStamp;
+            return cacheEntry.score;
+        }
     }
 
     static constexpr auto WHITE_SUPPORT_MASKS = [] {
@@ -159,10 +171,21 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         }
     }
 
-    cacheEntry.whitePawns = whitePawns;
-    cacheEntry.blackPawns = blackPawns;
-    cacheEntry.isEndgame = endgameTag;
-    cacheEntry.score = score;
+    PawnEvalCacheEntry* replaceEntry = &cacheBucket[0];
+    if (!cacheBucket[0].valid) {
+        replaceEntry = &cacheBucket[0];
+    } else if (!cacheBucket[1].valid) {
+        replaceEntry = &cacheBucket[1];
+    } else if (cacheBucket[1].stamp < cacheBucket[0].stamp) {
+        replaceEntry = &cacheBucket[1];
+    }
+
+    replaceEntry->whitePawns = whitePawns;
+    replaceEntry->blackPawns = blackPawns;
+    replaceEntry->isEndgame = endgameTag;
+    replaceEntry->score = score;
+    replaceEntry->valid = 1;
+    replaceEntry->stamp = currentStamp;
 
     return score;
 }

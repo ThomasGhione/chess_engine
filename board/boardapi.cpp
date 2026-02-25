@@ -25,8 +25,8 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     st.moveKind          = classifyMoveKind(movingType, movingColor, fromIndex, toIndex, destBefore, st.prevEnPassant);
 
     uint64_t newHash = currentHash;
-    if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
-        newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
+    if (st.prevEpHashFile < 8) {
+        newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];
     }
     newHash ^= zobrist::TABLES.pieces[moving][fromIndex];
 
@@ -105,9 +105,12 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         newHash ^= zobrist::TABLES.castling[st.prevCastle];
         newHash ^= zobrist::TABLES.castling[castle];
     }
+    uint8_t newEpHashFile = 0xFF;
     if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
-        newHash ^= zobrist::TABLES.enPassant[enPassant.file()];
+        newEpHashFile = enPassant.file();
+        newHash ^= zobrist::TABLES.enPassant[newEpHashFile];
     }
+    epHashFile = newEpHashFile;
     currentHash = newHash;
 
     updateRepetitionAfterMove(resetHistory, false);
@@ -155,11 +158,12 @@ __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
     prepareNullMoveState(st);
     uint64_t newHash = currentHash;
-    if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
-        newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];
+    if (st.prevEpHashFile < 8) {
+        newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];
     }
 
     enPassant = Coords{};
+    epHashFile = 0xFF;
 
     if (halfMoveClock < 255) {
         ++halfMoveClock;

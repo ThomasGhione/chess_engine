@@ -120,7 +120,7 @@ int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
         score += sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
 
         uint64_t rooksBB = b.rooks_bb[side];
-        if (__builtin_popcountll(rooksBB) >= 2) {
+        if (((rooksBB & (rooksBB - 1)) != 0ULL)) {
             const int rook1 = __builtin_ctzll(rooksBB);
             rooksBB &= (rooksBB - 1);
             const int rook2 = __builtin_ctzll(rooksBB);

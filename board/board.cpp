@@ -442,13 +442,22 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
 void Board::rebuildRepetitionHistory() noexcept {
     currentHash = zobrist::computeHashKey(*this);
+    epHashFile = 0xFF;
+    if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+        epHashFile = enPassant.file();
+    }
     historySize = 0;
     repetitionHistory[historySize++] = currentHash;
 }
 
 void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
-    if (recomputeHash) 
+    if (recomputeHash) {
         currentHash = zobrist::computeHashKey(*this);
+        epHashFile = 0xFF;
+        if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+            epHashFile = enPassant.file();
+        }
+    }
 
     if (resetHistory) 
         historySize = 0;

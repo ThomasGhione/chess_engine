@@ -92,50 +92,32 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
 
-        MoveList<chess::Board::Move> forcingEvasions;
-        MoveList<chess::Board::Move> quietEvasions;
-        for (const auto& m : evasions) {
-            if (isForcingEvasion(b, m, enPassant, hasEnPassant)) {
-                forcingEvasions.emplace_back(m);
-            } else {
-                quietEvasions.emplace_back(m);
-            }
-        }
-
         int64_t best = Engine::initialBest(usIsWhite);
 
         // Two-pass evasion ordering:
         // 1) forcing evasions (captures/promotions), 2) quiet evasions.
         // This improves alpha-beta cutoffs in tactical check sequences.
-        for (const auto& m : forcingEvasions) {
-            chess::Board::MoveState state;
-            doMoveWithPromotion(b, m, state);
-            const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
-            b.undoMove(m, state);
+        for (int pass = 0; pass < 2; ++pass) {
+            const bool searchForcing = (pass == 0);
+            for (const auto& m : evasions) {
+                const bool isForcing = isForcingEvasion(b, m, enPassant, hasEnPassant);
+                if (isForcing != searchForcing) {
+                    continue;
+                }
 
-            if (Engine::isBetter(score, best, usIsWhite)) {
-                best = score;
-            }
+                chess::Board::MoveState state;
+                doMoveWithPromotion(b, m, state);
+                const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+                b.undoMove(m, state);
 
-            updateBound(score, alpha, beta, usIsWhite);
-            if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-                return cutoffValue(alpha, beta, usIsWhite);
-            }
-        }
+                if (Engine::isBetter(score, best, usIsWhite)) {
+                    best = score;
+                }
 
-        for (const auto& m : quietEvasions) {
-            chess::Board::MoveState state;
-            doMoveWithPromotion(b, m, state);
-            const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
-            b.undoMove(m, state);
-
-            if (Engine::isBetter(score, best, usIsWhite)) {
-                best = score;
-            }
-
-            updateBound(score, alpha, beta, usIsWhite);
-            if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-                return cutoffValue(alpha, beta, usIsWhite);
+                updateBound(score, alpha, beta, usIsWhite);
+                if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+                    return cutoffValue(alpha, beta, usIsWhite);
+                }
             }
         }
 

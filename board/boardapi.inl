@@ -83,6 +83,7 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHalfMoveClock = halfMoveClock;
     st.prevFullMoveClock = fullMoveClock;
     st.prevEnPassant     = enPassant;
+    st.prevEpHashFile    = epHashFile;
     st.prevCastle        = castle;
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
@@ -124,6 +125,7 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     halfMoveClock = st.prevHalfMoveClock;
     fullMoveClock = st.prevFullMoveClock;
     enPassant     = st.prevEnPassant;
+    epHashFile    = st.prevEpHashFile;
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
     historySize   = st.prevHistorySize;

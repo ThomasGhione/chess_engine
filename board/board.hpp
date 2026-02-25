@@ -79,6 +79,7 @@ public:
 
         // En passant and castling rights
         Coords  prevEnPassant{};
+        uint8_t prevEpHashFile{0xFF}; // hashed EP file before move, or 0xFF if none
         uint8_t prevCastle{};   // bitmask copy of castle
         uint8_t prevHasMoved{}; // bitmask copy of hasMoved
 
@@ -388,6 +389,7 @@ private:
     uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
     uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
     Coords   enPassant{};                   // En-passant target square
+    uint8_t  epHashFile = 0xFF;             // hashed EP file in currentHash, or 0xFF if not hashed
     uint16_t halfMoveClock = 0;             // 50-move rule counter
     uint16_t fullMoveClock = 1;             // Current move number
     uint8_t  activeColor = WHITE;           // Current side to move

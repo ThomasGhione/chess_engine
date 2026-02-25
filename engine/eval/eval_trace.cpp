@@ -48,8 +48,8 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
     std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
-    if (__builtin_popcountll(board.bishops_bb[0]) >= 2) eval += engine::BISHOP_PAIR_BONUS;
-    if (__builtin_popcountll(board.bishops_bb[1]) >= 2) eval -= engine::BISHOP_PAIR_BONUS;
+    if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
+    if (((board.bishops_bb[1] & (board.bishops_bb[1] - 1)) != 0ULL)) eval -= engine::BISHOP_PAIR_BONUS;
     std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
     AttackData attackData[2] = {};
