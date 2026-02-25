@@ -46,8 +46,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     // FUTILITY PRUNING margins (main search)
     // =========================================================================
-    static constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 200, 400}; // depth 0,1,2
-    static constexpr int64_t FUTILITY_MARGINS_EG[] = {0, 120, 240}; // depth 0,1,2
+    static constexpr int64_t FUTILITY_MARGINS_MG[] = {0, 260, 520}; // depth 0,1,2
+    static constexpr int64_t FUTILITY_MARGINS_EG[] = {0, 170, 350}; // depth 0,1,2
     const bool canFutilityPrune = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int64_t futilityMargin = canFutilityPrune
         ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
@@ -99,7 +99,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
         // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 5 : 3;
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 16 : 14;
         const bool lmrStructuralCandidate = (ctx.depth > 2)
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromo
@@ -133,7 +133,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR. Higher divisor = less reduction = more conservative
-            constexpr double LMR_C = 2.75;
+            constexpr double LMR_C = 3.40;
             int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
                                                    * std::log(static_cast<double>(moveIndex)) 
                                                    / LMR_C);
@@ -347,7 +347,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         //   slightly worse but not when we're clearly losing.
         //   Margin: 200cp = allows NMP even if slightly behind, but blocks it
         //   after unsound material sacrifices.
-        const int64_t nmpEvalGate = usIsWhite ? (staticEval + 200) : (staticEval - 200);
+        const int64_t nmpEvalGate = usIsWhite 
+            ? (staticEval + 100) 
+            : (staticEval - 100);
         const bool evalOk = isBetaCutoff(nmpEvalGate, alpha, beta, usIsWhite);
         
         const bool canNullMove = allowNullMove
@@ -399,7 +401,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // bring it below beta, prune immediately. Much cheaper than NMP.
     // Only at very low depth where static eval is a reliable proxy.
     {
-        constexpr int64_t RFP_MARGIN_PER_DEPTH = 85; // 85cp per depth level
+        constexpr int64_t RFP_MARGIN_PER_DEPTH = 110; // 110cp per depth level
         // Disable in pawn endgames: static-eval pruning often misses
         // pawn races, triangulation and waiting-move zugzwang motifs.
         if (!isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3) {
