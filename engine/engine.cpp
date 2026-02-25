@@ -22,10 +22,7 @@ Engine::Engine()
     , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {
-    // Inizializza magic bitboards una sola volta (thread-safe)
     ensureMagicTablesInitialized();
-
-    // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();
 }
 
@@ -35,10 +32,7 @@ Engine::Engine(const std::string& fen)
     , depth(DEFAULTDEPTH)
     , MAX_THREADS(omp_get_max_threads())
 {
-    // Inizializza magic bitboards una sola volta (thread-safe)
     ensureMagicTablesInitialized();
-
-    // Inizializza TT (marca tutte le entries come INVALID)
     this->tt.clear();
 }
 
@@ -142,7 +136,7 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // KILLER MOVES: Update avoiding duplicates
     auto& km1 = killerMoves[0][ply];
 
-    // Note: Prima era solo &
+    // Note: previously this used single '&'
     const bool isAlreadyKm1 = (fromIndex == km1.from.index) && (toIndex == km1.to.index);
     
     if (!isAlreadyKm1) {

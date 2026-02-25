@@ -7,7 +7,7 @@ namespace engine {
 // QUEEN EVALUATION
 // ===================================================
 
-// ridotto da -30
+// reduced from -30
 inline static constexpr int64_t ATTACKED_QUEEN_PENALTY = -25;
 
 } // namespace engine

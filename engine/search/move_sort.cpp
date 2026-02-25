@@ -251,7 +251,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             const int64_t see = staticExchangeEvaluation(b, m);
             
             if (see >= 0) {
-                // GOOD CAPTURE: alta priorità (prima di killer/quiet)
+                // GOOD CAPTURE: high priority (before killer/quiet)
                 score = 10000;
                 score += MVV_TABLE[victimType];
                 

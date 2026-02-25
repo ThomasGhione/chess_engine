@@ -114,7 +114,7 @@ static void computeCheckEvasionMasks(const chess::Board& b,
 }
 
 // Returns a mask with bits for pieces pinned to the king (pinnedMask)
-// e un array che per ogni casa contiene la maschera del raggio di pin (pinRayBySquare).
+// and an array that stores the pin-ray mask for each square (pinRayBySquare).
 static void computePinRays(const chess::Board& b,
                            uint8_t activeColor,
                            uint64_t& outPinnedMask,

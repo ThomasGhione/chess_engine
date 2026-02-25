@@ -2,6 +2,6 @@
 #include "../board/piece.hpp"
 
 int main(){
-    // Inizializza magic bitboards prima di eseguire i test
+    // Initialize magic bitboards before running tests
     pieces::initMagicBitboards();
 }

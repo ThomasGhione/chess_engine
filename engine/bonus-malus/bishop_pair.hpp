@@ -7,7 +7,6 @@ namespace engine {
 // BISHOP PAIR
 // ===================================================
 
-// aumentato (coppia alfieri importante)
 inline static constexpr int64_t BISHOP_PAIR_BONUS = 30;
 
 } // namespace engine
