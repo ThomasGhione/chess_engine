@@ -15,21 +15,13 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
 
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex   = to.index;
-    
-    const uint8_t fromFile = fromIndex & 7;
-    const uint8_t fromRank = fromIndex >> 3;
-    const uint8_t toFile = toIndex & 7;
-    const uint8_t toRank = toIndex >> 3;
 
-    const uint8_t moving      = get(from);
+    const uint8_t moving      = get(fromIndex);
     const uint8_t movingType  = moving & MASK_PIECE_TYPE;
     const uint8_t movingColor = moving & MASK_COLOR;
-    const uint8_t destBefore  = get(to);
+    const uint8_t destBefore  = get(toIndex);
 
-    st = MoveState{};
-    snapshotState(st);
-    st.capturedPiece     = destBefore;
-    st.fromPiece         = moving;
+    prepareMoveState(st, moving, destBefore);
     st.moveKind          = classifyMoveKind(movingType, movingColor, fromIndex, toIndex, destBefore, st.prevEnPassant);
 
     uint64_t newHash = currentHash;
@@ -43,21 +35,21 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     const MoveKind kind = st.moveKind;
     switch (kind) {
         case MoveKind::Capture:
-            doMoveByKind<MoveKind::Capture>(from, to, st, moving, movingType, movingColor, destBefore,
-                                            fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                doMoveByKind<MoveKind::Capture>(from, to, st, moving, movingType, movingColor, destBefore,
+                                            fromIndex, toIndex, promotionChoice);
             break;
         case MoveKind::DoublePawnPush:
             doMoveByKind<MoveKind::DoublePawnPush>(from, to, st, moving, movingType, movingColor, destBefore,
-                                                   fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                                   fromIndex, toIndex, promotionChoice);
             break;
         case MoveKind::EnPassant:
             doMoveByKind<MoveKind::EnPassant>(from, to, st, moving, movingType, movingColor, destBefore,
-                                              fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                              fromIndex, toIndex, promotionChoice);
             newHash ^= zobrist::TABLES.pieces[st.capturedPiece][st.enPassantCapturedIndex];
             break;
         case MoveKind::Castling:
             doMoveByKind<MoveKind::Castling>(from, to, st, moving, movingType, movingColor, destBefore,
-                                             fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                             fromIndex, toIndex, promotionChoice);
             {
                 const uint8_t rook = get(st.rookToIndex);
                 newHash ^= zobrist::TABLES.pieces[rook][st.rookFromIndex];
@@ -66,7 +58,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             break;
         case MoveKind::PromotionQuiet:
             doMoveByKind<MoveKind::PromotionQuiet>(from, to, st, moving, movingType, movingColor, destBefore,
-                                                   fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                                   fromIndex, toIndex, promotionChoice);
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
                 newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
@@ -74,7 +66,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             break;
         case MoveKind::PromotionCapture:
             doMoveByKind<MoveKind::PromotionCapture>(from, to, st, moving, movingType, movingColor, destBefore,
-                                                     fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                                     fromIndex, toIndex, promotionChoice);
             newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
@@ -84,7 +76,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         case MoveKind::Quiet:
         default:
             doMoveByKind<MoveKind::Quiet>(from, to, st, moving, movingType, movingColor, destBefore,
-                                          fromIndex, toIndex, fromFile, fromRank, toFile, toRank, promotionChoice);
+                                          fromIndex, toIndex, promotionChoice);
             break;
     }
     newHash ^= zobrist::TABLES.pieces[moving][toIndex];
@@ -154,9 +146,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
 
 __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
-    st = MoveState{};
-    snapshotState(st);
-    st.moveKind          = MoveKind::Quiet;
+    prepareNullMoveState(st);
     uint64_t newHash = currentHash;
     if (Coords::isInBounds(st.prevEnPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, st.prevEnPassant)) {
         newHash ^= zobrist::TABLES.enPassant[st.prevEnPassant.file()];

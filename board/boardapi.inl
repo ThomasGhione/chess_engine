@@ -89,6 +89,35 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
 }
 
 __attribute__((always_inline))
+inline void Board::prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept {
+    snapshotState(st);
+    st.capturedPiece = destBefore;
+    st.fromPiece = moving;
+    st.promotionPieceType = 0;
+    st.wasEnPassantCapture = false;
+    st.enPassantCapturedIndex = 0;
+    st.wasCastling = false;
+    st.rookFromIndex = 0;
+    st.rookToIndex = 0;
+    st.historyWasReset = false;
+}
+
+__attribute__((always_inline))
+inline void Board::prepareNullMoveState(MoveState& st) const noexcept {
+    snapshotState(st);
+    st.moveKind = MoveKind::Quiet;
+    st.capturedPiece = EMPTY;
+    st.fromPiece = EMPTY;
+    st.promotionPieceType = 0;
+    st.wasEnPassantCapture = false;
+    st.enPassantCapturedIndex = 0;
+    st.wasCastling = false;
+    st.rookFromIndex = 0;
+    st.rookToIndex = 0;
+    st.historyWasReset = false;
+}
+
+__attribute__((always_inline))
 inline void Board::restoreState(const MoveState& st) noexcept {
     activeColor   = st.prevActiveColor;
     halfMoveClock = st.prevHalfMoveClock;
@@ -177,10 +206,6 @@ inline void Board::doMoveByKind(
     uint8_t destBefore,
     uint8_t fromIndex,
     uint8_t toIndex,
-    uint8_t fromFile,
-    uint8_t fromRank,
-    uint8_t toFile,
-    uint8_t toRank,
     char promotionChoice
 ) noexcept {
     if constexpr (Kind == MoveKind::EnPassant) {
@@ -207,10 +232,13 @@ inline void Board::doMoveByKind(
 
     if constexpr (Kind == MoveKind::Castling) {
         st.wasCastling = true;
+        const uint8_t fromFile = static_cast<uint8_t>(fromIndex & 7);
+        const uint8_t toFile = static_cast<uint8_t>(toIndex & 7);
+        const uint8_t rankBase = static_cast<uint8_t>(toIndex & 56);
         const uint8_t rookFromFile = (toFile > fromFile) ? 7 : 0;
         const uint8_t rookToFile   = (toFile > fromFile) ? 5 : 3;
-        const uint8_t rookFromIndex = static_cast<uint8_t>((toRank << 3) | rookFromFile);
-        const uint8_t rookToIndex   = static_cast<uint8_t>((toRank << 3) | rookToFile);
+        const uint8_t rookFromIndex = static_cast<uint8_t>(rankBase | rookFromFile);
+        const uint8_t rookToIndex   = static_cast<uint8_t>(rankBase | rookToFile);
         st.rookFromIndex = rookFromIndex;
         st.rookToIndex   = rookToIndex;
 
@@ -229,7 +257,8 @@ inline void Board::doMoveByKind(
     }
 
     if constexpr (Kind == MoveKind::DoublePawnPush) {
-        enPassant = Coords{fromFile, static_cast<uint8_t>((fromRank + toRank) >> 1)};
+        const uint8_t enPassantIndex = static_cast<uint8_t>((fromIndex + toIndex) >> 1);
+        enPassant = Coords{enPassantIndex};
     }
 
     if constexpr (isPromotionKind(Kind)) {

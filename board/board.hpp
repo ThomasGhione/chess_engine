@@ -337,6 +337,8 @@ private:
     [[nodiscard]] static inline uint8_t normalizePromotionChoice(char promotionChoice) noexcept;
     [[nodiscard]] static inline uint8_t promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
     inline void snapshotState(MoveState& st) const noexcept;
+    inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
+    inline void prepareNullMoveState(MoveState& st) const noexcept;
     inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(
@@ -349,10 +351,6 @@ private:
         uint8_t destBefore,
         uint8_t fromIndex,
         uint8_t toIndex,
-        uint8_t fromFile,
-        uint8_t fromRank,
-        uint8_t toFile,
-        uint8_t toRank,
         char promotionChoice
     ) noexcept;
     template<MoveKind Kind>
