@@ -62,7 +62,7 @@ inline Board::MoveKind Board::classifyMoveKind(
 __attribute__((always_inline))
 inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
     const uint8_t promo = static_cast<uint8_t>(std::tolower(static_cast<unsigned char>(promotionChoice)));
-    if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') {
+    if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') [[likely]] {
         return promo;
     }
     return static_cast<uint8_t>('q');
@@ -111,7 +111,7 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
     auto it = std::find(ROOK_START_SQUARES.begin(), ROOK_START_SQUARES.end(), index);
 
     uint8_t returnValue = 0xFF;
-    if(it != ROOK_START_SQUARES.end()){
+    if (it != ROOK_START_SQUARES.end()){
       returnValue = std::distance(ROOK_START_SQUARES.begin(), it);
     }
     return returnValue;
