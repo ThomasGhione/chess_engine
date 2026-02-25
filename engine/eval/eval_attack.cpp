@@ -124,7 +124,7 @@ inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t o
         const int sq = popLSB(piecesBb);
         const uint64_t attacks = AttackFn(sq, occ);
         const int mobility = __builtin_popcountll(attacks & mobilityMask);
-        if (mobility == 0) [[unlikely]] score -= sign * (PinnedPenalty + TRAPPED_EXTRA_SEVERITY);
+        if (mobility == 0) score -= sign * (PinnedPenalty + TRAPPED_EXTRA_SEVERITY);
         else if (mobility <= 3) score -= sign * LowMobPenalty;
     }
     return score;
@@ -140,7 +140,7 @@ inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
     sideScore += evalTrappedPiecesGeneric<knightAttacksLookup, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY>(
         b.knights_bb[side], occ, mobilityMask, sign);
 
-    if ((b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]) == 0ULL) [[unlikely]] {
+    if ((b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]) == 0ULL) {
       return sideScore;
     }
 

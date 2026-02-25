@@ -131,7 +131,7 @@ static void computePinRays(const chess::Board& b,
 
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
-    if ((rookLikeEnemy | bishopLikeEnemy) == 0ULL) [[likely]] {
+    if ((rookLikeEnemy | bishopLikeEnemy) == 0ULL) {
         return;
     }
 
@@ -139,7 +139,7 @@ static void computePinRays(const chess::Board& b,
     // Fast bailout: if no enemy slider is even geometrically aligned with the king,
     // no pin can exist and we can skip directional scans entirely.
     if (((pieces::getRookAttacks(kingSq, 0ULL) & rookLikeEnemy) |
-         (pieces::getBishopAttacks(kingSq, 0ULL) & bishopLikeEnemy)) == 0ULL) [[likely]] {
+         (pieces::getBishopAttacks(kingSq, 0ULL) & bishopLikeEnemy)) == 0ULL) {
         return;
     }
     const int kingFile = chess::Board::fileOf(kingSq);
