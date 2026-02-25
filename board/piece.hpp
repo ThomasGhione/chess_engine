@@ -369,7 +369,7 @@ inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
 
 	for (const auto *offset : KING_OFFSET) {
 		int8_t newFile = file + offset[0], newRank = rank + offset[1];
-		if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
+		if( (newFile >= 0 && newFile < 8) && (newRank >= 0 && newRank < 8))
 			attackBitboard |= ONE << (newRank * 8 + newFile);
 	}
 

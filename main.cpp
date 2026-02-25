@@ -21,13 +21,11 @@ using namespace driver;
 
 
 int main(int argc, char *argv[]) {
-    
     Menu menu = Menu();
     Engine engine = Engine();
     
     Driver driver = Driver(menu, engine);
-    
-	driver.startGame(argc, argv);
+    driver.startGame(argc, argv);
     
     return 0;
 }
