@@ -31,6 +31,7 @@ WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-
 
 # Tool di analisi statica locali
 CPPCHECK = script/cppcheck-2.19.0/cppcheck
+COMPILATION_DB = script/compile_commands.json
 
 # Nome file finali
 NAME_APP = chess
@@ -220,10 +221,10 @@ analyze-cppcheck:
 	@printf "[1/7] Running cppcheck terminated\n"
 
 analyze-clang-tidy:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "2. CLANG-TIDY ANALYSIS\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@clang-tidy -p . $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS) >> doc/output-analisi/analisi.log 2>&1 || echo "clang-tidy exited with error code $$?" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "2. CLANG-TIDY ANALYSIS\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
+	@clang-tidy -p $(COMPILATION_DB) $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS) >> analisi.log 2>&1 || echo "clang-tidy exited with error code $$?" >> analisi.log
 	@printf "[2/7] Running clang-tidy terminated\n"
 
 analyze-iwyu:
