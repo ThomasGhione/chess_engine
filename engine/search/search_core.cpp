@@ -100,7 +100,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
         const int lmrMinMoveIndex = inConservativeEndgameLMR ? 16 : 14;
-        const bool lmrStructuralCandidate = (ctx.depth > 2)
+        const bool lmrStructuralCandidate = (ctx.depth > 5)
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromo
             && (!wasCapture)
@@ -133,7 +133,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR. Higher divisor = less reduction = more conservative
-            constexpr double LMR_C = 3.40;
+            constexpr double LMR_C = 3.67;
             int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
                                                    * std::log(static_cast<double>(moveIndex)) 
                                                    / LMR_C);

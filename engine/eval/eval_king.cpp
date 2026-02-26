@@ -28,25 +28,25 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(53) | chess::Board::bitMask(54) | chess::Board::bitMask(55);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 12;
+                    score -= movedPawns * 15;
                 }
 
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(49) | chess::Board::bitMask(50) | chess::Board::bitMask(51);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~whitePawns);
-                    score -= movedPawns * 12;
+                    score -= movedPawns * 15;
                 }
             } else {
                 if (canCastleKingside) {
                     constexpr uint64_t KINGSIDE_PAWNS_START = chess::Board::bitMask(13) | chess::Board::bitMask(14) | chess::Board::bitMask(15);
                     const int movedPawns = __builtin_popcountll(KINGSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 12;
+                    score += movedPawns * 15;
                 }
 
                 if (canCastleQueenside) {
                     constexpr uint64_t QUEENSIDE_PAWNS_START = chess::Board::bitMask(9) | chess::Board::bitMask(10) | chess::Board::bitMask(11);
                     const int movedPawns = __builtin_popcountll(QUEENSIDE_PAWNS_START & ~blackPawns);
-                    score += movedPawns * 12;
+                    score += movedPawns * 15;
                 }
             }
         }
