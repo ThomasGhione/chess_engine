@@ -182,7 +182,7 @@ private:
 
     // History heuristic: bonus for non-capture moves that often cause cutoffs
     // history[colorIndex][fromIndex][toIndex]
-    int history[2][64][64] = {};
+    int32_t history[2][64][64] = {};
 
     // Counter-move history: tracks best response to opponent's previous move
     // counterMoves[prevFrom][prevTo] -> best response move
@@ -190,8 +190,10 @@ private:
     chess::Board::Move counterMoves[64][64] {};
 
     // Capture history: bonus for captures that often cause cutoffs
-    // captureHistory[color][to][victimType]
-    int captureHistory[2][64][7] = {};
+    // 2 slots per bucket to keep a short "recent + secondary" memory.
+    // captureHistory[color][to][victimType][slot]
+    static constexpr int CAPTURE_HISTORY_SLOTS = 2;
+    int32_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
 
     static constexpr int64_t PIECE_VALUES[8] = {
         0,      // EMPTY = 0
@@ -248,7 +250,7 @@ private:
     void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
 
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
     static int64_t stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept;
 
     // Search helpers

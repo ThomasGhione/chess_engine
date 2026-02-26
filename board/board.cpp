@@ -341,7 +341,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
 }
 
 
-template<uint8_t PieceType> // helper template per simple pieces con pattern identico (Knight, Bishop, Rook, Queen)
+template<uint8_t PieceType> // helper template for simple pieces with identical pattern (Knight, Bishop, Rook, Queen)
 [[nodiscard]] static inline bool hasLegalMovesForPieceType(
     const Board* board,
     uint64_t pieceBB,

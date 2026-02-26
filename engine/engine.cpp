@@ -103,7 +103,7 @@ void Engine::updateGameResult() noexcept {
 
 
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -118,13 +118,20 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     if (isCapture) {
         const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
         const int64_t depthPlusOne = depth + 1;
-        const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
+        const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
         
         // GRAVITY FORMULA: prevents overflow and naturally saturates
         // h += bonus - h * |bonus| / MAX_CAPTURE_HISTORY
-        constexpr int MAX_CAPTURE_HISTORY = 10000;
-        auto& ch = captureHistory[colorIndex][toIndex][victimType];
-        ch += bonus - ch * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+        constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
+        auto& chPrimary = captureHistory[colorIndex][toIndex][victimType][0];
+        auto& chSecondary = captureHistory[colorIndex][toIndex][victimType][1];
+        chPrimary += bonus - chPrimary * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+
+        const int32_t secondaryBonus = (bonus >> 1);
+        chSecondary += secondaryBonus - chSecondary * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
+        if (chSecondary > chPrimary) {
+            std::swap(chPrimary, chSecondary);
+        }
         
         return; // Don't process as quiet move
     }
@@ -150,9 +157,9 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // GRAVITY FORMULA: h += bonus - h * |bonus| / MAX_HISTORY
     const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
     const int64_t depthPlusOne = depth + 1;
-    const int bonus = static_cast<int>(depthPlusOne * depthPlusOne);
+    const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
     
-    constexpr int MAX_HISTORY = 16384;
+    constexpr int32_t MAX_HISTORY = 16384;
     auto& h = history[colorIndex][fromIndex][toIndex];
     h += bonus - h * std::abs(bonus) / MAX_HISTORY;
 }

@@ -213,7 +213,7 @@ void Engine::search(uint64_t depth) noexcept {
     // Prevent stale data from dominating move ordering
     // Divide all history values by 2 at the start of each new search
     // This gives recent data more weight while preserving good moves
-    int* historyFlat = &this->history[0][0][0];
+    int32_t* historyFlat = &this->history[0][0][0];
     constexpr int HISTORY_CELLS = 2 * 64 * 64;
     #pragma omp simd
     for (int i = 0; i < HISTORY_CELLS; ++i) {

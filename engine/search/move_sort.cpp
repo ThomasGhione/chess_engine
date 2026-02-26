@@ -265,7 +265,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                 score += MVV_TABLE[victimType];
                 
                 // Add capture history bonus (0-500 range)
-                const int64_t capHist = captureHistory[usSide][m.to.index][victimType];
+                const int64_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
+                const int64_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
+                const int64_t capHist = capHistPrimary + (capHistSecondary >> 1);
                 score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
                 // Total: 10000-19500
             } else {
