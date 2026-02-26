@@ -38,7 +38,7 @@ struct TTEntry {
     //    : key(k), score(s), depth(d), age(a), flag(f) {}
 };
 
-// Transposition table globale + age/generation counter
+// Global transposition table + age/generation counter
 struct TTGlobal {
     TTEntry table[TTEntry::TABLE_SIZE];
     uint8_t generation = 0;
@@ -50,7 +50,7 @@ inline TTGlobal& globalTTData() {
 }
 
 // Zobrist: 16 pieces x 64 squares + side-to-move, castling, en-passant.
-// Tutte le chiavi sono pre-calcolate a compile time.
+// All keys are precomputed at compile time.
 namespace detail {
 
 struct XorShift64 {

@@ -116,7 +116,7 @@ struct MoveList {
             T key = (*this)[static_cast<size_t>(i)];
             int j = i - 1;
             
-            // ordine decrescente (highest score first)
+            // Descending order (highest score first)
             while (j >= 0 && (*this)[static_cast<size_t>(j)].score < key.score) {
                 (*this)[static_cast<size_t>(j + 1)] = (*this)[static_cast<size_t>(j)];
                 --j;

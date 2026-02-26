@@ -1,7 +1,6 @@
 #ifndef ENGINE_EVAL_EVALUATOR_HPP
 #define ENGINE_EVAL_EVALUATOR_HPP
 
-// Per variabili interne
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -18,11 +17,11 @@ namespace engine {
 
 class Evaluator final {
 public:
-    // Costruttore
+    // Constructor
     Evaluator() = delete;
-    // Costruttore end
+    // Constructor end
 
-    // Metodi statici
+    // Static methods
     static int64_t evaluate(const chess::Board& board) noexcept;
 
     static int64_t evaluateTrace(const chess::Board& board) noexcept;
@@ -36,10 +35,10 @@ public:
     static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
     static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
     static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
-    // Metodi statici end
+    // Static methods end
 
 private:
-    // Strutture
+    // Structures
     struct AttackData {
         uint64_t allAttacks;
         uint64_t pawnAttacks;
@@ -55,9 +54,9 @@ private:
 
         bool isComputed;
     };
-    // Strutture end
+    // Structures end
 
-    // Variabili
+    // Variables
     static constexpr int64_t PIECE_VALUES[8] = {
         0,
         PAWN_VALUE,
@@ -91,9 +90,9 @@ private:
     static inline constexpr int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
     static inline constexpr int64_t POS_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::max() - 1);
     static inline constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
-    // Variabili end
+    // Variables end
 
-    // Metodi
+    // Methods
     static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static constexpr int manhattan(int a, int b) noexcept;
     static constexpr uint64_t adjacentFilesMask(int file) noexcept;

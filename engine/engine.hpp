@@ -119,7 +119,7 @@ public:
     chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
     //--- Method end
 
-    //--- Variabile
+    //--- Variables
     chess::Board::Move bestMove;
 
     // Data members
@@ -148,7 +148,7 @@ public:
     // Dark/Light square masks for bad bishop evaluation
     static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
     static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
-    //--- Variabile end
+    //--- Variables end
 
 private:
     //--- Structs and enums
@@ -171,7 +171,7 @@ private:
         int64_t beta;
     };
 
-    //--- Variabile
+    //--- Variables
     GameResult gameResult = Engine::ONGOING;
     // Keep search bounds within int32 range so TT store/probe can preserve mate scores.
     constexpr static int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
@@ -203,7 +203,7 @@ private:
         KING_VALUE,  // KING = 6
         0       // unused = 7
     };
-    //--- Variabile end
+    //--- Variables end
 
     // Initial best score for min-max search
     // White maximizes: starts from -INF, Black minimizes: starts from +INF

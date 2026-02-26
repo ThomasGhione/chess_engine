@@ -63,7 +63,7 @@ static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
     return mask;
 }
 
-// Ritorna una maschera con i bit delle case su cui si può muovere o intercettare
+// Returns a mask with bits for squares where pieces can move or interpose
 // to evade check (evasionMask).
 static void computeCheckEvasionMasks(const chess::Board& b,
                                      uint8_t activeColor,

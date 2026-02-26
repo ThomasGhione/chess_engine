@@ -7,7 +7,7 @@
 #include "../board/board.hpp"
 
 namespace zobrist {
-    // RNG per compile-time generation
+    // RNG for compile-time generation
     struct XorShift64 {
         uint64_t state;
         constexpr explicit XorShift64(uint64_t seed) : state(seed) {}
@@ -21,13 +21,13 @@ namespace zobrist {
         }
     };
 
-    // Costanti per dimensioni array
+    // Array size constants
     constexpr std::size_t PIECE_TYPES = 16;    // 16 piece types (0=empty, 1-6=white, 9-14=black)
     constexpr std::size_t SQUARES = 64;         // 64 squares
-    constexpr std::size_t CASTLING_STATES = 16; // 16 stati castling (bitmask KQkq: 0-15)
-    constexpr std::size_t FILES = 8;            // 8 colonne per en-passant
+    constexpr std::size_t CASTLING_STATES = 16; // 16 castling states (bitmask KQkq: 0-15)
+    constexpr std::size_t FILES = 8;            // 8 files for en-passant
 
-    // Tabelle Zobrist con std::array
+    // Zobrist tables using std::array
     struct Tables {
         std::array<std::array<uint64_t, SQUARES>, PIECE_TYPES> pieces;
         uint64_t sideToMove;
@@ -35,7 +35,7 @@ namespace zobrist {
         std::array<uint64_t, FILES> enPassant;
     };
 
-    // Generazione compile-time
+    // Compile-time generation
     constexpr Tables makeTables() {
         Tables t{};
         XorShift64 rng(0x123456789ABCDEF0ULL);
@@ -50,12 +50,12 @@ namespace zobrist {
         // Side to move
         t.sideToMove = rng.next();
 
-        // Castling: 16 stati possibili
+        // Castling: 16 possible states
         for (std::size_t i = 0; i < CASTLING_STATES; ++i) {
             t.castling[i] = rng.next();
         }
 
-        // En-passant: 8 colonne
+        // En-passant: 8 files
         for (std::size_t file = 0; file < FILES; ++file) {
             t.enPassant[file] = rng.next();
         }
@@ -63,7 +63,7 @@ namespace zobrist {
         return t;
     }
 
-    // Tabelle globali compile-time
+    // Global compile-time tables
     inline constexpr Tables TABLES = makeTables();
 
     // Helper to XOR pieces from bitboards (more readable and reusable)
@@ -82,7 +82,7 @@ namespace zobrist {
         return candidatePawns != 0ULL;
     }
 
-    // Calcolo chiave hash da Board
+    // Compute hash key from Board
     inline uint64_t computeHashKey(const chess::Board& board) {
         uint64_t hashKey = 0ULL;
 

@@ -60,19 +60,19 @@ namespace tt {
             }
         };
 
-        // Configurazione
+        // Configuration
         static constexpr std::size_t BUCKET_COUNT = 1u << 20;
         static constexpr std::size_t ENTRIES_PER_BUCKET = 4;
         static constexpr std::size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
         static constexpr int32_t ADJUSTMENT = 50;
 
-        // Validazioni compile-time
+        // Compile-time validations
         // static_assert(sizeof(Entry) == 18, "Entry must be exactly 18 bytes");
         static_assert(alignof(Entry) == 8, "Entry must be 8-byte aligned for cache efficiency");
         static_assert((BUCKET_COUNT & (BUCKET_COUNT - 1)) == 0, "BUCKET_COUNT must be power of 2");
 
-        // Costruttore pubblico (per istanza in Engine)
-        // Alloca table_ dinamicamente (heap) per evitare stack overflow
+        // Public constructor (for Engine instances)
+        // Allocate table_ dynamically (heap) to avoid stack overflow
         TranspositionTable() 
             : table_(std::make_unique<std::array<Entry, TABLE_SIZE>>()), generation_(0) {}
 
@@ -85,7 +85,7 @@ namespace tt {
         inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept;
         inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
-        // Overload per int64_t (conversioni gestite internamente)
+        // int64_t overload (conversions handled internally)
         inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept;
         inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept;
         
@@ -110,7 +110,7 @@ namespace tt {
         uint8_t generation_;
     };
 
-    // Implementazioni inline dei metodi critici
+    // Inline implementations of critical methods
     inline void TranspositionTable::prefetch(uint64_t key) noexcept {
         const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
         const Entry* bucket = &(*table_)[bucketIndex * ENTRIES_PER_BUCKET];
@@ -348,7 +348,7 @@ namespace tt {
         }
     }
 
-    // Helper per determinare flag TT (riduce duplicazione codice in Engine)
+    // Helper to determine TT flag (reduces code duplication in Engine)
     inline constexpr TranspositionTable::Entry::Flag 
     determineFlag(int64_t score, int64_t alphaOrig, int64_t beta) noexcept {
         if (score <= alphaOrig) return TranspositionTable::Entry::UPPERBOUND;
@@ -356,7 +356,7 @@ namespace tt {
         return TranspositionTable::Entry::EXACT;
     }
 
-    // Compile-time validation di determineFlag
+    // Compile-time validation of determineFlag
     static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "determineFlag logic error");
     static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
     static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");

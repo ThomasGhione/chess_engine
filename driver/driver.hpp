@@ -17,7 +17,7 @@ namespace driver {
             struct Metadata {
                 std::string id = "beta-0.1.0";
                 std::string license = "MIT License"; 
-                std::string name = "Unnamed Chess Engine! Beta Version";
+                std::string name = "HydraY! Beta Version";
                 std::string authors[3] = { "Thomas Ghione", 
                                            "Daniele Ferretti", 
                                            "Simone Tomasella" };
@@ -36,9 +36,9 @@ namespace driver {
 
 
             print::Menu menu;
-            engine::Engine& engine;  // Cambiato da copia a riferimento
+            engine::Engine& engine;
 
-            Driver(print::Menu& menu, engine::Engine& engine);  // Passaggio per riferimento
+            Driver(print::Menu& menu, engine::Engine& engine);
 
             void startGame(int argc, char *argv[]) noexcept;
 

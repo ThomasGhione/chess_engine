@@ -208,7 +208,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
-    // SAFETY CHECK: evita stack overflow e accesso fuori bounds a killerMoves/history
+    // SAFETY CHECK: avoid stack overflow and out-of-bounds access on killerMoves/history
     if (ply >= MAX_PLY - 1) {
         return this->evaluate(b);
     }

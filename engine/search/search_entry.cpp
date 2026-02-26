@@ -46,7 +46,7 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
                           this->depth >= (Engine::DEFAULTDEPTH - 2));
     
     if (!useYBWC) {
-        // Sequential search con PVS (Principal Variation Search)
+        // Sequential search with PVS (Principal Variation Search)
         // First move: full window
         // Next moves: null window, then re-search if needed
         
@@ -237,7 +237,7 @@ void Engine::search(uint64_t depth) noexcept {
     for (uint64_t currentDepth = 1; currentDepth <= depth; ++currentDepth) {
         this->depth = currentDepth;
         
-        // Move ordering: porta la best move della iterazione precedente in testa
+        // Move ordering: bring previous iteration's best move to the front
         if (currentDepth > 1) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {

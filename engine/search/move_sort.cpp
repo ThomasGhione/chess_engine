@@ -155,14 +155,14 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         // (i.e. the previous capturer).
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
-        // Rimuovi l'attaccante dall'occupancy
+        // Remove the attacker from occupancy
         occ ^= attackerMask;
 
         // The piece that just captured now stays on target and can be
         // captured on the next ply.
         capturedOnTargetType = currentAttackerType;
 
-        // Cambia lato
+        // Switch side
         side ^= 1;
         depth++;
     }
@@ -185,7 +185,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
 {
     MoveList<ScoredMove> orderedScoredMoves;
 
-    // Pre-calcolo variabili costose fuori dal loop
+    // Precompute expensive variables outside the loop
     const bool inCheck = b.inCheck(b.getActiveColor());
     const int fullMoveClock = b.getFullMoveClock();
     const int nonPawnMajors = __builtin_popcountll(
