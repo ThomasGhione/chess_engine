@@ -27,7 +27,7 @@ static void addPawnMovesFromMaskFast(const chess::Board& b,
 // If aligned, it walks along the direction and sets intermediate squares.
 // Explicitly excludes target square to (and also excludes from).
 static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
-    if (from == to) return 0ULL;
+    if (from == to) [[unlikely]] return 0ULL;
 
     const int fromFile = chess::Board::fileOf(from);
     const int fromRank = chess::Board::rankOf(from);

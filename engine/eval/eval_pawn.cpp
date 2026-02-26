@@ -12,7 +12,7 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         uint16_t stamp = 0;
     };
 
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13; // 8192 buckets
+    constexpr size_t PAWN_CACHE_SIZE = 1u << 14; // 16384 buckets
     constexpr size_t PAWN_CACHE_WAYS = 2;        // 2-way set-associative
     constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
     thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
