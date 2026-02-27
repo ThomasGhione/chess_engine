@@ -183,7 +183,16 @@ private:
     struct IterativeSearchResult {
         bool hasLegalMoves = false;
         bool completedAnyDepth = false;
+        uint64_t startDepth = 0;
+        uint64_t targetDepth = 0;
+        uint64_t completedIterations = 0;
         uint64_t completedDepth = 0;
+        uint64_t completedEvenDepth = 0;
+        uint64_t interruptedDepth = 0;
+        uint32_t aspirationResearches = 0;
+        uint32_t aspirationFailLow = 0;
+        uint32_t aspirationFailHigh = 0;
+        tt::TranspositionTable::Entry::Flag rootScoreBound = tt::TranspositionTable::Entry::EXACT;
         chess::Board::Move bestMove{};
         int64_t bestScore = 0;
     };
@@ -314,7 +323,7 @@ private:
     inline bool shouldAbortSearch() const noexcept;
 
     IterativeSearchResult runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept;
-    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score) noexcept;
+    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score, uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     void ponderLoop(chess::Board rootBoard) noexcept;
@@ -333,7 +342,11 @@ private:
     std::atomic<bool> ponderDebugEnabled {false};
     std::atomic<uint64_t> ponderCurrentDepth {0};
     std::atomic<uint64_t> ponderLastCompletedDepth {0};
+    std::atomic<uint64_t> ponderLastCompletedEvenDepth {0};
     std::atomic<uint64_t> ponderInterruptedDepth {0};
+    std::atomic<uint32_t> ponderAspirationResearches {0};
+    std::atomic<uint32_t> ponderAspirationFailLow {0};
+    std::atomic<uint32_t> ponderAspirationFailHigh {0};
 }; //class Engine final
 
 } // namespace engine

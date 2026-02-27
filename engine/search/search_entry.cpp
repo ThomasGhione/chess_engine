@@ -39,11 +39,21 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
+    MoveList<chess::Board::Move> orderedRootMoves;
+
+    {
+        const uint64_t rootHash = rootBoard.getHash();
+        MoveList<ScoredMove> scoredRootMoves = this->sortLegalMoves(moves, 0, rootBoard, usIsWhite, rootHash, nullptr);
+        for (const auto& scoredMove : scoredRootMoves) {
+            orderedRootMoves.push_back(scoredMove.move);
+        }
+    }
+    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.is_empty() ? moves : orderedRootMoves;
 
     // Parallel YBWC is enabled only when:
     // - enough moves (>= 10) to amortize threading overhead
     // - sufficient depth (>= DEFAULTDEPTH - 2) for real speedup
-    const bool useYBWC = (moves.size >= 10 && 
+    const bool useYBWC = (rootMoves.size >= 10 &&
                           this->depth >= (Engine::DEFAULTDEPTH - 2));
     
     if (!useYBWC) {
@@ -51,13 +61,13 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
         // First move: full window
         // Next moves: null window, then re-search if needed
         
-        for (int i = 0; i < moves.size; ++i) {
+        for (int i = 0; i < rootMoves.size; ++i) {
             if (this->shouldAbortSearch()) {
                 this->searchInterrupted.store(true, std::memory_order_relaxed);
                 break;
             }
 
-            const auto& m = moves[i];
+            const auto& m = rootMoves[i];
             int64_t score = 0;
             if (i == 0) {
                 // First move: search with full window (PV node)
@@ -97,7 +107,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     // --- YBWC Parallel ---
     // First move: full-window search
     {
-        const auto& firstMove = moves[0];
+        const auto& firstMove = rootMoves[0];
         const int64_t score = this->searchRootMoveScore(rootBoard, firstMove, alpha, beta, currPly, true, true, &localNodes);
         searchedAnyMove = true;
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
@@ -109,7 +119,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
         return bestMove;
     }
 
-    if (moves.size <= 1) [[unlikely]] {
+    if (rootMoves.size <= 1) [[unlikely]] {
         this->nodesSearched += localNodes;
         if (searchedAnyMove) this->eval = bestScore;
         return bestMove;
@@ -125,18 +135,18 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
 
     // Task-based root parallelism (work-stealing, better load balance)
     // Bound the number of threads to MAX_THREADS and the number of moves
-    int candidateThreads = std::max(1, static_cast<int>(moves.size) - 1);
+    int candidateThreads = std::max(1, static_cast<int>(rootMoves.size) - 1);
     const int threadsToUse = std::min(this->MAX_THREADS, candidateThreads);
 
     if (threadsToUse <= 1) {
-        for (int i = 1; i < moves.size; ++i) {
+        for (int i = 1; i < rootMoves.size; ++i) {
             if (this->shouldAbortSearch()) {
                 this->searchInterrupted.store(true, std::memory_order_relaxed);
                 break;
             }
 
             chess::Board threadBoard = rootBoard;
-            const auto m = moves[i];
+            const auto m = rootMoves[i];
             uint64_t workerNodes = 0;
             const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
 
@@ -152,7 +162,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
         // We create tasks that process a contiguous range of moves. Each task copies the board ONCE
         // and evaluates all moves in the chunk sequentially. We use taskgroup to
         // wait for all tasks deterministically before merging results.
-        const int totalJobs = static_cast<int>(moves.size - 1);
+        const int totalJobs = static_cast<int>(rootMoves.size - 1);
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk); // cap chunk size to avoid too-large tasks
 
@@ -163,7 +173,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
                 #pragma omp taskgroup
                 {
                     for (int start = 1; start <= totalJobs; start += chunk) {
-                        const int end = std::min(start + chunk, static_cast<int>(moves.size));
+                        const int end = std::min(start + chunk, static_cast<int>(rootMoves.size));
                         #pragma omp task firstprivate(start, end)
                         {
                             if (!this->shouldAbortSearch()) {
@@ -173,7 +183,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
                                     if (this->shouldAbortSearch()) {
                                         break;
                                     }
-                                    const auto m = moves[i]; // local copy
+                                    const auto m = rootMoves[i]; // local copy
                                     uint64_t workerNodes = 0;
                                     const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
 
@@ -192,13 +202,13 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     }
 
     // Merge results deterministically (sequential order, no race)
-    for (int i = 1; i < moves.size; ++i) {
+    for (int i = 1; i < rootMoves.size; ++i) {
         if (this->searchInterrupted.load(std::memory_order_relaxed)) {
             break;
         }
         if (threadNodeCounts[i] == 0) continue;
         const int64_t score = threadScores[i];
-        const auto& m = moves[i];
+        const auto& m = rootMoves[i];
         if (Engine::isBetter(score, bestScore, usIsWhite)) {
             bestScore = score;
             bestMove = m;
@@ -213,18 +223,29 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     return bestMove;
 }
 
-void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score) noexcept {
+void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score, uint8_t flag) noexcept {
     if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
         return;
     }
 
+    if (flag != tt::TranspositionTable::Entry::EXACT
+        && flag != tt::TranspositionTable::Entry::LOWERBOUND
+        && flag != tt::TranspositionTable::Entry::UPPERBOUND) {
+        flag = tt::TranspositionTable::Entry::EXACT;
+    }
+
     const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    this->tt.store(rootBoard.getHash(), static_cast<uint8_t>(depth), score, tt::TranspositionTable::Entry::EXACT, encodedMove);
+    this->tt.store(rootBoard.getHash(), static_cast<uint8_t>(depth), score, flag, encodedMove);
 }
 
 Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept {
     IterativeSearchResult result;
+    const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
+    const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);
+    result.startDepth = firstDepth;
+    result.targetDepth = maxDepth;
+
     MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
@@ -247,12 +268,17 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
     uint64_t interruptedDepth = 0;
     const bool searchBestMoveForWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     chess::Board::Move bestMove = moves[0];
+    int64_t prevPrevScore = 0;
     int64_t prevScore = 0;
-    const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
-    const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);
+    bool hasPrevScore = false;
+    bool hasPrevPrevScore = false;
+    constexpr int64_t MATE_SCORE_THRESHOLD = POS_INF - 2048;
+    auto abs64 = [](int64_t v) noexcept -> int64_t {
+        return (v >= 0) ? v : -v;
+    };
     
     for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
-        if (allowStop && this->shouldAbortSearch()) {
+        if (this->shouldAbortSearch()) {
             interruptedDepth = currentDepth;
             break;
         }
@@ -277,79 +303,134 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
 
         this->searchInterrupted.store(false, std::memory_order_relaxed);
         bool iterationCompleted = true;
+        int64_t iterationAlpha = NEG_INF;
+        int64_t iterationBeta = POS_INF;
         chess::Board::Move candidateBestMove = moves[0];
 
-        if (currentDepth <= 4 || !result.completedAnyDepth) {
+        const bool canUseAspiration =
+            hasPrevScore
+            && hasPrevPrevScore
+            && result.completedAnyDepth
+            && currentDepth >= 5
+            && abs64(prevScore) < MATE_SCORE_THRESHOLD
+            && abs64(prevPrevScore) < MATE_SCORE_THRESHOLD;
+
+        if (!canUseAspiration) {
             candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite);
-            if (allowStop && this->searchInterrupted.load(std::memory_order_relaxed)) {
+            if (this->searchInterrupted.load(std::memory_order_relaxed)) {
                 iterationCompleted = false;
             }
         } else {
-            // Use aspiration window centered on previous iteration's score
-            constexpr int64_t INITIAL_WINDOW = 50; // Start with ±50cp window
-            int64_t windowDelta = INITIAL_WINDOW;
-            
-            int64_t aspAlpha = prevScore - windowDelta;
-            int64_t aspBeta  = prevScore + windowDelta;
-            
-            // Search with narrow window
-            candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite, aspAlpha, aspBeta);
-            if (allowStop && this->searchInterrupted.load(std::memory_order_relaxed)) {
-                iterationCompleted = false;
-            }
-            
-            // Check if search failed outside the window
-            // If eval is outside [aspAlpha, aspBeta], we need to re-search with wider window
-            while (iterationCompleted && (this->eval <= aspAlpha || this->eval >= aspBeta)) {
-                // Widen the window exponentially
-                windowDelta *= 2;
-                
-                // If window is too wide, fall back to full window
-                if (windowDelta > 800) {
+            // Dynamic aspiration window based on recent score volatility.
+            const int64_t scoreSwing = abs64(prevScore - prevPrevScore);
+            int64_t windowDelta = std::clamp<int64_t>(40 + (scoreSwing / 2), 60, 220);
+            constexpr int64_t WINDOW_HARD_CAP = 1500;
+            constexpr int MAX_ASP_RESEARCHES = 6;
+            int aspirationResearches = 0;
+            int64_t centerScore = prevScore;
+            int64_t aspAlpha = centerScore - windowDelta;
+            int64_t aspBeta = centerScore + windowDelta;
+
+            while (true) {
+                iterationAlpha = aspAlpha;
+                iterationBeta = aspBeta;
+                candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite, aspAlpha, aspBeta);
+                if (this->searchInterrupted.load(std::memory_order_relaxed)) {
+                    iterationCompleted = false;
+                    break;
+                }
+
+                const int64_t score = this->eval;
+                const bool failLow = (score <= aspAlpha);
+                const bool failHigh = (score >= aspBeta);
+                if (!failLow && !failHigh) {
+                    break;
+                }
+
+                ++aspirationResearches;
+                ++result.aspirationResearches;
+                if (failLow) {
+                    ++result.aspirationFailLow;
+                    centerScore = std::min(centerScore, score);
+                } else {
+                    ++result.aspirationFailHigh;
+                    centerScore = std::max(centerScore, score);
+                }
+
+                windowDelta = std::min<int64_t>(WINDOW_HARD_CAP, windowDelta * 2 + 20);
+                if (aspirationResearches >= MAX_ASP_RESEARCHES || windowDelta >= WINDOW_HARD_CAP) {
+                    iterationAlpha = NEG_INF;
+                    iterationBeta = POS_INF;
                     candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite);
-                    if (allowStop && this->searchInterrupted.load(std::memory_order_relaxed)) {
+                    if (this->searchInterrupted.load(std::memory_order_relaxed)) {
                         iterationCompleted = false;
                     }
                     break;
                 }
-                
-                // Re-search with wider window
-                if (this->eval <= aspAlpha) {
-                    aspAlpha = prevScore - windowDelta;
+
+                if (failLow) {
+                    aspAlpha = std::max<int64_t>(NEG_INF, centerScore - windowDelta);
+                    aspBeta = std::min<int64_t>(POS_INF, centerScore + std::max<int64_t>(40, windowDelta / 2));
                 } else {
-                    aspBeta = prevScore + windowDelta;
-                }
-                candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite, aspAlpha, aspBeta);
-                if (allowStop && this->searchInterrupted.load(std::memory_order_relaxed)) {
-                    iterationCompleted = false;
+                    aspAlpha = std::max<int64_t>(NEG_INF, centerScore - std::max<int64_t>(40, windowDelta / 2));
+                    aspBeta = std::min<int64_t>(POS_INF, centerScore + windowDelta);
                 }
             }
         }
 
         if (!iterationCompleted) {
-            if (allowStop) {
-                interruptedDepth = currentDepth;
-            }
+            interruptedDepth = currentDepth;
             break;
+        }
+
+        if (hasPrevScore) {
+            prevPrevScore = prevScore;
+            hasPrevPrevScore = true;
         }
 
         bestMove = candidateBestMove;
         prevScore = this->eval;
+        hasPrevScore = true;
         result.completedAnyDepth = true;
+        ++result.completedIterations;
         result.completedDepth = currentDepth;
+        if ((currentDepth & 1ULL) == 0ULL) {
+            result.completedEvenDepth = currentDepth;
+        }
         result.bestMove = bestMove;
         result.bestScore = this->eval;
-        this->storeRootHashMove(rootBoard, bestMove, currentDepth, this->eval);
+        result.rootScoreBound = tt::determineFlag(result.bestScore, iterationAlpha, iterationBeta);
+        this->storeRootHashMove(
+            rootBoard,
+            bestMove,
+            currentDepth,
+            this->eval,
+            static_cast<uint8_t>(result.rootScoreBound));
+
         if (allowStop) {
             this->ponderLastCompletedDepth.store(currentDepth, std::memory_order_relaxed);
+            if ((currentDepth & 1ULL) == 0ULL) {
+                this->ponderLastCompletedEvenDepth.store(currentDepth, std::memory_order_relaxed);
+            }
+            this->ponderAspirationResearches.store(result.aspirationResearches, std::memory_order_relaxed);
+            this->ponderAspirationFailLow.store(result.aspirationFailLow, std::memory_order_relaxed);
+            this->ponderAspirationFailHigh.store(result.aspirationFailHigh, std::memory_order_relaxed);
             if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-                std::cout << "[PONDER] last completed depth: " << currentDepth << "\n";
+                std::cout << "[PONDER] last completed depth: " << currentDepth
+                          << " (last even: " << result.completedEvenDepth
+                          << ", asp retries: " << result.aspirationResearches
+                          << ", fail-low: " << result.aspirationFailLow
+                          << ", fail-high: " << result.aspirationFailHigh << ")\n";
             }
         }
     }
 
+    result.interruptedDepth = interruptedDepth;
     if (allowStop) {
         this->ponderInterruptedDepth.store(interruptedDepth, std::memory_order_relaxed);
+        this->ponderAspirationResearches.store(result.aspirationResearches, std::memory_order_relaxed);
+        this->ponderAspirationFailLow.store(result.aspirationFailLow, std::memory_order_relaxed);
+        this->ponderAspirationFailHigh.store(result.aspirationFailHigh, std::memory_order_relaxed);
     }
 
     return result;
@@ -362,14 +443,18 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
     this->tt.incrementGeneration();
     this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
     this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
+    this->ponderLastCompletedEvenDepth.store(0, std::memory_order_relaxed);
     this->ponderInterruptedDepth.store(0, std::memory_order_relaxed);
+    this->ponderAspirationResearches.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailLow.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         std::cout << "[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n";
     }
 
     // Keep extending depth while opponent is thinking: 10, 11, 12, ...
-    (void)this->runIterativeDeepening(
+    const IterativeSearchResult ponderResult = this->runIterativeDeepening(
         rootBoard,
         static_cast<uint64_t>(Engine::DEFAULTDEPTH),
         static_cast<uint64_t>(Engine::MAX_PLY),
@@ -378,7 +463,11 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         std::cout << "[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
                   << ", last completed depth: " << this->getPonderLastCompletedDepth()
-                  << ", interrupted depth: " << this->getPonderInterruptedDepth() << "\n";
+                  << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                  << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                  << ", asp retries: " << ponderResult.aspirationResearches
+                  << ", fail-low: " << ponderResult.aspirationFailLow
+                  << ", fail-high: " << ponderResult.aspirationFailHigh << "\n";
     }
 
     this->ponderingActive.store(false, std::memory_order_release);
@@ -425,7 +514,11 @@ void Engine::stopPondering() noexcept {
     if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         std::cout << "[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
                   << ", last completed depth: " << this->getPonderLastCompletedDepth()
-                  << ", interrupted depth: " << this->getPonderInterruptedDepth() << "\n";
+                  << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                  << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                  << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
+                  << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
+                  << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n";
     }
 }
 

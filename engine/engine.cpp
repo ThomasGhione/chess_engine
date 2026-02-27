@@ -61,6 +61,13 @@ void Engine::reset() noexcept {
     std::memset(history, 0, sizeof(history));
     std::fill_n(&counterMoves[0][0], 64 * 64, emptyMove);
     std::memset(captureHistory, 0, sizeof(captureHistory));
+    this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
+    this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
+    this->ponderLastCompletedEvenDepth.store(0, std::memory_order_relaxed);
+    this->ponderInterruptedDepth.store(0, std::memory_order_relaxed);
+    this->ponderAspirationResearches.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailLow.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 }
 
 void Engine::setPonderDebugEnabled(bool enabled) noexcept {
