@@ -1,0 +1,3 @@
+[console_scripts]
+lizard = lizard:main
+

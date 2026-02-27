@@ -1,20 +1,21 @@
 #ifndef MENU_HPP
 #define MENU_HPP
 
-#include <iostream>
-#include <string>
 #include <cstdint>
 
 namespace print {
 
     class Menu {
       	public:
-        	static uint8_t mainMenu();
-        	static uint8_t playWithEngineMenu();
-			static uint8_t playWithPlayerMenu();
+        	static uint32_t mainMenu() noexcept;
+			static uint32_t extraMenu() noexcept;
+        	static uint32_t playWithEngineMenu() noexcept;
+			static uint32_t playWithPlayerMenu() noexcept;
+			static uint32_t playBotVsStockfishMenu() noexcept;
+			static uint32_t playBetaVsAlphaMenu() noexcept;
       
       	private:
-        	static void clearScreen();
+        	static void clearScreen() noexcept;
     };
 
 }
