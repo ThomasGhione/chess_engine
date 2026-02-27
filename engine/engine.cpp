@@ -36,7 +36,12 @@ Engine::Engine(const std::string& fen)
     this->tt.clear();
 }
 
+Engine::~Engine() noexcept {
+    this->stopPondering();
+}
+
 void Engine::reset() noexcept {
+    this->stopPondering();
     board = chess::Board();
     depth = DEFAULTDEPTH;
     UCI_DEPTH = 0;
@@ -58,9 +63,31 @@ void Engine::reset() noexcept {
     std::memset(captureHistory, 0, sizeof(captureHistory));
 }
 
+void Engine::setPonderDebugEnabled(bool enabled) noexcept {
+    this->ponderDebugEnabled.store(enabled, std::memory_order_relaxed);
+}
+
+bool Engine::isPonderDebugEnabled() const noexcept {
+    return this->ponderDebugEnabled.load(std::memory_order_relaxed);
+}
+
+uint64_t Engine::getPonderCurrentDepth() const noexcept {
+    return this->ponderCurrentDepth.load(std::memory_order_relaxed);
+}
+
+uint64_t Engine::getPonderLastCompletedDepth() const noexcept {
+    return this->ponderLastCompletedDepth.load(std::memory_order_relaxed);
+}
+
+uint64_t Engine::getPonderInterruptedDepth() const noexcept {
+    return this->ponderInterruptedDepth.load(std::memory_order_relaxed);
+}
+
 
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
+    this->stopPondering();
+
     bool result;
     if (promotionPiece == '\0') {
         result = this->board.move(from, to);

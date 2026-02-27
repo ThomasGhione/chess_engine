@@ -22,6 +22,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
                                        bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite) noexcept {
     int64_t best = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
+    bool searchedAnyMove = false;
 
     // =========================================================================
     // HISTORY MALUS: Track quiet moves searched before cutoff
@@ -66,6 +67,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     int moveIndex = 0;
     for (const auto& scoredMove : orderedScoredMoves) {
+        if (this->shouldAbortSearch()) {
+            this->searchInterrupted.store(true, std::memory_order_relaxed);
+            break;
+        }
+
         const auto& m = scoredMove.move;
         const bool isFirstMove = (moveIndex == 0);
         
@@ -165,6 +171,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         }
 
         b.undoMove(m, state);
+        searchedAnyMove = true;
+
+        if (this->searchInterrupted.load(std::memory_order_relaxed)) {
+            break;
+        }
 
         // Track quiet moves for history malus (before checking cutoff)
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
@@ -201,12 +212,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         ++moveIndex;
     }
 
+    if (!searchedAnyMove && this->searchInterrupted.load(std::memory_order_relaxed)) {
+        return ScoredMove{bestMove, ctx.staticEval};
+    }
+
     return ScoredMove{bestMove, best};
 }
 
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite, const chess::Board::Move* previousMove, uint64_t* nodeCounter, bool allowNullMove) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
+
+    if (this->shouldAbortSearch()) {
+        this->searchInterrupted.store(true, std::memory_order_relaxed);
+        return this->evaluate(b);
+    }
 
     // SAFETY CHECK: avoid stack overflow and out-of-bounds access on killerMoves/history
     if (ply >= MAX_PLY - 1) {
@@ -451,6 +471,10 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
 
     ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowTTWrite);
     int64_t best = result.score;
+
+    if (this->searchInterrupted.load(std::memory_order_relaxed)) {
+        return this->evaluate(b);
+    }
 
     if (useTT && allowTTWrite) {
         const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);

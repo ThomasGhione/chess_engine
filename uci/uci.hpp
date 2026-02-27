@@ -24,7 +24,7 @@ namespace uci {
             // Standard UCI commands
             void quit() noexcept;
             void uci() noexcept;
-            void setOption() noexcept;
+            void setOption(const std::string& args) noexcept;
             void position(const std::string& command) noexcept;
             void ucinewgame() noexcept;
             void isready() noexcept;

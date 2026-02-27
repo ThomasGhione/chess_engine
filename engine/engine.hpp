@@ -12,6 +12,8 @@
 #include <numeric>
 #include <string>
 #include <cstring>
+#include <atomic>
+#include <thread>
 #include <omp.h>
 
 #ifdef DEBUG
@@ -54,6 +56,7 @@ public:
     //--- Constructors
     Engine();
     explicit Engine(const std::string& fen);
+    ~Engine() noexcept;
     
     // Engine is non-copyable and non-movable due to complex state
     Engine(const Engine&) = delete;
@@ -70,6 +73,12 @@ public:
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     void search(uint64_t depth) noexcept;
+    void stopThinking() noexcept;
+    void setPonderDebugEnabled(bool enabled) noexcept;
+    bool isPonderDebugEnabled() const noexcept;
+    uint64_t getPonderCurrentDepth() const noexcept;
+    uint64_t getPonderLastCompletedDepth() const noexcept;
+    uint64_t getPonderInterruptedDepth() const noexcept;
     int64_t evaluate(const chess::Board& board) noexcept; 
     
     bool isGameOver() const noexcept;
@@ -115,8 +124,8 @@ public:
     static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
     MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
-    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
-    chess::Board::Move getBestMove(const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
+    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
+    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
     //--- Method end
 
     //--- Variables
@@ -169,6 +178,14 @@ private:
     struct AlphaBeta {
         int64_t alpha;
         int64_t beta;
+    };
+
+    struct IterativeSearchResult {
+        bool hasLegalMoves = false;
+        bool completedAnyDepth = false;
+        uint64_t completedDepth = 0;
+        chess::Board::Move bestMove{};
+        int64_t bestScore = 0;
     };
 
     //--- Variables
@@ -294,12 +311,29 @@ private:
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
     int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
+    inline bool shouldAbortSearch() const noexcept;
+
+    IterativeSearchResult runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept;
+    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score) noexcept;
+    void startPondering() noexcept;
+    void stopPondering() noexcept;
+    void ponderLoop(chess::Board rootBoard) noexcept;
     
     // Quiescence helper: generates only tactical moves (captures, promotions)
     static MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false,
                                                        bool inCheckKnown = false, bool inCheckValue = false,
                                                        bool inDoubleCheckValue = false) noexcept;
     //--- Method end
+
+    std::thread ponderingThread;
+    std::atomic<bool> ponderingStopRequested {false};
+    std::atomic<bool> ponderingActive {false};
+    std::atomic<bool> stopSearchRequested {false};
+    std::atomic<bool> searchInterrupted {false};
+    std::atomic<bool> ponderDebugEnabled {false};
+    std::atomic<uint64_t> ponderCurrentDepth {0};
+    std::atomic<uint64_t> ponderLastCompletedDepth {0};
+    std::atomic<uint64_t> ponderInterruptedDepth {0};
 }; //class Engine final
 
 } // namespace engine

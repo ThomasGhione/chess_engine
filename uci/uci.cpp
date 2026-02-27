@@ -1,8 +1,40 @@
 #include "uci.hpp"
 #include <sstream>
 #include <algorithm>
+#include <cctype>
 
 namespace uci {
+
+    static std::string normalizedOptionName(std::string optionName) {
+        std::string out;
+        out.reserve(optionName.size());
+        for (char c : optionName) {
+            if (c == ' ' || c == '_' || c == '-') continue;
+            out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
+        return out;
+    }
+
+    static std::string trimLeft(const std::string& s) {
+        std::size_t i = 0;
+        while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        return s.substr(i);
+    }
+
+    static bool parseCheckValue(const std::string& rawValue, bool& outValue) {
+        std::string value = rawValue;
+        std::transform(value.begin(), value.end(), value.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (value == "true" || value == "1" || value == "on") {
+            outValue = true;
+            return true;
+        }
+        if (value == "false" || value == "0" || value == "off") {
+            outValue = false;
+            return true;
+        }
+        return false;
+    }
     
     UCI::UCI() 
         : engine(*(new engine::Engine())) // Default engine instance
@@ -30,8 +62,10 @@ namespace uci {
         else if (command == "uci") {
             uci();
         }
-        else if (command == "setoption") {
-            setOption();
+        else if (command.find("setoption") == 0) {
+            std::string args;
+            if (command.size() > 10 && command[9] == ' ') args = command.substr(10);
+            setOption(args);
         }
         else if (command.find("position") == 0) { // starts with "position"
             std::string rest;
@@ -66,14 +100,56 @@ namespace uci {
     void UCI::uci() noexcept {
         std::cout << "id name Fenty The Chess Engine 1.0.0" << std::endl;
         std::cout << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella" << std::endl;
+        std::cout << "option name PonderDebug type check default false" << std::endl;
         std::cout << "uciok" << std::endl;
     }
 
-    void UCI::setOption() noexcept {
+    void UCI::setOption(const std::string& args) noexcept {
+        if (args.empty()) return;
+
+        std::istringstream iss(args);
+        std::string token;
+        std::string optionName;
+        std::string optionValue;
+
+        while (iss >> token) {
+            if (token != "name") continue;
+
+            while (iss >> token) {
+                if (token == "value") break;
+                if (!optionName.empty()) optionName += ' ';
+                optionName += token;
+            }
+
+            if (token == "value") {
+                std::getline(iss, optionValue);
+                optionValue = trimLeft(optionValue);
+            }
+            break;
+        }
+
+        if (optionName.empty()) return;
+
+        const std::string normalized = normalizedOptionName(optionName);
+        if (normalized == "ponderdebug") {
+            bool enabled = false;
+            if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
+                std::cout << "info string invalid value for PonderDebug: '" << optionValue
+                          << "' (use true/false)" << std::endl;
+                return;
+            }
+
+            engine.setPonderDebugEnabled(enabled);
+            std::cout << "info string PonderDebug "
+                      << (engine.isPonderDebugEnabled() ? "enabled" : "disabled")
+                      << std::endl;
+        }
 
     }
 
     void UCI::position(const std::string& command) noexcept {
+        engine.stopThinking();
+
         // UCI "position" must not reset the whole engine state:
         // reset TT/history only on "ucinewgame".
         if (command.find("startpos") == 0) {
@@ -107,6 +183,7 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
+        engine.stopThinking();
         engine.reset();
     }
 
@@ -118,9 +195,7 @@ namespace uci {
     void UCI::go(const std::string& args) noexcept {
         // Minimal parsing for common UCI 'go' options: depth and movetime.
         // If depth provided, use it. If not, fall back to engine.depth or default.
-        uint64_t requestedDepth = engine.depth;
-
-        if (requestedDepth == 0) requestedDepth = engine::Engine::DEFAULTDEPTH;
+        uint64_t requestedDepth = engine::Engine::DEFAULTDEPTH;
 
         if (!args.empty()) {
             std::istringstream iss(args);
@@ -154,7 +229,7 @@ namespace uci {
     }
     
     void UCI::stop() noexcept {
-        
+        engine.stopThinking();
     }
 
     void UCI::ponderhit() noexcept {

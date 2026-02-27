@@ -121,7 +121,7 @@ namespace driver {
 #ifdef DEBUG
                 auto chrono_start = std::chrono::high_resolution_clock::now();
 #endif
-        this->engine.search(this->engine.depth);
+        this->engine.search(engine::Engine::DEFAULTDEPTH);
 #ifdef DEBUG
                 auto chrono_end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;

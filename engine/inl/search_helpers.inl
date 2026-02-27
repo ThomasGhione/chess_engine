@@ -54,4 +54,10 @@ inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, ch
     return isPromo;
 }
 
+__attribute__((always_inline))
+inline bool Engine::shouldAbortSearch() const noexcept {
+    return this->stopSearchRequested.load(std::memory_order_acquire)
+        || this->ponderingStopRequested.load(std::memory_order_acquire);
+}
+
 } // namespace engine

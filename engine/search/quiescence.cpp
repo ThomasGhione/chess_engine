@@ -36,6 +36,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
+    if (this->shouldAbortSearch()) {
+        this->searchInterrupted.store(true, std::memory_order_relaxed);
+        return this->evaluate(b);
+    }
+
     // SAFETY: prevent stack overflow
     if (ply >= MAX_PLY - 1) {
         return this->evaluate(b);
@@ -94,6 +99,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         for (int pass = 0; pass < 2; ++pass) {
             const bool searchForcing = (pass == 0);
             for (const auto& m : evasions) {
+                if (this->shouldAbortSearch()) {
+                    this->searchInterrupted.store(true, std::memory_order_relaxed);
+                    return this->evaluate(b);
+                }
+
                 const bool isForcing = isForcingEvasion(b, m, enPassant, hasEnPassant);
                 if (isForcing != searchForcing) {
                     continue;
@@ -285,6 +295,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     int64_t best = standPat;
     
     for (const auto& scoredMove : orderedMoves) {
+        if (this->shouldAbortSearch()) {
+            this->searchInterrupted.store(true, std::memory_order_relaxed);
+            return this->evaluate(b);
+        }
+
         const auto& m = scoredMove.move;
         chess::Board::MoveState state;
         
