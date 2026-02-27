@@ -15,9 +15,9 @@ namespace driver {
         public:
 
             struct Metadata {
-                std::string id = "beta-0.1.0";
+                std::string id = "1.0.0";
                 std::string license = "MIT License"; 
-                std::string name = "HydraY! Beta Version";
+                std::string name = "HydraY! 1.0.0";
                 std::string authors[3] = { "Thomas Ghione", 
                                            "Daniele Ferretti", 
                                            "Simone Tomasella" };

@@ -64,7 +64,7 @@ namespace uci {
     }
 
     void UCI::uci() noexcept {
-        std::cout << "id name Fenty The Chess Engine Beta 0.1.0" << std::endl;
+        std::cout << "id name Fenty The Chess Engine 1.0.0" << std::endl;
         std::cout << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella" << std::endl;
         std::cout << "uciok" << std::endl;
     }
