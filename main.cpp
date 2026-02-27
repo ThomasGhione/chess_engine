@@ -26,6 +26,5 @@ int main(int argc, char *argv[]) {
     
     Driver driver = Driver(menu, engine);
     driver.startGame(argc, argv);
-    
     return 0;
 }
