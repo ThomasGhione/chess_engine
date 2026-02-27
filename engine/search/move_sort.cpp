@@ -121,7 +121,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int64_t gain[MAX_SEE_DEPTH];
     gain[0] = PIECE_VALUES[capturedType];
 
-    // Simula scambio su occupazione locale
+    // Simulate the exchange on local occupancy
     uint64_t occ = b.getPiecesBitMap();
     occ ^= chess::Board::bitMask(fromSq); // remove the piece that makes the first capture from its square
 
@@ -256,7 +256,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         if (hashMoveIsLegal && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
             score = 100000; // Highest priority
         } else if (isCapture) {
-            // CAPTURES: priorità basata su SEE + capture history
+            // CAPTURES: priority based on SEE + capture history
             const int64_t see = staticExchangeEvaluation(b, m);
             
             if (see >= 0) {
@@ -279,7 +279,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         } else {
             // NON-CAPTURES: killer, checks, history
             
-            // Check for killer moves FIRST (alta priorità)
+            // Check for killer moves FIRST (high priority)
             bool isKiller = false;
             bool isCounterMove = false;
             if (ply >= 0 && ply < MAX_PLY) {
@@ -353,7 +353,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
                     }
                 }
                 
-                // History heuristic (per quiet moves normali)
+                // History heuristic (for regular quiet moves)
                 if (score == 0 && ply >= 0 && ply < MAX_PLY) {
                     int64_t histScore = history[usSide][m.from.index][m.to.index];
                     // Map history to [-2000, 4000] range for better move differentiation
@@ -398,7 +398,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             const bool isCastling = (fileDelta == 2);
 
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
-                score -= 500; // penalità moderata
+                score -= 500; // moderate penalty
             } else if (isCastling) {
                 score += 1000; // castling bonus
             }

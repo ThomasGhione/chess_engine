@@ -13,11 +13,11 @@ namespace engine {
 // We use a wider key to reduce collisions: key(4) + score(2) + depth(1) + age(1) + flag(1) + pad(3) = 12 bytes
 struct TTEntry {
     uint64_t key;   // 64-bit Zobrist key
-    int16_t  score;   // score in centipawns (±32k range sufficient with mate detection)
-    uint8_t  depth;   // search depth (0-255 sufficient)
-    uint8_t  age  ;   // generation/age for replacement policy
-    uint8_t  flag;   // INVALID / EXACT / LOWERBOUND / UPPERBOUND
-    [[maybe_unused]] uint8_t  padding[3]; // align to 16 bytes
+    int16_t score;  // score in centipawns (±32k range sufficient with mate detection)
+    uint8_t depth;  // search depth (0-255 sufficient)
+    uint8_t age;    // generation/age for replacement policy
+    uint8_t flag;   // INVALID / EXACT / LOWERBOUND / UPPERBOUND
+    [[maybe_unused]] uint8_t padding[3]; // align to 16 bytes
 
     enum Flag : uint8_t {
         INVALID = 0,  // empty/invalid entry
@@ -44,7 +44,7 @@ struct TTGlobal {
     uint8_t generation = 0;
 };
 
-inline TTGlobal& globalTTData() {
+inline TTGlobal& globalTTData() noexcept {
     static TTGlobal data;
     return data;
 }
@@ -55,8 +55,8 @@ namespace detail {
 
 struct XorShift64 {
     uint64_t state;
-    constexpr explicit XorShift64(uint64_t seed) : state(seed) {}
-    constexpr uint64_t next() {
+    constexpr explicit XorShift64(uint64_t seed) noexcept : state(seed) {}
+    constexpr uint64_t next() noexcept {
         uint64_t x = state;
         x ^= x >> 12;
         x ^= x << 25;
@@ -73,7 +73,7 @@ struct ZobristTables {
     uint64_t enPassant[8];
 };
 
-constexpr ZobristTables makeZobristTables() {
+constexpr ZobristTables makeZobristTables() noexcept {
     ZobristTables t{};
     XorShift64 rng(0x123456789ABCDEF0ULL);
 
@@ -112,7 +112,7 @@ inline void xorPiecesFromBitboard(uint64_t bb, uint8_t idx, uint64_t& hashKey) n
     }
 }
 
-inline uint64_t computeHashKey(const chess::Board& board) {
+inline uint64_t computeHashKey(const chess::Board& board) noexcept {
     uint64_t hashKey = 0ULL;
 
     // White pieces (color index 0) - indici 1..6

@@ -2,9 +2,9 @@
 #define ENGINE_MOVELIST_HPP
 
 #include "engine.hpp"
-#include <utility>  // per std::forward
+#include <utility>  // for std::forward
 #include <concepts>
-#include <algorithm> // per std::partial_sort
+#include <algorithm> // for std::partial_sort
 #include <new>
 #include <type_traits>
 

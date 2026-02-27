@@ -76,7 +76,7 @@ namespace tt {
         TranspositionTable() 
             : table_(std::make_unique<std::array<Entry, TABLE_SIZE>>()), generation_(0) {}
 
-        // Operazioni principali con int32_t (native API)
+        // Core operations with int32_t (native API)
         inline void prefetch(uint64_t key) noexcept;
         inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
         inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;

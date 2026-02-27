@@ -91,8 +91,8 @@ inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint
 // Compute rook attacks in the classic way (ground truth)
 inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
     uint64_t attacks = 0ULL;
-    int8_t file = fileOf(square);
-    int8_t rank = rankOf(square);
+    const int8_t file = fileOf(square);
+    const int8_t rank = rankOf(square);
 
     // North (rank decreases)
     for (int8_t r = rank - 1; r >= 0; --r) {
@@ -121,8 +121,8 @@ inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t 
 // Compute bishop attacks in the classic way (ground truth)
 inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
     uint64_t attacks = 0ULL;
-    int8_t file = fileOf(square);
-    int8_t rank = rankOf(square);
+    const int8_t file = fileOf(square);
+    const int8_t rank = rankOf(square);
 
     // NE (file increases, rank decreases)
     for (int8_t f = file + 1, r = rank - 1; f < 8 && r >= 0; ++f, --r) {

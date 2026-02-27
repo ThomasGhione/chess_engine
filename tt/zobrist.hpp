@@ -10,8 +10,8 @@ namespace zobrist {
     // RNG for compile-time generation
     struct XorShift64 {
         uint64_t state;
-        constexpr explicit XorShift64(uint64_t seed) : state(seed) {}
-        constexpr uint64_t next() {
+        constexpr explicit XorShift64(uint64_t seed) noexcept : state(seed) {}
+        constexpr uint64_t next() noexcept {
             uint64_t x = state;
             x ^= x >> 12;
             x ^= x << 25;
@@ -36,7 +36,7 @@ namespace zobrist {
     };
 
     // Compile-time generation
-    constexpr Tables makeTables() {
+    constexpr Tables makeTables() noexcept {
         Tables t{};
         XorShift64 rng(0x123456789ABCDEF0ULL);
 
@@ -67,7 +67,7 @@ namespace zobrist {
     inline constexpr Tables TABLES = makeTables();
 
     // Helper to XOR pieces from bitboards (more readable and reusable)
-    inline void xorPiecesFromBitboard(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) {
+    inline void xorPiecesFromBitboard(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) noexcept {
         while (bitboard) {
             const uint8_t square = static_cast<uint8_t>(__builtin_ctzll(bitboard));
             bitboard &= (bitboard - 1);
@@ -83,7 +83,7 @@ namespace zobrist {
     }
 
     // Compute hash key from Board
-    inline uint64_t computeHashKey(const chess::Board& board) {
+    inline uint64_t computeHashKey(const chess::Board& board) noexcept {
         uint64_t hashKey = 0ULL;
 
         // White pieces (piece index 1-6)

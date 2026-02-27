@@ -162,7 +162,7 @@ inline void Board::updateChessboard(const Coords& from, const Coords& to, piece_
     const uint8_t fromIndex = from.index;
     const uint8_t toIndex = to.index;
     
-    // Direct array access usando index (evita conversioni ripetute)
+    // Direct array access using index (avoids repeated conversions)
     const uint8_t fromRank = fromIndex >> 3;
     const uint8_t fromFile = fromIndex & 7;
     const uint8_t toRank = toIndex >> 3;

@@ -27,14 +27,11 @@ static inline bool isForcingEvasion(const chess::Board& b,
 // ============================================================================
 // Searches only tactical moves (captures, promotions) to find a quiet position
 // This prevents the engine from stopping the search at a position where a capture sequence is ongoing
-// Example: if we search to depth 0 during "Queen takes Pawn, Rook takes Queen", we'd evaluate
-// as if we won a pawn, when in reality we're about to lose the Queen.
 //
 // Delta pruning: Skip captures that can't possibly raise alpha (even if the capture succeeds)
 // SEE pruning: Skip losing captures (SEE < threshold)
 //
-// NOTE: We do NOT generate checks (non-capture) as they cause tree explosion
-// Most modern engines only search captures + promotions in qsearch
+// NOTE: We do NOT generate checks (non-capture) as they cause tree explosio
 int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT, uint64_t* nodeCounter) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
@@ -48,17 +45,13 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // TT PROBE IN QUIESCENCE SEARCH
     // =========================================================================
     // Probe the TT before doing any work. If we have a stored result for this
-    // position at sufficient depth, we can return immediately. This avoids
-    // re-evaluating identical tactical positions that arise via transpositions.
+    // position at sufficient depth, we can return immediately.
     if (useTT) {
         const uint64_t hashKey = b.getHash();
-        {
-            int64_t ttScore = 0;
-            // Probe at depth 0 (qsearch is depth <= 0)
-            if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) {
-                return ttScore;
-            }
-        }
+        int64_t ttScore = 0;
+        // Probe at depth 0 (qsearch is depth <= 0)
+        if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) 
+            return ttScore;
     }
 
     const uint8_t activeColor = b.getActiveColor();
@@ -95,7 +88,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         int64_t best = Engine::initialBest(usIsWhite);
 
         // Two-pass evasion ordering:
-        // 1) forcing evasions (captures/promotions), 2) quiet evasions.
+        // 1) forcing evasions (captures/promotions)
+        // 2) quiet evasions.
         // This improves alpha-beta cutoffs in tactical check sequences.
         for (int pass = 0; pass < 2; ++pass) {
             const bool searchForcing = (pass == 0);
@@ -147,12 +141,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     static constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
 
     if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
-        // Early pruning - don't store in TT (too frequent, overhead not worth it)
         return usIsWhite ? alpha : beta; // Early delta cutoff (fail-low bound)
     }
 
     // ============================================================================
-    // DYNAMIC DELTA PRUNING - Advanced version
+    // DYNAMIC DELTA PRUNING 
     // ============================================================================
     // Delta pruning: if even the best possible capture can't improve our position enough
     // to affect the search result, we can prune the entire qsearch subtree.
@@ -289,7 +282,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     orderedMoves.sort();
 
-    // Search tactical moves using MINIMAX (not negamax)
+    // Search tactical moves using MINIMAX
     int64_t best = standPat; // Initialize with stand-pat
     
     for (const auto& scoredMove : orderedMoves) {
