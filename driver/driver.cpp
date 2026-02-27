@@ -1,6 +1,5 @@
 #include "driver.hpp"
 
-#include "../printer/menu.hpp"
 #include "../engine/engine.hpp"
 #include <algorithm>
 #include <array>
@@ -305,9 +304,8 @@ namespace driver {
         return extractBestMoveFromOutput(readStockfishOutputUntil(sf, "bestmove", 800));
     }
 
-    Driver::Driver(print::Menu& m, engine::Engine& e) 
-        : menu(m)
-        , engine(e) 
+    Driver::Driver(engine::Engine& e) 
+        : engine(e) 
     {}
 
     bool Driver::parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
@@ -400,12 +398,12 @@ namespace driver {
 
         while (true) {
             this->engine.reset();
-            uint8_t mainMenuChoice = menu.mainMenu();
+            uint8_t mainMenuChoice = mainMenu();
 
             switch (mainMenuChoice) {
                 
                 case '1': {
-                    uint8_t colorChoice = menu.playWithEngineMenu();
+                    uint8_t colorChoice = playWithEngineMenu();
                     this->quit(std::string(1, colorChoice));
                     switch (colorChoice) {
                         case '1':
@@ -436,7 +434,7 @@ namespace driver {
                     break;
 
                 case '4': {
-                    uint8_t extraMenuChoice = menu.extraMenu();
+                    uint8_t extraMenuChoice = extraMenu();
                     this->quit(std::string(1, extraMenuChoice));
 
                     switch (extraMenuChoice) {
@@ -447,7 +445,7 @@ namespace driver {
                         case '2': {
                             if (!this->checkAndDownloadStockfish()) break;
                             
-                            uint8_t botStockfishChoice = menu.playBotVsStockfishMenu();
+                            uint8_t botStockfishChoice = playBotVsStockfishMenu();
                             this->quit(std::string(1, botStockfishChoice));
 
                             switch (botStockfishChoice) {
@@ -468,7 +466,7 @@ namespace driver {
                         }
 
                         case '3': {
-                            uint8_t betaAlphaChoice = menu.playBetaVsAlphaMenu();
+                            uint8_t betaAlphaChoice = playBetaVsAlphaMenu();
                             this->quit(std::string(1, betaAlphaChoice));
                             switch (betaAlphaChoice) {
                                 case '1':
@@ -692,7 +690,7 @@ namespace driver {
             const bool engineToMove = (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
             if (engineToMove) {
                 this->engineTurn();
-                std::cout << "Our engine move:\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+                std::cout << "Our engine move:\n" << Driver::getBasicBoard(engine.board) << "\n";
                 std::cout.flush();
             } else {
                 std::cout << "Waiting for Stockfish move..." << std::endl;
@@ -714,7 +712,7 @@ namespace driver {
                 }
 
                 std::cout << "Stockfish plays: " << bestMove << "\n";
-                std::cout << print::Prints::getBasicBoard(engine.board) << "\n";
+                std::cout << Driver::getBasicBoard(engine.board) << "\n";
                 std::cout.flush();
             }
 

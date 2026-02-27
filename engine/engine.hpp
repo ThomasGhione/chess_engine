@@ -20,8 +20,6 @@
 #include <chrono>
 #endif
 
-#include "../printer/menu.hpp"
-#include "../printer/prints.hpp"
 #include "../board/board.hpp"
 #include "../board/coords.hpp"
 

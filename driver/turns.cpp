@@ -10,7 +10,7 @@ namespace driver {
 
         bool error = true;
         while (error) {
-            std::string currentBoard = print::Prints::getBasicBoard(engine.board);
+            std::string currentBoard = Driver::getBasicBoard(engine.board);
             std::cout << currentBoard << "\n";
 
             std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
@@ -108,7 +108,7 @@ namespace driver {
             std::cout << "[DEBUG] move executed in " << elapsed.count() << " microseconds.\n";
 #endif
 
-            std::cout << "\n" << print::Prints::getBasicBoard(engine.board) << "\n";
+            std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
             
             error = false;
         }  

@@ -1,6 +1,6 @@
-#include "prints.hpp"
+#include "driver.hpp"
 
-namespace print {
+namespace driver {
 
 using namespace chess;
 
@@ -19,7 +19,7 @@ static inline char pieceToSymbol(uint8_t piece) noexcept {
     }
 }
 
-std::string Prints::getBasicBoard(const Board& board) {
+std::string Driver::getBasicBoard(const Board& board) {
     std::string result = "  a b c d e f g h\n";
     for (int row = 7; row >= 0; --row) {
         result += std::to_string(row + 1) + " ";
@@ -34,4 +34,4 @@ std::string Prints::getBasicBoard(const Board& board) {
 }
 
 
-} // namespace print
+} // namespace driver

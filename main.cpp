@@ -2,7 +2,6 @@
 #include "./driver/driver.hpp"
 
 using namespace chess;
-using namespace print;
 using namespace engine;
 using namespace driver;
 
@@ -21,10 +20,9 @@ using namespace driver;
 
 
 int main(int argc, char *argv[]) {
-    Menu menu = Menu();
     Engine engine = Engine();
     
-    Driver driver = Driver(menu, engine);
+    Driver driver = Driver(engine);
     driver.startGame(argc, argv);
     return 0;
 }

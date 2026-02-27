@@ -3,9 +3,8 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
-#include "../printer/menu.hpp"
-#include "../engine/engine.hpp"
 #include "../uci/uci.hpp"
 
 namespace driver {
@@ -34,13 +33,15 @@ namespace driver {
             constexpr static int32_t COLOR = 2;
             constexpr static int32_t NO_ARGS = 1;
 
-
-            print::Menu menu;
             engine::Engine& engine;
 
-            Driver(print::Menu& menu, engine::Engine& engine);
+            Driver(engine::Engine& engine);
 
             void startGame(int argc, char *argv[]) noexcept;
+
+            static std::string getPrintableBoard(const std::string& FEN);
+            static std::string getBasicBoard(const chess::Board& board);
+            static std::string getBitBoard(const pieces::U64& bitboard);
 
         private:
 
@@ -72,6 +73,14 @@ namespace driver {
             bool playOneTurn(bool playerTurn) noexcept;
             void playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept;
 
+            static uint32_t mainMenu() noexcept;
+			static uint32_t extraMenu() noexcept;
+        	static uint32_t playWithEngineMenu() noexcept;
+			static uint32_t playWithPlayerMenu() noexcept;
+			static uint32_t playBotVsStockfishMenu() noexcept;
+			static uint32_t playBetaVsAlphaMenu() noexcept;
+
+            static void clearScreen() noexcept;
     };
 }
 

@@ -1,8 +1,6 @@
-#include "menu.hpp"
-#include <iostream>
-#include <string>
+#include "driver.hpp"
 
-namespace print {
+namespace driver {
 
     static uint8_t readMenuChoice(const std::string& prompt, uint8_t minChoice, uint8_t maxChoice) noexcept {
         std::cout << prompt;
@@ -24,7 +22,7 @@ namespace print {
     // 4 -> Bot Vs Stockfish
     // 5 -> Load Game
     // 6 -> Quit Game
-    uint32_t Menu::mainMenu() noexcept{
+    uint32_t Driver::mainMenu() noexcept{
         clearScreen();
 
         static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Load Game\n4. Extra Modes\n5. Quit Game\n\nSelect an option (1-5): ";
@@ -34,7 +32,7 @@ namespace print {
         return choice;
     }
 
-    uint32_t Menu::extraMenu() noexcept{
+    uint32_t Driver::extraMenu() noexcept{
         clearScreen();
 
         static const std::string prompt = "\n\n==================== EXTRA MODES MENU ====================\n\n1. Bot Vs Bot\n2. Bot Vs Stockfish\n3. Beta vs Alpha Engines\n4. UCI Mode\n5. Go back\n\nSelect an option (1-5): ";
@@ -48,7 +46,7 @@ namespace print {
     // 1 -> Play as White
     // 2 -> Play as Black
     // 3 -> Back to Main Menu
-    uint32_t Menu::playWithEngineMenu() noexcept {
+    uint32_t Driver::playWithEngineMenu() noexcept {
         static const std::string prompt = "\n\n==================== ONE PLAYER MENU ====================\n\n1. Play as White\n2. Play as Black\n3. Back to Main Menu\n\nSelect an option (1-3): ";
         const uint8_t choice = readMenuChoice(prompt, '1', '3');
 
@@ -60,7 +58,7 @@ namespace print {
     // 1 -> Bot plays as White
     // 2 -> Bot plays as Black
     // 3 -> Back to main menu
-    uint32_t Menu::playBotVsStockfishMenu() noexcept {
+    uint32_t Driver::playBotVsStockfishMenu() noexcept {
         static const std::string prompt = "\n\n==================== BOT VS STOCKFISH MENU ====================\n\n1. Bot plays as White\n2. Bot plays as Black\n3. Back to Main Menu\n\nSelect an option (1-3): ";
         const uint8_t choice = readMenuChoice(prompt, '1', '3');
 
@@ -68,7 +66,7 @@ namespace print {
         return choice;
     }
 
-    uint32_t Menu::playBetaVsAlphaMenu() noexcept {
+    uint32_t Driver::playBetaVsAlphaMenu() noexcept {
         static const std::string prompt = "\n\n==================== BETA VS ALPHA MENU ====================\n\n1. Beta is White\n2. Beta is Black\n3. Back to Main Menu\n\nSelect an option (1-3): ";
         const uint8_t choice = readMenuChoice(prompt, '1', '3');
 
@@ -76,7 +74,7 @@ namespace print {
         return choice;
     }
 
-    void Menu::clearScreen() noexcept { //! MIGHT NOT BE NOEXCEPT
+    void Driver::clearScreen() noexcept { //! MIGHT NOT BE NOEXCEPT
 #ifdef _WIN32
         [[maybe_unused]] const int result = std::system("cls");
 #else

@@ -13,18 +13,18 @@ namespace driver {
 
     void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept {
         if (printBoard) {
-            std::cout << print::Prints::getBasicBoard(this->engine.board) << "\n";
+            std::cout << Driver::getBasicBoard(this->engine.board) << "\n";
         }
 
         while (!this->engine.isGameOver()) {
             if (this->playOneTurn(firstPlayerTurn)) return;
             if (printBoard) {
-                std::cout << print::Prints::getBasicBoard(this->engine.board) << "\n";
+                std::cout << Driver::getBasicBoard(this->engine.board) << "\n";
             }
 
             if (this->playOneTurn(secondPlayerTurn)) return;
             if (printBoard) {
-                std::cout << print::Prints::getBasicBoard(this->engine.board) << "\n";
+                std::cout << Driver::getBasicBoard(this->engine.board) << "\n";
             }
         }
     }
