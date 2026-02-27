@@ -263,6 +263,33 @@ private:
     // Move scoring helpers
     static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
+    static inline int64_t scoreMoveOrderingPriorityInline(
+        chess::Board& b,
+        const chess::Board::Move& m,
+        uint8_t fromPieceType,
+        bool isCapture,
+        uint8_t victimType,
+        int64_t see,
+        bool isPromotionCandidate,
+        int moveIndex,
+        bool hashMoveIsLegal,
+        uint8_t hashFrom,
+        uint8_t hashTo,
+        char hashPromo,
+        int ply,
+        const chess::Board::Move* previousMove,
+        int usSide,
+        uint8_t oppKingSq,
+        uint64_t occ,
+        bool usIsWhite,
+        bool isEndgameOrdering,
+        int fullMoveClock,
+        const int32_t (&history)[2][64][64],
+        const chess::Board::Move (&killerMoves)[2][64],
+        const chess::Board::Move (&counterMoves)[64][64],
+        const int32_t (&captureHistory)[2][64][7][2],
+        const int64_t (&pieceValues)[8],
+        int64_t orderingPenaltySamePawnOpening) noexcept;
 
     int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
     int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;

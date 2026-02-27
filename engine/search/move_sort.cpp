@@ -62,7 +62,7 @@ static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
     return false;
 }
 
-static inline int64_t scoreMoveOrderingPriorityInline(
+inline int64_t Engine::scoreMoveOrderingPriorityInline(
     chess::Board& b,
     const chess::Board::Move& m,
     uint8_t fromPieceType,
