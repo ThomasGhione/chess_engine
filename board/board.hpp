@@ -27,8 +27,9 @@ public:
         BLACK_QUEENSIDE = 3   // Bit 3
     };
 
-    // piece bits
     enum piece_id : uint8_t {
+    
+    // piece bits
     EMPTY  = 0x0, // 0000 
     PAWN   = 0x1, // 0001
     KNIGHT = 0x2, // 0010
@@ -36,10 +37,14 @@ public:
     ROOK   = 0x4, // 0100
     QUEEN  = 0x5, // 0101
     KING   = 0x6, // 0110
+    
     // color bit
     BLACK  = 0x8, // 1000
     WHITE  = 0x0, // 0000
-    };
+
+    INVALID_WHITE = 0x7, // 0111
+    INVALID_BLACK = 0xF, // 1111    
+};
 
     enum class MoveKind : uint8_t {
         Quiet = 0,

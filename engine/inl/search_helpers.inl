@@ -1,7 +1,5 @@
 namespace engine {
 
-// Helper for LMR: check if the move is a killer move for the current ply
-// OPTIMIZATION: manually unrolled the loop (2 iterations)
 __attribute__((always_inline))
 inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
     if (ply < 0 || ply >= Engine::MAX_PLY) [[unlikely]] return false;
@@ -14,11 +12,8 @@ inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board
            (m.from.index == km1.from.index && m.to.index == km1.to.index);
 }
 
-// Helper function to check if a move is a pawn promotion candidate
-// OPTIMIZATION: inline + noexcept + constexpr rank check
 __attribute__((always_inline))
 inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    // Early exit: if not on rank 1 or 8, it cannot be a promotion
     const uint8_t toRank = move.to.rank();
     if (toRank != 0 && toRank != 7) return false;
     
@@ -28,11 +23,9 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
     if (pieceType != chess::Board::PAWN) return false;
     
     const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-    // White promotes at rank 7 (8th rank), Black promotes at rank 0 (1st rank)
     return toRank == chess::Board::promotionRank(pieceColor == chess::Board::WHITE);
 }
 
-// En-passant capture detection on a legal-move candidate.
 __attribute__((always_inline))
 inline bool isEnPassantCapture(const chess::Board& board, const chess::Board::Move& move) noexcept {
     const uint8_t fromPieceType = board.get(move.from) & chess::Board::MASK_PIECE_TYPE;
@@ -49,7 +42,6 @@ inline bool isEnPassantCapture(const chess::Board& board, const chess::Board::Mo
 // ============================================================================
 
 // Execute a move with automatic promotion detection
-// Returns true if the move was a promotion (for information)
 __attribute__((always_inline))
 inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     const bool isPromo = isPromotionMove(b, m);

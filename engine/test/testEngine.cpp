@@ -13,11 +13,11 @@ ut::suite engineSuite = [] {
   // Critical position tests moved to criticalPositionEngine.cpp
 
   "Bot vs Bot - Material Balance First 10 Moves"_test = [] {
-    // Test funzionale: verifica che nelle prime 10 mosse di una partita bot vs bot
-    // il delta material rimanga tra -3 e +3 (evita errori grossolani di valutazione)
+    // Functional test: verify that in the first 10 moves of a bot-vs-bot game
+    // the material delta stays between -3 and +3 (avoids coarse eval blunders)
     
     engine::Engine engine;
-    engine.depth = 8; // Profondità moderata per velocità del test
+    engine.depth = 8; // Moderate depth for test speed
     
     constexpr int MAX_MOVES = 10;
     constexpr int64_t MAX_DELTA = 300;
@@ -26,42 +26,42 @@ ut::suite engineSuite = [] {
     int64_t materialDelta = 0;
 
     for (int moveNum = 1; moveNum <= MAX_MOVES; ++moveNum) {
-      // Controlla che il gioco non sia terminato
+      // Check that the game is not already over
       if (engine.isMate()) {
         break;
       }
       
-      // Genera mosse legali per il turno corrente
+      // Generate legal moves for the current turn
       auto legalMoves = engine.generateLegalMoves(engine.board);
       
-      // Se non ci sono mosse legali, esci
+      // If there are no legal moves, stop
       if (legalMoves.size == 0) {
         break;
       }
       
-      // Determina quale giocatore deve muovere (WHITE=0x0, BLACK=0x8)
+      // Determine side to move (WHITE=0x0, BLACK=0x8)
       bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
       
-      // Trova la mossa migliore tramite search
+      // Find best move through search
       engine.search(engine.depth);
       auto bestMove = engine.getBestMove(legalMoves, isWhiteTurn);
       
-      // Esegui la mossa
+      // Play the move
       (void)engine.board.moveBB(bestMove.from, bestMove.to);
       moves += std::to_string(moveNum) + bestMove.from.toString() + bestMove.to.toString() + "\n";
       
-      // Calcola il delta material dopo la mossa
+      // Compute material delta after the move
       materialDelta = engine::Engine::getMaterialDelta(engine.board);
       
-      // Verifica che il delta sia nell'intervallo accettabile
+      // Verify the delta is within the acceptable range
       if(std::abs(materialDelta) <= MAX_DELTA){
         error = true;
         break;
       }
     }
     expect(error) 
-      << "Problema con mosse: " << moves 
-      << "In questo momento siamo a delta: " << materialDelta;
+      << "Problem with moves: " << moves 
+      << "Current material delta: " << materialDelta;
   };
 
   "search root stalemate sets draw state"_test = [] {

@@ -5,8 +5,6 @@ namespace engine {
 
 // ===================================================
 // HANGING PIECES (CRITICAL - balance with SEE and move ordering!)
-// The engine should NOT think "I sacrifice a pawn to remove hanging penalty"
-// SEE already handles tactical exchanges - these are just subtle warnings
 // ===================================================
 
 inline static constexpr int64_t HANGING_PAWN_PENALTY   = -12;

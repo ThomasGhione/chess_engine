@@ -111,10 +111,9 @@ chess::Board::Move Engine::getBestMove(const MoveList<chess::Board::Move>& moves
     const int threadsToUse = std::min(this->MAX_THREADS, candidateThreads);
 
     if (threadsToUse <= 1) {
-        // Sequential fallback (avoid OpenMP overhead)
         for (int i = 1; i < moves.size; ++i) {
             chess::Board threadBoard = this->board;
-            const auto m = moves[i]; // copy to avoid referencing container inside tasks
+            const auto m = moves[i];
             uint64_t workerNodes = 0;
             const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
 
@@ -178,7 +177,6 @@ void Engine::search(uint64_t depth) noexcept {
     if (depth == 0) return;
 
     // Increment TT generation to age old entries from previous searches
-    // This ensures the replacement policy favors fresh entries
     this->tt.incrementGeneration();
 
     MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(this->board);

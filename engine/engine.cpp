@@ -69,7 +69,6 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
     }
     
     if (result) [[likely]] {
-        // OPTIMIZATION: Reserve space and use single append instead of multiple concatenations
         moveHistory.reserve(moveHistory.size() + 6); // "e2e4\n" = 5 chars max
         moveHistory += from.toString();
         moveHistory += to.toString();

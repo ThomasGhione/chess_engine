@@ -282,8 +282,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     orderedMoves.sort();
 
-    // Search tactical moves using MINIMAX
-    int64_t best = standPat; // Initialize with stand-pat
+    int64_t best = standPat;
     
     for (const auto& scoredMove : orderedMoves) {
         const auto& m = scoredMove.move;
@@ -297,17 +296,13 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         
         b.undoMove(m, state);
         
-        // Update best score
         if (isBetter(score, best, usIsWhite)) {
             best = score;
         }
         
-        // Update alpha bound before checking beta cutoff
         updateBound(score, alpha, beta, usIsWhite);
         
-        // Alpha-beta pruning
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-            // Beta cutoff - don't store in TT (happens too frequently in qsearch)
             return cutoffValue(alpha, beta, usIsWhite);
         }
     }

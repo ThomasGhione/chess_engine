@@ -102,8 +102,6 @@ namespace zobrist {
         xorPiecesFromBitboard(hashKey, board.queens_bb[1],  13);
         xorPiecesFromBitboard(hashKey, board.kings_bb[1],  14);
 
-        // Side to move (branchless: XOR if black to move)
-        // FIX: avoid undefined behavior - cast to int64_t before negation
         const uint64_t stmMask = static_cast<uint64_t>(-static_cast<int64_t>(board.getActiveColor() == chess::Board::BLACK));
         hashKey ^= TABLES.sideToMove & stmMask;
 

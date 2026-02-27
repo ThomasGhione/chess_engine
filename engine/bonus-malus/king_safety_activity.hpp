@@ -6,7 +6,6 @@ namespace engine {
 // ===================================================
 // KING SAFETY & ACTIVITY
 // ===================================================
-// BALANCED: King safety matters but must NOT justify material sacrifice
 inline static constexpr int64_t KING_SAFETY_PENALTY = -12;  // was -18 (too high, accumulated to exceed pawn value)
 inline static constexpr int64_t KING_ACTIVITY_BONUS = 8;
 
