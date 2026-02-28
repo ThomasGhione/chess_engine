@@ -21,7 +21,7 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # Balanced production flags (safety + speed)
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
-		-ffunction-sections -fdata-sections 
+		-ffunction-sections -fdata-sections -O3 
 
 # Uncomment if codebase is exception-free
 
