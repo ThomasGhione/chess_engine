@@ -89,6 +89,26 @@ inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
     return index;
 }
 
+inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
+                                         int64_t safeBonus, int64_t forcingBonus,
+                                         int64_t& attackUnits) noexcept {
+    while (checkers) {
+        const uint8_t checkerSq = popLSB(checkers);
+        const bool isSafe = (defenderMap & chess::Board::bitMask(checkerSq)) == 0ULL;
+        attackUnits += isSafe ? safeBonus : forcingBonus;
+    }
+}
+
+inline bool Evaluator::isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept {
+    const uint64_t enemyAdjAndFile = blackPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+    return (enemyAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL;
+}
+
+inline bool Evaluator::isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept {
+    const uint64_t enemyAdjAndFile = whitePawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+    return (enemyAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL;
+}
+
 inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
     return pieces::KNIGHT_ATTACKS[sq];
 }

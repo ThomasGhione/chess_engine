@@ -13,6 +13,7 @@ inline int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t ev
     eval += evalOutposts(b);
     eval += evalPawnStructure(whitePawns, blackPawns, false);
     eval += evalMobility(data);
+    eval += (evalKingSafety(b, whitePawns, blackPawns) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += Evaluator::evalInitiative(b, false);
     eval += evalBlockedPawnByBishops(b);
 
@@ -100,7 +101,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
                                              board.rooks_bb[0]   | board.rooks_bb[1]   |
                                              board.queens_bb[0]  | board.queens_bb[1]);
 
-    constexpr int OPENING_MOVES = 10;
+    constexpr int OPENING_MOVES = 8;
     constexpr int EARLY_MG_MOVES = 15;
     constexpr int PIECE_ENDGAME_THRESHOLD = 5;
 

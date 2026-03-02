@@ -92,6 +92,7 @@ Quindi il lavoro da fare non e "aggiungere tutto da zero", ma chiudere gap ad al
 - Oggi hai bucket discreti opening/earlyMG/MG/EG.
 - Passare a interpolazione continua per evitare salti artificiali di valutazione tra fasi.
 
+[v]
 ### B) Pawn model piu ricco
 - Backward pawns
 - Pawn islands
@@ -100,6 +101,7 @@ Quindi il lavoro da fare non e "aggiungere tutto da zero", ma chiudere gap ad al
 - Blocker davanti al passed pawn
 - Rook behind passed pawn
 
+[V]
 ### C) King safety moderna
 - Shelter/storm model su file del re
 - Penalita per file/diagonali aperte verso il re

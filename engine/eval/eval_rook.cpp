@@ -10,21 +10,6 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
     const bool isWhite = (color == 0);
     const int targetRank = (color == 0) ? 6 : 1;
 
-    const auto isOwnPassedPawn = [&](int pawnSq, int pawnFile) noexcept -> bool {
-        const uint64_t enemyAdjAndFile = oppPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
-        return isWhite
-            ? ((enemyAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL)
-            : ((enemyAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL);
-    };
-
-    const auto isEnemyPassedPawn = [&](int pawnSq, int pawnFile) noexcept -> bool {
-        const uint64_t ownAdjAndFile = ownPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
-        // Enemy side is opposite of current side.
-        return isWhite
-            ? ((ownAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL) // enemy is black
-            : ((ownAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL); // enemy is white
-    };
-
     while (rooks) {
         const int sq = popLSB(rooks);
         const int file = sq & 7;
@@ -39,7 +24,10 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
         uint64_t ownFilePawns = ownPawns & fm;
         while (ownFilePawns) {
             const int pawnSq = popLSB(ownFilePawns);
-            if (!isOwnPassedPawn(pawnSq, file)) continue;
+            const bool ownPassed = isWhite
+                ? isWhitePassedPawn(pawnSq, file, oppPawns)
+                : isBlackPassedPawn(pawnSq, file, oppPawns);
+            if (!ownPassed) continue;
             const int pawnRank = pawnSq >> 3;
             const bool isBehindOwn = isWhite ? (rank > pawnRank) : (rank < pawnRank);
             if (isBehindOwn) {
@@ -55,7 +43,10 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
         uint64_t enemyFilePawns = oppPawns & fm;
         while (enemyFilePawns) {
             const int pawnSq = popLSB(enemyFilePawns);
-            if (!isEnemyPassedPawn(pawnSq, file)) continue;
+            const bool enemyPassed = isWhite
+                ? isBlackPassedPawn(pawnSq, file, ownPawns)
+                : isWhitePassedPawn(pawnSq, file, ownPawns);
+            if (!enemyPassed) continue;
             const int pawnRank = pawnSq >> 3;
             const bool isBehindEnemy = isWhite ? (rank < pawnRank) : (rank > pawnRank);
             if (isBehindEnemy) {

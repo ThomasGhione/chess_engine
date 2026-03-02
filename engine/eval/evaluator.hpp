@@ -109,6 +109,11 @@ private:
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
 
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
+    static inline void addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
+                                         int64_t safeBonus, int64_t forcingBonus,
+                                         int64_t& attackUnits) noexcept;
+    static inline bool isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept;
+    static inline bool isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
     static inline void accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
                                                    int& attackerCount, int64_t& attackWeight) noexcept;
