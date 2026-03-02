@@ -199,7 +199,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     // Apply delta pruning with dynamic margin
     if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
-        return cutoffValue(alpha, beta, usIsWhite);
+        // Delta prune is a fail-low condition: return the bound we failed to reach.
+        return usIsWhite ? alpha : beta;
     }
 
     // Generate only captures/promotions in qsearch (no non-capture checks).

@@ -21,10 +21,11 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
 }
 
 int64_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
-                                    int currPly, bool useTT, bool allowTTWrite, uint64_t* nodeCounter) noexcept {
+                                    int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept {
     chess::Board::MoveState state;
     doMoveWithPromotion(b, m, state);
-    const int64_t score = this->searchPosition(b, this->depth - 1, alpha, beta, currPly, useTT, allowTTWrite, nullptr, nodeCounter);
+    const int64_t score = this->searchPosition(
+        b, this->depth - 1, alpha, beta, currPly, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
 }
@@ -71,20 +72,20 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
             int64_t score = 0;
             if (i == 0) {
                 // First move: search with full window (PV node)
-                score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, &localNodes);
+                score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, true, &localNodes);
             } else {
                 // Next moves: search with null window
                 int64_t nullAlpha = 0, nullBeta = 0;
                 rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
                 
-                score = this->searchRootMoveScore(rootBoard, m, nullAlpha, nullBeta, currPly, true, true, &localNodes);
+                score = this->searchRootMoveScore(rootBoard, m, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
                 
                 // PVS re-search: if null-window fails, re-search with full window
                 // White: re-search if score > alpha (null window failed high)
                 // Black: re-search if score < beta (null window failed low)
                 const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
                 if (shouldResearch) {
-                    score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, &localNodes);
+                    score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, true, &localNodes);
                 }
             }
 
@@ -108,7 +109,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     // First move: full-window search
     {
         const auto& firstMove = rootMoves[0];
-        const int64_t score = this->searchRootMoveScore(rootBoard, firstMove, alpha, beta, currPly, true, true, &localNodes);
+        const int64_t score = this->searchRootMoveScore(rootBoard, firstMove, alpha, beta, currPly, true, true, true, &localNodes);
         searchedAnyMove = true;
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
@@ -125,13 +126,17 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
         return bestMove;
     }
 
-    // All threads must see the same window to guarantee determinism
-    const int64_t originalAlpha = alpha;
-    const int64_t originalBeta = beta;
+    // All threads use the same null-window snapshot for deterministic parallel screening.
+    const int64_t sharedAlpha = alpha;
+    const int64_t sharedBeta = beta;
+    int64_t nullAlpha = 0;
+    int64_t nullBeta = 0;
+    rootNullWindow(usIsWhite, sharedAlpha, sharedBeta, nullAlpha, nullBeta);
 
     std::array<int64_t, MAX_MOVES> threadScores;
     threadScores.fill(Engine::initialBest(usIsWhite));
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
+    std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
 
     // Task-based root parallelism (work-stealing, better load balance)
     // Bound the number of threads to MAX_THREADS and the number of moves
@@ -148,11 +153,12 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
             chess::Board threadBoard = rootBoard;
             const auto m = rootMoves[i];
             uint64_t workerNodes = 0;
-            const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
+            const int64_t score = this->searchRootMoveScore(
+                threadBoard, m, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
             threadScores[i] = score;
             threadNodeCounts[i] = workerNodes;
-            if (workerNodes > 0) searchedAnyMove = true;
+            threadNeedsResearch[i] = static_cast<uint8_t>(shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite));
             if (this->searchInterrupted.load(std::memory_order_relaxed)) {
                 break;
             }
@@ -185,10 +191,12 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
                                     }
                                     const auto m = rootMoves[i]; // local copy
                                     uint64_t workerNodes = 0;
-                                    const int64_t score = this->searchRootMoveScore(threadBoard, m, originalAlpha, originalBeta, currPly, false, false, &workerNodes);
+                                    const int64_t score = this->searchRootMoveScore(
+                                        threadBoard, m, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
                                     threadScores[i] = score;
                                     threadNodeCounts[i] = workerNodes;
+                                    threadNeedsResearch[i] = static_cast<uint8_t>(shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite));
                                     if (this->searchInterrupted.load(std::memory_order_relaxed)) {
                                         break;
                                     }
@@ -207,14 +215,25 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
             break;
         }
         if (threadNodeCounts[i] == 0) continue;
-        const int64_t score = threadScores[i];
         const auto& m = rootMoves[i];
-        if (Engine::isBetter(score, bestScore, usIsWhite)) {
-            bestScore = score;
-            bestMove = m;
+
+        int64_t score = threadScores[i];
+        if (threadNeedsResearch[i] != 0U) {
+            uint64_t researchNodes = 0;
+            score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, true, &researchNodes);
+            localNodes += researchNodes;
+
+            if (this->searchInterrupted.load(std::memory_order_relaxed)) {
+                break;
+            }
         }
+
+        this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
         searchedAnyMove = true;
-        updateBound(score, alpha, beta, usIsWhite);
+
+        if (isBetaCutoff(bestScore, alpha, beta, usIsWhite)) {
+            break;
+        }
     }
 
     localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.end(), localNodes);

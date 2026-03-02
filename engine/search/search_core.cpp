@@ -19,7 +19,8 @@ bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, 
 
 // Helper to search through all moves and find best move with its score
 Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite) noexcept {
+                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
+                                       bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept {
     int64_t best = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = orderedScoredMoves[0].move;
     bool searchedAnyMove = false;
@@ -151,21 +152,25 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             }
 
             const int64_t reducedDepth = std::max(static_cast<int64_t>(1), childDepth - reduction);
-            score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
+            score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1,
+                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             
             // Re-search at full depth + full window only if null-window failed.
             const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
             
             if (shouldResearch) {
-                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
+                score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1,
+                                             useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
         } else {
-            score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
+            score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1,
+                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
                 const bool shouldResearch = shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
                 if (shouldResearch) {
-                    score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1, allowUpdates, allowTTWrite, &m, ctx.nodeCounter);
+                    score = this->searchPosition(b, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1,
+                                                 useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
                 }
             }
         }
@@ -187,7 +192,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // Beta cutoff: check if the score causes a cutoff, then update killer/history
         // bounds.alpha >= bounds.beta means window collapsed (different condition!)
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
-            if (allowUpdates) {
+            if (allowHeuristicUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
                                                       history, killerMoves, ctx.previousMove);
 
@@ -219,7 +224,9 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     return ScoredMove{bestMove, best};
 }
 
-int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT, bool allowTTWrite, const chess::Board::Move* previousMove, uint64_t* nodeCounter, bool allowNullMove) noexcept {
+int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply,
+                               bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
+                               const chess::Board::Move* previousMove, uint64_t* nodeCounter, bool allowNullMove) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
@@ -262,8 +269,9 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // - accept repetition draw ONLY when side-to-move eval <= -2 pawns
     // - otherwise penalize repetition to avoid drawing from equal/better positions
     //
+    // Use threefold here to align search policy with official draw rules used by game state.
     // Only check at ply > 0 (not at root) to avoid interfering with root move selection.
-    if (ply > 0 && b.isTwofoldRepetition()) {
+    if (ply > 0 && b.isThreefoldRepetition()) {
         constexpr int64_t DRAW_ACCEPT_THRESHOLD = -2 * PAWN_VALUE; // -200 cp
         constexpr int64_t BASE_DRAW_AVOID_PENALTY = PAWN_VALUE;    // 100 cp
         constexpr int64_t MAX_DRAW_AVOID_PENALTY = 4 * PAWN_VALUE; // 400 cp
@@ -392,7 +400,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             b.doNullMove(nullState);
 
             const int64_t nullScore = this->searchPosition(
-                b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, nullptr, counter, false);
+                b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, counter, false);
 
             b.undoNullMove(nullState);
 
@@ -404,7 +412,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
                 if (depth >= 10) {
                     // Disable null-move in verification to prevent recursive NMP chains.
                     const int64_t verifyScore = this->searchPosition(
-                        b, depth - R, alpha, beta, ply, useTT, allowTTWrite, nullptr, counter, false);
+                        b, depth - R, alpha, beta, ply, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, counter, false);
                     confirmedCutoff = isBetaCutoff(verifyScore, alpha, beta, usIsWhite);
                 }
 
@@ -474,7 +482,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t alphaOrig = bounds.alpha;
     const int64_t betaOrig = bounds.beta;
 
-    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowTTWrite);
+    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowHeuristicUpdates, allowTTWrite);
     int64_t best = result.score;
 
     if (this->searchInterrupted.load(std::memory_order_relaxed)) {

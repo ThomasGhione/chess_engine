@@ -279,10 +279,11 @@ private:
 
     // Search helpers
     int64_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
-                                int currPly, bool useTT, bool allowTTWrite, uint64_t* nodeCounter) noexcept;
+                                int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept;
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
     ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds, bool allowUpdates, bool allowTTWrite = true) noexcept;
+                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
+                          bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
     
     // Move scoring helpers
     static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
@@ -315,7 +316,9 @@ private:
         const int64_t (&pieceValues)[8],
         int64_t orderingPenaltySamePawnOpening) noexcept;
 
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply, bool useTT = true, bool allowTTWrite = true, const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
+    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply,
+                           bool useTT = true, bool allowTTWrite = true, bool allowHeuristicUpdates = true,
+                           const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
     int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     inline bool shouldAbortSearch() const noexcept;
