@@ -82,11 +82,21 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
     const uint64_t allPawns = whitePawns | blackPawns;
     const int64_t passedAdvancementScale = isEndgame ? 10 : 2;
     const int64_t passedNearPromotionBonus = isEndgame ? 40 : 20;
+    const int64_t connectedPasserBonus = isEndgame
+        ? (engine::CONNECTED_PASSER_BONUS + 6)
+        : engine::CONNECTED_PASSER_BONUS;
+    const int64_t candidatePasserBonus = isEndgame
+        ? (engine::CANDIDATE_PASSER_BONUS + 4)
+        : engine::CANDIDATE_PASSER_BONUS;
 
     uint8_t whiteIsolatedOnFile[8] = {};
     uint8_t blackIsolatedOnFile[8] = {};
     uint64_t whiteAdjAndFilePawns[8] = {};
     uint64_t blackAdjAndFilePawns[8] = {};
+    int whiteIslands = 0;
+    int blackIslands = 0;
+    bool prevWhiteFileOccupied = false;
+    bool prevBlackFileOccupied = false;
 
     for (int f = 0; f < 8; ++f) {
         const uint64_t fileMask = FILE_MASKS[f];
@@ -94,6 +104,17 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const uint64_t adjacentAndFileMask = ADJACENT_AND_FILE_MASKS[f];
         const int whiteOnFile = __builtin_popcountll(whitePawns & fileMask);
         const int blackOnFile = __builtin_popcountll(blackPawns & fileMask);
+        const bool whiteFileOccupied = (whiteOnFile > 0);
+        const bool blackFileOccupied = (blackOnFile > 0);
+
+        if (whiteFileOccupied && !prevWhiteFileOccupied) {
+            ++whiteIslands;
+        }
+        if (blackFileOccupied && !prevBlackFileOccupied) {
+            ++blackIslands;
+        }
+        prevWhiteFileOccupied = whiteFileOccupied;
+        prevBlackFileOccupied = blackFileOccupied;
 
         if (whiteOnFile > 1) score += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
         if (blackOnFile > 1) score -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
@@ -105,35 +126,98 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         blackAdjAndFilePawns[f] = blackPawns & adjacentAndFileMask;
     }
 
+    if (whiteIslands > 1) {
+        score += (whiteIslands - 1) * engine::PAWN_ISLAND_PENALTY;
+    }
+    if (blackIslands > 1) {
+        score -= (blackIslands - 1) * engine::PAWN_ISLAND_PENALTY;
+    }
+
     uint64_t wp = whitePawns;
     while (wp) {
         const int sq = popLSB(wp);
         const int file = sq & 7;
         const int rank = sq >> 3;
         const bool hasSupport = (whitePawns & WHITE_SUPPORT_MASKS[sq]) != 0ULL;
+        const uint64_t frontMask = WHITE_ONE_STEP_MASKS[sq];
+        const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);
         const uint64_t blackForwardAdjFile = blackAdjAndFilePawns[file];
+        const bool isPassed = ((blackForwardAdjFile & WHITE_FORWARD_FILL[sq]) == 0ULL);
 
         if (whiteIsolatedOnFile[file]) {
             score += engine::ISOLATED_PAWN_PENALTY;
         }
 
         if (hasSupport) {
-            score += 15;
+            score += engine::PAWN_SUPPORT_BONUS;
         }
 
-        if (allPawns & WHITE_ONE_STEP_MASKS[sq]) {
+        if (frontBlockedByPawn) {
             if (!hasSupport) {
                 score += engine::ISOLATED_PAWN_PENALTY / 2;
             }
         }
 
-        if ((blackForwardAdjFile & WHITE_FORWARD_FILL[sq]) == 0ULL) {
+        if (!isPassed) {
+            const bool noEnemySameFileAhead =
+                ((blackPawns & FILE_MASKS[file] & WHITE_FORWARD_FILL[sq]) == 0ULL);
+            if (noEnemySameFileAhead && !frontBlockedByPawn && hasSupport) {
+                const int enemyAdjacentAhead = __builtin_popcountll(
+                    blackPawns & ADJACENT_FILES_ONLY[file] & WHITE_FORWARD_FILL[sq]);
+                if (enemyAdjacentAhead <= 1) {
+                    score += candidatePasserBonus;
+                }
+            }
+
+            if (!whiteIsolatedOnFile[file] && !hasSupport && frontMask != 0ULL) {
+                const int frontSq = __builtin_ctzll(frontMask);
+                const bool frontControlledByEnemyPawn =
+                    (pieces::PAWN_ATTACKERS_TO[1][frontSq] & blackPawns) != 0ULL;
+
+                bool hasAdjacentHelper = false;
+                uint64_t adjacentHelpers = whitePawns & ADJACENT_FILES_ONLY[file];
+                while (adjacentHelpers) {
+                    const int helperSq = popLSB(adjacentHelpers);
+                    if ((helperSq >> 3) >= rank) {
+                        hasAdjacentHelper = true;
+                        break;
+                    }
+                }
+
+                if (frontControlledByEnemyPawn && !hasAdjacentHelper) {
+                    score += engine::BACKWARD_PAWN_PENALTY;
+                }
+            }
+        } else {
             score += engine::PASSED_PAWN_BONUS;
             const int advancement = 6 - rank;
             score += advancement * passedAdvancementScale;
 
             if (rank == 1) {
                 score += passedNearPromotionBonus;
+            }
+
+            if (frontBlockedByPawn) {
+                score += engine::PASSED_PAWN_BLOCKED_PENALTY;
+            }
+
+            bool hasConnectedPassedPawn = false;
+            uint64_t adjacentPawns = whitePawns & ADJACENT_FILES_ONLY[file];
+            while (adjacentPawns) {
+                const int adjSq = popLSB(adjacentPawns);
+                if (std::abs((adjSq >> 3) - rank) > 1) continue;
+
+                const int adjFile = adjSq & 7;
+                const bool adjPassed =
+                    ((blackAdjAndFilePawns[adjFile] & WHITE_FORWARD_FILL[adjSq]) == 0ULL);
+                if (adjPassed) {
+                    hasConnectedPassedPawn = true;
+                    break;
+                }
+            }
+
+            if (hasConnectedPassedPawn) {
+                score += connectedPasserBonus;
             }
         }
     }
@@ -144,29 +228,85 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         const int file = sq & 7;
         const int rank = sq >> 3;
         const bool hasSupport = (blackPawns & BLACK_SUPPORT_MASKS[sq]) != 0ULL;
+        const uint64_t frontMask = BLACK_ONE_STEP_MASKS[sq];
+        const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);
         const uint64_t whiteForwardAdjFile = whiteAdjAndFilePawns[file];
+        const bool isPassed = ((whiteForwardAdjFile & BLACK_FORWARD_FILL[sq]) == 0ULL);
 
         if (blackIsolatedOnFile[file]) {
             score -= engine::ISOLATED_PAWN_PENALTY;
         }
 
         if (hasSupport) {
-            score -= 15;
+            score -= engine::PAWN_SUPPORT_BONUS;
         }
 
-        if (allPawns & BLACK_ONE_STEP_MASKS[sq]) {
+        if (frontBlockedByPawn) {
             if (!hasSupport) {
                 score -= engine::ISOLATED_PAWN_PENALTY / 2;
             }
         }
 
-        if ((whiteForwardAdjFile & BLACK_FORWARD_FILL[sq]) == 0ULL) {
+        if (!isPassed) {
+            const bool noEnemySameFileAhead =
+                ((whitePawns & FILE_MASKS[file] & BLACK_FORWARD_FILL[sq]) == 0ULL);
+            if (noEnemySameFileAhead && !frontBlockedByPawn && hasSupport) {
+                const int enemyAdjacentAhead = __builtin_popcountll(
+                    whitePawns & ADJACENT_FILES_ONLY[file] & BLACK_FORWARD_FILL[sq]);
+                if (enemyAdjacentAhead <= 1) {
+                    score -= candidatePasserBonus;
+                }
+            }
+
+            if (!blackIsolatedOnFile[file] && !hasSupport && frontMask != 0ULL) {
+                const int frontSq = __builtin_ctzll(frontMask);
+                const bool frontControlledByEnemyPawn =
+                    (pieces::PAWN_ATTACKERS_TO[0][frontSq] & whitePawns) != 0ULL;
+
+                bool hasAdjacentHelper = false;
+                uint64_t adjacentHelpers = blackPawns & ADJACENT_FILES_ONLY[file];
+                while (adjacentHelpers) {
+                    const int helperSq = popLSB(adjacentHelpers);
+                    if ((helperSq >> 3) <= rank) {
+                        hasAdjacentHelper = true;
+                        break;
+                    }
+                }
+
+                if (frontControlledByEnemyPawn && !hasAdjacentHelper) {
+                    score -= engine::BACKWARD_PAWN_PENALTY;
+                }
+            }
+        } else {
             score -= engine::PASSED_PAWN_BONUS;
             const int advancement = rank - 1;
             score -= advancement * passedAdvancementScale;
 
             if (rank == 6) {
                 score -= passedNearPromotionBonus;
+            }
+
+            if (frontBlockedByPawn) {
+                score -= engine::PASSED_PAWN_BLOCKED_PENALTY;
+            }
+
+            bool hasConnectedPassedPawn = false;
+            uint64_t adjacentPawns = blackPawns & ADJACENT_FILES_ONLY[file];
+            while (adjacentPawns) {
+                const int adjSq = popLSB(adjacentPawns);
+                if (std::abs((adjSq >> 3) - rank) > 1) continue;
+
+                const int adjFile = adjSq & 7;
+                const bool adjPassed =
+                    ((whiteAdjAndFilePawns[adjFile] & BLACK_FORWARD_FILL[adjSq]) == 0ULL);
+                if (adjPassed) {
+                    hasConnectedPassedPawn = true;
+                    break;
+                }
+            }
+
+            if (hasConnectedPassedPawn) {
+                score -= connectedPasserBonus;
             }
         }
     }

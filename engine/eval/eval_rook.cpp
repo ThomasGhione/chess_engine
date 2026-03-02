@@ -7,7 +7,23 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
     int64_t score = 0;
 
     const int sign = (color == 0) ? 1 : -1;
+    const bool isWhite = (color == 0);
     const int targetRank = (color == 0) ? 6 : 1;
+
+    const auto isOwnPassedPawn = [&](int pawnSq, int pawnFile) noexcept -> bool {
+        const uint64_t enemyAdjAndFile = oppPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+        return isWhite
+            ? ((enemyAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL)
+            : ((enemyAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL);
+    };
+
+    const auto isEnemyPassedPawn = [&](int pawnSq, int pawnFile) noexcept -> bool {
+        const uint64_t ownAdjAndFile = ownPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+        // Enemy side is opposite of current side.
+        return isWhite
+            ? ((ownAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL) // enemy is black
+            : ((ownAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL); // enemy is white
+    };
 
     while (rooks) {
         const int sq = popLSB(rooks);
@@ -18,6 +34,38 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
         const bool oppPawnOnFile = (oppPawns & fm) != 0;
         const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
         score += fileBonus + (rank == targetRank) * (sign * engine::ROOK_ON_SEVENTH_BONUS);
+
+        bool rookBehindOwnPasser = false;
+        uint64_t ownFilePawns = ownPawns & fm;
+        while (ownFilePawns) {
+            const int pawnSq = popLSB(ownFilePawns);
+            if (!isOwnPassedPawn(pawnSq, file)) continue;
+            const int pawnRank = pawnSq >> 3;
+            const bool isBehindOwn = isWhite ? (rank > pawnRank) : (rank < pawnRank);
+            if (isBehindOwn) {
+                rookBehindOwnPasser = true;
+                break;
+            }
+        }
+        if (rookBehindOwnPasser) {
+            score += sign * engine::ROOK_BEHIND_OWN_PASSER_BONUS;
+        }
+
+        bool rookBehindEnemyPasser = false;
+        uint64_t enemyFilePawns = oppPawns & fm;
+        while (enemyFilePawns) {
+            const int pawnSq = popLSB(enemyFilePawns);
+            if (!isEnemyPassedPawn(pawnSq, file)) continue;
+            const int pawnRank = pawnSq >> 3;
+            const bool isBehindEnemy = isWhite ? (rank < pawnRank) : (rank > pawnRank);
+            if (isBehindEnemy) {
+                rookBehindEnemyPasser = true;
+                break;
+            }
+        }
+        if (rookBehindEnemyPasser) {
+            score += sign * engine::ROOK_BEHIND_ENEMY_PASSER_BONUS;
+        }
     }
 
     return score;

@@ -16,15 +16,18 @@ Quindi il lavoro da fare non e "aggiungere tutto da zero", ma chiudere gap ad al
 
 ## 2) Criticita da correggere subito (alta priorita)
 
+[V]
 ### 2.1 QSearch: ritorno bound errato in delta pruning dinamico
 - Nel ramo di delta pruning dinamico in qsearch, in caso di prune viene ritornato `cutoffValue(alpha, beta, usIsWhite)`.
 - Questo e rischioso perche il prune e concettualmente fail-low, non fail-high.
 - Impatto: instabilita del punteggio e possibili errori tattici ai bordi dell'orizzonte.
 
+[V]
 ### 2.2 Parallel root search: perdita di efficacia PVS/TT
 - Nel ramo parallelo root i worker chiamano la ricerca con TT disabilitata (`useTT=false`, `allowTTWrite=false`) e finestra fissa full-window.
 - Impatto: peggior scaling reale e perdita di forza ai depth medi/alti.
 
+[V]
 ### 2.3 Politica ripetizione in search incoerente con draw ufficiale
 - In search c'e gestione su `twofold` con bonus/penalita dinamica, mentre la draw ufficiale e `threefold`.
 - Impatto: il motore puo distorcere la scelta linee in posizioni ripetitive.
