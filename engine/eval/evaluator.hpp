@@ -151,6 +151,19 @@ private:
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
     static void traceTerm(int64_t& eval, int64_t delta, const char* label) noexcept;
 
+    static int64_t getMaterialDeltaCached(const chess::Board& b) noexcept;
+    static int64_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
+    static int64_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
+    static int64_t evalCastlingBonusCached(const chess::Board& b) noexcept;
+    static int64_t evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalBadBishopCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int64_t evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
+    static int64_t evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept;
+    static int64_t evalEarlyQueenCached(const chess::Board& b) noexcept;
+    static int64_t evalOutpostsCached(const chess::Board& b) noexcept;
+    static int64_t evalPieceCoordinationCached(const chess::Board& b) noexcept;
+    static int64_t evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+
     static inline int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     static inline int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     static inline int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;

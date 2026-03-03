@@ -115,6 +115,8 @@ void Board::fromFenToBoard(const std::string& fen) {
     this->halfMoveClock = safeParseInt(halfMoveSection, 0, 255, 0);
     this->fullMoveClock = safeParseInt(fullMoveSection, 1, 255, 1);
 
+    clearEvalCache();
+    lastMoveChangeFlags = MOVE_CHANGE_NONE;
     this->updateOccupancyBB();
     this->rebuildRepetitionHistory();
 }

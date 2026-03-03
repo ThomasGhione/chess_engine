@@ -56,6 +56,52 @@ public:
         PromotionCapture
     };
 
+    enum EvalCacheTerm : uint32_t {
+        EVAL_CACHE_MATERIAL_DELTA           = 1u << 0,
+        EVAL_CACHE_PAWN_STRUCTURE_MG        = 1u << 1,
+        EVAL_CACHE_PAWN_STRUCTURE_EG        = 1u << 2,
+        EVAL_CACHE_BISHOP_PAIR_BONUS        = 1u << 3,
+        EVAL_CACHE_CASTLING_BONUS           = 1u << 4,
+        EVAL_CACHE_ROOKS                    = 1u << 5,
+        EVAL_CACHE_BAD_BISHOP               = 1u << 6,
+        EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS  = 1u << 7,
+        EVAL_CACHE_MINOR_DEVELOPMENT        = 1u << 8,
+        EVAL_CACHE_EARLY_QUEEN              = 1u << 9,
+        EVAL_CACHE_OUTPOSTS                 = 1u << 10,
+        EVAL_CACHE_PIECE_COORDINATION       = 1u << 11,
+        EVAL_CACHE_CENTRAL_CONTROL          = 1u << 12
+    };
+
+    enum MoveChangeFlag : uint32_t {
+        MOVE_CHANGE_NONE        = 0u,
+        MOVE_CHANGE_CAPTURE     = 1u << 0,
+        MOVE_CHANGE_PROMOTION   = 1u << 1,
+        MOVE_CHANGE_PAWN_MOVE   = 1u << 2,
+        MOVE_CHANGE_KNIGHT_MOVE = 1u << 3,
+        MOVE_CHANGE_BISHOP_MOVE = 1u << 4,
+        MOVE_CHANGE_ROOK_MOVE   = 1u << 5,
+        MOVE_CHANGE_QUEEN_MOVE  = 1u << 6,
+        MOVE_CHANGE_KING_MOVE   = 1u << 7,
+        MOVE_CHANGE_CASTLING    = 1u << 8
+    };
+
+    struct EvalCache {
+        int64_t materialDelta = 0;
+        int64_t pawnStructureMg = 0;
+        int64_t pawnStructureEg = 0;
+        int64_t bishopPairBonus = 0;
+        int64_t castlingBonus = 0;
+        int64_t rooks = 0;
+        int64_t badBishop = 0;
+        int64_t blockedPawnByBishops = 0;
+        int64_t minorDevelopment = 0;
+        int64_t earlyQueen = 0;
+        int64_t outposts = 0;
+        int64_t pieceCoordination = 0;
+        int64_t centralControl = 0;
+        uint32_t validMask = 0;
+    };
+
     struct Move {
         Coords from;
         Coords to;
@@ -101,6 +147,8 @@ public:
         uint8_t rookToIndex{};          // rook destination square index in castling
         bool    historyWasReset{};      // true if repetition history was reset by the move
         MoveKind moveKind{MoveKind::Quiet};
+        EvalCache prevEvalCache{};
+        uint32_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
     };
     // Structs and enums end
     
@@ -223,6 +271,12 @@ public:
     std::string fromBoardToFen() const;
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
+    constexpr uint32_t getLastMoveChangeFlags() const noexcept;
+    bool hasEvalCacheTerm(uint32_t term) const noexcept;
+    int64_t getEvalCacheTerm(uint32_t term) const noexcept;
+    void setEvalCacheTerm(uint32_t term, int64_t value) const noexcept;
+    void invalidateEvalCacheTerms(uint32_t terms) noexcept;
+    void clearEvalCache() noexcept;
 
     // Methods end
 
@@ -332,6 +386,8 @@ private:
     inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
+    [[nodiscard]] static inline uint32_t computeMoveChangeFlags(const MoveState& st) noexcept;
+    [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
     [[nodiscard]] static inline MoveKind classifyMoveKind(
         uint8_t movingType,
         uint8_t movingColor,
@@ -345,6 +401,7 @@ private:
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
     inline void prepareNullMoveState(MoveState& st) const noexcept;
+    inline void applyEvalCacheInvalidation(const MoveState& st) noexcept;
     inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(
@@ -403,6 +460,8 @@ private:
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
+    mutable EvalCache evalCache{};
+    uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
     // Variables end
 }; // Class Board
 

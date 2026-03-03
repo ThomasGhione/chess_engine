@@ -12,6 +12,101 @@ inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
     return kind == MoveKind::PromotionQuiet || kind == MoveKind::PromotionCapture;
 }
 
+inline uint32_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
+    uint32_t flags = MOVE_CHANGE_NONE;
+
+    if (isCaptureKind(st.moveKind) || st.wasEnPassantCapture) {
+        flags |= MOVE_CHANGE_CAPTURE;
+    }
+    if (isPromotionKind(st.moveKind)) {
+        flags |= MOVE_CHANGE_PROMOTION;
+    }
+    if (st.moveKind == MoveKind::Castling) {
+        flags |= MOVE_CHANGE_CASTLING;
+        // Castling also moves a rook, which affects rook/file and coordination terms.
+        flags |= MOVE_CHANGE_ROOK_MOVE;
+    }
+
+    switch (st.fromPiece & MASK_PIECE_TYPE) {
+        case PAWN:   flags |= MOVE_CHANGE_PAWN_MOVE; break;
+        case KNIGHT: flags |= MOVE_CHANGE_KNIGHT_MOVE; break;
+        case BISHOP: flags |= MOVE_CHANGE_BISHOP_MOVE; break;
+        case ROOK:   flags |= MOVE_CHANGE_ROOK_MOVE; break;
+        case QUEEN:  flags |= MOVE_CHANGE_QUEEN_MOVE; break;
+        case KING:   flags |= MOVE_CHANGE_KING_MOVE; break;
+        default: break;
+    }
+
+    return flags;
+}
+
+inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept {
+    uint32_t mask = 0;
+    const bool captureOrPromotion = (moveFlags & (MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION)) != 0;
+    const bool pawnRelated = ((moveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
+    const bool anyPieceMove = (moveFlags & (MOVE_CHANGE_PAWN_MOVE
+                                          | MOVE_CHANGE_KNIGHT_MOVE
+                                          | MOVE_CHANGE_BISHOP_MOVE
+                                          | MOVE_CHANGE_ROOK_MOVE
+                                          | MOVE_CHANGE_QUEEN_MOVE
+                                          | MOVE_CHANGE_KING_MOVE)) != 0;
+
+    if (captureOrPromotion) {
+        mask |= EVAL_CACHE_MATERIAL_DELTA;
+        mask |= EVAL_CACHE_BISHOP_PAIR_BONUS;
+    }
+
+    if (pawnRelated) {
+        mask |= EVAL_CACHE_PAWN_STRUCTURE_MG;
+        mask |= EVAL_CACHE_PAWN_STRUCTURE_EG;
+        mask |= EVAL_CACHE_CENTRAL_CONTROL;
+        mask |= EVAL_CACHE_BAD_BISHOP;
+    }
+
+    if (((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
+        mask |= EVAL_CACHE_ROOKS;
+    }
+
+    if (((moveFlags & MOVE_CHANGE_KING_MOVE) != 0)
+        || ((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0)
+        || ((moveFlags & MOVE_CHANGE_CASTLING) != 0)
+        || ((moveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
+        mask |= EVAL_CACHE_CASTLING_BONUS;
+    }
+
+    // Safety-first: this term depends on:
+    // - pawn and bishop maps
+    // - *any* own-piece blocker in front of central pawns (d/e)
+    // - fullMoveClock opening thresholds
+    // Therefore it must be invalidated on every real move.
+    if (anyPieceMove || captureOrPromotion) {
+        mask |= EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS;
+    }
+
+    if (((moveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {
+        mask |= EVAL_CACHE_MINOR_DEVELOPMENT;
+        mask |= EVAL_CACHE_OUTPOSTS;
+    }
+    if (pawnRelated) {
+        mask |= EVAL_CACHE_OUTPOSTS;
+    }
+
+    if (((moveFlags & MOVE_CHANGE_QUEEN_MOVE) != 0) || captureOrPromotion) {
+        mask |= EVAL_CACHE_EARLY_QUEEN;
+    }
+
+    if (((moveFlags & (MOVE_CHANGE_PAWN_MOVE
+                     | MOVE_CHANGE_KNIGHT_MOVE
+                     | MOVE_CHANGE_BISHOP_MOVE
+                     | MOVE_CHANGE_ROOK_MOVE
+                     | MOVE_CHANGE_QUEEN_MOVE)) != 0)
+        || captureOrPromotion) {
+        mask |= EVAL_CACHE_PIECE_COORDINATION;
+    }
+
+    return mask;
+}
+
 inline Board::MoveKind Board::classifyMoveKind(
     uint8_t movingType,
     uint8_t movingColor,
@@ -88,6 +183,8 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
+    st.prevEvalCache     = evalCache;
+    st.prevLastMoveChangeFlags = lastMoveChangeFlags;
 }
 
 __attribute__((always_inline))
@@ -119,6 +216,11 @@ inline void Board::prepareNullMoveState(MoveState& st) const noexcept {
     st.historyWasReset = false;
 }
 
+inline void Board::applyEvalCacheInvalidation(const MoveState& st) noexcept {
+    lastMoveChangeFlags = computeMoveChangeFlags(st);
+    invalidateEvalCacheTerms(evalInvalidationMaskFromMoveFlags(lastMoveChangeFlags));
+}
+
 __attribute__((always_inline))
 inline void Board::restoreState(const MoveState& st) noexcept {
     activeColor   = st.prevActiveColor;
@@ -130,6 +232,8 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     hasMoved      = st.prevHasMoved;
     historySize   = st.prevHistorySize;
     currentHash   = st.prevHistoryHead;
+    evalCache     = st.prevEvalCache;
+    lastMoveChangeFlags = st.prevLastMoveChangeFlags;
 }
 
 __attribute__((always_inline))

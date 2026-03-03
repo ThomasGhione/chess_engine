@@ -4,37 +4,36 @@
 namespace engine {
 
 inline int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
-    eval += evalMinorPieceDevelopment(b);
-    eval += evalEarlyQueen(b);
-    eval += evalCastlingBonus(b);
+    eval += evalMinorPieceDevelopmentCached(b);
+    eval += evalEarlyQueenCached(b);
+    eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
-    eval += evalCentralControl(whitePawns, blackPawns);
-    eval += evalPieceCoordination(b);
-    eval += evalOutposts(b);
-    eval += evalPawnStructure(whitePawns, blackPawns, false);
+    eval += evalCentralControlCached(b, whitePawns, blackPawns);
+    eval += evalPieceCoordinationCached(b);
+    eval += evalOutpostsCached(b);
+    eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalMobility(data);
     eval += (evalKingSafety(b, whitePawns, blackPawns) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += Evaluator::evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
 
 inline int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
-    eval += evalMinorPieceDevelopment(b);
-    eval += evalCastlingBonus(b);
+    eval += evalMinorPieceDevelopmentCached(b);
+    eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
     eval += evalTrappedPieces(b, occ);
-    eval += evalPawnStructure(whitePawns, blackPawns, false);
-    eval += evalCentralControl(whitePawns, blackPawns);
+    eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
+    eval += evalCentralControlCached(b, whitePawns, blackPawns);
     eval += evalMobility(data);
-    eval += evalOutposts(b);
-    eval += evalBadBishop(b.bishops_bb[0], whitePawns, 0);
-    eval += evalBadBishop(b.bishops_bb[1], blackPawns, 1);
+    eval += evalOutpostsCached(b);
+    eval += evalBadBishopCached(b, whitePawns, blackPawns);
     eval += evalKingSafety(b, whitePawns, blackPawns);
-    eval += evalRooks(b.rooks_bb[0], b.rooks_bb[1], whitePawns, blackPawns);
+    eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
@@ -42,38 +41,36 @@ inline int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, in
 inline int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
     eval += evalTrappedPieces(b, occ);
-    eval += evalPawnStructure(whitePawns, blackPawns, false);
-    eval += evalCentralControl(whitePawns, blackPawns);
+    eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
+    eval += evalCentralControlCached(b, whitePawns, blackPawns);
     eval += evalBlockedCenterWithPieces(b, occ);
     eval += evalMobility(data);
-    eval += evalPieceCoordination(b);
-    eval += evalOutposts(b);
-    eval += evalBadBishop(b.bishops_bb[0], whitePawns, 0);
-    eval += evalBadBishop(b.bishops_bb[1], blackPawns, 1);
+    eval += evalPieceCoordinationCached(b);
+    eval += evalOutpostsCached(b);
+    eval += evalBadBishopCached(b, whitePawns, blackPawns);
     eval += evalKingSafety(b, whitePawns, blackPawns);
     eval += evalKingActivity(b, false);
-    eval += evalCastlingBonus(b);
+    eval += evalCastlingBonusCached(b);
     eval += evalKingAttackZone(b, data);
-    eval += evalRooks(b.rooks_bb[0], b.rooks_bb[1], whitePawns, blackPawns);
+    eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
 
 inline int64_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
-    eval += evalPawnStructure(whitePawns, blackPawns, true);
+    eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
     eval += evalKingActivity(b, true);
     eval += evalEndgameKingActivity(b);
     eval += evalMobility(data);
     eval += evalTrappedPieces(b, occ);
-    eval += evalRooks(b.rooks_bb[0], b.rooks_bb[1], whitePawns, blackPawns);
+    eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalRookEndgamePressure(b);
     eval += evalQueenEndgamePressure(b);
     eval += evalDoubleRookEndgame(b);
-    eval += evalBadBishop(b.bishops_bb[0], whitePawns, 0);
-    eval += evalBadBishop(b.bishops_bb[1], blackPawns, 1);
+    eval += evalBadBishopCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, true);
 
     return eval;
@@ -89,7 +86,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
         return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
     }
 
-    int64_t eval = getMaterialDelta(board);
+    int64_t eval = getMaterialDeltaCached(board);
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
@@ -116,8 +113,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     addPsqt(board.queens_bb[0],  board.queens_bb[1],  engine::QUEEN_VALUES_TABLE.data(), eval);
     addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
 
-    if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
-    if (((board.bishops_bb[1] & (board.bishops_bb[1] - 1)) != 0ULL)) eval -= engine::BISHOP_PAIR_BONUS;
+    eval += evalBishopPairBonusCached(board);
 
     AttackData attackData[2] = {};
     ensureAttackData(attackData, board, occ);
