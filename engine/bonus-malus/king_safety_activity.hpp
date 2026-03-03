@@ -21,7 +21,7 @@ inline static constexpr int64_t KING_CASTLED_SHIELD_BREAK_PENALTY = 10;
 inline static constexpr int64_t KING_SHELTER_ADVANCE_ONE_PENALTY = 4;
 inline static constexpr int64_t KING_SHELTER_ADVANCE_TWO_PENALTY = 9;
 inline static constexpr int64_t KING_HOOK_PAWN_ATTACKED_PENALTY = 40;
-inline static constexpr int64_t KING_HOOK_PAWN_HANGING_PENALTY = 100;
+inline static constexpr int64_t KING_HOOK_PAWN_HANGING_PENALTY = 45;
 inline static constexpr int64_t KING_SAFETY_OPENING_SCALE_PERCENT = 55;
 
 // Open files/diagonals toward king.
