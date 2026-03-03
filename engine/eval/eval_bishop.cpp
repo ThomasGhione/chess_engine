@@ -27,6 +27,7 @@ int64_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noe
 
 int64_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
     int64_t score = 0;
+    const int fullMoves = b.getFullMoveClock();
 
     for (int side = 0; side < 2; ++side) {
         const int sign = (side == 0) ? 1 : -1;
@@ -39,16 +40,41 @@ int64_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
             const int psq = popLSB(pawns);
             const int rank = chess::Board::rankOf(psq);
             const int file = chess::Board::fileOf(psq);
+            const int startRank = (side == 0) ? 6 : 1;
+            const bool pawnOnStart = (rank == startRank);
 
             const int forward = (side == 0) ? (psq - 8) : (psq + 8);
             if (forward < 0 || forward >= 64) continue;
+
+            // Strong opening penalty when a friendly piece blocks d/e pawn from its start square.
+            if (pawnOnStart && (file == 3 || file == 4)) {
+                const uint8_t forwardSq = static_cast<uint8_t>(forward);
+                const uint8_t blocker = b.get(forwardSq);
+                const uint8_t ownColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
+                if (blocker != chess::Board::EMPTY && (blocker & chess::Board::MASK_COLOR) == ownColor) {
+                    const uint8_t blockerType = blocker & chess::Board::MASK_PIECE_TYPE;
+                    int centralBlockPenalty = 0;
+                    switch (blockerType) {
+                        case chess::Board::BISHOP: centralBlockPenalty = 34; break;
+                        case chess::Board::KNIGHT: centralBlockPenalty = 28; break;
+                        case chess::Board::QUEEN:  centralBlockPenalty = 24; break;
+                        case chess::Board::ROOK:   centralBlockPenalty = 18; break;
+                        default: centralBlockPenalty = 12; break;
+                    }
+                    if (fullMoves <= 10) {
+                        centralBlockPenalty += 10;
+                    } else if (fullMoves <= 16) {
+                        centralBlockPenalty += 5;
+                    }
+                    score += sign * (-centralBlockPenalty);
+                }
+            }
 
             if (bishops & chess::Board::bitMask(forward)) {
                 // Keep this modest: over-penalizing can force artificial bishop retreats.
                 int penaltyVal = 10;
                 if (file == 3 || file == 4) penaltyVal += 8;
-                const int startRank = (side == 0) ? 6 : 1;
-                if (rank == startRank) penaltyVal += 6;
+                if (pawnOnStart) penaltyVal += 6;
 
                 score += sign * (-penaltyVal);
             }

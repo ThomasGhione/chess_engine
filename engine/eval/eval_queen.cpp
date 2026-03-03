@@ -54,9 +54,7 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         const int edgeProximity = 7 - distToEdge;
 
         // Queen endgame edge bonus: push enemy king toward the edge.
-        // 80cp × 7 (corner) = 560cp max (before cap), which is meaningful
-        // but not so large that the engine sacrifices pieces to reach this.
-        constexpr int64_t QUEEN_EG_EDGE_BONUS = 80;
+        constexpr int64_t QUEEN_EG_EDGE_BONUS = 55;
         int64_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
 
         const uint64_t ourKingBB = b.kings_bb[side];
@@ -65,7 +63,7 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
             const int kingDist = manhattan(ourKingSq, enemyKingSq);
 
             const int proximityBonus = std::max(0, 14 - kingDist);
-            sideScore += proximityBonus * 20;
+            sideScore += proximityBonus * 14;
         }
 
         const uint64_t queenBB = b.queens_bb[side];
@@ -79,16 +77,14 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
             }
 
             if (bestQueenDist >= 2 && bestQueenDist <= 5) {
-                sideScore += 40;
+                sideScore += 24;
             } else if (bestQueenDist <= 7) {
-                sideScore += 15;
+                sideScore += 10;
             }
         }
 
-        // CAP: queen endgame pressure should never exceed ~2.5 pawns.
-        // Without this cap the combined terms could reach >1000cp, causing
-        // the engine to sacrifice pieces to reach a "queen vs lone king" ending.
-        constexpr int64_t QUEEN_EG_PRESSURE_CAP = 250;
+        // Keep queen pressure relevant but below "piece-level" incentives.
+        constexpr int64_t QUEEN_EG_PRESSURE_CAP = 180;
         sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
         score += sign * sideScore;
     }

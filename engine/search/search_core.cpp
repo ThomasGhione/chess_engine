@@ -6,11 +6,13 @@ namespace engine {
 
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
-    // Penalize stalemate when the side with material advantage allows it.
-    // 2000cp is severe enough to avoid stalemate in won positions,
-    // while keeping the penalty below the value of a full piece.
-    constexpr int64_t STALEMATE_PENALTY = 2000;
-    return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
+    // Scale contempt for stalemate with material edge, but keep it bounded.
+    const int64_t advantage = std::abs(matDelta);
+    const int64_t scaledPenalty =
+        STALEMATE_DRAW_PENALTY_MINOR + (advantage - STALEMATE_MATERIAL_THRESHOLD) / 2;
+    const int64_t stalematePenalty = std::clamp<int64_t>(
+        scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
+    return (matDelta > 0) ? -stalematePenalty : stalematePenalty;
 }
 
 // Helper to handle terminal nodes and transposition table lookups

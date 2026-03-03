@@ -196,7 +196,17 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
         if (behind >= 0 && behind < 64) {
             const uint64_t pawnMask = usIsWhite ? b.pawns_bb[0] : b.pawns_bb[1];
             if (pawnMask & chess::Board::bitMask(behind)) {
-                score += -80;
+                int bishopBlockPenalty = 80;
+                const int pawnFile = chess::Board::fileOf(behind);
+                const int pawnRank = chess::Board::rankOf(behind);
+                const int pawnStartRank = usIsWhite ? 6 : 1;
+                // In opening, strongly de-prioritize bishop moves that sit in front of d/e pawns.
+                if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4) && pawnRank == pawnStartRank) {
+                    bishopBlockPenalty += 140;
+                } else if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4)) {
+                    bishopBlockPenalty += 70;
+                }
+                score -= bishopBlockPenalty;
             }
         }
     }
@@ -433,9 +443,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             const bool isCastling = (fileDelta == 2);
 
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
-                score -= 500; // moderate penalty
+                score -= 220; // opening-only ordering penalty
             } else if (isCastling) {
-                score += 1000; // castling bonus
+                score += 550; // keep castling high priority without overpowering tactical quiets
             }
         }
 

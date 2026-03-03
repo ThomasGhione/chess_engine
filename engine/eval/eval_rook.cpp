@@ -155,7 +155,7 @@ int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
         const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
         const int edgeProximity = 7 - distToEdge;
 
-        constexpr int64_t DOUBLE_ROOK_EDGE_BONUS = 100;
+        constexpr int64_t DOUBLE_ROOK_EDGE_BONUS = 55;
         score += sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
 
         uint64_t rooksBB = b.rooks_bb[side];
@@ -170,11 +170,11 @@ int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
             const int r2_file = chess::Board::fileOf(rook2);
 
             if (r1_rank == r2_rank || r1_file == r2_file) {
-                score += sign * 50;
+                score += sign * 28;
             }
 
             if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
-                score += sign * 40;
+                score += sign * 22;
             }
         }
 
@@ -184,7 +184,7 @@ int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
             const int kingDist = manhattan(ourKingSq, enemyKingSq);
 
             const int proximityBonus = std::max(0, 14 - kingDist);
-            score += sign * proximityBonus * 8;
+            score += sign * proximityBonus * 4;
         }
     }
 
