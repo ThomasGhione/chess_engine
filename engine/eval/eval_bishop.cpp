@@ -44,10 +44,11 @@ int64_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
             if (forward < 0 || forward >= 64) continue;
 
             if (bishops & chess::Board::bitMask(forward)) {
-                int penaltyVal = 30;
-                if (file == 3 || file == 4) penaltyVal += 25;
+                // Keep this modest: over-penalizing can force artificial bishop retreats.
+                int penaltyVal = 10;
+                if (file == 3 || file == 4) penaltyVal += 8;
                 const int startRank = (side == 0) ? 6 : 1;
-                if (rank == startRank) penaltyVal += 20;
+                if (rank == startRank) penaltyVal += 6;
 
                 score += sign * (-penaltyVal);
             }

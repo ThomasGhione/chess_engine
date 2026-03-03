@@ -32,6 +32,9 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
 
         if (!hasCastled) {
             sideSafety -= engine::KING_NON_CASTLING_PENALTY;
+            if (rightsLost) {
+                sideSafety -= engine::KING_LOST_CASTLING_RIGHTS_PENALTY;
+            }
 
             if (side == 0) {
                 if (canCastleKingside) {
@@ -91,6 +94,21 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
             if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
             if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
             sideSafety += __builtin_popcountll(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
+        }
+
+        const uint8_t enemyColor = static_cast<uint8_t>(sideColor ^ chess::Board::BLACK);
+        const bool kingSideRelevant = canCastleKingside || kingFile >= 5;
+        if (kingSideRelevant) {
+            const uint8_t hookPawnSq = static_cast<uint8_t>((side == 0) ? 54 : 14); // g2 / g7
+            const uint64_t hookPawnBit = chess::Board::bitMask(hookPawnSq);
+            if (ownPawns & hookPawnBit) {
+                if (b.isSquareAttacked(hookPawnSq, enemyColor)) {
+                    sideSafety -= engine::KING_HOOK_PAWN_ATTACKED_PENALTY;
+                    if (!b.isSquareAttacked(hookPawnSq, sideColor)) {
+                        sideSafety -= engine::KING_HOOK_PAWN_HANGING_PENALTY;
+                    }
+                }
+            }
         }
 
         // Shelter/storm + open file model on king file and adjacent files.
@@ -296,7 +314,6 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_ROOK_CASTLED  = (chess::Board::bitMask(61) | chess::Board::bitMask(59));
     static constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
     static constexpr uint64_t BLACK_ROOK_CASTLED  = (chess::Board::bitMask(5)  | chess::Board::bitMask(3));
-    static constexpr int64_t LOSS_OF_CASTLING_PENALTY = 60;
 
     int64_t score = 0;
     const bool whiteCastleKs = b.getCastle(0);
@@ -308,13 +325,13 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     const bool whiteCanCastle = whiteCastleKs || whiteCastleQs;
 
     score += whiteHasCastled * engine::CASTLING_BONUS;
-    score -= (!whiteHasCastled && !whiteCanCastle) * LOSS_OF_CASTLING_PENALTY;
+    score -= (!whiteHasCastled && !whiteCanCastle) * engine::LOSS_OF_CASTLING_PENALTY;
 
     const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
     const bool blackCanCastle = blackCastleKs || blackCastleQs;
 
     score -= blackHasCastled * engine::CASTLING_BONUS;
-    score += (!blackHasCastled && !blackCanCastle) * LOSS_OF_CASTLING_PENALTY;
+    score += (!blackHasCastled && !blackCanCastle) * engine::LOSS_OF_CASTLING_PENALTY;
 
     return score;
 }

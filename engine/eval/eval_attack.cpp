@@ -101,8 +101,22 @@ inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
 
     const uint64_t enemyAttacks = data[opp].allAttacks;
     const uint64_t friendlyDef = data[side].allAttacks;
+    const uint64_t hangingPawns = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
 
-    score += evalHangingPiecePenalty(b.pawns_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_PAWN_PENALTY);
+    score += sign * __builtin_popcountll(hangingPawns) * engine::HANGING_PAWN_PENALTY;
+
+    const uint64_t kingBB = b.kings_bb[side];
+    if (kingBB) {
+        const int kingSq = __builtin_ctzll(kingBB);
+        const uint64_t kingProximity = KING_PROXIMITY_MASKS[kingSq];
+        const uint64_t criticalHangingPawns = hangingPawns & kingProximity;
+        score += sign * __builtin_popcountll(criticalHangingPawns) * engine::HANGING_PAWN_NEAR_KING_PENALTY;
+
+        const uint64_t hookFiles = FILE_MASKS[1] | FILE_MASKS[6];
+        const uint64_t hangingHookPawns = criticalHangingPawns & hookFiles;
+        score += sign * __builtin_popcountll(hangingHookPawns) * engine::HANGING_HOOK_PAWN_PENALTY;
+    }
+
     score += evalHangingPiecePenalty(b.knights_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
     score += evalHangingPiecePenalty(b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
     score += evalHangingPiecePenalty(b.rooks_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_ROOK_PENALTY);

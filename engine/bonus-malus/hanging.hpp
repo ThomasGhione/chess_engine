@@ -8,6 +8,8 @@ namespace engine {
 // ===================================================
 
 inline static constexpr int64_t HANGING_PAWN_PENALTY   = -12;
+inline static constexpr int64_t HANGING_PAWN_NEAR_KING_PENALTY = -28;
+inline static constexpr int64_t HANGING_HOOK_PAWN_PENALTY = -16;
 
 inline static constexpr int64_t HANGING_MINOR_PENALTY  = -25;
 
