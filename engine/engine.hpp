@@ -71,6 +71,11 @@ public:
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     void search(uint64_t depth) noexcept;
+    // UCI-safe search: finds the best move WITHOUT modifying this->board,
+    // without applying the move, and without starting pondering.
+    // Returns the best move found. Suitable for UCI "go" commands where
+    // the GUI manages board state via "position" commands.
+    chess::Board::Move searchUCI(uint64_t depth) noexcept;
     void stopThinking() noexcept;
     void setPonderDebugEnabled(bool enabled) noexcept;
     bool isPonderDebugEnabled() const noexcept;

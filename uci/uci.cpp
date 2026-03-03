@@ -223,8 +223,8 @@ namespace uci {
             }
         }
 
-        engine.search(requestedDepth);
-        chess::Board::Move bestMove = engine.bestMove;
+        engine.stopThinking(); // Stop any ongoing pondering before starting a new search
+        const chess::Board::Move bestMove = engine.searchUCI(requestedDepth);
         std::cout << "bestmove " << bestMove.toUCIString() << std::endl;
     }
     

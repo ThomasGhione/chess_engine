@@ -545,6 +545,63 @@ void Engine::stopThinking() noexcept {
     this->stopPondering();
 }
 
+// =========================================================================
+// UCI-SAFE SEARCH: Find best move WITHOUT modifying engine board state.
+// =========================================================================
+// In UCI protocol, the GUI owns board state. The engine must NOT apply the
+// best move on this->board, must NOT update gameResult, must NOT start
+// pondering. The GUI will send a new "position" command before the next "go".
+//
+// This avoids:
+// 1. Pondering polluting TT/history with entries from the wrong position
+// 2. Board state desynchronization between engine and GUI
+// 3. Non-deterministic move selection caused by stale pondering data
+chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
+    this->stopPondering();
+
+    const uint64_t targetDepth = std::max<uint64_t>(
+        static_cast<uint64_t>(Engine::DEFAULTDEPTH),
+        requestedDepth);
+    if (targetDepth == 0) return chess::Board::Move{};
+
+    this->stopSearchRequested.store(false, std::memory_order_relaxed);
+    this->searchInterrupted.store(false, std::memory_order_relaxed);
+
+    this->tt.incrementGeneration();
+    this->nodesSearched = 0;
+
+    // History soft reset (same as search())
+    int32_t* historyFlat = &this->history[0][0][0];
+    constexpr int HISTORY_CELLS = 2 * 64 * 64;
+    #pragma omp simd
+    for (int i = 0; i < HISTORY_CELLS; ++i) {
+        historyFlat[i] >>= 1;
+    }
+
+    // Search on a COPY of the board to avoid mutating this->board
+    chess::Board searchBoard = this->board;
+    IterativeSearchResult result = this->runIterativeDeepening(searchBoard, 1, targetDepth, false);
+    this->depth = targetDepth;
+
+    if (!result.hasLegalMoves || !result.completedAnyDepth) {
+        MoveList<chess::Board::Move> fallbackMoves = Engine::generateLegalMoves(this->board);
+        if (fallbackMoves.is_empty()) {
+            return chess::Board::Move{};
+        }
+        this->bestMove = fallbackMoves[0];
+        this->eval = this->evaluate(this->board);
+        return this->bestMove;
+    }
+
+    this->bestMove = result.bestMove;
+    this->eval = result.bestScore;
+
+    // Do NOT apply the move on this->board.
+    // Do NOT call updateGameResult().
+    // Do NOT start pondering.
+    return this->bestMove;
+}
+
 void Engine::search(uint64_t requestedDepth) noexcept {
     this->stopPondering();
 
