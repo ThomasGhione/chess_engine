@@ -6,7 +6,12 @@ namespace engine {
 
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
-    constexpr int64_t STALEMATE_PENALTY = 5000; // penalize stalemate when the side with material advantage allows it.
+    // REDUCED: was 5000 (≈ 5 pieces!) which distorted the entire search tree.
+    // The engine would sacrifice material in any line that *might* lead to
+    // stalemate because −5000 dwarfs every positional/material consideration.
+    // 800cp (≈ rook + pawn) is severe enough to avoid stalemate in won
+    // positions, but won't cause panicked piece sacrifices.
+    constexpr int64_t STALEMATE_PENALTY = 800;
     return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
 }
 
@@ -155,7 +160,21 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
             score = this->searchPosition(b, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1,
                                          useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             
-            // Re-search at full depth + full window only if null-window failed.
+            // ================================================================
+            // PROPER 3-STEP LMR RE-SEARCH
+            // ================================================================
+            // Step 1: reduced depth + null window 
+            // Step 2: if fail -> full depth + null window  
+            // Step 3: if still fail -> full depth + full window (PVS re-search)
+            const bool reducedFailed = shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
+
+            if (reducedFailed && reducedDepth < childDepth) {
+                // Step 2: full depth, null window — cheap verification
+                score = this->searchPosition(b, childDepth, searchAlpha, searchBeta, ctx.ply + 1,
+                                             useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+            }
+
+            // Step 3: full depth, full window — only if null-window still fails
             const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
             
             if (shouldResearch) {
@@ -201,14 +220,16 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
                 if (isQuietMove) { // Only if the cutoff move itself is quiet
                     const int colorIndex = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
                     const int malus = -static_cast<int>((ctx.depth + 1) * (ctx.depth + 1));
-                    // Apply malus to all quiet moves EXCEPT the last one (the cutoff move)
+                    // GRAVITY FORMULA (symmetric with bonus side in engine.cpp):
+                    // h += malus - h * |malus| / MAX_HISTORY
+                    // This naturally decays toward bounds instead of hard-clamping,
+                    // which caused asymmetric ordering: bad sacrifices weren't
+                    // penalised fast enough relative to how quickly good moves
+                    // were promoted.
+                    constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
-                        history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] += malus;
-                        // Clamp to prevent going too negative
-                        constexpr int MIN_HISTORY = -10000;
-                        if (history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] < MIN_HISTORY) {
-                            history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to] = MIN_HISTORY;
-                        }
+                        int32_t& h = history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
+                        h += malus - h * std::abs(malus) / MAX_HISTORY;
                     }
                 }
             }
@@ -274,7 +295,10 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     if (ply > 0 && b.isThreefoldRepetition()) {
         constexpr int64_t DRAW_ACCEPT_THRESHOLD = -2 * PAWN_VALUE; // -200 cp
         constexpr int64_t BASE_DRAW_AVOID_PENALTY = PAWN_VALUE;    // 100 cp
-        constexpr int64_t MAX_DRAW_AVOID_PENALTY = 4 * PAWN_VALUE; // 400 cp
+        // REDUCED: was 400cp (4 pawns).  The engine would sacrifice a whole
+        // minor piece just to avoid a repetition draw in an equal position.
+        // 200cp (2 pawns) is enough deterrent without causing desperation sacs.
+        constexpr int64_t MAX_DRAW_AVOID_PENALTY = 2 * PAWN_VALUE; // 200 cp
 
         const uint8_t activeColor = b.getActiveColor();
         const bool sideToMoveIsWhite = (activeColor == chess::Board::WHITE);
@@ -378,11 +402,12 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         //   Without this, NMP can prune positions where we just sacrificed material
         //   and the opponent has a strong reply. The margin allows NMP when we're
         //   slightly worse but not when we're clearly losing.
-        //   Margin: 200cp = allows NMP even if slightly behind, but blocks it
-        //   after unsound material sacrifices.
+        //   Margin: 200cp = blocks NMP after unsound piece sacrifices where
+        //   positional bonuses inflate staticEval close to beta.
+        //   Was 100cp which was too permissive after material loss.
         const int64_t nmpEvalGate = usIsWhite 
-            ? (staticEval + 100) 
-            : (staticEval - 100);
+            ? (staticEval + 200) 
+            : (staticEval - 200);
         const bool evalOk = isBetaCutoff(nmpEvalGate, alpha, beta, usIsWhite);
         
         const bool canNullMove = allowNullMove

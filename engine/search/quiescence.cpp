@@ -293,6 +293,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     
     orderedMoves.sort();
 
+    // Save original bounds for TT flag determination
+    const int64_t alphaOrig = alpha;
+    const int64_t betaOrig = beta;
+
     int64_t best = standPat;
     
     for (const auto& scoredMove : orderedMoves) {
@@ -319,10 +323,28 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         updateBound(score, alpha, beta, usIsWhite);
         
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+            // TT STORE on beta cutoff (lower/upper bound)
+            if (useTT) {
+                const uint64_t hashKey = b.getHash();
+                const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
+                this->tt.store(hashKey, 0, cutoffValue(alpha, beta, usIsWhite), flag);
+            }
             return cutoffValue(alpha, beta, usIsWhite);
         }
     }
     
+    // =========================================================================
+    // TT STORE IN QUIESCENCE - cache the result for transposition reuse.
+    // Without this, tactical refutations discovered in qsearch are thrown away
+    // and recomputed every time the same position is reached via a different
+    // move order, wasting significant search effort.
+    // =========================================================================
+    if (useTT) {
+        const uint64_t hashKey = b.getHash();
+        const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
+        this->tt.store(hashKey, 0, best, flag);
+    }
+
     return best;
 }
 

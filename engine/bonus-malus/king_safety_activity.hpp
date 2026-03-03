@@ -20,9 +20,9 @@ inline static constexpr int64_t KING_PAWN_STORM_FAR_PENALTY = 8;
 inline static constexpr int64_t KING_CASTLED_SHIELD_BREAK_PENALTY = 10;
 inline static constexpr int64_t KING_SHELTER_ADVANCE_ONE_PENALTY = 4;
 inline static constexpr int64_t KING_SHELTER_ADVANCE_TWO_PENALTY = 9;
-inline static constexpr int64_t KING_HOOK_PAWN_ATTACKED_PENALTY = 40;
-inline static constexpr int64_t KING_HOOK_PAWN_HANGING_PENALTY = 45;
-inline static constexpr int64_t KING_SAFETY_OPENING_SCALE_PERCENT = 55;
+inline static constexpr int64_t KING_HOOK_PAWN_ATTACKED_PENALTY = 20;
+inline static constexpr int64_t KING_HOOK_PAWN_HANGING_PENALTY = 25;
+inline static constexpr int64_t KING_SAFETY_OPENING_SCALE_PERCENT = 35;
 
 // Open files/diagonals toward king.
 inline static constexpr int64_t KING_SEMI_OPEN_FILE_PENALTY = 10;
@@ -41,24 +41,17 @@ inline static constexpr int64_t EARLY_KING_PENALTY = -20;    // was -25
 // King attack zone weights used as attack "units".
 // Final danger is scaled by attacker-count saturation in eval_king.cpp.
 
-// knight near enemy king - ORIGINAL value
-inline static constexpr int64_t KING_ATTACK_WEIGHT_KNIGHT = 20;
-
-// bishop attacking king zone - ORIGINAL value
-inline static constexpr int64_t KING_ATTACK_WEIGHT_BISHOP = 20;
-
-// rook attacking king zone - ORIGINAL value
-inline static constexpr int64_t KING_ATTACK_WEIGHT_ROOK   = 40;
-
-// queen attacking king zone - ORIGINAL value
-inline static constexpr int64_t KING_ATTACK_WEIGHT_QUEEN  = 80;
+inline static constexpr int64_t KING_ATTACK_WEIGHT_KNIGHT = 10;
+inline static constexpr int64_t KING_ATTACK_WEIGHT_BISHOP = 10;
+inline static constexpr int64_t KING_ATTACK_WEIGHT_ROOK   = 18;
+inline static constexpr int64_t KING_ATTACK_WEIGHT_QUEEN  = 27;
 
 // Contact pressure and checks in king-zone attack model.
 inline static constexpr int64_t KING_SAFE_CONTACT_BONUS = 6;
 inline static constexpr int64_t KING_FORCING_CONTACT_BONUS = 3;
 inline static constexpr int64_t KING_SAFE_CHECK_BONUS = 12;
 inline static constexpr int64_t KING_FORCING_CHECK_BONUS = 5;
-inline static constexpr int64_t KING_ATTACK_DANGER_CAP = 240;
+inline static constexpr int64_t KING_ATTACK_DANGER_CAP = 145;
 
 } // namespace engine
 
