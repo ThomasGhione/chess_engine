@@ -65,7 +65,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     // =========================================================================
     static constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
     static constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38}; // depth 0,1,2,3
-    const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3 && ctx.depth >= 1;
+    const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int lmpThreshold = canLMP
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
         : 999; // effectively disable LMP when not applicable
@@ -111,8 +111,8 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         // LOGARITHMIC LMR: reduction = floor(log(depth) * log(moveIndex) / C)
         // NOTE: nonPawnMajors/isEndgame pre-computed BEFORE loop for correctness + speed
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 16 : 14;
-        const bool lmrStructuralCandidate = (ctx.depth > 5)
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 12;
+        const bool lmrStructuralCandidate = (ctx.depth > 6)
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromo
             && (!wasCapture)
@@ -145,7 +145,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR. Higher divisor = less reduction = more conservative
-            constexpr double LMR_C = 3.67;
+            constexpr double LMR_C = 3.3;
             int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
                                                    * std::log(static_cast<double>(moveIndex)) 
                                                    / LMR_C);
@@ -404,7 +404,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
             && !isPVNode
             && !inCheck
             && ply > 0
-            && depth >= 4
+            && depth >= 6
             && nonPawnMajors >= 3
             && evalOk;
 
