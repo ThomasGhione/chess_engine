@@ -310,10 +310,12 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
 }
 
 int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
+    // Castled detection: king on a castling destination square AND both castling
+    // rights lost.  The rook may have moved away from its post-castling square
+    // (e.g. Rf1-e1), but the king position + lost rights proves castling occurred.
+    // This matches the same hasCastled logic used in evalKingSafety.
     static constexpr uint64_t WHITE_KING_CASTLED  = (chess::Board::bitMask(62) | chess::Board::bitMask(58));
-    static constexpr uint64_t WHITE_ROOK_CASTLED  = (chess::Board::bitMask(61) | chess::Board::bitMask(59));
     static constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
-    static constexpr uint64_t BLACK_ROOK_CASTLED  = (chess::Board::bitMask(5)  | chess::Board::bitMask(3));
 
     int64_t score = 0;
     const bool whiteCastleKs = b.getCastle(0);
@@ -321,13 +323,15 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     const bool blackCastleKs = b.getCastle(2);
     const bool blackCastleQs = b.getCastle(3);
 
-    const bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && (b.rooks_bb[0] & WHITE_ROOK_CASTLED);
+    const bool whiteRightsLost = !whiteCastleKs && !whiteCastleQs;
+    const bool whiteHasCastled = (b.kings_bb[0] & WHITE_KING_CASTLED) && whiteRightsLost;
     const bool whiteCanCastle = whiteCastleKs || whiteCastleQs;
 
     score += whiteHasCastled * engine::CASTLING_BONUS;
     score -= (!whiteHasCastled && !whiteCanCastle) * engine::LOSS_OF_CASTLING_PENALTY;
 
-    const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && (b.rooks_bb[1] & BLACK_ROOK_CASTLED);
+    const bool blackRightsLost = !blackCastleKs && !blackCastleQs;
+    const bool blackHasCastled = (b.kings_bb[1] & BLACK_KING_CASTLED) && blackRightsLost;
     const bool blackCanCastle = blackCastleKs || blackCastleQs;
 
     score -= blackHasCastled * engine::CASTLING_BONUS;
