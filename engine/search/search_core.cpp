@@ -6,12 +6,10 @@ namespace engine {
 
 int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
-    // REDUCED: was 5000 (≈ 5 pieces!) which distorted the entire search tree.
-    // The engine would sacrifice material in any line that *might* lead to
-    // stalemate because −5000 dwarfs every positional/material consideration.
-    // 800cp (≈ rook + pawn) is severe enough to avoid stalemate in won
-    // positions, but won't cause panicked piece sacrifices.
-    constexpr int64_t STALEMATE_PENALTY = 800;
+    // Penalize stalemate when the side with material advantage allows it.
+    // 2000cp is severe enough to avoid stalemate in won positions,
+    // while keeping the penalty below the value of a full piece.
+    constexpr int64_t STALEMATE_PENALTY = 2000;
     return (matDelta > 0) ? -STALEMATE_PENALTY : STALEMATE_PENALTY;
 }
 
@@ -286,37 +284,28 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // =========================================================================
     // DRAW BY REPETITION DETECTION (inside search tree)
     // =========================================================================
-    // Policy request:
-    // - accept repetition draw ONLY when side-to-move eval <= -2 pawns
-    // - otherwise penalize repetition to avoid drawing from equal/better positions
+    // If the current position has already occurred in the game history, treat it
+    // as a draw. This prevents the engine from entering perpetual check or
+    // shuffling pieces in winning positions.
     //
-    // Use threefold here to align search policy with official draw rules used by game state.
+    // CONTEMPT: When ahead in material, return a score slightly worse than 0
+    // to actively discourage drawing. When behind, a draw is acceptable (return 0).
+    // This is similar to Stockfish's "contempt" concept.
+    //
     // Only check at ply > 0 (not at root) to avoid interfering with root move selection.
-    if (ply > 0 && b.isThreefoldRepetition()) {
-        constexpr int64_t DRAW_ACCEPT_THRESHOLD = -2 * PAWN_VALUE; // -200 cp
-        constexpr int64_t BASE_DRAW_AVOID_PENALTY = PAWN_VALUE;    // 100 cp
-        // REDUCED: was 400cp (4 pawns).  The engine would sacrifice a whole
-        // minor piece just to avoid a repetition draw in an equal position.
-        // 200cp (2 pawns) is enough deterrent without causing desperation sacs.
-        constexpr int64_t MAX_DRAW_AVOID_PENALTY = 2 * PAWN_VALUE; // 200 cp
-
-        const uint8_t activeColor = b.getActiveColor();
-        const bool sideToMoveIsWhite = (activeColor == chess::Board::WHITE);
-        const int64_t evalFromWhite = this->evaluate(b);
-        const int64_t evalForSideToMove = sideToMoveIsWhite ? evalFromWhite : -evalFromWhite;
-
-        if (evalForSideToMove <= DRAW_ACCEPT_THRESHOLD) {
-            return 0; // side to move is clearly worse -> draw is acceptable
+    if (ply > 0 && b.isTwofoldRepetition()) {
+        const int64_t matDelta = getMaterialDelta(b);
+        // Contempt: penalize draw when we have material advantage
+        // White ahead (matDelta > 0): return negative score (bad for white = discourages draw)
+        // Black ahead (matDelta < 0): return positive score (bad for black = discourages draw)
+        // Even material: return 0 (true draw)
+        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
+            // Scale contempt by material advantage (bigger lead = more contempt)
+            // Cap at 200cp to avoid distorting search too much
+            const int64_t contempt = std::min(static_cast<int64_t>(200), std::abs(matDelta) / 2);
+            return (matDelta > 0) ? -contempt : contempt;
         }
-
-        // Penalize repetition more as the side-to-move position is better than the threshold.
-        const int64_t advantageOverThreshold = evalForSideToMove - DRAW_ACCEPT_THRESHOLD;
-        const int64_t avoidDrawPenalty = std::clamp<int64_t>(
-            BASE_DRAW_AVOID_PENALTY + (advantageOverThreshold / 2),
-            BASE_DRAW_AVOID_PENALTY,
-            MAX_DRAW_AVOID_PENALTY);
-
-        return sideToMoveIsWhite ? -avoidDrawPenalty : avoidDrawPenalty;
+        return 0; // True draw
     }
 
     if (b.isFiftyMoveRule()) [[unlikely]] return 0; // 50-move rule detection inside search tree
@@ -402,12 +391,11 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         //   Without this, NMP can prune positions where we just sacrificed material
         //   and the opponent has a strong reply. The margin allows NMP when we're
         //   slightly worse but not when we're clearly losing.
-        //   Margin: 200cp = blocks NMP after unsound piece sacrifices where
-        //   positional bonuses inflate staticEval close to beta.
-        //   Was 100cp which was too permissive after material loss.
+        //   Margin: 100cp = allows NMP even if slightly behind, but blocks it
+        //   after unsound material sacrifices.
         const int64_t nmpEvalGate = usIsWhite 
-            ? (staticEval + 200) 
-            : (staticEval - 200);
+            ? (staticEval + 100) 
+            : (staticEval - 100);
         const bool evalOk = isBetaCutoff(nmpEvalGate, alpha, beta, usIsWhite);
         
         const bool canNullMove = allowNullMove

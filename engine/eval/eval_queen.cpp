@@ -53,11 +53,10 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
         const int edgeProximity = 7 - distToEdge;
 
-        // REDUCED: was 120 -> edgeProximity 7 (corner) × 120 = 840cp ≈ a queen!
-        // The engine would sacrifice everything to keep its queen thinking it
-        // had a won endgame.  35cp × 7 = 245cp max — substantial advantage
-        // but never exceeds a minor piece on its own.
-        constexpr int64_t QUEEN_EG_EDGE_BONUS = 35;
+        // Queen endgame edge bonus: push enemy king toward the edge.
+        // 80cp × 7 (corner) = 560cp max (before cap), which is meaningful
+        // but not so large that the engine sacrifices pieces to reach this.
+        constexpr int64_t QUEEN_EG_EDGE_BONUS = 80;
         int64_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
 
         const uint64_t ourKingBB = b.kings_bb[side];
