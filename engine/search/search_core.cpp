@@ -145,7 +145,7 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
         int64_t score = 0;
         if (canReduce) {
             // LOGARITHMIC LMR. Higher divisor = less reduction = more conservative
-            constexpr double LMR_C = 3.3;
+            constexpr double LMR_C = 3.07;
             int64_t reduction = static_cast<int64_t>(std::log(static_cast<double>(ctx.depth)) 
                                                    * std::log(static_cast<double>(moveIndex)) 
                                                    / LMR_C);
