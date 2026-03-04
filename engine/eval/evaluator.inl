@@ -78,9 +78,7 @@ inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noex
 }
 
 inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    if (!data[0].isComputed) {
-        computeAttackData(data, b, occ);
-    }
+    computeAttackData(data, b, occ);
 }
 
 inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{

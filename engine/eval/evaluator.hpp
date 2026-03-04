@@ -40,19 +40,12 @@ public:
 private:
     // Structures
     struct AttackData {
-        uint64_t allAttacks;
-        uint64_t pawnAttacks;
-        uint64_t knightAttacks;
-        uint64_t bishopAttacks;
-        uint64_t rookAttacks;
-        uint64_t queenAttacks;
-
-        int64_t knightMobility;
-        int64_t bishopMobility;
-        int64_t rookMobility;
-        int64_t queenMobility;
-
-        bool isComputed;
+        uint64_t allAttacks = 0ULL;
+        // Mobility counters are small and bounded; int32 keeps this struct compact.
+        int32_t knightMobility = 0;
+        int32_t bishopMobility = 0;
+        int32_t rookMobility = 0;
+        int32_t queenMobility = 0;
     };
     // Structures end
 

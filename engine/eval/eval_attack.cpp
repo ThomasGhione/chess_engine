@@ -1,29 +1,37 @@
 #include "evaluator.hpp"
-#include <cstring>
 
 namespace engine {
 
-static constexpr size_t ATTACK_CACHE_SIZE = 1u << 11;
-static constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
+static constexpr size_t ATTACK_CACHE_SETS = 1u << 10;
+static constexpr size_t ATTACK_CACHE_WAYS = 2u;
+static constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SETS - 1u);
 
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
     struct AttackCacheEntry {
         uint64_t key = 0ULL;
         AttackData value[2]{};
         uint8_t valid = 0;
+        uint8_t age = 0;
     };
 
-    thread_local std::array<AttackCacheEntry, ATTACK_CACHE_SIZE> attackCache{};
+    thread_local std::array<std::array<AttackCacheEntry, ATTACK_CACHE_WAYS>, ATTACK_CACHE_SETS> attackCache{};
+    thread_local uint8_t cacheClock = 0;
 
     const uint64_t cacheKey = b.getHash();
-    AttackCacheEntry& cached = attackCache[(cacheKey * 0x9E3779B97F4A7C15ULL) & ATTACK_CACHE_MASK];
-    if (cached.valid && cached.key == cacheKey) {
-        data[0] = cached.value[0];
-        data[1] = cached.value[1];
-        return;
+    auto& cacheSet = attackCache[(cacheKey * 0x9E3779B97F4A7C15ULL) & ATTACK_CACHE_MASK];
+
+    for (size_t way = 0; way < ATTACK_CACHE_WAYS; ++way) {
+        AttackCacheEntry& entry = cacheSet[way];
+        if (entry.valid && entry.key == cacheKey) {
+            data[0] = entry.value[0];
+            data[1] = entry.value[1];
+            entry.age = ++cacheClock;
+            return;
+        }
     }
 
-    std::memset(data, 0, 2 * sizeof(AttackData));
+    data[0] = AttackData{};
+    data[1] = AttackData{};
 
     for (int side = 0; side < 2; ++side) {
         AttackData& d = data[side];
@@ -35,54 +43,60 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
         const bool isWhite = (side == 0);
         while (pawns) {
             const int sq = popLSB(pawns);
-            d.pawnAttacks |= pieces::PAWN_ATTACKS[isWhite][sq];
+            d.allAttacks |= pieces::PAWN_ATTACKS[isWhite][sq];
         }
-        d.allAttacks = d.pawnAttacks;
 
         uint64_t knights = b.knights_bb[side];
         while (knights) {
             const int sq = popLSB(knights);
             const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
-            d.knightAttacks |= attacks;
+            d.allAttacks |= attacks;
             const int mobility = __builtin_popcountll(attacks & mobilityMask);
             d.knightMobility += mobility;
         }
-        d.allAttacks |= d.knightAttacks;
 
         uint64_t bishops = b.bishops_bb[side];
         while (bishops) {
             const int sq = popLSB(bishops);
             const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
-            d.bishopAttacks |= attacks;
+            d.allAttacks |= attacks;
             d.bishopMobility += __builtin_popcountll(attacks & mobilityMask);
         }
-        d.allAttacks |= d.bishopAttacks;
 
         uint64_t rooks = b.rooks_bb[side];
         while (rooks) {
             const int sq = popLSB(rooks);
             const uint64_t attacks = pieces::getRookAttacks(sq, occ);
-            d.rookAttacks |= attacks;
+            d.allAttacks |= attacks;
             d.rookMobility += __builtin_popcountll(attacks & mobilityMask);
         }
-        d.allAttacks |= d.rookAttacks;
 
         uint64_t queens = b.queens_bb[side];
         while (queens) {
             const int sq = popLSB(queens);
             const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
-            d.queenAttacks |= attacks;
+            d.allAttacks |= attacks;
             d.queenMobility += __builtin_popcountll(attacks & mobilityMask);
         }
-        d.allAttacks |= d.queenAttacks;
-
-        d.isComputed = true;
     }
 
-    cached.key = cacheKey;
-    cached.value[0] = data[0];
-    cached.value[1] = data[1];
-    cached.valid = 1;
+    AttackCacheEntry* replace = &cacheSet[0];
+    for (size_t way = 0; way < ATTACK_CACHE_WAYS; ++way) {
+        AttackCacheEntry& entry = cacheSet[way];
+        if (!entry.valid) {
+            replace = &entry;
+            break;
+        }
+        if (entry.age < replace->age) {
+            replace = &entry;
+        }
+    }
+
+    replace->key = cacheKey;
+    replace->value[0] = data[0];
+    replace->value[1] = data[1];
+    replace->valid = 1;
+    replace->age = ++cacheClock;
 }
 
 int64_t Evaluator::evalMobility(const AttackData data[2]) noexcept {

@@ -115,8 +115,8 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     eval += evalBishopPairBonusCached(board);
 
-    AttackData attackData[2] = {};
-    ensureAttackData(attackData, board, occ);
+    AttackData attackData[2];
+    computeAttackData(attackData, board, occ);
 
     if (isOpening) {
         return evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
