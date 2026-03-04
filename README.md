@@ -45,6 +45,34 @@ For example:
 Move is pawn to e4, we have to input this: "e2 e4" 
 (which can be seen as: "move the piece in e2 to e4)
 
+# Forcing TT huge pages:
+- CHESS_TT_HUGEPAGE=on ./chess
+- CHESS_TT_HUGEPAGE=off ./chess
+- auto otherwise
+
+# Testing TT
+
+1. Build dedicated benchmark:
+make tt-huge-bench
+
+2. Run benchmark directly (manual):
+./tests/tt_hugepage_bench --depth 10 --repeats 1
+./tests/tt_hugepage_bench --depth 10 --repeats 3 --per-fen
+
+3. Run automated A/B OFF vs ON (new script):
+./script/benchmark_tt_hugepages_ab.sh 10 1
+./script/benchmark_tt_hugepages_ab.sh 10 3
+./script/benchmark_tt_hugepages_ab.sh 10 3 output/bench_custom_run
+
+4. Override huge page mode at runtime:
+CHESS_TT_HUGEPAGE=off ./tests/tt_hugepage_bench --depth 10 --repeats 1
+CHESS_TT_HUGEPAGE=on  ./tests/tt_hugepage_bench --depth 10 --repeats 1
+CHESS_TT_HUGEPAGE=auto ./chess
+
+5. (For perf stat metrics) enable counters:
+sudo sysctl -w kernel.perf_event_paranoid=-1
+cat /proc/sys/kernel/perf_event_paranoid
+
 # Contributing
 
 Pull requests are welcome.

@@ -37,6 +37,7 @@ COMPILATION_DB = script/compile_commands.json
 NAME_APP = chess
 TEST_APP = tests/test
 PERF_APP = tests/perf
+TT_HP_BENCH_APP = tests/tt_hugepage_bench
 NAME_APP_WIN = chess.exe
 OUTPUT_DIR = output
 
@@ -108,11 +109,15 @@ ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
 PERF_MAIN_OBJ = $(OUTPUT_DIR)/$(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_PERF_MODULE_SRCS:.cpp=.o))
 
+# Huge-page TT benchmark
+TT_HP_BENCH_SRC = tests/tt_hugepage_bench.cpp
+TT_HP_BENCH_OBJ = $(OUTPUT_DIR)/$(TT_HP_BENCH_SRC:.cpp=.o)
+
 # Auto-generated dependency files (header dependencies)
-DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d)
+DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d) $(TT_HP_BENCH_OBJ:.o=.d)
 
 # Main targets
-.PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod prod_windows parallel_prod debug test perf tt-huge-bench all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default target for plain `make`
 all: PRODFLAGS += -DDEBUG -fomit-frame-pointer -O3
@@ -152,6 +157,10 @@ test: $(TEST_APP)
 perf: $(PERF_APP)
 	@printf "\n✅ Performance test compilato: $(PERF_APP)\n\n"
 
+# Build command for huge-page TT benchmark
+tt-huge-bench: $(TT_HP_BENCH_APP)
+	@printf "\n✅ TT huge-page benchmark compilato: $(TT_HP_BENCH_APP)\n\n"
+
 # Command to run all tests (functional + performance)
 all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
@@ -180,6 +189,11 @@ $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 $(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
+
+# Final executable generation: TT huge-page benchmark
+$(TT_HP_BENCH_APP): $(MODULE_OBJS) $(TT_HP_BENCH_OBJ)
+	@printf "\nLinking TT huge-page benchmark $(TT_HP_BENCH_APP)..."
+	$(CXX) $(PRODFLAGS) $(MODULE_OBJS) $(TT_HP_BENCH_OBJ) -o $(TT_HP_BENCH_APP)
 
 # Analisi completa del codice
 analyze: analyze-setup

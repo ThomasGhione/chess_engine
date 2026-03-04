@@ -1,10 +1,18 @@
 #ifndef TT_TRANSPOSITION_TABLE_HPP
 #define TT_TRANSPOSITION_TABLE_HPP
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
+#include <new>
+#include <string_view>
+
+#if defined(__linux__)
+#include <sys/mman.h>
+#endif
 
 #include "zobrist.hpp"
 
@@ -12,6 +20,12 @@ namespace tt {
 
 class TranspositionTable {
 public:
+    enum class HugePageMode : uint8_t {
+        Auto = 0,
+        On,
+        Off
+    };
+
     struct Entry {
         // 16-byte layout:
         // key(8) + score(4) + bestMove(2) + packed(depth/age/flag)(2)
@@ -88,15 +102,20 @@ public:
     static constexpr std::size_t BUCKET_COUNT = 1u << 20;
     static constexpr std::size_t ENTRIES_PER_BUCKET = 4;
     static constexpr std::size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
+    static constexpr std::size_t TABLE_BYTES = sizeof(Entry) * TABLE_SIZE;
+    static constexpr std::size_t HUGE_PAGE_MIN_BYTES = 32u * 1024u * 1024u;
     static constexpr int32_t ADJUSTMENT = 50;
 
     static_assert(sizeof(Entry) == 16, "TT entry must be 16 bytes");
     static_assert((sizeof(Entry) * ENTRIES_PER_BUCKET) == 64, "Each bucket should be exactly one cache line");
     static_assert((BUCKET_COUNT & (BUCKET_COUNT - 1)) == 0, "BUCKET_COUNT must be power of 2");
 
-    TranspositionTable()
-        : table_(std::make_unique<TableStorage>())
-        , generation_(0) {
+    explicit TranspositionTable(HugePageMode mode = HugePageMode::Auto)
+        : table_(nullptr, TableDeleter{})
+        , generation_(0)
+        , hugePageMode_(resolveHugePageMode(mode))
+        , hugePagesBacked_(false) {
+        table_ = allocateTable(hugePageMode_, hugePagesBacked_);
         clear();
     }
 
@@ -116,6 +135,8 @@ public:
 
     inline void incrementGeneration() noexcept { ++generation_; }
     inline void clear() noexcept;
+    [[nodiscard]] inline HugePageMode hugePageMode() const noexcept { return hugePageMode_; }
+    [[nodiscard]] inline bool isHugePageBacked() const noexcept { return hugePagesBacked_; }
 
     TranspositionTable(const TranspositionTable&) = delete;
     TranspositionTable& operator=(const TranspositionTable&) = delete;
@@ -127,11 +148,138 @@ private:
         std::array<Entry, TABLE_SIZE> entries{};
     };
 
-    std::unique_ptr<TableStorage> table_;
+    enum class AllocationKind : uint8_t {
+        Heap = 0,
+        MMap
+    };
+
+    struct TableDeleter {
+        AllocationKind kind = AllocationKind::Heap;
+        std::size_t mappedBytes = 0;
+
+        inline void operator()(TableStorage* ptr) const noexcept {
+            if (ptr == nullptr) return;
+            ptr->~TableStorage();
+#if defined(__linux__)
+            if (kind == AllocationKind::MMap) {
+                (void)::munmap(static_cast<void*>(ptr), mappedBytes);
+                return;
+            }
+#endif
+            ::operator delete(static_cast<void*>(ptr), std::align_val_t(alignof(TableStorage)));
+        }
+    };
+
+    using TablePtr = std::unique_ptr<TableStorage, TableDeleter>;
+
+    TablePtr table_;
     uint8_t generation_;
+    HugePageMode hugePageMode_;
+    bool hugePagesBacked_;
 
     inline Entry* data() noexcept { return table_->entries.data(); }
     inline const Entry* data() const noexcept { return table_->entries.data(); }
+
+    [[nodiscard]] static inline bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
+        if (lhs.size() != rhs.size()) return false;
+        for (std::size_t i = 0; i < lhs.size(); ++i) {
+            char a = lhs[i];
+            char b = rhs[i];
+            if (a >= 'A' && a <= 'Z') a = static_cast<char>(a - 'A' + 'a');
+            if (b >= 'A' && b <= 'Z') b = static_cast<char>(b - 'A' + 'a');
+            if (a != b) return false;
+        }
+        return true;
+    }
+
+    [[nodiscard]] static inline HugePageMode hugePageModeFromEnv() noexcept {
+        const char* envValue = std::getenv("CHESS_TT_HUGEPAGE");
+        if (envValue == nullptr || *envValue == '\0') return HugePageMode::Auto;
+
+        const std::string_view value(envValue);
+        if (iequals(value, "on") || iequals(value, "1") || iequals(value, "true") || iequals(value, "force")) {
+            return HugePageMode::On;
+        }
+        if (iequals(value, "off") || iequals(value, "0") || iequals(value, "false")) {
+            return HugePageMode::Off;
+        }
+        return HugePageMode::Auto;
+    }
+
+    [[nodiscard]] static inline HugePageMode resolveHugePageMode(HugePageMode requestedMode) noexcept {
+        if (requestedMode == HugePageMode::Auto) {
+            return hugePageModeFromEnv();
+        }
+        return requestedMode;
+    }
+
+    [[nodiscard]] static inline std::size_t alignUp(std::size_t value, std::size_t alignment) noexcept {
+        return (value + alignment - 1u) & ~(alignment - 1u);
+    }
+
+    [[nodiscard]] static inline TablePtr allocateHeapTable() {
+        void* raw = ::operator new(sizeof(TableStorage), std::align_val_t(alignof(TableStorage)));
+        auto* table = ::new (raw) TableStorage();
+        return TablePtr(table, TableDeleter{AllocationKind::Heap, 0});
+    }
+
+#if defined(__linux__)
+    [[nodiscard]] static inline TablePtr makeMappedTable(void* mappedMemory, std::size_t mappedBytes) {
+        auto* table = ::new (mappedMemory) TableStorage();
+        return TablePtr(table, TableDeleter{AllocationKind::MMap, mappedBytes});
+    }
+
+    [[nodiscard]] static inline TablePtr tryAllocateExplicitHugePages(bool& outHugePagesBacked) {
+        constexpr std::size_t HugePageBytes = 2u * 1024u * 1024u;
+        const std::size_t mapBytes = alignUp(sizeof(TableStorage), HugePageBytes);
+        int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
+#if defined(MAP_HUGE_2MB)
+        flags |= MAP_HUGE_2MB;
+#endif
+        void* mapped = ::mmap(nullptr, mapBytes, PROT_READ | PROT_WRITE, flags, -1, 0);
+        if (mapped == MAP_FAILED) {
+            return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+        }
+
+        outHugePagesBacked = true;
+        return makeMappedTable(mapped, mapBytes);
+    }
+
+    [[nodiscard]] static inline TablePtr tryAllocateTransparentHugePages(bool& outHugePagesBacked) {
+        const std::size_t mapBytes = sizeof(TableStorage);
+        void* mapped = ::mmap(nullptr, mapBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (mapped == MAP_FAILED) {
+            return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+        }
+
+#if defined(MADV_HUGEPAGE)
+        if (::madvise(mapped, mapBytes, MADV_HUGEPAGE) == 0) {
+            outHugePagesBacked = true;
+            return makeMappedTable(mapped, mapBytes);
+        }
+#endif
+
+        (void)::munmap(mapped, mapBytes);
+        return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+    }
+#endif
+
+    [[nodiscard]] static inline TablePtr allocateTable(HugePageMode mode, bool& outHugePagesBacked) {
+        outHugePagesBacked = false;
+
+        const bool hugePageAllowed = (mode != HugePageMode::Off) && (TABLE_BYTES >= HUGE_PAGE_MIN_BYTES);
+        if (hugePageAllowed) {
+#if defined(__linux__)
+            TablePtr explicitHuge = tryAllocateExplicitHugePages(outHugePagesBacked);
+            if (explicitHuge) return explicitHuge;
+
+            TablePtr transparentHuge = tryAllocateTransparentHugePages(outHugePagesBacked);
+            if (transparentHuge) return transparentHuge;
+#endif
+        }
+
+        return allocateHeapTable();
+    }
 
     [[nodiscard]] static inline uint8_t clampDepth(uint8_t depth) noexcept {
         return (depth <= Entry::MAX_DEPTH) ? depth : Entry::MAX_DEPTH;
