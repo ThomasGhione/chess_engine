@@ -2,17 +2,18 @@
 #define ENGINE_MOVELIST_HPP
 
 #include "engine.hpp"
+#include <cstdint>
 #include <utility>  // for std::forward
 #include <concepts>
 #include <algorithm> // for std::partial_sort
 #include <new>
 #include <type_traits>
 
-// Concept: T must expose a .score member of type int64_t
+// Concept: T must expose a .score member convertible to int32_t
 template<typename T>
 concept HasScore = requires(T a, T b) {
-    { a.score } -> std::convertible_to<int64_t>;
-    { b.score } -> std::convertible_to<int64_t>;
+    { a.score } -> std::convertible_to<int32_t>;
+    { b.score } -> std::convertible_to<int32_t>;
 };
 
 inline constexpr size_t MAX_MOVES = 218;

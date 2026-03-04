@@ -40,6 +40,13 @@ public:
     // Structs and enums
     struct ScoredMove {
         chess::Board::Move move;
+        // Move-ordering scores are bounded and fit in 32-bit.
+        // Keeping this narrow reduces per-node memory traffic.
+        int32_t score;
+    };
+
+    struct SearchMoveResult {
+        chess::Board::Move move;
         int64_t score;
     };
 
@@ -125,7 +132,9 @@ public:
 
     // Legal move generation (bitboard-based)
     static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
-    MoveList<ScoredMove> sortLegalMoves(const MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
+    // Sort legal moves in-place by ordering score.
+    // Returns true if a legal TT hash move was found and placed first.
+    bool sortLegalMoves(MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
     chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
     chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
@@ -290,14 +299,14 @@ private:
     int64_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
                                 int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept;
     bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
-    ScoredMove searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                          bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
-                          bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
+    SearchMoveResult searchMoves(chess::Board& b, const MoveList<chess::Board::Move>& orderedMoves,
+                                 bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
+                                 bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
     
     // Move scoring helpers
     static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
     int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
-    static inline int64_t scoreMoveOrderingPriorityInline(
+    static inline int32_t scoreMoveOrderingPriorityInline(
         chess::Board& b,
         const chess::Board::Move& m,
         uint8_t fromPieceType,

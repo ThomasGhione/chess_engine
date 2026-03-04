@@ -1,5 +1,6 @@
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
+#include <limits>
 
 namespace engine {
 
@@ -62,7 +63,17 @@ static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
     return false;
 }
 
-inline int64_t Engine::scoreMoveOrderingPriorityInline(
+static inline int32_t clampOrderingScore(int64_t score) noexcept {
+    if (score > std::numeric_limits<int32_t>::max()) {
+        return std::numeric_limits<int32_t>::max();
+    }
+    if (score < std::numeric_limits<int32_t>::min()) {
+        return std::numeric_limits<int32_t>::min();
+    }
+    return static_cast<int32_t>(score);
+}
+
+inline int32_t Engine::scoreMoveOrderingPriorityInline(
     chess::Board& b,
     const chess::Board::Move& m,
     uint8_t fromPieceType,
@@ -114,7 +125,7 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
         // Simpler single-tier approach: all bad captures get -10000 + SEE
         // Total: -10000 to -10001+ (worse SEE = lower priority)
         if (see < 0) {
-            return -10000 + see;            
+            return clampOrderingScore(-10000 + see);
         }
 
         // GOOD CAPTURES: priority based on SEE + capture history
@@ -126,7 +137,7 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
         const int64_t capHist = capHistPrimary + (capHistSecondary >> 1);
         score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
         // Total: 10000-19500
-        return score;
+        return clampOrderingScore(score);
     }
 
     // NON-CAPTURES: killer, checks, history
@@ -220,7 +231,7 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
     }
 
     if (fromPieceType != chess::Board::PAWN) {
-        return score;
+        return clampOrderingScore(score);
     }
 
     // In endgames prioritize pawn pushes slightly, especially advanced ones.
@@ -236,7 +247,7 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
                 score += 20 + advancement * 12;
             }
         }
-        return score;
+        return clampOrderingScore(score);
     }
 
     // Discourage moving the same pawn twice in the opening: small negative ordering penalty
@@ -249,7 +260,7 @@ inline int64_t Engine::scoreMoveOrderingPriorityInline(
         }
     }
 
-    return score;
+    return clampOrderingScore(score);
 }
 
 uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept {
@@ -365,15 +376,17 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     return gain[0];
 }
 
-MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
-    const MoveList<chess::Board::Move>& moves,
+bool Engine::sortLegalMoves(
+    MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
     bool usIsWhite,
     uint64_t hashKey,
     const chess::Board::Move* previousMove) noexcept
 {
-    MoveList<ScoredMove> orderedScoredMoves;
+    if (moves.is_empty()) [[unlikely]] return false;
+
+    int32_t moveScores[MAX_MOVES] {};
 
     // Precompute expensive variables outside the loop
     const bool inCheck = b.inCheck(b.getActiveColor());
@@ -407,8 +420,9 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         hashMoveIsLegal = containsMoveWithPromotion(moves, hashFrom, hashTo, hashPromo);
     }
 
-    int moveIndex = 0; // Track move count for lazy check detection
-    for (const auto& m : moves) {
+    // Score all moves once, then reorder moves in-place.
+    for (int moveIndex = 0; moveIndex < moves.size; ++moveIndex) {
+        const auto& m = moves[moveIndex];
         const uint8_t fromPiece = b.get(m.from);
         const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
 
@@ -424,7 +438,7 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
         const int64_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
         
-        int64_t score = scoreMoveOrderingPriorityInline(
+        int32_t score = scoreMoveOrderingPriorityInline(
             b, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate, moveIndex,
             hashMoveIsLegal, hashFrom, hashTo, hashPromo, ply, previousMove, usSide, oppKingSq, occ,
             usIsWhite, isEndgameOrdering, fullMoveClock, history, killerMoves, counterMoves,
@@ -446,13 +460,28 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
             }
         }
 
-        orderedScoredMoves.emplace_back(m, score);
-        ++moveIndex; // Increment for lazy check detection threshold
+        moveScores[moveIndex] = score;
     }
 
-    orderedScoredMoves.sort();
+    // Insertion-sort scores and moves together (descending score).
+    // MAX_MOVES is small, and the list is often partially ordered.
+    for (int i = 1; i < moves.size; ++i) {
+        const chess::Board::Move keyMove = moves[static_cast<size_t>(i)];
+        const int32_t keyScore = moveScores[i];
+        int j = i - 1;
+        while (j >= 0 && moveScores[j] < keyScore) {
+            moveScores[j + 1] = moveScores[j];
+            moves[static_cast<size_t>(j + 1)] = moves[static_cast<size_t>(j)];
+            --j;
+        }
+        moveScores[j + 1] = keyScore;
+        moves[static_cast<size_t>(j + 1)] = keyMove;
+    }
 
-    return orderedScoredMoves;
+    return hashMoveIsLegal
+        && !moves.is_empty()
+        && sameFromTo(moves[0], hashFrom, hashTo)
+        && moves[0].promotionPiece == hashPromo;
 }
 
 } // namespace engine

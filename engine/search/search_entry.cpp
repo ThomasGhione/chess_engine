@@ -40,16 +40,12 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
-    MoveList<chess::Board::Move> orderedRootMoves;
-
+    MoveList<chess::Board::Move> orderedRootMoves = moves;
     {
         const uint64_t rootHash = rootBoard.getHash();
-        MoveList<ScoredMove> scoredRootMoves = this->sortLegalMoves(moves, 0, rootBoard, usIsWhite, rootHash, nullptr);
-        for (const auto& scoredMove : scoredRootMoves) {
-            orderedRootMoves.push_back(scoredMove.move);
-        }
+        (void)this->sortLegalMoves(orderedRootMoves, 0, rootBoard, usIsWhite, rootHash, nullptr);
     }
-    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.is_empty() ? moves : orderedRootMoves;
+    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves;
 
     // Parallel YBWC is enabled only when:
     // - enough moves (>= 10) to amortize threading overhead

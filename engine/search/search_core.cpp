@@ -32,11 +32,11 @@ bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, 
 }
 
 // Helper to search through all moves and find best move with its score
-Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMove>& orderedScoredMoves,
-                                       bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
-                                       bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept {
+Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<chess::Board::Move>& orderedMoves,
+                                             bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
+                                             bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept {
     int64_t best = Engine::initialBest(usIsWhite);
-    chess::Board::Move bestMove = orderedScoredMoves[0].move;
+    chess::Board::Move bestMove = orderedMoves[0];
     bool searchedAnyMove = false;
 
     // =========================================================================
@@ -81,13 +81,11 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     int moveIndex = 0;
-    for (const auto& scoredMove : orderedScoredMoves) {
+    for (const auto& m : orderedMoves) {
         if (this->shouldAbortSearch()) {
             this->searchInterrupted.store(true, std::memory_order_relaxed);
             break;
         }
-
-        const auto& m = scoredMove.move;
         const bool isFirstMove = (moveIndex == 0);
         
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
@@ -248,10 +246,10 @@ Engine::ScoredMove Engine::searchMoves(chess::Board& b, const MoveList<ScoredMov
     }
 
     if (!searchedAnyMove && this->searchInterrupted.load(std::memory_order_relaxed)) {
-        return ScoredMove{bestMove, ctx.staticEval};
+        return SearchMoveResult{bestMove, ctx.staticEval};
     }
 
-    return ScoredMove{bestMove, best};
+    return SearchMoveResult{bestMove, best};
 }
 
 int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply,
@@ -488,15 +486,14 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     // Build search context (previousMove = move played by parent to reach this node)
     SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, previousMove, staticEval, inCheck, isPVNode, counter};
 
-    MoveList<ScoredMove> orderedScoredMoves = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
+    const bool hasHashMove = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
 
     // =========================================================================
     // IIR - Internal Iterative Reduction
     // =========================================================================
-    // If there's no hash move from TT (the first move score < 100000, which is hash move bonus),
+    // If there's no hash move from TT,
     // reduce depth by 1. Without a hash move, PVS is much less efficient and we'd waste
     // time searching with poor move ordering. IIR compensates by searching shallower.
-    const bool hasHashMove = (!orderedScoredMoves.is_empty() && orderedScoredMoves[0].score >= 100000);
     int64_t effectiveDepth = depth;
     if (!hasHashMove && depth >= 6 && ply > 0) {
         effectiveDepth -= 1;
@@ -506,7 +503,7 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
     const int64_t alphaOrig = bounds.alpha;
     const int64_t betaOrig = bounds.beta;
 
-    ScoredMove result = this->searchMoves(b, orderedScoredMoves, usIsWhite, ctx, bounds, useTT, allowHeuristicUpdates, allowTTWrite);
+    SearchMoveResult result = this->searchMoves(b, moves, usIsWhite, ctx, bounds, useTT, allowHeuristicUpdates, allowTTWrite);
     int64_t best = result.score;
 
     if (this->searchInterrupted.load(std::memory_order_relaxed)) {

@@ -1,7 +1,18 @@
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
+#include <limits>
 
 namespace engine {
+
+static inline int32_t clampQMoveScore(int64_t score) noexcept {
+    if (score > std::numeric_limits<int32_t>::max()) {
+        return std::numeric_limits<int32_t>::max();
+    }
+    if (score < std::numeric_limits<int32_t>::min()) {
+        return std::numeric_limits<int32_t>::min();
+    }
+    return static_cast<int32_t>(score);
+}
 
 static inline bool isForcingEvasion(const chess::Board& b,
                                     const chess::Board::Move& m,
@@ -215,8 +226,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         return standPat;
     }
 
-    // Sort tactical moves by MVV-LVA and SEE
-    MoveList<ScoredMove> orderedMoves;
+    // Sort tactical moves by MVV-LVA and SEE using compact parallel score storage.
+    int32_t tacticalScores[MAX_MOVES] {};
+    int filteredCount = 0;
     
     // Dynamic SEE pruning threshold based on depth and material balance
     // The engine should NOT speculate with losing captures hoping for positional comp
@@ -225,7 +237,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
     const int64_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
-    for (const auto& m : tacticalMoves) {
+    for (int i = 0; i < tacticalMoves.size; ++i) {
+        const chess::Board::Move m = tacticalMoves[static_cast<size_t>(i)];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
@@ -237,7 +250,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
         
-        int64_t score = 0;
+        int32_t score = 0;
         
         if (isCapture) {
             // TODO test this better!!
@@ -274,8 +287,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             
             // Score by MVV + SEE for better ordering
             // SEE-based ordering: captures with better SEE explored first
-            score = 10000 + see; // Base + SEE value (can be negative for losing captures)
-            score += MVV_TABLE[victimType];
+            score = clampQMoveScore(10000 + see + MVV_TABLE[victimType]);
             // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
@@ -285,16 +297,32 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
                 continue;
             }
         }
-        
-        orderedMoves.emplace_back(m, score);
+
+        tacticalMoves[static_cast<size_t>(filteredCount)] = m;
+        tacticalScores[filteredCount] = score;
+        ++filteredCount;
     }
-    
+
+    tacticalMoves.size = filteredCount;
+
     // If all captures were pruned, return stand-pat
-    if (orderedMoves.is_empty()) {
+    if (tacticalMoves.is_empty()) {
         return standPat;
     }
-    
-    orderedMoves.sort();
+
+    // Insertion-sort tactical moves + scores together (descending).
+    for (int i = 1; i < tacticalMoves.size; ++i) {
+        const chess::Board::Move keyMove = tacticalMoves[static_cast<size_t>(i)];
+        const int32_t keyScore = tacticalScores[i];
+        int j = i - 1;
+        while (j >= 0 && tacticalScores[j] < keyScore) {
+            tacticalScores[j + 1] = tacticalScores[j];
+            tacticalMoves[static_cast<size_t>(j + 1)] = tacticalMoves[static_cast<size_t>(j)];
+            --j;
+        }
+        tacticalScores[j + 1] = keyScore;
+        tacticalMoves[static_cast<size_t>(j + 1)] = keyMove;
+    }
 
     // Save original bounds for TT flag determination
     const int64_t alphaOrig = alpha;
@@ -302,13 +330,11 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
     int64_t best = standPat;
     
-    for (const auto& scoredMove : orderedMoves) {
+    for (const auto& m : tacticalMoves) {
         if (this->shouldAbortSearch()) {
             this->searchInterrupted.store(true, std::memory_order_relaxed);
             return this->evaluate(b);
         }
-
-        const auto& m = scoredMove.move;
         chess::Board::MoveState state;
         
         doMoveWithPromotion(b, m, state);
