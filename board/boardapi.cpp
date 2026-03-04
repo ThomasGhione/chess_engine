@@ -160,7 +160,6 @@ __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
     prepareNullMoveState(st);
     lastMoveChangeFlags = MOVE_CHANGE_NONE;
-    invalidateEvalCacheTerms(EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS);
     uint64_t newHash = currentHash;
     if (st.prevEpHashFile < 8) {
         newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];

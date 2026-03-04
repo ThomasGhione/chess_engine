@@ -90,8 +90,6 @@ private:
     static constexpr int manhattan(int a, int b) noexcept;
     static constexpr uint64_t adjacentFilesMask(int file) noexcept;
 
-    static void addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept;
-
     template<bool IsEndgame>
     static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept;
 

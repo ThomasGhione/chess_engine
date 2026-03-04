@@ -1,7 +1,7 @@
 #include "evaluator.hpp"
-#include "../piecevaluetables.hpp"
 #include <algorithm>
 #include <cstring>
+#include <iostream>
 
 namespace engine {
 
@@ -11,11 +11,11 @@ void Evaluator::traceTerm(int64_t& eval, int64_t delta, const char* label) noexc
 }
 
 int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
-    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(board.getActiveColor())) [[unlikely]] {
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return evaluateCheckmate(board);
     }
 
-    int64_t eval = getMaterialDelta(board);
+    int64_t eval = board.getIncrementalMaterialDelta();
     int64_t prev = eval;
     std::cout << "  [TRACE] material: " << eval << std::endl;
 
@@ -40,12 +40,7 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     const char* phase = isEndgame ? "ENDGAME" : isOpening ? "OPENING" : isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
     std::cout << "  [TRACE] phase: " << phase << " (nonPawnMajors=" << nonPawnMajors << ", fullMoves=" << fullMoves << ")" << std::endl;
 
-    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? engine::PAWN_END_GAME_VALUES_TABLE : engine::PAWN_VALUES_TABLE).data(), eval);
-    addPsqt(board.knights_bb[0], board.knights_bb[1], engine::KNIGHT_VALUES_TABLE.data(), eval);
-    addPsqt(board.bishops_bb[0], board.bishops_bb[1], engine::BISHOP_VALUES_TABLE.data(), eval);
-    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   engine::ROOK_VALUES_TABLE.data(), eval);
-    addPsqt(board.queens_bb[0],  board.queens_bb[1],  engine::QUEEN_VALUES_TABLE.data(), eval);
-    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+    eval += board.getIncrementalPsqtDelta(isEndgame);
     std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
     if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;

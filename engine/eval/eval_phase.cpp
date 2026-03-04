@@ -1,5 +1,4 @@
 #include "evaluator.hpp"
-#include "../piecevaluetables.hpp"
 
 namespace engine {
 
@@ -82,11 +81,11 @@ int64_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
 
 int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
-    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0 || board.isCheckmate(activeColor)) [[unlikely]] {
+    if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
     }
 
-    int64_t eval = getMaterialDeltaCached(board);
+    int64_t eval = board.getIncrementalMaterialDelta();
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
@@ -106,12 +105,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
     const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
 
-    addPsqt(board.pawns_bb[0], board.pawns_bb[1], (isEndgame ? PAWN_END_GAME_VALUES_TABLE : PAWN_VALUES_TABLE).data(), eval);
-    addPsqt(board.knights_bb[0], board.knights_bb[1], engine::KNIGHT_VALUES_TABLE.data(), eval);
-    addPsqt(board.bishops_bb[0], board.bishops_bb[1], engine::BISHOP_VALUES_TABLE.data(), eval);
-    addPsqt(board.rooks_bb[0],   board.rooks_bb[1],   engine::ROOK_VALUES_TABLE.data(), eval);
-    addPsqt(board.queens_bb[0],  board.queens_bb[1],  engine::QUEEN_VALUES_TABLE.data(), eval);
-    addPsqt(board.kings_bb[0],   board.kings_bb[1],   (isEndgame ? engine::KING_END_GAME_VALUES_TABLE : engine::KING_MIDDLE_GAME_VALUES_TABLE).data(), eval);
+    eval += board.getIncrementalPsqtDelta(isEndgame);
 
     eval += evalBishopPairBonusCached(board);
 

@@ -44,12 +44,6 @@ inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noe
     uint32_t mask = 0;
     const bool captureOrPromotion = (moveFlags & (MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION)) != 0;
     const bool pawnRelated = ((moveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
-    const bool anyPieceMove = (moveFlags & (MOVE_CHANGE_PAWN_MOVE
-                                          | MOVE_CHANGE_KNIGHT_MOVE
-                                          | MOVE_CHANGE_BISHOP_MOVE
-                                          | MOVE_CHANGE_ROOK_MOVE
-                                          | MOVE_CHANGE_QUEEN_MOVE
-                                          | MOVE_CHANGE_KING_MOVE)) != 0;
 
     if (captureOrPromotion) {
         mask |= EVAL_CACHE_MATERIAL_DELTA;
@@ -72,15 +66,6 @@ inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noe
         || ((moveFlags & MOVE_CHANGE_CASTLING) != 0)
         || ((moveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
         mask |= EVAL_CACHE_CASTLING_BONUS;
-    }
-
-    // Safety-first: this term depends on:
-    // - pawn and bishop maps
-    // - *any* own-piece blocker in front of central pawns (d/e)
-    // - fullMoveClock opening thresholds
-    // Therefore it must be invalidated on every real move.
-    if (anyPieceMove || captureOrPromotion) {
-        mask |= EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS;
     }
 
     if (((moveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {

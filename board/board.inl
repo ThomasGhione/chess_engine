@@ -1,6 +1,9 @@
 // ==============================
 // Compile-Time Basic Utilities
 // ==============================
+template<uint32_t>
+inline constexpr bool kInvalidEvalCacheTerm = false;
+
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
 inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept { return color >> 3; }
@@ -104,8 +107,23 @@ inline Coords Board::getEnPassant() const noexcept { return enPassant; }
 
 inline constexpr uint32_t Board::getLastMoveChangeFlags() const noexcept { return lastMoveChangeFlags; }
 
+inline constexpr int64_t Board::getIncrementalMaterialDelta() const noexcept {
+    return incrementalMaterialDelta;
+}
+
+inline int64_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
+    const int64_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
+    const int64_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
+    return incrementalPsqtPieces + pawns + kings;
+}
+
 inline bool Board::hasEvalCacheTerm(uint32_t term) const noexcept {
     return (evalCache.validMask & term) == term;
+}
+
+template<uint32_t Term>
+inline bool Board::hasEvalCacheTerm() const noexcept {
+    return (evalCache.validMask & Term) == Term;
 }
 
 inline int64_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
@@ -127,6 +145,44 @@ inline int64_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
     }
 }
 
+template<uint32_t Term>
+inline int64_t& Board::evalCacheTermRef() const noexcept {
+    if constexpr (Term == EVAL_CACHE_MATERIAL_DELTA) {
+        return evalCache.materialDelta;
+    } else if constexpr (Term == EVAL_CACHE_PAWN_STRUCTURE_MG) {
+        return evalCache.pawnStructureMg;
+    } else if constexpr (Term == EVAL_CACHE_PAWN_STRUCTURE_EG) {
+        return evalCache.pawnStructureEg;
+    } else if constexpr (Term == EVAL_CACHE_BISHOP_PAIR_BONUS) {
+        return evalCache.bishopPairBonus;
+    } else if constexpr (Term == EVAL_CACHE_CASTLING_BONUS) {
+        return evalCache.castlingBonus;
+    } else if constexpr (Term == EVAL_CACHE_ROOKS) {
+        return evalCache.rooks;
+    } else if constexpr (Term == EVAL_CACHE_BAD_BISHOP) {
+        return evalCache.badBishop;
+    } else if constexpr (Term == EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS) {
+        return evalCache.blockedPawnByBishops;
+    } else if constexpr (Term == EVAL_CACHE_MINOR_DEVELOPMENT) {
+        return evalCache.minorDevelopment;
+    } else if constexpr (Term == EVAL_CACHE_EARLY_QUEEN) {
+        return evalCache.earlyQueen;
+    } else if constexpr (Term == EVAL_CACHE_OUTPOSTS) {
+        return evalCache.outposts;
+    } else if constexpr (Term == EVAL_CACHE_PIECE_COORDINATION) {
+        return evalCache.pieceCoordination;
+    } else if constexpr (Term == EVAL_CACHE_CENTRAL_CONTROL) {
+        return evalCache.centralControl;
+    } else {
+        static_assert(kInvalidEvalCacheTerm<Term>, "Unsupported eval cache term");
+    }
+}
+
+template<uint32_t Term>
+inline int64_t Board::getEvalCacheTerm() const noexcept {
+    return evalCacheTermRef<Term>();
+}
+
 inline void Board::setEvalCacheTerm(uint32_t term, int64_t value) const noexcept {
     switch (term) {
         case EVAL_CACHE_MATERIAL_DELTA:           evalCache.materialDelta = value; break;
@@ -136,7 +192,7 @@ inline void Board::setEvalCacheTerm(uint32_t term, int64_t value) const noexcept
         case EVAL_CACHE_CASTLING_BONUS:           evalCache.castlingBonus = value; break;
         case EVAL_CACHE_ROOKS:                    evalCache.rooks = value; break;
         case EVAL_CACHE_BAD_BISHOP:               evalCache.badBishop = value; break;
-        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS: evalCache.blockedPawnByBishops = value; break;
+        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS:  evalCache.blockedPawnByBishops = value; break;
         case EVAL_CACHE_MINOR_DEVELOPMENT:        evalCache.minorDevelopment = value; break;
         case EVAL_CACHE_EARLY_QUEEN:              evalCache.earlyQueen = value; break;
         case EVAL_CACHE_OUTPOSTS:                 evalCache.outposts = value; break;
@@ -145,6 +201,12 @@ inline void Board::setEvalCacheTerm(uint32_t term, int64_t value) const noexcept
         default:                                  return;
     }
     evalCache.validMask |= term;
+}
+
+template<uint32_t Term>
+inline void Board::setEvalCacheTerm(int64_t value) const noexcept {
+    evalCacheTermRef<Term>() = value;
+    evalCache.validMask |= Term;
 }
 
 inline void Board::invalidateEvalCacheTerms(uint32_t terms) noexcept {
@@ -247,6 +309,12 @@ inline void Board::updateOccupancyBB() noexcept {
     rooks_bb[0]     = rooks_bb[1]     = 0ULL;
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
+    incrementalMaterialDelta = 0;
+    incrementalPsqtPawnsMg = 0;
+    incrementalPsqtPawnsEg = 0;
+    incrementalPsqtPieces = 0;
+    incrementalPsqtKingsMg = 0;
+    incrementalPsqtKingsEg = 0;
 
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
@@ -259,7 +327,7 @@ inline void Board::updateOccupancyBB() noexcept {
         const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
 
         occupancy |= bit;
-        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
+        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
     }
 }
 
@@ -343,7 +411,7 @@ inline bool Board::isKingSafeAfterEnPassant(
 }
 
 template<uint8_t PieceType, bool Add>
-inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
+inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index) noexcept {
     if constexpr (PieceType == PAWN) {
         if constexpr (Add) pawns_bb[color] |= bit;
         else pawns_bb[color] &= ~bit;
@@ -363,17 +431,44 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
         if constexpr (Add) kings_bb[color] |= bit;
         else kings_bb[color] &= ~bit;
     }
+
+    updateIncrementalEvalForPiece<PieceType, Add>(color, index);
+}
+
+template<uint8_t PieceType, bool Add>
+inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept {
+    const int64_t sideSign = (color == 0) ? 1 : -1;
+    const int64_t signedDelta = Add ? sideSign : -sideSign;
+    const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
+
+    incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
+
+    if constexpr (PieceType == PAWN) {
+        incrementalPsqtPawnsMg += signedDelta * engine::PAWN_VALUES_TABLE[psqtIndex];
+        incrementalPsqtPawnsEg += signedDelta * engine::PAWN_END_GAME_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == KNIGHT) {
+        incrementalPsqtPieces += signedDelta * engine::KNIGHT_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == BISHOP) {
+        incrementalPsqtPieces += signedDelta * engine::BISHOP_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == ROOK) {
+        incrementalPsqtPieces += signedDelta * engine::ROOK_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == QUEEN) {
+        incrementalPsqtPieces += signedDelta * engine::QUEEN_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == KING) {
+        incrementalPsqtKingsMg += signedDelta * engine::KING_MIDDLE_GAME_VALUES_TABLE[psqtIndex];
+        incrementalPsqtKingsEg += signedDelta * engine::KING_END_GAME_VALUES_TABLE[psqtIndex];
+    }
 }
 
 template<bool Add>
-inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept {
+inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept {
     switch (pieceType) {
-        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit); break;
-        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit); break;
-        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit); break;
-        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit); break;
-        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit); break;
-        case KING:   updatePieceTypeBB<KING, Add>(color, bit); break;
+        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit, index); break;
+        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit, index); break;
+        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit, index); break;
+        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit, index); break;
+        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit, index); break;
+        case KING:   updatePieceTypeBB<KING, Add>(color, bit, index); break;
         default: break;
     }
 }
@@ -383,7 +478,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
     const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
+    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 
 __attribute__((always_inline))
@@ -391,7 +486,7 @@ inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
     const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit);
+    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 
 // ==============================

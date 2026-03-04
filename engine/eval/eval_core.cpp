@@ -1,5 +1,4 @@
 #include "evaluator.hpp"
-#include "../piecevaluetables.hpp"
 
 namespace engine {
 
@@ -22,143 +21,125 @@ int64_t Evaluator::getMaterialDelta(const chess::Board& b) noexcept {
 }
 
 int64_t Evaluator::getMaterialDeltaCached(const chess::Board& b) noexcept {
-    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_MATERIAL_DELTA;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
-    }
-    const int64_t score = getMaterialDelta(b);
-    b.setEvalCacheTerm(TERM, score);
-    return score;
+    return b.getIncrementalMaterialDelta();
 }
 
 int64_t Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
-    const uint32_t term = isEndgame
-        ? static_cast<uint32_t>(chess::Board::EVAL_CACHE_PAWN_STRUCTURE_EG)
-        : static_cast<uint32_t>(chess::Board::EVAL_CACHE_PAWN_STRUCTURE_MG);
-    if (b.hasEvalCacheTerm(term)) {
-        return b.getEvalCacheTerm(term);
+    if (isEndgame) {
+        constexpr uint32_t TERM = chess::Board::EVAL_CACHE_PAWN_STRUCTURE_EG;
+        if (b.hasEvalCacheTerm<TERM>()) {
+            return b.getEvalCacheTerm<TERM>();
+        }
+        const int64_t score = evalPawnStructure(whitePawns, blackPawns, true);
+        b.setEvalCacheTerm<TERM>(score);
+        return score;
     }
-    const int64_t score = evalPawnStructure(whitePawns, blackPawns, isEndgame);
-    b.setEvalCacheTerm(term, score);
+
+    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_PAWN_STRUCTURE_MG;
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
+    }
+    const int64_t score = evalPawnStructure(whitePawns, blackPawns, false);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalBishopPairBonusCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_BISHOP_PAIR_BONUS;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     int64_t score = 0;
     if ((b.bishops_bb[0] & (b.bishops_bb[0] - 1)) != 0ULL) score += engine::BISHOP_PAIR_BONUS;
     if ((b.bishops_bb[1] & (b.bishops_bb[1] - 1)) != 0ULL) score -= engine::BISHOP_PAIR_BONUS;
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalCastlingBonusCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_CASTLING_BONUS;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalCastlingBonus(b);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_ROOKS;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalRooks(b.rooks_bb[0], b.rooks_bb[1], whitePawns, blackPawns);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalBadBishopCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_BAD_BISHOP;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score =
         evalBadBishop(b.bishops_bb[0], whitePawns, 0) +
         evalBadBishop(b.bishops_bb[1], blackPawns, 1);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept {
-    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
-    }
-    const int64_t score = evalBlockedPawnByBishops(b);
-    b.setEvalCacheTerm(TERM, score);
-    return score;
+    return evalBlockedPawnByBishops(b);
 }
 
 int64_t Evaluator::evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_MINOR_DEVELOPMENT;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalMinorPieceDevelopment(b);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalEarlyQueenCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_EARLY_QUEEN;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalEarlyQueen(b);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalOutpostsCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_OUTPOSTS;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalOutposts(b);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalPieceCoordinationCached(const chess::Board& b) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_PIECE_COORDINATION;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalPieceCoordination(b);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
 }
 
 int64_t Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     constexpr uint32_t TERM = chess::Board::EVAL_CACHE_CENTRAL_CONTROL;
-    if (b.hasEvalCacheTerm(TERM)) {
-        return b.getEvalCacheTerm(TERM);
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
     }
     const int64_t score = evalCentralControl(whitePawns, blackPawns);
-    b.setEvalCacheTerm(TERM, score);
+    b.setEvalCacheTerm<TERM>(score);
     return score;
-}
-
-void Evaluator::addPsqt(uint64_t bbWhite, uint64_t bbBlack, const int64_t* table, int64_t& eval) noexcept {
-    while (bbWhite) {
-        const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbWhite));
-        bbWhite &= (bbWhite - 1);
-        eval += table[sq];
-    }
-    while (bbBlack) {
-        const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bbBlack));
-        bbBlack &= (bbBlack - 1);
-        const uint8_t idx = mirrorIndex(sq);
-        eval -= table[idx];
-    }
 }
 
 int64_t Evaluator::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {

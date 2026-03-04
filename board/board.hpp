@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cstddef>
 
+#include "../engine/bonus-malus/piece_base_values.hpp"
+#include "../engine/piecevaluetables.hpp"
 #include "./coords.hpp"
 #include "./piece.hpp" // bitmap utilities
 
@@ -272,9 +274,17 @@ public:
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
     constexpr uint32_t getLastMoveChangeFlags() const noexcept;
+    constexpr int64_t getIncrementalMaterialDelta() const noexcept;
+    int64_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     bool hasEvalCacheTerm(uint32_t term) const noexcept;
+    template<uint32_t Term>
+    bool hasEvalCacheTerm() const noexcept;
     int64_t getEvalCacheTerm(uint32_t term) const noexcept;
+    template<uint32_t Term>
+    int64_t getEvalCacheTerm() const noexcept;
     void setEvalCacheTerm(uint32_t term, int64_t value) const noexcept;
+    template<uint32_t Term>
+    void setEvalCacheTerm(int64_t value) const noexcept;
     void invalidateEvalCacheTerms(uint32_t terms) noexcept;
     void clearEvalCache() noexcept;
 
@@ -308,6 +318,16 @@ public:
 
     static constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
         '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
+    };
+    static constexpr std::array<int64_t, 8> MATERIAL_VALUES = {
+        0,
+        engine::PAWN_VALUE,
+        engine::KNIGHT_VALUE,
+        engine::BISHOP_VALUE,
+        engine::ROOK_VALUE,
+        engine::QUEEN_VALUE,
+        engine::KING_VALUE,
+        0
     };
     static constexpr uint64_t FILE_MASKS[8] = {
         0x0101010101010101ULL,  // a-file
@@ -381,9 +401,13 @@ private:
     inline void updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept;
     inline void updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint8_t toIndex) noexcept;
     template<uint8_t PieceType, bool Add>
-    inline void updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept;
+    inline void updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index) noexcept;
     template<bool Add>
-    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept;
+    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept;
+    template<uint8_t PieceType, bool Add>
+    inline void updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept;
+    template<uint32_t Term>
+    inline int64_t& evalCacheTermRef() const noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline uint32_t computeMoveChangeFlags(const MoveState& st) noexcept;
@@ -460,6 +484,12 @@ private:
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
+    int64_t incrementalMaterialDelta = 0;
+    int64_t incrementalPsqtPawnsMg = 0;
+    int64_t incrementalPsqtPawnsEg = 0;
+    int64_t incrementalPsqtPieces = 0;
+    int64_t incrementalPsqtKingsMg = 0;
+    int64_t incrementalPsqtKingsEg = 0;
     mutable EvalCache evalCache{};
     uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
     // Variables end

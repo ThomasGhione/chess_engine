@@ -1,8 +1,8 @@
 #ifndef ENGINE_PIECEVALUETABLES_HPP
 #define ENGINE_PIECEVALUETABLES_HPP
 
-#include "engine.hpp"
 #include <array>
+#include <cstdint>
 
 
 /* 
