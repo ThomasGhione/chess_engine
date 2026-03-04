@@ -255,7 +255,7 @@ void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board
 
     const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    this->tt.store(rootBoard.getHash(), static_cast<uint8_t>(depth), score, flag, encodedMove);
+    this->tt.store(rootBoard.getHash(), static_cast<uint8_t>(depth), clampToTTScore(score), flag, encodedMove);
 }
 
 Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept {

@@ -53,10 +53,13 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // position at sufficient depth, we can return immediately.
     if (useTT) {
         const uint64_t hashKey = b.getHash();
-        int64_t ttScore = 0;
+        int32_t ttScore = 0;
+        int32_t ttAlpha = 0;
+        int32_t ttBeta = 0;
+        toTTProbeBounds(alpha, beta, ttAlpha, ttBeta);
         // Probe at depth 0 (qsearch is depth <= 0)
-        if (this->tt.probe(hashKey, 0, alpha, beta, ttScore)) 
-            return ttScore;
+        if (this->tt.probe(hashKey, 0, ttAlpha, ttBeta, ttScore))
+            return static_cast<int64_t>(ttScore);
     }
 
     const uint8_t activeColor = b.getActiveColor();
@@ -327,7 +330,8 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             if (useTT) {
                 const uint64_t hashKey = b.getHash();
                 const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
-                this->tt.store(hashKey, 0, cutoffValue(alpha, beta, usIsWhite), flag);
+                this->tt.store(hashKey, 0, clampToTTScore(cutoffValue(alpha, beta, usIsWhite)),
+                               static_cast<uint8_t>(flag));
             }
             return cutoffValue(alpha, beta, usIsWhite);
         }
@@ -342,7 +346,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     if (useTT) {
         const uint64_t hashKey = b.getHash();
         const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
-        this->tt.store(hashKey, 0, best, flag);
+        this->tt.store(hashKey, 0, clampToTTScore(best), static_cast<uint8_t>(flag));
     }
 
     return best;

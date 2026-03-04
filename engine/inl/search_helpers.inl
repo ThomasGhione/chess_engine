@@ -60,4 +60,19 @@ inline bool Engine::shouldAbortSearch() const noexcept {
         || this->ponderingStopRequested.load(std::memory_order_acquire);
 }
 
+__attribute__((always_inline))
+inline int32_t Engine::clampToTTScore(int64_t value) noexcept {
+    if (value > POS_INF) return static_cast<int32_t>(POS_INF);
+    if (value < NEG_INF) return static_cast<int32_t>(NEG_INF);
+    return static_cast<int32_t>(value);
+}
+
+__attribute__((always_inline))
+inline void Engine::toTTProbeBounds(int64_t alpha, int64_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
+    const int64_t expandedAlpha = alpha - tt::TranspositionTable::ADJUSTMENT;
+    const int64_t expandedBeta = beta + tt::TranspositionTable::ADJUSTMENT;
+    ttAlpha = clampToTTScore(expandedAlpha);
+    ttBeta = clampToTTScore(expandedBeta);
+}
+
 } // namespace engine

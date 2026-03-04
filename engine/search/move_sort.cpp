@@ -399,11 +399,8 @@ MoveList<Engine::ScoredMove> Engine::sortLegalMoves(
     char hashPromo = '\0';
     bool hashMoveIsLegal = false;
     
-    // Probe TT to get hash move (don't care about score, just the move)
-    int64_t dummyScore = 0;
-    this->tt.probe(hashKey, 0, NEG_INF, POS_INF, dummyScore, encodedHashMove);
-    
-    if (encodedHashMove != 0) {
+    // Probe TT with move-only API (no alpha/beta/score overhead).
+    if (this->tt.probeMove(hashKey, encodedHashMove)) {
         tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
 
         // Validate hash move is in legal moves list (guards against TT collisions)

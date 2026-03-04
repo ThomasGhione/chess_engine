@@ -273,6 +273,10 @@ private:
     // True when a null-window search failed and needs full-window re-search.
     static inline bool shouldResearchPVS(int64_t score, int64_t alphaBound, int64_t betaBound, bool isWhite) noexcept;
 
+    // TT narrow helpers for hot paths (avoid int64 TT overload conversion overhead).
+    static inline int32_t clampToTTScore(int64_t value) noexcept;
+    static inline void toTTProbeBounds(int64_t alpha, int64_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
+
     // Fast access to piece values (inline for zero-cost abstraction)
     static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
 

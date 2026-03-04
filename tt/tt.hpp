@@ -101,6 +101,7 @@ public:
     }
 
     inline void prefetch(uint64_t key) noexcept;
+    inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
     inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
 
@@ -147,6 +148,23 @@ inline void TranspositionTable::prefetch(uint64_t key) noexcept {
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
     __builtin_prefetch(bucket, 0, 3);
+}
+
+inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
+    const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
+    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+
+    for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+        const Entry& entry = bucket[i];
+        if (entry.key != key) continue;
+        if (entry.flag() == Entry::INVALID) continue;
+
+        outBestMove = entry.bestMove;
+        return outBestMove != 0;
+    }
+
+    outBestMove = 0;
+    return false;
 }
 
 inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,

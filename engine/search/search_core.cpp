@@ -19,7 +19,16 @@ int64_t Engine::stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept {
 bool Engine::handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept {
     // Transposition table lookup (hashKey already computed by caller to avoid duplication)
     if (depth >= 2) this->tt.prefetch(hashKey);
-    return this->tt.probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, score);
+
+    int32_t ttScore = 0;
+    int32_t ttAlpha = 0;
+    int32_t ttBeta = 0;
+    toTTProbeBounds(bounds.alpha, bounds.beta, ttAlpha, ttBeta);
+    if (this->tt.probe(hashKey, static_cast<uint8_t>(depth), ttAlpha, ttBeta, ttScore)) {
+        score = static_cast<int64_t>(ttScore);
+        return true;
+    }
+    return false;
 }
 
 // Helper to search through all moves and find best move with its score
@@ -510,7 +519,8 @@ int64_t Engine::searchPosition(chess::Board& b, int64_t depth, int64_t alpha, in
         const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
             result.move.from.index, result.move.to.index, result.move.promotionPiece);
 
-        this->tt.store(hashKey, static_cast<uint8_t>(effectiveDepth), best, flag, encodedMove);
+        this->tt.store(hashKey, static_cast<uint8_t>(effectiveDepth), clampToTTScore(best),
+                       static_cast<uint8_t>(flag), encodedMove);
     }
     return best;
 }
