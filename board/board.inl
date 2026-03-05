@@ -135,7 +135,7 @@ inline int64_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
         case EVAL_CACHE_CASTLING_BONUS:           return evalCache.castlingBonus;
         case EVAL_CACHE_ROOKS:                    return evalCache.rooks;
         case EVAL_CACHE_BAD_BISHOP:               return evalCache.badBishop;
-        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS: return evalCache.blockedPawnByBishops;
+        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS:  return evalCache.blockedPawnByBishops;
         case EVAL_CACHE_MINOR_DEVELOPMENT:        return evalCache.minorDevelopment;
         case EVAL_CACHE_EARLY_QUEEN:              return evalCache.earlyQueen;
         case EVAL_CACHE_OUTPOSTS:                 return evalCache.outposts;

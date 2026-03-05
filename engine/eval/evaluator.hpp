@@ -47,6 +47,14 @@ private:
         int16_t rookMobility = 0;
         int16_t queenMobility = 0;
     };
+    
+    struct PhaseInfo {
+        int fullMoves = 0;
+        int nonPawnMajors = 0;
+        bool isEndgame = false;
+        bool isOpening = false;
+        bool isEarlyMiddlegame = false;
+    };
     // Structures end
 
     // Variables
@@ -78,6 +86,9 @@ private:
     static const std::array<uint64_t, 8> ADJACENT_FILES_ONLY;
     static const std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS;
     static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
+    static inline constexpr int OPENING_MOVES = 8;
+    static inline constexpr int EARLY_MG_MOVES = 15;
+    static inline constexpr int PIECE_ENDGAME_THRESHOLD = 5;
 
     // Keep mate scores TT-compatible (TT stores int32 scores).
     static inline constexpr int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
@@ -99,6 +110,7 @@ private:
     __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
     static int64_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
 
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;

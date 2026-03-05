@@ -112,22 +112,9 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
     const uint64_t blackPawns = board.pawns_bb[1];
-    const int fullMoves = board.getFullMoveClock();
+    const PhaseInfo phase = classifyPhase(board);
 
-    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
-                                             board.bishops_bb[0] | board.bishops_bb[1] |
-                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
-                                             board.queens_bb[0]  | board.queens_bb[1]);
-
-    constexpr int OPENING_MOVES = 8;
-    constexpr int EARLY_MG_MOVES = 15;
-    constexpr int PIECE_ENDGAME_THRESHOLD = 5;
-
-    const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
-    const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
-
-    eval += board.getIncrementalPsqtDelta(isEndgame);
+    eval += board.getIncrementalPsqtDelta(phase.isEndgame);
 
     eval += evalBishopPairBonusCached(board);
 
@@ -135,11 +122,11 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     computeAttackData(attackData, board, occ);
 
     int64_t result = eval;
-    if (isOpening) {
+    if (phase.isOpening) {
         result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
-    } else if (isEarlyMiddlegame) {
+    } else if (phase.isEarlyMiddlegame) {
         result = evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
-    } else if (!isEndgame) {
+    } else if (!phase.isEndgame) {
         result = evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
     } else {
         result = evaluateEndgamePhase(board, eval, whitePawns, blackPawns, occ, attackData);

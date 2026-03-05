@@ -27,13 +27,9 @@ Engine::Engine()
 }
 
 Engine::Engine(const std::string& fen)
-    : board(chess::Board(fen))
-    , isPlayerWhite(true)
-    , depth(DEFAULTDEPTH)
-    , MAX_THREADS(omp_get_max_threads())
+    : Engine()
 {
-    ensureMagicTablesInitialized();
-    this->tt.clear();
+    board = chess::Board(fen);
 }
 
 Engine::~Engine() noexcept {
@@ -95,23 +91,18 @@ __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     this->stopPondering();
 
-    bool result;
-    if (promotionPiece == '\0') {
-        result = this->board.move(from, to);
-    } else {
-        result = this->board.move(from, to, promotionPiece);
-    }
+    const bool result = (promotionPiece == '\0')
+        ? this->board.move(from, to)
+        : this->board.move(from, to, promotionPiece);
     
     if (result) [[likely]] {
         moveHistory.reserve(moveHistory.size() + 6); // "e2e4\n" = 5 chars max
         moveHistory += from.toString();
         moveHistory += to.toString();
-        if (promotionPiece == '\0') {
-            moveHistory += '\n';
-        } else {
+        if (promotionPiece != '\0') {
             moveHistory += promotionPiece;
-            moveHistory += '\n';
         }
+        moveHistory += '\n';
     }
 
     this->updateGameResult();

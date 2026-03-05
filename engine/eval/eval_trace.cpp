@@ -22,25 +22,13 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
     const uint64_t blackPawns = board.pawns_bb[1];
-    const int fullMoves = board.getFullMoveClock();
+    const PhaseInfo phase = classifyPhase(board);
+    const bool isMiddlegame = !phase.isEndgame && !phase.isOpening && !phase.isEarlyMiddlegame;
+    const char* phaseLabel = phase.isEndgame ? "ENDGAME" : phase.isOpening ? "OPENING" : phase.isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
+    std::cout << "  [TRACE] phase: " << phaseLabel << " (nonPawnMajors=" << phase.nonPawnMajors
+              << ", fullMoves=" << phase.fullMoves << ")" << std::endl;
 
-    // Game phase detection (must match evaluate()!)
-    const int nonPawnMajors = __builtin_popcountll(board.knights_bb[0] | board.knights_bb[1] |
-                                             board.bishops_bb[0] | board.bishops_bb[1] |
-                                             board.rooks_bb[0]   | board.rooks_bb[1]   |
-                                             board.queens_bb[0]  | board.queens_bb[1]);
-    constexpr int OPENING_MOVES = 8;
-    constexpr int EARLY_MG_MOVES = 15;
-    constexpr int PIECE_ENDGAME_THRESHOLD = 5;
-    const bool isEndgame = (nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    const bool isOpening = !isEndgame && (fullMoves < OPENING_MOVES);
-    const bool isEarlyMiddlegame = !isEndgame && !isOpening && (fullMoves < EARLY_MG_MOVES);
-    const bool isMiddlegame = !isEndgame && !isOpening && !isEarlyMiddlegame;
-
-    const char* phase = isEndgame ? "ENDGAME" : isOpening ? "OPENING" : isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
-    std::cout << "  [TRACE] phase: " << phase << " (nonPawnMajors=" << nonPawnMajors << ", fullMoves=" << fullMoves << ")" << std::endl;
-
-    eval += board.getIncrementalPsqtDelta(isEndgame);
+    eval += board.getIncrementalPsqtDelta(phase.isEndgame);
     std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
 
     if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
@@ -51,7 +39,7 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     ensureAttackData(attackData, board, occ);
 
     // Evaluate using the SAME phase-specific terms as evaluate()
-    if (isOpening) {
+    if (phase.isOpening) {
         traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
         traceTerm(eval, evalEarlyQueen(board), "earlyQueen");
         traceTerm(eval, evalCastlingBonus(board), "castling");
@@ -66,7 +54,7 @@ int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
                   "kingSafetyOpening");
         traceTerm(eval, evalInitiative(board, false), "initiative");
         traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
-    } else if (isEarlyMiddlegame) {
+    } else if (phase.isEarlyMiddlegame) {
         traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
         traceTerm(eval, evalCastlingBonus(board), "castling");
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
