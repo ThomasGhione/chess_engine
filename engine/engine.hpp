@@ -223,20 +223,20 @@ private:
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
 
-    // History heuristic: bonus for non-capture moves that often cause cutoffs
+    // History heuristic: bonus for non-capture moves that often cause cutoffs.
+    // int16_t is sufficient (score range is intentionally bounded) and halves footprint.
     // history[colorIndex][fromIndex][toIndex]
-    int32_t history[2][64][64] = {};
+    int16_t history[2][64][64] = {};
 
-    // Counter-move history: tracks best response to opponent's previous move
+    // Counter-move history: compact encoded move (from/to/promo in 16 bits).
     // counterMoves[prevFrom][prevTo] -> best response move
-    // Improves move ordering in tactical sequences
-    chess::Board::Move counterMoves[64][64] {};
+    uint16_t counterMoves[64][64] {};
 
     // Capture history: bonus for captures that often cause cutoffs
     // 2 slots per bucket to keep a short "recent + secondary" memory.
     // captureHistory[color][to][victimType][slot]
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
-    int32_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
+    int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
 
     static constexpr int32_t PIECE_VALUES[8] = {
         0,      // EMPTY = 0
@@ -297,7 +297,7 @@ private:
     void updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
 
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int16_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
 
     // Search helpers
@@ -332,10 +332,10 @@ private:
         bool usIsWhite,
         bool isEndgameOrdering,
         int fullMoveClock,
-        const int32_t (&history)[2][64][64],
+        const int16_t (&history)[2][64][64],
         const chess::Board::Move (&killerMoves)[2][64],
-        const chess::Board::Move (&counterMoves)[64][64],
-        const int32_t (&captureHistory)[2][64][7][2],
+        const uint16_t (&counterMoves)[64][64],
+        const int16_t (&captureHistory)[2][64][7][2],
         const int32_t (&pieceValues)[8],
         int32_t orderingPenaltySamePawnOpening) noexcept;
 

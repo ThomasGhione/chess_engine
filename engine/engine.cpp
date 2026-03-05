@@ -8,6 +8,14 @@ uint64_t Engine::ttProbes = 0;
 uint64_t Engine::ttHits = 0;
 #endif
 
+namespace {
+inline int16_t clampHeuristic16(int32_t value) noexcept {
+    constexpr int32_t MIN_I16 = -32768;
+    constexpr int32_t MAX_I16 = 32767;
+    return static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
+}
+} // namespace
+
 // Static method to ensure magic tables are initialized exactly once
 void Engine::ensureMagicTablesInitialized() noexcept {
     if (!magicTablesInitialized) {
@@ -55,7 +63,7 @@ void Engine::reset() noexcept {
     const chess::Board::Move emptyMove{};
     std::fill_n(&killerMoves[0][0], 2 * MAX_PLY, emptyMove);
     std::memset(history, 0, sizeof(history));
-    std::fill_n(&counterMoves[0][0], 64 * 64, emptyMove);
+    std::memset(counterMoves, 0, sizeof(counterMoves));
     std::memset(captureHistory, 0, sizeof(captureHistory));
     this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
     this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
@@ -146,7 +154,7 @@ void Engine::updateGameResult() noexcept {
 
 
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int16_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -168,10 +176,14 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
         constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
         auto& chPrimary = captureHistory[colorIndex][toIndex][victimType][0];
         auto& chSecondary = captureHistory[colorIndex][toIndex][victimType][1];
-        chPrimary += bonus - chPrimary * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+        int32_t primaryScore = static_cast<int32_t>(chPrimary);
+        primaryScore += bonus - primaryScore * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+        chPrimary = clampHeuristic16(primaryScore);
 
         const int32_t secondaryBonus = (bonus >> 1);
-        chSecondary += secondaryBonus - chSecondary * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
+        int32_t secondaryScore = static_cast<int32_t>(chSecondary);
+        secondaryScore += secondaryBonus - secondaryScore * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
+        chSecondary = clampHeuristic16(secondaryScore);
         if (chSecondary > chPrimary) {
             std::swap(chPrimary, chSecondary);
         }
@@ -181,7 +193,8 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
 
     // COUNTER-MOVE: Track best response to opponent's previous move (quiet moves only)
     if (previousMove != nullptr && previousMove->from.index < 64) {
-        counterMoves[previousMove->from.index][previousMove->to.index] = m;
+        counterMoves[previousMove->from.index][previousMove->to.index] =
+            tt::TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
     }
     // KILLER MOVES: Update avoiding duplicates
     auto& km1 = killerMoves[0][ply];
@@ -204,7 +217,9 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     
     constexpr int32_t MAX_HISTORY = 16384;
     auto& h = history[colorIndex][fromIndex][toIndex];
-    h += bonus - h * std::abs(bonus) / MAX_HISTORY;
+    int32_t historyScore = static_cast<int32_t>(h);
+    historyScore += bonus - historyScore * std::abs(bonus) / MAX_HISTORY;
+    h = clampHeuristic16(historyScore);
 }
 
 } // namespace engine

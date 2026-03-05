@@ -94,10 +94,10 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     bool usIsWhite,
     bool isEndgameOrdering,
     int fullMoveClock,
-    const int32_t (&history)[2][64][64],
+    const int16_t (&history)[2][64][64],
     const chess::Board::Move (&killerMoves)[2][64],
-    const chess::Board::Move (&counterMoves)[64][64],
-    const int32_t (&captureHistory)[2][64][7][2],
+    const uint16_t (&counterMoves)[64][64],
+    const int16_t (&captureHistory)[2][64][7][2],
     const int32_t (&pieceValues)[8],
     int32_t orderingPenaltySamePawnOpening) noexcept {
     // =========================================================
@@ -157,8 +157,9 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
 
     // Check for counter-move (response to opponent's previous move)
     if (previousMove != nullptr && previousMove->from.index < 64) {
-        const auto& counter = counterMoves[previousMove->from.index][previousMove->to.index];
-        if (counter.from.index < 64 && sameFromTo(m, counter)) {
+        const uint16_t counter = counterMoves[previousMove->from.index][previousMove->to.index];
+        if (counter != 0
+            && counter == tt::TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
             return 8200; // Between killer moves and checks
         }
     }

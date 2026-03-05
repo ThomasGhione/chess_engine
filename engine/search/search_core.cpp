@@ -18,6 +18,12 @@ inline int32_t saturatingSub32Core(int32_t lhs, int32_t rhs) noexcept {
     if (diff < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) return std::numeric_limits<int32_t>::min();
     return static_cast<int32_t>(diff);
 }
+
+inline int16_t clampHeuristic16Core(int32_t value) noexcept {
+    constexpr int32_t MIN_I16 = -32768;
+    constexpr int32_t MAX_I16 = 32767;
+    return static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
+}
 } // namespace
 
 int32_t Engine::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
@@ -251,8 +257,10 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
                     // were promoted.
                     constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
-                        int32_t& h = history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
-                        h += malus - h * std::abs(malus) / MAX_HISTORY;
+                        int16_t& h = history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
+                        int32_t hScore = static_cast<int32_t>(h);
+                        hScore += malus - hScore * std::abs(malus) / MAX_HISTORY;
+                        h = clampHeuristic16Core(hScore);
                     }
                 }
             }
