@@ -41,11 +41,11 @@ private:
     // Structures
     struct AttackData {
         uint64_t allAttacks = 0ULL;
-        // Mobility counters are small and bounded; int32 keeps this struct compact.
-        int32_t knightMobility = 0;
-        int32_t bishopMobility = 0;
-        int32_t rookMobility = 0;
-        int32_t queenMobility = 0;
+        // Mobility counters are tightly bounded; int16 reduces cache footprint.
+        int16_t knightMobility = 0;
+        int16_t bishopMobility = 0;
+        int16_t rookMobility = 0;
+        int16_t queenMobility = 0;
     };
     // Structures end
 
@@ -96,8 +96,10 @@ private:
     template<int Side>
     static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
 
+    __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    static int64_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
 
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
     static inline void addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
@@ -155,10 +157,14 @@ private:
     static int64_t evalPieceCoordinationCached(const chess::Board& b) noexcept;
     static int64_t evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
-    static inline int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
-    static inline int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
-    static inline int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
-    static inline int64_t evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    __attribute__((noinline))
+    static int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
+    __attribute__((noinline))
+    static int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    __attribute__((noinline))
+    static int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    __attribute__((noinline))
+    static int64_t evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     // Methods end
 };
 

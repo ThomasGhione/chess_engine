@@ -2,7 +2,7 @@
 
 namespace engine {
 
-int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int64_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
     int64_t score = 0;
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
@@ -22,6 +22,8 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
         const bool canCastleQueenside = (side == 0) ? whiteCastleQs : blackCastleQs;
         const uint64_t ownPawns = (side == 0) ? whitePawns : blackPawns;
         const uint64_t enemyPawns = (side == 0) ? blackPawns : whitePawns;
+        const uint64_t ownAttacks = data[side].allAttacks;
+        const uint64_t enemyAttacks = data[opp].allAttacks;
         const uint64_t enemyHeavyPieces = b.rooks_bb[opp] | b.queens_bb[opp];
         const uint8_t sideColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
         int64_t sideSafety = 0;
@@ -96,15 +98,14 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
             sideSafety += __builtin_popcountll(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
         }
 
-        const uint8_t enemyColor = static_cast<uint8_t>(sideColor ^ chess::Board::BLACK);
         const bool kingSideRelevant = canCastleKingside || kingFile >= 5;
         if (kingSideRelevant) {
             const uint8_t hookPawnSq = static_cast<uint8_t>((side == 0) ? 54 : 14); // g2 / g7
             const uint64_t hookPawnBit = chess::Board::bitMask(hookPawnSq);
             if (ownPawns & hookPawnBit) {
-                if (b.isSquareAttacked(hookPawnSq, enemyColor)) {
+                if (enemyAttacks & hookPawnBit) {
                     sideSafety -= engine::KING_HOOK_PAWN_ATTACKED_PENALTY;
-                    if (!b.isSquareAttacked(hookPawnSq, sideColor)) {
+                    if ((ownAttacks & hookPawnBit) == 0ULL) {
                         sideSafety -= engine::KING_HOOK_PAWN_HANGING_PENALTY;
                     }
                 }
@@ -238,6 +239,13 @@ int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, ui
     }
 
     return score;
+}
+
+int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    const uint64_t occ = b.getPiecesBitMap();
+    AttackData attackData[2];
+    computeAttackData(attackData, b, occ);
+    return evalKingSafetyWithAttackData(b, whitePawns, blackPawns, attackData);
 }
 
 int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {

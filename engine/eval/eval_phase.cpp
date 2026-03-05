@@ -2,7 +2,20 @@
 
 namespace engine {
 
-inline int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+namespace {
+
+struct EvalCacheEntry {
+    uint64_t key = std::numeric_limits<uint64_t>::max();
+    int64_t score = 0;
+    uint8_t valid = 0;
+};
+
+static constexpr size_t EVAL_CACHE_SIZE = 1u << 9; // 512 entries (~8 KiB), L1-friendly.
+static constexpr uint64_t EVAL_CACHE_MASK = static_cast<uint64_t>(EVAL_CACHE_SIZE - 1u);
+
+} // namespace
+
+int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
     eval += evalMinorPieceDevelopmentCached(b);
     eval += evalEarlyQueenCached(b);
     eval += evalCastlingBonusCached(b);
@@ -12,14 +25,14 @@ inline int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t ev
     eval += evalOutpostsCached(b);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalMobility(data);
-    eval += (evalKingSafety(b, whitePawns, blackPawns) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
+    eval += (evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += Evaluator::evalInitiative(b, false);
     eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
 
-inline int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalMinorPieceDevelopmentCached(b);
     eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
@@ -29,7 +42,7 @@ inline int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, in
     eval += evalMobility(data);
     eval += evalOutpostsCached(b);
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
-    eval += evalKingSafety(b, whitePawns, blackPawns);
+    eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
     eval += evalBlockedPawnByBishopsCached(b);
@@ -37,7 +50,7 @@ inline int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, in
     return eval;
 }
 
-inline int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
     eval += evalTrappedPieces(b, occ);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
@@ -47,7 +60,7 @@ inline int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t
     eval += evalPieceCoordinationCached(b);
     eval += evalOutpostsCached(b);
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
-    eval += evalKingSafety(b, whitePawns, blackPawns);
+    eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalKingActivity(b, false);
     eval += evalCastlingBonusCached(b);
     eval += evalKingAttackZone(b, data);
@@ -58,7 +71,7 @@ inline int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t
     return eval;
 }
 
-inline int64_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int64_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
     eval += evalKingActivity(b, true);
@@ -83,6 +96,14 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
+    }
+
+    thread_local std::array<EvalCacheEntry, EVAL_CACHE_SIZE> evalCache{};
+
+    const uint64_t evalCacheKey = board.getHash();
+    EvalCacheEntry& cacheEntry = evalCache[(evalCacheKey * 0xBF58476D1CE4E5B9ULL) & EVAL_CACHE_MASK];
+    if (cacheEntry.valid && cacheEntry.key == evalCacheKey) [[likely]] {
+        return cacheEntry.score;
     }
 
     int64_t eval = board.getIncrementalMaterialDelta();
@@ -112,19 +133,21 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     AttackData attackData[2];
     computeAttackData(attackData, board, occ);
 
+    int64_t result = eval;
     if (isOpening) {
-        return evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
+        result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
+    } else if (isEarlyMiddlegame) {
+        result = evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+    } else if (!isEndgame) {
+        result = evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+    } else {
+        result = evaluateEndgamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
     }
 
-    if (isEarlyMiddlegame) {
-        return evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
-    }
-
-    if (!isEndgame) {
-        return evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
-    }
-
-    return evaluateEndgamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+    cacheEntry.key = evalCacheKey;
+    cacheEntry.score = result;
+    cacheEntry.valid = 1;
+    return result;
 }
 
 } // namespace engine
