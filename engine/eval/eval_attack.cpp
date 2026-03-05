@@ -71,10 +71,6 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
             d.queenMobility += __builtin_popcountll(attacks & mobilityMask);
         }
 
-        if (b.kings_bb[side]) {
-            const int sq = __builtin_ctzll(b.kings_bb[side]);
-            d.allAttacks |= pieces::KING_ATTACKS[sq];
-        }
     }
 
     cacheEntry.key = cacheKey;

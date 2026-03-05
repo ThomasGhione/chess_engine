@@ -22,8 +22,14 @@ int64_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
         const bool canCastleQueenside = (side == 0) ? whiteCastleQs : blackCastleQs;
         const uint64_t ownPawns = (side == 0) ? whitePawns : blackPawns;
         const uint64_t enemyPawns = (side == 0) ? blackPawns : whitePawns;
-        const uint64_t ownAttacks = data[side].allAttacks;
-        const uint64_t enemyAttacks = data[opp].allAttacks;
+        uint64_t ownAttacks = data[side].allAttacks;
+        uint64_t enemyAttacks = data[opp].allAttacks;
+        if (b.kings_bb[side]) {
+            ownAttacks |= pieces::KING_ATTACKS[__builtin_ctzll(b.kings_bb[side])];
+        }
+        if (b.kings_bb[opp]) {
+            enemyAttacks |= pieces::KING_ATTACKS[__builtin_ctzll(b.kings_bb[opp])];
+        }
         const uint64_t enemyHeavyPieces = b.rooks_bb[opp] | b.queens_bb[opp];
         const uint8_t sideColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
         int64_t sideSafety = 0;
