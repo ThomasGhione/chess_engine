@@ -26,7 +26,7 @@ int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uin
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalMobility(data);
     eval += (evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
-    eval += Evaluator::evalInitiative(b, false);
+    eval += evalInitiative(b, false);
     eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
