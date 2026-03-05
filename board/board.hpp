@@ -88,19 +88,19 @@ public:
     };
 
     struct EvalCache {
-        int64_t materialDelta = 0;
-        int64_t pawnStructureMg = 0;
-        int64_t pawnStructureEg = 0;
-        int64_t bishopPairBonus = 0;
-        int64_t castlingBonus = 0;
-        int64_t rooks = 0;
-        int64_t badBishop = 0;
-        int64_t blockedPawnByBishops = 0;
-        int64_t minorDevelopment = 0;
-        int64_t earlyQueen = 0;
-        int64_t outposts = 0;
-        int64_t pieceCoordination = 0;
-        int64_t centralControl = 0;
+        int32_t materialDelta = 0;
+        int32_t pawnStructureMg = 0;
+        int32_t pawnStructureEg = 0;
+        int32_t bishopPairBonus = 0;
+        int32_t castlingBonus = 0;
+        int32_t rooks = 0;
+        int32_t badBishop = 0;
+        int32_t blockedPawnByBishops = 0;
+        int32_t minorDevelopment = 0;
+        int32_t earlyQueen = 0;
+        int32_t outposts = 0;
+        int32_t pieceCoordination = 0;
+        int32_t centralControl = 0;
         uint32_t validMask = 0;
     };
 
@@ -274,17 +274,17 @@ public:
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
     constexpr uint32_t getLastMoveChangeFlags() const noexcept;
-    constexpr int64_t getIncrementalMaterialDelta() const noexcept;
-    int64_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
+    constexpr int32_t getIncrementalMaterialDelta() const noexcept;
+    int32_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     bool hasEvalCacheTerm(uint32_t term) const noexcept;
     template<uint32_t Term>
     bool hasEvalCacheTerm() const noexcept;
-    int64_t getEvalCacheTerm(uint32_t term) const noexcept;
+    int32_t getEvalCacheTerm(uint32_t term) const noexcept;
     template<uint32_t Term>
-    int64_t getEvalCacheTerm() const noexcept;
-    void setEvalCacheTerm(uint32_t term, int64_t value) const noexcept;
+    int32_t getEvalCacheTerm() const noexcept;
+    void setEvalCacheTerm(uint32_t term, int32_t value) const noexcept;
     template<uint32_t Term>
-    void setEvalCacheTerm(int64_t value) const noexcept;
+    void setEvalCacheTerm(int32_t value) const noexcept;
     void invalidateEvalCacheTerms(uint32_t terms) noexcept;
     void clearEvalCache() noexcept;
 
@@ -319,7 +319,7 @@ public:
     static constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
         '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
     };
-    static constexpr std::array<int64_t, 8> MATERIAL_VALUES = {
+    static constexpr std::array<int32_t, 8> MATERIAL_VALUES = {
         0,
         engine::PAWN_VALUE,
         engine::KNIGHT_VALUE,
@@ -407,7 +407,7 @@ private:
     template<uint8_t PieceType, bool Add>
     inline void updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept;
     template<uint32_t Term>
-    inline int64_t& evalCacheTermRef() const noexcept;
+    inline int32_t& evalCacheTermRef() const noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline uint32_t computeMoveChangeFlags(const MoveState& st) noexcept;
@@ -484,12 +484,12 @@ private:
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
-    int64_t incrementalMaterialDelta = 0;
-    int64_t incrementalPsqtPawnsMg = 0;
-    int64_t incrementalPsqtPawnsEg = 0;
-    int64_t incrementalPsqtPieces = 0;
-    int64_t incrementalPsqtKingsMg = 0;
-    int64_t incrementalPsqtKingsEg = 0;
+    int32_t incrementalMaterialDelta = 0;
+    int32_t incrementalPsqtPawnsMg = 0;
+    int32_t incrementalPsqtPawnsEg = 0;
+    int32_t incrementalPsqtPieces = 0;
+    int32_t incrementalPsqtKingsMg = 0;
+    int32_t incrementalPsqtKingsEg = 0;
     mutable EvalCache evalCache{};
     uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
     // Variables end

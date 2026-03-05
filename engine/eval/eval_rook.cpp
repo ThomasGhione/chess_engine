@@ -3,8 +3,8 @@
 
 namespace engine {
 
-inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
-    int64_t score = 0;
+inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
+    int32_t score = 0;
 
     const int sign = (color == 0) ? 1 : -1;
     const bool isWhite = (color == 0);
@@ -17,7 +17,7 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
         const uint64_t fm = FILE_MASKS[file];
         const bool ownPawnOnFile = (ownPawns & fm) != 0;
         const bool oppPawnOnFile = (oppPawns & fm) != 0;
-        const int64_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+        const int32_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
         score += fileBonus + (rank == targetRank) * (sign * engine::ROOK_ON_SEVENTH_BONUS);
 
         bool rookBehindOwnPasser = false;
@@ -62,13 +62,13 @@ inline int64_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
     return score;
 }
 
-int64_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int32_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     return evalRooksForColor(0, whiteRooks, whitePawns, blackPawns)
          + evalRooksForColor(1, blackRooks, blackPawns, whitePawns);
 }
 
-int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
+    int32_t score = 0;
 
     const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
     const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
@@ -108,7 +108,7 @@ int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
         if (ourRooks >= 2)
             continue;
 
-        const int64_t edgeBonus = engine::ROOK_EG_EDGE_BONUS;
+        const int32_t edgeBonus = engine::ROOK_EG_EDGE_BONUS;
         score += sign * edgeProximity * edgeBonus;
 
         const uint64_t ourKingBB = b.kings_bb[side];
@@ -124,8 +124,8 @@ int64_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
     return score;
 }
 
-int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
+    int32_t score = 0;
 
     const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
     const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
@@ -155,7 +155,7 @@ int64_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
         const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
         const int edgeProximity = 7 - distToEdge;
 
-        constexpr int64_t DOUBLE_ROOK_EDGE_BONUS = 55;
+        constexpr int32_t DOUBLE_ROOK_EDGE_BONUS = 55;
         score += sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
 
         uint64_t rooksBB = b.rooks_bb[side];

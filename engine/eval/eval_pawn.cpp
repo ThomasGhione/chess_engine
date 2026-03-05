@@ -2,11 +2,11 @@
 
 namespace engine {
 
-int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
+int32_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
     struct PawnEvalCacheEntry {
         uint64_t whitePawns = 0ULL;
         uint64_t blackPawns = 0ULL;
-        int64_t score = 0;
+        int32_t score = 0;
         uint8_t isEndgame = 0;
         uint8_t valid = 0;
         uint16_t stamp = 0;
@@ -78,14 +78,14 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
         return masks;
     }();
 
-    int64_t score = 0;
+    int32_t score = 0;
     const uint64_t allPawns = whitePawns | blackPawns;
-    const int64_t passedAdvancementScale = isEndgame ? 10 : 2;
-    const int64_t passedNearPromotionBonus = isEndgame ? 40 : 20;
-    const int64_t connectedPasserBonus = isEndgame
+    const int32_t passedAdvancementScale = isEndgame ? 10 : 2;
+    const int32_t passedNearPromotionBonus = isEndgame ? 40 : 20;
+    const int32_t connectedPasserBonus = isEndgame
         ? (engine::CONNECTED_PASSER_BONUS + 6)
         : engine::CONNECTED_PASSER_BONUS;
-    const int64_t candidatePasserBonus = isEndgame
+    const int32_t candidatePasserBonus = isEndgame
         ? (engine::CANDIDATE_PASSER_BONUS + 4)
         : engine::CANDIDATE_PASSER_BONUS;
 
@@ -330,12 +330,12 @@ int64_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
     return score;
 }
 
-int64_t Evaluator::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int32_t Evaluator::evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     static constexpr uint64_t CENTER_MASK = 0x0000001818000000ULL;
     return (__builtin_popcountll(whitePawns & CENTER_MASK) - __builtin_popcountll(blackPawns & CENTER_MASK)) * engine::CENTER_CONTROL_BONUS;
 }
 
-int64_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
+int32_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
     static constexpr uint64_t WHITE_D4_PAWN = chess::Board::bitMask(27);
     static constexpr uint64_t BLACK_D5_PIECE = chess::Board::bitMask(35);
     static constexpr uint64_t WHITE_BLOCKED_KNIGHTS = chess::Board::bitMask(18) | chess::Board::bitMask(21);
@@ -346,10 +346,10 @@ int64_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t o
     static constexpr uint64_t BLACK_BLOCKED_KNIGHTS = chess::Board::bitMask(42) | chess::Board::bitMask(45);
     static constexpr uint64_t BLACK_BLOCKED_BISHOPS = chess::Board::bitMask(43) | chess::Board::bitMask(44);
 
-    static constexpr int64_t BLOCKED_CENTER_PENALTY = 15;
-    static constexpr int64_t BLOCKED_PIECE_PENALTY = 10;
+    static constexpr int32_t BLOCKED_CENTER_PENALTY = 15;
+    static constexpr int32_t BLOCKED_PIECE_PENALTY = 10;
 
-    int64_t score = 0;
+    int32_t score = 0;
 
     const bool whiteBlocked = (b.pawns_bb[0] & WHITE_D4_PAWN) && (occ & BLACK_D5_PIECE);
     score -= whiteBlocked * BLOCKED_CENTER_PENALTY;

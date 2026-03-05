@@ -6,7 +6,7 @@ namespace {
 
 struct EvalCacheEntry {
     uint64_t key = std::numeric_limits<uint64_t>::max();
-    int64_t score = 0;
+    int32_t score = 0;
     uint8_t valid = 0;
 };
 
@@ -15,7 +15,7 @@ static constexpr uint64_t EVAL_CACHE_MASK = static_cast<uint64_t>(EVAL_CACHE_SIZ
 
 } // namespace
 
-int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+int32_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
     eval += evalMinorPieceDevelopmentCached(b);
     eval += evalEarlyQueenCached(b);
     eval += evalCastlingBonusCached(b);
@@ -32,7 +32,7 @@ int64_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int64_t eval, uin
     return eval;
 }
 
-int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalMinorPieceDevelopmentCached(b);
     eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
@@ -50,7 +50,7 @@ int64_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t e
     return eval;
 }
 
-int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
     eval += evalTrappedPieces(b, occ);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
@@ -71,7 +71,7 @@ int64_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, 
     return eval;
 }
 
-int64_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
+int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
     eval += evalKingActivity(b, true);
@@ -88,11 +88,11 @@ int64_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int64_t eval, uin
     return eval;
 }
 
-int64_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
+int32_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
     return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
 }
 
-int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
+int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
@@ -107,7 +107,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
         return cacheEntry.score;
     }
 
-    int64_t eval = board.getIncrementalMaterialDelta();
+    int32_t eval = board.getIncrementalMaterialDelta();
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
@@ -121,7 +121,7 @@ int64_t Evaluator::evaluate(const chess::Board& board) noexcept {
     AttackData attackData[2];
     computeAttackData(attackData, board, occ);
 
-    int64_t result = eval;
+    int32_t result = eval;
     if (phase.isOpening) {
         result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
     } else if (phase.isEarlyMiddlegame) {

@@ -64,10 +64,10 @@ static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
 }
 
 static inline int32_t clampOrderingScore(int64_t score) noexcept {
-    if (score > std::numeric_limits<int32_t>::max()) {
+    if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }
-    if (score < std::numeric_limits<int32_t>::min()) {
+    if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
         return std::numeric_limits<int32_t>::min();
     }
     return static_cast<int32_t>(score);
@@ -79,7 +79,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     uint8_t fromPieceType,
     bool isCapture,
     uint8_t victimType,
-    int64_t see,
+    int32_t see,
     bool isPromotionCandidate,
     int moveIndex,
     bool hashMoveIsLegal,
@@ -98,8 +98,8 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     const chess::Board::Move (&killerMoves)[2][64],
     const chess::Board::Move (&counterMoves)[64][64],
     const int32_t (&captureHistory)[2][64][7][2],
-    const int64_t (&pieceValues)[8],
-    int64_t orderingPenaltySamePawnOpening) noexcept {
+    const int32_t (&pieceValues)[8],
+    int32_t orderingPenaltySamePawnOpening) noexcept {
     // =========================================================
     // MOVE ORDERING PRIORITY (from highest to lowest):
     // 1. Hash move (from TT) -> 100000
@@ -129,13 +129,13 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         }
 
         // GOOD CAPTURES: priority based on SEE + capture history
-        int64_t score = 10000 + MVV_TABLE[victimType];
+        int32_t score = 10000 + MVV_TABLE[victimType];
         
         // Add capture history bonus (0-500 range)
-        const int64_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
-        const int64_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
-        const int64_t capHist = capHistPrimary + (capHistSecondary >> 1);
-        score += std::min(static_cast<int64_t>(500), capHist / 20); // Scale down
+        const int32_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
+        const int32_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
+        const int32_t capHist = capHistPrimary + (capHistSecondary >> 1);
+        score += std::min(static_cast<int32_t>(500), capHist / 20); // Scale down
         // Total: 10000-19500
         return clampOrderingScore(score);
     }
@@ -163,7 +163,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         }
     }
 
-    int64_t score = 0;
+    int32_t score = 0;
 
     // LAZY CHECK DETECTION: only for first 8 non-capture moves
     // Balances tactical strength with performance overhead
@@ -224,10 +224,10 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     
     // History heuristic (for regular quiet moves)
     if (score == 0 && ply >= 0 && ply < 64) {
-        int64_t histScore = history[usSide][m.from.index][m.to.index];
+        int32_t histScore = history[usSide][m.from.index][m.to.index];
         // Map history to [-2000, 4000] range for better move differentiation
         // Negative history = moves that consistently fail = ordered below neutral
-        score = std::min(static_cast<int64_t>(4000), std::max(static_cast<int64_t>(-2000), histScore));
+        score = std::min(static_cast<int32_t>(4000), std::max(static_cast<int32_t>(-2000), histScore));
     }
 
     if (fromPieceType != chess::Board::PAWN) {
@@ -299,7 +299,7 @@ uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
 }
 
 // Static Exchange Evaluation (SEE) - Quick version
-int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
+int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept {
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
@@ -319,7 +319,7 @@ int64_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     //   gain[i] = value(captured_piece) - gain[i-1]
     // where captured_piece is the piece that just moved to the target square in the previous ply.
     constexpr int MAX_SEE_DEPTH = 16;
-    int64_t gain[MAX_SEE_DEPTH];
+    int32_t gain[MAX_SEE_DEPTH];
     gain[0] = PIECE_VALUES[capturedType];
 
     // Simulate the exchange on local occupancy
@@ -436,7 +436,7 @@ bool Engine::sortLegalMoves(
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
-        const int64_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
+        const int32_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
         
         int32_t score = scoreMoveOrderingPriorityInline(
             b, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate, moveIndex,

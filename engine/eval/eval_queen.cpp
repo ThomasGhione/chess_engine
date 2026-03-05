@@ -3,12 +3,12 @@
 
 namespace engine {
 
-int64_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
+int32_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59);
     static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);
-    static constexpr int64_t EARLY_QUEEN_DEV_PENALTY = 20;
+    static constexpr int32_t EARLY_QUEEN_DEV_PENALTY = 20;
 
-    int64_t score = 0;
+    int32_t score = 0;
 
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
@@ -16,8 +16,8 @@ int64_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     return score;
 }
 
-int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
+    int32_t score = 0;
 
     const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
     const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
@@ -54,8 +54,8 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         const int edgeProximity = 7 - distToEdge;
 
         // Queen endgame edge bonus: push enemy king toward the edge.
-        constexpr int64_t QUEEN_EG_EDGE_BONUS = 55;
-        int64_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
+        constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
+        int32_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
 
         const uint64_t ourKingBB = b.kings_bb[side];
         if (ourKingBB) {
@@ -84,7 +84,7 @@ int64_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         }
 
         // Keep queen pressure relevant but below "piece-level" incentives.
-        constexpr int64_t QUEEN_EG_PRESSURE_CAP = 180;
+        constexpr int32_t QUEEN_EG_PRESSURE_CAP = 180;
         sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
         score += sign * sideScore;
     }

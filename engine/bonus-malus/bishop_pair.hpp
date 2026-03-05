@@ -7,7 +7,7 @@ namespace engine {
 // BISHOP PAIR
 // ===================================================
 
-inline static constexpr int64_t BISHOP_PAIR_BONUS = 30;
+inline static constexpr int32_t BISHOP_PAIR_BONUS = 30;
 
 } // namespace engine
 

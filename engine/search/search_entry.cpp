@@ -3,12 +3,28 @@
 
 namespace engine {
 
-static inline void rootNullWindow(bool usIsWhite, int64_t alpha, int64_t beta, int64_t& outAlpha, int64_t& outBeta) noexcept {
-    outAlpha = usIsWhite ? alpha : (beta - 1);
-    outBeta = usIsWhite ? (alpha + 1) : beta;
+namespace {
+inline int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
+    const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
+    if (sum > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) return std::numeric_limits<int32_t>::max();
+    if (sum < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) return std::numeric_limits<int32_t>::min();
+    return static_cast<int32_t>(sum);
 }
 
-void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
+inline int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
+    const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
+    if (diff > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) return std::numeric_limits<int32_t>::max();
+    if (diff < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) return std::numeric_limits<int32_t>::min();
+    return static_cast<int32_t>(diff);
+}
+} // namespace
+
+static inline void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept {
+    outAlpha = usIsWhite ? alpha : saturatingSub32(beta, 1);
+    outBeta = usIsWhite ? saturatingAdd32(alpha, 1) : beta;
+}
+
+void Engine::updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
                           chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept {
     // Update best score and move if this is better
     if (Engine::isBetter(score, bestScore, usIsWhite)) {
@@ -20,11 +36,11 @@ void Engine::updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t
     updateBound(score, alpha, beta, usIsWhite);
 }
 
-int64_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
+int32_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int32_t alpha, int32_t beta,
                                     int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept {
     chess::Board::MoveState state;
     doMoveWithPromotion(b, m, state);
-    const int64_t score = this->searchPosition(
+    const int32_t score = this->searchPosition(
         b, this->depth - 1, alpha, beta, currPly, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
@@ -34,8 +50,8 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     return getBestMove(rootBoard, moves, usIsWhite, NEG_INF, POS_INF);
 }
 
-chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool usIsWhite, int64_t alpha, int64_t beta) noexcept {
-    int64_t bestScore = Engine::initialBest(usIsWhite);
+chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool usIsWhite, int32_t alpha, int32_t beta) noexcept {
+    int32_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
@@ -65,13 +81,13 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
             }
 
             const auto& m = rootMoves[i];
-            int64_t score = 0;
+            int32_t score = 0;
             if (i == 0) {
                 // First move: search with full window (PV node)
                 score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, true, &localNodes);
             } else {
                 // Next moves: search with null window
-                int64_t nullAlpha = 0, nullBeta = 0;
+                int32_t nullAlpha = 0, nullBeta = 0;
                 rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
                 
                 score = this->searchRootMoveScore(rootBoard, m, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
@@ -105,7 +121,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     // First move: full-window search
     {
         const auto& firstMove = rootMoves[0];
-        const int64_t score = this->searchRootMoveScore(rootBoard, firstMove, alpha, beta, currPly, true, true, true, &localNodes);
+        const int32_t score = this->searchRootMoveScore(rootBoard, firstMove, alpha, beta, currPly, true, true, true, &localNodes);
         searchedAnyMove = true;
         this->updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
     }
@@ -123,13 +139,13 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     }
 
     // All threads use the same null-window snapshot for deterministic parallel screening.
-    const int64_t sharedAlpha = alpha;
-    const int64_t sharedBeta = beta;
-    int64_t nullAlpha = 0;
-    int64_t nullBeta = 0;
+    const int32_t sharedAlpha = alpha;
+    const int32_t sharedBeta = beta;
+    int32_t nullAlpha = 0;
+    int32_t nullBeta = 0;
     rootNullWindow(usIsWhite, sharedAlpha, sharedBeta, nullAlpha, nullBeta);
 
-    std::array<int64_t, MAX_MOVES> threadScores;
+    std::array<int32_t, MAX_MOVES> threadScores;
     threadScores.fill(Engine::initialBest(usIsWhite));
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
     std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
@@ -149,7 +165,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
             chess::Board threadBoard = rootBoard;
             const auto m = rootMoves[i];
             uint64_t workerNodes = 0;
-            const int64_t score = this->searchRootMoveScore(
+            const int32_t score = this->searchRootMoveScore(
                 threadBoard, m, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
             threadScores[i] = score;
@@ -187,7 +203,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
                                     }
                                     const auto m = rootMoves[i]; // local copy
                                     uint64_t workerNodes = 0;
-                                    const int64_t score = this->searchRootMoveScore(
+                                    const int32_t score = this->searchRootMoveScore(
                                         threadBoard, m, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
                                     threadScores[i] = score;
@@ -213,7 +229,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
         if (threadNodeCounts[i] == 0) continue;
         const auto& m = rootMoves[i];
 
-        int64_t score = threadScores[i];
+        int32_t score = threadScores[i];
         if (threadNeedsResearch[i] != 0U) {
             uint64_t researchNodes = 0;
             score = this->searchRootMoveScore(rootBoard, m, alpha, beta, currPly, true, true, true, &researchNodes);
@@ -238,7 +254,7 @@ chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<c
     return bestMove;
 }
 
-void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score, uint8_t flag) noexcept {
+void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int32_t score, uint8_t flag) noexcept {
     if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
         return;
     }
@@ -283,12 +299,13 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
     uint64_t interruptedDepth = 0;
     const bool searchBestMoveForWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     chess::Board::Move bestMove = moves[0];
-    int64_t prevPrevScore = 0;
-    int64_t prevScore = 0;
+    int32_t prevPrevScore = 0;
+    int32_t prevScore = 0;
     bool hasPrevScore = false;
     bool hasPrevPrevScore = false;
-    constexpr int64_t MATE_SCORE_THRESHOLD = POS_INF - 2048;
-    auto abs64 = [](int64_t v) noexcept -> int64_t {
+    constexpr int32_t MATE_SCORE_THRESHOLD = POS_INF - 2048;
+    auto absScore = [](int32_t v) noexcept -> int32_t {
+        if (v == std::numeric_limits<int32_t>::min()) return std::numeric_limits<int32_t>::max();
         return (v >= 0) ? v : -v;
     };
     
@@ -318,8 +335,8 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
 
         this->searchInterrupted.store(false, std::memory_order_relaxed);
         bool iterationCompleted = true;
-        int64_t iterationAlpha = NEG_INF;
-        int64_t iterationBeta = POS_INF;
+        int32_t iterationAlpha = NEG_INF;
+        int32_t iterationBeta = POS_INF;
         chess::Board::Move candidateBestMove = moves[0];
 
         const bool canUseAspiration =
@@ -327,8 +344,8 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
             && hasPrevPrevScore
             && result.completedAnyDepth
             && currentDepth >= 5
-            && abs64(prevScore) < MATE_SCORE_THRESHOLD
-            && abs64(prevPrevScore) < MATE_SCORE_THRESHOLD;
+            && absScore(prevScore) < MATE_SCORE_THRESHOLD
+            && absScore(prevPrevScore) < MATE_SCORE_THRESHOLD;
 
         if (!canUseAspiration) {
             candidateBestMove = this->getBestMove(rootBoard, moves, searchBestMoveForWhite);
@@ -337,14 +354,16 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
             }
         } else {
             // Dynamic aspiration window based on recent score volatility.
-            const int64_t scoreSwing = abs64(prevScore - prevPrevScore);
-            int64_t windowDelta = std::clamp<int64_t>(40 + (scoreSwing / 2), 60, 220);
-            constexpr int64_t WINDOW_HARD_CAP = 1500;
+            const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(prevPrevScore);
+            const int64_t scoreSwing64 = (scoreDiff64 >= 0) ? scoreDiff64 : -scoreDiff64;
+            const int32_t scoreSwing = static_cast<int32_t>(std::min<int64_t>(scoreSwing64, std::numeric_limits<int32_t>::max()));
+            int32_t windowDelta = std::clamp<int32_t>(40 + (scoreSwing / 2), 60, 220);
+            constexpr int32_t WINDOW_HARD_CAP = 1500;
             constexpr int MAX_ASP_RESEARCHES = 6;
             int aspirationResearches = 0;
-            int64_t centerScore = prevScore;
-            int64_t aspAlpha = centerScore - windowDelta;
-            int64_t aspBeta = centerScore + windowDelta;
+            int32_t centerScore = prevScore;
+            int32_t aspAlpha = saturatingSub32(centerScore, windowDelta);
+            int32_t aspBeta = saturatingAdd32(centerScore, windowDelta);
 
             while (true) {
                 iterationAlpha = aspAlpha;
@@ -355,7 +374,7 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
                     break;
                 }
 
-                const int64_t score = this->eval;
+                const int32_t score = this->eval;
                 const bool failLow = (score <= aspAlpha);
                 const bool failHigh = (score >= aspBeta);
                 if (!failLow && !failHigh) {
@@ -372,7 +391,7 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
                     centerScore = std::max(centerScore, score);
                 }
 
-                windowDelta = std::min<int64_t>(WINDOW_HARD_CAP, windowDelta * 2 + 20);
+                windowDelta = std::min<int32_t>(WINDOW_HARD_CAP, windowDelta * 2 + 20);
                 if (aspirationResearches >= MAX_ASP_RESEARCHES || windowDelta >= WINDOW_HARD_CAP) {
                     iterationAlpha = NEG_INF;
                     iterationBeta = POS_INF;
@@ -384,11 +403,11 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
                 }
 
                 if (failLow) {
-                    aspAlpha = std::max<int64_t>(NEG_INF, centerScore - windowDelta);
-                    aspBeta = std::min<int64_t>(POS_INF, centerScore + std::max<int64_t>(40, windowDelta / 2));
+                    aspAlpha = std::max<int32_t>(NEG_INF, saturatingSub32(centerScore, windowDelta));
+                    aspBeta = std::min<int32_t>(POS_INF, saturatingAdd32(centerScore, std::max<int32_t>(40, windowDelta / 2)));
                 } else {
-                    aspAlpha = std::max<int64_t>(NEG_INF, centerScore - std::max<int64_t>(40, windowDelta / 2));
-                    aspBeta = std::min<int64_t>(POS_INF, centerScore + windowDelta);
+                    aspAlpha = std::max<int32_t>(NEG_INF, saturatingSub32(centerScore, std::max<int32_t>(40, windowDelta / 2)));
+                    aspBeta = std::min<int32_t>(POS_INF, saturatingAdd32(centerScore, windowDelta));
                 }
             }
         }

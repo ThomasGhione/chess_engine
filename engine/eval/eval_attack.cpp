@@ -79,18 +79,18 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
     cacheEntry.valid = 1;
 }
 
-int64_t Evaluator::evalMobility(const AttackData data[2]) noexcept {
+int32_t Evaluator::evalMobility(const AttackData data[2]) noexcept {
     return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
           - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
 }
 
-inline int64_t Evaluator::evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef, int sign, int penalty) noexcept {
+inline int32_t Evaluator::evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef, int sign, int penalty) noexcept {
     const uint64_t hanging = pieces & enemyAttacks & ~friendlyDef;
     return sign * __builtin_popcountll(hanging) * penalty;
 }
 
-inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept {
-    int64_t score = 0;
+inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept {
+    int32_t score = 0;
     const int opp  = side ^ 1;
 
     const uint64_t enemyAttacks = data[opp].allAttacks;
@@ -119,15 +119,15 @@ inline int64_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     return score;
 }
 
-int64_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept {
-    const int64_t scoreWhite = evalHangingPiecesSide(b, data, 0, 1);
-    const int64_t scoreBlack = evalHangingPiecesSide(b, data, 1, -1);
+int32_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept {
+    const int32_t scoreWhite = evalHangingPiecesSide(b, data, 0, 1);
+    const int32_t scoreBlack = evalHangingPiecesSide(b, data, 1, -1);
     return scoreBlack + scoreWhite;
 }
 
-template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
-inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept {
-    int64_t score = 0;
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t PinnedPenalty, int32_t LowMobPenalty>
+inline int32_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept {
+    int32_t score = 0;
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         const uint64_t attacks = AttackFn(sq, occ);
@@ -138,8 +138,8 @@ inline int64_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t o
     return score;
 }
 
-inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
-    int64_t sideScore = 0;
+inline int32_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
+    int32_t sideScore = 0;
     const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                             b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
     const uint64_t mobilityMask = ~occ;
@@ -164,8 +164,8 @@ inline int64_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
     return sideScore;
 }
 
-int64_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
+    int32_t score = 0;
     for (int side = 0; side < 2; ++side) {
         score += evalTrappedPiecesSide(b, occ, side, (side == 0) ? 1 : -1);
     }

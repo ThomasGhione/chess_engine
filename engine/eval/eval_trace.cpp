@@ -5,18 +5,18 @@
 
 namespace engine {
 
-void Evaluator::traceTerm(int64_t& eval, int64_t delta, const char* label) noexcept {
+void Evaluator::traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept {
     eval += delta;
     std::cout << "  [TRACE] +" << label << ": " << eval << " (delta=" << delta << ")" << std::endl;
 }
 
-int64_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
+int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return evaluateCheckmate(board);
     }
 
-    int64_t eval = board.getIncrementalMaterialDelta();
-    int64_t prev = eval;
+    int32_t eval = board.getIncrementalMaterialDelta();
+    int32_t prev = eval;
     std::cout << "  [TRACE] material: " << eval << std::endl;
 
     const uint64_t occ = board.getPiecesBitMap();

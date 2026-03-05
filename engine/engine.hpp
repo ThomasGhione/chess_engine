@@ -14,6 +14,7 @@
 #include <cstring>
 #include <atomic>
 #include <thread>
+#include <limits>
 #include <omp.h>
 
 #ifdef DEBUG
@@ -47,7 +48,7 @@ public:
 
     struct SearchMoveResult {
         chess::Board::Move move;
-        int64_t score;
+        int32_t score;
     };
 
     enum GameResult : uint8_t {
@@ -72,7 +73,7 @@ public:
 
     //--- Method
     //static constexpr int manhattan(int a, int b) noexcept;
-    static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
+    static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
 
     void reset() noexcept;
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
@@ -89,7 +90,7 @@ public:
     uint64_t getPonderCurrentDepth() const noexcept;
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
-    int64_t evaluate(const chess::Board& board) noexcept; 
+    int32_t evaluate(const chess::Board& board) noexcept; 
     
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
@@ -114,17 +115,17 @@ public:
     // King proximity masks (squares at distance <= 2 from each square)
     static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
 
-    static int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    static int32_t getMaterialDelta(const chess::Board& b) noexcept;
     // Exposed for perf tests (delegates to Evaluator)
-    static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
-    static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static int32_t evalEndgameKingActivity(const chess::Board& b) noexcept;
+    static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
 
     // DEBUG: Trace version of evaluate that prints each component
-    int64_t evaluateTrace(const chess::Board& board) noexcept;
+    int32_t evaluateTrace(const chess::Board& board) noexcept;
 
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;
@@ -137,7 +138,7 @@ public:
     bool sortLegalMoves(MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
     chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
-    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int64_t alpha, int64_t beta) noexcept;
+    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int32_t alpha, int32_t beta) noexcept;
     //--- Method end
 
     //--- Variables
@@ -148,7 +149,7 @@ public:
     bool isPlayerWhite;
 
     uint64_t depth;
-    int64_t eval = 0;
+    int32_t eval = 0;
 
     // Transposition table
     tt::TranspositionTable tt;
@@ -175,21 +176,21 @@ private:
     //--- Structs and enums
     // Helper structures for cleaner function signatures
     struct SearchContext {
-        int64_t depth;
-        int64_t alpha;
-        int64_t beta;
+        int32_t depth;
+        int32_t alpha;
+        int32_t beta;
         int ply;
         uint8_t activeColor;
         const chess::Board::Move* previousMove = nullptr; // For counter-move history
-        int64_t staticEval = 0;   // Static evaluation for pruning decisions
+        int32_t staticEval = 0;   // Static evaluation for pruning decisions
         bool inCheck = false;      // Whether the side to move is in check
         bool isPVNode = false;     // True for full-window nodes (no null-window pruning)
         uint64_t* nodeCounter = nullptr; // Per-search counter (thread-local ownership)
     };
 
     struct AlphaBeta {
-        int64_t alpha;
-        int64_t beta;
+        int32_t alpha;
+        int32_t beta;
     };
 
     struct IterativeSearchResult {
@@ -206,14 +207,14 @@ private:
         uint32_t aspirationFailHigh = 0;
         tt::TranspositionTable::Entry::Flag rootScoreBound = tt::TranspositionTable::Entry::EXACT;
         chess::Board::Move bestMove{};
-        int64_t bestScore = 0;
+        int32_t bestScore = 0;
     };
 
     //--- Variables
     GameResult gameResult = Engine::ONGOING;
-    // Keep search bounds within int32 range so TT store/probe can preserve mate scores.
-    constexpr static int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
-    constexpr static int64_t POS_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::max() - 1);
+    // Full int32 range for score bounds.
+    constexpr static int32_t NEG_INF = std::numeric_limits<int32_t>::min();
+    constexpr static int32_t POS_INF = std::numeric_limits<int32_t>::max();
     
     // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
     chess::Board::Move killerMoves[2][MAX_PLY] {};
@@ -233,7 +234,7 @@ private:
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
     int32_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
 
-    static constexpr int64_t PIECE_VALUES[8] = {
+    static constexpr int32_t PIECE_VALUES[8] = {
         0,      // EMPTY = 0
         PAWN_VALUE,    // PAWN = 1
         KNIGHT_VALUE,    // KNIGHT = 2
@@ -248,71 +249,71 @@ private:
     // Initial best score for min-max search
     // White maximizes: starts from -INF, Black minimizes: starts from +INF
     template<bool IsWhite>
-    static constexpr int64_t initialBest() noexcept;
+    static constexpr int32_t initialBest() noexcept;
     // Runtime version (when color is not known at compile time)
-    static constexpr int64_t initialBest(bool isWhite) noexcept;
+    static constexpr int32_t initialBest(bool isWhite) noexcept;
     
     // Compare if newScore is better than currentBest (color-aware)
     // White: newScore > currentBest (maximize)
     // Black: newScore < currentBest (minimize)
     template<bool IsWhite>
-    static constexpr bool isBetter(int64_t newScore, int64_t currentBest) noexcept;
+    static constexpr bool isBetter(int32_t newScore, int32_t currentBest) noexcept;
     // Runtime version
-    static constexpr bool isBetter(int64_t newScore, int64_t currentBest, bool isWhite) noexcept;
+    static constexpr bool isBetter(int32_t newScore, int32_t currentBest, bool isWhite) noexcept;
     
     // Check if we have a beta cutoff (position too good, opponent won't allow it)
     // White (maximizer): score >= beta
     // Black (minimizer): score <= alpha
-    static inline bool isBetaCutoff(int64_t score, int64_t alpha, int64_t beta, bool isWhite) noexcept;
+    static inline bool isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept;
     
     // Update alpha or beta bound based on score
     // White (maximizer): alpha = max(alpha, score)
     // Black (minimizer): beta = min(beta, score)
-    static inline void updateBound(int64_t score, int64_t& alpha, int64_t& beta, bool isWhite) noexcept;
+    static inline void updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept;
     
     // Check delta pruning condition
     // White: standPat + margin < alpha (can't reach alpha even with best capture)
     // Black: standPat - margin > beta (can't reach beta even with best capture)
-    static inline bool shouldDeltaPrune(int64_t standPat, int64_t margin, int64_t alpha, int64_t beta, bool isWhite) noexcept;
+    static inline bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept;
     
     // Return the cutoff value when beta cutoff occurs
     // White: return beta, Black: return alpha
-    static inline int64_t cutoffValue(int64_t alpha, int64_t beta, bool isWhite) noexcept;
+    static inline int32_t cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept;
 
     // True when a null-window search failed and needs full-window re-search.
-    static inline bool shouldResearchPVS(int64_t score, int64_t alphaBound, int64_t betaBound, bool isWhite) noexcept;
+    static inline bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
 
     // TT narrow helpers for hot paths (avoid int64 TT overload conversion overhead).
     static inline int32_t clampToTTScore(int64_t value) noexcept;
-    static inline void toTTProbeBounds(int64_t alpha, int64_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
+    static inline void toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
 
     // Fast access to piece values (inline for zero-cost abstraction)
-    static inline constexpr int64_t getPieceValue(uint8_t pieceType) noexcept;
+    static inline constexpr int32_t getPieceValue(uint8_t pieceType) noexcept;
 
-    void updateMinMax(bool usIsWhite, int64_t score, int64_t& alpha, int64_t& beta, int64_t& bestScore, 
+    void updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
 
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
-    static int64_t stalemateScoreFromMaterialDelta(int64_t matDelta) noexcept;
+    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
+    static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
 
     // Search helpers
-    int64_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int64_t alpha, int64_t beta,
+    int32_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int32_t alpha, int32_t beta,
                                 int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept;
-    bool handleSearchPrelude(const int64_t& depth, const AlphaBeta& bounds, int64_t& score, uint64_t hashKey) noexcept;
+    bool handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept;
     SearchMoveResult searchMoves(chess::Board& b, const MoveList<chess::Board::Move>& orderedMoves,
                                  bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
                                  bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
     
     // Move scoring helpers
     static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
-    int64_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
+    int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
     static inline int32_t scoreMoveOrderingPriorityInline(
         chess::Board& b,
         const chess::Board::Move& m,
         uint8_t fromPieceType,
         bool isCapture,
         uint8_t victimType,
-        int64_t see,
+        int32_t see,
         bool isPromotionCandidate,
         int moveIndex,
         bool hashMoveIsLegal,
@@ -331,18 +332,18 @@ private:
         const chess::Board::Move (&killerMoves)[2][64],
         const chess::Board::Move (&counterMoves)[64][64],
         const int32_t (&captureHistory)[2][64][7][2],
-        const int64_t (&pieceValues)[8],
-        int64_t orderingPenaltySamePawnOpening) noexcept;
+        const int32_t (&pieceValues)[8],
+        int32_t orderingPenaltySamePawnOpening) noexcept;
 
-    int64_t searchPosition(chess::Board& b, int64_t depth, int64_t alpha, int64_t beta, int ply,
+    int32_t searchPosition(chess::Board& b, int32_t depth, int32_t alpha, int32_t beta, int ply,
                            bool useTT = true, bool allowTTWrite = true, bool allowHeuristicUpdates = true,
                            const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
-    int64_t quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
+    int32_t quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     inline bool shouldAbortSearch() const noexcept;
 
     IterativeSearchResult runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept;
-    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int64_t score, uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;
+    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int32_t score, uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     void ponderLoop(chess::Board rootBoard) noexcept;

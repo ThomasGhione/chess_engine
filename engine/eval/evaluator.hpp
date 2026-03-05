@@ -22,19 +22,19 @@ public:
     // Constructor end
 
     // Static methods
-    static int64_t evaluate(const chess::Board& board) noexcept;
+    static int32_t evaluate(const chess::Board& board) noexcept;
 
-    static int64_t evaluateTrace(const chess::Board& board) noexcept;
+    static int32_t evaluateTrace(const chess::Board& board) noexcept;
     
-    static int64_t evaluateCheckmate(const chess::Board& board) noexcept;
-    static int64_t getMaterialDelta(const chess::Board& b) noexcept;
+    static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
+    static int32_t getMaterialDelta(const chess::Board& b) noexcept;
 
-    static int64_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    static int64_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    static int64_t evalEndgameKingActivity(const chess::Board& b) noexcept;
-    static int64_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static int32_t evalEndgameKingActivity(const chess::Board& b) noexcept;
+    static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
     // Static methods end
 
 private:
@@ -58,7 +58,7 @@ private:
     // Structures end
 
     // Variables
-    static constexpr int64_t PIECE_VALUES[8] = {
+    static constexpr int32_t PIECE_VALUES[8] = {
         0,
         PAWN_VALUE,
         KNIGHT_VALUE,
@@ -90,93 +90,93 @@ private:
     static inline constexpr int EARLY_MG_MOVES = 15;
     static inline constexpr int PIECE_ENDGAME_THRESHOLD = 5;
 
-    // Keep mate scores TT-compatible (TT stores int32 scores).
-    static inline constexpr int64_t NEG_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::min() + 1);
-    static inline constexpr int64_t POS_INF = static_cast<int64_t>(std::numeric_limits<int32_t>::max() - 1);
-    static inline constexpr int64_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
+    // Full int32 range for score bounds/mate scores.
+    static inline constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
+    static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
+    static inline constexpr int32_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
     // Variables end
 
     // Methods
-    static int64_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
+    static int32_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static constexpr int manhattan(int a, int b) noexcept;
     static constexpr uint64_t adjacentFilesMask(int file) noexcept;
 
     template<bool IsEndgame>
-    static constexpr int64_t evalInitiativeImpl(uint8_t activeColor) noexcept;
+    static constexpr int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;
 
     template<int Side>
-    static constexpr int64_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
+    static constexpr int32_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
 
     __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
-    static int64_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
+    static int32_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
 
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
     static inline void addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
-                                         int64_t safeBonus, int64_t forcingBonus,
-                                         int64_t& attackUnits) noexcept;
+                                         int32_t safeBonus, int32_t forcingBonus,
+                                         int32_t& attackUnits) noexcept;
     static inline bool isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept;
     static inline bool isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t Weight>
     static inline void accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
-                                                   int& attackerCount, int64_t& attackWeight) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t PinnedPenalty, int64_t LowMobPenalty>
-    static inline int64_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
-    static inline int64_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
-    static inline int64_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
+                                                   int& attackerCount, int32_t& attackWeight) noexcept;
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t PinnedPenalty, int32_t LowMobPenalty>
+    static inline int32_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
+    static inline int32_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
+    static inline int32_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                   int sign, int penalty) noexcept;
-    static inline int64_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
-    template<int64_t Bonus>
-    static inline int64_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
+    static inline int32_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
+    template<int32_t Bonus>
+    static inline int32_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
     template<bool IsEndgame>
-    static inline int64_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
+    static inline int32_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
     template<int Side>
-    static inline int64_t evalEndgameKingActivitySide(const chess::Board& b) noexcept;
+    static inline int32_t evalEndgameKingActivitySide(const chess::Board& b) noexcept;
 
-    static inline int64_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
-    static inline int64_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
-    static inline int64_t evalOutpostsForColor(const chess::Board& b, int color) noexcept;
-    static int64_t evalMobility(const AttackData data[2]) noexcept;
-    static int64_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static int64_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
-    static int64_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
-    static int64_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static int64_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
-    static int64_t evalEarlyQueen(const chess::Board& b) noexcept;
-    static int64_t evalPieceCoordination(const chess::Board& b) noexcept;
-    static int64_t evalOutposts(const chess::Board& b) noexcept;
-    static int64_t evalCastlingBonus(const chess::Board& b) noexcept;
-    static int64_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
-    static int64_t evalRookEndgamePressure(const chess::Board& b) noexcept;
-    static int64_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
-    static int64_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
+    static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
+    static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
+    static inline int32_t evalOutpostsForColor(const chess::Board& b, int color) noexcept;
+    static int32_t evalMobility(const AttackData data[2]) noexcept;
+    static int32_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
+    static int32_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int32_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int32_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;
+    static int32_t evalMinorPieceDevelopment(const chess::Board& b) noexcept;
+    static int32_t evalEarlyQueen(const chess::Board& b) noexcept;
+    static int32_t evalPieceCoordination(const chess::Board& b) noexcept;
+    static int32_t evalOutposts(const chess::Board& b) noexcept;
+    static int32_t evalCastlingBonus(const chess::Board& b) noexcept;
+    static int32_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
+    static int32_t evalRookEndgamePressure(const chess::Board& b) noexcept;
+    static int32_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
+    static int32_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
-    static void traceTerm(int64_t& eval, int64_t delta, const char* label) noexcept;
+    static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
 
-    static int64_t getMaterialDeltaCached(const chess::Board& b) noexcept;
-    static int64_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
-    static int64_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
-    static int64_t evalCastlingBonusCached(const chess::Board& b) noexcept;
-    static int64_t evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalBadBishopCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int64_t evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
-    static int64_t evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept;
-    static int64_t evalEarlyQueenCached(const chess::Board& b) noexcept;
-    static int64_t evalOutpostsCached(const chess::Board& b) noexcept;
-    static int64_t evalPieceCoordinationCached(const chess::Board& b) noexcept;
-    static int64_t evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t getMaterialDeltaCached(const chess::Board& b) noexcept;
+    static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
+    static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
+    static int32_t evalCastlingBonusCached(const chess::Board& b) noexcept;
+    static int32_t evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalBadBishopCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
+    static int32_t evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept;
+    static int32_t evalEarlyQueenCached(const chess::Board& b) noexcept;
+    static int32_t evalOutpostsCached(const chess::Board& b) noexcept;
+    static int32_t evalPieceCoordinationCached(const chess::Board& b) noexcept;
+    static int32_t evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
     __attribute__((noinline))
-    static int64_t evaluateOpeningPhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
+    static int32_t evaluateOpeningPhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     __attribute__((noinline))
-    static int64_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    static int32_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     __attribute__((noinline))
-    static int64_t evaluateMiddlegamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    static int32_t evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     __attribute__((noinline))
-    static int64_t evaluateEndgamePhase(const chess::Board& b, int64_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    static int32_t evaluateEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     // Methods end
 };
 

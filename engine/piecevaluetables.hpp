@@ -18,7 +18,7 @@
 
 namespace engine {
 
-inline constexpr std::array<int64_t, 64> PAWN_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> PAWN_VALUES_TABLE{
       0,  0,  0,  0,  0,  0,  0,  0,
      50, 50, 50, 50, 50, 50, 50, 50,
      10, 10, 20, 30, 30, 20, 10, 10,
@@ -29,7 +29,7 @@ inline constexpr std::array<int64_t, 64> PAWN_VALUES_TABLE{
       0,  0,  0,  0,  0,  0,  0,  0
 };
 
-inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> PAWN_END_GAME_VALUES_TABLE{
       0,   0,   0,   0,   0,   0,   0,   0,
     120, 120, 130, 130, 130, 130, 120, 120,
      80,  80,  90,  90,  90,  90,  80,  80,
@@ -39,7 +39,7 @@ inline constexpr std::array<int64_t, 64> PAWN_END_GAME_VALUES_TABLE{
      10,  10,  10,  10,  10,  10,  10,  10,
       0,   0,   0,   0,   0,   0,   0,   0,
 };
-inline constexpr std::array<int64_t, 64> KNIGHT_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> KNIGHT_VALUES_TABLE{
     -50,-40,-30,-30,-30,-30,-40,-50,
     -40,-20,  0,  0,  0,  0,-20,-40,
     -30,  0, 10, 15, 15, 10,  0,-30,
@@ -50,7 +50,7 @@ inline constexpr std::array<int64_t, 64> KNIGHT_VALUES_TABLE{
     -50,-40,-30,-30,-30,-30,-40,-50
 };
 
-inline constexpr std::array<int64_t, 64> BISHOP_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> BISHOP_VALUES_TABLE{
     -20,-10,-10,-10,-10,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5, 10, 10,  5,  0,-10,
@@ -61,7 +61,7 @@ inline constexpr std::array<int64_t, 64> BISHOP_VALUES_TABLE{
     -20,-10,-10,-10,-10,-10,-10,-20
 };
 
-inline constexpr std::array<int64_t, 64> ROOK_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> ROOK_VALUES_TABLE{
       0,  0,  0,  0,  0,  0,  0,  0,
       5, 10, 10, 10, 10, 10, 10,  5,
      -5,  0,  0,  0,  0,  0,  0, -5,
@@ -72,7 +72,7 @@ inline constexpr std::array<int64_t, 64> ROOK_VALUES_TABLE{
       0,  0,  0,  5,  5,  0,  0,  0
 };
 
-inline constexpr std::array<int64_t, 64> QUEEN_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> QUEEN_VALUES_TABLE{
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5,  5,  5,  5,  0,-10,
@@ -83,7 +83,7 @@ inline constexpr std::array<int64_t, 64> QUEEN_VALUES_TABLE{
     -20,-10,-10, -5, -5,-10,-10,-20
 };
 
-inline constexpr std::array<int64_t, 64> KING_MIDDLE_GAME_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> KING_MIDDLE_GAME_VALUES_TABLE{
     -30,-40,-40,-50,-50,-40,-40,-30,
     -30,-40,-40,-50,-50,-40,-40,-30,
     -30,-40,-40,-50,-50,-40,-40,-30,
@@ -94,7 +94,7 @@ inline constexpr std::array<int64_t, 64> KING_MIDDLE_GAME_VALUES_TABLE{
      20, 30, 10,  0,  0, 10, 30, 20
 };
 
-inline constexpr std::array<int64_t, 64> KING_END_GAME_VALUES_TABLE{
+inline constexpr std::array<int32_t, 64> KING_END_GAME_VALUES_TABLE{
     -50,-30,-30,-30,-30,-30,-30,-50,
     -30,-30,  0,  0,  0,  0,-30,-30,
     -30,-10, 20, 30, 30, 20,-10,-30,

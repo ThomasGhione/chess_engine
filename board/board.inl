@@ -107,13 +107,13 @@ inline Coords Board::getEnPassant() const noexcept { return enPassant; }
 
 inline constexpr uint32_t Board::getLastMoveChangeFlags() const noexcept { return lastMoveChangeFlags; }
 
-inline constexpr int64_t Board::getIncrementalMaterialDelta() const noexcept {
+inline constexpr int32_t Board::getIncrementalMaterialDelta() const noexcept {
     return incrementalMaterialDelta;
 }
 
-inline int64_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
-    const int64_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
-    const int64_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
+inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
+    const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
+    const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
     return incrementalPsqtPieces + pawns + kings;
 }
 
@@ -126,7 +126,7 @@ inline bool Board::hasEvalCacheTerm() const noexcept {
     return (evalCache.validMask & Term) == Term;
 }
 
-inline int64_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
+inline int32_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
     switch (term) {
         case EVAL_CACHE_MATERIAL_DELTA:           return evalCache.materialDelta;
         case EVAL_CACHE_PAWN_STRUCTURE_MG:        return evalCache.pawnStructureMg;
@@ -146,7 +146,7 @@ inline int64_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
 }
 
 template<uint32_t Term>
-inline int64_t& Board::evalCacheTermRef() const noexcept {
+inline int32_t& Board::evalCacheTermRef() const noexcept {
     if constexpr (Term == EVAL_CACHE_MATERIAL_DELTA) {
         return evalCache.materialDelta;
     } else if constexpr (Term == EVAL_CACHE_PAWN_STRUCTURE_MG) {
@@ -179,11 +179,11 @@ inline int64_t& Board::evalCacheTermRef() const noexcept {
 }
 
 template<uint32_t Term>
-inline int64_t Board::getEvalCacheTerm() const noexcept {
+inline int32_t Board::getEvalCacheTerm() const noexcept {
     return evalCacheTermRef<Term>();
 }
 
-inline void Board::setEvalCacheTerm(uint32_t term, int64_t value) const noexcept {
+inline void Board::setEvalCacheTerm(uint32_t term, int32_t value) const noexcept {
     switch (term) {
         case EVAL_CACHE_MATERIAL_DELTA:           evalCache.materialDelta = value; break;
         case EVAL_CACHE_PAWN_STRUCTURE_MG:        evalCache.pawnStructureMg = value; break;
@@ -204,7 +204,7 @@ inline void Board::setEvalCacheTerm(uint32_t term, int64_t value) const noexcept
 }
 
 template<uint32_t Term>
-inline void Board::setEvalCacheTerm(int64_t value) const noexcept {
+inline void Board::setEvalCacheTerm(int32_t value) const noexcept {
     evalCacheTermRef<Term>() = value;
     evalCache.validMask |= Term;
 }
@@ -437,8 +437,8 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index)
 
 template<uint8_t PieceType, bool Add>
 inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept {
-    const int64_t sideSign = (color == 0) ? 1 : -1;
-    const int64_t signedDelta = Add ? sideSign : -sideSign;
+    const int32_t sideSign = (color == 0) ? 1 : -1;
+    const int32_t signedDelta = Add ? sideSign : -sideSign;
     const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
 
     incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];

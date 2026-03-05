@@ -2,7 +2,7 @@
 
 namespace engine {
 
-int64_t Evaluator::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
+int32_t Evaluator::evalMinorPieceDevelopment(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL;
     static constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL;
 

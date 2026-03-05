@@ -72,8 +72,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
 }
 
 template<bool IsEndgame>
-inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    constexpr int64_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
+inline constexpr int32_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
+    constexpr int32_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
 }
 
@@ -103,8 +103,8 @@ inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
 }
 
 inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
-                                         int64_t safeBonus, int64_t forcingBonus,
-                                         int64_t& attackUnits) noexcept {
+                                         int32_t safeBonus, int32_t forcingBonus,
+                                         int32_t& attackUnits) noexcept {
     while (checkers) {
         const uint8_t checkerSq = popLSB(checkers);
         const bool isSafe = (defenderMap & chess::Board::bitMask(checkerSq)) == 0ULL;
@@ -126,9 +126,9 @@ inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
     return pieces::KNIGHT_ATTACKS[sq];
 }
 
-template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t Weight>
 inline void Evaluator::accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
-                                                   int& attackerCount, int64_t& attackWeight) noexcept {
+                                                   int& attackerCount, int32_t& attackWeight) noexcept {
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         if (AttackFn(sq, occ) & kingZone) {

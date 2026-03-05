@@ -3,7 +3,7 @@
 namespace engine {
 
 template<int Side>
-inline constexpr int64_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
+inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
     static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
 
     const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
@@ -12,7 +12,7 @@ inline constexpr int64_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t
     const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
     const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
 
-    const int64_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
+    const int32_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
 
     if constexpr (Side == 0) {
         return score;
@@ -21,12 +21,12 @@ inline constexpr int64_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t
     }
 }
 
-int64_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
+int32_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
     return (side == 0) ? Evaluator::evalBadBishopImpl<0>(bishops, pawns) : Evaluator::evalBadBishopImpl<1>(bishops, pawns);
 }
 
-int64_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
+    int32_t score = 0;
     const int fullMoves = b.getFullMoveClock();
 
     for (int side = 0; side < 2; ++side) {

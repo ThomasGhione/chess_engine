@@ -2,9 +2,9 @@
 
 namespace engine {
 
-template<int64_t Bonus>
-inline int64_t Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept {
-    int64_t score = 0;
+template<int32_t Bonus>
+inline int32_t Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept {
+    int32_t score = 0;
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[color][sq] & b.pawns_bb[color]) != 0;
@@ -16,8 +16,8 @@ inline int64_t Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int o
     return score;
 }
 
-inline int64_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
-    int64_t score = 0;
+inline int32_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
+    int32_t score = 0;
     const int sign = (color == 0) ? 1 : -1;
     const int opp = color ^ 1;
 
@@ -27,16 +27,16 @@ inline int64_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color)
     return score;
 }
 
-int64_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
+    int32_t score = 0;
     for (int side = 0; side < 2; ++side) {
         score += evalOutpostsForColor(b, side);
     }
     return score;
 }
 
-inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
-    int64_t score = 0;
+inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
+    int32_t score = 0;
     const int sign = (color == 0) ? -1 : 1;
 
     uint64_t minors = b.knights_bb[color] | b.bishops_bb[color];
@@ -55,8 +55,8 @@ inline int64_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
     return score;
 }
 
-int64_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
+    int32_t score = 0;
     for (int side = 0; side < 2; ++side) {
         score += evalPieceCoordinationForColor(b, side);
     }

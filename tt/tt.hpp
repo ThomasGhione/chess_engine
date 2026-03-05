@@ -127,12 +127,6 @@ public:
     inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
-    inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept;
-    inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept;
-
-    inline bool probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore, uint16_t& outBestMove) noexcept;
-    inline void store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag, uint16_t bestMove) noexcept;
-
     inline void incrementGeneration() noexcept { ++generation_; }
     inline void clear() noexcept;
     [[nodiscard]] inline HugePageMode hugePageMode() const noexcept { return hugePageMode_; }
@@ -285,11 +279,6 @@ private:
         return (depth <= Entry::MAX_DEPTH) ? depth : Entry::MAX_DEPTH;
     }
 
-    [[nodiscard]] static inline int32_t clampI64ToI32(int64_t value) noexcept {
-        if (value > static_cast<int64_t>(INT32_MAX - 1)) return INT32_MAX - 1;
-        if (value < static_cast<int64_t>(INT32_MIN + 1)) return INT32_MIN + 1;
-        return static_cast<int32_t>(value);
-    }
 };
 
 inline void TranspositionTable::prefetch(uint64_t key) noexcept {
@@ -459,45 +448,12 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     target->setPacked(storedDepth, generation_, flag);
 }
 
-inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta, int64_t& outScore) noexcept {
-    const int32_t alpha32 = clampI64ToI32(alpha - ADJUSTMENT);
-    const int32_t beta32 = clampI64ToI32(beta + ADJUSTMENT);
-
-    int32_t score32 = 0;
-    if (probe(key, depth, alpha32, beta32, score32)) {
-        outScore = static_cast<int64_t>(score32);
-        return true;
-    }
-    return false;
-}
-
-inline bool TranspositionTable::probe(uint64_t key, uint8_t depth, int64_t alpha, int64_t beta,
-                                      int64_t& outScore, uint16_t& outBestMove) noexcept {
-    const int32_t alpha32 = clampI64ToI32(alpha - ADJUSTMENT);
-    const int32_t beta32 = clampI64ToI32(beta + ADJUSTMENT);
-
-    int32_t score32 = 0;
-    if (probe(key, depth, alpha32, beta32, score32, outBestMove)) {
-        outScore = static_cast<int64_t>(score32);
-        return true;
-    }
-    return false;
-}
-
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag) noexcept {
-    store(key, depth, clampI64ToI32(score), flag);
-}
-
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int64_t score, uint8_t flag, uint16_t bestMove) noexcept {
-    store(key, depth, clampI64ToI32(score), flag, bestMove);
-}
-
 inline void TranspositionTable::clear() noexcept {
     std::fill_n(data(), TABLE_SIZE, Entry{});
 }
 
 inline constexpr TranspositionTable::Entry::Flag
-determineFlag(int64_t score, int64_t alphaOrig, int64_t beta) noexcept {
+determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
     if (score <= alphaOrig) return TranspositionTable::Entry::UPPERBOUND;
     if (score >= beta) return TranspositionTable::Entry::LOWERBOUND;
     return TranspositionTable::Entry::EXACT;

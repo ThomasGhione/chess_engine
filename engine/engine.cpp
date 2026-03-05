@@ -127,7 +127,7 @@ void Engine::updateGameResult() noexcept {
 
 
 __attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int64_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
+void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int32_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
     if (ply >= Engine::MAX_PLY) return; // Out of bounds
     
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
@@ -141,7 +141,7 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // CAPTURE HISTORY: bonus for captures that cause cutoffs
     if (isCapture) {
         const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-        const int64_t depthPlusOne = depth + 1;
+        const int32_t depthPlusOne = depth + 1;
         const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
         
         // GRAVITY FORMULA: prevents overflow and naturally saturates
@@ -180,7 +180,7 @@ void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const che
     // HISTORY HEURISTIC: Bonus based on depth
     // GRAVITY FORMULA: h += bonus - h * |bonus| / MAX_HISTORY
     const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-    const int64_t depthPlusOne = depth + 1;
+    const int32_t depthPlusOne = depth + 1;
     const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
     
     constexpr int32_t MAX_HISTORY = 16384;

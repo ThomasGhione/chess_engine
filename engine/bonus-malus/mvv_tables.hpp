@@ -10,7 +10,7 @@ namespace engine {
 // Simplified from MVV-LVA: only victim value matters (attacker irrelevant)
 // SEE already handles exchange evaluation, so MVV-only is sufficient
 // Indices: 0=EMPTY, 1=PAWN, 2=KNIGHT, 3=BISHOP, 4=ROOK, 5=QUEEN, 6=KING
-inline constexpr int64_t MVV_TABLE[7] = {
+inline constexpr int32_t MVV_TABLE[7] = {
     0,                  // EMPTY
     PAWN_VALUE * 10,    // PAWN = 1000
     KNIGHT_VALUE * 10,  // KNIGHT = 3200
@@ -22,7 +22,7 @@ inline constexpr int64_t MVV_TABLE[7] = {
 
 // Legacy MVV-LVA table kept for compatibility (not used in new code)
 // TODO: Remove after confirming MVV-only works well
-inline constexpr int64_t MVV_LVA_TABLE[7][7] = {
+inline constexpr int32_t MVV_LVA_TABLE[7][7] = {
     // victim: EMPTY
     {0, 0, 0, 0, 0, 0, 0},
     // victim: PAWN (100)

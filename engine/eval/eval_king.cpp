@@ -2,8 +2,8 @@
 
 namespace engine {
 
-int64_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    int32_t score = 0;
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
     const bool blackCastleKs = b.getCastle(2);
@@ -32,7 +32,7 @@ int64_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
         }
         const uint64_t enemyHeavyPieces = b.rooks_bb[opp] | b.queens_bb[opp];
         const uint8_t sideColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
-        int64_t sideSafety = 0;
+        int32_t sideSafety = 0;
 
         const bool rightsLost = !canCastleKingside && !canCastleQueenside;
         const bool onCastlingSquare = (side == 0) ? (sq == 62 || sq == 58) : (sq == 6 || sq == 2);
@@ -247,15 +247,15 @@ int64_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
     return score;
 }
 
-int64_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+int32_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     const uint64_t occ = b.getPiecesBitMap();
     AttackData attackData[2];
     computeAttackData(attackData, b, occ);
     return evalKingSafetyWithAttackData(b, whitePawns, blackPawns, attackData);
 }
 
-int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
-    int64_t score = 0;
+int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
+    int32_t score = 0;
     const uint64_t occ = b.getPiecesBitMap();
 
     static constexpr int ATTACKER_SCALE_PERCENT[9] = {0, 0, 32, 52, 68, 80, 90, 97, 100};
@@ -281,7 +281,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
             : (b.bishops_bb[side] & ~BLACK_MINOR_START);
 
         int attackerCount = 0;
-        int64_t attackWeight = 0;
+        int32_t attackWeight = 0;
 
         accumulateKingZoneAttackers<knightAttacksLookup, engine::KING_ATTACK_WEIGHT_KNIGHT>(
             developedKnights, kingZone, occ, attackerCount, attackWeight);
@@ -298,7 +298,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
             const int safeContacts = __builtin_popcountll(zoneAttacks & ~defenderMap);
             const int forcingContacts = __builtin_popcountll(zoneAttacks & defenderMap);
 
-            int64_t attackUnits = attackWeight
+            int32_t attackUnits = attackWeight
                 + safeContacts * engine::KING_SAFE_CONTACT_BONUS
                 + forcingContacts * engine::KING_FORCING_CONTACT_BONUS;
 
@@ -313,8 +313,8 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
             addKingCheckUnits(queenChecks, defenderMap, engine::KING_SAFE_CHECK_BONUS + 8, engine::KING_FORCING_CHECK_BONUS + 4, attackUnits);
 
             const int scaleIndex = std::min(attackerCount, 8);
-            int64_t attackDanger = (attackUnits * ATTACKER_SCALE_PERCENT[scaleIndex]) / 100;
-            attackDanger = std::min<int64_t>(attackDanger, engine::KING_ATTACK_DANGER_CAP);
+            int32_t attackDanger = (attackUnits * ATTACKER_SCALE_PERCENT[scaleIndex]) / 100;
+            attackDanger = std::min<int32_t>(attackDanger, engine::KING_ATTACK_DANGER_CAP);
 
             score += sign * attackDanger;
         }
@@ -323,7 +323,7 @@ int64_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
     return score;
 }
 
-int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
+int32_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     // Castled detection: king on a castling destination square AND both castling
     // rights lost.  The rook may have moved away from its post-castling square
     // (e.g. Rf1-e1), but the king position + lost rights proves castling occurred.
@@ -331,7 +331,7 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_KING_CASTLED  = (chess::Board::bitMask(62) | chess::Board::bitMask(58));
     static constexpr uint64_t BLACK_KING_CASTLED  = (chess::Board::bitMask(6)  | chess::Board::bitMask(2));
 
-    int64_t score = 0;
+    int32_t score = 0;
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
     const bool blackCastleKs = b.getCastle(2);
@@ -355,7 +355,7 @@ int64_t Evaluator::evalCastlingBonus(const chess::Board& b) noexcept {
 }
 
 template<bool IsEndgame>
-inline int64_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) noexcept {
+inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) noexcept {
     const uint64_t kingBB = b.kings_bb[side];
     if (!kingBB) [[unlikely]] return 0;
 
@@ -385,14 +385,14 @@ inline int64_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
     return sign * enemiesNearKing * engine::KING_SAFETY_PENALTY;
 }
 
-int64_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
+int32_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
     return isEndgame
         ? (evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1))
         : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
 }
 
 template<int Side>
-inline int64_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noexcept {
+inline int32_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noexcept {
     static constexpr int CENTER[4] = {27, 28, 35, 36};
     const uint64_t kbb = b.kings_bb[Side];
     if (!kbb) [[unlikely]] return 0;
@@ -406,7 +406,7 @@ inline int64_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noe
     return sign * (7 - best) * 10;
 }
 
-int64_t Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
+int32_t Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
     return evalEndgameKingActivitySide<0>(b) + evalEndgameKingActivitySide<1>(b);
 }
 

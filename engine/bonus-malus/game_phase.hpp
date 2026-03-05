@@ -6,7 +6,7 @@ namespace engine {
 // ===================================================
 // GAME PHASE
 // ===================================================
-inline static constexpr int64_t PHASE_FINAL_THRESHOLD = 8;
+inline static constexpr int32_t PHASE_FINAL_THRESHOLD = 8;
 
 } // namespace engine
 

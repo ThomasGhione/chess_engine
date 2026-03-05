@@ -62,15 +62,15 @@ inline bool Engine::shouldAbortSearch() const noexcept {
 
 __attribute__((always_inline))
 inline int32_t Engine::clampToTTScore(int64_t value) noexcept {
-    if (value > POS_INF) return static_cast<int32_t>(POS_INF);
-    if (value < NEG_INF) return static_cast<int32_t>(NEG_INF);
+    if (value > static_cast<int64_t>(POS_INF)) return POS_INF;
+    if (value < static_cast<int64_t>(NEG_INF)) return NEG_INF;
     return static_cast<int32_t>(value);
 }
 
 __attribute__((always_inline))
-inline void Engine::toTTProbeBounds(int64_t alpha, int64_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
-    const int64_t expandedAlpha = alpha - tt::TranspositionTable::ADJUSTMENT;
-    const int64_t expandedBeta = beta + tt::TranspositionTable::ADJUSTMENT;
+inline void Engine::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
+    const int64_t expandedAlpha = static_cast<int64_t>(alpha) - tt::TranspositionTable::ADJUSTMENT;
+    const int64_t expandedBeta = static_cast<int64_t>(beta) + tt::TranspositionTable::ADJUSTMENT;
     ttAlpha = clampToTTScore(expandedAlpha);
     ttBeta = clampToTTScore(expandedBeta);
 }

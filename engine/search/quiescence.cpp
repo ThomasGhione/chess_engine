@@ -5,10 +5,10 @@
 namespace engine {
 
 static inline int32_t clampQMoveScore(int64_t score) noexcept {
-    if (score > std::numeric_limits<int32_t>::max()) {
+    if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }
-    if (score < std::numeric_limits<int32_t>::min()) {
+    if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
         return std::numeric_limits<int32_t>::min();
     }
     return static_cast<int32_t>(score);
@@ -43,7 +43,7 @@ static inline bool isForcingEvasion(const chess::Board& b,
 // SEE pruning: Skip losing captures (SEE < threshold)
 //
 // NOTE: We do NOT generate checks (non-capture) as they cause tree explosio
-int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, int ply, bool useTT, uint64_t* nodeCounter) noexcept {
+int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, int ply, bool useTT, uint64_t* nodeCounter) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
@@ -70,7 +70,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         toTTProbeBounds(alpha, beta, ttAlpha, ttBeta);
         // Probe at depth 0 (qsearch is depth <= 0)
         if (this->tt.probe(hashKey, 0, ttAlpha, ttBeta, ttScore))
-            return static_cast<int64_t>(ttScore);
+            return static_cast<int32_t>(ttScore);
     }
 
     const uint8_t activeColor = b.getActiveColor();
@@ -104,7 +104,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
 
-        int64_t best = Engine::initialBest(usIsWhite);
+        int32_t best = Engine::initialBest(usIsWhite);
 
         // Two-pass evasion ordering:
         // 1) forcing evasions (captures/promotions)
@@ -125,7 +125,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
                 chess::Board::MoveState state;
                 doMoveWithPromotion(b, m, state);
-                const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+                const int32_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
                 b.undoMove(m, state);
 
                 if (Engine::isBetter(score, best, usIsWhite)) {
@@ -144,7 +144,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
 
     // Stand-pat: current static evaluation
     // evaluate() returns score from white's perspective (positive = white winning)
-    const int64_t standPat = this->evaluate(b);
+    const int32_t standPat = this->evaluate(b);
 
     // Beta cutoff: position is too good for the active player
     if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
@@ -162,7 +162,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // In-check nodes are handled above and never reach this section.
-    static constexpr int64_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
+    static constexpr int32_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
 
     if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
         return usIsWhite ? alpha : beta; // Early delta cutoff (fail-low bound)
@@ -181,7 +181,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // 4. Depth penalty: deeper in qsearch = more conservative (reduce delta)
     
     // Compute dynamic delta margin
-    int64_t deltaMargin = QUEEN_VALUE; // Base: best single capture
+    int32_t deltaMargin = QUEEN_VALUE; // Base: best single capture
     
     // Factor 1: Check for near-promotion pawns (7th/2nd rank)
     const int side = chess::Board::colorToIndex(activeColor);
@@ -195,7 +195,9 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
     
     // Factor 2: Material deficit - if we're losing, allow more speculative lines
-    const int64_t materialBalance = usIsWhite ? standPat : -standPat;
+    const int32_t materialBalance = usIsWhite
+        ? standPat
+        : (standPat == std::numeric_limits<int32_t>::min() ? std::numeric_limits<int32_t>::max() : -standPat);
     if (materialBalance < -400) {
         // Losing by 4+ pawns: add 150cp to delta (desperate but realistic)
         deltaMargin += 150;
@@ -205,10 +207,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
     
     // Factor 3: Depth penalty - deeper in qsearch = more conservative
-    const int qsearchDepth = ply - this->depth; // Approximate qsearch depth
+    const int qsearchDepth = std::max(0, ply - static_cast<int>(this->depth)); // Approximate qsearch depth
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
-        deltaMargin = std::max(deltaMargin, static_cast<int64_t>(QUEEN_VALUE)); // Floor at Queen value
+        deltaMargin = std::max(deltaMargin, static_cast<int32_t>(QUEEN_VALUE)); // Floor at Queen value
     }
     
     // Apply delta pruning with dynamic margin
@@ -235,7 +237,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     // Shallow qsearch (ply < 10): SEE >= -15cp (only tiny tactical losses)
     // Mid qsearch (10-20): SEE >= -8cp (very conservative)
     // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
-    const int64_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
+    const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
     for (int i = 0; i < tacticalMoves.size; ++i) {
         const chess::Board::Move m = tacticalMoves[static_cast<size_t>(i)];
@@ -259,15 +261,15 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // ============================================================================
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
-            const int64_t capturedValue = PIECE_VALUES[victimType];
-            static constexpr int64_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
+            const int32_t capturedValue = PIECE_VALUES[victimType];
+            static constexpr int32_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
             
             // Check if this capture can possibly improve our position enough
             if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha, beta, usIsWhite)) {
                 continue;
             }
             
-            const int64_t see = staticExchangeEvaluation(b, m);
+            const int32_t see = staticExchangeEvaluation(b, m);
 
             // SEE-based pruning with dynamic threshold
             // Dynamic threshold is already strict enough (-16cp shallow, 0cp deep)
@@ -279,7 +281,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            static constexpr int64_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
+            static constexpr int32_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
             
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
                 continue; // Per-move delta pruning
@@ -325,10 +327,10 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
     }
 
     // Save original bounds for TT flag determination
-    const int64_t alphaOrig = alpha;
-    const int64_t betaOrig = beta;
+    const int32_t alphaOrig = alpha;
+    const int32_t betaOrig = beta;
 
-    int64_t best = standPat;
+    int32_t best = standPat;
     
     for (const auto& m : tacticalMoves) {
         if (this->shouldAbortSearch()) {
@@ -341,7 +343,7 @@ int64_t Engine::quiescenceSearch(chess::Board& b, int64_t alpha, int64_t beta, i
         
         // MINIMAX: recursively search with same alpha-beta window
         // The side switches automatically because b.doMove() changes activeColor
-        const int64_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
+        const int32_t score = this->quiescenceSearch(b, alpha, beta, ply + 1, useTT, counter);
         
         b.undoMove(m, state);
         
