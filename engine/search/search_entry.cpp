@@ -674,8 +674,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     this->bestMove = bestMove;
     this->eval = result.bestScore;
 
-    this->moveHistory += bestMove.from.toString() + bestMove.to.toString();
-    this->moveHistory += bestMove.promotionPiece == '\0' ? "\n" : std::string(1, bestMove.promotionPiece) + "\n";
+    this->appendMoveHistoryEntry(bestMove.from, bestMove.to, bestMove.promotionPiece);
 
     if (!this->isGameOver()) {
         this->startPondering();

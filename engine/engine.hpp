@@ -158,6 +158,10 @@ public:
     int32_t UCI_DEPTH = 0;
     static constexpr int32_t DEFAULTDEPTH = 10;
     static constexpr int32_t MAX_PLY = 64;
+    // Keep a bounded UCI history window (realistic gameplay span, avoids unbounded growth).
+    static constexpr size_t MOVE_HISTORY_MAX_PLIES = 1024;
+    static constexpr size_t MOVE_HISTORY_ENTRY_MAX_LEN = 6; // "e7e8q\n"
+    static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
     std::string moveHistory = "";
 
 #ifdef DEBUG
@@ -341,6 +345,7 @@ private:
     int32_t quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
     bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
     inline bool shouldAbortSearch() const noexcept;
+    void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
 
     IterativeSearchResult runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept;
     void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int32_t score, uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;

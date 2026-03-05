@@ -482,7 +482,7 @@ private:
     uint64_t currentHash = 0ULL;            // Zobrist hash of current position
     std::array<uint64_t, 128> repetitionHistory{}; // Ring buffer of recent positions (bounded by 50-move rule)
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
-    std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
+    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     int32_t incrementalMaterialDelta = 0;
     int32_t incrementalPsqtPawnsMg = 0;

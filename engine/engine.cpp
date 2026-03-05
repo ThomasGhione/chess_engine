@@ -96,18 +96,37 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
         : this->board.move(from, to, promotionPiece);
     
     if (result) [[likely]] {
-        moveHistory.reserve(moveHistory.size() + 6); // "e2e4\n" = 5 chars max
-        moveHistory += from.toString();
-        moveHistory += to.toString();
-        if (promotionPiece != '\0') {
-            moveHistory += promotionPiece;
-        }
-        moveHistory += '\n';
+        appendMoveHistoryEntry(from, to, promotionPiece);
     }
 
     this->updateGameResult();
 
     return result;
+}
+
+void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
+    const size_t appendLen = (promotionPiece == '\0') ? size_t{5} : size_t{6};
+
+    if (moveHistory.size() + appendLen > MOVE_HISTORY_MAX_BYTES) {
+        const size_t overflow = (moveHistory.size() + appendLen) - MOVE_HISTORY_MAX_BYTES;
+        const size_t firstErase = std::min(overflow, moveHistory.size());
+        moveHistory.erase(0, firstErase);
+
+        const size_t lineEnd = moveHistory.find('\n');
+        if (lineEnd != std::string::npos) {
+            moveHistory.erase(0, lineEnd + 1);
+        } else {
+            moveHistory.clear();
+        }
+    }
+
+    moveHistory.reserve(moveHistory.size() + appendLen);
+    moveHistory += from.toString();
+    moveHistory += to.toString();
+    if (promotionPiece != '\0') {
+        moveHistory += promotionPiece;
+    }
+    moveHistory += '\n';
 }
 
 
