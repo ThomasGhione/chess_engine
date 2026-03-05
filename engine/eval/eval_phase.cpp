@@ -10,7 +10,7 @@ struct EvalCacheEntry {
     uint8_t valid = 0;
 };
 
-static constexpr size_t EVAL_CACHE_SIZE = 1u << 9; // 512 entries (~8 KiB), L1-friendly.
+static constexpr size_t EVAL_CACHE_SIZE = 1u << 10; // 1024 entries (~16 KiB), L1-friendly.
 static constexpr uint64_t EVAL_CACHE_MASK = static_cast<uint64_t>(EVAL_CACHE_SIZE - 1u);
 
 } // namespace
