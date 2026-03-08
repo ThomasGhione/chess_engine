@@ -149,6 +149,7 @@ private:
     static int32_t evalPieceCoordination(const chess::Board& b) noexcept;
     static int32_t evalOutposts(const chess::Board& b) noexcept;
     static int32_t evalCastlingBonus(const chess::Board& b) noexcept;
+    static inline int32_t evalCastlingBonusSide(const chess::Board& b, int side) noexcept;
     static int32_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
     static int32_t evalRookEndgamePressure(const chess::Board& b) noexcept;
     static int32_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
