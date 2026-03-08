@@ -37,6 +37,34 @@ int32_t Engine::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
     return (matDelta > 0) ? -stalematePenalty : stalematePenalty;
 }
 
+int32_t Engine::repetitionDrawScore(const chess::Board& b) noexcept {
+    const int32_t matDelta = getMaterialDelta(b);
+    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+        return 0;
+    }
+
+    const int32_t contempt = std::min(static_cast<int32_t>(200), std::abs(matDelta) / 2);
+    return (matDelta > 0) ? -contempt : contempt;
+}
+
+bool Engine::hasInsufficientMaterialDraw(const chess::Board& b) noexcept {
+    const uint64_t wKnights = b.knights_bb[0];
+    const uint64_t bKnights = b.knights_bb[1];
+    const uint64_t wBishops = b.bishops_bb[0];
+    const uint64_t bBishops = b.bishops_bb[1];
+    const uint64_t wMinors = wKnights | wBishops;
+    const uint64_t bMinors = bKnights | bBishops;
+
+    if (wMinors == 0ULL && bMinors == 0ULL) {
+        return true;
+    }
+
+    const int wMinorCount = __builtin_popcountll(wMinors);
+    const int bMinorCount = __builtin_popcountll(bMinors);
+    return (wMinorCount <= 1 && bMinorCount == 0)
+        || (bMinorCount <= 1 && wMinorCount == 0);
+}
+
 // Helper to handle terminal nodes and transposition table lookups
 bool Engine::handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept {
     // Transposition table lookup (hashKey already computed by caller to avoid duplication)
@@ -51,6 +79,72 @@ bool Engine::handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, 
         return true;
     }
     return false;
+}
+
+bool Engine::tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
+                                int32_t depth, int32_t alpha, int32_t beta, int ply,
+                                bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
+                                uint64_t* nodeCounter, int32_t& outScore) noexcept {
+    const int32_t reduction = 3 + depth / 8;
+
+    chess::Board::MoveState nullState;
+    b.doNullMove(nullState);
+
+    const int32_t nullScore = this->searchPosition(
+        b, depth - reduction, alpha, beta, ply + 1,
+        useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
+
+    b.undoNullMove(nullState);
+
+    if (!isBetaCutoff(nullScore, alpha, beta, node.usIsWhite)) {
+        return false;
+    }
+
+    bool confirmedCutoff = true;
+    if (depth >= 10) {
+        const int32_t verifyScore = this->searchPosition(
+            b, depth - reduction, alpha, beta, ply,
+            useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
+        confirmedCutoff = isBetaCutoff(verifyScore, alpha, beta, node.usIsWhite);
+    }
+
+    if (!confirmedCutoff) {
+        return false;
+    }
+
+    if (!b.hasAnyLegalMove(node.activeColor)) {
+        outScore = stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+        return true;
+    }
+
+    outScore = cutoffValue(alpha, beta, node.usIsWhite);
+    return true;
+}
+
+bool Engine::tryReverseFutilityPruning(chess::Board& b, const SearchNodeState& node,
+                                       int32_t depth, int32_t alpha, int32_t beta, int ply,
+                                       int32_t& outScore) noexcept {
+    constexpr int32_t RFP_MARGIN_PER_DEPTH = 110;
+
+    if (node.isPVNode || node.inCheck || node.isPawnEndgameForPruning || ply <= 0 || depth > 3) {
+        return false;
+    }
+
+    const int32_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
+    const int32_t rfpScore = node.usIsWhite
+        ? (node.staticEval - rfpMargin)
+        : (node.staticEval + rfpMargin);
+    if (!isBetaCutoff(rfpScore, alpha, beta, node.usIsWhite)) {
+        return false;
+    }
+
+    if (!b.hasAnyLegalMove(node.activeColor)) {
+        outScore = stalemateScoreFromMaterialDelta(getMaterialDelta(b));
+        return true;
+    }
+
+    outScore = node.staticEval;
+    return true;
 }
 
 // Helper to search through all moves and find best move with its score
@@ -287,7 +381,7 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
         return this->evaluate(b);
     }
 
-    // SAFETY CHECK: avoid stack overflow and out-of-bounds access on killerMoves/history
+    // avoid stack overflow and out-of-bounds access on killerMoves/history
     if (ply >= MAX_PLY - 1) {
         return this->evaluate(b);
     }
@@ -314,61 +408,18 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
         if (alpha >= beta) return alpha;
     }
 
-    // =========================================================================
-    // DRAW BY REPETITION DETECTION (inside search tree)
-    // =========================================================================
-    // If the current position has already occurred in the game history, treat it
-    // as a draw. This prevents the engine from entering perpetual check or
-    // shuffling pieces in winning positions.
-    //
-    // CONTEMPT: When ahead in material, return a score slightly worse than 0
-    // to actively discourage drawing. When behind, a draw is acceptable (return 0).
-    // This is similar to Stockfish's "contempt" concept.
-    //
-    // Only check at ply > 0 (not at root) to avoid interfering with root move selection.
     if (ply > 0 && b.isTwofoldRepetition()) {
-        const int32_t matDelta = getMaterialDelta(b);
-        // Contempt: penalize draw when we have material advantage
-        // White ahead (matDelta > 0): return negative score (bad for white = discourages draw)
-        // Black ahead (matDelta < 0): return positive score (bad for black = discourages draw)
-        // Even material: return 0 (true draw)
-        if (std::abs(matDelta) > STALEMATE_MATERIAL_THRESHOLD) {
-            // Scale contempt by material advantage (bigger lead = more contempt)
-            // Cap at 200cp to avoid distorting search too much
-            const int32_t contempt = std::min(static_cast<int32_t>(200), std::abs(matDelta) / 2);
-            return (matDelta > 0) ? -contempt : contempt;
-        }
-        return 0; // True draw
+        return repetitionDrawScore(b);
     }
 
-    if (b.isFiftyMoveRule()) [[unlikely]] return 0; // 50-move rule detection inside search tree
+    if (b.isFiftyMoveRule()) [[unlikely]] return 0;
 
-    // =========================================================================
-    // INSUFFICIENT MATERIAL DRAW DETECTION 
-    // =========================================================================
-    // Detect positions where neither side can deliver checkmate:
-    // K vs K, K+N vs K, K+B vs K
-    {
-        const uint64_t wPawns  = b.pawns_bb[0],   bPawns  = b.pawns_bb[1];
-        const uint64_t wRooks  = b.rooks_bb[0],   bRooks  = b.rooks_bb[1];
-        const uint64_t wQueens = b.queens_bb[0],   bQueens = b.queens_bb[1];
-
-        // Quick exit: if any pawns, rooks, or queens exist, there IS sufficient material
-        if ((wPawns | bPawns | wRooks | bRooks | wQueens | bQueens) == 0ULL) {
-            const uint64_t wKnights = b.knights_bb[0], bKnights = b.knights_bb[1];
-            const uint64_t wBishops = b.bishops_bb[0], bBishops = b.bishops_bb[1];
-            const uint64_t wMinors = wKnights | wBishops;
-            const uint64_t bMinors = bKnights | bBishops;
-
-            // K vs K
-            if (wMinors == 0ULL && bMinors == 0ULL) return 0;
-
-            // K+minor vs K (one side has exactly one minor, other has none)
-            const int wMinorCount = __builtin_popcountll(wMinors);
-            const int bMinorCount = __builtin_popcountll(bMinors);
-            if (wMinorCount <= 1 && bMinorCount == 0) return 0; // K+N/B vs K or K vs K
-            if (bMinorCount <= 1 && wMinorCount == 0) return 0; // K vs K+N/B or K vs K
-        }
+    const uint64_t heavyMaterial =
+        b.pawns_bb[0] | b.pawns_bb[1] |
+        b.rooks_bb[0] | b.rooks_bb[1] |
+        b.queens_bb[0] | b.queens_bb[1];
+    if (heavyMaterial == 0ULL && hasInsufficientMaterialDraw(b)) [[unlikely]] {
+        return 0;
     }
 
     const uint64_t hashKey = b.getHash();
@@ -380,154 +431,68 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
         return score;
     }
 
-    const uint8_t activeColor = b.getActiveColor();
-    const bool usIsWhite = (activeColor == chess::Board::WHITE);
-    const bool inCheck = b.inCheck(activeColor);
+    SearchNodeState node{};
+    node.activeColor = b.getActiveColor();
+    node.usIsWhite = (node.activeColor == chess::Board::WHITE);
+    node.inCheck = b.inCheck(node.activeColor);
+    node.isPVNode = isPVNode;
     const int nonPawnMajorsAll = __builtin_popcountll(
         b.knights_bb[0] | b.knights_bb[1] |
         b.bishops_bb[0] | b.bishops_bb[1] |
         b.rooks_bb[0]   | b.rooks_bb[1]   |
         b.queens_bb[0]  | b.queens_bb[1]);
-    const bool isPawnEndgameForPruning =
+    node.isPawnEndgameForPruning =
         ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
 
-    // =========================================================================
-    // STATIC EVALUATION for pruning decisions
-    // =========================================================================
-    // Compute static eval ONCE for NMP, RFP, futility pruning (not in check, not at root)
-    const int32_t staticEval = (ply > 0 && !inCheck) ? this->evaluate(b) : 0;
+    node.staticEval = (ply > 0 && !node.inCheck) ? this->evaluate(b) : 0;
 
-    // =========================================================================
-    // NULL MOVE PRUNING
-    // =========================================================================
-    // Idea: If passing the turn (doing nothing) still results in a score >= beta,
-    // then the current position is so good that the opponent won't allow it.
-    // We can safely prune this node.
-    //
-    // Restrictions:
-    // - NOT when in check (illegal to pass when in check)
-    // - NOT at root (ply == 0)
-    // - NOT in endgames with few non-pawn pieces (zugzwang risk)
-    // - NOT at very low depth (overhead not worth it)
-    // - NOT in PV nodes (alpha + 1 != beta means PV node)
-    {
-        const int nonPawnMajors = __builtin_popcountll(
-            b.knights_bb[usIsWhite ? 0 : 1] | b.bishops_bb[usIsWhite ? 0 : 1] |
-            b.rooks_bb[usIsWhite ? 0 : 1]   | b.queens_bb[usIsWhite ? 0 : 1]);
-        
-        // NMP CONDITIONS (conservative to avoid zugzwang and bad sacrifices):
-        // - Not in check (illegal)
-        // - Not at root
-        // - depth >= 4 (need sufficient depth for reduced search to be meaningful)
-        // - At least 3 non-pawn pieces (stronger zugzwang protection)
-        // - Static eval is not too far below beta (with margin)
-        //   Without this, NMP can prune positions where we just sacrificed material
-        //   and the opponent has a strong reply. The margin allows NMP when we're
-        //   slightly worse but not when we're clearly losing.
-        //   Margin: 100cp = allows NMP even if slightly behind, but blocks it
-        //   after unsound material sacrifices.
-        const int32_t nmpEvalGate = usIsWhite 
-            ? (staticEval + 100) 
-            : (staticEval - 100);
-        const bool evalOk = isBetaCutoff(nmpEvalGate, alpha, beta, usIsWhite);
-        
-        const bool canNullMove = allowNullMove
-            && !isPVNode
-            && !inCheck
-            && ply > 0
-            && depth >= 6
-            && nonPawnMajors >= 3
-            && evalOk;
-
-        if (canNullMove) {
-            const int32_t R = 3 + depth / 8; // Adaptive reduction
-
-            chess::Board::MoveState nullState;
-            b.doNullMove(nullState);
-
-            const int32_t nullScore = this->searchPosition(
-                b, depth - R, alpha, beta, ply + 1, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, counter, false);
-
-            b.undoNullMove(nullState);
-
-            if (isBetaCutoff(nullScore, alpha, beta, usIsWhite)) {
-                bool confirmedCutoff = true;
-                // Verification search at reduced depth to avoid zugzwang blunders
-                // Only verify if depth is high enough (otherwise overhead > benefit)
-                // depth >= 10: verification is expensive, only do it at high depth
-                if (depth >= 10) {
-                    // Disable null-move in verification to prevent recursive NMP chains.
-                    const int32_t verifyScore = this->searchPosition(
-                        b, depth - R, alpha, beta, ply, useTT, allowTTWrite, allowHeuristicUpdates, nullptr, counter, false);
-                    confirmedCutoff = isBetaCutoff(verifyScore, alpha, beta, usIsWhite);
-                }
-
-                if (confirmedCutoff) {
-                    // Avoid pruning a stalemate node before terminal handling.
-                    if (!b.hasAnyLegalMove(activeColor)) {
-                        return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-                    }
-                    return cutoffValue(alpha, beta, usIsWhite);
-                }
-            }
-        }
+    const int nonPawnMajors = __builtin_popcountll(
+        b.knights_bb[node.usIsWhite ? 0 : 1] | b.bishops_bb[node.usIsWhite ? 0 : 1] |
+        b.rooks_bb[node.usIsWhite ? 0 : 1]   | b.queens_bb[node.usIsWhite ? 0 : 1]);
+    const int32_t nmpEvalGate = node.usIsWhite
+        ? (node.staticEval + 100)
+        : (node.staticEval - 100);
+    const bool canNullMove = allowNullMove
+        && !node.isPVNode
+        && !node.inCheck
+        && ply > 0
+        && depth >= 6
+        && nonPawnMajors >= 3
+        && isBetaCutoff(nmpEvalGate, alpha, beta, node.usIsWhite);
+    if (canNullMove
+        && this->tryNullMovePruning(b, node, depth, alpha, beta, ply,
+                                    useTT, allowTTWrite, allowHeuristicUpdates,
+                                    counter, score)) {
+        return score;
     }
 
-    // =========================================================================
-    // REVERSE FUTILITY PRUNING (Static Null Move Pruning)
-    // =========================================================================
-    // If the static eval is so far above beta that even a big margin can't
-    // bring it below beta, prune immediately. Much cheaper than NMP.
-    // Only at very low depth where static eval is a reliable proxy.
-    {
-        constexpr int32_t RFP_MARGIN_PER_DEPTH = 110; // 110cp per depth level
-        // Disable in pawn endgames: static-eval pruning often misses
-        // pawn races, triangulation and waiting-move zugzwang motifs.
-        if (!isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3) {
-            const int32_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
-            const int32_t rfpScore = usIsWhite ? (staticEval - rfpMargin) : (staticEval + rfpMargin);
-            if (isBetaCutoff(rfpScore, alpha, beta, usIsWhite)) {
-                // Avoid pruning a stalemate node before terminal handling.
-                if (!b.hasAnyLegalMove(activeColor)) {
-                    return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-                }
-                return staticEval;
-            }
-        }
+    const bool canReverseFutilityPrune =
+        !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
+    if (canReverseFutilityPrune
+        && this->tryReverseFutilityPruning(b, node, depth, alpha, beta, ply, score)) {
+        return score;
     }
 
+    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, node.activeColor,
+                      previousMove, node.staticEval, node.inCheck, node.isPVNode, counter};
     MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(b);
     if (moves.is_empty()) {
-        // No legal moves: either checkmate or stalemate
-        // activeColor = side that CANNOT move (stalemated side)
-        if (inCheck) { // checkmate condition (shorter mate = better)
-            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
-        } else {
-            return stalemateScoreFromMaterialDelta(getMaterialDelta(b));
-        }
+        return node.inCheck
+            ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
+            : stalemateScoreFromMaterialDelta(getMaterialDelta(b));
     }
 
-    // Build search context (previousMove = move played by parent to reach this node)
-    SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, activeColor, previousMove, staticEval, inCheck, isPVNode, counter};
+    const bool hasHashMove = this->sortLegalMoves(
+        moves, ply, b, node.usIsWhite, hashKey, ctx.previousMove);
 
-    const bool hasHashMove = this->sortLegalMoves(moves, ply, b, usIsWhite, hashKey, ctx.previousMove);
-
-    // =========================================================================
-    // IIR - Internal Iterative Reduction
-    // =========================================================================
-    // If there's no hash move from TT,
-    // reduce depth by 1. Without a hash move, PVS is much less efficient and we'd waste
-    // time searching with poor move ordering. IIR compensates by searching shallower.
-    int32_t effectiveDepth = depth;
     if (!hasHashMove && depth >= 6 && ply > 0) {
-        effectiveDepth -= 1;
-        ctx.depth = effectiveDepth;
+        ctx.depth -= 1;
     }
 
     const int32_t alphaOrig = bounds.alpha;
     const int32_t betaOrig = bounds.beta;
 
-    SearchMoveResult result = this->searchMoves(b, moves, usIsWhite, ctx, bounds, useTT, allowHeuristicUpdates, allowTTWrite);
+    SearchMoveResult result = this->searchMoves(b, moves, node.usIsWhite, ctx, bounds, useTT, allowHeuristicUpdates, allowTTWrite);
     int32_t best = result.score;
 
     if (this->searchInterrupted.load(std::memory_order_relaxed)) {
@@ -540,7 +505,7 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
         const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
             result.move.from.index, result.move.to.index, result.move.promotionPiece);
 
-        this->tt.store(hashKey, static_cast<uint8_t>(effectiveDepth), clampToTTScore(best),
+        this->tt.store(hashKey, static_cast<uint8_t>(ctx.depth), clampToTTScore(best),
                        static_cast<uint8_t>(flag), encodedMove);
     }
     return best;

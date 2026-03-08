@@ -232,8 +232,6 @@ public:
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
     constexpr uint16_t getFullMoveClock() const noexcept;
-    void setNextTurn() noexcept;
-    void setPrevTurn() noexcept;
     
     constexpr uint8_t operator[](const Coords& coords) const noexcept;
     uint8_t operator[](const Coords& coords) noexcept;

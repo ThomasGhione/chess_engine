@@ -197,6 +197,15 @@ private:
         int32_t beta;
     };
 
+    struct SearchNodeState {
+        uint8_t activeColor = chess::Board::WHITE;
+        bool usIsWhite = true;
+        bool inCheck = false;
+        bool isPVNode = false;
+        bool isPawnEndgameForPruning = false;
+        int32_t staticEval = 0;
+    };
+
     struct IterativeSearchResult {
         bool hasLegalMoves = false;
         bool completedAnyDepth = false;
@@ -299,11 +308,23 @@ private:
 
     void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int16_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
+    __attribute__((cold, noinline))
+    static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
+    __attribute__((cold, noinline))
+    static bool hasInsufficientMaterialDraw(const chess::Board& b) noexcept;
 
     // Search helpers
     int32_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int32_t alpha, int32_t beta,
                                 int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept;
     bool handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept;
+    bool tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
+                            int32_t depth, int32_t alpha, int32_t beta, int ply,
+                            bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
+                            uint64_t* nodeCounter, int32_t& outScore) noexcept;
+    __attribute__((noinline))
+    bool tryReverseFutilityPruning(chess::Board& b, const SearchNodeState& node,
+                                   int32_t depth, int32_t alpha, int32_t beta, int ply,
+                                   int32_t& outScore) noexcept;
     SearchMoveResult searchMoves(chess::Board& b, const MoveList<chess::Board::Move>& orderedMoves,
                                  bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
                                  bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
@@ -312,26 +333,17 @@ private:
     static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
     int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
     static inline int32_t scoreMoveOrderingPriorityInline(
-        chess::Board& b,
-        const chess::Board::Move& m,
-        uint8_t fromPieceType,
-        bool isCapture,
-        uint8_t victimType,
-        int32_t see,
-        bool isPromotionCandidate,
-        int moveIndex,
-        bool hashMoveIsLegal,
-        uint8_t hashFrom,
-        uint8_t hashTo,
-        char hashPromo,
+        chess::Board& b,           const chess::Board::Move& m,
+        uint8_t fromPieceType,     bool isCapture,
+        uint8_t victimType,        int32_t see,
+        bool isPromotionCandidate, int moveIndex,
+        bool hashMoveIsLegal,      uint8_t hashFrom,
+        uint8_t hashTo,            char hashPromo,
         int ply,
         const chess::Board::Move* previousMove,
-        int usSide,
-        uint8_t oppKingSq,
-        uint64_t occ,
-        bool usIsWhite,
-        bool isEndgameOrdering,
-        int fullMoveClock,
+        int usSide,                uint8_t oppKingSq,
+        uint64_t occ,              bool usIsWhite,
+        bool isEndgameOrdering,    int fullMoveClock,
         const int16_t (&history)[2][64][64],
         const chess::Board::Move (&killerMoves)[2][64],
         const uint16_t (&counterMoves)[64][64],

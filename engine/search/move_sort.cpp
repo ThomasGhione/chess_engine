@@ -276,23 +276,18 @@ uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
 
     uint64_t bb;
 
-    // Pawns
     bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
-    // Knights
     bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
-    // Bishops/Queens (diagonal) - compute bishop attacks only now
     bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
-    // Rooks/Queens (orthogonal) - compute rook attacks only if needed
     bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
-    // Kings (last)
     bb = kings_bb & pieces::KING_ATTACKS[sq];
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
 
