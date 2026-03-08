@@ -43,7 +43,7 @@ OUTPUT_DIR = output
 
 # File paths by module
 MAIN_SRC = main.cpp
-ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/search/*.cpp)
+ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/eval/*/*.cpp) $(wildcard ./engine/search/*.cpp)
 COORDS_SRCS = $(wildcard ./coords/*.cpp)
 DRIVER_SRCS = $(wildcard ./driver/*.cpp)
 PIECE_SRCS = $(wildcard ./piece/*.cpp)
