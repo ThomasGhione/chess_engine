@@ -134,6 +134,11 @@ private:
     static inline int32_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
     template<int Side>
     static inline int32_t evalEndgameKingActivitySide(const chess::Board& b) noexcept;
+    static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
+                                                      uint64_t developedKnights, uint64_t developedBishops,
+                                                      int& attackerCount, int32_t& attackWeight) noexcept;
+    static inline int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept;
+    static inline void addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept;
 
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
