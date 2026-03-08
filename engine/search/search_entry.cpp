@@ -318,9 +318,11 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
         this->depth = currentDepth;
         if (allowStop) {
             this->ponderCurrentDepth.store(currentDepth, std::memory_order_relaxed);
+#ifdef DEBUG
             if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
                 std::cout << "[PONDER] current depth: " << currentDepth << "\n";
             }
+#endif
         }
         
         // Move ordering: bring previous iteration's best move to the front
@@ -449,6 +451,7 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
             this->ponderAspirationResearches.store(result.aspirationResearches, std::memory_order_relaxed);
             this->ponderAspirationFailLow.store(result.aspirationFailLow, std::memory_order_relaxed);
             this->ponderAspirationFailHigh.store(result.aspirationFailHigh, std::memory_order_relaxed);
+#ifdef DEBUG
             if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
                 std::cout << "[PONDER] last completed depth: " << currentDepth
                           << " (last even: " << result.completedEvenDepth
@@ -456,6 +459,7 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
                           << ", fail-low: " << result.aspirationFailLow
                           << ", fail-high: " << result.aspirationFailHigh << ")\n";
             }
+#endif
         }
     }
 
@@ -484,10 +488,13 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
     this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
+#ifdef DEBUG
         std::cout << "[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n";
+#endif
     }
 
     // Keep extending depth while opponent is thinking: 10, 11, 12, ...
+    #ifdef DEBUG
     const IterativeSearchResult ponderResult = this->runIterativeDeepening(
         rootBoard,
         static_cast<uint64_t>(Engine::DEFAULTDEPTH),
@@ -503,6 +510,13 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
                   << ", fail-low: " << ponderResult.aspirationFailLow
                   << ", fail-high: " << ponderResult.aspirationFailHigh << "\n";
     }
+    #else
+    this->runIterativeDeepening(
+        rootBoard,
+        static_cast<uint64_t>(Engine::DEFAULTDEPTH),
+        static_cast<uint64_t>(Engine::MAX_PLY),
+        true);
+    #endif
 
     this->ponderingActive.store(false, std::memory_order_release);
 }
@@ -546,6 +560,7 @@ void Engine::stopPondering() noexcept {
     this->searchInterrupted.store(false, std::memory_order_release);
 
     if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
+#ifdef DEBUG
         std::cout << "[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
                   << ", last completed depth: " << this->getPonderLastCompletedDepth()
                   << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
@@ -553,6 +568,7 @@ void Engine::stopPondering() noexcept {
                   << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
                   << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
                   << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n";
+#endif
     }
 }
 

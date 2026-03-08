@@ -134,6 +134,11 @@ private:
     static inline int32_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
     template<int Side>
     static inline int32_t evalEndgameKingActivitySide(const chess::Board& b) noexcept;
+    static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
+                                                      uint64_t developedKnights, uint64_t developedBishops,
+                                                      int& attackerCount, int32_t& attackWeight) noexcept;
+    static inline int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept;
+    static inline void addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept;
 
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
@@ -149,10 +154,14 @@ private:
     static int32_t evalPieceCoordination(const chess::Board& b) noexcept;
     static int32_t evalOutposts(const chess::Board& b) noexcept;
     static int32_t evalCastlingBonus(const chess::Board& b) noexcept;
+    static inline int32_t evalCastlingBonusSide(const chess::Board& b, int side) noexcept;
     static int32_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
     static int32_t evalRookEndgamePressure(const chess::Board& b) noexcept;
     static int32_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
     static int32_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
+    static inline int32_t evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept;
+    static inline int32_t evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept;
+    static inline int32_t evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept;
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
 

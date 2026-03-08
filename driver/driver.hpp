@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <filesystem>
+
 
 #include "../uci/uci.hpp"
 

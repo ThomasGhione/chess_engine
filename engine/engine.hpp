@@ -3,11 +3,7 @@
 
 #include <array>
 #include <cstdint>
-#include <iostream>
-#include <filesystem>
-#include <fstream>
 #include <vector>
-#include <unordered_map>
 #include <algorithm>
 #include <numeric>
 #include <string>
@@ -18,6 +14,7 @@
 #include <omp.h>
 
 #ifdef DEBUG
+#include <iostream>
 #include <chrono>
 #endif
 
@@ -31,10 +28,6 @@
 #include "movelist.hpp"
 
 namespace engine {
-
-// ===================================================
-// BITBOARD HELPERS
-// ===================================================
 
 class Engine final {
 public:
@@ -257,6 +250,20 @@ private:
         KING_VALUE,  // KING = 6
         0       // unused = 7
     };
+
+    std::thread ponderingThread;
+    std::atomic<bool> ponderingStopRequested {false};
+    std::atomic<bool> ponderingActive {false};
+    std::atomic<bool> stopSearchRequested {false};
+    std::atomic<bool> searchInterrupted {false};
+    std::atomic<bool> ponderDebugEnabled {false};
+    std::atomic<uint64_t> ponderCurrentDepth {0};
+    std::atomic<uint64_t> ponderLastCompletedDepth {0};
+    std::atomic<uint64_t> ponderLastCompletedEvenDepth {0};
+    std::atomic<uint64_t> ponderInterruptedDepth {0};
+    std::atomic<uint32_t> ponderAspirationResearches {0};
+    std::atomic<uint32_t> ponderAspirationFailLow {0};
+    std::atomic<uint32_t> ponderAspirationFailHigh {0};
     //--- Variables end
 
     // Initial best score for min-max search
@@ -371,19 +378,6 @@ private:
                                                        bool inDoubleCheckValue = false) noexcept;
     //--- Method end
 
-    std::thread ponderingThread;
-    std::atomic<bool> ponderingStopRequested {false};
-    std::atomic<bool> ponderingActive {false};
-    std::atomic<bool> stopSearchRequested {false};
-    std::atomic<bool> searchInterrupted {false};
-    std::atomic<bool> ponderDebugEnabled {false};
-    std::atomic<uint64_t> ponderCurrentDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedEvenDepth {0};
-    std::atomic<uint64_t> ponderInterruptedDepth {0};
-    std::atomic<uint32_t> ponderAspirationResearches {0};
-    std::atomic<uint32_t> ponderAspirationFailLow {0};
-    std::atomic<uint32_t> ponderAspirationFailHigh {0};
 }; //class Engine final
 
 } // namespace engine
