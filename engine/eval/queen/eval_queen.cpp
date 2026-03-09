@@ -16,6 +16,66 @@ int32_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     return score;
 }
 
+inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
+    if (ourQueens == 0) return 0;
+
+    const int oppSide = side ^ 1;
+
+    const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
+    const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+    const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
+    const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
+
+    const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
+                            oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
+    if (oppMaterial > 700) return 0;
+
+    const uint64_t enemyKingBB = b.kings_bb[oppSide];
+    if (!enemyKingBB) return 0;
+
+    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int rank = chess::Board::rankOf(enemyKingSq);
+    const int file = chess::Board::fileOf(enemyKingSq);
+
+    const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
+    const int edgeProximity = 7 - distToEdge;
+
+    constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
+    int32_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
+
+    const uint64_t ourKingBB = b.kings_bb[side];
+    if (ourKingBB) {
+        const int ourKingSq = __builtin_ctzll(ourKingBB);
+        const int kingDist = manhattan(ourKingSq, enemyKingSq);
+
+        const int proximityBonus = std::max(0, 14 - kingDist);
+        sideScore += proximityBonus * 14;
+    }
+
+    const uint64_t queenBB = b.queens_bb[side];
+    if (queenBB) {
+        uint64_t tempQueens = queenBB;
+        int bestQueenDist = 100;
+        while (tempQueens) {
+            const int qSq = __builtin_ctzll(tempQueens);
+            tempQueens &= tempQueens - 1;
+            bestQueenDist = std::min(bestQueenDist, manhattan(qSq, enemyKingSq));
+        }
+
+        if (bestQueenDist >= 2 && bestQueenDist <= 5) {
+            sideScore += 24;
+        } else if (bestQueenDist <= 7) {
+            sideScore += 10;
+        }
+    }
+
+    constexpr int32_t QUEEN_EG_PRESSURE_CAP = 180;
+    sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
+
+    const int sign = (side == 0) ? 1 : -1;
+    return sign * sideScore;
+}
+
 int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
     int32_t score = 0;
 
@@ -26,68 +86,8 @@ int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
         return 0;
     }
 
-    for (int side = 0; side < 2; ++side) {
-        const int ourQueens = (side == 0) ? whiteQueens : blackQueens;
-        if (ourQueens == 0) continue;
-
-        const int oppSide = side ^ 1;
-
-        const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
-        const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
-        const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
-        const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
-        const int oppQueens = (side == 0) ? blackQueens : whiteQueens;
-
-        const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
-                                oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
-        if (oppMaterial > 700) continue;
-
-        const int sign = (side == 0) ? 1 : -1;
-        const uint64_t enemyKingBB = b.kings_bb[oppSide];
-        if (!enemyKingBB) continue;
-
-        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-        const int rank = chess::Board::rankOf(enemyKingSq);
-        const int file = chess::Board::fileOf(enemyKingSq);
-
-        const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
-        const int edgeProximity = 7 - distToEdge;
-
-        // Queen endgame edge bonus: push enemy king toward the edge.
-        constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
-        int32_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
-
-        const uint64_t ourKingBB = b.kings_bb[side];
-        if (ourKingBB) {
-            const int ourKingSq = __builtin_ctzll(ourKingBB);
-            const int kingDist = manhattan(ourKingSq, enemyKingSq);
-
-            const int proximityBonus = std::max(0, 14 - kingDist);
-            sideScore += proximityBonus * 14;
-        }
-
-        const uint64_t queenBB = b.queens_bb[side];
-        if (queenBB) {
-            uint64_t tempQueens = queenBB;
-            int bestQueenDist = 100;
-            while (tempQueens) {
-                 const int qSq = __builtin_ctzll(tempQueens);
-                 tempQueens &= tempQueens - 1;
-                 bestQueenDist = std::min(bestQueenDist, manhattan(qSq, enemyKingSq));
-            }
-
-            if (bestQueenDist >= 2 && bestQueenDist <= 5) {
-                sideScore += 24;
-            } else if (bestQueenDist <= 7) {
-                sideScore += 10;
-            }
-        }
-
-        // Keep queen pressure relevant but below "piece-level" incentives.
-        constexpr int32_t QUEEN_EG_PRESSURE_CAP = 180;
-        sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
-        score += sign * sideScore;
-    }
+    score += evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens);
+    score += evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
 
     return score;
 }
