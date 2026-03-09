@@ -5,6 +5,62 @@ namespace engine {
 static constexpr size_t ATTACK_CACHE_SIZE = 1u << 8; // 256 entries (~16 KiB), L1-friendly.
 static constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
 
+inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept {
+    while (pawns) {
+        const int sq = popLSB(pawns);
+        data.allAttacks |= pieces::PAWN_ATTACKS[isWhite][sq];
+    }
+}
+
+inline void Evaluator::processKnights(uint64_t knights, AttackData& data, uint64_t mobilityMask) noexcept {
+    while (knights) {
+        const int sq = popLSB(knights);
+        const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
+        data.allAttacks |= attacks;
+        data.knightMobility += __builtin_popcountll(attacks & mobilityMask);
+    }
+}
+
+inline void Evaluator::processBishops(uint64_t bishops, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
+    while (bishops) {
+        const int sq = popLSB(bishops);
+        const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
+        data.allAttacks |= attacks;
+        data.bishopMobility += __builtin_popcountll(attacks & mobilityMask);
+    }
+}
+
+inline void Evaluator::processRooks(uint64_t rooks, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
+    while (rooks) {
+        const int sq = popLSB(rooks);
+        const uint64_t attacks = pieces::getRookAttacks(sq, occ);
+        data.allAttacks |= attacks;
+        data.rookMobility += __builtin_popcountll(attacks & mobilityMask);
+    }
+}
+
+inline void Evaluator::processQueens(uint64_t queens, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
+    while (queens) {
+        const int sq = popLSB(queens);
+        const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
+        data.allAttacks |= attacks;
+        data.queenMobility += __builtin_popcountll(attacks & mobilityMask);
+    }
+}
+
+inline void Evaluator::computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ) noexcept {
+    const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
+                            b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
+    const uint64_t mobilityMask = ~ownOcc;
+    const bool isWhite = (side == 0);
+
+    processPawns(b.pawns_bb[side], data, isWhite);
+    processKnights(b.knights_bb[side], data, mobilityMask);
+    processBishops(b.bishops_bb[side], data, mobilityMask, occ);
+    processRooks(b.rooks_bb[side], data, mobilityMask, occ);
+    processQueens(b.queens_bb[side], data, mobilityMask, occ);
+}
+
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
     struct AttackCacheEntry {
         uint64_t key = std::numeric_limits<uint64_t>::max();
@@ -25,53 +81,8 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
     data[0] = AttackData{};
     data[1] = AttackData{};
 
-    for (int side = 0; side < 2; ++side) {
-        AttackData& d = data[side];
-        const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
-                                b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
-        const uint64_t mobilityMask = ~ownOcc;
-
-        uint64_t pawns = b.pawns_bb[side];
-        const bool isWhite = (side == 0);
-        while (pawns) {
-            const int sq = popLSB(pawns);
-            d.allAttacks |= pieces::PAWN_ATTACKS[isWhite][sq];
-        }
-
-        uint64_t knights = b.knights_bb[side];
-        while (knights) {
-            const int sq = popLSB(knights);
-            const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
-            d.allAttacks |= attacks;
-            const int mobility = __builtin_popcountll(attacks & mobilityMask);
-            d.knightMobility += mobility;
-        }
-
-        uint64_t bishops = b.bishops_bb[side];
-        while (bishops) {
-            const int sq = popLSB(bishops);
-            const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
-            d.allAttacks |= attacks;
-            d.bishopMobility += __builtin_popcountll(attacks & mobilityMask);
-        }
-
-        uint64_t rooks = b.rooks_bb[side];
-        while (rooks) {
-            const int sq = popLSB(rooks);
-            const uint64_t attacks = pieces::getRookAttacks(sq, occ);
-            d.allAttacks |= attacks;
-            d.rookMobility += __builtin_popcountll(attacks & mobilityMask);
-        }
-
-        uint64_t queens = b.queens_bb[side];
-        while (queens) {
-            const int sq = popLSB(queens);
-            const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
-            d.allAttacks |= attacks;
-            d.queenMobility += __builtin_popcountll(attacks & mobilityMask);
-        }
-
-    }
+    computeAttackDataForSide(0, data[0], b, occ);
+    computeAttackDataForSide(1, data[1], b, occ);
 
     cacheEntry.key = cacheKey;
     cacheEntry.value[0] = data[0];

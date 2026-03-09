@@ -153,6 +153,12 @@ private:
 
     __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
+    static inline void computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ) noexcept;
+    static inline void processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept;
+    static inline void processKnights(uint64_t knights, AttackData& data, uint64_t mobilityMask) noexcept;
+    static inline void processBishops(uint64_t bishops, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
+    static inline void processRooks(uint64_t rooks, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
+    static inline void processQueens(uint64_t queens, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
     static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
     static int32_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
