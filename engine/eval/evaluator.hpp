@@ -139,19 +139,18 @@ private:
                                                       int& attackerCount, int32_t& attackWeight) noexcept;
     static inline int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept;
     static inline void addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept;
-    static int32_t evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                      bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept;
-    static void applyNonCastledPenalties(const chess::Board& b, int side, bool rightsLost, bool hasCastled,
-                                         bool canCastleKingside, bool canCastleQueenside,
-                                         uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety, int sq) noexcept;
-    static void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static void applyHookPawnPenalty(const chess::Board& b, int side, bool kingSideRelevant, uint64_t ownPawns,
-                                     uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
-    static void applyShelterAndStorm(const chess::Board& b, int side, int kingFile, int kingRank,
-                                     uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
-                                     uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
-    static void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank,
-                                         uint8_t sideColor, int32_t& sideSafety) noexcept;
+    static inline int32_t evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
+                                             bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept;
+    static inline void applyNonCastledPenalties(const chess::Board& b, int side, bool rightsLost, bool hasCastled,
+                                                bool canCastleKingside, bool canCastleQueenside,
+                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety, int sq) noexcept;
+    static inline void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
+    static inline void applyHookPawnPenalty(const chess::Board& b, int side, bool kingSideRelevant, uint64_t ownPawns,
+                                            uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
+    static inline void applyShelterAndStorm(const chess::Board& b, int side, int kingFile, int kingRank,
+                                            uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
+                                            const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
+    static inline void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
 
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;

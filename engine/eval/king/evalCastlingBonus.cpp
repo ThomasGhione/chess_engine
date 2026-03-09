@@ -2,23 +2,6 @@
 
 namespace engine {
 
-int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
-    const bool whiteCastleKs = b.getCastle(0);
-    const bool whiteCastleQs = b.getCastle(1);
-    const bool blackCastleKs = b.getCastle(2);
-    const bool blackCastleQs = b.getCastle(3);
-
-    return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0)
-         + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1);
-}
-
-int32_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    const uint64_t occ = b.getPiecesBitMap();
-    AttackData attackData[2];
-    computeAttackData(attackData, b, occ);
-    return evalKingSafetyWithAttackData(b, whitePawns, blackPawns, attackData);
-}
-
 inline int32_t Evaluator::evalCastlingBonusSide(const chess::Board& b, int side) noexcept {
     static constexpr uint64_t CASTLED_MASK[2] = {
         chess::Board::bitMask(62) | chess::Board::bitMask(58),

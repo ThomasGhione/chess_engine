@@ -1,10 +1,9 @@
-// Helper implementations for king safety evaluation.
 #include "../evaluator.hpp"
 
 namespace engine {
 
-int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                      bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept {
+inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
+                                             bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept {
     const uint64_t kingBB = b.kings_bb[side];
     if (!kingBB) [[unlikely]] return 0;
 
@@ -45,9 +44,9 @@ int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whitePawns
     return sign * sideSafety;
 }
 
-void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, bool rightsLost, bool hasCastled,
-                                         bool canCastleKingside, bool canCastleQueenside,
-                                         uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety, int sq) noexcept {
+inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, bool rightsLost, bool hasCastled,
+                                                bool canCastleKingside, bool canCastleQueenside,
+                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety, int sq) noexcept {
     if (!hasCastled) {
         sideSafety -= engine::KING_NON_CASTLING_PENALTY;
         if (rightsLost) {
@@ -101,7 +100,7 @@ void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, bool rig
     }
 }
 
-void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
+inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     uint64_t shieldSquares = 0ULL;
     if (side == 0) {
         if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
@@ -116,11 +115,11 @@ void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, ui
     }
 }
 
-void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, bool kingSideRelevant, uint64_t ownPawns,
-                                     uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept {
+inline void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, bool kingSideRelevant, uint64_t ownPawns,
+                                            uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept {
     if (!kingSideRelevant) return;
 
-    const uint8_t hookPawnSq = static_cast<uint8_t>((side == 0) ? 54 : 14); // g2 / g7
+    const uint8_t hookPawnSq = static_cast<uint8_t>((side == 0) ? 54 : 14);
     const uint64_t hookPawnBit = chess::Board::bitMask(hookPawnSq);
     if (ownPawns & hookPawnBit) {
         if (enemyAttacks & hookPawnBit) {
@@ -132,9 +131,9 @@ void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, bool kingSid
     }
 }
 
-void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int kingFile, int kingRank,
-                                     uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
-                                     uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept {
+inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int kingFile, int kingRank,
+                                            uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
+                                            const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept {
     for (int f = std::max(0, kingFile - 1); f <= std::min(7, kingFile + 1); ++f) {
         const uint64_t fileMask = FILE_MASKS[f];
         const bool ownPawnOnFile = (ownPawns & fileMask) != 0ULL;
@@ -222,7 +221,7 @@ void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int kingFile
     }
 }
 
-void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept {
+inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept {
     static constexpr int DIAG_DIRS[4][2] = {
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
@@ -255,6 +254,23 @@ void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int kingFil
             break;
         }
     }
+}
+
+int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    const bool whiteCastleKs = b.getCastle(0);
+    const bool whiteCastleQs = b.getCastle(1);
+    const bool blackCastleKs = b.getCastle(2);
+    const bool blackCastleQs = b.getCastle(3);
+
+    return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0)
+         + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1);
+}
+
+int32_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    const uint64_t occ = b.getPiecesBitMap();
+    AttackData attackData[2];
+    computeAttackData(attackData, b, occ);
+    return evalKingSafetyWithAttackData(b, whitePawns, blackPawns, attackData);
 }
 
 } // namespace engine
