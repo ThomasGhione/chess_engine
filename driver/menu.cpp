@@ -22,7 +22,7 @@ namespace driver {
     // 4 -> Bot Vs Stockfish
     // 5 -> Load Game
     // 6 -> Quit Game
-    uint32_t Driver::mainMenu() noexcept{
+    uint32_t Driver::mainMenu() noexcept {
         clearScreen();
 
         static const std::string line = "\n\n==================== MAIN MENU ====================\n\n1. One Player\n2. Two Players\n3. Load Game\n4. Extra Modes\n5. Quit Game\n\nSelect an option (1-5): ";
@@ -32,7 +32,7 @@ namespace driver {
         return choice;
     }
 
-    uint32_t Driver::extraMenu() noexcept{
+    uint32_t Driver::extraMenu() noexcept {
         clearScreen();
 
         static const std::string prompt = "\n\n==================== EXTRA MODES MENU ====================\n\n1. Bot Vs Bot\n2. Bot Vs Stockfish\n3. Beta vs Alpha Engines\n4. UCI Mode\n5. Go back\n\nSelect an option (1-5): ";

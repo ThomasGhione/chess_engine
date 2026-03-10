@@ -40,11 +40,8 @@ namespace driver {
             Driver(engine::Engine& engine);
 
             void startGame(int argc, char *argv[]) noexcept;
-
-            static std::string getPrintableBoard(const std::string& FEN);
             static std::string getBasicBoard(const chess::Board& board);
-            static std::string getBitBoard(const pieces::U64& bitboard);
-
+            
         private:
 
             bool vsBot = false;
@@ -78,7 +75,6 @@ namespace driver {
             static uint32_t mainMenu() noexcept;
 			static uint32_t extraMenu() noexcept;
         	static uint32_t playWithEngineMenu() noexcept;
-			static uint32_t playWithPlayerMenu() noexcept;
 			static uint32_t playBotVsStockfishMenu() noexcept;
 			static uint32_t playBetaVsAlphaMenu() noexcept;
 
