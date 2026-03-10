@@ -372,6 +372,29 @@ private:
     void stopPondering() noexcept;
     void ponderLoop(chess::Board rootBoard) noexcept;
     
+    // Search helpers - board setup and checks
+    static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
+    static void computeCheckEvasionMasks(const chess::Board& b, uint8_t activeColor, bool inCheck, bool inDoubleCheck, uint64_t& outEvasionMask) noexcept;
+    static void computePinRays(const chess::Board& b, uint8_t activeColor, uint64_t& outPinnedMask, std::array<uint64_t, 64>& outPinRayBySquare) noexcept;
+    
+    // Move generation helpers
+    static void addTacticalMovesFromMask(const chess::Board& b, uint64_t mask, uint8_t from, uint8_t fromPiece, bool isPawn, bool isWhiteToMove, bool includeChecks, const chess::Coords& enPassant, bool inCheck, bool inDoubleCheck, MoveList<chess::Board::Move>& moves, bool skipLegalityCheck = false) noexcept;
+    static void addTacticalMovesFromMaskInCheck(const chess::Board& b, uint64_t mask, uint8_t from, uint8_t fromPiece, bool isPawn, bool isWhiteToMove, const chess::Coords& enPassant, MoveList<chess::Board::Move>& moves) noexcept;
+    static void addNonPawnMovesFromMaskFast(const chess::Board& b, MoveList<chess::Board::Move>& moves, uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck, uint8_t fromPiece, bool skipLegalityCheck) noexcept;
+    static void addPawnMovesFromMaskFast(const chess::Board& b, MoveList<chess::Board::Move>& moves, uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck, uint8_t fromPiece, bool skipLegalityCheck, uint8_t promotionRank, const chess::Coords& enPassant) noexcept;
+    
+    // Move comparison and checking helpers
+    static inline bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
+    static inline bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
+    static inline bool isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept;
+    static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m, uint8_t fromPieceType, int usSide, uint8_t oppKingSq, uint64_t occ) noexcept;
+    static inline bool containsMoveWithPromotion(const MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to, char promotionPiece) noexcept;
+    
+    // Quiescence helpers
+    static inline int32_t clampQMoveScore(int64_t score) noexcept;
+    static inline void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
+    static inline int32_t clampOrderingScore(int64_t score) noexcept;
+    
     // Quiescence helper: generates only tactical moves (captures, promotions)
     static MoveList<chess::Board::Move> generateTacticalMoves(const chess::Board& b, bool includeChecks = false,
                                                        bool inCheckKnown = false, bool inCheckValue = false,

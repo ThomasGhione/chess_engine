@@ -1,6 +1,43 @@
 namespace engine {
 
 __attribute__((always_inline))
+inline uint64_t Engine::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
+    if (from == to) [[unlikely]] return 0ULL;
+
+    const int fromFile = chess::Board::fileOf(from);
+    const int fromRank = chess::Board::rankOf(from);
+    const int toFile = chess::Board::fileOf(to);
+    const int toRank = chess::Board::rankOf(to);
+    const int df = toFile - fromFile;
+    const int dr = toRank - fromRank;
+
+    int stepFile = 0;
+    int stepRank = 0;
+    if (df == 0) {
+        stepRank = (dr > 0) ? 1 : -1;
+    } else if (dr == 0) {
+        stepFile = (df > 0) ? 1 : -1;
+    } else if ((df > 0 ? df : -df) == (dr > 0 ? dr : -dr)) {
+        stepFile = (df > 0) ? 1 : -1;
+        stepRank = (dr > 0) ? 1 : -1;
+    } else {
+        return 0ULL;
+    }
+
+    uint64_t mask = 0ULL;
+    int f = fromFile + stepFile;
+    int r = fromRank + stepRank;
+    while (f != toFile || r != toRank) {
+        mask |= chess::Board::bitMask(static_cast<uint8_t>((r << 3) | f));
+        f += stepFile;
+        r += stepRank;
+    }
+
+    mask &= ~chess::Board::bitMask(to);
+    return mask;
+}
+
+__attribute__((always_inline))
 inline bool Engine::isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept {
     if (ply < 0 || ply >= Engine::MAX_PLY) [[unlikely]] return false;
     

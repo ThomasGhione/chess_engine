@@ -4,7 +4,7 @@
 
 namespace engine {
 
-static inline int32_t clampQMoveScore(int64_t score) noexcept {
+inline int32_t Engine::clampQMoveScore(int64_t score) noexcept {
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }
@@ -14,7 +14,7 @@ static inline int32_t clampQMoveScore(int64_t score) noexcept {
     return static_cast<int32_t>(score);
 }
 
-static inline bool isForcingEvasion(const chess::Board& b,
+inline bool Engine::isForcingEvasion(const chess::Board& b,
                                     const chess::Board::Move& m,
                                     const chess::Coords& enPassant,
                                     bool hasEnPassant) noexcept {

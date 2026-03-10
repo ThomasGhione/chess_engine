@@ -4,18 +4,15 @@
 
 namespace engine {
 
-static inline bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
+inline bool Engine::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
 
-static inline bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
+inline bool Engine::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
     return m.from.index == from && m.to.index == to;
 }
 
-static inline bool containsMoveWithPromotion(const MoveList<chess::Board::Move>& moves,
-                                             uint8_t from,
-                                             uint8_t to,
-                                             char promotionPiece) noexcept {
+inline bool Engine::containsMoveWithPromotion(const MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to, char promotionPiece) noexcept {
     for (const auto& m : moves) {
         if (sameFromTo(m, from, to) && m.promotionPiece == promotionPiece) {
             return true;
@@ -24,7 +21,7 @@ static inline bool containsMoveWithPromotion(const MoveList<chess::Board::Move>&
     return false;
 }
 
-static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
+inline bool Engine::givesCheckAfterQuietMoveFast(const chess::Board& b,
                                                 const chess::Board::Move& m,
                                                 uint8_t fromPieceType,
                                                 int usSide,
@@ -63,7 +60,7 @@ static inline bool givesCheckAfterQuietMoveFast(const chess::Board& b,
     return false;
 }
 
-static inline int32_t clampOrderingScore(int64_t score) noexcept {
+inline int32_t Engine::clampOrderingScore(int64_t score) noexcept {
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }

@@ -19,7 +19,7 @@ inline int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
 }
 } // namespace
 
-static inline void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept {
+inline void Engine::rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept {
     outAlpha = usIsWhite ? alpha : saturatingSub32(beta, 1);
     outBeta = usIsWhite ? saturatingAdd32(alpha, 1) : beta;
 }
