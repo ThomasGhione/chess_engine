@@ -25,11 +25,10 @@ void Engine::addPawnMovesFromMaskFast(const chess::Board& b,
         const bool isEnPassant = hasEnPassant
             && (toC == enPassant)
             && (static_cast<uint8_t>(to & 7) != fromFile);
-        if (!skipLegalityCheck || isEnPassant) {
-            if (!b.isLegalPseudoMove(from, to, fromPiece, inCheck, inDoubleCheck)) {
+        if ((!skipLegalityCheck || isEnPassant) && (!b.isLegalPseudoMove(from, to, fromPiece, inCheck, inDoubleCheck)) ){
                 continue;
-            }
         }
+
         if (chess::Board::rankOf(to) == promotionRank) {
             moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
             moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});

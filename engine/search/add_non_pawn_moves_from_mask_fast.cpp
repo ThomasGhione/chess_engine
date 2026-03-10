@@ -12,20 +12,12 @@ void Engine::addNonPawnMovesFromMaskFast(const chess::Board& b,
                                         uint8_t fromPiece,
                                         bool skipLegalityCheck) noexcept {
     if (!mask) [[unlikely]] return;
-    const chess::Coords fromC{from};
-    if (skipLegalityCheck) {
-        while (mask) {
-            const uint8_t to = __builtin_ctzll(mask);
-            mask &= (mask - 1);
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
-        }
-        return;
-    }
 
+    const chess::Coords fromC{from};
     while (mask) {
         const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
-        if (b.isLegalPseudoMove(from, to, fromPiece, inCheck, inDoubleCheck)) {
+        if (skipLegalityCheck || b.isLegalPseudoMove(from, to, fromPiece, inCheck, inDoubleCheck)) {
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
         }
     }
