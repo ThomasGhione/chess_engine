@@ -21,9 +21,8 @@
 #include "../board/board.hpp"
 #include "../board/coords.hpp"
 
-#include "basebonuspenaltyvalues.hpp"
+#include "eval_constants.hpp"
 #include "piecevaluetables.hpp"
-#include "inl/bitboard_helpers.inl"
 #include "../tt/tt.hpp"
 #include "movelist.hpp"
 
@@ -69,9 +68,6 @@ public:
     //--- Constructors end
 
     //--- Method
-    //static constexpr int manhattan(int a, int b) noexcept;
-    static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
-
     void reset() noexcept;
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
@@ -88,6 +84,8 @@ public:
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
     int32_t evaluate(const chess::Board& board) noexcept; 
+    int32_t evaluateTrace(const chess::Board& board) noexcept;
+    int32_t evaluateCheckmate(const chess::Board& board) noexcept;
     
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
@@ -97,16 +95,6 @@ public:
     uint8_t getActiveColor() const noexcept;
     
     static int32_t getMaterialDelta(const chess::Board& b) noexcept;
-    // Exposed for perf tests (delegates to Evaluator)
-    static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
-    static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int32_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int32_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
-    static int32_t evalEndgameKingActivity(const chess::Board& b) noexcept;
-    static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
-
-    // DEBUG: Trace version of evaluate that prints each component
-    int32_t evaluateTrace(const chess::Board& board) noexcept;
 
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;
@@ -225,17 +213,6 @@ private:
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
     int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
 
-    static constexpr int32_t PIECE_VALUES[8] = {
-        0,      // EMPTY = 0
-        PAWN_VALUE,    // PAWN = 1
-        KNIGHT_VALUE,    // KNIGHT = 2
-        BISHOP_VALUE,    // BISHOP = 3
-        ROOK_VALUE,    // ROOK = 4
-        QUEEN_VALUE,    // QUEEN = 5
-        KING_VALUE,  // KING = 6
-        0       // unused = 7
-    };
-
     std::thread ponderingThread;
     std::atomic<bool> ponderingStopRequested {false};
     std::atomic<bool> ponderingActive {false};
@@ -291,9 +268,6 @@ private:
     // TT narrow helpers for hot paths (avoid int64 TT overload conversion overhead).
     static inline int32_t clampToTTScore(int64_t value) noexcept;
     static inline void toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
-
-    // Fast access to piece values (inline for zero-cost abstraction)
-    static inline constexpr int32_t getPieceValue(uint8_t pieceType) noexcept;
 
     void updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
                  chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
@@ -356,9 +330,6 @@ private:
     void startPondering() noexcept;
     void stopPondering() noexcept;
     void ponderLoop(chess::Board rootBoard) noexcept;
-    
-    // Search helpers - board setup and checks
-    static inline uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
     
     // Move comparison and checking helpers
     static bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;

@@ -43,33 +43,23 @@ struct MagicParams {
 };
 
 // Pre-computed params (constexpr, .rodata)
-inline constexpr std::array<MagicParams, 64> ROOK_PARAMS = []{
+template<typename MaskArray, typename MagicArray>
+inline constexpr std::array<MagicParams, 64> buildMagicParams(const MaskArray& masks, const MagicArray& magics) {
     std::array<MagicParams, 64> table{};
     uint32_t runningOffset = 0;
     for (int sq = 0; sq < 64; ++sq) {
-        table[sq].mask = ROOK_MASKS[sq];
-        table[sq].magic = ROOK_MAGICS[sq];
-        int bits = __builtin_popcountll(ROOK_MASKS[sq]);
+        table[sq].mask = masks[sq];
+        table[sq].magic = magics[sq];
+        int bits = __builtin_popcountll(masks[sq]);
         table[sq].shift = 64 - bits;
         table[sq].offset = runningOffset;
         runningOffset += (1 << bits);
     }
     return table;
-}();
+}
 
-inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = []{
-    std::array<MagicParams, 64> table{};
-    uint32_t runningOffset = 0;
-    for (int sq = 0; sq < 64; ++sq) {
-        table[sq].mask = BISHOP_MASKS[sq];
-        table[sq].magic = BISHOP_MAGICS[sq];
-        int bits = __builtin_popcountll(BISHOP_MASKS[sq]);
-        table[sq].shift = 64 - bits;
-        table[sq].offset = runningOffset;
-        runningOffset += (1 << bits);
-    }
-    return table;
-}();
+inline constexpr std::array<MagicParams, 64> ROOK_PARAMS = buildMagicParams(ROOK_MASKS, ROOK_MAGICS);
+inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = buildMagicParams(BISHOP_MASKS, BISHOP_MAGICS);
 
 // ===================================================
 // MAGIC BITBOARDS - HELPER FUNCTIONS
@@ -148,43 +138,25 @@ inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_
     return attacks;
 }
 
-// Fill attack table for one square (Rook) - optimized version
-inline void populateRookAttackTable(int square) noexcept {
-    const MagicParams& p = ROOK_PARAMS[square];
+// Fill attack table for one square - works for both rook and bishop
+template<size_t N, typename AttackFunc>
+inline void populateAttackTable(int square, const MagicParams& p,
+                                std::array<uint64_t, N>& lookup,
+                                AttackFunc attackFunc) noexcept {
     const int bitCount = __builtin_popcountll(p.mask);
     const int numPatterns = 1 << bitCount;
-
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
-        uint32_t index = static_cast<uint32_t>(
-            ((occupancy & p.mask) * p.magic) >> p.shift
-        );
-        uint64_t attacks = calculateRookAttacksClassical(static_cast<int8_t>(square), occupancy);
-        ROOK_ATTACK_LOOKUP[p.offset + index] = attacks;
-    }
-}
-
-// Fill attack table for one square (Bishop) - optimized version
-inline void populateBishopAttackTable(int square) noexcept {
-    const MagicParams& p = BISHOP_PARAMS[square];
-    const int bitCount = __builtin_popcountll(p.mask);
-    const int numPatterns = 1 << bitCount;
-
-    for (int i = 0; i < numPatterns; ++i) {
-        uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
-        uint32_t index = static_cast<uint32_t>(
-            ((occupancy & p.mask) * p.magic) >> p.shift
-        );
-        uint64_t attacks = calculateBishopAttacksClassical(static_cast<int8_t>(square), occupancy);
-        BISHOP_ATTACK_LOOKUP[p.offset + index] = attacks;
+        uint32_t index = static_cast<uint32_t>(((occupancy & p.mask) * p.magic) >> p.shift);
+        lookup[p.offset + index] = attackFunc(static_cast<int8_t>(square), occupancy);
     }
 }
 
 // Initialize all magic bitboards (call at program startup)
 inline void initMagicBitboards() noexcept {
     for (int sq = 0; sq < 64; ++sq) {
-        populateRookAttackTable(sq);
-        populateBishopAttackTable(sq);
+        populateAttackTable(sq, ROOK_PARAMS[sq], ROOK_ATTACK_LOOKUP, calculateRookAttacksClassical);
+        populateAttackTable(sq, BISHOP_PARAMS[sq], BISHOP_ATTACK_LOOKUP, calculateBishopAttacksClassical);
     }
 }
 

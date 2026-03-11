@@ -1,6 +1,6 @@
 #include "searcher.hpp"
 #include "../movelist.hpp"
-#include "../bonus-malus/mvv_tables.hpp"
+#include "../eval_constants.hpp"
 #include <cmath>
 
 namespace engine {
@@ -280,7 +280,7 @@ bool Searcher::sortLegalMoves(ChessMoveList& moves, int ply, chess::Board& b,
             b, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate, moveIndex,
             hashMoveIsLegal, hashFrom, hashTo, hashPromo, ply, previousMove, usSide, oppKingSq, occ,
             usIsWhite, isEndgameOrdering, fullMoveClock, state_.history, state_.killerMoves, state_.counterMoves,
-            state_.captureHistory, Engine::PIECE_VALUES, ORDERING_PENALTY_SAME_PAWN_OPENING);
+            state_.captureHistory, PIECE_VALUES, ORDERING_PENALTY_SAME_PAWN_OPENING);
 
         // NOTE: Stalemate check removed from move ordering (too expensive: doMove/undoMove per move!)
         // Stalemate is now handled ONLY in searchPosition() terminal node evaluation

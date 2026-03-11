@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cstddef>
 
-#include "../engine/bonus-malus/piece_base_values.hpp"
+#include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"
 #include "./coords.hpp"
 #include "./piece.hpp" // bitmap utilities

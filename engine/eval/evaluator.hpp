@@ -10,7 +10,7 @@
 #include <cstring>
 
 #include "../../board/board.hpp"
-#include "../basebonuspenaltyvalues.hpp"
+#include "../eval_constants.hpp"
 #include "../inl/bitboard_helpers.inl"
 
 namespace engine {
@@ -102,17 +102,6 @@ private:
     // Structures end
 
     // Variables
-    static constexpr int32_t PIECE_VALUES[8] = {
-        0,
-        PAWN_VALUE,
-        KNIGHT_VALUE,
-        BISHOP_VALUE,
-        ROOK_VALUE,
-        QUEEN_VALUE,
-        KING_VALUE,
-        0
-    };
-
     static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
     static constexpr std::array<uint64_t, 64> initBlackForwardFill();
     static constexpr std::array<uint64_t, 8> initFileMasks() noexcept;
@@ -143,7 +132,6 @@ private:
     // Methods
     static int32_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static constexpr int manhattan(int a, int b) noexcept;
-    static constexpr uint64_t adjacentFilesMask(int file) noexcept;
 
     template<bool IsEndgame>
     static constexpr int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;

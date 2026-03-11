@@ -1,6 +1,6 @@
 #include "searcher.hpp"
 #include "../eval/evaluator.hpp"
-#include "../bonus-malus/mvv_tables.hpp"
+#include "../eval_constants.hpp"
 #include "../movegen/movegen.hpp"
 
 namespace engine {
@@ -223,7 +223,7 @@ int32_t Searcher::quiesce(chess::Board& b, int32_t alpha, int32_t beta, int ply,
             // ============================================================================
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
-            const int32_t capturedValue = Engine::PIECE_VALUES[victimType];
+            const int32_t capturedValue = PIECE_VALUES[victimType];
             static constexpr int32_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
             
             // Check if this capture can possibly improve our position enough
@@ -363,7 +363,7 @@ int32_t Searcher::staticExchangeEvaluation(const chess::Board& b, const chess::B
     // where captured_piece is the piece that just moved to the target square in the previous ply.
     constexpr int MAX_SEE_DEPTH = 16;
     int32_t gain[MAX_SEE_DEPTH];
-    gain[0] = Engine::PIECE_VALUES[capturedType];
+    gain[0] = PIECE_VALUES[capturedType];
 
     // Simulate the exchange on local occupancy
     uint64_t occ = b.getPiecesBitMap();
@@ -396,7 +396,7 @@ int32_t Searcher::staticExchangeEvaluation(const chess::Board& b, const chess::B
         else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
 
         // Record the gain for this side
-        gain[depth] = Engine::PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
+        gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
         // Update the piece that was captured
         capturedOnTargetType = currentAttackerType;
