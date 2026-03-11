@@ -66,6 +66,7 @@ void MoveGenerator::computePinRays(
     }
     
     const uint8_t kingSq = kingPos.index;
+    const uint8_t ownColor = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
     
@@ -108,7 +109,7 @@ void MoveGenerator::computePinRays(
             }
 
             const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-            if ((pieceColor == chess::Board::WHITE) == isWhite) {  // Own piece
+            if (pieceColor == ownColor) {  // Own piece
                 if (pinnedSq >= 0) {
                     break;
                 }
