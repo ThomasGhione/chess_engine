@@ -109,11 +109,9 @@ public:
         Coords to;
         char promotionPiece = '\0'; // 'q', 'r', 'b', 'n' or '\0' for no promotion
         
-        // Comparison operator for iterative deepening move ordering
         bool operator==(const Move& other) const noexcept;
         
-        // Optimized custom rotate: move moves[index] to moves[0]
-        // and shift moves[0..index-1] one position to the right
+        // Optimized custom rotate: move moves[index] to moves[0] and shift moves[0..index-1] one position to the right
         // Example: rotate([A,B,C,D,E], 3) -> [D,A,B,C,E]
         template<typename MoveContainer>
         static void rotate(MoveContainer& moves, size_t index) noexcept;

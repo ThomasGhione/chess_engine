@@ -63,7 +63,6 @@ private:
         uint8_t piece,
         bool isPawn,
         bool isWhite,
-        chess::Coords enPassant,
         MoveList<chess::Board::Move>& moves) noexcept;
     
     static void computePinRays(

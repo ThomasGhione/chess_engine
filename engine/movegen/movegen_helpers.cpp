@@ -107,12 +107,12 @@ void MoveGenerator::addTacticalMovesFromMask(
             continue;
         }
 
-        const chess::Coords toC{to};
-
         // Check legality for en passant and promotions
         if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece, false, false)) {
             continue;
         }
+
+        const chess::Coords toC{to};
 
         if (isPromotion) {
             moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
@@ -150,28 +150,22 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
     uint8_t piece,
     bool isPawn,
     bool isWhite,
-    chess::Coords enPassant,
     MoveList<chess::Board::Move>& moves) noexcept {
     const chess::Coords fromC{from};
-    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
-    const uint8_t fromFile = static_cast<uint8_t>(from & 7);
 
     while (mask) {
         const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
 
-        const uint8_t toPiece = b.get(to);
-        const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
-            && (static_cast<uint8_t>(to & 7) != fromFile) && (toPiece == chess::Board::EMPTY);
-        const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
         const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
 
         // In check evasion: all legal moves are tactical
-        const chess::Coords toC{to};
 
         if (!b.isLegalPseudoMove(from, to, piece, true, false)) {
             continue;
         }
+
+        const chess::Coords toC{to};
 
         if (isPromotion) {
             moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});

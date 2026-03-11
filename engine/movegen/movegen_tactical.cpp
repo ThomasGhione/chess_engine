@@ -179,7 +179,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             if (epCandidate) attacks |= epCandidate;
 
             if (useSpecializedInCheckHelper) {
-                addTacticalMovesFromMaskInCheck(b, attacks, from, pawnPiece, true, isWhite, enPassant, moves);
+                addTacticalMovesFromMaskInCheck(b, attacks, from, pawnPiece, true, isWhite, moves);
             } else {
                 addTacticalMovesFromMask(b, attacks, from, pawnPiece, true, isWhite, includeChecks,
                                          enPassant, hasEnPassant, moves);
@@ -194,7 +194,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             uint64_t attacks = (pieces::KNIGHT_ATTACKS[from] & oppOcc) & evasionMask;
             if (isPinned) attacks &= pinRayBySquare[from];
             if (useSpecializedInCheckHelper) {
-                addTacticalMovesFromMaskInCheck(b, attacks, from, knightPiece, false, isWhite, enPassant, moves);
+                addTacticalMovesFromMaskInCheck(b, attacks, from, knightPiece, false, isWhite, moves);
             } else {
                 addTacticalMovesFromMask(b, attacks, from, knightPiece, false, isWhite, includeChecks,
                                          enPassant, hasEnPassant, moves);
@@ -209,7 +209,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             uint64_t attacks = (pieces::getBishopAttacks(from, occ) & oppOcc) & evasionMask;
             if (isPinned) attacks &= pinRayBySquare[from];
             if (useSpecializedInCheckHelper) {
-                addTacticalMovesFromMaskInCheck(b, attacks, from, bishopPiece, false, isWhite, enPassant, moves);
+                addTacticalMovesFromMaskInCheck(b, attacks, from, bishopPiece, false, isWhite, moves);
             } else {
                 addTacticalMovesFromMask(b, attacks, from, bishopPiece, false, isWhite, includeChecks,
                                          enPassant, hasEnPassant, moves);
@@ -224,7 +224,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             uint64_t attacks = (pieces::getRookAttacks(from, occ) & oppOcc) & evasionMask;
             if (isPinned) attacks &= pinRayBySquare[from];
             if (useSpecializedInCheckHelper) {
-                addTacticalMovesFromMaskInCheck(b, attacks, from, rookPiece, false, isWhite, enPassant, moves);
+                addTacticalMovesFromMaskInCheck(b, attacks, from, rookPiece, false, isWhite, moves);
             } else {
                 addTacticalMovesFromMask(b, attacks, from, rookPiece, false, isWhite, includeChecks,
                                          enPassant, hasEnPassant, moves);
@@ -239,7 +239,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             uint64_t attacks = (pieces::getQueenAttacks(from, occ) & oppOcc) & evasionMask;
             if (isPinned) attacks &= pinRayBySquare[from];
             if (useSpecializedInCheckHelper) {
-                addTacticalMovesFromMaskInCheck(b, attacks, from, queenPiece, false, isWhite, enPassant, moves);
+                addTacticalMovesFromMaskInCheck(b, attacks, from, queenPiece, false, isWhite, moves);
             } else {
                 addTacticalMovesFromMask(b, attacks, from, queenPiece, false, isWhite, includeChecks,
                                          enPassant, hasEnPassant, moves);
