@@ -6,7 +6,9 @@ inline constexpr bool kInvalidEvalCacheTerm = false;
 
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
-inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept { return color >> 3; }
+inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
+    return static_cast<uint8_t>(((color & MASK_COLOR) >> 3) ^ 0x1u);
+}
 
 inline constexpr int Board::colorBoolToIndex(bool isWhite) noexcept { return isWhite ? 0 : 1; }
 
@@ -223,12 +225,12 @@ inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(const Coords& pos) const noexcept {
-    return (get(pos) & MASK_COLOR) ? BLACK : WHITE;
+    return (get(pos) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
-    return (get(index) & MASK_COLOR) ? BLACK : WHITE;
+    return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 inline constexpr uint16_t Board::getFullMoveClock() const noexcept { return fullMoveClock; }
@@ -266,7 +268,7 @@ inline constexpr bool Board::isSameColor(const Coords& pos1, const Coords& pos2)
     uint8_t p1 = get(pos1);
     uint8_t p2 = get(pos2);
     if (p1 == EMPTY || p2 == EMPTY) return false;
-    return (p1 & BLACK) == (p2 & BLACK);
+    return (p1 & MASK_COLOR) == (p2 & MASK_COLOR);
 }
 
 __attribute__((always_inline))
@@ -324,7 +326,7 @@ inline void Board::updateOccupancyBB() noexcept {
         if (piece == EMPTY) continue;
         
         const uint64_t bit = bitMask(index);
-        const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
+        const uint8_t color = colorToIndex(piece & MASK_COLOR);
 
         occupancy |= bit;
         dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
@@ -476,7 +478,7 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
+    const uint8_t color = colorToIndex(piece & MASK_COLOR);
     const uint64_t bit = bitMask(index);
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
@@ -484,7 +486,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
+    const uint8_t color = colorToIndex(piece & MASK_COLOR);
     const uint64_t bit = bitMask(index);
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
 }

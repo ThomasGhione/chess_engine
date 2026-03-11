@@ -14,7 +14,7 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     if (type != PAWN) [[unlikely]] 
         return false; // must be a pawn
     
-    const uint8_t color = piece & MASK_COLOR; // BLACK if set, otherwise WHITE
+    const uint8_t color = piece & MASK_COLOR; // WHITE if set, otherwise BLACK
     if (rankOf(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
         return false;
 

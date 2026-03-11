@@ -40,12 +40,12 @@ public:
     QUEEN  = 0x5, // 0101
     KING   = 0x6, // 0110
     
-    // color bit
-    BLACK  = 0x8, // 1000
-    WHITE  = 0x0, // 0000
+    // color bit (bit 3 set => white, clear => black)
+    BLACK  = 0x0, // 0000
+    WHITE  = 0x8, // 1000
 
-    INVALID_WHITE = 0x7, // 0111
-    INVALID_BLACK = 0xF, // 1111    
+    INVALID_WHITE = 0xF, // 1111
+    INVALID_BLACK = 0x7, // 0111
 };
 
     enum class MoveKind : uint8_t {
@@ -304,12 +304,12 @@ public:
         std::array<uint8_t, 256> table{};
         for (int i = 0; i < 256; ++i) table[i] = EMPTY;
         
-        table['P'] = PAWN;   table['p'] = PAWN | BLACK;
-        table['N'] = KNIGHT; table['n'] = KNIGHT | BLACK;
-        table['B'] = BISHOP; table['b'] = BISHOP | BLACK;
-        table['R'] = ROOK;   table['r'] = ROOK | BLACK;
-        table['Q'] = QUEEN;  table['q'] = QUEEN | BLACK;
-        table['K'] = KING;   table['k'] = KING | BLACK;
+        table['P'] = PAWN | WHITE;   table['p'] = PAWN | BLACK;
+        table['N'] = KNIGHT | WHITE; table['n'] = KNIGHT | BLACK;
+        table['B'] = BISHOP | WHITE; table['b'] = BISHOP | BLACK;
+        table['R'] = ROOK | WHITE;   table['r'] = ROOK | BLACK;
+        table['Q'] = QUEEN | WHITE;  table['q'] = QUEEN | BLACK;
+        table['K'] = KING | WHITE;   table['k'] = KING | BLACK;
         
         return table;
     }();

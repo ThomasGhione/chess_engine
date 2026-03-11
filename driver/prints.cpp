@@ -7,7 +7,7 @@ using namespace chess;
 static inline char pieceToSymbol(uint8_t piece) noexcept {
     if (piece == Board::EMPTY) return '.';
 
-    const bool isBlack = (piece & Board::BLACK) != 0;
+    const bool isBlack = (piece & Board::MASK_COLOR) == Board::BLACK;
     switch (piece & Board::MASK_PIECE_TYPE) {
         case Board::PAWN:   return isBlack ? 'p' : 'P';
         case Board::KNIGHT: return isBlack ? 'n' : 'N';

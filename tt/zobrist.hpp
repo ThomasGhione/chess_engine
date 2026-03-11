@@ -22,7 +22,7 @@ namespace zobrist {
     };
 
     // Array size constants
-    constexpr std::size_t PIECE_TYPES = 16;    // 16 piece types (0=empty, 1-6=white, 9-14=black)
+    constexpr std::size_t PIECE_TYPES = 16;    // 16 encoded piece ids (0..15)
     constexpr std::size_t SQUARES = 64;         // 64 squares
     constexpr std::size_t CASTLING_STATES = 16; // 16 castling states (bitmask KQkq: 0-15)
     constexpr std::size_t FILES = 8;            // 8 files for en-passant
@@ -86,21 +86,22 @@ namespace zobrist {
     inline uint64_t computeHashKey(const chess::Board& board) noexcept {
         uint64_t hashKey = 0ULL;
 
-        // White pieces (piece index 1-6)
-        xorPiecesFromBitboard(hashKey, board.pawns_bb[0],   1);
-        xorPiecesFromBitboard(hashKey, board.knights_bb[0], 2);
-        xorPiecesFromBitboard(hashKey, board.bishops_bb[0], 3);
-        xorPiecesFromBitboard(hashKey, board.rooks_bb[0],   4);
-        xorPiecesFromBitboard(hashKey, board.queens_bb[0],  5);
-        xorPiecesFromBitboard(hashKey, board.kings_bb[0],   6);
+        // White side bitboards are always index 0, black side bitboards index 1.
+        // The encoded piece ids are derived from Board constants to stay robust
+        // to internal color-bit layout changes.
+        xorPiecesFromBitboard(hashKey, board.pawns_bb[0],   static_cast<std::size_t>(chess::Board::PAWN   | chess::Board::WHITE));
+        xorPiecesFromBitboard(hashKey, board.knights_bb[0], static_cast<std::size_t>(chess::Board::KNIGHT | chess::Board::WHITE));
+        xorPiecesFromBitboard(hashKey, board.bishops_bb[0], static_cast<std::size_t>(chess::Board::BISHOP | chess::Board::WHITE));
+        xorPiecesFromBitboard(hashKey, board.rooks_bb[0],   static_cast<std::size_t>(chess::Board::ROOK   | chess::Board::WHITE));
+        xorPiecesFromBitboard(hashKey, board.queens_bb[0],  static_cast<std::size_t>(chess::Board::QUEEN  | chess::Board::WHITE));
+        xorPiecesFromBitboard(hashKey, board.kings_bb[0],   static_cast<std::size_t>(chess::Board::KING   | chess::Board::WHITE));
 
-        // Black pieces (piece index 9-14)
-        xorPiecesFromBitboard(hashKey, board.pawns_bb[1],   9);
-        xorPiecesFromBitboard(hashKey, board.knights_bb[1], 10);
-        xorPiecesFromBitboard(hashKey, board.bishops_bb[1], 11);
-        xorPiecesFromBitboard(hashKey, board.rooks_bb[1],   12);
-        xorPiecesFromBitboard(hashKey, board.queens_bb[1],  13);
-        xorPiecesFromBitboard(hashKey, board.kings_bb[1],  14);
+        xorPiecesFromBitboard(hashKey, board.pawns_bb[1],   static_cast<std::size_t>(chess::Board::PAWN   | chess::Board::BLACK));
+        xorPiecesFromBitboard(hashKey, board.knights_bb[1], static_cast<std::size_t>(chess::Board::KNIGHT | chess::Board::BLACK));
+        xorPiecesFromBitboard(hashKey, board.bishops_bb[1], static_cast<std::size_t>(chess::Board::BISHOP | chess::Board::BLACK));
+        xorPiecesFromBitboard(hashKey, board.rooks_bb[1],   static_cast<std::size_t>(chess::Board::ROOK   | chess::Board::BLACK));
+        xorPiecesFromBitboard(hashKey, board.queens_bb[1],  static_cast<std::size_t>(chess::Board::QUEEN  | chess::Board::BLACK));
+        xorPiecesFromBitboard(hashKey, board.kings_bb[1],   static_cast<std::size_t>(chess::Board::KING   | chess::Board::BLACK));
 
         const uint64_t stmMask = static_cast<uint64_t>(-static_cast<int64_t>(board.getActiveColor() == chess::Board::BLACK));
         hashKey ^= TABLES.sideToMove & stmMask;
