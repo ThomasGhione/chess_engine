@@ -1,7 +1,6 @@
 #ifndef ENGINE_MOVELIST_HPP
 #define ENGINE_MOVELIST_HPP
 
-#include "engine.hpp"
 #include <cstdint>
 #include <utility>  // for std::forward
 #include <concepts>

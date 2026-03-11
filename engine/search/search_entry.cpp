@@ -1,3 +1,4 @@
+#include "../movegen/movegen.hpp"
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
 
@@ -277,7 +278,7 @@ Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBo
     result.startDepth = firstDepth;
     result.targetDepth = maxDepth;
 
-    MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(rootBoard);
+    MoveList<chess::Board::Move> moves = MoveGenerator::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
         if (rootBoard.kings_bb[0] == 0) {
@@ -615,7 +616,7 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     this->depth = targetDepth;
 
     if (!result.hasLegalMoves || !result.completedAnyDepth) {
-        MoveList<chess::Board::Move> fallbackMoves = Engine::generateLegalMoves(this->board);
+        MoveList<chess::Board::Move> fallbackMoves = MoveGenerator::generateLegalMoves(this->board);
         if (fallbackMoves.is_empty()) {
             return chess::Board::Move{};
         }
@@ -672,7 +673,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     }
 
     if (!result.completedAnyDepth) {
-        MoveList<chess::Board::Move> fallbackMoves = Engine::generateLegalMoves(this->board);
+        MoveList<chess::Board::Move> fallbackMoves = MoveGenerator::generateLegalMoves(this->board);
         if (fallbackMoves.is_empty()) {
             this->updateGameResult();
             return;

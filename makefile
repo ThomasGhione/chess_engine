@@ -43,7 +43,7 @@ OUTPUT_DIR = output
 
 # File paths by module
 MAIN_SRC = main.cpp
-ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/eval/*/*.cpp) $(wildcard ./engine/search/*.cpp)
+ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/eval/*/*.cpp) $(wildcard ./engine/search/*.cpp) $(wildcard ./engine/movegen/*.cpp)
 COORDS_SRCS = $(wildcard ./coords/*.cpp)
 DRIVER_SRCS = $(wildcard ./driver/*.cpp)
 PIECE_SRCS = $(wildcard ./piece/*.cpp)
@@ -56,7 +56,7 @@ ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
                   $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
-ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp) $(wildcard ./engine/search/*.hpp)
+ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp) $(wildcard ./engine/search/*.hpp) $(wildcard ./engine/movegen/*.hpp)
 COORDS_HDRS = $(wildcard ./coords/*.hpp)
 DRIVER_HDRS = $(wildcard ./driver/*.hpp)
 PIECE_HDRS = $(wildcard ./piece/*.hpp)

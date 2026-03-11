@@ -1,3 +1,4 @@
+#include "../movegen/movegen.hpp"
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
 #include <cmath>
@@ -475,7 +476,7 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
 
     SearchContext ctx{depth, bounds.alpha, bounds.beta, ply, node.activeColor,
                       previousMove, node.staticEval, node.inCheck, node.isPVNode, counter};
-    MoveList<chess::Board::Move> moves = Engine::generateLegalMoves(b);
+    MoveList<chess::Board::Move> moves = MoveGenerator::generateLegalMoves(b);
     if (moves.is_empty()) {
         return node.inCheck
             ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
