@@ -45,7 +45,7 @@ int32_t Searcher::quiesce(chess::Board& b, int32_t alpha, int32_t beta, int ply,
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    static constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
+    static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         // Do not return a stand-pat score from an in-check node without checking
         // whether this is actually checkmate.

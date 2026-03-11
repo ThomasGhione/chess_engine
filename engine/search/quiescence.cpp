@@ -6,12 +6,8 @@
 namespace engine {
 
 inline int32_t Engine::clampQMoveScore(int64_t score) noexcept {
-    if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
-        return std::numeric_limits<int32_t>::max();
-    }
-    if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
-        return std::numeric_limits<int32_t>::min();
-    }
+    if (score > static_cast<int64_t>(POS_INF)) return POS_INF;
+    if (score < static_cast<int64_t>(NEG_INF)) return NEG_INF;
     return static_cast<int32_t>(score);
 }
 
@@ -84,7 +80,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
-    static constexpr uint8_t MAX_QSEARCH_DEPTH = 32;
+    static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         // Do not return a stand-pat score from an in-check node without checking
         // whether this is actually checkmate.
