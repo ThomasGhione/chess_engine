@@ -59,20 +59,23 @@ public:
     };
 
     enum EvalCacheTerm : uint32_t {
-        EVAL_CACHE_MATERIAL_DELTA           = 1u << 0,
-        EVAL_CACHE_PAWN_STRUCTURE_MG        = 1u << 1,
-        EVAL_CACHE_PAWN_STRUCTURE_EG        = 1u << 2,
-        EVAL_CACHE_BISHOP_PAIR_BONUS        = 1u << 3,
-        EVAL_CACHE_CASTLING_BONUS           = 1u << 4,
-        EVAL_CACHE_ROOKS                    = 1u << 5,
-        EVAL_CACHE_BAD_BISHOP               = 1u << 6,
-        EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS  = 1u << 7,
-        EVAL_CACHE_MINOR_DEVELOPMENT        = 1u << 8,
-        EVAL_CACHE_EARLY_QUEEN              = 1u << 9,
-        EVAL_CACHE_OUTPOSTS                 = 1u << 10,
-        EVAL_CACHE_PIECE_COORDINATION       = 1u << 11,
-        EVAL_CACHE_CENTRAL_CONTROL          = 1u << 12
+        EVAL_CACHE_MATERIAL_DELTA           = 0,
+        EVAL_CACHE_PAWN_STRUCTURE_MG        = 1,
+        EVAL_CACHE_PAWN_STRUCTURE_EG        = 2,
+        EVAL_CACHE_BISHOP_PAIR_BONUS        = 3,
+        EVAL_CACHE_CASTLING_BONUS           = 4,
+        EVAL_CACHE_ROOKS                    = 5,
+        EVAL_CACHE_BAD_BISHOP               = 6,
+        EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS  = 7,
+        EVAL_CACHE_MINOR_DEVELOPMENT        = 8,
+        EVAL_CACHE_EARLY_QUEEN              = 9,
+        EVAL_CACHE_OUTPOSTS                 = 10,
+        EVAL_CACHE_PIECE_COORDINATION       = 11,
+        EVAL_CACHE_CENTRAL_CONTROL          = 12,
+        EVAL_CACHE_COUNT                    = 13
     };
+
+    static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
     enum MoveChangeFlag : uint32_t {
         MOVE_CHANGE_NONE        = 0u,
@@ -88,19 +91,7 @@ public:
     };
 
     struct EvalCache {
-        int32_t materialDelta = 0;
-        int32_t pawnStructureMg = 0;
-        int32_t pawnStructureEg = 0;
-        int32_t bishopPairBonus = 0;
-        int32_t castlingBonus = 0;
-        int32_t rooks = 0;
-        int32_t badBishop = 0;
-        int32_t blockedPawnByBishops = 0;
-        int32_t minorDevelopment = 0;
-        int32_t earlyQueen = 0;
-        int32_t outposts = 0;
-        int32_t pieceCoordination = 0;
-        int32_t centralControl = 0;
+        std::array<int32_t, EVAL_CACHE_COUNT> terms{};
         uint32_t validMask = 0;
     };
 

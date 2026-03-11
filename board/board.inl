@@ -1,8 +1,6 @@
 // ==============================
 // Compile-Time Basic Utilities
 // ==============================
-template<uint32_t>
-inline constexpr bool kInvalidEvalCacheTerm = false;
 
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
@@ -120,64 +118,22 @@ inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
 }
 
 inline bool Board::hasEvalCacheTerm(uint32_t term) const noexcept {
-    return (evalCache.validMask & term) == term;
+    return (evalCache.validMask & evalCacheBit(term)) != 0;
 }
 
 template<uint32_t Term>
 inline bool Board::hasEvalCacheTerm() const noexcept {
-    return (evalCache.validMask & Term) == Term;
+    return (evalCache.validMask & evalCacheBit(Term)) != 0;
 }
 
 inline int32_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
-    switch (term) {
-        case EVAL_CACHE_MATERIAL_DELTA:           return evalCache.materialDelta;
-        case EVAL_CACHE_PAWN_STRUCTURE_MG:        return evalCache.pawnStructureMg;
-        case EVAL_CACHE_PAWN_STRUCTURE_EG:        return evalCache.pawnStructureEg;
-        case EVAL_CACHE_BISHOP_PAIR_BONUS:        return evalCache.bishopPairBonus;
-        case EVAL_CACHE_CASTLING_BONUS:           return evalCache.castlingBonus;
-        case EVAL_CACHE_ROOKS:                    return evalCache.rooks;
-        case EVAL_CACHE_BAD_BISHOP:               return evalCache.badBishop;
-        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS:  return evalCache.blockedPawnByBishops;
-        case EVAL_CACHE_MINOR_DEVELOPMENT:        return evalCache.minorDevelopment;
-        case EVAL_CACHE_EARLY_QUEEN:              return evalCache.earlyQueen;
-        case EVAL_CACHE_OUTPOSTS:                 return evalCache.outposts;
-        case EVAL_CACHE_PIECE_COORDINATION:       return evalCache.pieceCoordination;
-        case EVAL_CACHE_CENTRAL_CONTROL:          return evalCache.centralControl;
-        default:                                  return 0;
-    }
+    return evalCache.terms[term];
 }
 
 template<uint32_t Term>
 inline int32_t& Board::evalCacheTermRef() const noexcept {
-    if constexpr (Term == EVAL_CACHE_MATERIAL_DELTA) {
-        return evalCache.materialDelta;
-    } else if constexpr (Term == EVAL_CACHE_PAWN_STRUCTURE_MG) {
-        return evalCache.pawnStructureMg;
-    } else if constexpr (Term == EVAL_CACHE_PAWN_STRUCTURE_EG) {
-        return evalCache.pawnStructureEg;
-    } else if constexpr (Term == EVAL_CACHE_BISHOP_PAIR_BONUS) {
-        return evalCache.bishopPairBonus;
-    } else if constexpr (Term == EVAL_CACHE_CASTLING_BONUS) {
-        return evalCache.castlingBonus;
-    } else if constexpr (Term == EVAL_CACHE_ROOKS) {
-        return evalCache.rooks;
-    } else if constexpr (Term == EVAL_CACHE_BAD_BISHOP) {
-        return evalCache.badBishop;
-    } else if constexpr (Term == EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS) {
-        return evalCache.blockedPawnByBishops;
-    } else if constexpr (Term == EVAL_CACHE_MINOR_DEVELOPMENT) {
-        return evalCache.minorDevelopment;
-    } else if constexpr (Term == EVAL_CACHE_EARLY_QUEEN) {
-        return evalCache.earlyQueen;
-    } else if constexpr (Term == EVAL_CACHE_OUTPOSTS) {
-        return evalCache.outposts;
-    } else if constexpr (Term == EVAL_CACHE_PIECE_COORDINATION) {
-        return evalCache.pieceCoordination;
-    } else if constexpr (Term == EVAL_CACHE_CENTRAL_CONTROL) {
-        return evalCache.centralControl;
-    } else {
-        static_assert(kInvalidEvalCacheTerm<Term>, "Unsupported eval cache term");
-    }
+    static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
+    return evalCache.terms[Term];
 }
 
 template<uint32_t Term>
@@ -186,29 +142,14 @@ inline int32_t Board::getEvalCacheTerm() const noexcept {
 }
 
 inline void Board::setEvalCacheTerm(uint32_t term, int32_t value) const noexcept {
-    switch (term) {
-        case EVAL_CACHE_MATERIAL_DELTA:           evalCache.materialDelta = value; break;
-        case EVAL_CACHE_PAWN_STRUCTURE_MG:        evalCache.pawnStructureMg = value; break;
-        case EVAL_CACHE_PAWN_STRUCTURE_EG:        evalCache.pawnStructureEg = value; break;
-        case EVAL_CACHE_BISHOP_PAIR_BONUS:        evalCache.bishopPairBonus = value; break;
-        case EVAL_CACHE_CASTLING_BONUS:           evalCache.castlingBonus = value; break;
-        case EVAL_CACHE_ROOKS:                    evalCache.rooks = value; break;
-        case EVAL_CACHE_BAD_BISHOP:               evalCache.badBishop = value; break;
-        case EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS:  evalCache.blockedPawnByBishops = value; break;
-        case EVAL_CACHE_MINOR_DEVELOPMENT:        evalCache.minorDevelopment = value; break;
-        case EVAL_CACHE_EARLY_QUEEN:              evalCache.earlyQueen = value; break;
-        case EVAL_CACHE_OUTPOSTS:                 evalCache.outposts = value; break;
-        case EVAL_CACHE_PIECE_COORDINATION:       evalCache.pieceCoordination = value; break;
-        case EVAL_CACHE_CENTRAL_CONTROL:          evalCache.centralControl = value; break;
-        default:                                  return;
-    }
-    evalCache.validMask |= term;
+    evalCache.terms[term] = value;
+    evalCache.validMask |= evalCacheBit(term);
 }
 
 template<uint32_t Term>
 inline void Board::setEvalCacheTerm(int32_t value) const noexcept {
     evalCacheTermRef<Term>() = value;
-    evalCache.validMask |= Term;
+    evalCache.validMask |= evalCacheBit(Term);
 }
 
 inline void Board::invalidateEvalCacheTerms(uint32_t terms) noexcept {

@@ -96,22 +96,6 @@ public:
     GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
     
-    static constexpr uint64_t adjacentFilesMask(int file) noexcept;
-    static constexpr std::array<uint64_t, 8> initFileMasks() noexcept;
-    static constexpr std::array<uint64_t, 8> initAdjacentFilesOnly() noexcept;
-    static constexpr std::array<uint64_t, 8> initAdjacentAndFileMasks() noexcept;
-    static constexpr std::array<uint64_t, 64> initKingProximityMasks() noexcept;
-    static constexpr std::array<uint64_t, 64> initWhiteForwardFill();
-    static constexpr std::array<uint64_t, 64> initBlackForwardFill();
-    // File masks (already defined in fileMask() but we precalculate for speed)
-    static const std::array<uint64_t, 8> FILE_MASKS;
-    // Adjacent files ONLY (without center file) - optimization for isolated pawn check
-    static const std::array<uint64_t, 8> ADJACENT_FILES_ONLY;
-    // Precalculated adjacent files mask (including center file)
-    static const std::array<uint64_t, 8> ADJACENT_AND_FILE_MASKS;
-    // King proximity masks (squares at distance <= 2 from each square)
-    static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
-
     static int32_t getMaterialDelta(const chess::Board& b) noexcept;
     // Exposed for perf tests (delegates to Evaluator)
     static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
@@ -168,9 +152,6 @@ public:
 #endif
 
     int MAX_THREADS;
-    // Dark/Light square masks for bad bishop evaluation
-    static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
-    static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
     //--- Variables end
 
 private:
@@ -397,7 +378,6 @@ private:
 } // namespace engine
 
 #include "inl/bitboard_helpers.inl"
-#include "inl/precomputed_masks.inl"
 #include "inl/search_bounds.inl"
 #include "inl/search_cutoffs.inl"
 #include "inl/accessors.inl"

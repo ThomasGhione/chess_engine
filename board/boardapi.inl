@@ -46,38 +46,38 @@ inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noe
     const bool pawnRelated = ((moveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
 
     if (captureOrPromotion) {
-        mask |= EVAL_CACHE_MATERIAL_DELTA;
-        mask |= EVAL_CACHE_BISHOP_PAIR_BONUS;
+        mask |= evalCacheBit(EVAL_CACHE_MATERIAL_DELTA);
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_PAIR_BONUS);
     }
 
     if (pawnRelated) {
-        mask |= EVAL_CACHE_PAWN_STRUCTURE_MG;
-        mask |= EVAL_CACHE_PAWN_STRUCTURE_EG;
-        mask |= EVAL_CACHE_CENTRAL_CONTROL;
-        mask |= EVAL_CACHE_BAD_BISHOP;
+        mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_MG);
+        mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
+        mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
+        mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
     }
 
     if (((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
-        mask |= EVAL_CACHE_ROOKS;
+        mask |= evalCacheBit(EVAL_CACHE_ROOKS);
     }
 
     if (((moveFlags & MOVE_CHANGE_KING_MOVE) != 0)
         || ((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0)
         || ((moveFlags & MOVE_CHANGE_CASTLING) != 0)
         || ((moveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
-        mask |= EVAL_CACHE_CASTLING_BONUS;
+        mask |= evalCacheBit(EVAL_CACHE_CASTLING_BONUS);
     }
 
     if (((moveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {
-        mask |= EVAL_CACHE_MINOR_DEVELOPMENT;
-        mask |= EVAL_CACHE_OUTPOSTS;
+        mask |= evalCacheBit(EVAL_CACHE_MINOR_DEVELOPMENT);
+        mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
     }
     if (pawnRelated) {
-        mask |= EVAL_CACHE_OUTPOSTS;
+        mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
     }
 
     if (((moveFlags & MOVE_CHANGE_QUEEN_MOVE) != 0) || captureOrPromotion) {
-        mask |= EVAL_CACHE_EARLY_QUEEN;
+        mask |= evalCacheBit(EVAL_CACHE_EARLY_QUEEN);
     }
 
     if (((moveFlags & (MOVE_CHANGE_PAWN_MOVE
@@ -86,7 +86,7 @@ inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noe
                      | MOVE_CHANGE_ROOK_MOVE
                      | MOVE_CHANGE_QUEEN_MOVE)) != 0)
         || captureOrPromotion) {
-        mask |= EVAL_CACHE_PIECE_COORDINATION;
+        mask |= evalCacheBit(EVAL_CACHE_PIECE_COORDINATION);
     }
 
     return mask;
