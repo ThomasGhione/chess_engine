@@ -197,6 +197,7 @@ private:
     static int32_t evalMobility(const AttackData data[2]) noexcept;
     static int32_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static int32_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int32_t evalPawnForks(const chess::Board& b) noexcept;
     static int32_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
     static int32_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept;

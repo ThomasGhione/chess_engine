@@ -7,6 +7,7 @@ int32_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int32_t eval, uin
     eval += evalEarlyQueenCached(b);
     eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
+    eval += evalPawnForks(b);
     eval += evalCentralControlCached(b, whitePawns, blackPawns);
     eval += evalPieceCoordinationCached(b);
     eval += evalOutpostsCached(b);
@@ -23,6 +24,7 @@ int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t e
     eval += evalMinorPieceDevelopmentCached(b);
     eval += evalCastlingBonusCached(b);
     eval += evalHangingPieces(b, data);
+    eval += evalPawnForks(b);
     eval += evalTrappedPieces(b, occ);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalCentralControlCached(b, whitePawns, blackPawns);
@@ -39,6 +41,7 @@ int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t e
 
 int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept {
     eval += evalHangingPieces(b, data);
+    eval += evalPawnForks(b);
     eval += evalTrappedPieces(b, occ);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalCentralControlCached(b, whitePawns, blackPawns);

@@ -91,6 +91,12 @@ inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -10;
 inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -5;
 
 // ===================================================
+// PAWN FORKS (defended pawn attacking 2+ enemy pieces)
+// ===================================================
+inline static constexpr int32_t PAWN_FORK_BASE_BONUS       = 45;  // Base bonus for any defended pawn fork
+inline static constexpr int32_t PAWN_FORK_MAJOR_BONUS      = 30;  // Extra if forking at least one rook/queen
+inline static constexpr int32_t PAWN_FORK_ROYAL_BONUS      = 20;  // Extra if forking the king (fork + check)
+// ===================================================
 // ROOK EVALUATION
 // ===================================================
 inline static constexpr int32_t OPEN_FILE_ROOK_BONUS = 30;
