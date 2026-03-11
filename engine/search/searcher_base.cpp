@@ -13,33 +13,33 @@ namespace engine {
 // ============================================================================
 
 int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
-    constexpr int32_t MIN_I16 = -32768;
-    constexpr int32_t MAX_I16 = 32767;
+    static constexpr int32_t MIN_I16 = -32768;
+    static constexpr int32_t MAX_I16 = 32767;
     return static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
 }
 
 int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
-    if (sum > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) 
-        return std::numeric_limits<int32_t>::max();
-    if (sum < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) 
-        return std::numeric_limits<int32_t>::min();
+    if (sum > static_cast<int64_t>(POS_INF)) 
+        return POS_INF;
+    if (sum < static_cast<int64_t>(NEG_INF)) 
+        return NEG_INF;
     return static_cast<int32_t>(sum);
 }
 
 int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
-    if (diff > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) 
-        return std::numeric_limits<int32_t>::max();
-    if (diff < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) 
-        return std::numeric_limits<int32_t>::min();
+    if (diff > static_cast<int64_t>(POS_INF)) 
+        return POS_INF;
+    if (diff < static_cast<int64_t>(NEG_INF)) 
+        return NEG_INF;
     return static_cast<int32_t>(diff);
 }
 
 int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
-    constexpr int32_t STALEMATE_MATERIAL_THRESHOLD = 200;
-    constexpr int32_t STALEMATE_DRAW_PENALTY_MINOR = 50;
-    constexpr int32_t STALEMATE_DRAW_PENALTY_MAJOR = 150;
+    static constexpr int32_t STALEMATE_MATERIAL_THRESHOLD = 200;
+    static constexpr int32_t STALEMATE_DRAW_PENALTY_MINOR = 50;
+    static constexpr int32_t STALEMATE_DRAW_PENALTY_MAJOR = 150;
     
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
     
