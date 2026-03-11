@@ -103,7 +103,6 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             }
 
             if (isEnPassant) {
-                const bool isWhite = (movingColor == WHITE);
                 const int8_t epDir = isWhite ? 8 : -8;
                 const uint8_t capturedPawnIdx = static_cast<uint8_t>(toIndex + epDir);
                 return isKingSafeAfterEnPassant(movingColor, fromIndex, toIndex, capturedPawnIdx);
@@ -367,7 +366,7 @@ template<uint8_t PieceType> // helper template for simple pieces with identical 
 
 
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
-    const int side = (color == WHITE) ? 0 : 1;
+    const int side = colorToIndex(color);
     const int oppSide = side ^ 1;
 
     const bool inChk = inCheck(color);

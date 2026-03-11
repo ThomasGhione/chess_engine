@@ -296,7 +296,7 @@ int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
-    const int sideActive = b.getActiveColor() == chess::Board::WHITE ? 0 : 1;
+    const int sideActive = chess::Board::colorToIndex(b.getActiveColor());
     const int sidePassive = sideActive ^ 1;
 
     // Value of the initially captured piece
@@ -382,7 +382,8 @@ bool Engine::sortLegalMoves(
     int32_t moveScores[MAX_MOVES] {};
 
     // Precompute expensive variables outside the loop
-    const bool inCheck = b.inCheck(b.getActiveColor());
+    const uint8_t activeColor = b.getActiveColor();
+    const bool inCheck = b.inCheck(activeColor);
     const int fullMoveClock = b.getFullMoveClock();
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[0] | b.knights_bb[1] |

@@ -241,7 +241,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
     for (int i = 0; i < tacticalMoves.size; ++i) {
-        const chess::Board::Move m = tacticalMoves[static_cast<size_t>(i)];
+        const auto& m = tacticalMoves[static_cast<size_t>(i)];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);

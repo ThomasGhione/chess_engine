@@ -3,6 +3,15 @@
 
 namespace engine {
 
+void MoveGenerator::addPromotionMoves(MoveList<chess::Board::Move>& moves,
+                                      const chess::Coords& fromC,
+                                      const chess::Coords& toC) noexcept {
+    moves.emplace_back(fromC, toC, 'q');
+    moves.emplace_back(fromC, toC, 'r');
+    moves.emplace_back(fromC, toC, 'b');
+    moves.emplace_back(fromC, toC, 'n');
+}
+
 // ============================================================================
 // addPawnMovesFromMask
 // ============================================================================
@@ -37,10 +46,7 @@ void MoveGenerator::addPawnMovesFromMask(
         }
 
         if (chess::Board::rankOf(to) == promotionRank) {
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+            addPromotionMoves(moves, fromC, toC);
         } else {
             moves.emplace_back(chess::Board::Move{fromC, toC});
         }
@@ -115,10 +121,7 @@ void MoveGenerator::addTacticalMovesFromMask(
         const chess::Coords toC{to};
 
         if (isPromotion) {
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+            addPromotionMoves(moves, fromC, toC);
             continue;
         }
 
@@ -168,10 +171,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
         const chess::Coords toC{to};
 
         if (isPromotion) {
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'q'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'r'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'b'});
-            moves.emplace_back(chess::Board::Move{fromC, toC, 'n'});
+            addPromotionMoves(moves, fromC, toC);
             continue;
         }
 

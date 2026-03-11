@@ -8,6 +8,7 @@
 namespace engine {
 
 class MoveGenerator final {
+    
 public:
     MoveGenerator() = delete;  // Static class, no instantiation
     
@@ -21,6 +22,11 @@ public:
         bool inDoubleCheckValue = false) noexcept;
 
 private:
+    static void addPromotionMoves(
+        MoveList<chess::Board::Move>& moves,
+        const chess::Coords& fromC,
+        const chess::Coords& toC) noexcept;
+
     
     static void addPawnMovesFromMask(
         const chess::Board& b,

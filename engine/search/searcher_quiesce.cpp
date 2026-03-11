@@ -202,7 +202,7 @@ int32_t Searcher::quiesce(chess::Board& b, int32_t alpha, int32_t beta, int ply,
     const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
     
     for (int i = 0; i < tacticalMoves.size; ++i) {
-        const chess::Board::Move m = tacticalMoves[static_cast<size_t>(i)];
+        const auto& m = tacticalMoves[static_cast<size_t>(i)];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
@@ -346,7 +346,7 @@ int32_t Searcher::staticExchangeEvaluation(const chess::Board& b, const chess::B
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
 
-    const int sideActive = b.getActiveColor() == chess::Board::WHITE ? 0 : 1;
+    const int sideActive = chess::Board::colorToIndex(b.getActiveColor());
     const int sidePassive = sideActive ^ 1;
 
     // Value of the initially captured piece
