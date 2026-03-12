@@ -239,11 +239,9 @@ public:
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
     
-    bool move(const Coords& from, const Coords& to) noexcept;
-    bool move(const Coords& from, const Coords& to, char promotionChoice) noexcept;
+    bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
     bool promote(const Coords& at, char choice) noexcept;
-    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck) const noexcept;
-    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck = false) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck, bool inDoubleCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
@@ -444,7 +442,6 @@ private:
     static uint8_t charToPiece(char symbol);
     static bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     static uint8_t parseActiveColor(const std::string& activeSection);
-    std::vector<bool> parseCastling(const std::string& castlingSection);
     static Coords parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string boardToFenPieces() const;

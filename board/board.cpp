@@ -4,8 +4,17 @@
 namespace chess {
 
 
-bool Board::move(const Coords& from, const Coords& to) noexcept {
-    return move(from, to, '\0');
+bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
+    const uint8_t fromIndex = from.index;
+    const uint8_t moving = get(fromIndex);
+    const uint8_t movingColor = moving & MASK_COLOR;
+
+    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(movingColor), false))
+        return false;
+
+    MoveState st{};
+    doMove(Move{from, to, promotionChoice}, st, promotionChoice);
+    return true;
 }
 
 bool Board::promote(const Coords& at, char choice) noexcept {
@@ -26,28 +35,6 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     addPieceToBB(newPiece, atIndex);
     set(at, static_cast<piece_id>(newPiece));
     return true;
-}
-
-// Overload: execute move and, if a pawn reaches last rank, promote using provided choice
-bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
-    const uint8_t fromIndex = from.index;
-    const uint8_t moving = get(fromIndex);
-    const uint8_t movingColor = moving & MASK_COLOR;
-
-    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(movingColor), false))
-        return false;
-
-    MoveState st{};
-    doMove(Move{from, to, promotionChoice}, st, promotionChoice);
-    return true;
-}
-
-bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk) const noexcept {
-    const uint8_t fromPiece = get(fromIndex);
-    if (fromPiece == EMPTY) [[unlikely]] return false;
-    const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
-    const bool inDoubleChk = inChk && (fromType != KING) && isDoubleCheck(fromPiece & MASK_COLOR);
-    return isLegalPseudoMove(fromIndex, toIndex, fromPiece, inChk, inDoubleChk);
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bool inDoubleChk) const noexcept {
