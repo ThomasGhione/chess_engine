@@ -186,11 +186,6 @@ inline void Board::set(Coords coords, piece_id value) noexcept {
     set(coords.index, value);
 }
 
-__attribute__((always_inline))
-inline void Board::set(uint8_t row, uint8_t col, piece_id value) noexcept {
-    const uint8_t shift = col << 2; // col * 4
-    chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
-}
 
 inline constexpr uint8_t Board::operator[](const Coords& coords) const noexcept { return get(coords); }
 inline uint8_t Board::operator[](const Coords& coords) noexcept { return get(coords); }

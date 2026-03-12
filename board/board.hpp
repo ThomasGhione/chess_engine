@@ -189,9 +189,6 @@ public:
     inline void set(Coords coords, piece_id value) noexcept;
 
     __attribute__((always_inline))
-    inline void set(uint8_t row, uint8_t col, piece_id value) noexcept;
-
-    __attribute__((always_inline))
     inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept;
 
     __attribute__((always_inline))
