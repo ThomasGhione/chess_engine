@@ -591,9 +591,9 @@ void Engine::stopThinking() noexcept {
 chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     this->stopPondering();
 
-    const uint64_t targetDepth = std::max<uint64_t>(
-        static_cast<uint64_t>(Engine::DEFAULTDEPTH),
-        requestedDepth);
+    const uint64_t targetDepth = (requestedDepth == 0)
+        ? static_cast<uint64_t>(Engine::DEFAULTDEPTH)
+        : requestedDepth;
     if (targetDepth == 0) return chess::Board::Move{};
 
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
@@ -637,9 +637,9 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
 void Engine::search(uint64_t requestedDepth) noexcept {
     this->stopPondering();
 
-    const uint64_t targetDepth = std::max<uint64_t>(
-        static_cast<uint64_t>(Engine::DEFAULTDEPTH),
-        requestedDepth);
+    const uint64_t targetDepth = (requestedDepth == 0)
+        ? static_cast<uint64_t>(Engine::DEFAULTDEPTH)
+        : requestedDepth;
     if (targetDepth == 0) return;
 
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
