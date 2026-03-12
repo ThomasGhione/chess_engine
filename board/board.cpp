@@ -111,11 +111,23 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             const uint64_t capturedEnemyMask = (destPiece != EMPTY && (destPiece & MASK_COLOR) != movingColor) ? toBit : 0ULL;
             return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
         }
-        case KNIGHT:
-        case BISHOP:
-        case ROOK:
+        case KNIGHT: {
+            const uint64_t bitMap = pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+        }
+        case BISHOP: {
+            const uint64_t bitMap = pieces::generateMovesByType<BISHOP>(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+        }
+        case ROOK: {
+            const uint64_t bitMap = pieces::generateMovesByType<ROOK>(fromIndex, occupancy);
+            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+        }
         case QUEEN: {
-            const uint64_t bitMap = pieces::dispatchPieceMoves(fromType, fromIndex, occupancy);
+            const uint64_t bitMap = pieces::generateMovesByType<QUEEN>(fromIndex, occupancy);
             if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }

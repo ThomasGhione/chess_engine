@@ -407,18 +407,6 @@ inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy)
     return 0ULL;
 }
 
-[[nodiscard]] __attribute__((hot, always_inline))
-inline uint64_t dispatchPieceMoves(uint8_t pieceType, uint8_t index, uint64_t occupancy) noexcept {
-    switch (pieceType) {
-        case 0x2: return KNIGHT_ATTACKS[index];              // KNIGHT
-        case 0x3: return getBishopAttacks(index, occupancy); // BISHOP
-        case 0x4: return getRookAttacks(index, occupancy);   // ROOK
-        case 0x5: return getQueenAttacks(index, occupancy);  // QUEEN
-        case 0x6: return KING_ATTACKS[index];                // KING
-        default:  return 0ULL;
-    }
-}
-
 
 } // namespace pieces
 
