@@ -251,6 +251,12 @@ public:
     bool inCheck(uint8_t color) const noexcept;
     bool isDoubleCheck(uint8_t color) const noexcept;
     bool hasAnyLegalMove(uint8_t color) const noexcept;
+    [[nodiscard]] inline bool isKingSafeAfterMove(
+        uint8_t movingColor,
+        uint8_t fromIndex,
+        uint8_t toIndex,
+        uint64_t capturedEnemyMask
+    ) const noexcept;
     bool isStalemate(uint8_t color) const noexcept;
     bool isFiftyMoveRule() const noexcept;
     bool isDraw(uint8_t color) const noexcept;
@@ -355,12 +361,6 @@ public:
 private:
     // Methods start
     [[nodiscard]] static inline bool isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept;
-    [[nodiscard]] inline bool isKingSafeAfterMove(
-        uint8_t movingColor,
-        uint8_t fromIndex,
-        uint8_t toIndex,
-        uint64_t capturedEnemyMask
-    ) const noexcept;
     [[nodiscard]] inline bool isKingSafeAfterEnPassant(
         uint8_t movingColor,
         uint8_t fromIndex,

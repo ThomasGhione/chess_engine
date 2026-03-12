@@ -335,25 +335,26 @@ bool Board::inCheck(uint8_t color) const noexcept {
 }
 
 
-template<uint8_t PieceType> // helper template for simple pieces with identical pattern (Knight, Bishop, Rook, Queen)
+template<uint8_t PieceType>
 [[nodiscard]] static inline bool hasLegalMovesForPieceType(
     const Board* board,
     uint64_t pieceBB,
     uint64_t ownOcc,
+    uint64_t enemyOcc,
     uint64_t occupancy,
-    bool inCheck,
-    bool inDoubleCheck
+    uint8_t movingColor
 ) noexcept {
     while (pieceBB) {
         const uint8_t from = __builtin_ctzll(pieceBB);
         pieceBB &= pieceBB - 1;
         
-        // use dispatch table for move generation
         uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
         while (movesMask) {
             const uint8_t to = __builtin_ctzll(movesMask);
             movesMask &= movesMask - 1;
-            if (board->isLegalPseudoMove(from, to, inCheck, inDoubleCheck)) return true;
+            const uint64_t toBit = Board::bitMask(to);
+            const uint64_t capturedMask = (toBit & enemyOcc) ? toBit : 0ULL;
+            if (board->isKingSafeAfterMove(movingColor, from, to, capturedMask)) return true;
         }
     }
     return false;
@@ -367,13 +368,12 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const bool inChk = inCheck(color);
     const bool inDoubleChk = inChk && isDoubleCheck(color);
 
-    // Pre-calculate occupancy masks
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
                              rooks_bb[side] | queens_bb[side]  | kings_bb[side];
     const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
                                rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
-    // --- KING MOVES (check for king first - always exists, cheap to test) ---
+    // --- KING MOVES (always exists, cheap to test) ---
     uint64_t kings = kings_bb[side];
     if (kings) [[likely]] {
         const uint8_t king = __builtin_ctzll(kings);
@@ -384,7 +384,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             if (isLegalPseudoMove(king, to, inChk, false)) return true;
         }
         
-        if (!inChk) { // Castling (only if not in check)
+        if (!inChk) {
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
                 if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex + 2), inChk, false)) return true;
@@ -393,10 +393,11 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
     }
 
-    if (inDoubleChk) return false; // in double-check only king moves are legal
+    if (inDoubleChk) return false;
 
+    // --- NON-KING PIECES: skip isLegalPseudoMove, call isKingSafeAfterMove directly ---
 
-    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
+    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, enemyOcc, occupancy, color))
         return true;
 
     const bool isWhite = (side == 0);
@@ -405,30 +406,28 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         const uint8_t from = __builtin_ctzll(pawns);
         pawns &= pawns - 1;
 
-        // Forward pushes (more common than captures)
         uint64_t push = pieces::getPawnForwardPushes(from, isWhite, occupancy);
         while (push) {
             const uint8_t to = __builtin_ctzll(push);
             push &= push - 1;
-            if (isLegalPseudoMove(from, to, inChk, inDoubleChk)) return true;
+            if (isKingSafeAfterMove(color, from, to, 0ULL)) return true;
         }
 
-        // Pawn captures
         uint64_t caps = pieces::PAWN_ATTACKS[isWhite][from] & enemyOcc;
         while (caps) {
             const uint8_t to = __builtin_ctzll(caps);
             caps &= caps - 1;
-            if (isLegalPseudoMove(from, to, inChk, inDoubleChk)) return true;
+            if (isKingSafeAfterMove(color, from, to, bitMask(to))) return true;
         }
     }
 
-    if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
+    if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, enemyOcc, occupancy, color))
         return true;
 
-    if (hasLegalMovesForPieceType<ROOK>(this, rooks_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
+    if (hasLegalMovesForPieceType<ROOK>(this, rooks_bb[side], ownOcc, enemyOcc, occupancy, color))
         return true;
 
-    if (hasLegalMovesForPieceType<QUEEN>(this, queens_bb[side], ownOcc, occupancy, inChk, inDoubleChk))
+    if (hasLegalMovesForPieceType<QUEEN>(this, queens_bb[side], ownOcc, enemyOcc, occupancy, color))
         return true;
 
     return false;
