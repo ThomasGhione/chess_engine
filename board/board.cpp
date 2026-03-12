@@ -170,15 +170,13 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint64_t toBit,
     uint8_t movingColor
 ) const noexcept {
-    if (fromIndex == toIndex) [[unlikely]] return false;
-
     const uint8_t oppColor = oppositeColor(movingColor);
     const int fileDelta = fileOf(toIndex) - fileOf(fromIndex);
     const int rankDelta = rankOf(toIndex) - rankOf(fromIndex);
 
     // Handle castling explicitly when king moves two files on same rank
     if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
-        return canCastleToSquare(fromIndex, toIndex, movingColor);
+        return canCastleToSquare(fromIndex, movingColor, fileDelta == 2);
     }
 
     // Normal king move: one-step king attack and destination not attacked
@@ -189,32 +187,20 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     return true;
 }
 
-// Castling dispatcher
+// Castling dispatcher — caller already guarantees rankDelta==0 and |fileDelta|==2
 [[nodiscard]] inline bool Board::canCastleToSquare(
     uint8_t fromIndex,
-    uint8_t toIndex,
-    uint8_t movingColor
+    uint8_t movingColor,
+    bool isKingside
 ) const noexcept {
-    const uint8_t fromRank = rankOf(fromIndex);
-    const uint8_t toRank = rankOf(toIndex);
-    const uint8_t fromFile = fileOf(fromIndex);
-    
-    // Early returns: invalid castling conditions
-    if (fromRank != toRank) return false;
-    if (fromFile != 4) return false;
+    if (fileOf(fromIndex) != 4) return false;
     
     const bool isWhite = (movingColor == WHITE);
     const uint8_t expectedRank = isWhite ? 7 : 0;
+
+    if (rankOf(fromIndex) != expectedRank) return false;
     
-    if (fromRank != expectedRank) return false;
-    
-    // Calculate file delta
-    const int df = static_cast<int>(fileOf(toIndex)) - 4;
-    
-    if (df == 2) return canCastleGeneric(isWhite, fromIndex, true);
-    if (df == -2) return canCastleGeneric(isWhite, fromIndex, false);
-    
-    return false;
+    return canCastleGeneric(isWhite, fromIndex, isKingside);
 }
 
 // Generic castling validation (consolidated logic)
@@ -262,7 +248,9 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor,
     uint8_t destPiece
 ) const noexcept {
-    const uint64_t capturedEnemyMask = (destPiece != EMPTY && (destPiece & MASK_COLOR) != movingColor)
+    // Note: own-color captures are already rejected by isLegalPseudoMove,
+    // so if destPiece != EMPTY it is guaranteed to be an enemy piece.
+    const uint64_t capturedEnemyMask = (destPiece != EMPTY)
         ? Board::bitMask(toIndex)
         : 0ULL;
     return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);

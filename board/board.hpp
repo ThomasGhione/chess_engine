@@ -373,7 +373,7 @@ private:
         uint64_t toBit,
         uint8_t movingColor
     ) const noexcept;
-    [[nodiscard]] inline bool canCastleToSquare(uint8_t fromIndex, uint8_t toIndex, uint8_t movingColor) const noexcept;
+    [[nodiscard]] inline bool canCastleToSquare(uint8_t fromIndex, uint8_t movingColor, bool isKingside) const noexcept;
     [[nodiscard]] inline bool canCastleGeneric(bool isWhite, uint8_t fromIndex, bool isKingside) const noexcept;
     [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(
         uint8_t fromIndex,
