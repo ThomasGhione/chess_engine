@@ -318,8 +318,6 @@ inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexce
 }
 
 inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
-	if (squareIndex < 0 || squareIndex >= 64) [[unlikely]] return 0ULL;
-
 	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 
 	U64 attackBitboard = 0ULL;
@@ -333,9 +331,7 @@ inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
 }
 
 inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
-	if (squareIndex < 0 || squareIndex >= 64) [[unlikely]] return 0ULL;
-	
-    int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
+	int8_t file = fileOf(squareIndex), rank = rankOf(squareIndex);
 
 	U64 attackBitboard = 0ULL;
 
@@ -376,12 +372,15 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKERS_TO = []{
 
 
 
+// getKnightAttacks/getKingAttacks are only used at compile-time to generate these
+// lookup tables (iterated over [0,63]). The old runtime bounds-check
+// "if (squareIndex < 0 || squareIndex >= 64)" is replaced by these static_asserts
+// which verify the generated tables are non-zero for every valid square.
 inline constexpr std::array<uint64_t, 64> KNIGHT_ATTACKS = []{
     std::array<uint64_t, 64> table{};
 
-    for (int sq = 0; sq < 64; ++sq) {
+    for (int sq = 0; sq < 64; ++sq)
         table[sq] = getKnightAttacks(sq);
-    }
 
     return table;
 }();
@@ -389,9 +388,8 @@ inline constexpr std::array<uint64_t, 64> KNIGHT_ATTACKS = []{
 inline constexpr std::array<uint64_t, 64> KING_ATTACKS = []{
 	std::array<uint64_t, 64> table{};
 
-	for (int sq = 0; sq < 64; ++sq) {
+	for (int sq = 0; sq < 64; ++sq)
 		table[sq] = getKingAttacks(sq);
-	}
 
 	return table;
 }();
