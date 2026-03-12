@@ -105,8 +105,6 @@ inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeC
 
 inline Coords Board::getEnPassant() const noexcept { return enPassant; }
 
-inline constexpr uint32_t Board::getLastMoveChangeFlags() const noexcept { return lastMoveChangeFlags; }
-
 inline constexpr int32_t Board::getIncrementalMaterialDelta() const noexcept {
     return incrementalMaterialDelta;
 }
@@ -204,13 +202,6 @@ inline constexpr bool Board::operator!=(const Board& other) const noexcept { ret
 // ==============================
 // Board Internals
 // ==============================
-__attribute__((always_inline))
-inline constexpr bool Board::isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
-    uint8_t p1 = get(pos1);
-    uint8_t p2 = get(pos2);
-    if (p1 == EMPTY || p2 == EMPTY) return false;
-    return (p1 & MASK_COLOR) == (p2 & MASK_COLOR);
-}
 
 __attribute__((always_inline))
 inline void Board::updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {

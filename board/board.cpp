@@ -59,10 +59,10 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     switch (fromType) {
         case PAWN: {
             const bool isWhite = (movingColor == WHITE);
-            const int colorIdx = static_cast<int>(isWhite);
+            const int side = colorToIndex(movingColor);
 
             // Diagonal move (capture or en-passant)?
-            if (pieces::PAWN_ATTACKS[colorIdx][fromIndex] & toBit) {
+            if (pieces::PAWN_ATTACKS[side][fromIndex] & toBit) {
                 // En-passant: diagonal to empty square that matches EP target
                 if (destPiece == EMPTY) {
                     if (Coords::isInBounds(enPassant) && toIndex == enPassant.index) {
@@ -388,7 +388,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             if (isKingSafeAfterMove(color, from, to, 0ULL)) return true;
         }
 
-        uint64_t caps = pieces::PAWN_ATTACKS[isWhite][from] & enemyOcc;
+        uint64_t caps = pieces::PAWN_ATTACKS[side][from] & enemyOcc;
         while (caps) {
             const uint8_t to = __builtin_ctzll(caps);
             caps &= caps - 1;

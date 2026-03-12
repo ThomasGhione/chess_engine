@@ -154,13 +154,6 @@ public:
     static constexpr uint8_t colorToIndex(uint8_t color) noexcept;
     static constexpr int colorBoolToIndex(bool isWhite) noexcept;
     static constexpr uint8_t promotionRank(bool isWhite) noexcept;
-    static constexpr bool isPromotionRank(uint8_t rank, bool isWhite) noexcept;
-    static constexpr uint8_t verticalMirror(uint8_t sq) noexcept;
-    static constexpr uint8_t horizontalMirror(uint8_t sq) noexcept;
-    static constexpr uint64_t fileMask(int file) noexcept;
-    static constexpr uint64_t rankMask(int rank) noexcept;
-    static constexpr uint64_t fileMaskFromSquare(uint8_t sq) noexcept;
-    static constexpr uint64_t rankMaskFromSquare(uint8_t sq) noexcept;
     static constexpr uint64_t bitMask(uint8_t sq) noexcept;
     static constexpr uint8_t fileOf(uint8_t sq) noexcept;
     static constexpr uint8_t rankOf(uint8_t sq) noexcept;
@@ -197,9 +190,6 @@ public:
 
     __attribute__((always_inline))
     inline void set(uint8_t row, uint8_t col, piece_id value) noexcept;
-
-    __attribute__((always_inline))
-    constexpr inline bool isSameColor(const Coords& pos1, const Coords& pos2) const noexcept;
 
     __attribute__((always_inline))
     inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept;
@@ -264,7 +254,6 @@ public:
     std::string fromBoardToFen() const;
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
-    constexpr uint32_t getLastMoveChangeFlags() const noexcept;
     constexpr int32_t getIncrementalMaterialDelta() const noexcept;
     int32_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     bool hasEvalCacheTerm(uint32_t term) const noexcept;

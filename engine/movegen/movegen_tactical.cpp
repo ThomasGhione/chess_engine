@@ -79,9 +79,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             const uint64_t fromBit = chess::Board::bitMask(from);
             const bool isPinned = (pinnedMask & fromBit) != 0ULL;
 
-            uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
+            uint64_t attacks = pieces::PAWN_ATTACKS[side][from] & oppOcc;
             uint64_t epCandidate = 0ULL;
-            if (hasEnPassant && (pieces::PAWN_ATTACKS[isWhite][from] & enPassantBit)) {
+            if (hasEnPassant && (pieces::PAWN_ATTACKS[side][from] & enPassantBit)) {
                 attacks |= enPassantBit;
                 epCandidate = enPassantBit;
             }
@@ -158,9 +158,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             const uint64_t fromBit = chess::Board::bitMask(from);
             const bool isPinned = (pinnedMask & fromBit) != 0ULL;
 
-            uint64_t attacks = pieces::PAWN_ATTACKS[isWhite][from] & oppOcc;
+            uint64_t attacks = pieces::PAWN_ATTACKS[side][from] & oppOcc;
             uint64_t epCandidate = 0ULL;
-            if (hasEnPassant && (pieces::PAWN_ATTACKS[isWhite][from] & enPassantBit)) {
+            if (hasEnPassant && (pieces::PAWN_ATTACKS[side][from] & enPassantBit)) {
                 attacks |= enPassantBit;
                 epCandidate = enPassantBit;
             }

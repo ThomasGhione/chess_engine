@@ -2,7 +2,6 @@
 #define PIECES_HPP
 
 #include <cstdint>
-#include <vector>
 #include <array>
 #include "magic_numbers.hpp"
 
@@ -11,6 +10,9 @@ namespace pieces {
 using U64 = uint64_t;
 
 static constexpr U64 ONE = 1ULL;
+static constexpr int WHITE_SIDE = 0;
+static constexpr int BLACK_SIDE = 1;
+inline constexpr int sideIndex(bool isWhite) noexcept { return isWhite ? WHITE_SIDE : BLACK_SIDE; }
 
 // ==================== UTILS ====================
 inline constexpr int8_t fileOf(int8_t sq) noexcept { return static_cast<int8_t>(sq % 8); }
@@ -206,7 +208,7 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 
 
 // Lookup table for pawn push target squares (without occupancy checks)
-// table[isWhite][square] = bitboard with 1-step and 2-step target squares
+// table[side][square], side mapping is 0=white, 1=black
 // Note: at runtime you still need to check occupancy to validate moves
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_SINGLE_PUSH_TARGETS = []{
     std::array<std::array<uint64_t, 64>, 2> table{};
@@ -215,16 +217,16 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_SINGLE_PUSH_TARGET
         int8_t rank = rankOf(sq);
         int8_t file = fileOf(sq);
         
-        // White pawns (isWhite=1, index 1)
+        // White pawns (side=0)
         if (rank > 0) { // Can move up (rank decreases)
             uint64_t oneStep = ONE << ((rank - 1) * 8 + file);
-            table[1][sq] = oneStep;
+            table[WHITE_SIDE][sq] = oneStep;
         }
         
-        // Black pawns (isWhite=0, index 0)
+        // Black pawns (side=1)
         if (rank < 7) { // Can move down (rank increases)
             uint64_t oneStep = ONE << ((rank + 1) * 8 + file);
-            table[0][sq] = oneStep;
+            table[BLACK_SIDE][sq] = oneStep;
         }
     }
 
@@ -238,14 +240,14 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_DOUBLE_PUSH_TARGET
         const int8_t rank = rankOf(sq);
         const int8_t file = fileOf(sq);
 
-        // White start rank: rank 6 (row 2).
+        // White start rank: rank 6 (row 2), side=0.
         if (rank == 6) {
-            table[1][sq] = ONE << ((rank - 2) * 8 + file);
+            table[WHITE_SIDE][sq] = ONE << ((rank - 2) * 8 + file);
         }
 
-        // Black start rank: rank 1 (row 7).
+        // Black start rank: rank 1 (row 7), side=1.
         if (rank == 1) {
-            table[0][sq] = ONE << ((rank + 2) * 8 + file);
+            table[BLACK_SIDE][sq] = ONE << ((rank + 2) * 8 + file);
         }
     }
 
@@ -294,12 +296,12 @@ inline constexpr std::array<std::array<std::array<uint64_t, 4>, 64>, 2> PAWN_FOR
 
 __attribute__((hot, always_inline))
 inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64 occupancy) noexcept {
-    const int colorIndex = static_cast<int>(isWhite);
-    const U64 oneStepBit = PAWN_SINGLE_PUSH_TARGETS[colorIndex][squareIndex];
-    const U64 twoStepBit = PAWN_DOUBLE_PUSH_TARGETS[colorIndex][squareIndex];
+    const int side = sideIndex(isWhite);
+    const U64 oneStepBit = PAWN_SINGLE_PUSH_TARGETS[side][squareIndex];
+    const U64 twoStepBit = PAWN_DOUBLE_PUSH_TARGETS[side][squareIndex];
     const unsigned occBits = static_cast<unsigned>((occupancy & oneStepBit) != 0ULL)
         | (static_cast<unsigned>((occupancy & twoStepBit) != 0ULL) << 1);
-    return PAWN_FORWARD_PUSH_LOOKUP[colorIndex][squareIndex][occBits];
+    return PAWN_FORWARD_PUSH_LOOKUP[side][squareIndex][occBits];
 }
 
 // Returns a bitboard of pawn squares (of color isWhite) that attack the target square
@@ -351,8 +353,8 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = []{
     std::array<std::array<uint64_t, 64>, 2> table{};
 
     for (int sq = 0; sq < 64; ++sq) {
-        table[1][sq] = getPawnAttacks(sq, true);
-        table[0][sq] = getPawnAttacks(sq, false);
+        table[WHITE_SIDE][sq] = getPawnAttacks(sq, true);
+        table[BLACK_SIDE][sq] = getPawnAttacks(sq, false);
     }
 
     return table;
@@ -363,8 +365,8 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKERS_TO = []{
 
     for (int sq = 0; sq < 64; ++sq) {
         // 0 = white, 1 = black
-        table[0][sq] = getPawnAttackersTo(sq, /*isWhite=*/true);
-        table[1][sq] = getPawnAttackersTo(sq, /*isWhite=*/false);
+        table[WHITE_SIDE][sq] = getPawnAttackersTo(sq, /*isWhite=*/true);
+        table[BLACK_SIDE][sq] = getPawnAttackersTo(sq, /*isWhite=*/false);
     }
 
     return table;
