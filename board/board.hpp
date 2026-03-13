@@ -203,7 +203,7 @@ public:
     __attribute__((hot))
     bool isCheckmate(uint8_t color) const noexcept;
 
-    uint8_t get(const std::string& square) const noexcept; 
+    uint8_t get(const std::string& square) const noexcept;
     std::string getCurrentFen() const noexcept;
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
@@ -215,8 +215,6 @@ public:
     uint8_t operator[](uint8_t index) noexcept;
     constexpr bool operator==(const Board& other) const noexcept;
     constexpr bool operator!=(const Board& other) const noexcept;
-    
-    static constexpr size_t CHESSBOARD_SIZE() noexcept; // 32 byte
     
     uint64_t getPiecesBitMap() const noexcept;
     void updateOccupancyBB() noexcept;

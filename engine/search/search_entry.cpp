@@ -699,7 +699,6 @@ void Engine::search(uint64_t requestedDepth) noexcept {
         moveStr += bestMove.promotionPiece;
     }
     std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
-    // std::cout << "[DEBUG] TT probes: " << ttProbes << ", hits: " << ttHits << "\n";
 
 #endif
 }

@@ -3,11 +3,6 @@
 
 namespace engine {
 
-#ifdef DEBUG
-uint64_t Engine::ttProbes = 0;
-uint64_t Engine::ttHits = 0;
-#endif
-
 namespace {
 inline int16_t clampHeuristic16(int32_t value) noexcept {
     constexpr int32_t MIN_I16 = -32768;
@@ -48,17 +43,12 @@ void Engine::reset() noexcept {
     this->stopPondering();
     board = chess::Board();
     depth = DEFAULTDEPTH;
-    UCI_DEPTH = 0;
     eval = 0;
     gameResult = ONGOING;
     isPlayerWhite = true;
     nodesSearched = 0;
     bestMove = chess::Board::Move{};
     moveHistory.clear();
-#ifdef DEBUG
-    ttProbes = 0;
-    ttHits = 0;
-#endif
     this->tt.clear();
     const chess::Board::Move emptyMove{};
     std::fill_n(&killerMoves[0][0], 2 * MAX_PLY, emptyMove);

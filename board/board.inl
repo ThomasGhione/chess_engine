@@ -93,12 +93,12 @@ inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
 
-inline uint8_t Board::get(const std::string& square) const noexcept { 
+inline uint8_t Board::get(const std::string& square) const noexcept {
     const uint8_t col = square[0] - 'a';
     const uint8_t row = square[1] - '1';
     return get(row, col);
 }
-    
+
 inline std::string Board::getCurrentFen() const noexcept { return fromBoardToFen(); };
 
 inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
@@ -202,29 +202,6 @@ __attribute__((always_inline))
 inline void Board::updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
     set(to, piece);
     set(from, EMPTY);
-/*
-    const uint8_t fromIndex = from.index;
-    const uint8_t toIndex = to.index;
-    
-    // Direct array access using index (avoids repeated conversions)
-    const uint8_t fromRank = fromIndex >> 3;
-    const uint8_t fromFile = fromIndex & 7;
-    const uint8_t toRank = toIndex >> 3;
-    const uint8_t toFile = toIndex & 7;
-    
-    const uint8_t fromRow = 7 - fromRank;
-    const uint8_t toRow = 7 - toRank;
-    
-    const uint8_t fromShift = fromFile << 2;
-    const uint8_t toShift = toFile << 2;
-    
-    // Get piece from source (1 array access)
-    const uint8_t piece = (chessboard[fromRow] >> fromShift) & MASK_PIECE;
-    
-    // Clear source and set destination (2 array writes)
-    chessboard[fromRow] = (chessboard[fromRow] & ~(MASK_PIECE << fromShift));
-    chessboard[toRow] = (chessboard[toRow] & ~(MASK_PIECE << toShift)) | ((piece & MASK_PIECE) << toShift);
-  */
 }
 
 inline uint64_t Board::getPiecesBitMap() const noexcept { return occupancy; }

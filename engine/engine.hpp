@@ -29,20 +29,12 @@
 namespace engine {
 
 class Searcher; // Forward declaration
-struct SearchState;
 
 class Engine final {
-    friend class Searcher; // Allow Searcher access to private helper functions
+    friend class Searcher; // Needed by searcher_* translation units
 
 public:
     // Structs and enums
-    struct ScoredMove {
-        chess::Board::Move move;
-        // Move-ordering scores are bounded and fit in 32-bit.
-        // Keeping this narrow reduces per-node memory traffic.
-        int32_t score;
-    };
-
     struct SearchMoveResult {
         chess::Board::Move move;
         int32_t score;
@@ -126,7 +118,6 @@ public:
     tt::TranspositionTable tt;
 
     uint64_t nodesSearched = 0; 
-    int32_t UCI_DEPTH = 0;
     static constexpr int32_t DEFAULTDEPTH = 10;
     static constexpr int32_t MAX_PLY = 64;
     // Keep a bounded UCI history window (realistic gameplay span, avoids unbounded growth).
@@ -134,12 +125,6 @@ public:
     static constexpr size_t MOVE_HISTORY_ENTRY_MAX_LEN = 6; // "e7e8q\n"
     static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
     std::string moveHistory = "";
-
-#ifdef DEBUG
-    // Transposition table statistics
-    static uint64_t ttProbes;
-    static uint64_t ttHits;
-#endif
 
     int MAX_THREADS;
     //--- Variables end
@@ -344,8 +329,6 @@ private:
     static int32_t clampQMoveScore(int64_t score) noexcept;
     static void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
     static int32_t clampOrderingScore(int64_t score) noexcept;
-    void prepareSearcherState(SearchState& searchState) const noexcept;
-    void commitSearcherState(const SearchState& searchState) noexcept;
     //--- Method end
 
 }; //class Engine final

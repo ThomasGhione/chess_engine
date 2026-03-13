@@ -34,13 +34,7 @@ struct SearchState {
     
     // Search statistics
     uint64_t nodesSearched = 0;
-    
-    // Search control
-    std::atomic<bool> stopRequested {false};
     std::atomic<bool> interrupted {false};
-    
-    void reset() noexcept;
-    void softResetHistory() noexcept;
 };
 
 // ============================================================================
