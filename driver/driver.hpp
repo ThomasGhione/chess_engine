@@ -64,8 +64,6 @@ namespace driver {
             void playGameVsHuman() noexcept;
             void playGameVsEngine(const bool isWhite) noexcept;
             void botVsBot() noexcept;
-            void botVsStockfish(const bool botColor) noexcept;
-            void betaVsAlpha(const bool betaIsWhite) noexcept;
             
             void playerTurn() noexcept;
             void engineTurn() noexcept;
@@ -75,8 +73,6 @@ namespace driver {
             static uint32_t mainMenu() noexcept;
 			static uint32_t extraMenu() noexcept;
         	static uint32_t playWithEngineMenu() noexcept;
-			static uint32_t playBotVsStockfishMenu() noexcept;
-			static uint32_t playBetaVsAlphaMenu() noexcept;
 
             static void clearScreen() noexcept;
     };
