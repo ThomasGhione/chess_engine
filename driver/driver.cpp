@@ -11,17 +11,6 @@
 #include <memory>
 #include <sstream>
 #include <thread>
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#else
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <signal.h>
-#endif
 #include <fstream>
 #include <filesystem>
 
