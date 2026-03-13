@@ -106,7 +106,7 @@ void MoveGenerator::computePinRays(
                 continue;
             }
 
-            const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+            const uint8_t pieceColor = b.getColor(sq);
             if (pieceColor == ownColor) {  // Own piece
                 if (pinnedSq >= 0) {
                     break;

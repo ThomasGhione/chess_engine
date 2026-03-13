@@ -9,7 +9,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
 
     const uint8_t color = b.getActiveColor();
     const int side = chess::Board::colorToIndex(color);
-    const bool isWhite = (side == 0);
+    const bool isWhite = (color == chess::Board::WHITE);
 
     const uint64_t occ = b.getPiecesBitMap();
 
@@ -56,7 +56,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
     }
 
     if (!inCheck) { // castling: illegal when in check.
-        const uint8_t f = from & 7;
+        const uint8_t f = chess::Board::fileOf(from);
         if (f <= 5 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from + 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
         if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))

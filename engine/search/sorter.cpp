@@ -704,7 +704,7 @@ bool Sorter::isForcingEvasion(
     if (fromType != chess::Board::PAWN) return false;
 
     // Macro-step 3: Promotions are forcing evasions.
-    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank((fromPiece & chess::Board::MASK_COLOR) == chess::Board::WHITE));
+    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE));
     if (isPromotion) return true;
 
     // Macro-step 4: En-passant evasions are also forcing.
@@ -754,8 +754,7 @@ bool Sorter::isPromotionMove(
     if (pieceType != chess::Board::PAWN) return false;
 
     // Macro-step 3: Check destination rank against side promotion rank.
-    const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-    return toRank == chess::Board::promotionRank(pieceColor == chess::Board::WHITE);
+    return toRank == chess::Board::promotionRank(board.getColor(move.from) == chess::Board::WHITE);
 }
 
 bool Sorter::doMoveWithPromotion(
@@ -765,12 +764,8 @@ bool Sorter::doMoveWithPromotion(
     // Macro-step 1: Detect whether the move is a promotion.
     const bool isPromo = isPromotionMove(b, m);
 
-    // Macro-step 2: Normalize promotion piece choice and default to queen.
-    char promoChoice = '\0';
-    if (isPromo) {
-        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
-        promoChoice = (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') ? promo : 'q';
-    }
+    // Macro-step 2: Delegate promotion-choice normalization to Board::doMove internals.
+    const char promoChoice = isPromo ? m.promotionPiece : '\0';
 
     // Macro-step 3: Execute move and return promotion flag.
     b.doMove(m, state, promoChoice);

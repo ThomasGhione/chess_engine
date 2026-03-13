@@ -18,7 +18,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
 
     const uint8_t color = b.getActiveColor();
     const int side = chess::Board::colorToIndex(color);
-    const bool isWhite = (side == 0);
+    const bool isWhite = (color == chess::Board::WHITE);
 
     const uint64_t occ = b.getPiecesBitMap();
 
@@ -85,7 +85,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = from >> 3;
+            const uint8_t rank = chess::Board::rankOf(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
@@ -164,7 +164,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = from >> 3;
+            const uint8_t rank = chess::Board::rankOf(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;

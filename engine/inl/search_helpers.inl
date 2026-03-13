@@ -22,8 +22,7 @@ inline bool isPromotionMove(const chess::Board& board, const chess::Board::Move&
     
     if (pieceType != chess::Board::PAWN) return false;
     
-    const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-    return toRank == chess::Board::promotionRank(pieceColor == chess::Board::WHITE);
+    return toRank == chess::Board::promotionRank(board.getColor(move.from) == chess::Board::WHITE);
 }
 
 __attribute__((always_inline))
@@ -45,11 +44,7 @@ inline bool isEnPassantCapture(const chess::Board& board, const chess::Board::Mo
 __attribute__((always_inline))
 inline bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     const bool isPromo = isPromotionMove(b, m);
-    char promoChoice = '\0';
-    if (isPromo) {
-        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
-        promoChoice = (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') ? promo : 'q';
-    }
+    const char promoChoice = isPromo ? m.promotionPiece : '\0';
     b.doMove(m, state, promoChoice);
     return isPromo;
 }

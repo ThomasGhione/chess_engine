@@ -27,8 +27,8 @@ void MoveGenerator::addPawnMovesFromMask(
     if (!mask) [[unlikely]] return;
     
     const chess::Coords fromC{from};
-    const uint8_t fromFile = static_cast<uint8_t>(from & 7);
-    const bool isWhite = (pawnPiece & chess::Board::MASK_COLOR) == chess::Board::WHITE;
+    const uint8_t fromFile = chess::Board::fileOf(from);
+    const bool isWhite = (b.getColor(from) == chess::Board::WHITE);
     const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
 
     while (mask) {
@@ -37,7 +37,7 @@ void MoveGenerator::addPawnMovesFromMask(
         const chess::Coords toC{to};
         const bool isEnPassant = hasEnPassant
             && (toC == enPassant)
-            && (static_cast<uint8_t>(to & 7) != fromFile);
+            && (chess::Board::fileOf(to) != fromFile);
         
         // Always check legality for en passant (changes occupancy), otherwise it's already filtered
         if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
@@ -93,7 +93,7 @@ void MoveGenerator::addTacticalMovesFromMask(
     const uint8_t oppColor = includeChecks
         ? chess::Board::oppositeColor(b.getActiveColor())
         : static_cast<uint8_t>(chess::Board::WHITE);
-    const uint8_t fromFile = static_cast<uint8_t>(from & 7);
+    const uint8_t fromFile = chess::Board::fileOf(from);
 
     while (mask) {
         const uint8_t to = __builtin_ctzll(mask);
@@ -101,7 +101,7 @@ void MoveGenerator::addTacticalMovesFromMask(
 
         const uint8_t toPiece = b.get(to);
         const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
-            && (static_cast<uint8_t>(to & 7) != fromFile) && (toPiece == chess::Board::EMPTY);
+            && (chess::Board::fileOf(to) != fromFile) && (toPiece == chess::Board::EMPTY);
         const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
         const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
 

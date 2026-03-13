@@ -11,7 +11,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
 
     const uint8_t color = b.getActiveColor();
     const int side = chess::Board::colorToIndex(color);
-    const bool isWhite = (side == 0);
+    const bool isWhite = (color == chess::Board::WHITE);
 
     const uint64_t occ = b.getPiecesBitMap();
 
@@ -60,7 +60,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     }
 
     if (!inCheck) { // castling: illegal when in check.
-        const uint8_t f = from & 7;
+        const uint8_t f = chess::Board::fileOf(from);
         if (f <= 5 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from + 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
         if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))
@@ -170,7 +170,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
 
     const uint8_t color = b.getActiveColor();
     const int side = chess::Board::colorToIndex(color);
-    const bool isWhite = (side == 0);
+    const bool isWhite = (color == chess::Board::WHITE);
 
     const uint64_t occ = b.getPiecesBitMap();
 
@@ -239,7 +239,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = static_cast<uint8_t>(from >> 3);
+            const uint8_t rank = chess::Board::rankOf(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
@@ -318,7 +318,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = static_cast<uint8_t>(from >> 3);
+            const uint8_t rank = chess::Board::rankOf(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
@@ -474,8 +474,8 @@ void MoveGenerator::addPawnMovesFromMask(
     if (!mask) [[unlikely]] return;
 
     const chess::Coords fromC{from};
-    const uint8_t fromFile = static_cast<uint8_t>(from & 7);
-    const bool isWhite = (pawnPiece & chess::Board::MASK_COLOR) == chess::Board::WHITE;
+    const uint8_t fromFile = chess::Board::fileOf(from);
+    const bool isWhite = (b.getColor(from) == chess::Board::WHITE);
     const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
 
     // Macro-step 2: Iterate destinations and enforce EP legality checks.
@@ -485,7 +485,7 @@ void MoveGenerator::addPawnMovesFromMask(
         const chess::Coords toC{to};
         const bool isEnPassant = hasEnPassant
             && (toC == enPassant)
-            && (static_cast<uint8_t>(to & 7) != fromFile);
+            && (chess::Board::fileOf(to) != fromFile);
 
         // Always check legality for en passant (changes occupancy), otherwise it's already filtered
         if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
@@ -545,7 +545,7 @@ void MoveGenerator::addTacticalMovesFromMask(
     const uint8_t oppColor = includeChecks
         ? chess::Board::oppositeColor(b.getActiveColor())
         : static_cast<uint8_t>(chess::Board::WHITE);
-    const uint8_t fromFile = static_cast<uint8_t>(from & 7);
+    const uint8_t fromFile = chess::Board::fileOf(from);
 
     // Macro-step 2: Iterate candidates and identify tactical categories.
     while (mask) {
@@ -554,7 +554,7 @@ void MoveGenerator::addTacticalMovesFromMask(
 
         const uint8_t toPiece = b.get(to);
         const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
-            && (static_cast<uint8_t>(to & 7) != fromFile) && (toPiece == chess::Board::EMPTY);
+            && (chess::Board::fileOf(to) != fromFile) && (toPiece == chess::Board::EMPTY);
         const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
         const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
 
@@ -737,7 +737,7 @@ void MoveGenerator::computePinRays(
                 continue;
             }
 
-            const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
+            const uint8_t pieceColor = b.getColor(sq);
             if (pieceColor == ownColor) {  // Own piece
                 if (pinnedSq >= 0) {
                     break;

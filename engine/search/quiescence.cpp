@@ -22,7 +22,7 @@ inline bool Engine::isForcingEvasion(const chess::Board& b,
     const uint8_t fromType = fromPiece & chess::Board::MASK_PIECE_TYPE;
     if (fromType != chess::Board::PAWN) return false;
 
-    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank((fromPiece & chess::Board::MASK_COLOR) == chess::Board::WHITE));
+    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE));
     if (isPromotion) return true;
 
     return hasEnPassant
