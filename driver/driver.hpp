@@ -46,8 +46,6 @@ namespace driver {
 
             bool vsBot = false;
 
-            bool checkAndDownloadStockfish() noexcept;
-
             void parse(int argc, char *argv[]) noexcept;
             static bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept;
             static bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept;
