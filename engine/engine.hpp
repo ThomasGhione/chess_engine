@@ -28,11 +28,7 @@
 
 namespace engine {
 
-class Searcher; // Forward declaration
-
 class Engine final {
-    friend class Searcher; // Needed by searcher_* translation units
-
 public:
     // Structs and enums
     struct SearchMoveResult {
@@ -99,7 +95,7 @@ public:
     // Returns true if a legal TT hash move was found and placed first.
     bool sortLegalMoves(MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
-    // Legacy root-search compatibility helpers kept outside the active Searcher path.
+    // Root-search helper with optional alpha-beta window.
     chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, 
                                    int32_t alpha = NEG_INF, int32_t beta = POS_INF) noexcept;
     //--- Method end

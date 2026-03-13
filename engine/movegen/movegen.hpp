@@ -46,9 +46,7 @@ private:
         uint64_t mask,
         bool inCheck,
         bool inDoubleCheck,
-        uint8_t piece,
-        const uint64_t* pinRays,
-        chess::Coords kingPos) noexcept;
+        uint8_t piece) noexcept;
     
     static void addTacticalMovesFromMask(
         const chess::Board& b,
@@ -75,7 +73,6 @@ private:
         const chess::Board& b,
         chess::Coords kingPos,
         bool isWhite,
-        uint64_t occ,
         uint64_t& pinnedMask,
         uint64_t pinRays[64]) noexcept;
     

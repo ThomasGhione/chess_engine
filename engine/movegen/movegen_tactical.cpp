@@ -1,5 +1,4 @@
 #include "movegen.hpp"
-#include "../../tt/ttentry.hpp"
 #include "../inl/bitboard_helpers.inl"
 
 namespace engine {
@@ -68,7 +67,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
     
     // Compute pin rays for all pieces
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays(b, kingPos, isWhite, occ, pinnedMask, pinRayBySquare.data());
+        computePinRays(b, kingPos, isWhite, pinnedMask, pinRayBySquare.data());
     }
 
     if (!inCheck) {

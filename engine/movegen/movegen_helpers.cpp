@@ -1,5 +1,4 @@
 #include "movegen.hpp"
-#include "../../tt/ttentry.hpp"
 
 namespace engine {
 
@@ -63,9 +62,7 @@ void MoveGenerator::addNonPawnMovesFromMask(
     uint64_t mask,
     bool inCheck,
     bool inDoubleCheck,
-    uint8_t piece,
-    [[maybe_unused]] const uint64_t* pinRays,
-    [[maybe_unused]] chess::Coords kingPos) noexcept {
+    uint8_t piece) noexcept {
     if (!mask) [[unlikely]] return;
 
     const chess::Coords fromC{from};

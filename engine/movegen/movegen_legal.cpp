@@ -1,5 +1,4 @@
 #include "movegen.hpp"
-#include "../../tt/ttentry.hpp"
 #include "../inl/bitboard_helpers.inl"
 
 namespace engine {
@@ -70,7 +69,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
     uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare{};
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays(b, fromC, isWhite, occ, pinnedMask, pinRayBySquare.data());
+        computePinRays(b, fromC, isWhite, pinnedMask, pinRayBySquare.data());
     }
 
     // NOTE: for performance, legality checks are skipped for many non-king moves
@@ -106,8 +105,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
         uint64_t mask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
         if (singleCheck) mask &= evasionMask;
         if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck,
-                                knightPiece, pinRayBySquare.data(), fromC);
+        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, knightPiece);
     }
 
     bb = bishops;
@@ -118,8 +116,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
         uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
         if (singleCheck) mask &= evasionMask;
         if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck,
-                                bishopPiece, pinRayBySquare.data(), fromC);
+        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, bishopPiece);
     }
 
     bb = rooks;
@@ -130,8 +127,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
         uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
         if (singleCheck) mask &= evasionMask;
         if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck,
-                                rookPiece, pinRayBySquare.data(), fromC);
+        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, rookPiece);
     }
 
     bb = queens;
@@ -142,8 +138,7 @@ MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
         uint64_t mask = pieces::getQueenAttacks(from, occ) & ~ownOcc;
         if (singleCheck) mask &= evasionMask;
         if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck,
-                                queenPiece, pinRayBySquare.data(), fromC);
+        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, queenPiece);
     }
 
     return moves;

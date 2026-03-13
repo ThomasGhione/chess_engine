@@ -1,5 +1,4 @@
 #include "movegen.hpp"
-#include "../../tt/ttentry.hpp"
 
 namespace engine {
 
@@ -52,7 +51,6 @@ void MoveGenerator::computePinRays(
     const chess::Board& b,
     chess::Coords kingPos,
     bool isWhite,
-    [[maybe_unused]] uint64_t occ,
     uint64_t& pinnedMask,
     uint64_t pinRays[64]) noexcept {
     
