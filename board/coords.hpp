@@ -62,7 +62,6 @@ struct Coords {
 
     // ============== UTILITY STATIC METHODS ==============
 
-    static constexpr bool isValid(uint8_t x) noexcept { return x < 8; }
     static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
     static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
     static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }

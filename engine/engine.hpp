@@ -29,6 +29,7 @@
 namespace engine {
 
 class Searcher; // Forward declaration
+struct SearchState;
 
 class Engine final {
     friend class Searcher; // Allow Searcher access to private helper functions
@@ -106,8 +107,9 @@ public:
     // Returns true if a legal TT hash move was found and placed first.
     bool sortLegalMoves(MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
 
-    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite) noexcept;
-    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, int32_t alpha, int32_t beta) noexcept;
+    // Legacy root-search compatibility helpers kept outside the active Searcher path.
+    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, 
+                                   int32_t alpha = NEG_INF, int32_t beta = POS_INF) noexcept;
     //--- Method end
 
     //--- Variables
@@ -342,6 +344,8 @@ private:
     static int32_t clampQMoveScore(int64_t score) noexcept;
     static void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
     static int32_t clampOrderingScore(int64_t score) noexcept;
+    void prepareSearcherState(SearchState& searchState) const noexcept;
+    void commitSearcherState(const SearchState& searchState) noexcept;
     //--- Method end
 
 }; //class Engine final

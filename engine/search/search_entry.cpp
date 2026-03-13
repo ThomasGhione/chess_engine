@@ -47,10 +47,6 @@ int32_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m
     return score;
 }
 
-chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool usIsWhite) noexcept {
-    return getBestMove(rootBoard, moves, usIsWhite, NEG_INF, POS_INF);
-}
-
 chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool usIsWhite, int32_t alpha, int32_t beta) noexcept {
     int32_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
