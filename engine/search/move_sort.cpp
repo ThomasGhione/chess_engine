@@ -38,6 +38,7 @@ inline bool Engine::givesCheckAfterQuietMoveFast(const chess::Board& b,
     uint64_t queens = b.queens_bb[usSide];
     uint64_t kings = b.kings_bb[usSide];
 
+    //FIXME: Mettere parentesi graffe.
     switch (fromPieceType) {
         case chess::Board::PAWN:   pawns = (pawns & ~fromBit) | toBit; break;
         case chess::Board::KNIGHT: knights = (knights & ~fromBit) | toBit; break;
@@ -60,6 +61,7 @@ inline bool Engine::givesCheckAfterQuietMoveFast(const chess::Board& b,
     return false;
 }
 
+//FIXME: Controllare per duplicati di logica
 inline int32_t Engine::clampOrderingScore(int64_t score) noexcept {
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
@@ -117,7 +119,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     }
 
     if (isCapture) {
-
+	//FIXME: Fare funzione helper
         // BAD CAPTURE: low priority, ordered by SEE value
         // Simpler single-tier approach: all bad captures get -10000 + SEE
         // Total: -10000 to -10001+ (worse SEE = lower priority)
@@ -139,6 +141,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
 
     // NON-CAPTURES: killer, checks, history
     
+    //FIXME: Fare funzione heleper per controllo history
     // Check for killer moves FIRST (high priority)
     if (ply >= 0 && ply < 64) {
         const auto& km1 = killerMoves[0][ply];
@@ -155,6 +158,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
     // Check for counter-move (response to opponent's previous move)
     if (previousMove != nullptr && previousMove->from.index < 64) {
         const uint16_t counter = counterMoves[previousMove->from.index][previousMove->to.index];
+	//FIXME: Fare funzione helper per codizione if
         if (counter != 0
             && counter == tt::TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
             return 8200; // Between killer moves and checks
@@ -163,6 +167,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
 
     int32_t score = 0;
 
+    //FIXME: Fare funzione helper
     // LAZY CHECK DETECTION: only for first 8 non-capture moves
     // Balances tactical strength with performance overhead
     if (moveIndex < 8 && oppKingSq < 64) {
@@ -184,6 +189,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         }
     }
     
+    //FIXME: Fare funzione helper
     // Promotion bonus (if it's not a capture and no check was already detected)
     if (score == 0 && isPromotionCandidate) {
         score = 7000;
@@ -198,6 +204,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         score += pieceValues[promoType];
     }
 
+    //FIXME: Fare funzione helper
     // Discourage placing a bishop directly in front of own pawn (blocks pawn advance)
     if (fromPieceType == chess::Board::BISHOP) {
         const int toIdx = m.to.index;
@@ -220,6 +227,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         }
     }
     
+    //FIXME: Fare funzione helper
     // History heuristic (for regular quiet moves)
     if (score == 0 && ply >= 0 && ply < 64) {
         int32_t histScore = history[usSide][m.from.index][m.to.index];
@@ -232,6 +240,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         return clampOrderingScore(score);
     }
 
+    //FIXME: Fare funzione helper
     // In endgames prioritize pawn pushes slightly, especially advanced ones.
     // This is ordering-only: it does not force pushes, but avoids searching
     // king shuffles before obvious pawn-race candidates.
@@ -248,6 +257,7 @@ inline int32_t Engine::scoreMoveOrderingPriorityInline(
         return clampOrderingScore(score);
     }
 
+    //FIXME: Fare funzione helper
     // Discourage moving the same pawn twice in the opening: small negative ordering penalty
     // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
     if (fullMoveClock < 8) {
@@ -271,6 +281,7 @@ uint8_t Engine::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
     const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
     const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
 
+    //FIXME: Dare nome piu' esplicito
     uint64_t bb;
 
     bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];

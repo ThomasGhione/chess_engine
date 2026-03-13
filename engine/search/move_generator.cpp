@@ -12,7 +12,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     const uint8_t color = b.getActiveColor();
     const int side = chess::Board::colorToIndex(color);
     const bool isWhite = (color == chess::Board::WHITE);
-
+    
+    //FIXME: modificare Board per non dover avere queste variabili qui
     const uint64_t occ = b.getPiecesBitMap();
 
     const uint64_t pawns   = b.pawns_bb[side];
@@ -43,10 +44,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
         computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, evasionMask);
     }
 
+    //FIXME: Mettere precodizione per eliminare codizione
     // Macro-step 3: Generate king moves and castling moves first.
     // ================= KING =================
     if (!kings) [[unlikely]] return moves; // No king found, return empty move list
 
+    //FIXME: Rendere codice tra "---" una funzione helper AKA: generateKingMoves
+    //---
     const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
     const chess::Coords fromC{from};
 
@@ -66,21 +70,23 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
         if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from - 2)}});
     }
+    //---
 
     // In double-check only king moves are legal.
     if (inDoubleCheck) return moves;
 
     // Macro-step 4: Compute pin rays to restrict non-king piece mobility.
+    // NOTE: for performance, legality checks are skipped for many non-king moves
+    // when check/pin filters already guarantee king safety.
     uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare{};
+    //FIXME: Rendere piu' leggibile codizione. Creare funzione helper
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
         computePinRays(b, fromC, isWhite, pinnedMask, pinRayBySquare.data());
     }
 
-    // NOTE: for performance, legality checks are skipped for many non-king moves
-    // when check/pin filters already guarantee king safety.
-
     // Macro-step 5: Generate all non-king moves applying check/pin filtering.
+    //FIXME: Trasformare serie di cicli while in funzione con template 
     uint64_t bb = pawns;
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
@@ -202,7 +208,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
 
     // Macro-step 2: Handle double-check fast path (only king captures are relevant).
     // In double-check only king moves are legal; tactical generator only needs king captures.
+    //FIXME: Calcolare e poi se inDoubleCheck allora ritonrare subito. 
     if (inDoubleCheck) {
+	//FIXME: Non e' sempre vero? Se si', non serve if.
         if (kings) {
             const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
             uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
@@ -212,6 +220,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
         return moves;
     }
 
+    //FIXME: Creare funzione helper per il codice tra "---".
+    //---
     // Macro-step 3: Compute pin rays and dispatch in-check/non-check tactical generation.
     // Get king position for pin ray computation
     chess::Coords kingPos{static_cast<uint8_t>(__builtin_ctzll(b.kings_bb[side]))};
@@ -223,7 +233,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
         computePinRays(b, kingPos, isWhite, pinnedMask, pinRayBySquare.data());
     }
-
+    
+    //FIXME: Fare in modo che i due codici dentro IF-ELSE siano delle funzioni helper
     if (!inCheck) {
         // ================= PAWNS (captures and promotions, no-check fast path) =================
         uint64_t bb = pawns;
@@ -255,6 +266,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                                      enPassant, hasEnPassant, moves);
         }
 
+	//FIXME: Rendere codice con while in funzioni template
         bb = knights;
         while (bb) {
             const uint8_t from = engine::popLSB(bb);
@@ -339,6 +351,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             }
         }
 
+	//FIXME: Rendere codice con while in funzioni template
         bb = knights;
         while (bb) {
             const uint8_t from = engine::popLSB(bb);
@@ -399,7 +412,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             }
         }
     }
+    //---
 
+    //FIXME: Ridondante se si applica FIX prima
     // Macro-step 4: Always include king captures in tactical list.
     // ================= KING (captures only) =================
     if (kings) {
@@ -434,6 +449,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateQSearchTacticalMoves(
     bool usIsWhite,
     int32_t searchDepth) noexcept {
     // Macro-step 1: Generate tactical candidate moves for qsearch.
+    //FIXME: Rendere chiamata senza true e false che non significano nulla. 
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b, false, true, false, false);
 
     // Macro-step 2: Return early when no tactical continuation exists.
@@ -470,6 +486,7 @@ void MoveGenerator::addPawnMovesFromMask(
     uint8_t pawnPiece,
     chess::Coords enPassant,
     bool hasEnPassant) noexcept {
+    //FIXME: Creare pre codizione
     // Macro-step 1: Guard empty mask and precompute pawn metadata.
     if (!mask) [[unlikely]] return;
 
@@ -491,7 +508,7 @@ void MoveGenerator::addPawnMovesFromMask(
         if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
             continue;
         }
-
+	
         // Macro-step 3: Emit promotion set or regular pawn move.
         if (chess::Board::rankOf(to) == promotionRank) {
             addPromotionMoves(moves, fromC, toC);
@@ -512,6 +529,7 @@ void MoveGenerator::addNonPawnMovesFromMask(
     bool inCheck,
     bool inDoubleCheck,
     uint8_t piece) noexcept {
+    //FIXME: Mettere precodizione
     // Macro-step 1: Guard empty candidate mask.
     if (!mask) [[unlikely]] return;
 
@@ -552,6 +570,7 @@ void MoveGenerator::addTacticalMovesFromMask(
         const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
         mask &= (mask - 1);
 
+	//FIXME: Rendere resto del codice in funzione helper
         const uint8_t toPiece = b.get(to);
         const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
             && (chess::Board::fileOf(to) != fromFile) && (toPiece == chess::Board::EMPTY);
@@ -613,16 +632,13 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
         const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
         mask &= (mask - 1);
 
-        const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
-
         // In check evasion: all legal moves are tactical
-
         if (!b.isLegalPseudoMove(from, to, piece, true, false)) {
             continue;
         }
 
         const chess::Coords toC{to};
-
+        const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
         // Macro-step 2: Emit promotion expansions or plain evasions.
         if (isPromotion) {
             addPromotionMoves(moves, fromC, toC);
@@ -634,6 +650,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
 }
 
 uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
+    //FIXME: Mettere in pre codizione
     // Macro-step 1: Detect invalid geometry and compute stepping direction.
     if (from == to) [[unlikely]] return 0ULL;
 
@@ -641,6 +658,7 @@ uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept 
     const int fromRank = chess::Board::rankOf(from);
     const int toFile = chess::Board::fileOf(to);
     const int toRank = chess::Board::rankOf(to);
+    //FIXME: Mettere dei nomi migliori
     const int df = toFile - fromFile;
     const int dr = toRank - fromRank;
 
@@ -685,9 +703,11 @@ void MoveGenerator::computePinRays(
     uint64_t pinRays[64]) noexcept {
     // Macro-step 1: Prepare side metadata and zero outputs.
     pinnedMask = 0ULL;
+    //FIXME: Non possiamo usare il dato di board?
     const int us = isWhite ? 0 : 1;
     const int them = us ^ 1;
 
+    //FIXME: Usare funzione std
     // Initialize all pin rays to 0
     for (int i = 0; i < 64; ++i) {
         pinRays[i] = 0ULL;
@@ -709,6 +729,7 @@ void MoveGenerator::computePinRays(
         return;
     }
 
+    //FIXME: Convertire in funzione helper
     // Macro-step 2: Scan each line from king to detect own piece + enemy pinner alignment.
     const int kingFile = chess::Board::fileOf(kingSq);
     const int kingRank = chess::Board::rankOf(kingSq);
@@ -718,6 +739,7 @@ void MoveGenerator::computePinRays(
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
 
+    //FIXME: Questo ciclo e' poco limpido nel suo funzionamento, fare in modo di avere dei passaggi con helper chiari
     for (const auto* dir : DIRS) {
         const int df = dir[0];
         const int dr = dir[1];
@@ -779,7 +801,8 @@ void MoveGenerator::computeCheckEvasionMasks(
     evasionMask = ~0ULL;
 
     if (!inCheck) return;
-
+    
+    //FIXME: Fare pre codizione
     const int us = chess::Board::colorToIndex(color);
     const int them = us ^ 1;
     const uint64_t kingBB = b.kings_bb[us];
@@ -787,7 +810,8 @@ void MoveGenerator::computeCheckEvasionMasks(
         evasionMask = 0ULL;
         return;
     }
-
+  
+    //FIXME: Creare funzione helper per restituire direttamente checkersMask
     // Macro-step 2: Build checker mask from all enemy piece classes.
     const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
     const uint64_t occ = b.getPiecesBitMap();
@@ -814,6 +838,7 @@ void MoveGenerator::computeCheckEvasionMasks(
     const uint8_t checkerType = b.get(checkerSq) & chess::Board::MASK_PIECE_TYPE;
 
     evasionMask = chess::Board::bitMask(checkerSq);
+    //FIXME: Creare funzione inline helper per codizone dentro if.
     if (checkerType == chess::Board::ROOK
         || checkerType == chess::Board::BISHOP
         || checkerType == chess::Board::QUEEN) {
