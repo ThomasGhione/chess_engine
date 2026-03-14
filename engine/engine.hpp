@@ -1,70 +1,46 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <algorithm>
-#include <numeric>
-#include <string>
-#include <cstring>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <thread>
-#include <limits>
-#include <omp.h>
 
 #ifdef DEBUG
 #include <iostream>
-#include <chrono>
 #endif
 
 #include "../board/board.hpp"
 #include "../board/coords.hpp"
-
-#include "eval_constants.hpp"
-#include "piecevaluetables.hpp"
 #include "../tt/tt.hpp"
-#include "movelist.hpp"
+
+#include "search/searcher.hpp"
 
 namespace engine {
 
 class Engine final {
 public:
-    // Structs and enums
-    struct SearchMoveResult {
-        chess::Board::Move move;
-        int32_t score;
-    };
-
     enum GameResult : uint8_t {
         ONGOING = 0,
         WHITE_WINS = 1,
         BLACK_WINS = 2,
         DRAW = 3
     };
-    //--- Structs and enums end
 
-    //--- Constructors
     Engine();
     explicit Engine(const std::string& fen);
     ~Engine() noexcept;
-    
-    // Engine is non-copyable and non-movable due to complex state
+
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
     Engine(Engine&&) = delete;
     Engine& operator=(Engine&&) = delete;
-    //--- Constructors end
 
-    //--- Method
     void reset() noexcept;
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     void search(uint64_t depth) noexcept;
-    // UCI-safe search: finds the best move WITHOUT modifying this->board,
-    // without applying the move, and without starting pondering.
-    // Returns the best move found. Suitable for UCI "go" commands where
-    // the GUI manages board state via "position" commands.
     chess::Board::Move searchUCI(uint64_t depth) noexcept;
     void stopThinking() noexcept;
     void setPonderDebugEnabled(bool enabled) noexcept;
@@ -72,129 +48,49 @@ public:
     uint64_t getPonderCurrentDepth() const noexcept;
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
-    int32_t evaluate(const chess::Board& board) noexcept; 
+    int32_t evaluate(const chess::Board& board) noexcept;
     int32_t evaluateTrace(const chess::Board& board) noexcept;
     int32_t evaluateCheckmate(const chess::Board& board) noexcept;
-    
+
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
     void updateGameResult() noexcept;
     GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
-    
+
     static int32_t getMaterialDelta(const chess::Board& b) noexcept;
 
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;
     static void ensureMagicTablesInitialized() noexcept;
 
-    // Legal move generation (bitboard-based)
-    static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
-    // Sort legal moves in-place by ordering score.
-    // Returns true if a legal TT hash move was found and placed first.
-    bool sortLegalMoves(MoveList<chess::Board::Move>& moves, int ply, chess::Board& b, bool usIsWhite, uint64_t hashKey, const chess::Board::Move* previousMove = nullptr) noexcept;
-
-    // Root-search helper with optional alpha-beta window.
-    chess::Board::Move getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool searchBestMoveForWhite, 
-                                   int32_t alpha = NEG_INF, int32_t beta = POS_INF) noexcept;
-    //--- Method end
-
-    //--- Variables
     chess::Board::Move bestMove;
-
-    // Data members
     chess::Board board;
-    bool isPlayerWhite;
+    bool isPlayerWhite = true;
 
-    uint64_t depth;
-    int32_t eval = 0;
+    // Unified runtime state owned by Searcher.
+    Searcher::SearchRuntime searchRuntime{};
 
-    // Transposition table
-    tt::TranspositionTable tt;
+    // Compatibility aliases for existing call-sites.
+    uint64_t& depth;
+    int32_t& eval;
+    uint64_t& nodesSearched;
+    int& MAX_THREADS;
 
-    uint64_t nodesSearched = 0; 
-    static constexpr int32_t DEFAULTDEPTH = 10;
-    static constexpr int32_t MAX_PLY = 64;
-    // Keep a bounded UCI history window (realistic gameplay span, avoids unbounded growth).
+    static constexpr int32_t DEFAULTDEPTH = Searcher::DEFAULT_DEPTH;
+    static constexpr int32_t MAX_PLY = Searcher::MAX_PLY;
+
     static constexpr size_t MOVE_HISTORY_MAX_PLIES = 1024;
     static constexpr size_t MOVE_HISTORY_ENTRY_MAX_LEN = 6; // "e7e8q\n"
     static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
     std::string moveHistory = "";
 
-    int MAX_THREADS;
-    //--- Variables end
+    // Transposition table
+    tt::TranspositionTable tt;
 
 private:
-    //--- Structs and enums
-    // Helper structures for cleaner function signatures
-    struct SearchContext {
-        int32_t depth;
-        int32_t alpha;
-        int32_t beta;
-        int ply;
-        uint8_t activeColor;
-        const chess::Board::Move* previousMove = nullptr; // For counter-move history
-        int32_t staticEval = 0;   // Static evaluation for pruning decisions
-        bool inCheck = false;      // Whether the side to move is in check
-        bool isPVNode = false;     // True for full-window nodes (no null-window pruning)
-        uint64_t* nodeCounter = nullptr; // Per-search counter (thread-local ownership)
-    };
-
-    struct AlphaBeta {
-        int32_t alpha;
-        int32_t beta;
-    };
-
-    struct SearchNodeState {
-        uint8_t activeColor = chess::Board::WHITE;
-        bool usIsWhite = true;
-        bool inCheck = false;
-        bool isPVNode = false;
-        bool isPawnEndgameForPruning = false;
-        int32_t staticEval = 0;
-    };
-
-    struct IterativeSearchResult {
-        bool hasLegalMoves = false;
-        bool completedAnyDepth = false;
-        uint64_t startDepth = 0;
-        uint64_t targetDepth = 0;
-        uint64_t completedIterations = 0;
-        uint64_t completedDepth = 0;
-        uint64_t completedEvenDepth = 0;
-        uint64_t interruptedDepth = 0;
-        uint32_t aspirationResearches = 0;
-        uint32_t aspirationFailLow = 0;
-        uint32_t aspirationFailHigh = 0;
-        tt::TranspositionTable::Entry::Flag rootScoreBound = tt::TranspositionTable::Entry::EXACT;
-        chess::Board::Move bestMove{};
-        int32_t bestScore = 0;
-    };
-
-    //--- Variables
     GameResult gameResult = Engine::ONGOING;
-    // Full int32 range for score bounds.
-    constexpr static int32_t NEG_INF = std::numeric_limits<int32_t>::min();
-    constexpr static int32_t POS_INF = std::numeric_limits<int32_t>::max();
-    
-    // Killer moves: up to 2 non-capture moves per ply that previously caused a beta cutoff
-    chess::Board::Move killerMoves[2][MAX_PLY] {};
-
-    // History heuristic: bonus for non-capture moves that often cause cutoffs.
-    // int16_t is sufficient (score range is intentionally bounded) and halves footprint.
-    // history[colorIndex][fromIndex][toIndex]
-    int16_t history[2][64][64] = {};
-
-    // Counter-move history: compact encoded move (from/to/promo in 16 bits).
-    // counterMoves[prevFrom][prevTo] -> best response move
-    uint16_t counterMoves[64][64] {};
-
-    // Capture history: bonus for captures that often cause cutoffs
-    // 2 slots per bucket to keep a short "recent + secondary" memory.
-    // captureHistory[color][to][victimType][slot]
-    static constexpr int CAPTURE_HISTORY_SLOTS = 2;
-    int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] = {};
 
     std::thread ponderingThread;
     std::atomic<bool> ponderingStopRequested {false};
@@ -209,132 +105,18 @@ private:
     std::atomic<uint32_t> ponderAspirationResearches {0};
     std::atomic<uint32_t> ponderAspirationFailLow {0};
     std::atomic<uint32_t> ponderAspirationFailHigh {0};
-    //--- Variables end
 
-    // Initial best score for min-max search
-    // White maximizes: starts from -INF, Black minimizes: starts from +INF
-    template<bool IsWhite>
-    static constexpr int32_t initialBest() noexcept;
-    // Runtime version (when color is not known at compile time)
-    static constexpr int32_t initialBest(bool isWhite) noexcept;
-    
-    // Compare if newScore is better than currentBest (color-aware)
-    // White: newScore > currentBest (maximize)
-    // Black: newScore < currentBest (minimize)
-    template<bool IsWhite>
-    static constexpr bool isBetter(int32_t newScore, int32_t currentBest) noexcept;
-    // Runtime version
-    static constexpr bool isBetter(int32_t newScore, int32_t currentBest, bool isWhite) noexcept;
-    
-    // Check if we have a beta cutoff (position too good, opponent won't allow it)
-    // White (maximizer): score >= beta
-    // Black (minimizer): score <= alpha
-    static inline bool isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    
-    // Update alpha or beta bound based on score
-    // White (maximizer): alpha = max(alpha, score)
-    // Black (minimizer): beta = min(beta, score)
-    static inline void updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept;
-    
-    // Check delta pruning condition
-    // White: standPat + margin < alpha (can't reach alpha even with best capture)
-    // Black: standPat - margin > beta (can't reach beta even with best capture)
-    static inline bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    
-    // Return the cutoff value when beta cutoff occurs
-    // White: return beta, Black: return alpha
-    static inline int32_t cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept;
-
-    // True when a null-window search failed and needs full-window re-search.
-    static inline bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
-
-    // TT narrow helpers for hot paths (avoid int64 TT overload conversion overhead).
-    static inline int32_t clampToTTScore(int64_t value) noexcept;
-    static inline void toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
-
-    void updateMinMax(bool usIsWhite, int32_t score, int32_t& alpha, int32_t& beta, int32_t& bestScore, 
-                 chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
-
-    void updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int16_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove = nullptr) noexcept;
-    static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
-    __attribute__((cold, noinline))
-    static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
-    __attribute__((cold, noinline))
-    static bool hasInsufficientMaterialDraw(const chess::Board& b) noexcept;
-
-    // Search helpers
-    int32_t searchRootMoveScore(chess::Board& b, const chess::Board::Move& m, int32_t alpha, int32_t beta,
-                                int currPly, bool useTT, bool allowTTWrite, bool allowHeuristicUpdates, uint64_t* nodeCounter) noexcept;
-    bool handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept;
-    bool tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
-                            int32_t depth, int32_t alpha, int32_t beta, int ply,
-                            bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
-                            uint64_t* nodeCounter, int32_t& outScore) noexcept;
-    __attribute__((noinline))
-    bool tryReverseFutilityPruning(chess::Board& b, const SearchNodeState& node,
-                                   int32_t depth, int32_t alpha, int32_t beta, int ply,
-                                   int32_t& outScore) noexcept;
-    SearchMoveResult searchMoves(chess::Board& b, const MoveList<chess::Board::Move>& orderedMoves,
-                                 bool usIsWhite, const SearchContext& ctx, AlphaBeta& bounds,
-                                 bool useTT, bool allowHeuristicUpdates = true, bool allowTTWrite = true) noexcept;
-    
-    // Move scoring helpers
-    static uint8_t getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept;
-    int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) const noexcept;
-    static int32_t scoreMoveOrderingPriorityInline(
-        chess::Board& b,           const chess::Board::Move& m,
-        uint8_t fromPieceType,     bool isCapture,
-        uint8_t victimType,        int32_t see,
-        bool isPromotionCandidate, int moveIndex,
-        bool hashMoveIsLegal,      uint8_t hashFrom,
-        uint8_t hashTo,            char hashPromo,
-        int ply,
-        const chess::Board::Move* previousMove,
-        int usSide,                uint8_t oppKingSq,
-        uint64_t occ,              bool usIsWhite,
-        bool isEndgameOrdering,    int fullMoveClock,
-        const int16_t (&history)[2][64][64],
-        const chess::Board::Move (&killerMoves)[2][64],
-        const uint16_t (&counterMoves)[64][64],
-        const int16_t (&captureHistory)[2][64][7][2],
-        const int32_t (&pieceValues)[8],
-        int32_t orderingPenaltySamePawnOpening) noexcept;
-
-    int32_t searchPosition(chess::Board& b, int32_t depth, int32_t alpha, int32_t beta, int ply,
-                           bool useTT = true, bool allowTTWrite = true, bool allowHeuristicUpdates = true,
-                           const chess::Board::Move* previousMove = nullptr, uint64_t* nodeCounter = nullptr, bool allowNullMove = true) noexcept;
-    int32_t quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, int ply, bool useTT = true, uint64_t* nodeCounter = nullptr) noexcept;
-    bool isKillerMove(const chess::Board::Move& m, const chess::Board::Move killerMoves[2][Engine::MAX_PLY], int ply) const noexcept;
-    inline bool shouldAbortSearch() const noexcept;
+    static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
+    void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
-
-    IterativeSearchResult runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept;
-    void storeRootHashMove(const chess::Board& rootBoard, const chess::Board::Move& move, uint64_t depth, int32_t score, uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     void ponderLoop(chess::Board rootBoard) noexcept;
-    
-    // Move comparison and checking helpers
-    static bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
-    static bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
-    static bool isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept;
-    static bool givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m, uint8_t fromPieceType, int usSide, uint8_t oppKingSq, uint64_t occ) noexcept;
-    static bool containsMoveWithPromotion(const MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to, char promotionPiece) noexcept;
-    
-    // Quiescence helpers
-    static int32_t clampQMoveScore(int64_t score) noexcept;
-    static void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
-    static int32_t clampOrderingScore(int64_t score) noexcept;
-    //--- Method end
-
-}; //class Engine final
+};
 
 } // namespace engine
 
 #include "inl/bitboard_helpers.inl"
-#include "inl/search_bounds.inl"
-#include "inl/search_cutoffs.inl"
 #include "inl/accessors.inl"
-#include "inl/search_helpers.inl"
 
 #endif
