@@ -9,9 +9,6 @@
 
 namespace engine {
 class Sorter;
-}
-
-namespace engine::search {
 
 class MoveGenerator final {
 public:
@@ -102,6 +99,6 @@ private:
         uint64_t& evasionMask) noexcept;
 };
 
-} // namespace engine::search
+} // namespace engine
 
 #endif // ENGINE_SEARCH_MOVE_GENERATOR_HPP

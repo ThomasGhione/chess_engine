@@ -3,7 +3,7 @@
 #include "../inl/bitboard_helpers.inl"
 #include "sorter.hpp"
 
-namespace engine::search {
+namespace engine {
 
 MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
     // Macro-step 1: Initialize side-to-move context and occupancy masks.
@@ -846,4 +846,4 @@ void MoveGenerator::computeCheckEvasionMasks(
     }
 }
 
-} // namespace engine::search
+} // namespace engine

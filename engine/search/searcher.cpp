@@ -248,7 +248,7 @@ chess::Board::Move Searcher::searchBestMove(
 
     // Macro-step 4: Return best move or deterministic fallback when interrupted/empty.
     if (!result.hasLegalMoves || !result.completedAnyDepth) {
-        MoveList<chess::Board::Move> fallbackMoves = engine::search::MoveGenerator::generateLegalMoves(board);
+        MoveList<chess::Board::Move> fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
         if (fallbackMoves.is_empty()) {
             runtime.eval = Evaluator::evaluate(board);
             return chess::Board::Move{};
@@ -745,7 +745,7 @@ int32_t Searcher::searchPosition(
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter
     };
 
-    MoveList<chess::Board::Move> moves = engine::search::MoveGenerator::generateLegalMoves(b);
+    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(b);
     if (moves.is_empty()) {
         return node.inCheck
             ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
@@ -839,7 +839,7 @@ int32_t Searcher::quiescenceSearch(
     static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            MoveList<chess::Board::Move> evasions = engine::search::MoveGenerator::generateLegalMoves(b);
+            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalMoves(b);
             if (evasions.is_empty()) {
                 return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
             }
@@ -849,7 +849,7 @@ int32_t Searcher::quiescenceSearch(
 
     // Macro-step 2: Handle in-check evasions as mandatory tactical recursion.
     if (inCheck) {
-        MoveList<chess::Board::Move> evasions = engine::search::MoveGenerator::generateQSearchEvasions(b);
+        MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateQSearchEvasions(b);
         if (evasions.is_empty()) {
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
@@ -923,7 +923,7 @@ int32_t Searcher::quiescenceSearch(
     }
 
     // Macro-step 4: Generate tactical set, recurse, apply cutoffs, and optionally store TT.
-    MoveList<chess::Board::Move> tacticalMoves = engine::search::MoveGenerator::generateQSearchTacticalMoves(
+    MoveList<chess::Board::Move> tacticalMoves = engine::MoveGenerator::generateQSearchTacticalMoves(
         b, standPat, alpha, beta, ply, usIsWhite, static_cast<int32_t>(runtime.depth));
     if (tacticalMoves.is_empty()) {
         return standPat;
@@ -1212,7 +1212,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     result.startDepth = firstDepth;
     result.targetDepth = maxDepth;
 
-    MoveList<chess::Board::Move> moves = engine::search::MoveGenerator::generateLegalMoves(rootBoard);
+    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
         if (rootBoard.kings_bb[0] == 0) {
