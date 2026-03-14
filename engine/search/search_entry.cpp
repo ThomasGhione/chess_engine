@@ -1,6 +1,7 @@
 #include "../movegen/movegen.hpp"
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
+#include "searcher.hpp"
 
 namespace engine {
 
@@ -48,6 +49,39 @@ int32_t Engine::searchRootMoveScore(chess::Board& b, const chess::Board::Move& m
 }
 
 chess::Board::Move Engine::getBestMove(chess::Board& rootBoard, const MoveList<chess::Board::Move>& moves, bool usIsWhite, int32_t alpha, int32_t beta) noexcept {
+    Searcher::SearchRuntime runtime{};
+    runtime.nodesSearched = this->nodesSearched;
+    runtime.depth = this->depth;
+    runtime.eval = this->eval;
+    runtime.maxThreads = this->MAX_THREADS;
+    std::memcpy(runtime.killerMoves, this->killerMoves, sizeof(runtime.killerMoves));
+    std::memcpy(runtime.history, this->history, sizeof(runtime.history));
+    std::memcpy(runtime.counterMoves, this->counterMoves, sizeof(runtime.counterMoves));
+    std::memcpy(runtime.captureHistory, this->captureHistory, sizeof(runtime.captureHistory));
+    runtime.transpositionTable = &this->tt;
+    runtime.stopSearchRequested = &this->stopSearchRequested;
+    runtime.ponderingStopRequested = &this->ponderingStopRequested;
+    runtime.searchInterrupted = &this->searchInterrupted;
+    runtime.orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING;
+
+    const chess::Board::Move bestMoveFromSearcher = Searcher::getBestMove(
+        rootBoard,
+        moves,
+        usIsWhite,
+        runtime,
+        alpha,
+        beta);
+
+    this->nodesSearched = runtime.nodesSearched;
+    this->depth = runtime.depth;
+    this->eval = runtime.eval;
+    std::memcpy(this->killerMoves, runtime.killerMoves, sizeof(this->killerMoves));
+    std::memcpy(this->history, runtime.history, sizeof(this->history));
+    std::memcpy(this->counterMoves, runtime.counterMoves, sizeof(this->counterMoves));
+    std::memcpy(this->captureHistory, runtime.captureHistory, sizeof(this->captureHistory));
+
+    return bestMoveFromSearcher;
+
     int32_t bestScore = Engine::initialBest(usIsWhite);
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
@@ -268,6 +302,64 @@ void Engine::storeRootHashMove(const chess::Board& rootBoard, const chess::Board
 }
 
 Engine::IterativeSearchResult Engine::runIterativeDeepening(chess::Board& rootBoard, uint64_t startDepth, uint64_t targetDepth, bool allowStop) noexcept {
+    Searcher::SearchRuntime runtime{};
+    runtime.nodesSearched = this->nodesSearched;
+    runtime.depth = this->depth;
+    runtime.eval = this->eval;
+    runtime.maxThreads = this->MAX_THREADS;
+    std::memcpy(runtime.killerMoves, this->killerMoves, sizeof(runtime.killerMoves));
+    std::memcpy(runtime.history, this->history, sizeof(runtime.history));
+    std::memcpy(runtime.counterMoves, this->counterMoves, sizeof(runtime.counterMoves));
+    std::memcpy(runtime.captureHistory, this->captureHistory, sizeof(runtime.captureHistory));
+    runtime.transpositionTable = &this->tt;
+    runtime.stopSearchRequested = &this->stopSearchRequested;
+    runtime.ponderingStopRequested = &this->ponderingStopRequested;
+    runtime.searchInterrupted = &this->searchInterrupted;
+    runtime.orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING;
+
+    const Searcher::IterativeSearchResult searcherResult = Searcher::runIterativeDeepening(
+        rootBoard,
+        runtime,
+        startDepth,
+        targetDepth,
+        allowStop);
+
+    this->nodesSearched = runtime.nodesSearched;
+    this->depth = runtime.depth;
+    this->eval = runtime.eval;
+    std::memcpy(this->killerMoves, runtime.killerMoves, sizeof(this->killerMoves));
+    std::memcpy(this->history, runtime.history, sizeof(this->history));
+    std::memcpy(this->counterMoves, runtime.counterMoves, sizeof(this->counterMoves));
+    std::memcpy(this->captureHistory, runtime.captureHistory, sizeof(this->captureHistory));
+
+    IterativeSearchResult delegatedResult{};
+    delegatedResult.hasLegalMoves = searcherResult.hasLegalMoves;
+    delegatedResult.completedAnyDepth = searcherResult.completedAnyDepth;
+    delegatedResult.startDepth = searcherResult.startDepth;
+    delegatedResult.targetDepth = searcherResult.targetDepth;
+    delegatedResult.completedIterations = searcherResult.completedIterations;
+    delegatedResult.completedDepth = searcherResult.completedDepth;
+    delegatedResult.completedEvenDepth = searcherResult.completedEvenDepth;
+    delegatedResult.interruptedDepth = searcherResult.interruptedDepth;
+    delegatedResult.aspirationResearches = searcherResult.aspirationResearches;
+    delegatedResult.aspirationFailLow = searcherResult.aspirationFailLow;
+    delegatedResult.aspirationFailHigh = searcherResult.aspirationFailHigh;
+    delegatedResult.rootScoreBound = searcherResult.rootScoreBound;
+    delegatedResult.bestMove = searcherResult.bestMove;
+    delegatedResult.bestScore = searcherResult.bestScore;
+
+    if (allowStop) {
+        this->ponderCurrentDepth.store(delegatedResult.completedDepth, std::memory_order_relaxed);
+        this->ponderLastCompletedDepth.store(delegatedResult.completedDepth, std::memory_order_relaxed);
+        this->ponderLastCompletedEvenDepth.store(delegatedResult.completedEvenDepth, std::memory_order_relaxed);
+        this->ponderInterruptedDepth.store(delegatedResult.interruptedDepth, std::memory_order_relaxed);
+        this->ponderAspirationResearches.store(delegatedResult.aspirationResearches, std::memory_order_relaxed);
+        this->ponderAspirationFailLow.store(delegatedResult.aspirationFailLow, std::memory_order_relaxed);
+        this->ponderAspirationFailHigh.store(delegatedResult.aspirationFailHigh, std::memory_order_relaxed);
+    }
+
+    return delegatedResult;
+
     IterativeSearchResult result;
     const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
     const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);

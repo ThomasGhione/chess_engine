@@ -1,5 +1,6 @@
 #include "../engine.hpp"
 #include "../../tt/ttentry.hpp"
+#include "sorter.hpp"
 #include <limits>
 
 namespace engine {
@@ -394,6 +395,23 @@ bool Engine::sortLegalMoves(
     uint64_t hashKey,
     const chess::Board::Move* previousMove) noexcept
 {
+    bool delegatedHashMoveIsLegal = false;
+    moves = Sorter::sortLegalMoves(
+        moves,
+        ply,
+        b,
+        usIsWhite,
+        hashKey,
+        this->history,
+        this->killerMoves,
+        this->counterMoves,
+        this->captureHistory,
+        &this->tt,
+        previousMove,
+        &delegatedHashMoveIsLegal,
+        ORDERING_PENALTY_SAME_PAWN_OPENING);
+    return delegatedHashMoveIsLegal;
+
     //FIXME: Metter pre codizione
     if (moves.is_empty()) [[unlikely]] return false;
 

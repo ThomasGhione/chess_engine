@@ -1,5 +1,6 @@
 #include "movegen.hpp"
 #include "../inl/bitboard_helpers.inl"
+#include "../search/move_generator.hpp"
 
 namespace engine {
 // ============================================================================
@@ -14,6 +15,13 @@ namespace engine {
 MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::Board& b, bool includeChecks,
                                                             bool inCheckKnown, bool inCheckValue,
                                                             bool inDoubleCheckValue) noexcept {
+    return engine::search::MoveGenerator::generateTacticalMoves(
+        b,
+        includeChecks,
+        inCheckKnown,
+        inCheckValue,
+        inDoubleCheckValue);
+
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
