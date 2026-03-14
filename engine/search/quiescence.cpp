@@ -15,13 +15,16 @@ inline bool Engine::isForcingEvasion(const chess::Board& b,
                                     const chess::Board::Move& m,
                                     const chess::Coords& enPassant,
                                     bool hasEnPassant) noexcept {
+    //FIXME: Usare funzione di board
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     if (toPieceType != chess::Board::EMPTY) return true;
 
     const uint8_t fromPiece = b.get(m.from);
+    //FIXME: Usare funzione di board
     const uint8_t fromType = fromPiece & chess::Board::MASK_PIECE_TYPE;
     if (fromType != chess::Board::PAWN) return false;
 
+    //FIXME: Usare funzione di board
     const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE));
     if (isPromotion) return true;
 
@@ -41,6 +44,7 @@ inline bool Engine::isForcingEvasion(const chess::Board& b,
 //
 // NOTE: We do NOT generate checks (non-capture) as they cause tree explosio
 int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, int ply, bool useTT, uint64_t* nodeCounter) noexcept {
+    //FIXME: Fare una inizzializazzione
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
@@ -49,6 +53,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         return this->evaluate(b);
     }
 
+    //FIXME: Fare pre codizione
     // SAFETY: prevent stack overflow
     if (ply >= MAX_PLY - 1) {
         return this->evaluate(b);
@@ -61,6 +66,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // position at sufficient depth, we can return immediately.
     if (useTT) {
         const uint64_t hashKey = b.getHash();
+	//FIXME: Fare unica dichiarazione di variabile su sola riga
         int32_t ttScore = 0;
         int32_t ttAlpha = 0;
         int32_t ttBeta = 0;
@@ -80,6 +86,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // ============================================================================
     // DEPTH LIMIT IN QUIESCENCE - Prevent explosion in complex tactical positions
     // ============================================================================
+    //FIXME: Portare fuori variabile statica
     static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         // Do not return a stand-pat score from an in-check node without checking
@@ -93,6 +100,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         return this->evaluate(b);
     }
 
+    //FIXME: Scrivere contenuto if dentro funzione helper
     // In-check nodes cannot use stand-pat or delta pruning.
     // We must search all legal evasions.
     if (inCheck) {
@@ -107,6 +115,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         // 1) forcing evasions (captures/promotions)
         // 2) quiet evasions.
         // This improves alpha-beta cutoffs in tactical check sequences.
+	//FIXME: Trasformare il for in funzione chiamata due volte
         for (int pass = 0; pass < 2; ++pass) {
             const bool searchForcing = (pass == 0);
             for (const auto& m : evasions) {
@@ -159,6 +168,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // plus a huge margin can't reach alpha/beta, skip move generation entirely.
     // This saves significant time by avoiding generateTacticalMoves() in hopeless positions.
     // In-check nodes are handled above and never reach this section.
+    //FIXME: Portare fuori variabile statica 
     static constexpr int32_t EARLY_DELTA_MARGIN = 950; // Just Queen + tiny margin (more pruning)
 
     if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
@@ -178,6 +188,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // 4. Depth penalty: deeper in qsearch = more conservative (reduce delta)
     
     // Compute dynamic delta margin
+    //FIXME: Chiamare namespace
     int32_t deltaMargin = QUEEN_VALUE; // Base: best single capture
     
     // Factor 1: Check for near-promotion pawns (7th/2nd rank)
@@ -187,11 +198,13 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         ? (ourPawns & 0x00FF000000000000ULL) // Rank 7 for white
         : (ourPawns & 0x000000000000FF00ULL); // Rank 2 for black
     
+    //FIXME: Eliminare i numeri magici 
     if (nearPromoPawns) {
         deltaMargin += 150; // Conservative promotion bonus
     }
     
     // Factor 2: Material deficit - if we're losing, allow more speculative lines
+    //FIXME: Eliminare i numeri magici 
     const int32_t materialBalance = usIsWhite
         ? standPat
         : (standPat == std::numeric_limits<int32_t>::min() ? std::numeric_limits<int32_t>::max() : -standPat);
@@ -204,9 +217,11 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     }
     
     // Factor 3: Depth penalty - deeper in qsearch = more conservative
+    //FIXME: Eliminare i numeri magici 
     const int qsearchDepth = std::max(0, ply - static_cast<int>(this->depth)); // Approximate qsearch depth
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
+	//FIXME: Chiamare namespace
         deltaMargin = std::max(deltaMargin, static_cast<int32_t>(QUEEN_VALUE)); // Floor at Queen value
     }
     
@@ -218,6 +233,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
 
     // Generate only captures/promotions in qsearch (no non-capture checks).
     // In-check nodes are already handled above with full legal evasions.
+    //FIXME: Elimianre true e false, non si capice
     MoveList<chess::Board::Move> tacticalMoves = MoveGenerator::generateTacticalMoves(b, false, true, false, false);
     
     // No tactical moves: return stand-pat (quiet position reached)
@@ -235,7 +251,8 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
     // Mid qsearch (10-20): SEE >= -8cp (very conservative)
     // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
     const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
-    
+   
+    //FIXME: Creare funzione helper
     for (int i = 0; i < tacticalMoves.size; ++i) {
         const auto& m = tacticalMoves[static_cast<size_t>(i)];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
@@ -251,6 +268,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         
         int32_t score = 0;
         
+	//FIXME: Fare inversione della logica per avere una versione piu' snella e senza indentazioni
         if (isCapture) {
             // TODO test this better!!
             // ============================================================================
@@ -309,6 +327,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
         return standPat;
     }
 
+    //FIXME: CODICE DUPLICATO!! Stessa cosa detta prima
     // Insertion-sort tactical moves + scores together (descending).
     for (int i = 1; i < tacticalMoves.size; ++i) {
         const chess::Board::Move keyMove = tacticalMoves[static_cast<size_t>(i)];
@@ -329,6 +348,7 @@ int32_t Engine::quiescenceSearch(chess::Board& b, int32_t alpha, int32_t beta, i
 
     int32_t best = standPat;
     
+    //FIXME: Fare funzione helper
     for (const auto& m : tacticalMoves) {
         if (this->shouldAbortSearch()) {
             this->searchInterrupted.store(true, std::memory_order_relaxed);

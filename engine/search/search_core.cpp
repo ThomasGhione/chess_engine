@@ -49,6 +49,7 @@ int32_t Engine::repetitionDrawScore(const chess::Board& b) noexcept {
 }
 
 bool Engine::hasInsufficientMaterialDraw(const chess::Board& b) noexcept {
+    //FIXME: Fare chiamate dirette! E non usare 0 e 1 ma WHITE E BLACK accedendo a BOARD
     const uint64_t wKnights = b.knights_bb[0];
     const uint64_t bKnights = b.knights_bb[1];
     const uint64_t wBishops = b.bishops_bb[0];
@@ -70,7 +71,8 @@ bool Engine::hasInsufficientMaterialDraw(const chess::Board& b) noexcept {
 bool Engine::handleSearchPrelude(const int32_t& depth, const AlphaBeta& bounds, int32_t& score, uint64_t hashKey) noexcept {
     // Transposition table lookup (hashKey already computed by caller to avoid duplication)
     if (depth >= 2) this->tt.prefetch(hashKey);
-
+    
+    //FIXME: Fare una dichiarazione su sola riga
     int32_t ttScore = 0;
     int32_t ttAlpha = 0;
     int32_t ttBeta = 0;
@@ -86,6 +88,7 @@ bool Engine::tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
                                 int32_t depth, int32_t alpha, int32_t beta, int ply,
                                 bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
                                 uint64_t* nodeCounter, int32_t& outScore) noexcept {
+    //FIXME: Eliminare numeri magici
     const int32_t reduction = 3 + depth / 8;
 
     chess::Board::MoveState nullState;
@@ -102,6 +105,7 @@ bool Engine::tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
     }
 
     bool confirmedCutoff = true;
+    //FIXME: Eliminare numeri magici
     if (depth >= 10) {
         const int32_t verifyScore = this->searchPosition(
             b, depth - reduction, alpha, beta, ply,
@@ -125,8 +129,10 @@ bool Engine::tryNullMovePruning(chess::Board& b, const SearchNodeState& node,
 bool Engine::tryReverseFutilityPruning(chess::Board& b, const SearchNodeState& node,
                                        int32_t depth, int32_t alpha, int32_t beta, int ply,
                                        int32_t& outScore) noexcept {
+    //FIXME: Portare fuori costante
     constexpr int32_t RFP_MARGIN_PER_DEPTH = 110;
 
+    //FIXME: Eliminare numerici magici
     if (node.isPVNode || node.inCheck || node.isPawnEndgameForPruning || ply <= 0 || depth > 3) {
         return false;
     }
@@ -172,15 +178,19 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
                                              b.rooks_bb[0]   | b.rooks_bb[1]   |
                                              b.queens_bb[0]  | b.queens_bb[1]);
     // Delicate endings (pure minor/pawn/king races): keep pruning conservative.
+    //FIXME: Eliminare numerici magici
     const bool isDelicateEndgame = (nonPawnMajorsForLMR <= 2);
     // Broad ending bucket used for softer margins/thresholds.
+    //FIXME: Eliminare numerici magici
     const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
     // =========================================================================
     // FUTILITY PRUNING margins (main search)
     // =========================================================================
+    //FIXME: Eliminare numerici magici
     static constexpr int32_t FUTILITY_MARGINS_MG[] = {0, 260, 520}; // depth 0,1,2
     static constexpr int32_t FUTILITY_MARGINS_EG[] = {0, 170, 350}; // depth 0,1,2
+    //FIXME: Eliminare numerici magici
     const bool canFutilityPrune = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int32_t futilityMargin = canFutilityPrune
         ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
@@ -189,8 +199,10 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
     // =========================================================================
     // LATE MOVE PRUNING thresholds
     // =========================================================================
+    //FIXME: Eliminare numerici magici
     static constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30}; // depth 0,1,2,3
     static constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38}; // depth 0,1,2,3
+    //FIXME: Eliminare numerici magici
     const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
     const int lmpThreshold = canLMP
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
@@ -198,6 +210,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     int moveIndex = 0;
+    //FIXME: Trasformare in funzione helper
     for (const auto& m : orderedMoves) {
         if (this->shouldAbortSearch()) {
             this->searchInterrupted.store(true, std::memory_order_relaxed);
@@ -214,6 +227,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
         // =========================================================================
         // LATE MOVE PRUNING: Skip very late quiet moves at low depth
         // =========================================================================
+	//FIXME: Trasformare codizione in funzione helper
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
             ++moveIndex;
             continue; // Completely skip this move
@@ -222,6 +236,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
         // =========================================================================
         // FUTILITY PRUNING: Skip quiet moves that can't improve the position
         // =========================================================================
+	//FIXME: Trasformare codizione in funzione helper
         if (canFutilityPrune && isQuietMove && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
             ++moveIndex;
@@ -267,6 +282,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
         const int32_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? saturatingAdd32Core(bounds.alpha, 1) : bounds.beta);
 
         int32_t score = 0;
+	//FIXME: Trasformare in funzione helper if-else troppo grande
         if (canReduce) {
             // LOGARITHMIC LMR. Higher divisor = less reduction = more conservative
             constexpr double LMR_C = 3.07;
@@ -327,6 +343,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
 
         // Track quiet moves for history malus (before checking cutoff)
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
+	    //FIXME: Rendiamo esplicita l'incremento di numSearchedQuiets
             searchedQuiets[numSearchedQuiets++] = {m.from.index, m.to.index};
         }
 
@@ -334,6 +351,8 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
 
         // Beta cutoff: check if the score causes a cutoff, then update killer/history
         // bounds.alpha >= bounds.beta means window collapsed (different condition!)
+	//FIXME: Scrivere se vara prima codizione e falsa seconda break
+	//FIXME: Scrivere se vere prima codizione E seconda codizione allora corpo della funzione
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowHeuristicUpdates) {
                 this->updateKillerAndHistoryOnBetaCutoff(b, m, ctx.depth, ctx.ply, ctx.activeColor,
@@ -374,6 +393,7 @@ Engine::SearchMoveResult Engine::searchMoves(chess::Board& b, const MoveList<che
 int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, int32_t beta, int ply,
                                bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
                                const chess::Board::Move* previousMove, uint64_t* nodeCounter, bool allowNullMove) noexcept {
+    //FIXME: Rendere unica dichiarazione
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &this->nodesSearched;
     ++(*counter);
 
@@ -409,10 +429,12 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
         if (alpha >= beta) return alpha;
     }
 
+    //FIXME: Mettere questa codizione dentro if di prima
     if (ply > 0 && b.isTwofoldRepetition()) {
         return repetitionDrawScore(b);
     }
-
+    
+    //FIXME: Mettere come precondizione?
     if (b.isFiftyMoveRule()) [[unlikely]] return 0;
 
     const uint64_t heavyMaterial =
@@ -466,7 +488,7 @@ int32_t Engine::searchPosition(chess::Board& b, int32_t depth, int32_t alpha, in
                                     counter, score)) {
         return score;
     }
-
+    //FIXME: Eliminare numero magico
     const bool canReverseFutilityPrune =
         !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
     if (canReverseFutilityPrune

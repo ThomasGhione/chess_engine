@@ -311,6 +311,7 @@ int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const int sidePassive = sideActive ^ 1;
 
     // Value of the initially captured piece
+    //FIXME: Usare metodo di board
     uint8_t capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
     if (capturedType == chess::Board::EMPTY) {
         // En passant: captures a pawn
@@ -322,11 +323,14 @@ int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     // for each recapture i:
     //   gain[i] = value(captured_piece) - gain[i-1]
     // where captured_piece is the piece that just moved to the target square in the previous ply.
+    //FIXME: Mettere come parametri della classe
     constexpr int MAX_SEE_DEPTH = 16;
     int32_t gain[MAX_SEE_DEPTH];
+    //FIXME: Mettere inizializzazione diretta
     gain[0] = PIECE_VALUES[capturedType];
 
     // Simulate the exchange on local occupancy
+    //FIXME: Fare conto diretto
     uint64_t occ = b.getPiecesBitMap();
     occ ^= chess::Board::bitMask(fromSq); // remove the piece that makes the first capture from its square
 
@@ -347,6 +351,8 @@ int32_t Engine::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
         // Determine attacker type using the piece bitboards AND the simulated occupancy
         // (safer than querying b.get(...) which reflects the original board only).
+
+	//FIXME: Fare funzione helper per prendere diretamente currentAttackerType	
         const uint64_t attackerMask = chess::Board::bitMask(attacker);
         uint8_t currentAttackerType = chess::Board::PAWN; // default/fallback
         if ((b.pawns_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::PAWN;
@@ -388,6 +394,7 @@ bool Engine::sortLegalMoves(
     uint64_t hashKey,
     const chess::Board::Move* previousMove) noexcept
 {
+    //FIXME: Metter pre codizione
     if (moves.is_empty()) [[unlikely]] return false;
 
     int32_t moveScores[MAX_MOVES] {};
@@ -424,7 +431,8 @@ bool Engine::sortLegalMoves(
         // Validate hash move is in legal moves list (guards against TT collisions)
         hashMoveIsLegal = containsMoveWithPromotion(moves, hashFrom, hashTo, hashPromo);
     }
-
+    
+    //FIXME: Rendere questa una funzione helper
     // Score all moves once, then reorder moves in-place.
     for (int moveIndex = 0; moveIndex < moves.size; ++moveIndex) {
         const auto& m = moves[moveIndex];
@@ -457,7 +465,8 @@ bool Engine::sortLegalMoves(
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
             const bool isCastling = (fileDelta == 2);
-
+	    
+	    //FIXME: Eliminare costanti magiche
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
                 score -= 220; // opening-only ordering penalty
             } else if (isCastling) {
@@ -467,7 +476,8 @@ bool Engine::sortLegalMoves(
 
         moveScores[moveIndex] = score;
     }
-
+    
+    //FIXME: Usare algoritmo std::sort o std::stable_sort (POSSIBILE GROSSA MIGLIORIA)
     // Insertion-sort scores and moves together (descending score).
     // MAX_MOVES is small, and the list is often partially ordered.
     for (int i = 1; i < moves.size; ++i) {
