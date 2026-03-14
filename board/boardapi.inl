@@ -100,9 +100,12 @@ inline Board::MoveKind Board::classifyMoveKind(
     uint8_t destBefore,
     const Coords& prevEnPassant
 ) noexcept {
+    const uint8_t fromRank = rank(fromIndex);
+    const uint8_t toRank = rank(toIndex);
+
     if (movingType == KING) {
-        if ((fromIndex >> 3) == (toIndex >> 3)) {
-            const int8_t df = static_cast<int8_t>((toIndex & 7) - (fromIndex & 7));
+        if (fromRank == toRank) {
+            const int8_t df = static_cast<int8_t>(file(toIndex)) - static_cast<int8_t>(file(fromIndex));
             if (df == 2 || df == -2) {
                 return MoveKind::Castling;
             }
@@ -114,8 +117,8 @@ inline Board::MoveKind Board::classifyMoveKind(
         return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
     }
 
-    const uint8_t fromFile = fromIndex & 7;
-    const uint8_t toFile = toIndex & 7;
+    const uint8_t fromFile = file(fromIndex);
+    const uint8_t toFile = file(toIndex);
     if (fromFile != toFile
         && destBefore == EMPTY
         && Coords::isInBounds(prevEnPassant)
@@ -123,12 +126,11 @@ inline Board::MoveKind Board::classifyMoveKind(
         return MoveKind::EnPassant;
     }
 
-    const uint8_t toRank = toIndex >> 3;
     if (toRank == promotionRank(movingColor == WHITE)) {
         return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
     }
 
-    const int8_t dr = static_cast<int8_t>((toIndex >> 3) - (fromIndex >> 3));
+    const int8_t dr = static_cast<int8_t>(toRank) - static_cast<int8_t>(fromRank);
     if (dr == 2 || dr == -2) {
         return MoveKind::DoublePawnPush;
     }
@@ -294,8 +296,6 @@ inline void Board::updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint
 
 template<Board::MoveKind Kind>
 inline void Board::doMoveByKind(
-    const Coords& from,
-    const Coords& to,
     MoveState& st,
     uint8_t moving,
     uint8_t movingType,
@@ -306,15 +306,17 @@ inline void Board::doMoveByKind(
     char promotionChoice
 ) noexcept {
     if constexpr (Kind == MoveKind::EnPassant) {
+        // Remove the captured pawn from board storage and bitboards before moving.
         st.wasEnPassantCapture = true;
         const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
         const uint8_t capIndex = static_cast<uint8_t>(toIndex + captureOffset);
         const uint8_t capturedPiece = get(capIndex);
+        const uint64_t capBit = bitMask(capIndex);
         st.capturedPiece = capturedPiece;
         st.enPassantCapturedIndex = capIndex;
 
         set(capIndex, EMPTY);
-        occupancy &= ~bitMask(capIndex);
+        occupancy &= ~capBit;
         removePieceFromBB(capturedPiece, capIndex);
     }
 
@@ -322,16 +324,19 @@ inline void Board::doMoveByKind(
         removePieceFromBB(destBefore, toIndex);
     }
 
-    updateChessboard(from, to, static_cast<piece_id>(moving));
+    // Apply the moving piece update using index-based helpers already available on Board.
+    set(toIndex, static_cast<piece_id>(moving));
+    set(fromIndex, EMPTY);
     fastUpdateOccupancyBB(fromIndex, toIndex);
     removePieceFromBB(moving, fromIndex);
     addPieceToBB(moving, toIndex);
 
     if constexpr (Kind == MoveKind::Castling) {
+        // Move the rook with the same index-based fast path used for the king.
         st.wasCastling = true;
-        const uint8_t fromFile = static_cast<uint8_t>(fromIndex & 7);
-        const uint8_t toFile = static_cast<uint8_t>(toIndex & 7);
-        const uint8_t rankBase = static_cast<uint8_t>(toIndex & 56);
+        const uint8_t fromFile = file(fromIndex);
+        const uint8_t toFile = file(toIndex);
+        const uint8_t rankBase = static_cast<uint8_t>(rank(toIndex) << 3);
         const uint8_t rookFromFile = (toFile > fromFile) ? 7 : 0;
         const uint8_t rookToFile   = (toFile > fromFile) ? 5 : 3;
         const uint8_t rookFromIndex = static_cast<uint8_t>(rankBase | rookFromFile);
@@ -354,11 +359,13 @@ inline void Board::doMoveByKind(
     }
 
     if constexpr (Kind == MoveKind::DoublePawnPush) {
+        // Cache the en-passant square directly from the midpoint index.
         const uint8_t enPassantIndex = static_cast<uint8_t>((fromIndex + toIndex) >> 1);
         enPassant = Coords{enPassantIndex};
     }
 
     if constexpr (isPromotionKind(Kind)) {
+        // Finalize the promotion with the dedicated unchecked helper used by the hot path.
         const uint8_t promo = normalizePromotionChoice(promotionChoice);
         st.promotionPieceType = promo;
         promoteUnchecked(toIndex, moving, promo);
@@ -367,14 +374,13 @@ inline void Board::doMoveByKind(
 
 template<Board::MoveKind Kind>
 inline void Board::undoMoveByKind(
-    const Coords& from,
-    const Coords& to,
     const MoveState& st,
     uint8_t& pieceOnTo,
     uint8_t fromIndex,
     uint8_t toIndex
 ) noexcept {
     if constexpr (isPromotionKind(Kind)) {
+        // Rebuild the pawn on the destination square before rewinding the move.
         const uint8_t color = pieceOnTo & MASK_COLOR;
         const uint8_t pawnPiece = (PAWN | color);
         removePieceFromBB(pieceOnTo, toIndex);
@@ -383,25 +389,32 @@ inline void Board::undoMoveByKind(
         pieceOnTo = pawnPiece;
     }
 
-    updateChessboard(to, from, static_cast<piece_id>(pieceOnTo));
+    // Restore the moving piece back to its source square using index-based writes.
+    set(fromIndex, static_cast<piece_id>(pieceOnTo));
+    set(toIndex, EMPTY);
     fastUpdateOccupancyBB(toIndex, fromIndex);
     removePieceFromBB(pieceOnTo, toIndex);
     addPieceToBB(pieceOnTo, fromIndex);
 
     if constexpr (Kind == MoveKind::EnPassant) {
+        // Put back the pawn captured en-passant on its original square.
         const uint8_t capIndex = st.enPassantCapturedIndex;
+        const uint64_t capBit = bitMask(capIndex);
         set(capIndex, static_cast<piece_id>(st.capturedPiece));
-        occupancy |= bitMask(capIndex);
+        occupancy |= capBit;
         addPieceToBB(st.capturedPiece, capIndex);
     } else if constexpr (isCaptureKind(Kind)) {
         if (st.capturedPiece != EMPTY) {
+            // Restore the captured piece on the destination square.
+            const uint64_t toBit = bitMask(toIndex);
             set(toIndex, static_cast<piece_id>(st.capturedPiece));
-            occupancy |= bitMask(toIndex);
+            occupancy |= toBit;
             addPieceToBB(st.capturedPiece, toIndex);
         }
     }
 
     if constexpr (Kind == MoveKind::Castling) {
+        // Rewind the rook to its original square after the king is restored.
         const uint8_t rookFromIndex = st.rookFromIndex;
         const uint8_t rookToIndex   = st.rookToIndex;
         const uint8_t rook = get(rookToIndex);

@@ -387,8 +387,6 @@ private:
     inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(
-        const Coords& from,
-        const Coords& to,
         MoveState& st,
         uint8_t moving,
         uint8_t movingType,
@@ -400,8 +398,6 @@ private:
     ) noexcept;
     template<MoveKind Kind>
     inline void undoMoveByKind(
-        const Coords& from,
-        const Coords& to,
         const MoveState& st,
         uint8_t& pieceOnTo,
         uint8_t fromIndex,
