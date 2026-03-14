@@ -157,6 +157,17 @@ inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor
     return QUEEN | movingColor;
 }
 
+// This function assumes the caller has already validated that the piece being promoted is a pawn
+// and that the promotion choice is valid.
+__attribute__((always_inline))
+inline void Board::promoteUnchecked(uint8_t atIndex, uint8_t pawnPiece, uint8_t promo) noexcept {
+    const uint8_t movingColor = pawnPiece & MASK_COLOR;
+    const uint8_t newPiece = promotedPieceFromChoice(promo, movingColor);
+    removePieceFromBB(pawnPiece, atIndex);
+    addPieceToBB(newPiece, atIndex);
+    set(atIndex, static_cast<piece_id>(newPiece));
+}
+
 __attribute__((always_inline))
 inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevActiveColor   = activeColor;
@@ -350,7 +361,7 @@ inline void Board::doMoveByKind(
     if constexpr (isPromotionKind(Kind)) {
         const uint8_t promo = normalizePromotionChoice(promotionChoice);
         st.promotionPieceType = promo;
-        (void)promote(to, static_cast<char>(promo));
+        promoteUnchecked(toIndex, moving, promo);
     }
 }
 

@@ -28,12 +28,8 @@ bool Board::promote(const Coords& at, char choice) noexcept {
         return false;
 
     const uint8_t promo = normalizePromotionChoice(choice);
-    const uint8_t newPiece = promotedPieceFromChoice(promo, color);
-    
     const uint8_t atIndex = at.index;
-    removePieceFromBB(piece, atIndex);
-    addPieceToBB(newPiece, atIndex);
-    set(at, static_cast<piece_id>(newPiece));
+    promoteUnchecked(atIndex, piece, promo);
     return true;
 }
 

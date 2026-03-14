@@ -379,6 +379,7 @@ private:
     ) noexcept;
     [[nodiscard]] static inline uint8_t normalizePromotionChoice(char promotionChoice) noexcept;
     [[nodiscard]] static inline uint8_t promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
+    inline void promoteUnchecked(uint8_t atIndex, uint8_t pawnPiece, uint8_t promo) noexcept;
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
     inline void prepareNullMoveState(MoveState& st) const noexcept;
