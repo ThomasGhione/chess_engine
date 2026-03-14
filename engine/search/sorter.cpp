@@ -141,6 +141,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         return 100000; // Highest priority
     }
 
+    //FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
     // Macro-step 2: Score captures with SEE + capture-history policy.
     if (isCapture) {
         // BAD CAPTURE: low priority, ordered by SEE value
@@ -164,6 +165,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
 
     // Macro-step 3: Score non-captures via killer/counter/check/promotion/history.
 
+    //FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
     // Check for killer moves FIRST (high priority)
     if (ply >= 0 && ply < MAX_PLY) {
         const auto& km1 = killerMoves[0][ply];
@@ -179,6 +181,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
 
     // Check for counter-move (response to opponent's previous move)
     if (previousMove != nullptr && previousMove->from.index < 64) {
+	//FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
         const uint16_t counter = counterMoves[previousMove->from.index][previousMove->to.index];
         if (counter != 0
             && counter == tt::TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
@@ -193,7 +196,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     if (moveIndex < 8 && oppKingSq < 64) {
         bool givesCheck = false;
         const bool isCastling = (fromPieceType == chess::Board::KING)
-            && (std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index)) == 2);
+            && (std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index)) == 2);
         if (isPromotionCandidate || isCastling) {
             chess::Board::MoveState tmpState;
             doMoveWithPromotion(b, m, tmpState);
@@ -204,6 +207,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
                 b, m, fromPieceType, usSide, oppKingSq, occ);
         }
 
+	//FIXME: Elimina costanti magiche
         if (givesCheck) {
             score = 8000; // High priority for checking moves
         }
@@ -211,6 +215,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
 
     // Macro-step 4: Apply quiet bonuses/penalties and history tie-breakers.
 
+    //FIXME: Elimina costanti magiche
     // Promotion bonus (if it's not a capture and no check was already detected)
     if (score == 0 && isPromotionCandidate) {
         score = 7000;
@@ -224,7 +229,8 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         // Tie-break promotions naturally: Q > R > B > N
         score += pieceValues[promoType];
     }
-
+    
+    //FIXME: Trasforma in funzione helper
     // Discourage placing a bishop directly in front of own pawn (blocks pawn advance)
     if (fromPieceType == chess::Board::BISHOP) {
         const int toIdx = m.to.index;
@@ -233,8 +239,8 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
             const uint64_t pawnMask = usIsWhite ? b.pawns_bb[0] : b.pawns_bb[1];
             if (pawnMask & chess::Board::bitMask(static_cast<uint8_t>(behind))) {
                 int bishopBlockPenalty = 80;
-                const int pawnFile = chess::Board::file(static_cast<uint8_t>(behind));
-                const int pawnRank = chess::Board::rank(static_cast<uint8_t>(behind));
+                const int pawnFile = chess::Board::fileOf(static_cast<uint8_t>(behind));
+                const int pawnRank = chess::Board::rankOf(static_cast<uint8_t>(behind));
                 const int pawnStartRank = usIsWhite ? 6 : 1;
                 // In opening, strongly de-prioritize bishop moves that sit in front of d/e pawns.
                 if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4) && pawnRank == pawnStartRank) {
@@ -264,10 +270,10 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     // This is ordering-only: it does not force pushes, but avoids searching
     // king shuffles before obvious pawn-race candidates.
     if (isEndgameOrdering) {
-        const int fromFile = chess::Board::file(m.from.index);
-        const int toFile = chess::Board::file(m.to.index);
+        const int fromFile = chess::Board::fileOf(m.from.index);
+        const int toFile = chess::Board::fileOf(m.to.index);
         if (fromFile == toFile) {
-            const int toRank = chess::Board::rank(m.to.index);
+            const int toRank = chess::Board::rankOf(m.to.index);
             const int advancement = usIsWhite ? (6 - toRank) : (toRank - 1);
             if (advancement > 0) {
                 score += 20 + advancement * 12;
@@ -279,7 +285,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     // Discourage moving the same pawn twice in the opening: small negative ordering penalty
     // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
     if (fullMoveClock < 8) {
-        const int fromRank = chess::Board::rank(m.from.index);
+        const int fromRank = chess::Board::rankOf(m.from.index);
         const int pawnStartRank = usIsWhite ? 6 : 1; // white pawns start on rank index 6, black on 1
         if (fromRank != pawnStartRank) {
             score += orderingPenaltySamePawnOpening; // negative value lowers priority
@@ -300,7 +306,8 @@ uint8_t Sorter::getLeastValuableAttackerTo(
     const uint64_t bishops_queens_bb = (b.bishops_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
     const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
     const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
-
+    
+    //FIXME: Cambia nome
     // Macro-step 2: Query attackers from least valuable to most valuable.
     uint64_t bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
     if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
@@ -360,6 +367,7 @@ int32_t Sorter::staticExchangeEvaluation(
     // Do not use piece-value early exits here.
     // They can misclassify captures like QxP as losing without checking
     // recaptures, pins, x-rays and overloaded defenders.
+    //FIXME: Trasforma in funzione helper
     while (depth < MAX_SEE_DEPTH) {
         // Find the least valuable attacker toward the target square
         uint8_t attacker = Sorter::getLeastValuableAttackerTo(b, toSq, occ, side);
@@ -436,8 +444,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         b.rooks_bb[0]   | b.rooks_bb[1]   |
         b.queens_bb[0]  | b.queens_bb[1]);
     const bool isEndgameOrdering = (nonPawnMajors <= 5);
-    const uint8_t usColor = usIsWhite ? chess::Board::WHITE : chess::Board::BLACK;
-    const int usSide = static_cast<int>(chess::Board::colorToIndex(usColor));
+    const int usSide = chess::Board::colorBoolToIndex(usIsWhite);
     const int oppSide = usSide ^ 1;
     const uint64_t occ = b.getPiecesBitMap();
     const uint64_t oppKingBB = b.kings_bb[oppSide];
@@ -461,6 +468,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         hashMoveIsLegal = containsMoveWithPromotion(sortedMoves, hashFrom, hashTo, hashPromo);
     }
 
+    //FIXME: trasforma in funzione helper
     // Macro-step 4: Score every move with copied ordering policy.
     for (int moveIndex = 0; moveIndex < sortedMoves.size; ++moveIndex) {
         const auto& m = sortedMoves[static_cast<size_t>(moveIndex)];
@@ -473,7 +481,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
             && fromPieceType == chess::Board::PAWN
             && toPieceType == chess::Board::EMPTY
             && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+            && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
@@ -491,9 +499,10 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
 
         // King move penalties (lower king-move priority in the opening if not castling)
         if (fromPieceType == chess::Board::KING) {
-            const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));
+            const int fileDelta = std::abs(chess::Board::fileOf(m.to.index) - chess::Board::fileOf(m.from.index));
             const bool isCastling = (fileDelta == 2);
 
+	    //FIXME: Elimina costanti magiche
             if (fullMoveClock < 10 && !inCheck && !isCastling) {
                 score -= 220; // opening-only ordering penalty
             } else if (isCastling) {
@@ -504,6 +513,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         moveScores[moveIndex] = score;
     }
 
+    //FIXME: Controlla duplicazione
     // Macro-step 5: Run insertion-sort on score/move arrays in descending order.
     // Insertion-sort scores and moves together (descending score).
     // MAX_MOVES is small, and the list is often partially ordered.
@@ -533,6 +543,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
     return sortedMoves;
 }
 
+//FIXME: Controlla duplicazione
 int32_t Sorter::clampQMoveScore(int64_t score) noexcept {
     // Macro-step 1: Clamp score to int32 max bound.
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
@@ -593,8 +604,10 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
     // Shallow qsearch (ply < 10): SEE >= -15cp (only tiny tactical losses)
     // Mid qsearch (10-20): SEE >= -8cp (very conservative)
     // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
+    //FIXME: Elimina numeri magici
     const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
 
+    //FIXME: Trasforma in funzione helper
     // Macro-step 3: Filter and score tactical moves with copied qsearch policy.
     for (int i = 0; i < sortedTacticalMoves.size; ++i) {
         const auto& m = sortedTacticalMoves[static_cast<size_t>(i)];
@@ -605,12 +618,13 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
             && fromPieceType == chess::Board::PAWN
             && toPieceType == chess::Board::EMPTY
             && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+            && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
         const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
 
         int32_t score = 0;
-
+      
+	//FIXME: Trasforma in funzione helper
         if (isCapture) {
             // TODO test this better!!
             // ============================================================================
@@ -670,6 +684,7 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
         return sortedTacticalMoves;
     }
 
+    //FIXME: Codice duplcicato, vedi ragionamento altrove
     // Macro-step 5: Insertion-sort scored tactical moves in descending order.
     // Insertion-sort tactical moves + scores together (descending).
     for (int i = 1; i < sortedTacticalMoves.size; ++i) {
@@ -711,7 +726,7 @@ bool Sorter::isForcingEvasion(
     // Macro-step 4: En-passant evasions are also forcing.
     return hasEnPassant
         && (m.to == enPassant)
-        && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+        && (chess::Board::fileOf(m.from.index) != chess::Board::fileOf(m.to.index));
 }
 
 MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(
@@ -727,6 +742,7 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(
     // 1) forcing evasions (captures/promotions)
     // 2) quiet evasions.
     // This improves alpha-beta cutoffs in tactical check sequences.
+    //FIXME: Trasformare for in funzione helper 	
     for (int pass = 0; pass < 2; ++pass) {
         const bool searchForcing = (pass == 0);
         for (const auto& m : evasions) {
