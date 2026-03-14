@@ -333,6 +333,7 @@ bool Searcher::tryNullMovePruning(
     }
 
     bool confirmedCutoff = true;
+    //FIXME: Elimina numero magico
     if (depth >= 10) {
         const int32_t verifyScore = searchPosition(
             b, runtime, depth - reduction, alpha, beta, ply,
@@ -468,6 +469,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     bool searchedAnyMove = false;
 
     struct QuietEntry { uint8_t from; uint8_t to; };
+    //FIXME: Spostare fuori costanti
     constexpr int MAX_QUIETS_TRACKED = 64;
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
@@ -549,6 +551,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const int32_t searchAlpha = isFirstMove ? bounds.alpha : (usIsWhite ? bounds.alpha : saturatingSub32(bounds.beta, 1));
         const int32_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? saturatingAdd32(bounds.alpha, 1) : bounds.beta);
 
+	//FIXME: Trasformare in funzione helper
         int32_t score = 0;
         if (canReduce) {
             constexpr double LMR_C = 3.07;
@@ -602,6 +605,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
+	//FIXME: Trasformare in funzione helper
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
@@ -645,10 +649,12 @@ int32_t Searcher::searchPosition(
     const chess::Board::Move* previousMove,
     uint64_t* nodeCounter,
     bool allowNullMove) noexcept {
+    //FIXME: Creare unica dichiarazione
     // Macro-step 1: Node accounting, stop checks, and qsearch transition guards.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
 
+    //FIXME: Spostare tutte codizioni if(se vero) -> return in unico metodo che ritorna bool. Se vero allora ritorna valore modificato score
     if (shouldAbortSearch(runtime)) {
         markInterrupted(runtime);
         return Evaluator::evaluate(b);
@@ -889,14 +895,17 @@ int32_t Searcher::quiescenceSearch(
 
     updateBound(standPat, alpha, beta, usIsWhite);
 
+    //FIXME: Spostare costante fuori
     static constexpr int32_t EARLY_DELTA_MARGIN = 950;
     if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
         return usIsWhite ? alpha : beta;
     }
 
+    //FIXME: Chiamare namespace
     int32_t deltaMargin = QUEEN_VALUE;
     const int side = chess::Board::colorToIndex(activeColor);
     const uint64_t ourPawns = b.pawns_bb[side];
+    //FIXME: Eliminare costanti magiche
     const uint64_t nearPromoPawns = usIsWhite
         ? (ourPawns & 0x00FF000000000000ULL)
         : (ourPawns & 0x000000000000FF00ULL);
@@ -907,12 +916,14 @@ int32_t Searcher::quiescenceSearch(
     const int32_t materialBalance = usIsWhite
         ? standPat
         : (standPat == std::numeric_limits<int32_t>::min() ? std::numeric_limits<int32_t>::max() : -standPat);
+    //FIXME: Eliminare costanti magiche
     if (materialBalance < -400) {
         deltaMargin += 150;
     } else if (materialBalance < -200) {
         deltaMargin += 75;
     }
 
+    //FIXME: Eliminare costanti magiche
     const int qsearchDepth = std::max(0, ply - static_cast<int>(runtime.depth));
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
@@ -934,6 +945,7 @@ int32_t Searcher::quiescenceSearch(
     const int32_t betaOrig = beta;
     int32_t best = standPat;
 
+    //FIXME: Eliminare costanti magiche
     for (const auto& m : tacticalMoves) {
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
@@ -1006,6 +1018,7 @@ chess::Board::Move Searcher::getBestMove(
     const bool useYBWC = (rootMoves.size >= 10
         && runtime.depth >= static_cast<uint64_t>(DEFAULT_DEPTH - 2));
 
+    //FIXME: Eliminare costanti magiche
     // Macro-step 2: Sequential PVS root search when YBWC is not profitable.
     if (!useYBWC) {
         for (int i = 0; i < rootMoves.size; ++i) {
@@ -1016,6 +1029,7 @@ chess::Board::Move Searcher::getBestMove(
 
             const auto& m = rootMoves[i];
             int32_t score = 0;
+	    //FIXME: Fare prima interazione fuori ciclo e poi il resto paretendo da i=1
             if (i == 0) {
                 score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
             } else {
@@ -1043,6 +1057,7 @@ chess::Board::Move Searcher::getBestMove(
         if (searchedAnyMove) runtime.eval = bestScore;
         return bestMove;
     }
+    //FIXME: Eliminare scopo anonimo
 
     // Macro-step 3: YBWC root search (first move serial, remaining moves task-parallel).
     {
@@ -1078,6 +1093,7 @@ chess::Board::Move Searcher::getBestMove(
     int candidateThreads = std::max(1, static_cast<int>(rootMoves.size) - 1);
     const int threadsToUse = std::max(1, std::min(runtime.maxThreads, candidateThreads));
 
+    //FIXME: Fare funzione helper
     if (threadsToUse <= 1) {
         for (int i = 1; i < rootMoves.size; ++i) {
             if (shouldAbortSearch(runtime)) {
@@ -1103,6 +1119,7 @@ chess::Board::Move Searcher::getBestMove(
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk);
 
+	//FIXME: Eliminare indentazioni
         #pragma omp parallel num_threads(threadsToUse)
         {
             #pragma omp single nowait
@@ -1179,6 +1196,7 @@ void Searcher::storeRootHashMove(
     int32_t score,
     SearchRuntime& runtime,
     uint8_t flag) noexcept {
+    //FIXME: Mettere in pre codizioni
     if (runtime.transpositionTable == nullptr) {
         return;
     }
@@ -1245,6 +1263,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         return (v >= 0) ? v : -v;
     };
 
+    //FIXME: Fare funzione helper
     // Macro-step 2: Iterate depth-by-depth with aspiration windows when stable.
     for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (shouldAbortSearch(runtime)) {
