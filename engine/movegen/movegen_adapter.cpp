@@ -4,6 +4,10 @@
 
 namespace engine {
 
+MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
+    return engine::search::MoveGenerator::generateLegalMoves(b);
+}
+
 MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     const chess::Board& b,
     bool includeChecks,
