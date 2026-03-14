@@ -8,8 +8,8 @@ inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whi
     if (!kingBB) [[unlikely]] return 0;
 
     const int sq = __builtin_ctzll(kingBB);
-    const int kingFile = chess::Board::fileOf(sq);
-    const int kingRank = chess::Board::rankOf(sq);
+    const int kingFile = chess::Board::file(sq);
+    const int kingRank = chess::Board::rank(sq);
     const int sign = (side == 0) ? 1 : -1;
     const int opp = side ^ 1;
     const bool canCastleKingside = (side == 0) ? whiteCastleKs : blackCastleKs;
@@ -102,7 +102,7 @@ inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, b
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     uint64_t shieldSquares = 0ULL;
-    const int kingFile = chess::Board::fileOf(static_cast<uint8_t>(sq));
+    const int kingFile = chess::Board::file(static_cast<uint8_t>(sq));
     if (side == 0) {
         if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
         if (sq >= 7 && kingFile != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
@@ -145,7 +145,7 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         uint64_t ownFilePawns = ownPawns & fileMask;
         while (ownFilePawns) {
             const int pawnSq = popLSB(ownFilePawns);
-            const int pawnRank = chess::Board::rankOf(pawnSq);
+            const int pawnRank = chess::Board::rank(pawnSq);
             if (side == 0) {
                 if (pawnRank < kingRank) {
                     shelterDist = std::min(shelterDist, kingRank - pawnRank);
@@ -186,7 +186,7 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         uint64_t enemyFilePawns = enemyPawns & fileMask;
         while (enemyFilePawns) {
             const int pawnSq = popLSB(enemyFilePawns);
-            const int pawnRank = chess::Board::rankOf(pawnSq);
+            const int pawnRank = chess::Board::rank(pawnSq);
             if (side == 0) {
                 if (pawnRank < kingRank) {
                     stormDist = std::min(stormDist, kingRank - pawnRank);

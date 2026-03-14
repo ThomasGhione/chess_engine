@@ -30,7 +30,7 @@ inline bool isEnPassantCapture(const chess::Board& board, const chess::Board::Mo
     const uint8_t fromPieceType = board.get(move.from) & chess::Board::MASK_PIECE_TYPE;
     if (fromPieceType != chess::Board::PAWN) return false;
     if (board.get(move.to) != chess::Board::EMPTY) return false;
-    if (chess::Board::fileOf(move.from.index) == chess::Board::fileOf(move.to.index)) return false;
+    if (chess::Board::fileove.from.index) == chchess::Board::filee.to.index)) return false;
 
     const chess::Coords ep = board.getEnPassant();
     return chess::Coords::isInBounds(ep) && (move.to == ep);

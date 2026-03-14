@@ -45,8 +45,8 @@ inline int32_t Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fullM
 }
 
 inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept {
-    const int rank = chess::Board::rankOf(psq);
-    const int file = chess::Board::fileOf(psq);
+    const int rank = chess::Board::rank(psq);
+    const int file = chess::Board::file(psq);
     const bool pawnOnStart = rank == (side == 0 ? 6 : 1);
     const int forward = side == 0 ? (psq - 8) : (psq + 8);
     if (forward < 0 || forward >= 64) return 0;

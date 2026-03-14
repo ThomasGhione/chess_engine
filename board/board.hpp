@@ -155,8 +155,8 @@ public:
     static constexpr int colorBoolToIndex(bool isWhite) noexcept;
     static constexpr uint8_t promotionRank(bool isWhite) noexcept;
     static constexpr uint64_t bitMask(uint8_t sq) noexcept;
-    static constexpr uint8_t fileOf(uint8_t sq) noexcept;
-    static constexpr uint8_t rankOf(uint8_t sq) noexcept;
+    static constexpr uint8_t file(uint8_t sq) noexcept;
+    static constexpr uint8_t rank(uint8_t sq) noexcept;
 
     template<bool IsWhite>
     static constexpr uint8_t promotionRank() noexcept;

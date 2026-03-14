@@ -5,7 +5,7 @@ namespace engine {
 static constexpr auto WHITE_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::fileOf(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(static_cast<uint8_t>(sq));
         uint64_t mask = 0ULL;
         if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 7));
         if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 9));
@@ -17,7 +17,7 @@ static constexpr auto WHITE_SUPPORT_MASKS = [] {
 static constexpr auto BLACK_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::fileOf(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(static_cast<uint8_t>(sq));
         uint64_t mask = 0ULL;
         if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 7));
         if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 9));
@@ -118,10 +118,10 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
     uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        const int adjRank = chess::Board::rankOf(static_cast<uint8_t>(adjSq));
+        const int adjRank = chess::Board::rank(static_cast<uint8_t>(adjSq));
         if (std::abs(adjRank - rank) > 1) continue;
 
-        const int adjFile = chess::Board::fileOf(static_cast<uint8_t>(adjSq));
+        const int adjFile = chess::Board::file(static_cast<uint8_t>(adjSq));
         const bool adjPassed = ((enemyAdjAndFilePawns[adjFile] & forwardFill) == 0ULL);
         if (adjPassed) {
             hasConnectedPassedPawn = true;
@@ -166,7 +166,7 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
     uint64_t adjacentHelpers = ownPawns & ADJACENT_FILES_ONLY[file];
     while (adjacentHelpers) {
         const int helperSq = popLSB(adjacentHelpers);
-        const int helperRank = chess::Board::rankOf(static_cast<uint8_t>(helperSq));
+        const int helperRank = chess::Board::rank(static_cast<uint8_t>(helperSq));
         if (isWhite ? (helperRank >= rank) : (helperRank <= rank)) {
             hasAdjacentHelper = true;
             break;
@@ -199,8 +199,8 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
     uint64_t pawns = ownPawns;
     while (pawns) {
         const int sq = popLSB(pawns);
-        const int file = chess::Board::fileOf(static_cast<uint8_t>(sq));
-        const int rank = chess::Board::rankOf(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(static_cast<uint8_t>(sq));
+        const int rank = chess::Board::rank(static_cast<uint8_t>(sq));
         const bool hasSupport = (ownPawns & supportMasks[sq]) != 0ULL;
         const uint64_t frontMask = oneStepMasks[sq];
         const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);

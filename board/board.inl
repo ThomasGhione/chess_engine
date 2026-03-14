@@ -44,8 +44,8 @@ inline Board::Board(const std::string& fen) {
 
 inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
 
-inline constexpr uint8_t Board::fileOf(uint8_t sq) noexcept { return sq & 7; } // Extract bits 0-2 
-inline constexpr uint8_t Board::rankOf(uint8_t sq) noexcept { return sq >> 3; } // Extract bits 3-5 
+inline constexpr uint8_t Board::file(uint8_t sq) noexcept { return sq & 7; } // Extract bits 0-2
+inline constexpr uint8_t Board::rank(uint8_t sq) noexcept { return sq >> 3; } // Extract bits 3-5
 
 // ==============================
 // Move Value Helpers

@@ -1,8 +1,8 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    const int fileA = chess::Board::fileOf(static_cast<uint8_t>(a));
-    const int fileB = chess::Board::fileOf(static_cast<uint8_t>(b));
-    const int rankA = chess::Board::rankOf(static_cast<uint8_t>(a));
-    const int rankB = chess::Board::rankOf(static_cast<uint8_t>(b));
+    const int fileA = chess::Board::file(static_cast<uint8_t>(a));
+    const int fileB = chess::Board::file(static_cast<uint8_t>(b));
+    const int rankA = chess::Board::rank(static_cast<uint8_t>(a));
+    const int rankB = chess::Board::rank(static_cast<uint8_t>(b));
     return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
@@ -40,8 +40,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
         uint64_t mask = 0;
-        const int rank = chess::Board::rankOf(sq);
-        const int file = chess::Board::fileOf(sq);
+        const int rank = chess::Board::rank(sq);
+        const int file = chess::Board::file(sq);
 
         for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
             for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
@@ -60,7 +60,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
 inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
     }
     return result;
@@ -69,7 +69,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
 inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
     }
     return result;

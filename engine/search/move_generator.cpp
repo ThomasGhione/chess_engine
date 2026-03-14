@@ -64,7 +64,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     }
 
     if (!inCheck) { // castling: illegal when in check.
-        const uint8_t f = chess::Board::fileOf(from);
+        const uint8_t f = chess::Board::file(from);
         if (f <= 5 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from + 2), inCheck))
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
         if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))
@@ -250,7 +250,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = chess::Board::rankOf(from);
+            const uint8_t rank = chess::Board::rank(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
@@ -330,7 +330,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                 epCandidate = enPassantBit;
             }
 
-            const uint8_t rank = chess::Board::rankOf(from);
+            const uint8_t rank = chess::Board::rank(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
@@ -491,7 +491,7 @@ void MoveGenerator::addPawnMovesFromMask(
     if (!mask) [[unlikely]] return;
 
     const chess::Coords fromC{from};
-    const uint8_t fromFile = chess::Board::fileOf(from);
+    const uint8_t fromFile = chess::Board::file(from);
     const bool isWhite = (b.getColor(from) == chess::Board::WHITE);
     const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
 
@@ -502,7 +502,7 @@ void MoveGenerator::addPawnMovesFromMask(
         const chess::Coords toC{to};
         const bool isEnPassant = hasEnPassant
             && (toC == enPassant)
-            && (chess::Board::fileOf(to) != fromFile);
+            && (chess::Board::file(to) != fromFile);
 
         // Always check legality for en passant (changes occupancy), otherwise it's already filtered
         if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
@@ -510,7 +510,7 @@ void MoveGenerator::addPawnMovesFromMask(
         }
 	
         // Macro-step 3: Emit promotion set or regular pawn move.
-        if (chess::Board::rankOf(to) == promotionRank) {
+        if (chess::Board::rank(to) == promotionRank) {
             addPromotionMoves(moves, fromC, toC);
         } else {
             moves.emplace_back(chess::Board::Move{fromC, toC});
@@ -563,7 +563,7 @@ void MoveGenerator::addTacticalMovesFromMask(
     const uint8_t oppColor = includeChecks
         ? chess::Board::oppositeColor(b.getActiveColor())
         : static_cast<uint8_t>(chess::Board::WHITE);
-    const uint8_t fromFile = chess::Board::fileOf(from);
+    const uint8_t fromFile = chess::Board::file(from);
 
     // Macro-step 2: Iterate candidates and identify tactical categories.
     while (mask) {
@@ -573,9 +573,9 @@ void MoveGenerator::addTacticalMovesFromMask(
 	//FIXME: Rendere resto del codice in funzione helper
         const uint8_t toPiece = b.get(to);
         const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
-            && (chess::Board::fileOf(to) != fromFile) && (toPiece == chess::Board::EMPTY);
+            && (chess::Board::file(to) != fromFile) && (toPiece == chess::Board::EMPTY);
         const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
-        const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
+        const bool isPromotion = isPawn && (chess::Board::rank(to) == chess::Board::promotionRank(isWhite));
 
         // Fast path: when checks are disabled, skip non-tactical quiet moves immediately.
         if (!includeChecks && !isCapture && !isPromotion) {
@@ -638,7 +638,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
         }
 
         const chess::Coords toC{to};
-        const bool isPromotion = isPawn && (chess::Board::rankOf(to) == chess::Board::promotionRank(isWhite));
+        const bool isPromotion = isPawn && (chess::Board::rank(to) == chess::Board::promotionRank(isWhite));
         // Macro-step 2: Emit promotion expansions or plain evasions.
         if (isPromotion) {
             addPromotionMoves(moves, fromC, toC);
@@ -654,10 +654,10 @@ uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept 
     // Macro-step 1: Detect invalid geometry and compute stepping direction.
     if (from == to) [[unlikely]] return 0ULL;
 
-    const int fromFile = chess::Board::fileOf(from);
-    const int fromRank = chess::Board::rankOf(from);
-    const int toFile = chess::Board::fileOf(to);
-    const int toRank = chess::Board::rankOf(to);
+    const int fromFile = chess::Board::file(from);
+    const int fromRank = chess::Board::rank(from);
+    const int toFile = chess::Board::file(to);
+    const int toRank = chess::Board::rank(to);
     //FIXME: Mettere dei nomi migliori
     const int df = toFile - fromFile;
     const int dr = toRank - fromRank;
@@ -731,8 +731,8 @@ void MoveGenerator::computePinRays(
 
     //FIXME: Convertire in funzione helper
     // Macro-step 2: Scan each line from king to detect own piece + enemy pinner alignment.
-    const int kingFile = chess::Board::fileOf(kingSq);
-    const int kingRank = chess::Board::rankOf(kingSq);
+    const int kingFile = chess::Board::file(kingSq);
+    const int kingRank = chess::Board::rank(kingSq);
 
     static constexpr int DIRS[8][2] = {
         {0, 1}, {0, -1}, {1, 0}, {-1, 0},

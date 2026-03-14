@@ -24,7 +24,7 @@ bool Board::promote(const Coords& at, char choice) noexcept {
         return false; // must be a pawn
     
     const uint8_t color = piece & MASK_COLOR; // WHITE if set, otherwise BLACK
-    if (rankOf(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
+    if (rank(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
         return false;
 
     const uint8_t promo = normalizePromotionChoice(choice);
@@ -158,8 +158,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor
 ) const noexcept {
     const uint8_t oppColor = oppositeColor(movingColor);
-    const int fileDelta = fileOf(toIndex) - fileOf(fromIndex);
-    const int rankDelta = rankOf(toIndex) - rankOf(fromIndex);
+    const int fileDelta = file(toIndex) - file(fromIndex);
+    const int rankDelta = rank(toIndex) - rank(fromIndex);
 
     // Handle castling explicitly when king moves two files on same rank
     if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
@@ -180,12 +180,12 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor,
     bool isKingside
 ) const noexcept {
-    if (fileOf(fromIndex) != 4) return false;
+    if (file(fromIndex) != 4) return false;
     
     const bool isWhite = (movingColor == WHITE);
     const uint8_t expectedRank = isWhite ? 7 : 0;
 
-    if (rankOf(fromIndex) != expectedRank) return false;
+    if (rank(fromIndex) != expectedRank) return false;
     
     return canCastleGeneric(isWhite, fromIndex, isKingside);
 }
