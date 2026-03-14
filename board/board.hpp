@@ -152,20 +152,10 @@ public:
     // Methods start
     static constexpr uint8_t oppositeColor(uint8_t color) noexcept;
     static constexpr uint8_t colorToIndex(uint8_t color) noexcept;
-    static constexpr int colorBoolToIndex(bool isWhite) noexcept;
     static constexpr uint8_t promotionRank(bool isWhite) noexcept;
     static constexpr uint64_t bitMask(uint8_t sq) noexcept;
     static constexpr uint8_t file(uint8_t sq) noexcept;
     static constexpr uint8_t rank(uint8_t sq) noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t promotionRank() noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t backRank() noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t seventhRank() noexcept;
 
     __attribute__((hot, always_inline))
     constexpr inline uint8_t get(uint8_t index) const noexcept;
@@ -203,8 +193,6 @@ public:
     __attribute__((hot))
     bool isCheckmate(uint8_t color) const noexcept;
 
-    uint8_t get(const std::string& square) const noexcept;
-    std::string getCurrentFen() const noexcept;
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
     constexpr uint16_t getFullMoveClock() const noexcept;

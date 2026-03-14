@@ -1,4 +1,5 @@
 #include "../evaluator.hpp"
+
 #include <algorithm>
 #include <cstring>
 #include <iostream>
@@ -29,11 +30,13 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
               << ", fullMoves=" << phase.fullMoves << ")" << std::endl;
 
     eval += board.getIncrementalPsqtDelta(phase.isEndgame);
-    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
+    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval - prev) << ")" << std::endl;
+    prev = eval;
 
     if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
     if (((board.bishops_bb[1] & (board.bishops_bb[1] - 1)) != 0ULL)) eval -= engine::BISHOP_PAIR_BONUS;
-    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval-prev) << ")" << std::endl; prev = eval;
+    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval - prev) << ")" << std::endl;
+    prev = eval;
 
     AttackData attackData[2] = {};
     ensureAttackData(attackData, board, occ);

@@ -8,11 +8,6 @@ inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
     return static_cast<uint8_t>(((color & MASK_COLOR) >> 3) ^ 0x1u);
 }
 
-inline constexpr int Board::colorBoolToIndex(bool isWhite) noexcept { return isWhite ? 0 : 1; }
-
-template<bool IsWhite>
-inline constexpr uint8_t Board::promotionRank() noexcept { return IsWhite ? 0 : 7; }
-
 inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
 
 // ==============================
@@ -92,14 +87,6 @@ __attribute__((always_inline))
 inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
-
-inline uint8_t Board::get(const std::string& square) const noexcept {
-    const uint8_t col = square[0] - 'a';
-    const uint8_t row = square[1] - '1';
-    return get(row, col);
-}
-
-inline std::string Board::getCurrentFen() const noexcept { return fromBoardToFen(); };
 
 inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
 

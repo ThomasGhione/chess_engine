@@ -59,8 +59,6 @@ public:
     GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
 
-    static int32_t getMaterialDelta(const chess::Board& b) noexcept;
-
     // Magic bitboard initialization (shared across all Engine instances)
     static inline bool magicTablesInitialized = false;
     static void ensureMagicTablesInitialized() noexcept;

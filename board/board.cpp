@@ -196,7 +196,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t fromIndex,
     bool isKingside
 ) const noexcept {
-    const uint8_t side = colorBoolToIndex(isWhite);
+    const uint8_t side = colorToIndex(isWhite ? WHITE : BLACK);
     const uint8_t oppColor = oppositeColor(isWhite ? WHITE : BLACK);
     
     // Check castling rights

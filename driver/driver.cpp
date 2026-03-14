@@ -274,7 +274,7 @@ namespace driver {
         }
     
         std::ofstream SaveFile("saves/save.txt");
-        SaveFile << engine.board.getCurrentFen();
+        SaveFile << engine.board.fromBoardToFen();
 
         // If playing against bot, then saveGame() is called by the player, so it saves the opposite active color to indicate
         // the color of the bot
@@ -330,4 +330,3 @@ namespace driver {
         }
     } 
 }
-

@@ -23,10 +23,9 @@ public:
 
     // Static methods
     static int32_t evaluate(const chess::Board& board) noexcept;
-
     static int32_t evaluateTrace(const chess::Board& board) noexcept;
-    
     static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
+
     static int32_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
@@ -219,7 +218,6 @@ private:
     static inline int32_t evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept;
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
-
     static int32_t getMaterialDeltaCached(const chess::Board& b) noexcept;
     static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
     static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
