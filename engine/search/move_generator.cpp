@@ -704,7 +704,8 @@ void MoveGenerator::computePinRays(
     // Macro-step 1: Prepare side metadata and zero outputs.
     pinnedMask = 0ULL;
     //FIXME: Non possiamo usare il dato di board?
-    const int us = isWhite ? 0 : 1;
+    const uint8_t ownColor = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
+    const int us = static_cast<int>(chess::Board::colorToIndex(ownColor));
     const int them = us ^ 1;
 
     //FIXME: Usare funzione std
@@ -714,7 +715,6 @@ void MoveGenerator::computePinRays(
     }
 
     const uint8_t kingSq = kingPos.index;
-    const uint8_t ownColor = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
 

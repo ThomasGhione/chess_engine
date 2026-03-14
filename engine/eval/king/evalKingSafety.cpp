@@ -102,15 +102,16 @@ inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, b
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     uint64_t shieldSquares = 0ULL;
+    const int kingFile = chess::Board::fileOf(static_cast<uint8_t>(sq));
     if (side == 0) {
         if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
-        if (sq >= 7 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
-        if (sq >= 9 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq - 9);
+        if (sq >= 7 && kingFile != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
+        if (sq >= 9 && kingFile != 0) shieldSquares |= chess::Board::bitMask(sq - 9);
         sideSafety += __builtin_popcountll(whitePawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     } else {
         if (sq <= 55) shieldSquares |= chess::Board::bitMask(sq + 8);
-        if (sq <= 56 && (sq & 7) != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
-        if (sq <= 54 && (sq & 7) != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
+        if (sq <= 56 && kingFile != 0) shieldSquares |= chess::Board::bitMask(sq + 7);
+        if (sq <= 54 && kingFile != 7) shieldSquares |= chess::Board::bitMask(sq + 9);
         sideSafety += __builtin_popcountll(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     }
 }

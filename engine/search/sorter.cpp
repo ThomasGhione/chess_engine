@@ -436,7 +436,8 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         b.rooks_bb[0]   | b.rooks_bb[1]   |
         b.queens_bb[0]  | b.queens_bb[1]);
     const bool isEndgameOrdering = (nonPawnMajors <= 5);
-    const int usSide = chess::Board::colorBoolToIndex(usIsWhite);
+    const uint8_t usColor = usIsWhite ? chess::Board::WHITE : chess::Board::BLACK;
+    const int usSide = static_cast<int>(chess::Board::colorToIndex(usColor));
     const int oppSide = usSide ^ 1;
     const uint64_t occ = b.getPiecesBitMap();
     const uint64_t oppKingBB = b.kings_bb[oppSide];

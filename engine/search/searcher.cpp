@@ -403,7 +403,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
     // CAPTURE HISTORY: bonus for captures that cause cutoffs.
     if (isCapture) {
-        const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+        const int colorIndex = static_cast<int>(chess::Board::colorToIndex(us));
         const int32_t depthPlusOne = depth + 1;
         const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
 
@@ -441,7 +441,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     }
 
     // HISTORY HEURISTIC: gravity update.
-    const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
+    const int colorIndex = static_cast<int>(chess::Board::colorToIndex(us));
     const int32_t depthPlusOne = depth + 1;
     const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
 
@@ -608,7 +608,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                     b, m, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove);
 
                 if (isQuietMove) {
-                    const int colorIndex = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+                    const int colorIndex = static_cast<int>(chess::Board::colorToIndex(ctx.activeColor));
                     const int malus = -static_cast<int>((ctx.depth + 1) * (ctx.depth + 1));
                     constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
@@ -711,9 +711,10 @@ int32_t Searcher::searchPosition(
 
     node.staticEval = (ply > 0 && !node.inCheck) ? Evaluator::evaluate(b) : 0;
 
+    const int side = static_cast<int>(chess::Board::colorToIndex(node.activeColor));
     const int nonPawnMajors = __builtin_popcountll(
-        b.knights_bb[node.usIsWhite ? 0 : 1] | b.bishops_bb[node.usIsWhite ? 0 : 1] |
-        b.rooks_bb[node.usIsWhite ? 0 : 1]   | b.queens_bb[node.usIsWhite ? 0 : 1]);
+        b.knights_bb[side] | b.bishops_bb[side] |
+        b.rooks_bb[side]   | b.queens_bb[side]);
     const int32_t nmpEvalGate = node.usIsWhite
         ? (node.staticEval + 100)
         : (node.staticEval - 100);

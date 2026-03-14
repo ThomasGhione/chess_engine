@@ -1,5 +1,9 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
+    const int fileA = chess::Board::fileOf(static_cast<uint8_t>(a));
+    const int fileB = chess::Board::fileOf(static_cast<uint8_t>(b));
+    const int rankA = chess::Board::rankOf(static_cast<uint8_t>(a));
+    const int rankB = chess::Board::rankOf(static_cast<uint8_t>(b));
+    return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
