@@ -229,7 +229,8 @@ private:
 
     static SearchMoveResult searchMoves(
         chess::Board& b,
-        const MoveList<chess::Board::Move>& orderedMoves,
+        MoveList<chess::Board::Move>& orderedMoves,
+        int32_t* moveScores,
         bool usIsWhite,
         const SearchContext& ctx,
         AlphaBeta& bounds,

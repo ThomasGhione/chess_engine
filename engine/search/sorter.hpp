@@ -17,6 +17,27 @@ public:
     static constexpr int MAX_PLY = 64;
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
 
+    struct MovePickerData {
+        MoveList<chess::Board::Move> moves;
+        int32_t scores[MAX_MOVES] {};
+        int size = 0;
+        bool hashMoveIsLegal = false;
+    };
+
+    static MovePickerData prepareMovePicker(
+        const MoveList<chess::Board::Move>& moves,
+        int ply,
+        chess::Board& b,
+        bool usIsWhite,
+        uint64_t hashKey,
+        const int16_t (&history)[2][64][64],
+        const chess::Board::Move (&killerMoves)[2][MAX_PLY],
+        const uint16_t (&counterMoves)[64][64],
+        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
+        const tt::TranspositionTable* transpositionTable,
+        const chess::Board::Move* previousMove = nullptr,
+        int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
+
     static MoveList<chess::Board::Move> sortLegalMoves(
         const MoveList<chess::Board::Move>& moves,
         int ply,

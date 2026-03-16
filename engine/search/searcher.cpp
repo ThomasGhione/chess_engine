@@ -459,7 +459,8 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
 Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board& b,
-    const MoveList<chess::Board::Move>& orderedMoves,
+    MoveList<chess::Board::Move>& orderedMoves,
+    int32_t* moveScores,
     bool usIsWhite,
     const SearchContext& ctx,
     AlphaBeta& bounds,
@@ -520,14 +521,31 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.kings_bb[oppSide];
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
-    int moveIndex = 0;
 
-    // Macro-step 3: Visit ordered moves with LMP/futility/LMR/PVS logic.
-    for (const auto& m : orderedMoves) {
+    // Macro-step 3: Incremental move picker + visit loop with LMP/futility/LMR/PVS logic.
+    for (int moveIndex = 0; moveIndex < orderedMoves.size; ++moveIndex) {
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
             break;
         }
+
+        if (moveScores != nullptr) {
+            // Pick best remaining move without globally sorting the full list.
+            int bestIndex = moveIndex;
+            int32_t pickScore = moveScores[moveIndex];
+            for (int candidate = moveIndex + 1; candidate < orderedMoves.size; ++candidate) {
+                if (moveScores[candidate] > pickScore) {
+                    bestIndex = candidate;
+                    pickScore = moveScores[candidate];
+                }
+            }
+            if (bestIndex != moveIndex) {
+                std::swap(orderedMoves[static_cast<size_t>(moveIndex)], orderedMoves[static_cast<size_t>(bestIndex)]);
+                std::swap(moveScores[moveIndex], moveScores[bestIndex]);
+            }
+        }
+
+        const chess::Board::Move m = orderedMoves[static_cast<size_t>(moveIndex)];
         const bool isFirstMove = (moveIndex == 0);
 
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
@@ -544,14 +562,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && (__builtin_popcountll(forkTargets) >= 2);
 
         if (canLMP && isQuietMove && !createsPawnForkThreat && moveIndex >= lmpThreshold) {
-            ++moveIndex;
             continue;
         }
 
         const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
         if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
-            ++moveIndex;
             continue;
         }
 
@@ -668,7 +684,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             }
             break;
         }
-        ++moveIndex;
     }
 
     // Macro-step 4: Return best-score package with interruption-safe fallback.
@@ -830,21 +845,46 @@ int32_t Searcher::searchPosition(
             : stalemateScoreFromMaterialDelta(Evaluator::getMaterialDelta(b));
     }
 
+    static constexpr int INCREMENTAL_PICKER_BRANCHING_THRESHOLD = 40;
+    const bool useIncrementalPicker = (moves.size >= INCREMENTAL_PICKER_BRANCHING_THRESHOLD);
+
+    Sorter::MovePickerData movePicker;
+    MoveList<chess::Board::Move> orderedMoves;
+    int32_t* moveScores = nullptr;
     bool hasHashMove = false;
-    moves = Sorter::sortLegalMoves(
-        moves,
-        ply,
-        b,
-        node.usIsWhite,
-        hashKey,
-        runtime.history,
-        runtime.killerMoves,
-        runtime.counterMoves,
-        runtime.captureHistory,
-        canUseTT ? runtime.transpositionTable : nullptr,
-        ctx.previousMove,
-        &hasHashMove,
-        runtime.orderingPenaltySamePawnOpening);
+
+    if (useIncrementalPicker) {
+        movePicker = Sorter::prepareMovePicker(
+            moves,
+            ply,
+            b,
+            node.usIsWhite,
+            hashKey,
+            runtime.history,
+            runtime.killerMoves,
+            runtime.counterMoves,
+            runtime.captureHistory,
+            canUseTT ? runtime.transpositionTable : nullptr,
+            ctx.previousMove,
+            runtime.orderingPenaltySamePawnOpening);
+        hasHashMove = movePicker.hashMoveIsLegal;
+        moveScores = movePicker.scores;
+    } else {
+        orderedMoves = Sorter::sortLegalMoves(
+            moves,
+            ply,
+            b,
+            node.usIsWhite,
+            hashKey,
+            runtime.history,
+            runtime.killerMoves,
+            runtime.counterMoves,
+            runtime.captureHistory,
+            canUseTT ? runtime.transpositionTable : nullptr,
+            ctx.previousMove,
+            &hasHashMove,
+            runtime.orderingPenaltySamePawnOpening);
+    }
 
     if (!hasHashMove && depth >= 6 && ply > 0) {
         ctx.depth -= 1;
@@ -853,8 +893,9 @@ int32_t Searcher::searchPosition(
     const int32_t alphaOrig = bounds.alpha;
     const int32_t betaOrig = bounds.beta;
 
+    MoveList<chess::Board::Move>& searchMovesList = useIncrementalPicker ? movePicker.moves : orderedMoves;
     SearchMoveResult result = searchMoves(
-        b, moves, node.usIsWhite, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
+        b, searchMovesList, moveScores, node.usIsWhite, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
     if (isInterrupted(runtime)) {

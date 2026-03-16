@@ -409,7 +409,7 @@ int32_t Sorter::staticExchangeEvaluation(
     return gain[0];
 }
 
-MoveList<chess::Board::Move> Sorter::sortLegalMoves(
+Sorter::MovePickerData Sorter::prepareMovePicker(
     const MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
@@ -421,18 +421,15 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
     const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
     const tt::TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
-    bool* outHashMoveIsLegal,
     int32_t orderingPenaltySamePawnOpening) noexcept {
-    // Macro-step 1: Copy input list and early-out for empty input.
-    MoveList<chess::Board::Move> sortedMoves = moves;
-    if (sortedMoves.is_empty()) [[unlikely]] {
-        if (outHashMoveIsLegal != nullptr) {
-            *outHashMoveIsLegal = false;
-        }
-        return sortedMoves;
-    }
+    MovePickerData picker;
 
-    int32_t moveScores[MAX_MOVES] {};
+    // Macro-step 1: Copy input list and early-out for empty input.
+    picker.moves = moves;
+    picker.size = picker.moves.size;
+    if (picker.moves.is_empty()) [[unlikely]] {
+        return picker;
+    }
 
     // Macro-step 2: Precompute board and phase features used by every move.
     const uint8_t activeColor = b.getActiveColor();
@@ -465,13 +462,14 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
 
         // Validate hash move is in legal moves list (guards against TT collisions)
-        hashMoveIsLegal = containsMoveWithPromotion(sortedMoves, hashFrom, hashTo, hashPromo);
+        hashMoveIsLegal = containsMoveWithPromotion(picker.moves, hashFrom, hashTo, hashPromo);
     }
+    picker.hashMoveIsLegal = hashMoveIsLegal;
 
     //FIXME: trasforma in funzione helper
     // Macro-step 4: Score every move with copied ordering policy.
-    for (int moveIndex = 0; moveIndex < sortedMoves.size; ++moveIndex) {
-        const auto& m = sortedMoves[static_cast<size_t>(moveIndex)];
+    for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
+        const auto& m = picker.moves[static_cast<size_t>(moveIndex)];
         const uint8_t fromPiece = b.get(m.from);
         const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
 
@@ -510,13 +508,54 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
             }
         }
 
-        moveScores[moveIndex] = score;
+        picker.scores[moveIndex] = score;
+    }
+
+    return picker;
+}
+
+MoveList<chess::Board::Move> Sorter::sortLegalMoves(
+    const MoveList<chess::Board::Move>& moves,
+    int ply,
+    chess::Board& b,
+    bool usIsWhite,
+    uint64_t hashKey,
+    const int16_t (&history)[2][64][64],
+    const chess::Board::Move (&killerMoves)[2][MAX_PLY],
+    const uint16_t (&counterMoves)[64][64],
+    const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
+    const tt::TranspositionTable* transpositionTable,
+    const chess::Board::Move* previousMove,
+    bool* outHashMoveIsLegal,
+    int32_t orderingPenaltySamePawnOpening) noexcept {
+    MovePickerData picker = prepareMovePicker(
+        moves,
+        ply,
+        b,
+        usIsWhite,
+        hashKey,
+        history,
+        killerMoves,
+        counterMoves,
+        captureHistory,
+        transpositionTable,
+        previousMove,
+        orderingPenaltySamePawnOpening);
+
+    if (picker.moves.is_empty()) [[unlikely]] {
+        if (outHashMoveIsLegal != nullptr) {
+            *outHashMoveIsLegal = false;
+        }
+        return picker.moves;
     }
 
     //FIXME: Controlla duplicazione
     // Macro-step 5: Run insertion-sort on score/move arrays in descending order.
     // Insertion-sort scores and moves together (descending score).
     // MAX_MOVES is small, and the list is often partially ordered.
+    MoveList<chess::Board::Move>& sortedMoves = picker.moves;
+    int32_t* moveScores = picker.scores;
+
     for (int i = 1; i < sortedMoves.size; ++i) {
         const chess::Board::Move keyMove = sortedMoves[static_cast<size_t>(i)];
         const int32_t keyScore = moveScores[i];
@@ -531,10 +570,9 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
     }
 
     // Macro-step 6: Report whether hash move ended up as first move.
-    const bool hashMovePlacedFirst = hashMoveIsLegal
+    const bool hashMovePlacedFirst = picker.hashMoveIsLegal
         && !sortedMoves.is_empty()
-        && sameFromTo(sortedMoves[0], hashFrom, hashTo)
-        && sortedMoves[0].promotionPiece == hashPromo;
+        && (moveScores[0] == 100000);
 
     if (outHashMoveIsLegal != nullptr) {
         *outHashMoveIsLegal = hashMovePlacedFirst;
