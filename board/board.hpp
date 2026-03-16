@@ -264,6 +264,8 @@ public:
     static constexpr uint8_t BLACK_ROOK_A_START = 0;   // a8
     static constexpr uint8_t BLACK_ROOK_H_START = 7;   // h8
     static constexpr uint8_t CASTLING_RIGHTS_ALL = 0x0F; // All 4 castling rights
+    // 50-move rule bounds reversible plies to 100; +1 keeps current position.
+    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 101;
 
     static constexpr std::array<uint8_t, 256> CHAR_TO_PIECE_TYPE = []() {
         std::array<uint8_t, 256> table{};
@@ -433,7 +435,7 @@ private:
     uint16_t fullMoveClock = 1;             // Current move number
     uint8_t  activeColor = WHITE;           // Current side to move
     uint64_t currentHash = 0ULL;            // Zobrist hash of current position
-    std::array<uint64_t, 128> repetitionHistory{}; // Ring buffer of recent positions (bounded by 50-move rule)
+    std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{}; // Recent reversible-position hashes
     uint8_t  historySize = 0;               // Entries valid in repetitionHistory
     static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
