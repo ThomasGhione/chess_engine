@@ -489,17 +489,26 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
     static constexpr int32_t FUTILITY_MARGINS_MG[] = {0, 260, 520};
     static constexpr int32_t FUTILITY_MARGINS_EG[] = {0, 170, 350};
-    const bool canFutilityPrune = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
-    const int32_t futilityMargin = canFutilityPrune
+    const bool canPruneByDepthAndNodeType =
+        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
+
+    const bool canFutilityPruneRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
+    // Delicate endgames: keep futility nearly off, but allow a tiny depth-1 gate.
+    const bool canFutilityPruneDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
+    const bool canFutilityPrune = canFutilityPruneRegular || canFutilityPruneDelicate;
+    const int32_t futilityMargin = canFutilityPruneRegular
         ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
-        : 0;
+        : (canFutilityPruneDelicate ? 180 : 0);
 
     static constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30};
     static constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38};
-    const bool canLMP = !ctx.isPVNode && !isDelicateEndgame && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
-    const int lmpThreshold = canLMP
+    const bool canLMPRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
+    // Delicate endgames: prune only very-late quiets at depth-1.
+    const bool canLMPDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
+    const bool canLMP = canLMPRegular || canLMPDelicate;
+    const int lmpThreshold = canLMPRegular
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
-        : 999;
+        : (canLMPDelicate ? 48 : 999);
 
     const int usSide = static_cast<int>(chess::Board::colorToIndex(ctx.activeColor));
     const int oppSide = usSide ^ 1;
@@ -539,7 +548,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
-        if (canFutilityPrune && isQuietMove && !createsPawnForkThreat && moveIndex > 0
+        const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
+        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
             ++moveIndex;
             continue;
@@ -556,16 +566,25 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && (!wasCapture)
             && !createsPawnForkThreat
             && !isDelicateEndgame;
+        // Delicate endgames: allow only minimal one-ply LMR on very-late quiet moves.
+        const bool lmrDelicateCandidate = isDelicateEndgame
+            && !ctx.isPVNode
+            && !ctx.inCheck
+            && (ctx.depth >= 10)
+            && (moveIndex >= 30)
+            && !isPromo
+            && (!wasCapture)
+            && !createsPawnForkThreat;
 
         const bool forcingCandidate = (wasCapture || isPromo || moveIndex < 3 || createsPawnForkThreat);
         const bool needsCheckInfo =
-            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
+            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate || lmrDelicateCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
         const bool isForcingCheck = givesCheck && forcingCandidate;
         const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
         const int32_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0);
-        const bool canReduce = lmrStructuralCandidate
+        const bool canReduce = (lmrStructuralCandidate || lmrDelicateCandidate)
             && !givesCheck
             && !isKillerMove(m, runtime.killerMoves, ctx.ply);
 
@@ -575,14 +594,17 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 	//FIXME: Trasformare in funzione helper
         int32_t score = 0;
         if (canReduce) {
-            constexpr double LMR_C = 2.87;
-            int32_t reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
-                                                   * std::log(static_cast<double>(moveIndex))
-                                                   / LMR_C);
-            reduction = std::clamp(reduction, static_cast<int32_t>(1), ctx.depth - 3);
+            int32_t reduction = 1;
+            if (lmrStructuralCandidate) {
+                constexpr double LMR_C = 2.87;
+                reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
+                                               * std::log(static_cast<double>(moveIndex))
+                                               / LMR_C);
+                reduction = std::clamp(reduction, static_cast<int32_t>(1), ctx.depth - 3);
 
-            if (inConservativeEndgameLMR) {
-                reduction = std::min<int32_t>(reduction, 1);
+                if (inConservativeEndgameLMR) {
+                    reduction = std::min<int32_t>(reduction, 1);
+                }
             }
 
             const int32_t reducedDepth = std::max(static_cast<int32_t>(1), childDepth - reduction);
