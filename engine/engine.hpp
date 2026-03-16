@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -43,6 +44,8 @@ public:
     void search(uint64_t depth) noexcept;
     chess::Board::Move searchUCI(uint64_t depth) noexcept;
     void stopThinking() noexcept;
+    void setSearchApiMutexEnabled(bool enabled) noexcept;
+    bool isSearchApiMutexEnabled() const noexcept;
     void setPonderDebugEnabled(bool enabled) noexcept;
     bool isPonderDebugEnabled() const noexcept;
     uint64_t getPonderCurrentDepth() const noexcept;
@@ -95,6 +98,8 @@ private:
     std::atomic<bool> ponderingActive {false};
     std::atomic<bool> stopSearchRequested {false};
     std::atomic<bool> searchInterrupted {false};
+    std::mutex searchApiMutex;
+    std::atomic<bool> searchApiMutexEnabled {true};
     std::atomic<bool> ponderDebugEnabled {false};
     std::atomic<uint64_t> ponderCurrentDepth {0};
     std::atomic<uint64_t> ponderLastCompletedDepth {0};

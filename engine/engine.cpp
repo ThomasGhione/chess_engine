@@ -1,6 +1,9 @@
 #include "engine.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <string_view>
 
 #include <omp.h>
 
@@ -9,6 +12,36 @@
 #include "search/searcher.hpp"
 
 namespace engine {
+
+namespace {
+
+[[nodiscard]] bool iequalsAscii(std::string_view lhs, std::string_view rhs) noexcept {
+    if (lhs.size() != rhs.size()) return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i) {
+        const char a = static_cast<char>(std::tolower(static_cast<unsigned char>(lhs[i])));
+        const char b = static_cast<char>(std::tolower(static_cast<unsigned char>(rhs[i])));
+        if (a != b) return false;
+    }
+    return true;
+}
+
+[[nodiscard]] bool resolveSearchApiMutexGuardDefault() noexcept {
+    const char* envValue = std::getenv("CHESS_ENGINE_SEARCH_MUTEX_GUARD");
+    if (envValue == nullptr || *envValue == '\0') {
+        return true;
+    }
+
+    const std::string_view value(envValue);
+    if (iequalsAscii(value, "0") || iequalsAscii(value, "off") || iequalsAscii(value, "false")) {
+        return false;
+    }
+    if (iequalsAscii(value, "1") || iequalsAscii(value, "on") || iequalsAscii(value, "true")) {
+        return true;
+    }
+    return true;
+}
+
+} // namespace
 
 char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
     if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
@@ -52,6 +85,7 @@ Engine::Engine()
     , nodesSearched(searchRuntime.nodesSearched)
     , MAX_THREADS(searchRuntime.maxThreads) {
     ensureMagicTablesInitialized();
+    searchApiMutexEnabled.store(resolveSearchApiMutexGuardDefault(), std::memory_order_relaxed);
     searchRuntime.maxThreads = omp_get_max_threads();
     bindSearchRuntime();
     this->tt.clear();
@@ -90,6 +124,14 @@ void Engine::reset() noexcept {
 
 void Engine::setPonderDebugEnabled(bool enabled) noexcept {
     this->ponderDebugEnabled.store(enabled, std::memory_order_relaxed);
+}
+
+void Engine::setSearchApiMutexEnabled(bool enabled) noexcept {
+    this->searchApiMutexEnabled.store(enabled, std::memory_order_release);
+}
+
+bool Engine::isSearchApiMutexEnabled() const noexcept {
+    return this->searchApiMutexEnabled.load(std::memory_order_acquire);
 }
 
 bool Engine::isPonderDebugEnabled() const noexcept {
@@ -280,6 +322,11 @@ void Engine::stopThinking() noexcept {
 }
 
 chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
+    std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
+    if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
+        searchApiGuard.lock();
+    }
+
     this->stopPondering();
 
     const uint64_t targetDepth = (requestedDepth == 0)
@@ -302,6 +349,11 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
 }
 
 void Engine::search(uint64_t requestedDepth) noexcept {
+    std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
+    if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
+        searchApiGuard.lock();
+    }
+
     this->stopPondering();
 
     const uint64_t targetDepth = (requestedDepth == 0)
