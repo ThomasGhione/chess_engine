@@ -171,8 +171,8 @@ void Board::doNullMove(MoveState& st) noexcept {
     activeColor = oppositeColor(activeColor);
     newHash ^= zobrist::TABLES.sideToMove;
     currentHash = newHash;
-
-    updateRepetitionAfterMove(false, false);
+    // Null move is a search artifact and must not enter repetition history.
+    // Otherwise twofold/threefold detection in subtree can be polluted.
 }
 
 __attribute__((hot))

@@ -168,7 +168,11 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
         return 0;
     }
 
-    const int32_t contempt = std::min(static_cast<int32_t>(200), std::abs(matDelta) / 2);
+    const int32_t advantage = std::abs(matDelta);
+    const int32_t scaledPenalty =
+        STALEMATE_DRAW_PENALTY_MINOR + (advantage - STALEMATE_MATERIAL_THRESHOLD) / 2;
+    const int32_t contempt = std::clamp<int32_t>(
+        scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
     return (matDelta > 0) ? -contempt : contempt;
 }
 
@@ -705,8 +709,25 @@ int32_t Searcher::searchPosition(
         if (alpha >= beta) return alpha;
     }
 
-    if (ply > 0 && b.isTwofoldRepetition()) {
-        return repetitionDrawScore(b);
+    if (ply > 0) {
+        // Threefold repetition is claimable draw: treat as terminal.
+        if (b.isThreefoldRepetition()) {
+            return repetitionDrawScore(b);
+        }
+
+        // Twofold is only a potential draw. Avoid premature draw cutoff when
+        // the side to move is materially ahead and should keep pressing.
+        if (b.isTwofoldRepetition()) {
+            const int32_t matDelta = Evaluator::getMaterialDelta(b);
+            constexpr int32_t TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN = 220;
+            const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
+            const bool sideToMoveAhead = whiteToMove
+                ? (matDelta > TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN)
+                : (matDelta < -TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN);
+            if (!sideToMoveAhead) {
+                return repetitionDrawScore(b);
+            }
+        }
     }
 
     if (b.isFiftyMoveRule()) [[unlikely]] return 0;
