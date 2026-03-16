@@ -295,11 +295,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     return clampOrderingScore(score);
 }
 
-uint8_t Sorter::getLeastValuableAttackerTo(
-    const chess::Board& b,
-    uint8_t sq,
-    uint64_t occLocal,
-    int sideLocal) noexcept {
+uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept {
     // Macro-step 1: Restrict bitboards to simulated occupancy.
     const uint64_t pawns_bb = b.pawns_bb[sideLocal] & occLocal;
     const uint64_t knights_bb = b.knights_bb[sideLocal] & occLocal;
@@ -328,9 +324,7 @@ uint8_t Sorter::getLeastValuableAttackerTo(
     return 64; // no attacker
 }
 
-int32_t Sorter::staticExchangeEvaluation(
-    const chess::Board& b,
-    const chess::Board::Move& m) noexcept {
+int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept {
     // Macro-step 1: Initialize SEE state from move endpoints and side-to-move.
     const uint8_t toSq = m.to.index;
     const uint8_t fromSq = m.from.index;
@@ -384,19 +378,12 @@ int32_t Sorter::staticExchangeEvaluation(
         else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
         else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
 
-        // At this ply, capture the piece left on the target square
-        // (i.e. the previous capturer).
+        // At this ply, capture the piece left on the target square (i.e. the previous capturer).
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
-        // Remove the attacker from occupancy
-        occ ^= attackerMask;
-
-        // The piece that just captured now stays on target and can be
-        // captured on the next ply.
-        capturedOnTargetType = currentAttackerType;
-
-        // Switch side
-        side ^= 1;
+        occ ^= attackerMask; // Remove the attacker from occupancy
+        capturedOnTargetType = currentAttackerType;  // The piece that just captured now stays on target and can captured on the next ply.
+        side ^= 1; // Switch side
         depth++;
     }
 
