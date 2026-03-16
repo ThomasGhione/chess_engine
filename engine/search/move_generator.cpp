@@ -79,7 +79,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     // NOTE: for performance, legality checks are skipped for many non-king moves
     // when check/pin filters already guarantee king safety.
     uint64_t pinnedMask = 0ULL;
-    std::array<uint64_t, 64> pinRayBySquare{};
+    std::array<uint64_t, 64> pinRayBySquare;
     //FIXME: Rendere piu' leggibile codizione. Creare funzione helper
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
         computePinRays(b, fromC, isWhite, pinnedMask, pinRayBySquare.data());
@@ -227,7 +227,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     chess::Coords kingPos{static_cast<uint8_t>(__builtin_ctzll(b.kings_bb[side]))};
 
     uint64_t pinnedMask = 0ULL;
-    std::array<uint64_t, 64> pinRayBySquare{};
+    std::array<uint64_t, 64> pinRayBySquare;
 
     // Compute pin rays for all pieces
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
