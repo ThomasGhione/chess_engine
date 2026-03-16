@@ -718,11 +718,8 @@ void MoveGenerator::computePinRays(
     const int us = static_cast<int>(chess::Board::colorToIndex(ownColor));
     const int them = us ^ 1;
 
-    //FIXME: Usare funzione std
-    // Initialize all pin rays to 0
-    for (int i = 0; i < 64; ++i) {
-        pinRays[i] = 0ULL;
-    }
+    // pinRays is consumed only when the corresponding bit is set in pinnedMask.
+    // We overwrite entries for pinned squares below, so full zero-initialization is redundant.
 
     const uint8_t kingSq = kingPos.index;
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
