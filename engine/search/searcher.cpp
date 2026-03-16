@@ -571,7 +571,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 	//FIXME: Trasformare in funzione helper
         int32_t score = 0;
         if (canReduce) {
-            constexpr double LMR_C = 2.90;
+            constexpr double LMR_C = 2.87;
             int32_t reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
                                                    * std::log(static_cast<double>(moveIndex))
                                                    / LMR_C);
@@ -679,6 +679,15 @@ int32_t Searcher::searchPosition(
 
     if (ply >= MAX_PLY - 1) {
         return Evaluator::evaluate(b);
+    }
+
+    // Terminal king-capture states are possible in this codebase's move model.
+    // Resolve them immediately to avoid evaluating undefined tactical positions.
+    if (b.kings_bb[0] == 0ULL) {
+        return NEG_INF + ply;
+    }
+    if (b.kings_bb[1] == 0ULL) {
+        return POS_INF - ply;
     }
 
     if (depth <= 0) {
@@ -845,6 +854,13 @@ int32_t Searcher::quiescenceSearch(
 
     if (ply >= MAX_PLY - 1) {
         return Evaluator::evaluate(b);
+    }
+
+    if (b.kings_bb[0] == 0ULL) {
+        return NEG_INF + ply;
+    }
+    if (b.kings_bb[1] == 0ULL) {
+        return POS_INF - ply;
     }
 
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);

@@ -216,17 +216,18 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     const uint8_t queenPiece = static_cast<uint8_t>(chess::Board::QUEEN | color);
     const uint8_t kingPiece = static_cast<uint8_t>(chess::Board::KING | color);
 
+    // Defensive guard: in some search lines this engine can represent king-capture
+    // states transiently; avoid UB from __builtin_ctzll(0).
+    if (!kings) [[unlikely]] return moves;
+
     // Macro-step 2: Handle double-check fast path (only king captures are relevant).
     // In double-check only king moves are legal; tactical generator only needs king captures.
     //FIXME: Calcolare e poi se inDoubleCheck allora ritonrare subito. 
     if (inDoubleCheck) {
-	//FIXME: Non e' sempre vero? Se si', non serve if.
-        if (kings) {
-            const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
-            uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
-            addTacticalMovesFromMask(b, attacks, from, kingPiece, false, isWhite, includeChecks,
-                                     enPassant, hasEnPassant, moves);
-        }
+        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
+        uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
+        addTacticalMovesFromMask(b, attacks, from, kingPiece, false, isWhite, includeChecks,
+                                 enPassant, hasEnPassant, moves);
         return moves;
     }
 
