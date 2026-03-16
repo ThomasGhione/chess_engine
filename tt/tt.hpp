@@ -382,7 +382,6 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
         if (entry.key == key) {
             if (storedDepth >= entry.depth() || flag == Entry::EXACT) {
                 const uint16_t keepBestMove = entry.bestMove;
-                entry.key = key;
                 entry.score = score;
                 entry.bestMove = keepBestMove;
                 entry.setPacked(storedDepth, generation_, flag);
@@ -399,10 +398,10 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     }
 
     Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
-    target->key = key;
     target->score = score;
     target->bestMove = 0;
     target->setPacked(storedDepth, generation_, flag);
+    target->key = key;
 }
 
 inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
@@ -425,7 +424,6 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
 
         if (entry.key == key) {
             if (storedDepth >= entry.depth() || flag == Entry::EXACT) {
-                entry.key = key;
                 entry.score = score;
                 entry.bestMove = bestMove;
                 entry.setPacked(storedDepth, generation_, flag);
@@ -442,10 +440,10 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     }
 
     Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
-    target->key = key;
     target->score = score;
     target->bestMove = bestMove;
     target->setPacked(storedDepth, generation_, flag);
+    target->key = key;
 }
 
 inline void TranspositionTable::clear() noexcept {
