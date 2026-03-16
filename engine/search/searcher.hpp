@@ -112,7 +112,8 @@ public:
         int32_t beta,
         int ply,
         bool useTT = true,
-        uint64_t* nodeCounter = nullptr) noexcept;
+        uint64_t* nodeCounter = nullptr,
+        bool allowTTWrite = true) noexcept;
 
 private:
     struct SearchContext {

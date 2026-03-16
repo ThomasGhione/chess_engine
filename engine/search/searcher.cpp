@@ -497,6 +497,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
         : 999;
 
+    const int usSide = static_cast<int>(chess::Board::colorToIndex(ctx.activeColor));
+    const int oppSide = usSide ^ 1;
+    const uint64_t enemyMajorOrKingTargets =
+        b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
+    const uint64_t enemyForkTargets =
+        b.knights_bb[oppSide] | b.bishops_bb[oppSide] |
+        b.rooks_bb[oppSide]   | b.queens_bb[oppSide] |
+        b.kings_bb[oppSide];
+
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     int moveIndex = 0;
 
@@ -513,13 +522,20 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN)
             && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
+        const bool isQuietPawnPush = isQuietMove
+            && (fromPieceType == chess::Board::PAWN)
+            && (chess::Board::file(m.from.index) == chess::Board::file(m.to.index));
+        const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][m.to.index] & enemyForkTargets;
+        const bool createsPawnForkThreat = isQuietPawnPush
+            && ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
+            && (__builtin_popcountll(forkTargets) >= 2);
 
-        if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
+        if (canLMP && isQuietMove && !createsPawnForkThreat && moveIndex >= lmpThreshold) {
             ++moveIndex;
             continue;
         }
 
-        if (canFutilityPrune && isQuietMove && moveIndex > 0
+        if (canFutilityPrune && isQuietMove && !createsPawnForkThreat && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
             ++moveIndex;
             continue;
@@ -534,9 +550,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromo
             && (!wasCapture)
+            && !createsPawnForkThreat
             && !isDelicateEndgame;
 
-        const bool forcingCandidate = (wasCapture || isPromo || moveIndex < 3);
+        const bool forcingCandidate = (wasCapture || isPromo || moveIndex < 3 || createsPawnForkThreat);
         const bool needsCheckInfo =
             (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
@@ -665,7 +682,7 @@ int32_t Searcher::searchPosition(
     }
 
     if (depth <= 0) {
-        return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter);
+        return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
 
     // Macro-step 2: Terminal/repetition/mate-distance pruning and TT prelude.
@@ -815,7 +832,8 @@ int32_t Searcher::quiescenceSearch(
     int32_t beta,
     int ply,
     bool useTT,
-    uint64_t* nodeCounter) noexcept {
+    uint64_t* nodeCounter,
+    bool allowTTWrite) noexcept {
     // Macro-step 1: Node accounting, stop guards, TT probe, and depth guards.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
@@ -874,7 +892,7 @@ int32_t Searcher::quiescenceSearch(
 
             chess::Board::MoveState state;
             doMoveWithPromotion(b, m, state);
-            const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter);
+            const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
             b.undoMove(m, state);
 
             if (isBetter(score, best, usIsWhite)) {
@@ -958,7 +976,7 @@ int32_t Searcher::quiescenceSearch(
 
         chess::Board::MoveState state;
         doMoveWithPromotion(b, m, state);
-        const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter);
+        const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
 
         if (isBetter(score, best, usIsWhite)) {
@@ -967,7 +985,7 @@ int32_t Searcher::quiescenceSearch(
 
         updateBound(score, alpha, beta, usIsWhite);
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-            if (canUseTT) {
+            if (canUseTT && allowTTWrite) {
                 const uint64_t hashKey = b.getHash();
                 const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
                 runtime.transpositionTable->store(
@@ -980,7 +998,7 @@ int32_t Searcher::quiescenceSearch(
         }
     }
 
-    if (canUseTT) {
+    if (canUseTT && allowTTWrite) {
         const uint64_t hashKey = b.getHash();
         const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
         runtime.transpositionTable->store(hashKey, 0, clampToTTScore(best), static_cast<uint8_t>(flag));
