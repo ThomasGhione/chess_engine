@@ -6,6 +6,14 @@
 namespace engine {
 
 MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
+    return generateLegalMoves(b, false, false, false);
+}
+
+MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
+    const chess::Board& b,
+    bool inCheckKnown,
+    bool inCheckValue,
+    bool inDoubleCheckValue) noexcept {
     // Macro-step 1: Initialize side-to-move context and occupancy masks.
     MoveList<chess::Board::Move> moves;
 
@@ -28,8 +36,10 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
-    const bool inCheck = b.inCheck(color);
-    const bool inDoubleCheck = inCheck && b.isDoubleCheck(color);
+    const bool inCheck = inCheckKnown ? inCheckValue : b.inCheck(color);
+    const bool inDoubleCheck = inCheck
+        ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
+        : false;
     const bool singleCheck = inCheck && !inDoubleCheck;
     const uint8_t pawnPiece = static_cast<uint8_t>(chess::Board::PAWN | color);
     const uint8_t knightPiece = static_cast<uint8_t>(chess::Board::KNIGHT | color);

@@ -752,7 +752,9 @@ int32_t Searcher::searchPosition(
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter
     };
 
-    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(b);
+    const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
+    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(
+        b, true, node.inCheck, nodeInDoubleCheck);
     if (moves.is_empty()) {
         return node.inCheck
             ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
@@ -846,7 +848,9 @@ int32_t Searcher::quiescenceSearch(
     static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalMoves(b);
+            const bool inDoubleCheck = b.isDoubleCheck(activeColor);
+            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalMoves(
+                b, true, true, inDoubleCheck);
             if (evasions.is_empty()) {
                 return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
             }

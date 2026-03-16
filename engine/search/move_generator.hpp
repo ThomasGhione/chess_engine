@@ -17,6 +17,12 @@ public:
 
     static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
 
+    static MoveList<chess::Board::Move> generateLegalMoves(
+        const chess::Board& b,
+        bool inCheckKnown,
+        bool inCheckValue,
+        bool inDoubleCheckValue) noexcept;
+
     static MoveList<chess::Board::Move> generateTacticalMoves(
         const chess::Board& b,
         bool includeChecks = false,
