@@ -571,7 +571,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 	//FIXME: Trasformare in funzione helper
         int32_t score = 0;
         if (canReduce) {
-            constexpr double LMR_C = 3.07;
+            constexpr double LMR_C = 2.90;
             int32_t reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
                                                    * std::log(static_cast<double>(moveIndex))
                                                    / LMR_C);
