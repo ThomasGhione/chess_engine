@@ -19,10 +19,10 @@ inline Board::Board() noexcept {
 
 inline Board::Board(const std::array<uint32_t, 8>& chessboard) noexcept
     : chessboard(chessboard)
-    , castle(CASTLING_RIGHTS_ALL)
-    , enPassant() 
     , halfMoveClock(0)
     , fullMoveClock(1)
+    , castle(CASTLING_RIGHTS_ALL)
+    , enPassant()
     , activeColor(WHITE)
 {
     updateOccupancyBB();

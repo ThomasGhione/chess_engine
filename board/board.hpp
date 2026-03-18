@@ -110,10 +110,13 @@ public:
     };
 
     struct MoveState {
+        uint64_t prevHistoryHead{};
+        EvalCache prevEvalCache{};
+        uint32_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
+
         uint16_t prevHalfMoveClock{};
         uint16_t prevFullMoveClock{};
         uint8_t  prevHistorySize{};
-        uint64_t prevHistoryHead{};
 
         // Game state before the move
         uint8_t  prevActiveColor{};
@@ -137,9 +140,9 @@ public:
         uint8_t rookToIndex{};          // rook destination square index in castling
         bool    historyWasReset{};      // true if repetition history was reset by the move
         MoveKind moveKind{MoveKind::Quiet};
-        EvalCache prevEvalCache{};
-        uint32_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
     };
+
+    static_assert(sizeof(MoveState) <= 88, "MoveState layout regressed; keep it compact for search stack usage.");
     // Structs and enums end
     
     // Constructors start
@@ -425,18 +428,8 @@ private:
     // Variables start
 
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
-
-    uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
-    uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
-    Coords   enPassant{};                   // En-passant target square
-    uint8_t  epHashFile = 0xFF;             // hashed EP file in currentHash, or 0xFF if not hashed
-    uint16_t halfMoveClock = 0;             // 50-move rule counter
-    uint16_t fullMoveClock = 1;             // Current move number
-    uint8_t  activeColor = WHITE;           // Current side to move
     uint64_t currentHash = 0ULL;            // Zobrist hash of current position
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{}; // Recent reversible-position hashes
-    uint8_t  historySize = 0;               // Entries valid in repetitionHistory
-    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     int32_t incrementalMaterialDelta = 0;
     int32_t incrementalPsqtPawnsMg = 0;
@@ -446,6 +439,15 @@ private:
     int32_t incrementalPsqtKingsEg = 0;
     mutable EvalCache evalCache{};
     uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
+    uint16_t halfMoveClock = 0;             // 50-move rule counter
+    uint16_t fullMoveClock = 1;             // Current move number
+    uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
+    uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
+    Coords   enPassant{};                   // En-passant target square
+    uint8_t  epHashFile = 0xFF;             // hashed EP file in currentHash, or 0xFF if not hashed
+    uint8_t  activeColor = WHITE;           // Current side to move
+    uint8_t  historySize = 0;               // Entries valid in repetitionHistory
+    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // Variables end
 }; // Class Board
 
@@ -453,4 +455,3 @@ private:
 #include "boardapi.inl"
 
 } // namespace chess
-
