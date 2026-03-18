@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <string_view>
+#include <utility>
 
 #include <omp.h>
 
@@ -218,7 +219,7 @@ void Engine::updateGameResult() noexcept {
     }
 }
 
-void Engine::ponderLoop(chess::Board rootBoard) noexcept {
+void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
     this->searchInterrupted.store(false, std::memory_order_relaxed);
     this->nodesSearched = 0;
@@ -268,15 +269,14 @@ void Engine::startPondering() noexcept {
 
     this->stopPondering();
 
-    const chess::Board rootBoard = this->board;
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
     this->ponderingActive.store(true, std::memory_order_release);
 
     try {
-        this->ponderingThread = std::thread([this, rootBoard]() mutable {
-            this->ponderLoop(rootBoard);
+        this->ponderingThread = std::thread([this, rootBoard = chess::Board(this->board)]() mutable {
+            this->ponderLoop(std::move(rootBoard));
         });
     } catch (...) {
         this->ponderingActive.store(false, std::memory_order_release);

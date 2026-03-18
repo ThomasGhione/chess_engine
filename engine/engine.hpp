@@ -109,11 +109,10 @@ private:
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
-    void ponderLoop(chess::Board rootBoard) noexcept;
+    void ponderLoop(chess::Board&& rootBoard) noexcept;
 };
 
 } // namespace engine
 
 #include "inl/bitboard_helpers.inl"
 #include "inl/accessors.inl"
-
