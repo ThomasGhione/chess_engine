@@ -2,10 +2,21 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <string_view>
 
 namespace uci {
 
-    static std::string normalizedOptionName(std::string optionName) {
+    static bool iequalsAscii(std::string_view lhs, std::string_view rhs) noexcept {
+        if (lhs.size() != rhs.size()) return false;
+        for (std::size_t i = 0; i < lhs.size(); ++i) {
+            const char a = static_cast<char>(std::tolower(static_cast<unsigned char>(lhs[i])));
+            const char b = static_cast<char>(std::tolower(static_cast<unsigned char>(rhs[i])));
+            if (a != b) return false;
+        }
+        return true;
+    }
+
+    static std::string normalizedOptionName(std::string_view optionName) {
         std::string out;
         out.reserve(optionName.size());
         for (char c : optionName) {
@@ -15,21 +26,19 @@ namespace uci {
         return out;
     }
 
-    static std::string trimLeft(const std::string& s) {
+    static std::string_view trimLeft(std::string_view s) {
         std::size_t i = 0;
         while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
         return s.substr(i);
     }
 
-    static bool parseCheckValue(const std::string& rawValue, bool& outValue) {
-        std::string value = rawValue;
-        std::transform(value.begin(), value.end(), value.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        if (value == "true" || value == "1" || value == "on") {
+    static bool parseCheckValue(std::string_view rawValue, bool& outValue) noexcept {
+        const std::string_view value = trimLeft(rawValue);
+        if (iequalsAscii(value, "true") || value == "1" || iequalsAscii(value, "on")) {
             outValue = true;
             return true;
         }
-        if (value == "false" || value == "0" || value == "off") {
+        if (iequalsAscii(value, "false") || value == "0" || iequalsAscii(value, "off")) {
             outValue = false;
             return true;
         }
@@ -110,7 +119,8 @@ namespace uci {
         std::istringstream iss(args);
         std::string token;
         std::string optionName;
-        std::string optionValue;
+        std::string optionValueStorage;
+        std::string_view optionValue;
 
         while (iss >> token) {
             if (token != "name") continue;
@@ -122,8 +132,8 @@ namespace uci {
             }
 
             if (token == "value") {
-                std::getline(iss, optionValue);
-                optionValue = trimLeft(optionValue);
+                std::getline(iss, optionValueStorage);
+                optionValue = trimLeft(optionValueStorage);
             }
             break;
         }
@@ -240,28 +250,42 @@ namespace uci {
     // Private parsing helpers
 
     void UCI::parseMoves(const std::string& moves) noexcept {
-        if (moves.empty() || (moves.size() < 6 || moves.substr(0, 6) != "moves ")) {
+        std::string_view movesView(moves);
+        if (movesView.size() < 6 || !movesView.starts_with("moves ")) {
             return;
         }
+        movesView.remove_prefix(6);
 
-        std::string movesList = moves.substr(6);
+        const auto parseSquare = [](std::string_view sq) noexcept -> chess::Coords {
+            if (sq.size() != 2) return chess::Coords{};
+            const char file = static_cast<char>(std::tolower(static_cast<unsigned char>(sq[0])));
+            const char rank = sq[1];
+            if (file < 'a' || file > 'h' || rank < '1' || rank > '8') return chess::Coords{};
 
-        std::string::size_type delimiterPos = 0;
-        while ((delimiterPos = movesList.find(' ')) != std::string::npos) {
-            std::string move = movesList.substr(0, delimiterPos);
+            const uint8_t fileIdx = static_cast<uint8_t>(file - 'a');
+            const uint8_t rankIdx = static_cast<uint8_t>('8' - rank);
+            return chess::Coords(fileIdx, rankIdx);
+        };
 
+        std::size_t pos = 0;
+        while (pos < movesView.size()) {
+            while (pos < movesView.size() && movesView[pos] == ' ') ++pos;
+            if (pos >= movesView.size()) break;
+
+            std::size_t end = pos;
+            while (end < movesView.size() && movesView[end] != ' ') ++end;
+
+            const std::string_view move = movesView.substr(pos, end - pos);
             if (move.size() >= 4) {
-                engine.movePiece(chess::Coords(move.substr(0,2)), chess::Coords(move.substr(2,2)),
-                                 move.size() > 4 ? move[4] : '\0');
+                const chess::Coords from = parseSquare(move.substr(0, 2));
+                const chess::Coords to = parseSquare(move.substr(2, 2));
+                if (chess::Coords::isInBounds(from) && chess::Coords::isInBounds(to)) {
+                    const char promo = (move.size() > 4) ? move[4] : '\0';
+                    engine.movePiece(from, to, promo);
+                }
             }
 
-            movesList.erase(0, delimiterPos + 1);
-        }
-
-        // Last move (or only move if no spaces)
-        if (!movesList.empty() && movesList.size() >= 4) {
-            engine.movePiece(chess::Coords(movesList.substr(0,2)), chess::Coords(movesList.substr(2,2)),
-                             movesList.size() > 4 ? movesList[4] : '\0');
+            pos = end + 1;
         }
     }
 
