@@ -1,5 +1,4 @@
-#ifndef ENGINE_HPP
-#define ENGINE_HPP
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -7,10 +6,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-
-#ifdef DEBUG
-#include <iostream>
-#endif
 
 #include "../board/board.hpp"
 #include "../board/coords.hpp"
@@ -122,4 +117,3 @@ private:
 #include "inl/bitboard_helpers.inl"
 #include "inl/accessors.inl"
 
-#endif

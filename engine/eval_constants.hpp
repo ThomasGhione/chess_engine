@@ -1,5 +1,4 @@
-#ifndef ENGINE_EVAL_CONSTANTS_HPP
-#define ENGINE_EVAL_CONSTANTS_HPP
+#pragma once
 
 #include <cstdint>
 #include <limits>
@@ -178,4 +177,3 @@ inline constexpr int32_t MVV_TABLE[7] = {
 
 } // namespace engine
 
-#endif // ENGINE_EVAL_CONSTANTS_HPP

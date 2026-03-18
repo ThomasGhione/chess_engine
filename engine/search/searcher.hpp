@@ -1,5 +1,4 @@
-#ifndef ENGINE_SEARCH_SEARCHER_HPP
-#define ENGINE_SEARCH_SEARCHER_HPP
+#pragma once
 
 #include <array>
 #include <atomic>
@@ -259,4 +258,3 @@ private:
 
 } // namespace engine
 
-#endif // ENGINE_SEARCH_SEARCHER_HPP

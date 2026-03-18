@@ -1,5 +1,4 @@
-#ifndef ENGINE_SEARCH_MOVE_GENERATOR_HPP
-#define ENGINE_SEARCH_MOVE_GENERATOR_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -107,4 +106,3 @@ private:
 
 } // namespace engine
 
-#endif // ENGINE_SEARCH_MOVE_GENERATOR_HPP

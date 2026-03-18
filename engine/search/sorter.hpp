@@ -1,5 +1,4 @@
-#ifndef ENGINE_SEARCH_SORTER_HPP
-#define ENGINE_SEARCH_SORTER_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -150,4 +149,3 @@ private:
 
 } // namespace engine
 
-#endif // ENGINE_SEARCH_SORTER_HPP

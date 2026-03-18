@@ -2,10 +2,10 @@
 
 #include "../engine/engine.hpp"
 #include "../uci/uci.hpp"
+#include "../debug_timer.hpp"
 
 #include <algorithm>
 #include <cctype>
-#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -259,7 +259,7 @@ void Driver::playerTurn() noexcept {
     std::string playerInput;
     while (true) {
         std::cout << Driver::getBasicBoard(engine.board) << "\n";
-        std::cout << "Enter your move (write 's' to save the game or 'q' to quit): ";
+        std::cout << "Enter your move (type 's' to save or 'q' to quit): ";
         std::cin >> playerInput;
 
         if (playerInput == "s") [[unlikely]] { saveGame(); continue; }
@@ -283,9 +283,8 @@ void Driver::playerTurn() noexcept {
             continue;
         }
 
-#ifdef DEBUG
-        const auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif
+        DBG_TIMER_DECLARE(moveTimer);
+        DBG_TIMER_START(moveTimer);
 
         const uint8_t piece = engine.board.get(fromCoords);
         const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
@@ -316,11 +315,7 @@ void Driver::playerTurn() noexcept {
             continue;
         }
 
-#ifdef DEBUG
-        const auto chrono_end = std::chrono::high_resolution_clock::now();
-        const std::chrono::duration<double, std::micro> elapsed = chrono_end - chrono_start;
-        std::cout << "[DEBUG] move executed in " << elapsed.count() << " microseconds.\n";
-#endif
+        DBG_TIMER_US(moveTimer, "move executed");
 
         std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
         return;
@@ -329,16 +324,11 @@ void Driver::playerTurn() noexcept {
 
 void Driver::engineTurn() noexcept {
     std::cout << "Engine's thinking... \n";
-#ifdef DEBUG
-    const auto chrono_start = std::chrono::high_resolution_clock::now();
-#endif
+    DBG_TIMER_DECLARE(engineSearchTimer);
+    DBG_TIMER_START(engineSearchTimer);
     engine.search(engine::Engine::DEFAULTDEPTH);
-#ifdef DEBUG
-    const auto chrono_end = std::chrono::high_resolution_clock::now();
-    const std::chrono::duration<double, std::milli> elapsed = chrono_end - chrono_start;
-    std::cout << "[DEBUG] Engine search: " << elapsed.count() << "ms.\n";
-    std::cout << "[DEBUG] Nodes visited: " << engine.nodesSearched << "\n";
-#endif
+    DBG_TIMER_MS(engineSearchTimer, "Engine search");
+    DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
 }
 
 std::string Driver::getBasicBoard(const Board& board) {

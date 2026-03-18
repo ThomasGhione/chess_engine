@@ -1,5 +1,4 @@
-#ifndef MAGIC_NUMBERS_HPP
-#define MAGIC_NUMBERS_HPP
+#pragma once
 
 #include <cstdint>
 #include <array>
@@ -230,4 +229,3 @@ inline constexpr std::array<uint64_t, 64> BISHOP_MASKS = {
 
 } // namespace pieces
 
-#endif // MAGIC_NUMBERS_HPP

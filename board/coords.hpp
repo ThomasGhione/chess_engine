@@ -1,5 +1,4 @@
-#ifndef COORDS
-#define COORDS
+#pragma once
 
 #include <string>
 #include <cstdint>
@@ -85,4 +84,3 @@ struct Coords {
 }; // class Coords
 
 } // namespace chess
-#endif

@@ -1,5 +1,4 @@
-#ifndef ENGINE_MOVELIST_HPP
-#define ENGINE_MOVELIST_HPP
+#pragma once
 
 #include <cstdint>
 #include <utility>  // for std::forward
@@ -150,4 +149,3 @@ private:
 
 };
 
-#endif // ENGINE_MOVELIST_HPP

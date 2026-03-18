@@ -8,6 +8,7 @@
 #include <omp.h>
 
 #include "../board/piece.hpp"
+#include "../debug_timer.hpp"
 #include "eval/evaluator.hpp"
 #include "search/searcher.hpp"
 
@@ -231,9 +232,7 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
     this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-#ifdef DEBUG
-        std::cout << "[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n";
-#endif
+        DBG_LOG_STREAM("[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n");
     }
 
     const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
@@ -252,15 +251,13 @@ void Engine::ponderLoop(chess::Board rootBoard) noexcept {
     this->ponderAspirationFailHigh.store(ponderResult.aspirationFailHigh, std::memory_order_relaxed);
 
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-#ifdef DEBUG
-        std::cout << "[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
-                  << ", last completed depth: " << this->getPonderLastCompletedDepth()
-                  << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
-                  << ", interrupted depth: " << this->getPonderInterruptedDepth()
-                  << ", asp retries: " << ponderResult.aspirationResearches
-                  << ", fail-low: " << ponderResult.aspirationFailLow
-                  << ", fail-high: " << ponderResult.aspirationFailHigh << "\n";
-#endif
+        DBG_LOG_STREAM("[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
+                      << ", last completed depth: " << this->getPonderLastCompletedDepth()
+                      << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                      << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                      << ", asp retries: " << ponderResult.aspirationResearches
+                      << ", fail-low: " << ponderResult.aspirationFailLow
+                      << ", fail-high: " << ponderResult.aspirationFailHigh << "\n");
     }
 
     this->ponderingActive.store(false, std::memory_order_release);
@@ -305,15 +302,13 @@ void Engine::stopPondering() noexcept {
     this->searchInterrupted.store(false, std::memory_order_release);
 
     if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-#ifdef DEBUG
-        std::cout << "[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
-                  << ", last completed depth: " << this->getPonderLastCompletedDepth()
-                  << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
-                  << ", interrupted depth: " << this->getPonderInterruptedDepth()
-                  << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
-                  << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
-                  << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n";
-#endif
+        DBG_LOG_STREAM("[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
+                      << ", last completed depth: " << this->getPonderLastCompletedDepth()
+                      << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                      << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                      << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
+                      << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
+                      << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n");
     }
 }
 
@@ -387,13 +382,13 @@ void Engine::search(uint64_t requestedDepth) noexcept {
         this->startPondering();
     }
 
-#ifdef DEBUG
-    std::string moveStr = chess::Coords::toAlgebric(candidate.from) + chess::Coords::toAlgebric(candidate.to);
-    if (candidate.promotionPiece != '\0') {
-        moveStr += candidate.promotionPiece;
-    }
-    std::cout << "Engine plays: " << moveStr << " (score: " << this->eval << ")\n";
-#endif
+    DBG_ONLY(
+        std::string moveStr = chess::Coords::toAlgebric(candidate.from) + chess::Coords::toAlgebric(candidate.to);
+        if (candidate.promotionPiece != '\0') {
+            moveStr += candidate.promotionPiece;
+        }
+        DBG_LOG_STREAM("Engine plays: " << moveStr << " (score: " << this->eval << ")\n");
+    );
 }
 
 } // namespace engine

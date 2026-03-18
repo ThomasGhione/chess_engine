@@ -1,5 +1,4 @@
-#ifndef TT_ZOBRIST_HPP
-#define TT_ZOBRIST_HPP
+#pragma once
 
 #include <cstdint>
 #include <cstddef>
@@ -127,4 +126,3 @@ namespace zobrist {
     }
 }
 
-#endif // TT_ZOBRIST_HPP

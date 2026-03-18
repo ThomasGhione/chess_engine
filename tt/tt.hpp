@@ -1,5 +1,4 @@
-#ifndef TT_TRANSPOSITION_TABLE_HPP
-#define TT_TRANSPOSITION_TABLE_HPP
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -623,4 +622,3 @@ static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOU
 
 } // namespace tt
 
-#endif // TT_TRANSPOSITION_TABLE_HPP

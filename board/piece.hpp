@@ -1,5 +1,4 @@
-#ifndef PIECES_HPP
-#define PIECES_HPP
+#pragma once
 
 #include <cstdint>
 #include <array>
@@ -412,4 +411,3 @@ inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy)
 
 } // namespace pieces
 
-#endif

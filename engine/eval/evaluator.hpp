@@ -1,5 +1,4 @@
-#ifndef ENGINE_EVAL_EVALUATOR_HPP
-#define ENGINE_EVAL_EVALUATOR_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -246,4 +245,3 @@ private:
 
 } // namespace engine
 
-#endif // ENGINE_EVAL_EVALUATOR_HPP

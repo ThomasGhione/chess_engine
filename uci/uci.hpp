@@ -1,5 +1,4 @@
-#ifndef UCI_HPP
-#define UCI_HPP
+#pragma once
 
 #include "../engine/engine.hpp"
 #include <string>
@@ -42,4 +41,3 @@ namespace uci {
 }
 
 
-#endif

@@ -1,5 +1,4 @@
-#ifndef BOARD_HPP
-#define BOARD_HPP
+#pragma once
 
 #include <string>
 #include <array>
@@ -455,4 +454,3 @@ private:
 
 } // namespace chess
 
-#endif

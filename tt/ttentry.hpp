@@ -1,5 +1,4 @@
-#ifndef ENGINE_TT_HPP
-#define ENGINE_TT_HPP
+#pragma once
 
 #include <cstdint>
 #include <cstddef>
@@ -57,4 +56,3 @@ inline uint64_t computeHashKey(const chess::Board& board) noexcept {
 
 } // namespace engine
 
-#endif // ENGINE_TT_HPP

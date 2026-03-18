@@ -1,5 +1,4 @@
-#ifndef DRIVER_HPP
-#define DRIVER_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -72,4 +71,3 @@ private:
 
 } // namespace driver
 
-#endif
