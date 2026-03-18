@@ -33,6 +33,62 @@ inline Board::Board(const std::string& fen) {
     fromFenToBoard(fen);
 }
 
+inline Board::Board(const Board& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(const Board& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline Board::Board(Board&& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(Board&& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline void Board::copyFromBoard(const Board& other) noexcept {
+    pawns_bb = other.pawns_bb;
+    knights_bb = other.knights_bb;
+    bishops_bb = other.bishops_bb;
+    rooks_bb = other.rooks_bb;
+    queens_bb = other.queens_bb;
+    kings_bb = other.kings_bb;
+
+    chessboard = other.chessboard;
+    currentHash = other.currentHash;
+
+    historySize = other.historySize;
+    if (historySize > 0) {
+        std::memcpy(repetitionHistory.data(), other.repetitionHistory.data(), static_cast<size_t>(historySize) * sizeof(uint64_t));
+    }
+
+    occupancy = other.occupancy;
+    incrementalMaterialDelta = other.incrementalMaterialDelta;
+    incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
+    incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
+    incrementalPsqtPieces = other.incrementalPsqtPieces;
+    incrementalPsqtKingsMg = other.incrementalPsqtKingsMg;
+    incrementalPsqtKingsEg = other.incrementalPsqtKingsEg;
+    evalCache = other.evalCache;
+    lastMoveChangeFlags = other.lastMoveChangeFlags;
+    halfMoveClock = other.halfMoveClock;
+    fullMoveClock = other.fullMoveClock;
+    castle = other.castle;
+    hasMoved = other.hasMoved;
+    enPassant = other.enPassant;
+    epHashFile = other.epHashFile;
+    activeColor = other.activeColor;
+}
+
 // ==============================
 // Geometry Helpers
 // ==============================

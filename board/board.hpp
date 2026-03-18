@@ -7,6 +7,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
 
 #include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"
@@ -149,6 +150,10 @@ public:
     Board() noexcept;
     explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept;
     explicit Board(const std::string& fen);
+    Board(const Board& other) noexcept;
+    Board& operator=(const Board& other) noexcept;
+    Board(Board&& other) noexcept;
+    Board& operator=(Board&& other) noexcept;
     // Constructors end
 
     // Methods start
@@ -421,6 +426,7 @@ private:
     static char pieceTypeToChar(uint8_t pieceType);
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
+    inline void copyFromBoard(const Board& other) noexcept;
     void rebuildRepetitionHistory() noexcept;
     void updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
     // Methods end
