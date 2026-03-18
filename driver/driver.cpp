@@ -7,19 +7,20 @@
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <limits>
 
 namespace driver {
+
 namespace {
 
 using chess::Board;
-constexpr const char* THANKS_MSG = "Thank you for playing! See you next time.";
 
 [[noreturn]] void exitGame() noexcept {
-    std::cout << THANKS_MSG << std::endl;
+    std::cout << "Thank you for playing! See you next time." << std::endl;
     std::exit(EXIT_SUCCESS);
 }
 
@@ -341,23 +342,31 @@ void Driver::engineTurn() noexcept {
 }
 
 std::string Driver::getBasicBoard(const Board& board) {
-    std::string result;
-    result.reserve(160);
-    result += "  a b c d e f g h\n";
+    static constexpr char FILES_ROW[] = "  a b c d e f g h\n";
+    static constexpr std::size_t FILES_ROW_LEN = sizeof(FILES_ROW) - 1;
+    static constexpr std::size_t RANK_ROW_LEN = 21;
+    static constexpr std::size_t BOARD_STR_LEN = FILES_ROW_LEN + (8 * RANK_ROW_LEN) + FILES_ROW_LEN;
+
+    std::string result(BOARD_STR_LEN, '\0');
+    char* out = result.data();
+
+    std::memcpy(out, FILES_ROW, FILES_ROW_LEN);
+    out += FILES_ROW_LEN;
 
     for (int row = 7; row >= 0; --row) {
-        result += std::to_string(row + 1);
-        result.push_back(' ');
+        const char rankChar = static_cast<char>('1' + row);
+        *out++ = rankChar;
+        *out++ = ' ';
         for (int col = 0; col < 8; ++col) {
-            result.push_back(pieceToSymbol(board.get(row, col)));
-            result.push_back(' ');
+            *out++ = pieceToSymbol(board.get(row, col));
+            *out++ = ' ';
         }
-        result.push_back(' ');
-        result += std::to_string(row + 1);
-        result.push_back('\n');
+        *out++ = ' ';
+        *out++ = rankChar;
+        *out++ = '\n';
     }
 
-    result += "  a b c d e f g h\n";
+    std::memcpy(out, FILES_ROW, FILES_ROW_LEN);
     return result;
 }
 
