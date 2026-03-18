@@ -533,7 +533,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         if (outHashMoveIsLegal != nullptr) {
             *outHashMoveIsLegal = false;
         }
-        return picker.moves;
+        return std::move(picker.moves);
     }
 
     //FIXME: Controlla duplicazione
@@ -565,7 +565,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         *outHashMoveIsLegal = hashMovePlacedFirst;
     }
 
-    return sortedMoves;
+    return std::move(picker.moves);
 }
 
 //FIXME: Controlla duplicazione
