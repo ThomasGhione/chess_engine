@@ -1,8 +1,10 @@
 #ifndef DRIVER_HPP
 #define DRIVER_HPP
 
+#include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace chess { class Board; }
 namespace engine { class Engine; }
@@ -10,20 +12,22 @@ namespace engine { class Engine; }
 namespace driver {
 
 class Driver {
+
 public:
+
     struct Metadata {
-        std::string id = "1.0.0";
-        std::string license = "MIT License";
-        std::string name = "HydraY! 1.0.0";
-        std::string authors[3] = {"Thomas Ghione", "Daniele Ferretti", "Simone Tomasella"};
-        std::string platforms[1] = {"Linux x86_64"}; // supported platforms
+        std::string_view id = "1.0.0";
+        std::string_view license = "MIT License";
+        std::string_view name = "HydraY! 1.0.0";
+        std::array<std::string_view, 3> authors = {"Thomas Ghione", "Daniele Ferretti", "Simone Tomasella"};
+        std::array<std::string_view, 1> platforms = {"Linux x86_64"}; // supported platforms
         // TODO: are these really needed?
         // size_t defaultThreads = 4;
         // size_t defaultTTSizeMB = 64;
         // bool debugMode = false;
     };
 
-    Metadata metadata;
+    const Metadata metadata{};
 
     static constexpr int32_t MAX_PARAM_LENGTH = 3;
     static constexpr int32_t MODE = 1;
@@ -38,20 +42,16 @@ public:
     static std::string getBasicBoard(const chess::Board& board);
 
 private:
+
     bool vsBot = false;
 
     void parse(int argc, char* argv[]) noexcept;
-    static bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept;
-    static bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept;
     static void printInvalidOption() noexcept;
-    bool applyUciMoveToBoard(const std::string& uciMove, bool verboseDebug = false) noexcept;
 
     bool loadGame() noexcept;
     void saveGame() noexcept; // botColor: true = bot is white, false = bot is black
     void endGame() noexcept;
     void printGameOnFile() noexcept;
-
-    static void quit(const std::string& input) noexcept;
 
     void playGameVsHuman() noexcept;
     void playGameVsEngine(bool isWhite) noexcept;

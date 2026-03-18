@@ -54,11 +54,7 @@ uint8_t readMenuChoice(const char* prompt, uint8_t minChoice, uint8_t maxChoice)
     return choice;
 }
 
-} // namespace
-
-Driver::Driver(engine::Engine& e) : engine(e) {}
-
-bool Driver::parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
+bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
     if (colorArg == nullptr || colorArg[0] == '\0' || colorArg[1] != '\0') return false;
 
     switch (std::tolower(static_cast<unsigned char>(colorArg[0]))) {
@@ -68,55 +64,24 @@ bool Driver::parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
     }
 }
 
-bool Driver::parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
+bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
     if (argc < Driver::MAX_PARAM_LENGTH) {
         std::cout << missingArgMessage << "\n";
         return false;
     }
 
-    if (!Driver::parseColorOption(argv[Driver::COLOR], outIsWhite)) {
+    if (!parseColorOption(argv[Driver::COLOR], outIsWhite)) {
         std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
         return false;
     }
     return true;
 }
 
+} // namespace
+
+Driver::Driver(engine::Engine& e) : engine(e) {}
+
 void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Please select a valid option.\n"; }
-
-bool Driver::applyUciMoveToBoard(const std::string& uciMove, bool verboseDebug) noexcept {
-    const auto debugOut = [&](const std::string& msg) {
-        if (!verboseDebug) return;
-        std::cout << msg << "\n";
-        std::cout.flush();
-    };
-    const auto debugErr = [&](const char* msg) {
-        if (verboseDebug) std::cerr << msg << "\n";
-    }; 
-
-    debugOut("[DEBUG] Applying UCI move: '" + uciMove + "' (length: " + std::to_string(uciMove.size()) + ")");
-    if (uciMove.size() < 4) {
-        debugErr("[ERROR] UCI move too short");
-        return false;
-    }
-
-    const std::string fromStr = uciMove.substr(0, 2);
-    const std::string toStr = uciMove.substr(2, 2);
-    const bool hasPromo = uciMove.size() >= 5;
-    const char promo = hasPromo ? static_cast<char>(std::tolower(static_cast<unsigned char>(uciMove[4]))) : '\0';
-
-    debugOut("[DEBUG] From: " + fromStr + ", To: " + toStr + ", HasPromo: " + std::to_string(hasPromo) + ", Promo: " + (promo ? std::string(1, promo) : "?"));
-
-    chess::Coords fromCoords(fromStr), toCoords(toStr);
-    if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) {
-        debugErr("[ERROR] Coordinates out of bounds");
-        return false;
-    }
-
-    debugOut("[DEBUG] Calling movePiece...");
-    const bool result = hasPromo ? engine.movePiece(fromCoords, toCoords, promo) : engine.movePiece(fromCoords, toCoords);
-    debugOut("[DEBUG] movePiece returned: " + std::to_string(result));
-    return result;
-}
 
 void Driver::startGame(int argc, char* argv[]) noexcept {
     parse(argc, argv);
@@ -260,10 +225,6 @@ void Driver::printGameOnFile() noexcept {
     const std::string fileName = "games/game_" + std::to_string(std::time(nullptr)) + ".txt";
     std::ofstream gameFile(fileName);
     gameFile << engine.moveHistory;
-}
-
-void Driver::quit(const std::string& input) noexcept {
-    if (input == "Q" || input == "q") exitGame();
 }
 
 bool Driver::playOneTurn(bool playerTurnFlag) noexcept {
