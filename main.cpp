@@ -6,9 +6,6 @@ using namespace chess;
 using namespace engine;
 using namespace driver;
 
-#include <iostream>
-#include <string>
-
 #ifndef _WIN32
 #include <unistd.h>   // isatty, STDIN_FILENO
 #else

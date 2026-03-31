@@ -1,8 +1,10 @@
 #pragma once
 
-#include "../engine/engine.hpp"
 #include <string>
-#include <iostream>
+
+namespace engine {
+    class Engine;
+}
 
 namespace uci {
 
@@ -39,5 +41,4 @@ namespace uci {
     }; // class UCI
 
 }
-
 

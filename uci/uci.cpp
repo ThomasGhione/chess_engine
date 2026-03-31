@@ -1,7 +1,12 @@
 #include "uci.hpp"
-#include <sstream>
+
+#include "../engine/engine.hpp"
+
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
 #include <string_view>
 
 namespace uci {

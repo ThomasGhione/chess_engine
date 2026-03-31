@@ -1,9 +1,7 @@
 #include "searcher.hpp"
 
-#include <algorithm>
 #include <cmath>
-#include <cstdlib>
-#include <cstring>
+#include <algorithm>
 #include <limits>
 #include <numeric>
 

@@ -4,13 +4,14 @@
 #include "../uci/uci.hpp"
 #include "../debug_timer.hpp"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <limits>
 
 namespace driver {
