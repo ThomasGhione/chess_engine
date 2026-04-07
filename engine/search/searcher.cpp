@@ -5,6 +5,7 @@
 #include <numeric>
 
 #include "../../tt/ttentry.hpp"
+#include "../engine.hpp"
 #include "../eval/evaluator.hpp"
 #include "move_generator.hpp"
 #include "sorter.hpp"
@@ -47,31 +48,21 @@ bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t beta
     return isWhite ? (score > alphaBound) : (score < betaBound);
 }
 
-int32_t Searcher::clampToTTScore(int64_t value) noexcept {
-    if (value > static_cast<int64_t>(POS_INF)) return POS_INF;
-    if (value < static_cast<int64_t>(NEG_INF)) return NEG_INF;
-    return static_cast<int32_t>(value);
-}
-
 void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
     const int64_t expandedAlpha = static_cast<int64_t>(alpha) - tt::TranspositionTable::ADJUSTMENT;
     const int64_t expandedBeta = static_cast<int64_t>(beta) + tt::TranspositionTable::ADJUSTMENT;
-    ttAlpha = clampToTTScore(expandedAlpha);
-    ttBeta = clampToTTScore(expandedBeta);
+    ttAlpha = clampToInt32(expandedAlpha);
+    ttBeta = clampToInt32(expandedBeta);
 }
 
 int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
-    if (sum > static_cast<int64_t>(POS_INF)) return POS_INF;
-    if (sum < static_cast<int64_t>(NEG_INF)) return NEG_INF;
-    return static_cast<int32_t>(sum);
+    return clampToInt32(sum);
 }
 
 int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
-    if (diff > static_cast<int64_t>(POS_INF)) return POS_INF;
-    if (diff < static_cast<int64_t>(NEG_INF)) return NEG_INF;
-    return static_cast<int32_t>(diff);
+    return clampToInt32(diff);
 }
 
 int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
@@ -907,7 +898,7 @@ int32_t Searcher::searchPosition(
         runtime.transpositionTable->store(
             hashKey,
             static_cast<uint8_t>(ctx.depth),
-            clampToTTScore(best),
+            clampToInt32(best),
             static_cast<uint8_t>(flag),
             encodedMove);
     }
@@ -1088,7 +1079,7 @@ int32_t Searcher::quiescenceSearch(
                 runtime.transpositionTable->store(
                     hashKey,
                     0,
-                    clampToTTScore(cutoffValue(alpha, beta, usIsWhite)),
+                    clampToInt32(cutoffValue(alpha, beta, usIsWhite)),
                     static_cast<uint8_t>(flag));
             }
             return cutoffValue(alpha, beta, usIsWhite);
@@ -1098,7 +1089,7 @@ int32_t Searcher::quiescenceSearch(
     if (canUseTT && allowTTWrite) {
         const uint64_t hashKey = b.getHash();
         const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
-        runtime.transpositionTable->store(hashKey, 0, clampToTTScore(best), static_cast<uint8_t>(flag));
+        runtime.transpositionTable->store(hashKey, 0, clampToInt32(best), static_cast<uint8_t>(flag));
     }
 
     return best;
@@ -1332,7 +1323,7 @@ void Searcher::storeRootHashMove(
 
     const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    runtime.transpositionTable->store(rootBoard.getHash(), static_cast<uint8_t>(depth), clampToTTScore(score), flag, encodedMove);
+    runtime.transpositionTable->store(rootBoard.getHash(), static_cast<uint8_t>(depth), clampToInt32(score), flag, encodedMove);
 }
 
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(

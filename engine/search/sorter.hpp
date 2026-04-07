@@ -83,8 +83,6 @@ private:
         uint8_t oppKingSq,
         uint64_t occ) noexcept;
 
-    static int32_t clampOrderingScore(int64_t score) noexcept;
-
     static int32_t scoreMoveOrderingPriorityInline(
         chess::Board& b,
         const chess::Board::Move& m,

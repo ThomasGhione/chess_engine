@@ -10,9 +10,10 @@ namespace engine {
 class Sorter;
 
 class MoveGenerator final {
+
 public:
+
     MoveGenerator() = delete;
-    ~MoveGenerator() = delete;
 
     static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
 
@@ -41,6 +42,7 @@ public:
         int32_t searchDepth) noexcept;
 
 private:
+
     static uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
 
     static void addPromotionMoves(

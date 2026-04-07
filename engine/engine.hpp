@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -14,6 +15,19 @@
 #include "search/searcher.hpp"
 
 namespace engine {
+
+
+
+static inline constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
+static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
+
+static inline constexpr int32_t clampToInt32(int64_t value) noexcept {
+    if (value > static_cast<int64_t>(POS_INF)) return POS_INF;
+    if (value < static_cast<int64_t>(NEG_INF)) return NEG_INF;
+    return static_cast<int32_t>(value);
+}
+
+
 
 class Engine final {
 public:

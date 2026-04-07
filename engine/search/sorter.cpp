@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstdlib>
 
+#include "../engine.hpp"
 #include "searcher.hpp"
 
 namespace engine {
@@ -70,18 +71,6 @@ bool Sorter::givesCheckAfterQuietMoveFast(
     return false;
 }
 
-int32_t Sorter::clampOrderingScore(int64_t score) noexcept {
-    if (score > static_cast<int64_t>(Searcher::POS_INF)) {
-        return Searcher::POS_INF;
-    }
-
-    if (score < static_cast<int64_t>(Searcher::NEG_INF)) {
-        return Searcher::NEG_INF;
-    }
-
-    return static_cast<int32_t>(score);
-}
-
 int32_t Sorter::scoreMoveOrderingPriorityInline(
     chess::Board& b,
     const chess::Board::Move& m,
@@ -134,7 +123,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         // Simpler single-tier approach: all bad captures get -10000 + SEE
         // Total: -10000 to -10001+ (worse SEE = lower priority)
         if (see < 0) {
-            return clampOrderingScore(-10000 + see);
+            return clampToInt32(-10000 + see);
         }
 
         // GOOD CAPTURES: priority based on SEE + capture history
@@ -146,7 +135,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         const int32_t capHist = capHistPrimary + (capHistSecondary >> 1);
         score += std::min(static_cast<int32_t>(500), capHist / 20); // Scale down
         // Total: 10000-19500
-        return clampOrderingScore(score);
+        return clampToInt32(score);
     }
 
     // Macro-step 3: Score non-captures via killer/counter/check/promotion/history.
@@ -249,7 +238,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
 
     // Macro-step 5: Apply pawn-specific ordering refinements and clamp.
     if (fromPieceType != chess::Board::PAWN) {
-        return clampOrderingScore(score);
+        return clampToInt32(score);
     }
 
     // In endgames prioritize pawn pushes slightly, especially advanced ones.
@@ -265,7 +254,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
                 score += 20 + advancement * 12;
             }
         }
-        return clampOrderingScore(score);
+        return clampToInt32(score);
     }
 
     // Discourage moving the same pawn twice in the opening: small negative ordering penalty
@@ -278,7 +267,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         }
     }
 
-    return clampOrderingScore(score);
+    return clampToInt32(score);
 }
 
 uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept {
@@ -556,15 +545,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
 
 //FIXME: Controlla duplicazione
 int32_t Sorter::clampQMoveScore(int64_t score) noexcept {
-    if (score > static_cast<int64_t>(Searcher::POS_INF)) {
-        return Searcher::POS_INF;
-    }
-
-    if (score < static_cast<int64_t>(Searcher::NEG_INF)) {
-        return Searcher::NEG_INF;
-    }
-
-    return static_cast<int32_t>(score);
+    return clampToInt32(score);
 }
 
 bool Sorter::shouldDeltaPrune(
