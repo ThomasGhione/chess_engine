@@ -175,9 +175,13 @@ bool Driver::loadGame() noexcept {
     }
 
     // TODO: add checks/exceptions for FEN parsing
-
-    // Not working correctly in playervsbot and player is black
-    vsBot ? playGameVsEngine(true) : playGameVsHuman();
+    if (vsBot) {
+        const bool playerMovesNext =
+            (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
+        playGameVsEngine(playerMovesNext);
+    } else {
+        playGameVsHuman();
+    }
     return true;
 }
 

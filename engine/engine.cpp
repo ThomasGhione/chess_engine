@@ -239,8 +239,8 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
         rootBoard,
         this->searchRuntime,
-        static_cast<uint64_t>(Engine::DEFAULTDEPTH),
-        static_cast<uint64_t>(Engine::MAX_PLY),
+        Engine::DEFAULTDEPTH,
+        Engine::MAX_PLY,
         true);
 
     this->ponderCurrentDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
@@ -325,7 +325,7 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     this->stopPondering();
 
     const uint64_t targetDepth = (requestedDepth == 0)
-        ? static_cast<uint64_t>(Engine::DEFAULTDEPTH)
+        ? Engine::DEFAULTDEPTH
         : requestedDepth;
     if (targetDepth == 0) return chess::Board::Move{};
 
@@ -352,7 +352,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     this->stopPondering();
 
     const uint64_t targetDepth = (requestedDepth == 0)
-        ? static_cast<uint64_t>(Engine::DEFAULTDEPTH)
+        ? Engine::DEFAULTDEPTH
         : requestedDepth;
     if (targetDepth == 0) return;
 

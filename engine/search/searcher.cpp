@@ -1047,7 +1047,7 @@ int32_t Searcher::quiescenceSearch(
     const int qsearchDepth = std::max(0, ply - static_cast<int>(runtime.depth));
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
-        deltaMargin = std::max(deltaMargin, static_cast<int32_t>(QUEEN_VALUE));
+        deltaMargin = std::max(deltaMargin, QUEEN_VALUE);
     }
 
     if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
