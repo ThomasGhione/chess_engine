@@ -8,14 +8,10 @@
 namespace engine {
 
 bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
-    // Macro-step 1: Compare source squares.
-    // Macro-step 2: Compare destination squares.
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
 
 bool Sorter::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
-    // Macro-step 1: Compare source square against encoded `from`.
-    // Macro-step 2: Compare destination square against encoded `to`.
     return m.from.index == from && m.to.index == to;
 }
 
@@ -24,15 +20,11 @@ bool Sorter::containsMoveWithPromotion(
     uint8_t from,
     uint8_t to,
     char promotionPiece) noexcept {
-    // Macro-step 1: Scan the move list linearly.
     for (const auto& m : moves) {
-        // Macro-step 2: Match coordinates and promotion piece exactly.
         if (sameFromTo(m, from, to) && m.promotionPiece == promotionPiece) {
             return true;
         }
     }
-
-    // Macro-step 3: Return false when no exact match is present.
     return false;
 }
 
@@ -43,12 +35,11 @@ bool Sorter::givesCheckAfterQuietMoveFast(
     int usSide,
     uint8_t oppKingSq,
     uint64_t occ) noexcept {
-    // Macro-step 1: Compute occupancy after the quiet move.
+
     const uint64_t fromBit = chess::Board::bitMask(m.from.index);
     const uint64_t toBit = chess::Board::bitMask(m.to.index);
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
 
-    // Macro-step 2: Mirror side bitboards with the moved piece relocated.
     uint64_t pawns = b.pawns_bb[usSide];
     uint64_t knights = b.knights_bb[usSide];
     uint64_t bishops = b.bishops_bb[usSide];
@@ -66,33 +57,27 @@ bool Sorter::givesCheckAfterQuietMoveFast(
         default: break;
     }
 
-    // Macro-step 3: Test leaper attacks on the opponent king square.
     if (pieces::PAWN_ATTACKERS_TO[usSide][oppKingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights) return true;
     if (pieces::KING_ATTACKS[oppKingSq] & kings) return true;
 
-    // Macro-step 4: Test slider attacks with updated occupancy.
     const uint64_t rookLike = rooks | queens;
     if (rookLike && (pieces::getRookAttacks(oppKingSq, occAfter) & rookLike)) return true;
     const uint64_t bishopLike = bishops | queens;
     if (bishopLike && (pieces::getBishopAttacks(oppKingSq, occAfter) & bishopLike)) return true;
 
-    // Macro-step 5: Report no check when no attack vector is active.
     return false;
 }
 
 int32_t Sorter::clampOrderingScore(int64_t score) noexcept {
-    // Macro-step 1: Clamp to int32 max bound.
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }
 
-    // Macro-step 2: Clamp to int32 min bound.
     if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
         return std::numeric_limits<int32_t>::min();
     }
 
-    // Macro-step 3: Safe narrowing conversion.
     return static_cast<int32_t>(score);
 }
 
@@ -570,17 +555,14 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
 
 //FIXME: Controlla duplicazione
 int32_t Sorter::clampQMoveScore(int64_t score) noexcept {
-    // Macro-step 1: Clamp score to int32 max bound.
     if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
         return std::numeric_limits<int32_t>::max();
     }
 
-    // Macro-step 2: Clamp score to int32 min bound.
     if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
         return std::numeric_limits<int32_t>::min();
     }
 
-    // Macro-step 3: Safe narrowing conversion.
     return static_cast<int32_t>(score);
 }
 
@@ -730,44 +712,32 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
     return sortedTacticalMoves;
 }
 
-bool Sorter::isForcingEvasion(
-    const chess::Board& b,
-    const chess::Board::Move& m,
-    const chess::Coords& enPassant,
-    bool hasEnPassant) noexcept {
-    // Macro-step 1: Captures are always forcing evasions.
+bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     if (toPieceType != chess::Board::EMPTY) return true;
 
-    // Macro-step 2: Non-pawn quiet moves are non-forcing here.
     const uint8_t fromPiece = b.get(m.from);
     const uint8_t fromType = fromPiece & chess::Board::MASK_PIECE_TYPE;
     if (fromType != chess::Board::PAWN) return false;
 
-    // Macro-step 3: Promotions are forcing evasions.
     const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE));
     if (isPromotion) return true;
 
-    // Macro-step 4: En-passant evasions are also forcing.
     return hasEnPassant
         && (m.to == enPassant)
         && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
 }
 
-MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(
-    const MoveList<chess::Board::Move>& evasions,
-    const chess::Board& b) noexcept {
-    // Macro-step 1: Prepare output list and shared en-passant state.
+MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(const MoveList<chess::Board::Move>& evasions, const chess::Board& b) noexcept {
     MoveList<chess::Board::Move> orderedEvasions;
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
 
-    // Macro-step 2: Reproduce two-pass evasion ordering (forcing first, quiet after).
+    // Reproduce two-pass evasion ordering (forcing first, quiet after).
     // Two-pass evasion ordering:
     // 1) forcing evasions (captures/promotions)
     // 2) quiet evasions.
     // This improves alpha-beta cutoffs in tactical check sequences.
-    //FIXME: Trasformare for in funzione helper 	
     for (int pass = 0; pass < 2; ++pass) {
         const bool searchForcing = (pass == 0);
         for (const auto& m : evasions) {
@@ -779,37 +749,25 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(
         }
     }
 
-    // Macro-step 3: Return ordered evasions.
     return orderedEvasions;
 }
 
-bool Sorter::isPromotionMove(
-    const chess::Board& board,
-    const chess::Board::Move& move) noexcept {
-    // Macro-step 1: Fast-rank guard for non-promotion destinations.
+bool Sorter::isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
+    
     const uint8_t toRank = move.to.rank();
     if (toRank != 0 && toRank != 7) return false;
 
-    // Macro-step 2: Ensure the moving piece is a pawn.
     const uint8_t piece = board.get(move.from);
     const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
     if (pieceType != chess::Board::PAWN) return false;
 
-    // Macro-step 3: Check destination rank against side promotion rank.
     return toRank == chess::Board::promotionRank(board.getColor(move.from) == chess::Board::WHITE);
 }
 
-bool Sorter::doMoveWithPromotion(
-    chess::Board& b,
-    const chess::Board::Move& m,
-    chess::Board::MoveState& state) noexcept {
-    // Macro-step 1: Detect whether the move is a promotion.
+bool Sorter::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {    
     const bool isPromo = isPromotionMove(b, m);
-
-    // Macro-step 2: Delegate promotion-choice normalization to Board::doMove internals.
     const char promoChoice = isPromo ? m.promotionPiece : '\0';
 
-    // Macro-step 3: Execute move and return promotion flag.
     b.doMove(m, state, promoChoice);
     return isPromo;
 }
