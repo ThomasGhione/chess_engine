@@ -14,7 +14,7 @@ ut::suite performanceEngineSuite = [] {
     e.depth = 10;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.search(e.depth);
+    e.searchUCI(e.depth);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -35,7 +35,7 @@ ut::suite performanceEngineSuite = [] {
     // plays against itself for "runs" moves
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        e.search(e.depth);
+        e.searchUCI(e.depth);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
