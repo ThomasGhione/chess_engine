@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
-#include <limits>
+
+#include "searcher.hpp"
 
 namespace engine {
 
@@ -70,12 +71,12 @@ bool Sorter::givesCheckAfterQuietMoveFast(
 }
 
 int32_t Sorter::clampOrderingScore(int64_t score) noexcept {
-    if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
-        return std::numeric_limits<int32_t>::max();
+    if (score > static_cast<int64_t>(Searcher::POS_INF)) {
+        return Searcher::POS_INF;
     }
 
-    if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
-        return std::numeric_limits<int32_t>::min();
+    if (score < static_cast<int64_t>(Searcher::NEG_INF)) {
+        return Searcher::NEG_INF;
     }
 
     return static_cast<int32_t>(score);
@@ -555,12 +556,12 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
 
 //FIXME: Controlla duplicazione
 int32_t Sorter::clampQMoveScore(int64_t score) noexcept {
-    if (score > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
-        return std::numeric_limits<int32_t>::max();
+    if (score > static_cast<int64_t>(Searcher::POS_INF)) {
+        return Searcher::POS_INF;
     }
 
-    if (score < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) {
-        return std::numeric_limits<int32_t>::min();
+    if (score < static_cast<int64_t>(Searcher::NEG_INF)) {
+        return Searcher::NEG_INF;
     }
 
     return static_cast<int32_t>(score);

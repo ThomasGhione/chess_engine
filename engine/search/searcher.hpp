@@ -14,7 +14,6 @@ namespace engine {
 class Searcher final {
 public:
     Searcher() = delete;
-    ~Searcher() = delete;
 
     static constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
     static constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();

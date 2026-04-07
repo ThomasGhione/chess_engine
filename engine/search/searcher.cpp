@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <algorithm>
-#include <limits>
 #include <numeric>
 
 #include "../../tt/ttentry.hpp"
@@ -63,15 +62,15 @@ void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, in
 
 int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
-    if (sum > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) return std::numeric_limits<int32_t>::max();
-    if (sum < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) return std::numeric_limits<int32_t>::min();
+    if (sum > static_cast<int64_t>(POS_INF)) return POS_INF;
+    if (sum < static_cast<int64_t>(NEG_INF)) return NEG_INF;
     return static_cast<int32_t>(sum);
 }
 
 int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
-    if (diff > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) return std::numeric_limits<int32_t>::max();
-    if (diff < static_cast<int64_t>(std::numeric_limits<int32_t>::min())) return std::numeric_limits<int32_t>::min();
+    if (diff > static_cast<int64_t>(POS_INF)) return POS_INF;
+    if (diff < static_cast<int64_t>(NEG_INF)) return NEG_INF;
     return static_cast<int32_t>(diff);
 }
 
@@ -1035,7 +1034,7 @@ int32_t Searcher::quiescenceSearch(
 
     const int32_t materialBalance = usIsWhite
         ? standPat
-        : (standPat == std::numeric_limits<int32_t>::min() ? std::numeric_limits<int32_t>::max() : -standPat);
+        : (standPat == NEG_INF ? POS_INF : -standPat);
     //FIXME: Eliminare costanti magiche
     if (materialBalance < -400) {
         deltaMargin += 150;
@@ -1379,7 +1378,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     bool hasPrevPrevScore = false;
     constexpr int32_t MATE_SCORE_THRESHOLD = POS_INF - 2048;
     auto absScore = [](int32_t v) noexcept -> int32_t {
-        if (v == std::numeric_limits<int32_t>::min()) return std::numeric_limits<int32_t>::max();
+        if (v == NEG_INF) return POS_INF;
         return (v >= 0) ? v : -v;
     };
 
@@ -1424,7 +1423,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         } else {
             const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(prevPrevScore);
             const int64_t scoreSwing64 = (scoreDiff64 >= 0) ? scoreDiff64 : -scoreDiff64;
-            const int32_t scoreSwing = static_cast<int32_t>(std::min<int64_t>(scoreSwing64, std::numeric_limits<int32_t>::max()));
+            const int32_t scoreSwing = static_cast<int32_t>(std::min<int64_t>(scoreSwing64, POS_INF));
             int32_t windowDelta = std::clamp<int32_t>(40 + (scoreSwing / 2), 60, 220);
             constexpr int32_t WINDOW_HARD_CAP = 1500;
             constexpr int MAX_ASP_RESEARCHES = 6;
