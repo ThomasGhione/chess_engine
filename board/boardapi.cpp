@@ -87,8 +87,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         newHash ^= zobrist::TABLES.pieces[moving][toIndex];
     }
 
-    const bool resetHistory = (movingType == PAWN || destBefore != EMPTY || st.wasEnPassantCapture);
-    st.historyWasReset = resetHistory;
+    const bool resetHistory = (movingType == PAWN || destBefore != EMPTY);
     if (resetHistory) {
         halfMoveClock = 0;
     } else if (halfMoveClock < 255) {

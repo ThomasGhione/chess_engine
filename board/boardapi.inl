@@ -15,7 +15,7 @@ inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
 inline uint32_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
     uint32_t flags = MOVE_CHANGE_NONE;
 
-    if (isCaptureKind(st.moveKind) || st.wasEnPassantCapture) {
+    if (isCaptureKind(st.moveKind) || st.moveKind == MoveKind::EnPassant) {
         flags |= MOVE_CHANGE_CAPTURE;
     }
     if (isPromotionKind(st.moveKind)) {
@@ -191,12 +191,9 @@ inline void Board::prepareMoveState(MoveState& st, uint8_t moving, uint8_t destB
     st.capturedPiece = destBefore;
     st.fromPiece = moving;
     st.promotionPieceType = 0;
-    st.wasEnPassantCapture = false;
     st.enPassantCapturedIndex = 0;
-    st.wasCastling = false;
     st.rookFromIndex = 0;
     st.rookToIndex = 0;
-    st.historyWasReset = false;
 }
 
 __attribute__((always_inline))
@@ -206,12 +203,9 @@ inline void Board::prepareNullMoveState(MoveState& st) const noexcept {
     st.capturedPiece = EMPTY;
     st.fromPiece = EMPTY;
     st.promotionPieceType = 0;
-    st.wasEnPassantCapture = false;
     st.enPassantCapturedIndex = 0;
-    st.wasCastling = false;
     st.rookFromIndex = 0;
     st.rookToIndex = 0;
-    st.historyWasReset = false;
 }
 
 inline void Board::applyEvalCacheInvalidation(const MoveState& st) noexcept {
@@ -307,7 +301,6 @@ inline void Board::doMoveByKind(
 ) noexcept {
     if constexpr (Kind == MoveKind::EnPassant) {
         // Remove the captured pawn from board storage and bitboards before moving.
-        st.wasEnPassantCapture = true;
         const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
         const uint8_t capIndex = static_cast<uint8_t>(toIndex + captureOffset);
         const uint8_t capturedPiece = get(capIndex);
@@ -333,7 +326,6 @@ inline void Board::doMoveByKind(
 
     if constexpr (Kind == MoveKind::Castling) {
         // Move the rook with the same index-based fast path used for the king.
-        st.wasCastling = true;
         const uint8_t fromFile = file(fromIndex);
         const uint8_t toFile = file(toIndex);
         const uint8_t rankBase = static_cast<uint8_t>(rank(toIndex) << 3);

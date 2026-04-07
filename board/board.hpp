@@ -133,13 +133,10 @@ public:
         uint8_t fromPiece{};            // original piece on "from" before the move (useful for promotions)
         uint8_t promotionPieceType{};   // non-zero if the move is a promotion (PAWN=0 -> no promotion)
 
-        bool    wasEnPassantCapture{};  // true if the move was an en-passant capture
         uint8_t enPassantCapturedIndex{}; // index (0..63) of the pawn captured en-passant
 
-        bool    wasCastling{};          // true if the move was a castling move
         uint8_t rookFromIndex{};        // rook start square index in castling
         uint8_t rookToIndex{};          // rook destination square index in castling
-        bool    historyWasReset{};      // true if repetition history was reset by the move
         MoveKind moveKind{MoveKind::Quiet};
     };
 
