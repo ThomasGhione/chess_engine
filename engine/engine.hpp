@@ -24,6 +24,7 @@ public:
         DRAW = 3
     };
 
+    // Lifecycle
     Engine();
     explicit Engine(const std::string& fen);
     ~Engine() noexcept;
@@ -33,9 +34,11 @@ public:
     Engine(Engine&&) = delete;
     Engine& operator=(Engine&&) = delete;
 
+    // Gameplay API
     void reset() noexcept;
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
+    // Search API
     void search(uint64_t depth) noexcept;
     chess::Board::Move searchUCI(uint64_t depth) noexcept;
     void stopThinking() noexcept;
@@ -46,10 +49,13 @@ public:
     uint64_t getPonderCurrentDepth() const noexcept;
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
+
+    // Evaluation API
     int32_t evaluate(const chess::Board& board) noexcept;
     int32_t evaluateTrace(const chess::Board& board) noexcept;
     int32_t evaluateCheckmate(const chess::Board& board) noexcept;
 
+    // Game state
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
@@ -57,10 +63,11 @@ public:
     GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
 
-    // Magic bitboard initialization (shared across all Engine instances)
+    // Shared bitboard init (all Engine instances)
     static inline bool magicTablesInitialized = false;
     static void ensureMagicTablesInitialized() noexcept;
 
+    // Public state kept for compatibility with existing call-sites.
     chess::Board::Move bestMove;
     chess::Board board;
     bool isPlayerWhite = true;
@@ -80,14 +87,16 @@ public:
     static constexpr size_t MOVE_HISTORY_MAX_PLIES = 1024;
     static constexpr size_t MOVE_HISTORY_ENTRY_MAX_LEN = 6; // "e7e8q\n"
     static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
-    std::string moveHistory = "";
+    std::string moveHistory {};
 
-    // Transposition table
+    // Transposition table (shared by normal search and pondering)
     tt::TranspositionTable tt;
 
 private:
-    GameResult gameResult = Engine::ONGOING;
 
+    GameResult gameResult = GameResult::ONGOING;
+
+    // Search/pondering coordination
     std::thread ponderingThread;
     std::atomic<bool> ponderingStopRequested {false};
     std::atomic<bool> ponderingActive {false};
@@ -104,6 +113,7 @@ private:
     std::atomic<uint32_t> ponderAspirationFailLow {0};
     std::atomic<uint32_t> ponderAspirationFailHigh {0};
 
+    // Internal helpers
     static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
