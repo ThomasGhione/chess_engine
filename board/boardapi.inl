@@ -12,8 +12,8 @@ inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
     return kind == MoveKind::PromotionQuiet || kind == MoveKind::PromotionCapture;
 }
 
-inline uint32_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
-    uint32_t flags = MOVE_CHANGE_NONE;
+inline uint16_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
+    uint16_t flags = MOVE_CHANGE_NONE;
 
     if (isCaptureKind(st.moveKind) || st.moveKind == MoveKind::EnPassant) {
         flags |= MOVE_CHANGE_CAPTURE;
@@ -172,7 +172,6 @@ inline void Board::promoteUnchecked(uint8_t atIndex, uint8_t pawnPiece, uint8_t 
 
 __attribute__((always_inline))
 inline void Board::snapshotState(MoveState& st) const noexcept {
-    st.prevActiveColor   = activeColor;
     st.prevHalfMoveClock = halfMoveClock;
     st.prevFullMoveClock = fullMoveClock;
     st.prevEnPassant     = enPassant;
@@ -182,7 +181,7 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
     st.prevEvalCache     = evalCache;
-    st.prevLastMoveChangeFlags = lastMoveChangeFlags;
+    st.prevLastMoveChangeFlags = static_cast<uint16_t>(lastMoveChangeFlags);
 }
 
 __attribute__((always_inline))
@@ -215,7 +214,7 @@ inline void Board::applyEvalCacheInvalidation(const MoveState& st) noexcept {
 
 __attribute__((always_inline))
 inline void Board::restoreState(const MoveState& st) noexcept {
-    activeColor   = st.prevActiveColor;
+    activeColor   = oppositeColor(activeColor);
     halfMoveClock = st.prevHalfMoveClock;
     fullMoveClock = st.prevFullMoveClock;
     enPassant     = st.prevEnPassant;

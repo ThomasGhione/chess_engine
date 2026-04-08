@@ -77,7 +77,7 @@ public:
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
-    enum MoveChangeFlag : uint32_t {
+    enum MoveChangeFlag : uint16_t {
         MOVE_CHANGE_NONE        = 0u,
         MOVE_CHANGE_CAPTURE     = 1u << 0,
         MOVE_CHANGE_PROMOTION   = 1u << 1,
@@ -113,14 +113,11 @@ public:
     struct MoveState {
         uint64_t prevHistoryHead{};
         EvalCache prevEvalCache{};
-        uint32_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
+        uint16_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
 
-        uint16_t prevHalfMoveClock{};
-        uint16_t prevFullMoveClock{};
+        uint8_t  prevHalfMoveClock{};
+        uint8_t  prevFullMoveClock{};
         uint8_t  prevHistorySize{};
-
-        // Game state before the move
-        uint8_t  prevActiveColor{};
 
         // En passant and castling rights
         Coords  prevEnPassant{};
@@ -140,7 +137,7 @@ public:
         MoveKind moveKind{MoveKind::Quiet};
     };
 
-    static_assert(sizeof(MoveState) <= 88, "MoveState layout regressed; keep it compact for search stack usage.");
+    static_assert(sizeof(MoveState) <= 80, "MoveState layout regressed; keep it compact for search stack usage.");
     // Structs and enums end
     
     // Constructors start
@@ -373,7 +370,7 @@ private:
     inline int32_t& evalCacheTermRef() const noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
-    [[nodiscard]] static inline uint32_t computeMoveChangeFlags(const MoveState& st) noexcept;
+    [[nodiscard]] static inline uint16_t computeMoveChangeFlags(const MoveState& st) noexcept;
     [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
     [[nodiscard]] static inline MoveKind classifyMoveKind(
         uint8_t movingType,
@@ -441,9 +438,9 @@ private:
     int32_t incrementalPsqtKingsMg = 0;
     int32_t incrementalPsqtKingsEg = 0;
     mutable EvalCache evalCache{};
-    uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
-    uint16_t halfMoveClock = 0;             // 50-move rule counter
-    uint16_t fullMoveClock = 1;             // Current move number
+    uint16_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
+    uint8_t halfMoveClock = 0;             // 50-move rule counter
+    uint8_t fullMoveClock = 1;             // Current move number
     uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
     uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
     Coords   enPassant{};                   // En-passant target square
