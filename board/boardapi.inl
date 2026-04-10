@@ -40,56 +40,73 @@ inline uint16_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
     return flags;
 }
 
-inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept {
-    uint32_t mask = 0;
-    const bool captureOrPromotion = (moveFlags & (MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION)) != 0;
-    const bool pawnRelated = ((moveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
+template<uint16_t MoveFlags>
+constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept {
+    constexpr bool captureOrPromotion = (MoveFlags & (MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION)) != 0;
+    constexpr bool pawnRelated = ((MoveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
 
-    if (captureOrPromotion) {
+    uint32_t mask = 0;
+
+    if constexpr (captureOrPromotion) {
         mask |= evalCacheBit(EVAL_CACHE_MATERIAL_DELTA);
         mask |= evalCacheBit(EVAL_CACHE_BISHOP_PAIR_BONUS);
     }
 
-    if (pawnRelated) {
+    if constexpr (pawnRelated) {
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_MG);
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
         mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
         mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
     }
 
-    if (((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
+    if constexpr (((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
         mask |= evalCacheBit(EVAL_CACHE_ROOKS);
     }
 
-    if (((moveFlags & MOVE_CHANGE_KING_MOVE) != 0)
-        || ((moveFlags & MOVE_CHANGE_ROOK_MOVE) != 0)
-        || ((moveFlags & MOVE_CHANGE_CASTLING) != 0)
-        || ((moveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
+    if constexpr (((MoveFlags & MOVE_CHANGE_KING_MOVE) != 0)
+                  || ((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0)
+                  || ((MoveFlags & MOVE_CHANGE_CASTLING) != 0)
+                  || ((MoveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
         mask |= evalCacheBit(EVAL_CACHE_CASTLING_BONUS);
     }
 
-    if (((moveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {
+    if constexpr (((MoveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {
         mask |= evalCacheBit(EVAL_CACHE_MINOR_DEVELOPMENT);
         mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
     }
-    if (pawnRelated) {
+    if constexpr (pawnRelated) {
         mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
     }
 
-    if (((moveFlags & MOVE_CHANGE_QUEEN_MOVE) != 0) || captureOrPromotion) {
+    if constexpr (((MoveFlags & MOVE_CHANGE_QUEEN_MOVE) != 0) || captureOrPromotion) {
         mask |= evalCacheBit(EVAL_CACHE_EARLY_QUEEN);
     }
 
-    if (((moveFlags & (MOVE_CHANGE_PAWN_MOVE
-                     | MOVE_CHANGE_KNIGHT_MOVE
-                     | MOVE_CHANGE_BISHOP_MOVE
-                     | MOVE_CHANGE_ROOK_MOVE
-                     | MOVE_CHANGE_QUEEN_MOVE)) != 0)
-        || captureOrPromotion) {
+    if constexpr (((MoveFlags & (MOVE_CHANGE_PAWN_MOVE
+                               | MOVE_CHANGE_KNIGHT_MOVE
+                               | MOVE_CHANGE_BISHOP_MOVE
+                               | MOVE_CHANGE_ROOK_MOVE
+                               | MOVE_CHANGE_QUEEN_MOVE)) != 0)
+                              || captureOrPromotion) {
         mask |= evalCacheBit(EVAL_CACHE_PIECE_COORDINATION);
     }
 
     return mask;
+}
+
+template<uint16_t... MoveFlags>
+constexpr std::array<uint32_t, sizeof...(MoveFlags)>
+Board::buildEvalInvalidationMaskLut(std::integer_sequence<uint16_t, MoveFlags...>) noexcept {
+    return { evalInvalidationMaskFromMoveFlagsConstexpr<MoveFlags>()... };
+}
+
+inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept {
+    static_assert((MOVE_CHANGE_ALL + 1u) == (1u << 9), "MoveChangeFlag layout changed; update eval invalidation LUT sizing.");
+    static constexpr auto INVALIDATION_MASK_LUT = buildEvalInvalidationMaskLut(
+        std::make_integer_sequence<uint16_t, MOVE_CHANGE_ALL + 1u>{}
+    );
+
+    return INVALIDATION_MASK_LUT[static_cast<uint16_t>(moveFlags) & MOVE_CHANGE_ALL];
 }
 
 inline Board::MoveKind Board::classifyMoveKind(

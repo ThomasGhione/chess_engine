@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <utility>
 
 #include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"
@@ -87,7 +88,16 @@ public:
         MOVE_CHANGE_ROOK_MOVE   = 1u << 5,
         MOVE_CHANGE_QUEEN_MOVE  = 1u << 6,
         MOVE_CHANGE_KING_MOVE   = 1u << 7,
-        MOVE_CHANGE_CASTLING    = 1u << 8
+        MOVE_CHANGE_CASTLING    = 1u << 8,
+        MOVE_CHANGE_ALL         = MOVE_CHANGE_CAPTURE
+                                | MOVE_CHANGE_PROMOTION
+                                | MOVE_CHANGE_PAWN_MOVE
+                                | MOVE_CHANGE_KNIGHT_MOVE
+                                | MOVE_CHANGE_BISHOP_MOVE
+                                | MOVE_CHANGE_ROOK_MOVE
+                                | MOVE_CHANGE_QUEEN_MOVE
+                                | MOVE_CHANGE_KING_MOVE
+                                | MOVE_CHANGE_CASTLING
     };
 
     struct EvalCache {
@@ -371,6 +381,11 @@ private:
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline uint16_t computeMoveChangeFlags(const MoveState& st) noexcept;
+    template<uint16_t MoveFlags>
+    [[nodiscard]] static constexpr uint32_t evalInvalidationMaskFromMoveFlagsConstexpr() noexcept;
+    template<uint16_t... MoveFlags>
+    [[nodiscard]] static constexpr std::array<uint32_t, sizeof...(MoveFlags)>
+    buildEvalInvalidationMaskLut(std::integer_sequence<uint16_t, MoveFlags...>) noexcept;
     [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
     [[nodiscard]] static inline MoveKind classifyMoveKind(
         uint8_t movingType,
