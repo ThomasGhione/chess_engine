@@ -74,10 +74,10 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
         const uint64_t fileMask = FILE_MASKS[f];
         const uint64_t adjacentMask = ADJACENT_FILES_ONLY[f];
         const uint64_t adjacentAndFileMask = ADJACENT_AND_FILE_MASKS[f];
-        const int whiteOnFile = __builtin_popcountll(whitePawns & fileMask);
-        const int blackOnFile = __builtin_popcountll(blackPawns & fileMask);
-        const bool whiteFileOccupied = (whiteOnFile > 0);
-        const bool blackFileOccupied = (blackOnFile > 0);
+        const uint64_t whiteFileBits = whitePawns & fileMask;
+        const uint64_t blackFileBits = blackPawns & fileMask;
+        const bool whiteFileOccupied = (whiteFileBits != 0ULL);
+        const bool blackFileOccupied = (blackFileBits != 0ULL);
 
         if (whiteFileOccupied && !prevWhiteFileOccupied) {
             ++stats.whiteIslands;
@@ -88,8 +88,16 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
         prevWhiteFileOccupied = whiteFileOccupied;
         prevBlackFileOccupied = blackFileOccupied;
 
-        if (whiteOnFile > 1) stats.doubledScore += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
-        if (blackOnFile > 1) stats.doubledScore -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
+        const bool whiteDoubled = whiteFileOccupied && ((whiteFileBits & (whiteFileBits - 1ULL)) != 0ULL);
+        const bool blackDoubled = blackFileOccupied && ((blackFileBits & (blackFileBits - 1ULL)) != 0ULL);
+        if (whiteDoubled) {
+            const int whiteOnFile = __builtin_popcountll(whiteFileBits);
+            stats.doubledScore += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
+        }
+        if (blackDoubled) {
+            const int blackOnFile = __builtin_popcountll(blackFileBits);
+            stats.doubledScore -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
+        }
 
         stats.whiteIsolatedOnFile[f] = (whitePawns & adjacentMask) == 0ULL;
         stats.blackIsolatedOnFile[f] = (blackPawns & adjacentMask) == 0ULL;
@@ -162,9 +170,8 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
 
     const bool noEnemySameFileAhead = ((enemyPawns & FILE_MASKS[file] & forwardFill) == 0ULL);
     if (noEnemySameFileAhead && (frontMask == 0ULL || (allPawns & frontMask) == 0ULL) && hasSupport) {
-        const int enemyAdjacentAhead = __builtin_popcountll(
-            enemyPawns & ADJACENT_FILES_ONLY[file] & forwardFill);
-        if (enemyAdjacentAhead <= 1) {
+        const uint64_t enemyAdjacentAhead = enemyPawns & ADJACENT_FILES_ONLY[file] & forwardFill;
+        if ((enemyAdjacentAhead & (enemyAdjacentAhead - 1ULL)) == 0ULL) {
             score += sign * candidatePasserBonus;
         }
     }
@@ -229,7 +236,7 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
         if (hasSupport) {
             score += sign * engine::PAWN_SUPPORT_BONUS;
         } else if (frontBlockedByPawn) {
-	    // Suppose that !hasSuppport == true 
+	        // Suppose that !hasSuppport == true 
             score += sign * (engine::ISOLATED_PAWN_PENALTY / 2);
         }
 
@@ -238,7 +245,7 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
                                    oneStepMasks, ADJACENT_FILES_ONLY, enemyAdjAndFilePawns,
                                    passedAdvancementScale, passedNearPromotionBonus,
                                    connectedPasserBonus, promotionRank, sign);
-	  continue;
+	    continue;
         } 
 	
 	// Suppose isPassed == false
@@ -259,7 +266,6 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
         isEndgame;
     std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
     const uint8_t endgameTag = isEndgame;
-    const uint16_t currentStamp = ++pawnCacheStamp;
 
     for (size_t way = 0; way < PAWN_CACHE_WAYS; ++way) {
         PawnEvalCacheEntry& cacheEntry = cacheBucket[way];
@@ -267,7 +273,7 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
             && cacheEntry.whitePawns == whitePawns
             && cacheEntry.blackPawns == blackPawns
             && cacheEntry.isEndgame == endgameTag) {
-            cacheEntry.stamp = currentStamp;
+            cacheEntry.stamp = ++pawnCacheStamp;
             outScore = cacheEntry.score;
             return true;
         }
