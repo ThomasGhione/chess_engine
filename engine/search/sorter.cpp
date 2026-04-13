@@ -5,7 +5,6 @@
 #include <cstdlib>
 
 #include "../engine.hpp"
-#include "searcher.hpp"
 
 namespace engine {
 

@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <numeric>
 
-#include "../../tt/ttentry.hpp"
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
 #include "move_generator.hpp"

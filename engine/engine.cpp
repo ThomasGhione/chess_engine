@@ -11,7 +11,6 @@
 #include "../board/piece.hpp"
 #include "../debug_timer.hpp"
 #include "eval/evaluator.hpp"
-#include "search/searcher.hpp"
 
 namespace engine {
 

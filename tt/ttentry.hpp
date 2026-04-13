@@ -3,9 +3,6 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "../board/board.hpp"
-#include "zobrist.hpp"
-
 namespace engine {
 
 // Optimization: compact entry layout to improve cache behavior
@@ -49,10 +46,4 @@ inline TTGlobal& globalTTData() noexcept {
     return data;
 }
 
-inline uint64_t computeHashKey(const chess::Board& board) noexcept {
-    // Legacy compatibility wrapper: runtime hashing is centralized in tt/zobrist.hpp
-    return zobrist::computeHashKey(board);
-}
-
 } // namespace engine
-
