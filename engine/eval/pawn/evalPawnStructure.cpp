@@ -42,6 +42,21 @@ static constexpr auto BLACK_ONE_STEP_MASKS = [] {
     return masks;
 }();
 
+struct PawnEvalCacheEntry {
+    uint64_t whitePawns = 0ULL;
+    uint64_t blackPawns = 0ULL;
+    int32_t score = 0;
+    uint8_t isEndgame = 0;
+    uint8_t valid = 0;
+    uint16_t stamp = 0;
+};
+
+constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
+constexpr size_t PAWN_CACHE_WAYS = 2;
+constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
+thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
+thread_local uint16_t pawnCacheStamp = 0;
+
 inline const std::array<uint64_t, 64>& Evaluator::getPawnSupportMasks(bool isWhite) noexcept {
     return isWhite ? WHITE_SUPPORT_MASKS : BLACK_SUPPORT_MASKS;
 }
@@ -238,21 +253,6 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
 
 bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                int32_t& outScore) noexcept {
-    struct PawnEvalCacheEntry {
-        uint64_t whitePawns = 0ULL;
-        uint64_t blackPawns = 0ULL;
-        int32_t score = 0;
-        uint8_t isEndgame = 0;
-        uint8_t valid = 0;
-        uint16_t stamp = 0;
-    };
-
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
-    constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
-    thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
-    thread_local uint16_t pawnCacheStamp = 0;
-
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
@@ -278,21 +278,6 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
 
 void Evaluator::storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                   int32_t score) noexcept {
-    struct PawnEvalCacheEntry {
-        uint64_t whitePawns = 0ULL;
-        uint64_t blackPawns = 0ULL;
-        int32_t score = 0;
-        uint8_t isEndgame = 0;
-        uint8_t valid = 0;
-        uint16_t stamp = 0;
-    };
-
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
-    constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
-    thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
-    thread_local uint16_t pawnCacheStamp = 0;
-
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
