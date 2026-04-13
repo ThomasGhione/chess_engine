@@ -9,25 +9,24 @@ namespace ut = boost::ut;
 ut::suite performanceEngineSuite = [] {
   using namespace ut;
 
-  "performance searchPosition depth 10"_test = []{
+  "performance searchPosition depth 11"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 10;
+    e.depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
     e.searchUCI(e.depth);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    // Attesa che la ricerca venga completata in meno di 300 milli
-    printf("Depth 10 search completed in %lu ms\n", duration);
+    printf("Depth 11 search completed in %lu ms\n", duration);
     printf("Nodes searched: %lu\n", e.nodesSearched);
-    expect(duration < 300);
+    expect(duration < 9000);
   };
 
     
-  "avg performance searchPosition depth 8 over 20 runs"_test = []{
+  "avg performance searchPosition depth 10 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
-    e.depth = 8;
+    e.depth = 10;
 
     constexpr int runs = 20;
     int64_t totalDuration = 0;
@@ -45,8 +44,8 @@ ut::suite performanceEngineSuite = [] {
     double avgDuration = static_cast<double>(totalDuration) / runs;
 
     // Attesa che la ricerca media venga completata in meno di 500 millisecondi
-    printf("Average Depth 8 search time over %d runs: %.2f ms\n", runs, avgDuration);
-    expect(avgDuration < 500);
+    printf("Average Depth 10 search time over %d runs: %.2f ms\n", runs, avgDuration);
+    expect(avgDuration < 700);
   };
 
   "banchmark all evaluation helper functions"_test = []{
