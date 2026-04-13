@@ -5,10 +5,10 @@ namespace engine {
 static constexpr auto WHITE_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::file(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(sq);
         uint64_t mask = 0ULL;
-        if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 7));
-        if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 9));
+        if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(sq + 7);
+        if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(sq + 9);
         masks[sq] = mask;
     }
     return masks;
@@ -17,10 +17,10 @@ static constexpr auto WHITE_SUPPORT_MASKS = [] {
 static constexpr auto BLACK_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::file(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(sq);
         uint64_t mask = 0ULL;
-        if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 7));
-        if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 9));
+        if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(sq - 7);
+        if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(sq - 9);
         masks[sq] = mask;
     }
     return masks;
@@ -29,7 +29,7 @@ static constexpr auto BLACK_SUPPORT_MASKS = [] {
 static constexpr auto WHITE_ONE_STEP_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq >= 8) ? chess::Board::bitMask(static_cast<uint8_t>(sq - 8)) : 0ULL;
+        masks[sq] = (sq >= 8) ? chess::Board::bitMask(sq - 8) : 0ULL;
     }
     return masks;
 }();
@@ -37,7 +37,7 @@ static constexpr auto WHITE_ONE_STEP_MASKS = [] {
 static constexpr auto BLACK_ONE_STEP_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq <= 55) ? chess::Board::bitMask(static_cast<uint8_t>(sq + 8)) : 0ULL;
+        masks[sq] = (sq <= 55) ? chess::Board::bitMask(sq + 8) : 0ULL;
     }
     return masks;
 }();
@@ -76,8 +76,8 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
         if (whiteOnFile > 1) stats.doubledScore += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
         if (blackOnFile > 1) stats.doubledScore -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
 
-        stats.whiteIsolatedOnFile[f] = static_cast<uint8_t>((whitePawns & adjacentMask) == 0ULL);
-        stats.blackIsolatedOnFile[f] = static_cast<uint8_t>((blackPawns & adjacentMask) == 0ULL);
+        stats.whiteIsolatedOnFile[f] = (whitePawns & adjacentMask) == 0ULL;
+        stats.blackIsolatedOnFile[f] = (blackPawns & adjacentMask) == 0ULL;
 
         stats.whiteAdjAndFilePawns[f] = whitePawns & adjacentAndFileMask;
         stats.blackAdjAndFilePawns[f] = blackPawns & adjacentAndFileMask;
@@ -118,10 +118,10 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
     uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        const int adjRank = chess::Board::rank(static_cast<uint8_t>(adjSq));
+        const int adjRank = chess::Board::rank(adjSq);
         if (std::abs(adjRank - rank) > 1) continue;
 
-        const int adjFile = chess::Board::file(static_cast<uint8_t>(adjSq));
+        const int adjFile = chess::Board::file(adjSq);
         const bool adjPassed = ((enemyAdjAndFilePawns[adjFile] & forwardFill) == 0ULL);
         if (adjPassed) {
             hasConnectedPassedPawn = true;
@@ -166,7 +166,7 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
     uint64_t adjacentHelpers = ownPawns & ADJACENT_FILES_ONLY[file];
     while (adjacentHelpers) {
         const int helperSq = popLSB(adjacentHelpers);
-        const int helperRank = chess::Board::rank(static_cast<uint8_t>(helperSq));
+        const int helperRank = chess::Board::rank(helperSq);
         if (isWhite ? (helperRank >= rank) : (helperRank <= rank)) {
             hasAdjacentHelper = true;
             break;
@@ -199,8 +199,8 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
     uint64_t pawns = ownPawns;
     while (pawns) {
         const int sq = popLSB(pawns);
-        const int file = chess::Board::file(static_cast<uint8_t>(sq));
-        const int rank = chess::Board::rank(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(sq);
+        const int rank = chess::Board::rank(sq);
         const bool hasSupport = (ownPawns & supportMasks[sq]) != 0ULL;
         const uint64_t frontMask = oneStepMasks[sq];
         const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);
@@ -249,16 +249,16 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
 
     constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
     constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
+    constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
     thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
     thread_local uint16_t pawnCacheStamp = 0;
 
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
-        static_cast<uint64_t>(isEndgame);
+        isEndgame;
     std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    const uint8_t endgameTag = static_cast<uint8_t>(isEndgame);
+    const uint8_t endgameTag = isEndgame;
     const uint16_t currentStamp = ++pawnCacheStamp;
 
     for (size_t way = 0; way < PAWN_CACHE_WAYS; ++way) {
@@ -289,16 +289,16 @@ void Evaluator::storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, boo
 
     constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
     constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
+    constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
     thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
     thread_local uint16_t pawnCacheStamp = 0;
 
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
-        static_cast<uint64_t>(isEndgame);
+        isEndgame;
     std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    const uint8_t endgameTag = static_cast<uint8_t>(isEndgame);
+    const uint8_t endgameTag = isEndgame;
     const uint16_t currentStamp = ++pawnCacheStamp;
 
     PawnEvalCacheEntry* replaceEntry = &cacheBucket[0];

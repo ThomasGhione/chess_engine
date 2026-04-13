@@ -106,7 +106,7 @@ inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noe
         std::make_integer_sequence<uint16_t, MOVE_CHANGE_ALL + 1u>{}
     );
 
-    return INVALIDATION_MASK_LUT[static_cast<uint16_t>(moveFlags) & MOVE_CHANGE_ALL];
+    return INVALIDATION_MASK_LUT[moveFlags & MOVE_CHANGE_ALL];
 }
 
 inline Board::MoveKind Board::classifyMoveKind(
@@ -122,7 +122,7 @@ inline Board::MoveKind Board::classifyMoveKind(
 
     if (movingType == KING) {
         if (fromRank == toRank) {
-            const int8_t df = static_cast<int8_t>(file(toIndex)) - static_cast<int8_t>(file(fromIndex));
+            const int df = file(toIndex) - file(fromIndex);
             if (df == 2 || df == -2) {
                 return MoveKind::Castling;
             }
@@ -147,7 +147,7 @@ inline Board::MoveKind Board::classifyMoveKind(
         return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
     }
 
-    const int8_t dr = static_cast<int8_t>(toRank) - static_cast<int8_t>(fromRank);
+    const int dr = toRank - fromRank;
     if (dr == 2 || dr == -2) {
         return MoveKind::DoublePawnPush;
     }
@@ -157,15 +157,15 @@ inline Board::MoveKind Board::classifyMoveKind(
 
 __attribute__((always_inline))
 inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
-    uint8_t promo = static_cast<uint8_t>(promotionChoice);
+    uint8_t promo = promotionChoice;
     if (promo >= 'A' && promo <= 'Z') {
-        promo = static_cast<uint8_t>(promo | 0x20);
+        promo = promo | 0x20;
     }
 
     if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') [[likely]] {
         return promo;
     }
-    return static_cast<uint8_t>('q');
+    return 'q';
 }
 
 __attribute__((always_inline))
@@ -198,7 +198,7 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
     st.prevEvalCache     = evalCache;
-    st.prevLastMoveChangeFlags = static_cast<uint16_t>(lastMoveChangeFlags);
+    st.prevLastMoveChangeFlags = lastMoveChangeFlags;
 }
 
 __attribute__((always_inline))
@@ -257,16 +257,16 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
 
 inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {
     static constexpr std::array<uint8_t, 4> ROOK_CASTLE_CLEAR_MASKS = {
-        static_cast<uint8_t>(1u << WHITE_QUEENSIDE),
-        static_cast<uint8_t>(1u << WHITE_KINGSIDE),
-        static_cast<uint8_t>(1u << BLACK_QUEENSIDE),
-        static_cast<uint8_t>(1u << BLACK_KINGSIDE)
+        1u << WHITE_QUEENSIDE,
+        1u << WHITE_KINGSIDE,
+        1u << BLACK_QUEENSIDE,
+        1u << BLACK_KINGSIDE
     };
     static constexpr std::array<uint8_t, 4> ROOK_HAS_MOVED_BITS = {
-        static_cast<uint8_t>(1u << 1),
-        static_cast<uint8_t>(1u << 2),
-        static_cast<uint8_t>(1u << 4),
-        static_cast<uint8_t>(1u << 5)
+        1u << 1,
+        1u << 2,
+        1u << 4,
+        1u << 5
     };
 
     const uint8_t slot = rookStartSlot(rookStartIndex);
@@ -344,11 +344,11 @@ inline void Board::doMoveByKind(
         // Move the rook with the same index-based fast path used for the king.
         const uint8_t fromFile = file(fromIndex);
         const uint8_t toFile = file(toIndex);
-        const uint8_t rankBase = static_cast<uint8_t>(rank(toIndex) << 3);
+        const uint8_t rankBase = rank(toIndex) << 3;
         const uint8_t rookFromFile = (toFile > fromFile) ? 7 : 0;
         const uint8_t rookToFile   = (toFile > fromFile) ? 5 : 3;
-        const uint8_t rookFromIndex = static_cast<uint8_t>(rankBase | rookFromFile);
-        const uint8_t rookToIndex   = static_cast<uint8_t>(rankBase | rookToFile);
+        const uint8_t rookFromIndex = rankBase | rookFromFile;
+        const uint8_t rookToIndex   = rankBase | rookToFile;
         st.rookFromIndex = rookFromIndex;
         st.rookToIndex   = rookToIndex;
 
@@ -368,7 +368,7 @@ inline void Board::doMoveByKind(
 
     if constexpr (Kind == MoveKind::DoublePawnPush) {
         // Cache the en-passant square directly from the midpoint index.
-        const uint8_t enPassantIndex = static_cast<uint8_t>((fromIndex + toIndex) >> 1);
+        const uint8_t enPassantIndex = (fromIndex + toIndex) >> 1;
         enPassant = Coords{enPassantIndex};
     }
 

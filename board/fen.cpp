@@ -53,16 +53,16 @@ Coords Board::parseEnPassant(const std::string& enPassantSection) {
     if (fileChar < 'a' || fileChar > 'h' || rankChar < '1' || rankChar > '8') {
         return Coords{};
     }
-    uint8_t file = static_cast<uint8_t>(fileChar - 'a');
+    uint8_t file = fileChar - 'a';
     // Board convention: rank 0 = row 8 (top), rank 7 = row 1 (bottom)
     // FEN uses '1'-'8' where '8' is the top row -> we need to invert
-    uint8_t rank = static_cast<uint8_t>('8' - rankChar);
+    uint8_t rank = '8' - rankChar;
     return Coords(file, rank);
 }
 // Safely converts a string to an integer with error handling.
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
     if (section.empty()) {
-        return static_cast<uint8_t>(defaultValue);
+        return defaultValue;
     }
 
     int value = 0;
@@ -72,11 +72,11 @@ uint8_t Board::safeParseInt(const std::string& section, int min, int max, int de
 
     // Fail if parsing failed or not all characters were consumed
     if (result.ec != std::errc{} || result.ptr != last) {
-        return static_cast<uint8_t>(defaultValue);
+        return defaultValue;
     }
 
     value = std::clamp(value, min, max);
-    return static_cast<uint8_t>(value);
+    return value;
 }
 
 void Board::fromFenToBoard(const std::string& fen) {
@@ -127,7 +127,7 @@ std::string Board::boardToFenPieces() const {
     for (int rank = 7; rank >= 0; --rank) {
         int emptySquares = 0;
         for (int file = 0; file < 8; ++file) {
-            const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
+            const uint8_t rawPiece = (chessboard.at(rank) >> (file * 4)) & MASK_PIECE;
             const uint8_t pieceType = rawPiece & MASK_PIECE_TYPE;
             const uint8_t pieceColor = rawPiece & MASK_COLOR;
 
@@ -143,7 +143,7 @@ std::string Board::boardToFenPieces() const {
 
             char symbol = pieceTypeToChar(pieceType);
             if (pieceColor == BLACK) {
-                symbol = static_cast<char>(std::tolower(static_cast<unsigned char>(symbol)));
+                symbol = std::tolower(static_cast<unsigned char>(symbol));
             }
             fen.push_back(symbol);
         }
@@ -172,9 +172,9 @@ std::string Board::enPassantToFen() const {
     if (Coords::isInBounds(enPassant)) {
         std::string ep;
         // file: 0-7 -> 'a'-'h'
-        ep.push_back(static_cast<char>('a' + enPassant.file()));
+        ep.push_back('a' + enPassant.file());
         // rank: 0-7 -> '8'-'1' (Board convention: rank 0 = row 8)
-        ep.push_back(static_cast<char>('8' - enPassant.rank()));
+        ep.push_back('8' - enPassant.rank());
         return ep;
     }
     return "-";

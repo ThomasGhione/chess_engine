@@ -102,7 +102,7 @@ inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, b
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     uint64_t shieldSquares = 0ULL;
-    const int kingFile = chess::Board::file(static_cast<uint8_t>(sq));
+    const int kingFile = chess::Board::file(sq);
     if (side == 0) {
         if (sq >= 8) shieldSquares |= chess::Board::bitMask(sq - 8);
         if (sq >= 7 && kingFile != 7) shieldSquares |= chess::Board::bitMask(sq - 7);
@@ -120,7 +120,7 @@ inline void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, bool 
                                             uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept {
     if (!kingSideRelevant) return;
 
-    const uint8_t hookPawnSq = static_cast<uint8_t>((side == 0) ? 54 : 14);
+    const uint8_t hookPawnSq = (side == 0) ? 54 : 14;
     const uint64_t hookPawnBit = chess::Board::bitMask(hookPawnSq);
     if (ownPawns & hookPawnBit) {
         if (enemyAttacks & hookPawnBit) {
@@ -170,9 +170,9 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         if (hasCastled && shelterDist >= 2 && shelterDist < 99) {
             int advancePenalty = 0;
             if (shelterDist == 2) {
-                advancePenalty = static_cast<int>(engine::KING_SHELTER_ADVANCE_ONE_PENALTY);
+                advancePenalty = engine::KING_SHELTER_ADVANCE_ONE_PENALTY;
             } else {
-                advancePenalty = static_cast<int>(engine::KING_SHELTER_ADVANCE_TWO_PENALTY);
+                advancePenalty = engine::KING_SHELTER_ADVANCE_TWO_PENALTY;
                 advancePenalty += std::min(4, std::max(0, shelterDist - 3)) * 2;
             }
 
@@ -207,8 +207,8 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
 
         if (!ownPawnOnFile) {
             int filePenalty = enemyPawnOnFile
-                ? static_cast<int>(engine::KING_SEMI_OPEN_FILE_PENALTY)
-                : static_cast<int>(engine::KING_OPEN_FILE_PENALTY);
+                ? engine::KING_SEMI_OPEN_FILE_PENALTY
+                : engine::KING_OPEN_FILE_PENALTY;
 
             if (isKingFile) {
                 filePenalty += filePenalty / 2;
@@ -231,7 +231,7 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int 
         int r = kingRank + dir[1];
         int rayDist = 1;
         while (static_cast<unsigned>(f) < 8U && static_cast<unsigned>(r) < 8U) {
-            const uint8_t raySq = static_cast<uint8_t>((r << 3) | f);
+            const uint8_t raySq = (r << 3) | f;
             const uint8_t piece = b.get(raySq);
             if (piece == chess::Board::EMPTY) {
                 f += dir[0];
@@ -246,9 +246,9 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int 
 
             const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
             if (pieceType == chess::Board::BISHOP || pieceType == chess::Board::QUEEN) {
-                int diagPenalty = static_cast<int>(engine::KING_OPEN_DIAGONAL_PENALTY);
+                int diagPenalty = engine::KING_OPEN_DIAGONAL_PENALTY;
                 if (rayDist <= 2) {
-                    diagPenalty += static_cast<int>(engine::KING_OPEN_DIAGONAL_PENALTY / 2);
+                    diagPenalty += engine::KING_OPEN_DIAGONAL_PENALTY / 2;
                 }
                 sideSafety -= diagPenalty;
             }

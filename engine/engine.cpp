@@ -20,8 +20,8 @@ namespace {
 [[nodiscard]] bool iequalsAscii(std::string_view lhs, std::string_view rhs) noexcept {
     if (lhs.size() != rhs.size()) return false;
     for (std::size_t i = 0; i < lhs.size(); ++i) {
-        const char a = static_cast<char>(std::tolower(static_cast<unsigned char>(lhs[i])));
-        const char b = static_cast<char>(std::tolower(static_cast<unsigned char>(rhs[i])));
+        const char a = std::tolower(static_cast<unsigned char>(lhs[i]));
+        const char b = std::tolower(static_cast<unsigned char>(rhs[i]));
         if (a != b) return false;
     }
     return true;

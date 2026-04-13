@@ -68,7 +68,7 @@ int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
 int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
     constexpr int32_t MIN_I16 = -32768;
     constexpr int32_t MAX_I16 = 32767;
-    return static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
+    return std::clamp(value, MIN_I16, MAX_I16);
 }
 
 bool Searcher::hasSearchStopControl(const SearchRuntime& runtime) noexcept {
@@ -221,7 +221,7 @@ chess::Board::Move Searcher::searchBestMove(
     uint64_t requestedDepth) noexcept {
     // Macro-step 1: Normalize depth request and clear stop/interruption markers.
     const uint64_t targetDepth = (requestedDepth == 0)
-        ? static_cast<uint64_t>(DEFAULT_DEPTH)
+        ? DEFAULT_DEPTH
         : requestedDepth;
     if (targetDepth == 0) return chess::Board::Move{};
 
@@ -267,7 +267,7 @@ int32_t Searcher::searchRootMoveScore(
     chess::Board::MoveState state;
     doMoveWithPromotion(b, m, state);
     const int32_t score = searchPosition(
-        b, runtime, static_cast<int32_t>(runtime.depth) - 1, alpha, beta, currPly,
+        b, runtime, runtime.depth - 1, alpha, beta, currPly,
         useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
@@ -290,7 +290,7 @@ bool Searcher::handleSearchPrelude(
     int32_t ttBeta = 0;
     toTTProbeBounds(bounds.alpha, bounds.beta, ttAlpha, ttBeta);
     if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), ttAlpha, ttBeta, ttScore)) {
-        score = static_cast<int32_t>(ttScore);
+        score = ttScore;
         return true;
     }
     return false;
@@ -390,25 +390,26 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     const bool isEpCapture = isEnPassantCapture(b, m);
     const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-    const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+    const uint8_t epVictimType = chess::Board::PAWN;
+    const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex = m.to.index;
 
     // CAPTURE HISTORY: bonus for captures that cause cutoffs.
     if (isCapture) {
-        const int colorIndex = static_cast<int>(chess::Board::colorToIndex(us));
+        const int colorIndex = chess::Board::colorToIndex(us);
         const int32_t depthPlusOne = depth + 1;
-        const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
+        const int32_t bonus = depthPlusOne * depthPlusOne;
 
         constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
         auto& chPrimary = runtime.captureHistory[colorIndex][toIndex][victimType][0];
         auto& chSecondary = runtime.captureHistory[colorIndex][toIndex][victimType][1];
-        int32_t primaryScore = static_cast<int32_t>(chPrimary);
+        int32_t primaryScore = chPrimary;
         primaryScore += bonus - primaryScore * std::abs(bonus) / MAX_CAPTURE_HISTORY;
         chPrimary = clampHeuristic16(primaryScore);
 
         const int32_t secondaryBonus = (bonus >> 1);
-        int32_t secondaryScore = static_cast<int32_t>(chSecondary);
+        int32_t secondaryScore = chSecondary;
         secondaryScore += secondaryBonus - secondaryScore * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
         chSecondary = clampHeuristic16(secondaryScore);
         if (chSecondary > chPrimary) {
@@ -434,13 +435,13 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     }
 
     // HISTORY HEURISTIC: gravity update.
-    const int colorIndex = static_cast<int>(chess::Board::colorToIndex(us));
+    const int colorIndex = chess::Board::colorToIndex(us);
     const int32_t depthPlusOne = depth + 1;
-    const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
+    const int32_t bonus = depthPlusOne * depthPlusOne;
 
     constexpr int32_t MAX_HISTORY = 16384;
     auto& h = runtime.history[colorIndex][fromIndex][toIndex];
-    int32_t historyScore = static_cast<int32_t>(h);
+    int32_t historyScore = h;
     historyScore += bonus - historyScore * std::abs(bonus) / MAX_HISTORY;
     h = clampHeuristic16(historyScore);
 }
@@ -499,7 +500,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
         : (canLMPDelicate ? 48 : 999);
 
-    const int usSide = static_cast<int>(chess::Board::colorToIndex(ctx.activeColor));
+    const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppSide = usSide ^ 1;
     const uint64_t enemyMajorOrKingTargets =
         b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
@@ -528,12 +529,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 }
             }
             if (bestIndex != moveIndex) {
-                std::swap(orderedMoves[static_cast<size_t>(moveIndex)], orderedMoves[static_cast<size_t>(bestIndex)]);
+                std::swap(orderedMoves[moveIndex], orderedMoves[bestIndex]);
                 std::swap(moveScores[moveIndex], moveScores[bestIndex]);
             }
         }
 
-        const chess::Board::Move m = orderedMoves[static_cast<size_t>(moveIndex)];
+        const chess::Board::Move m = orderedMoves[moveIndex];
         const bool isFirstMove = (moveIndex == 0);
 
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
@@ -604,14 +605,14 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
                                                * std::log(static_cast<double>(moveIndex))
                                                / LMR_C);
-                reduction = std::clamp(reduction, static_cast<int32_t>(1), ctx.depth - 3);
+                reduction = std::clamp(reduction, 1, ctx.depth - 3);
 
                 if (inConservativeEndgameLMR) {
                     reduction = std::min<int32_t>(reduction, 1);
                 }
             }
 
-            const int32_t reducedDepth = std::max(static_cast<int32_t>(1), childDepth - reduction);
+            const int32_t reducedDepth = std::max(1, childDepth - reduction);
             score = searchPosition(b, runtime, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1,
                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
@@ -659,12 +660,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                     b, m, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove);
 
                 if (isQuietMove) {
-                    const int colorIndex = static_cast<int>(chess::Board::colorToIndex(ctx.activeColor));
-                    const int malus = -static_cast<int>((ctx.depth + 1) * (ctx.depth + 1));
+                    const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
+                    const int malus = -((ctx.depth + 1) * (ctx.depth + 1));
                     constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
                         int16_t& h = runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
-                        int32_t hScore = static_cast<int32_t>(h);
+                        int32_t hScore = h;
                         hScore += malus - hScore * std::abs(malus) / MAX_HISTORY;
                         h = clampHeuristic16(hScore);
                     }
@@ -789,7 +790,7 @@ int32_t Searcher::searchPosition(
 
     node.staticEval = (ply > 0 && !node.inCheck) ? Evaluator::evaluate(b) : 0;
 
-    const int side = static_cast<int>(chess::Board::colorToIndex(node.activeColor));
+    const int side = chess::Board::colorToIndex(node.activeColor);
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
@@ -943,7 +944,7 @@ int32_t Searcher::quiescenceSearch(
         int32_t ttBeta = 0;
         toTTProbeBounds(alpha, beta, ttAlpha, ttBeta);
         if (runtime.transpositionTable->probe(hashKey, 0, ttAlpha, ttBeta, ttScore)) {
-            return static_cast<int32_t>(ttScore);
+            return ttScore;
         }
     }
 
@@ -1034,7 +1035,8 @@ int32_t Searcher::quiescenceSearch(
     }
 
     //FIXME: Eliminare costanti magiche
-    const int qsearchDepth = std::max(0, ply - static_cast<int>(runtime.depth));
+    const int runtimeDepth = runtime.depth;
+    const int qsearchDepth = std::max(0, ply - runtimeDepth);
     if (qsearchDepth > 5) {
         deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
         deltaMargin = std::max(deltaMargin, QUEEN_VALUE);
@@ -1046,7 +1048,7 @@ int32_t Searcher::quiescenceSearch(
 
     // Macro-step 4: Generate tactical set, recurse, apply cutoffs, and optionally store TT.
     MoveList<chess::Board::Move> tacticalMoves = engine::MoveGenerator::generateQSearchTacticalMoves(
-        b, standPat, alpha, beta, ply, usIsWhite, static_cast<int32_t>(runtime.depth));
+        b, standPat, alpha, beta, ply, usIsWhite, runtime.depth);
     if (tacticalMoves.is_empty()) {
         return standPat;
     }
@@ -1126,7 +1128,7 @@ chess::Board::Move Searcher::getBestMove(
     const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves;
 
     const bool useYBWC = (rootMoves.size >= 10
-        && runtime.depth >= static_cast<uint64_t>(DEFAULT_DEPTH - 2));
+        && runtime.depth >= DEFAULT_DEPTH - 2);
 
     //FIXME: Eliminare costanti magiche
     // Macro-step 2: Sequential PVS root search when YBWC is not profitable.
@@ -1200,7 +1202,7 @@ chess::Board::Move Searcher::getBestMove(
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
     std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
 
-    int candidateThreads = std::max(1, static_cast<int>(rootMoves.size) - 1);
+    int candidateThreads = std::max(1, rootMoves.size - 1);
     const int threadsToUse = std::max(1, std::min(runtime.maxThreads, candidateThreads));
 
     //FIXME: Fare funzione helper
@@ -1219,13 +1221,13 @@ chess::Board::Move Searcher::getBestMove(
 
             threadScores[i] = score;
             threadNodeCounts[i] = workerNodes;
-            threadNeedsResearch[i] = static_cast<uint8_t>(shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite));
+            threadNeedsResearch[i] = shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite);
             if (isInterrupted(runtime)) {
                 break;
             }
         }
     } else {
-        const int totalJobs = static_cast<int>(rootMoves.size - 1);
+        const int totalJobs = rootMoves.size - 1;
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk);
 
@@ -1237,7 +1239,7 @@ chess::Board::Move Searcher::getBestMove(
                 #pragma omp taskgroup
                 {
                     for (int start = 1; start <= totalJobs; start += chunk) {
-                        const int end = std::min(start + chunk, static_cast<int>(rootMoves.size));
+                        const int end = std::min(start + chunk, rootMoves.size);
                         #pragma omp task firstprivate(start, end)
                         {
                             if (!shouldAbortSearch(runtime)) {
@@ -1254,7 +1256,7 @@ chess::Board::Move Searcher::getBestMove(
 
                                     threadScores[i] = score;
                                     threadNodeCounts[i] = workerNodes;
-                                    threadNeedsResearch[i] = static_cast<uint8_t>(shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite));
+                                    threadNeedsResearch[i] = shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite);
                                     if (isInterrupted(runtime)) {
                                         break;
                                     }
@@ -1323,7 +1325,7 @@ void Searcher::storeRootHashMove(
 
     const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    runtime.transpositionTable->store(rootBoard.getHash(), static_cast<uint8_t>(depth), clampToInt32(score), flag, encodedMove);
+    runtime.transpositionTable->store(rootBoard.getHash(), depth, clampToInt32(score), flag, encodedMove);
 }
 
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
@@ -1386,7 +1388,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         if (result.completedAnyDepth) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
-                    chess::Board::Move::rotate(moves, static_cast<size_t>(i));
+                    chess::Board::Move::rotate(moves, i);
                     break;
                 }
             }
@@ -1414,7 +1416,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         } else {
             const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(prevPrevScore);
             const int64_t scoreSwing64 = (scoreDiff64 >= 0) ? scoreDiff64 : -scoreDiff64;
-            const int32_t scoreSwing = static_cast<int32_t>(std::min<int64_t>(scoreSwing64, POS_INF));
+            const int32_t scoreSwing = std::min<int64_t>(scoreSwing64, POS_INF);
             int32_t windowDelta = std::clamp<int32_t>(40 + (scoreSwing / 2), 60, 220);
             constexpr int32_t WINDOW_HARD_CAP = 1500;
             constexpr int MAX_ASP_RESEARCHES = 6;

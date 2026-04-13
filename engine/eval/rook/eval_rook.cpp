@@ -7,7 +7,7 @@ inline bool Evaluator::rookIsBehindPasser(int rookRank, uint64_t filePawns, uint
     uint64_t pawns = filePawns;
     while (pawns) {
         const int pawnSq = popLSB(pawns);
-        const int file = chess::Board::file(static_cast<uint8_t>(pawnSq));
+        const int file = chess::Board::file(pawnSq);
         
         const bool isPassed = checkOwnPasser
             ? (isWhite ? isWhitePassedPawn(pawnSq, file, oppPawns) : isBlackPassedPawn(pawnSq, file, oppPawns))
@@ -15,7 +15,7 @@ inline bool Evaluator::rookIsBehindPasser(int rookRank, uint64_t filePawns, uint
         
         if (!isPassed) continue;
         
-        const int pawnRank = chess::Board::rank(static_cast<uint8_t>(pawnSq));
+        const int pawnRank = chess::Board::rank(pawnSq);
         const bool isBehind = checkOwnPasser
             ? (isWhite ? (rookRank > pawnRank) : (rookRank < pawnRank))
             : (isWhite ? (rookRank < pawnRank) : (rookRank > pawnRank));
@@ -34,8 +34,8 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
 
     while (rooks) {
         const int sq = popLSB(rooks);
-        const int file = chess::Board::file(static_cast<uint8_t>(sq));
-        const int rank = chess::Board::rank(static_cast<uint8_t>(sq));
+        const int file = chess::Board::file(sq);
+        const int rank = chess::Board::rank(sq);
         const uint64_t fm = FILE_MASKS[file];
         const bool ownPawnOnFile = (ownPawns & fm) != 0;
         const bool oppPawnOnFile = (oppPawns & fm) != 0;

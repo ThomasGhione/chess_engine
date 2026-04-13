@@ -53,7 +53,7 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, in
 
     int32_t penalty = 0;
     const bool centralStart = pawnOnStart && (file == 3 || file == 4);
-    const uint8_t blocker = b.get(static_cast<uint8_t>(forward));
+    const uint8_t blocker = b.get(forward);
     const uint8_t ownColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
 
     if (centralStart && blocker != chess::Board::EMPTY && (blocker & chess::Board::MASK_COLOR) == ownColor) {

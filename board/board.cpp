@@ -63,7 +63,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
                 if (destPiece == EMPTY) {
                     if (Coords::isInBounds(enPassant) && toIndex == enPassant.index) {
                         const int8_t epDir = isWhite ? 8 : -8;
-                        const uint8_t capturedPawnIdx = static_cast<uint8_t>(toIndex + epDir);
+                        const uint8_t capturedPawnIdx = toIndex + epDir;
                         return isKingSafeAfterEnPassant(movingColor, fromIndex, toIndex, capturedPawnIdx);
                     }
                     return false; // diagonal to empty square but not en-passant
@@ -298,7 +298,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false;
-    const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
     const uint8_t bySide = side ^ 1;
     return isKingAttackedCustom(kingSq, bySide, occupancy,
                                 pawns_bb[bySide], knights_bb[bySide], bishops_bb[bySide],
@@ -358,8 +358,8 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         if (!inChk) {
             const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
-                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex + 2), inChk, false)) return true;
-                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex - 2), inChk, false)) return true;
+                if (isLegalPseudoMove(eIndex, eIndex + 2, inChk, false)) return true;
+                if (isLegalPseudoMove(eIndex, eIndex - 2, inChk, false)) return true;
             }
         }
     }
@@ -431,7 +431,7 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
         for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
             repetitionHistory[i - 1] = repetitionHistory[i];
         }
-        historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
+        historySize = repetitionHistory.size() - 1;
     }
     repetitionHistory[historySize++] = currentHash;
 }

@@ -1,8 +1,8 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    const int fileA = chess::Board::file(static_cast<uint8_t>(a));
-    const int fileB = chess::Board::file(static_cast<uint8_t>(b));
-    const int rankA = chess::Board::rank(static_cast<uint8_t>(a));
-    const int rankB = chess::Board::rank(static_cast<uint8_t>(b));
+    const int fileA = chess::Board::file(a);
+    const int fileB = chess::Board::file(b);
+    const int rankA = chess::Board::rank(a);
+    const int rankB = chess::Board::rank(b);
     return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
@@ -101,7 +101,7 @@ inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noex
 }
 
 inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
-    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
+    const uint8_t index = __builtin_ctzll(bb);
     bb &= (bb - 1);
     return index;
 }

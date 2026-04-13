@@ -41,12 +41,12 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
         ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
         : false;
     const bool singleCheck = inCheck && !inDoubleCheck;
-    const uint8_t pawnPiece = static_cast<uint8_t>(chess::Board::PAWN | color);
-    const uint8_t knightPiece = static_cast<uint8_t>(chess::Board::KNIGHT | color);
-    const uint8_t bishopPiece = static_cast<uint8_t>(chess::Board::BISHOP | color);
-    const uint8_t rookPiece = static_cast<uint8_t>(chess::Board::ROOK | color);
-    const uint8_t queenPiece = static_cast<uint8_t>(chess::Board::QUEEN | color);
-    const uint8_t kingPiece = static_cast<uint8_t>(chess::Board::KING | color);
+    const uint8_t pawnPiece = chess::Board::PAWN | color;
+    const uint8_t knightPiece = chess::Board::KNIGHT | color;
+    const uint8_t bishopPiece = chess::Board::BISHOP | color;
+    const uint8_t rookPiece = chess::Board::ROOK | color;
+    const uint8_t queenPiece = chess::Board::QUEEN | color;
+    const uint8_t kingPiece = chess::Board::KING | color;
 
     // Macro-step 2: Compute check-evasion mask when in single-check.
     uint64_t evasionMask = ~0ULL;
@@ -61,7 +61,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
 
     //FIXME: Rendere codice tra "---" una funzione helper AKA: generateKingMoves
     //---
-    const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
+    const uint8_t from = __builtin_ctzll(kings);
     const chess::Coords fromC{from};
 
     // King moves MUST always check legality (can't move to attacked squares)
@@ -75,10 +75,14 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
 
     if (!inCheck) { // castling: illegal when in check.
         const uint8_t f = chess::Board::file(from);
-        if (f <= 5 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from + 2), inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from + 2)}});
-        if (f >= 2 && b.isLegalPseudoMove(from, static_cast<uint8_t>(from - 2), inCheck))
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{static_cast<uint8_t>(from - 2)}});
+        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, inCheck)) {
+            const uint8_t castleTo = from + 2;
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
+        }
+        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, inCheck)) {
+            const uint8_t castleTo = from - 2;
+            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
+        }
     }
     //---
 
@@ -209,12 +213,12 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     const bool inDoubleCheck = inCheck
         ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
         : false;
-    const uint8_t pawnPiece = static_cast<uint8_t>(chess::Board::PAWN | color);
-    const uint8_t knightPiece = static_cast<uint8_t>(chess::Board::KNIGHT | color);
-    const uint8_t bishopPiece = static_cast<uint8_t>(chess::Board::BISHOP | color);
-    const uint8_t rookPiece = static_cast<uint8_t>(chess::Board::ROOK | color);
-    const uint8_t queenPiece = static_cast<uint8_t>(chess::Board::QUEEN | color);
-    const uint8_t kingPiece = static_cast<uint8_t>(chess::Board::KING | color);
+    const uint8_t pawnPiece = chess::Board::PAWN | color;
+    const uint8_t knightPiece = chess::Board::KNIGHT | color;
+    const uint8_t bishopPiece = chess::Board::BISHOP | color;
+    const uint8_t rookPiece = chess::Board::ROOK | color;
+    const uint8_t queenPiece = chess::Board::QUEEN | color;
+    const uint8_t kingPiece = chess::Board::KING | color;
 
     // Defensive guard: in some search lines this engine can represent king-capture
     // states transiently; avoid UB from __builtin_ctzll(0).
@@ -224,7 +228,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     // In double-check only king moves are legal; tactical generator only needs king captures.
     //FIXME: Calcolare e poi se inDoubleCheck allora ritonrare subito. 
     if (inDoubleCheck) {
-        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings));
+        const uint8_t from = __builtin_ctzll(kings);
         uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
         addTacticalMovesFromMask(b, attacks, from, kingPiece, false, isWhite, includeChecks,
                                  enPassant, hasEnPassant, moves);
@@ -235,7 +239,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     //---
     // Macro-step 3: Compute pin rays and dispatch in-check/non-check tactical generation.
     // Get king position for pin ray computation
-    chess::Coords kingPos{static_cast<uint8_t>(__builtin_ctzll(b.kings_bb[side]))};
+    const uint8_t kingIndex = __builtin_ctzll(b.kings_bb[side]);
+    chess::Coords kingPos{kingIndex};
 
     uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare;
@@ -265,9 +270,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
-                const int frontSq = static_cast<int>(from) + direction;
-                if (frontSq >= 0 && frontSq < 64 && !(occ & chess::Board::bitMask(static_cast<uint8_t>(frontSq)))) {
-                    attacks |= chess::Board::bitMask(static_cast<uint8_t>(frontSq));
+                const int frontSq = from + direction;
+                if (frontSq >= 0 && frontSq < 64 && !(occ & chess::Board::bitMask(frontSq))) {
+                    attacks |= chess::Board::bitMask(frontSq);
                 }
             }
             if (isPinned) attacks &= pinRayBySquare[from];
@@ -345,9 +350,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
             if (rank == prePromotionRank) {
                 const int direction = isWhite ? -8 : 8;
-                const int frontSq = static_cast<int>(from) + direction;
-                if (frontSq >= 0 && frontSq < 64 && !(occ & chess::Board::bitMask(static_cast<uint8_t>(frontSq)))) {
-                    attacks |= chess::Board::bitMask(static_cast<uint8_t>(frontSq));
+                const int frontSq = from + direction;
+                if (frontSq >= 0 && frontSq < 64 && !(occ & chess::Board::bitMask(frontSq))) {
+                    attacks |= chess::Board::bitMask(frontSq);
                 }
             }
             attacks &= evasionMask;
@@ -429,7 +434,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     // Macro-step 4: Always include king captures in tactical list.
     // ================= KING (captures only) =================
     if (kings) {
-        const uint8_t from = static_cast<uint8_t>(__builtin_ctzll(kings)); // King: no need for popLSB (only one)
+        const uint8_t from = __builtin_ctzll(kings); // King: no need for popLSB (only one)
         uint64_t attacks = pieces::KING_ATTACKS[from] & oppOcc;
         addTacticalMovesFromMask(b, attacks, from, kingPiece, false, isWhite, includeChecks,
                                  enPassant, hasEnPassant, moves);
@@ -508,7 +513,7 @@ void MoveGenerator::addPawnMovesFromMask(
 
     // Macro-step 2: Iterate destinations and enforce EP legality checks.
     while (mask) {
-        const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+        const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
         const chess::Coords toC{to};
         const bool isEnPassant = hasEnPassant
@@ -547,7 +552,7 @@ void MoveGenerator::addNonPawnMovesFromMask(
     // Macro-step 2: Emit only pseudo-legal moves that pass legality filtering.
     const chess::Coords fromC{from};
     while (mask) {
-        const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+        const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
         if (b.isLegalPseudoMove(from, to, piece, inCheck, inDoubleCheck)) {
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
@@ -571,14 +576,15 @@ void MoveGenerator::addTacticalMovesFromMask(
     MoveList<chess::Board::Move>& moves) noexcept {
     // Macro-step 1: Initialize context needed for tactical filtering.
     const chess::Coords fromC{from};
+    const uint8_t defaultOppColor = chess::Board::WHITE;
     const uint8_t oppColor = includeChecks
         ? chess::Board::oppositeColor(b.getActiveColor())
-        : static_cast<uint8_t>(chess::Board::WHITE);
+        : defaultOppColor;
     const uint8_t fromFile = chess::Board::file(from);
 
     // Macro-step 2: Iterate candidates and identify tactical categories.
     while (mask) {
-        const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+        const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
 
 	//FIXME: Rendere resto del codice in funzione helper
@@ -640,7 +646,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
     const chess::Coords fromC{from};
 
     while (mask) {
-        const uint8_t to = static_cast<uint8_t>(__builtin_ctzll(mask));
+        const uint8_t to = __builtin_ctzll(mask);
         mask &= (mask - 1);
 
         // In check evasion: all legal moves are tactical
@@ -691,7 +697,8 @@ uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept 
     int f = fromFile + stepFile;
     int r = fromRank + stepRank;
     while (f != toFile || r != toRank) {
-        mask |= chess::Board::bitMask(static_cast<uint8_t>((r << 3) | f));
+        const uint8_t sq = (r << 3) | f;
+        mask |= chess::Board::bitMask(sq);
         f += stepFile;
         r += stepRank;
     }
@@ -716,7 +723,7 @@ void MoveGenerator::computePinRays(
     pinnedMask = 0ULL;
     //FIXME: Non possiamo usare il dato di board?
     const uint8_t ownColor = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
-    const int us = static_cast<int>(chess::Board::colorToIndex(ownColor));
+    const int us = chess::Board::colorToIndex(ownColor);
     const int them = us ^ 1;
 
     // pinRays is consumed only when the corresponding bit is set in pinnedMask.
@@ -758,7 +765,7 @@ void MoveGenerator::computePinRays(
         int pinnedSq = -1;
 
         while (static_cast<unsigned>(f) < 8U && static_cast<unsigned>(r) < 8U) {
-            const uint8_t sq = static_cast<uint8_t>((r << 3) | f);
+            const uint8_t sq = (r << 3) | f;
             const uint8_t piece = b.get(sq);
 
             if (piece == chess::Board::EMPTY) {
@@ -784,8 +791,8 @@ void MoveGenerator::computePinRays(
                     ? (pieceType == chess::Board::ROOK || pieceType == chess::Board::QUEEN)
                     : (pieceType == chess::Board::BISHOP || pieceType == chess::Board::QUEEN);
                 if (isPinner) {
-                    pinnedMask |= chess::Board::bitMask(static_cast<uint8_t>(pinnedSq));
-                    pinRays[static_cast<size_t>(pinnedSq)] =
+                    pinnedMask |= chess::Board::bitMask(pinnedSq);
+                    pinRays[pinnedSq] =
                         betweenMaskExclusive(kingSq, sq) | chess::Board::bitMask(sq);
                 }
             }
@@ -821,7 +828,7 @@ void MoveGenerator::computeCheckEvasionMasks(
   
     //FIXME: Creare funzione helper per restituire direttamente checkersMask
     // Macro-step 2: Build checker mask from all enemy piece classes.
-    const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
     const uint64_t occ = b.getPiecesBitMap();
 
     uint64_t checkersMask = 0ULL;
@@ -842,7 +849,7 @@ void MoveGenerator::computeCheckEvasionMasks(
         return;
     }
 
-    const uint8_t checkerSq = static_cast<uint8_t>(__builtin_ctzll(checkersMask));
+    const uint8_t checkerSq = __builtin_ctzll(checkersMask);
     const uint8_t checkerType = b.get(checkerSq) & chess::Board::MASK_PIECE_TYPE;
 
     evasionMask = chess::Board::bitMask(checkerSq);

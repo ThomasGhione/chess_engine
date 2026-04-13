@@ -133,7 +133,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         const int32_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
         const int32_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
         const int32_t capHist = capHistPrimary + (capHistSecondary >> 1);
-        score += std::min(static_cast<int32_t>(500), capHist / 20); // Scale down
+        score += std::min(500, capHist / 20); // Scale down
         // Total: 10000-19500
         return clampToInt32(score);
     }
@@ -195,7 +195,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     if (score == 0 && isPromotionCandidate) {
         score = 7000;
 
-        const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(m.promotionPiece)));
+        const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
         uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
         if (promo == 'r') promoType = chess::Board::ROOK;
         else if (promo == 'b') promoType = chess::Board::BISHOP;
@@ -212,10 +212,10 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         const int behind = usIsWhite ? (toIdx - 8) : (toIdx + 8);
         if (behind >= 0 && behind < 64) {
             const uint64_t pawnMask = usIsWhite ? b.pawns_bb[0] : b.pawns_bb[1];
-            if (pawnMask & chess::Board::bitMask(static_cast<uint8_t>(behind))) {
+            if (pawnMask & chess::Board::bitMask(behind)) {
                 int bishopBlockPenalty = 80;
-                const int pawnFile = chess::Board::file(static_cast<uint8_t>(behind));
-                const int pawnRank = chess::Board::rank(static_cast<uint8_t>(behind));
+                const int pawnFile = chess::Board::file(behind);
+                const int pawnRank = chess::Board::rank(behind);
                 const int pawnStartRank = usIsWhite ? 6 : 1;
                 // In opening, strongly de-prioritize bishop moves that sit in front of d/e pawns.
                 if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4) && pawnRank == pawnStartRank) {
@@ -233,7 +233,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         int32_t histScore = history[usSide][m.from.index][m.to.index];
         // Map history to [-2000, 4000] range for better move differentiation
         // Negative history = moves that consistently fail = ordered below neutral
-        score = std::min(static_cast<int32_t>(4000), std::max(static_cast<int32_t>(-2000), histScore));
+        score = std::min(4000, std::max(-2000, histScore));
     }
 
     // Macro-step 5: Apply pawn-specific ordering refinements and clamp.
@@ -281,19 +281,19 @@ uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
     //FIXME: Cambia nome
     // Macro-step 2: Query attackers from least valuable to most valuable.
     uint64_t bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
-    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+    if (bb) return __builtin_ctzll(bb);
 
     bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
-    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+    if (bb) return __builtin_ctzll(bb);
 
     bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
-    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+    if (bb) return __builtin_ctzll(bb);
 
     bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
-    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+    if (bb) return __builtin_ctzll(bb);
 
     bb = kings_bb & pieces::KING_ATTACKS[sq];
-    if (bb) return static_cast<uint8_t>(__builtin_ctzll(bb));
+    if (bb) return __builtin_ctzll(bb);
 
     // Macro-step 3: Return sentinel when no attacker exists.
     return 64; // no attacker
@@ -407,7 +407,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     const int oppSide = usSide ^ 1;
     const uint64_t occ = b.getPiecesBitMap();
     const uint64_t oppKingBB = b.kings_bb[oppSide];
-    const uint8_t oppKingSq = oppKingBB ? static_cast<uint8_t>(__builtin_ctzll(oppKingBB)) : 64;
+    const uint8_t oppKingSq = oppKingBB ? __builtin_ctzll(oppKingBB) : 64;
     const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
@@ -431,7 +431,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     //FIXME: trasforma in funzione helper
     // Macro-step 4: Score every move with copied ordering policy.
     for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
-        const auto& m = picker.moves[static_cast<size_t>(moveIndex)];
+        const auto& m = picker.moves[moveIndex];
         const uint8_t fromPiece = b.get(m.from);
         const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
 
@@ -443,7 +443,8 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
             && (m.to == enPassant)
             && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const uint8_t epVictimType = chess::Board::PAWN;
+        const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
         const int32_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
 
@@ -519,16 +520,16 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
     int32_t* moveScores = picker.scores;
 
     for (int i = 1; i < sortedMoves.size; ++i) {
-        const chess::Board::Move keyMove = sortedMoves[static_cast<size_t>(i)];
+        const chess::Board::Move keyMove = sortedMoves[i];
         const int32_t keyScore = moveScores[i];
         int j = i - 1;
         while (j >= 0 && moveScores[j] < keyScore) {
             moveScores[j + 1] = moveScores[j];
-            sortedMoves[static_cast<size_t>(j + 1)] = sortedMoves[static_cast<size_t>(j)];
+            sortedMoves[j + 1] = sortedMoves[j];
             --j;
         }
         moveScores[j + 1] = keyScore;
-        sortedMoves[static_cast<size_t>(j + 1)] = keyMove;
+        sortedMoves[j + 1] = keyMove;
     }
 
     // Macro-step 6: Report whether hash move ended up as first move.
@@ -599,7 +600,7 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
     //FIXME: Trasforma in funzione helper
     // Macro-step 3: Filter and score tactical moves with copied qsearch policy.
     for (int i = 0; i < sortedTacticalMoves.size; ++i) {
-        const auto& m = sortedTacticalMoves[static_cast<size_t>(i)];
+        const auto& m = sortedTacticalMoves[i];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
@@ -609,7 +610,8 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
             && (m.to == enPassant)
             && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
         const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const uint8_t epVictimType = chess::Board::PAWN;
+        const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
 
         int32_t score = 0;
       
@@ -660,7 +662,7 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
             }
         }
 
-        sortedTacticalMoves[static_cast<size_t>(filteredCount)] = m;
+        sortedTacticalMoves[filteredCount] = m;
         tacticalScores[filteredCount] = score;
         ++filteredCount;
     }
@@ -677,16 +679,16 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
     // Macro-step 5: Insertion-sort scored tactical moves in descending order.
     // Insertion-sort tactical moves + scores together (descending).
     for (int i = 1; i < sortedTacticalMoves.size; ++i) {
-        const chess::Board::Move keyMove = sortedTacticalMoves[static_cast<size_t>(i)];
+        const chess::Board::Move keyMove = sortedTacticalMoves[i];
         const int32_t keyScore = tacticalScores[i];
         int j = i - 1;
         while (j >= 0 && tacticalScores[j] < keyScore) {
             tacticalScores[j + 1] = tacticalScores[j];
-            sortedTacticalMoves[static_cast<size_t>(j + 1)] = sortedTacticalMoves[static_cast<size_t>(j)];
+            sortedTacticalMoves[j + 1] = sortedTacticalMoves[j];
             --j;
         }
         tacticalScores[j + 1] = keyScore;
-        sortedTacticalMoves[static_cast<size_t>(j + 1)] = keyMove;
+        sortedTacticalMoves[j + 1] = keyMove;
     }
 
     // Macro-step 6: Return sorted tactical list.

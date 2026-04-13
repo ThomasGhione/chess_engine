@@ -14,8 +14,8 @@ static constexpr int BLACK_SIDE = 1;
 inline constexpr int sideIndex(bool isWhite) noexcept { return isWhite ? WHITE_SIDE : BLACK_SIDE; }
 
 // ==================== UTILS ====================
-inline constexpr int8_t fileOf(int8_t sq) noexcept { return static_cast<int8_t>(sq % 8); }
-inline constexpr int8_t rankOf(int8_t sq) noexcept { return static_cast<int8_t>(sq / 8); }
+inline constexpr int8_t fileOf(int8_t sq) noexcept { return sq % 8; }
+inline constexpr int8_t rankOf(int8_t sq) noexcept { return sq / 8; }
 
 inline constexpr int8_t KNIGHT_OFFSET[8][2] = { {1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2} };
 inline constexpr int8_t KING_OFFSET[8][2] = { {1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1},{0,1} };
@@ -148,8 +148,8 @@ inline void populateAttackTable(int square, const MagicParams& p,
     const int numPatterns = 1 << bitCount;
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
-        uint32_t index = static_cast<uint32_t>(((occupancy & p.mask) * p.magic) >> p.shift);
-        lookup[p.offset + index] = attackFunc(static_cast<int8_t>(square), occupancy);
+        uint32_t index = ((occupancy & p.mask) * p.magic) >> p.shift;
+        lookup[p.offset + index] = attackFunc(square, occupancy);
     }
 }
 
@@ -170,14 +170,14 @@ inline void initMagicBitboards() noexcept {
 __attribute__((hot, always_inline))
 inline U64 getRookAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = ROOK_PARAMS[sq];
-    const uint32_t index = static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
+    const uint32_t index = ((occ & p.mask) * p.magic) >> p.shift;
     return ROOK_ATTACK_LOOKUP[p.offset + index];
 }
 
 __attribute__((hot, always_inline))
 inline U64 getBishopAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = BISHOP_PARAMS[sq];
-    const uint32_t index = static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
+    const uint32_t index = ((occ & p.mask) * p.magic) >> p.shift;
     return BISHOP_ATTACK_LOOKUP[p.offset + index];
 }
 
@@ -298,8 +298,8 @@ inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64
     const int side = sideIndex(isWhite);
     const U64 oneStepBit = PAWN_SINGLE_PUSH_TARGETS[side][squareIndex];
     const U64 twoStepBit = PAWN_DOUBLE_PUSH_TARGETS[side][squareIndex];
-    const unsigned occBits = static_cast<unsigned>((occupancy & oneStepBit) != 0ULL)
-        | (static_cast<unsigned>((occupancy & twoStepBit) != 0ULL) << 1);
+    const unsigned occBits = ((occupancy & oneStepBit) != 0ULL)
+        | (((occupancy & twoStepBit) != 0ULL) << 1);
     return PAWN_FORWARD_PUSH_LOOKUP[side][squareIndex][occBits];
 }
 
@@ -410,4 +410,3 @@ inline constexpr uint64_t generateMovesByType(uint8_t index, uint64_t occupancy)
 
 
 } // namespace pieces
-

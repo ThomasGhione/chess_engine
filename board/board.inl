@@ -5,7 +5,7 @@
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
 inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
-    return static_cast<uint8_t>(((color & MASK_COLOR) >> 3) ^ 0x1u);
+    return ((color & MASK_COLOR) >> 3) ^ 0x1u;
 }
 
 inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
@@ -68,7 +68,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 
     historySize = other.historySize;
     if (historySize > 0) {
-        std::memcpy(repetitionHistory.data(), other.repetitionHistory.data(), static_cast<size_t>(historySize) * sizeof(uint64_t));
+        std::memcpy(repetitionHistory.data(), other.repetitionHistory.data(), historySize * sizeof(uint64_t));
     }
 
     occupancy = other.occupancy;

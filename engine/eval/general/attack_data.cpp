@@ -3,11 +3,11 @@
 namespace engine {
 
 static constexpr size_t ATTACK_CACHE_SIZE = 1u << 8; // 256 entries (~16 KiB), L1-friendly.
-static constexpr uint64_t ATTACK_CACHE_MASK = static_cast<uint64_t>(ATTACK_CACHE_SIZE - 1u);
+static constexpr uint64_t ATTACK_CACHE_MASK = ATTACK_CACHE_SIZE - 1u;
 
 inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept {
     const uint8_t color = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
-    const int side = static_cast<int>(chess::Board::colorToIndex(color));
+    const int side = chess::Board::colorToIndex(color);
     while (pawns) {
         const int sq = popLSB(pawns);
         data.allAttacks |= pieces::PAWN_ATTACKS[side][sq];
