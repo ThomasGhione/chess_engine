@@ -99,6 +99,37 @@ void Searcher::clearInterrupted(SearchRuntime& runtime) noexcept {
     }
 }
 
+bool Searcher::checkEarlyTerminalConditions(
+    const chess::Board& b,
+    SearchRuntime& runtime,
+    int ply,
+    int32_t& outScore) noexcept {
+    
+    if (shouldAbortSearch(runtime)) {
+        markInterrupted(runtime);
+        outScore = Evaluator::evaluate(b);
+        return true;
+    }
+
+    if (ply >= MAX_PLY - 1) {
+        outScore = Evaluator::evaluate(b);
+        return true;
+    }
+
+    // Terminal king-capture states are possible in this codebase's move model.
+    // Resolve them immediately to avoid evaluating undefined tactical positions.
+    if (b.kings_bb[0] == 0ULL) {
+        outScore = NEG_INF + ply;
+        return true;
+    }
+    if (b.kings_bb[1] == 0ULL) {
+        outScore = POS_INF - ply;
+        return true;
+    }
+
+    return false;
+}
+
 bool Searcher::isKillerMove(
     const chess::Board::Move& m,
     const chess::Board::Move killerMoves[2][MAX_PLY],
@@ -695,28 +726,14 @@ int32_t Searcher::searchPosition(
     const chess::Board::Move* previousMove,
     uint64_t* nodeCounter,
     bool allowNullMove) noexcept {
-    //FIXME: Creare unica dichiarazione
-    // Macro-step 1: Node accounting, stop checks, and qsearch transition guards.
+
+    // Macro-step 1: Node accounting and early terminal condition checks.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
 
-    //FIXME: Spostare tutte codizioni if(se vero) -> return in unico metodo che ritorna bool. Se vero allora ritorna valore modificato score
-    if (shouldAbortSearch(runtime)) {
-        markInterrupted(runtime);
-        return Evaluator::evaluate(b);
-    }
-
-    if (ply >= MAX_PLY - 1) {
-        return Evaluator::evaluate(b);
-    }
-
-    // Terminal king-capture states are possible in this codebase's move model.
-    // Resolve them immediately to avoid evaluating undefined tactical positions.
-    if (b.kings_bb[0] == 0ULL) {
-        return NEG_INF + ply;
-    }
-    if (b.kings_bb[1] == 0ULL) {
-        return POS_INF - ply;
+    int32_t earlyScore = 0;
+    if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
+        return earlyScore;
     }
 
     if (depth <= 0) {
@@ -915,24 +932,13 @@ int32_t Searcher::quiescenceSearch(
     bool useTT,
     uint64_t* nodeCounter,
     bool allowTTWrite) noexcept {
-    // Macro-step 1: Node accounting, stop guards, TT probe, and depth guards.
+    // Macro-step 1: Node accounting and early terminal condition checks.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
 
-    if (shouldAbortSearch(runtime)) {
-        markInterrupted(runtime);
-        return Evaluator::evaluate(b);
-    }
-
-    if (ply >= MAX_PLY - 1) {
-        return Evaluator::evaluate(b);
-    }
-
-    if (b.kings_bb[0] == 0ULL) {
-        return NEG_INF + ply;
-    }
-    if (b.kings_bb[1] == 0ULL) {
-        return POS_INF - ply;
+    int32_t earlyScore = 0;
+    if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
+        return earlyScore;
     }
 
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
@@ -1493,13 +1499,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         result.bestMove = bestMove;
         result.bestScore = runtime.eval;
         result.rootScoreBound = determineFlag(result.bestScore, iterationAlpha, iterationBeta);
-        storeRootHashMove(
-            rootBoard,
-            bestMove,
-            currentDepth,
-            runtime.eval,
-            runtime,
-            static_cast<uint8_t>(result.rootScoreBound));
+        storeRootHashMove(rootBoard, bestMove, currentDepth, runtime.eval, runtime, static_cast<uint8_t>(result.rootScoreBound));
     }
 
     // Macro-step 3: Publish interruption metadata and return aggregated result.

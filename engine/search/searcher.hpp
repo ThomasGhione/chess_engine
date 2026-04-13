@@ -158,6 +158,13 @@ private:
     static void clearInterrupted(SearchRuntime& runtime) noexcept;
     static bool hasSearchStopControl(const SearchRuntime& runtime) noexcept;
 
+    // Helper: check early terminal conditions (abort, MAX_PLY, king-capture)
+    static bool checkEarlyTerminalConditions(
+        const chess::Board& b,
+        SearchRuntime& runtime,
+        int ply,
+        int32_t& outScore) noexcept;
+
     static bool isKillerMove(
         const chess::Board::Move& m,
         const chess::Board::Move killerMoves[2][MAX_PLY],
