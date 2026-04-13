@@ -6,6 +6,9 @@
 
 namespace chess {
 
+inline constexpr uint8_t file(uint8_t sq) noexcept { return sq & 7; }
+inline constexpr uint8_t rank(uint8_t sq) noexcept { return sq >> 3; }
+
 struct Coords {
 
     constexpr static uint8_t INVALID_COORDS = 255;
