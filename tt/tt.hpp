@@ -16,9 +16,8 @@
 
 #include "zobrist.hpp"
 
-namespace tt {
-
 class TranspositionTable {
+
 public:
     enum class HugePageMode : uint8_t {
         Auto = 0,
@@ -619,6 +618,4 @@ determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
 static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "determineFlag logic error");
 static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
 static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");
-
-} // namespace tt
 

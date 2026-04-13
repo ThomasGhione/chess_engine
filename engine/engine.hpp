@@ -104,7 +104,7 @@ public:
     std::string moveHistory {};
 
     // Transposition table (shared by normal search and pondering)
-    tt::TranspositionTable tt;
+    TranspositionTable tt;
 
 private:
 

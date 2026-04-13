@@ -33,7 +33,7 @@ public:
         const chess::Board::Move (&killerMoves)[2][MAX_PLY],
         const uint16_t (&counterMoves)[64][64],
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-        const tt::TranspositionTable* transpositionTable,
+        const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
         int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
 
@@ -47,7 +47,7 @@ public:
         const chess::Board::Move (&killerMoves)[2][MAX_PLY],
         const uint16_t (&counterMoves)[64][64],
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-        const tt::TranspositionTable* transpositionTable,
+        const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
         bool* outHashMoveIsLegal = nullptr,
         int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;

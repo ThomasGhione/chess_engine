@@ -159,7 +159,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
 	//FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
         const uint16_t counter = counterMoves[previousMove->from.index][previousMove->to.index];
         if (counter != 0
-            && counter == tt::TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
+            && counter == TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
             return 8200; // Between killer moves and checks
         }
     }
@@ -381,7 +381,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     const chess::Board::Move (&killerMoves)[2][MAX_PLY],
     const uint16_t (&counterMoves)[64][64],
     const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-    const tt::TranspositionTable* transpositionTable,
+    const TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
     int32_t orderingPenaltySamePawnOpening) noexcept {
     MovePickerData picker;
@@ -421,7 +421,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
 
     // Probe TT with move-only API (no alpha/beta/score overhead).
     if (transpositionTable != nullptr && transpositionTable->probeMove(hashKey, encodedHashMove)) {
-        tt::TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
+        TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
 
         // Validate hash move is in legal moves list (guards against TT collisions)
         hashMoveIsLegal = containsMoveWithPromotion(picker.moves, hashFrom, hashTo, hashPromo);
@@ -487,7 +487,7 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
     const chess::Board::Move (&killerMoves)[2][MAX_PLY],
     const uint16_t (&counterMoves)[64][64],
     const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-    const tt::TranspositionTable* transpositionTable,
+    const TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
     bool* outHashMoveIsLegal,
     int32_t orderingPenaltySamePawnOpening) noexcept {

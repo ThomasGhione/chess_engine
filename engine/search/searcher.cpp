@@ -49,8 +49,8 @@ bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t beta
 }
 
 void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
-    const int64_t expandedAlpha = static_cast<int64_t>(alpha) - tt::TranspositionTable::ADJUSTMENT;
-    const int64_t expandedBeta = static_cast<int64_t>(beta) + tt::TranspositionTable::ADJUSTMENT;
+    const int64_t expandedAlpha = static_cast<int64_t>(alpha) - TranspositionTable::ADJUSTMENT;
+    const int64_t expandedBeta = static_cast<int64_t>(beta) + TranspositionTable::ADJUSTMENT;
     ttAlpha = clampToInt32(expandedAlpha);
     ttBeta = clampToInt32(expandedBeta);
 }
@@ -422,7 +422,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     // COUNTER-MOVE: best response to previous quiet move.
     if (previousMove != nullptr && previousMove->from.index < 64) {
         runtime.counterMoves[previousMove->from.index][previousMove->to.index] =
-            tt::TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
+            TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
     }
 
     // KILLER MOVES: update while avoiding duplicates.
@@ -892,8 +892,8 @@ int32_t Searcher::searchPosition(
     }
 
     if (canUseTT && allowTTWrite) {
-        const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
-        const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
+        const auto flag = determineFlag(best, alphaOrig, betaOrig);
+        const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
             result.move.from.index, result.move.to.index, result.move.promotionPiece);
 
         runtime.transpositionTable->store(
@@ -1077,7 +1077,7 @@ int32_t Searcher::quiescenceSearch(
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
             if (canUseTT && allowTTWrite) {
                 const uint64_t hashKey = b.getHash();
-                const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
+                const auto flag = determineFlag(best, alphaOrig, betaOrig);
                 runtime.transpositionTable->store(
                     hashKey,
                     0,
@@ -1090,7 +1090,7 @@ int32_t Searcher::quiescenceSearch(
 
     if (canUseTT && allowTTWrite) {
         const uint64_t hashKey = b.getHash();
-        const auto flag = tt::determineFlag(best, alphaOrig, betaOrig);
+        const auto flag = determineFlag(best, alphaOrig, betaOrig);
         runtime.transpositionTable->store(hashKey, 0, clampToInt32(best), static_cast<uint8_t>(flag));
     }
 
@@ -1317,13 +1317,13 @@ void Searcher::storeRootHashMove(
         return;
     }
 
-    if (flag != tt::TranspositionTable::Entry::EXACT
-        && flag != tt::TranspositionTable::Entry::LOWERBOUND
-        && flag != tt::TranspositionTable::Entry::UPPERBOUND) {
-        flag = tt::TranspositionTable::Entry::EXACT;
+    if (flag != TranspositionTable::Entry::EXACT
+        && flag != TranspositionTable::Entry::LOWERBOUND
+        && flag != TranspositionTable::Entry::UPPERBOUND) {
+        flag = TranspositionTable::Entry::EXACT;
     }
 
-    const uint16_t encodedMove = tt::TranspositionTable::Entry::encodeMove(
+    const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
     runtime.transpositionTable->store(rootBoard.getHash(), depth, clampToInt32(score), flag, encodedMove);
 }
@@ -1493,7 +1493,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         }
         result.bestMove = bestMove;
         result.bestScore = runtime.eval;
-        result.rootScoreBound = tt::determineFlag(result.bestScore, iterationAlpha, iterationBeta);
+        result.rootScoreBound = determineFlag(result.bestScore, iterationAlpha, iterationBeta);
         storeRootHashMove(
             rootBoard,
             bestMove,

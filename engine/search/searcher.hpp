@@ -40,7 +40,7 @@ public:
         int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
 
         // External coordination hooks.
-        tt::TranspositionTable* transpositionTable = nullptr;
+        TranspositionTable* transpositionTable = nullptr;
         std::atomic<bool>* stopSearchRequested = nullptr;
         std::atomic<bool>* ponderingStopRequested = nullptr;
         std::atomic<bool>* searchInterrupted = nullptr;
@@ -61,7 +61,7 @@ public:
         uint32_t aspirationResearches = 0;
         uint32_t aspirationFailLow = 0;
         uint32_t aspirationFailHigh = 0;
-        tt::TranspositionTable::Entry::Flag rootScoreBound = tt::TranspositionTable::Entry::EXACT;
+        TranspositionTable::Entry::Flag rootScoreBound = TranspositionTable::Entry::EXACT;
         chess::Board::Move bestMove{};
         int32_t bestScore = 0;
     };
@@ -250,7 +250,7 @@ private:
         uint64_t depth,
         int32_t score,
         SearchRuntime& runtime,
-        uint8_t flag = tt::TranspositionTable::Entry::EXACT) noexcept;
+        uint8_t flag = TranspositionTable::Entry::EXACT) noexcept;
 };
 
 } // namespace engine
