@@ -4,11 +4,8 @@
 #include <array>
 #include <cstdint>
 #include <cctype>
-#include <sstream>
-#include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <utility>
 
 #include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"

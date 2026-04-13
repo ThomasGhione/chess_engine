@@ -1,5 +1,7 @@
 #include "board.hpp"
+#include <algorithm>
 #include <charconv>
+#include <sstream>
 
 namespace chess {
 

@@ -9,7 +9,6 @@
 #include <thread>
 
 #include "../board/board.hpp"
-#include "../board/coords.hpp"
 #include "../tt/tt.hpp"
 
 #include "search/searcher.hpp"
