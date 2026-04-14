@@ -108,13 +108,10 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         int shelterDist = 99;
         uint64_t ownInFront = ownPawns & fileMask & inFrontMask;
         if (ownInFront) {
-            if (side == 0) {
-                int pawnSq = 63 - __builtin_clzll(ownInFront);
-                shelterDist = kingRank - chess::Board::rank(pawnSq);
-            } else {
-                int pawnSq = __builtin_ctzll(ownInFront);
-                shelterDist = chess::Board::rank(pawnSq) - kingRank;
-            }
+            int pawnSq = (side == 0) 
+                ? (63 - __builtin_clzll(ownInFront)) 
+                : __builtin_ctzll(ownInFront);
+            shelterDist = std::abs(kingRank - (pawnSq >> 3));
         }
 
         if (shelterDist == 1) {
@@ -128,14 +125,9 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         }
 
         if (hasCastled && shelterDist >= 2 && shelterDist < 99) {
-            int advancePenalty = 0;
-            if (shelterDist == 2) {
-                advancePenalty = engine::KING_SHELTER_ADVANCE_ONE_PENALTY;
-            } else {
-                advancePenalty = engine::KING_SHELTER_ADVANCE_TWO_PENALTY;
-                advancePenalty += std::min(4, std::max(0, shelterDist - 3)) * 2;
-            }
-
+            int advancePenalty = (shelterDist == 2) 
+                ? engine::KING_SHELTER_ADVANCE_ONE_PENALTY 
+                : (engine::KING_SHELTER_ADVANCE_TWO_PENALTY + std::min(4, shelterDist - 3) * 2);
             if (isKingFile) {
                 advancePenalty += 2;
             }
@@ -145,18 +137,14 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         int stormDist = 99;
         uint64_t enemyInFront = enemyPawns & fileMask & inFrontMask;
         if (enemyInFront) {
-            if (side == 0) {
-                int pawnSq = 63 - __builtin_clzll(enemyInFront);
-                stormDist = kingRank - chess::Board::rank(pawnSq);
-            } else {
-                int pawnSq = __builtin_ctzll(enemyInFront);
-                stormDist = chess::Board::rank(pawnSq) - kingRank;
-            }
+            int pawnSq = (side == 0) 
+                ? (63 - __builtin_clzll(enemyInFront)) 
+                : __builtin_ctzll(enemyInFront);
+            stormDist = std::abs(kingRank - (pawnSq >> 3));
         }
 
         if (stormDist <= 2) {
-            sideSafety -= engine::KING_PAWN_STORM_NEAR_PENALTY
-                + ((shelterDist >= 4) ? 4 : 0);
+            sideSafety -= engine::KING_PAWN_STORM_NEAR_PENALTY + ((shelterDist >= 4) ? 4 : 0);
         } else if (stormDist <= 4) {
             sideSafety -= engine::KING_PAWN_STORM_FAR_PENALTY;
         }
@@ -165,7 +153,6 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
             int filePenalty = enemyPawnOnFile
                 ? engine::KING_SEMI_OPEN_FILE_PENALTY
                 : engine::KING_OPEN_FILE_PENALTY;
-
             if (isKingFile) {
                 filePenalty += filePenalty / 2;
             }
@@ -190,13 +177,8 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int 
     int hits = std::popcount(attacks);
     sideSafety -= hits * engine::KING_OPEN_DIAGONAL_PENALTY;
 
-    while (attacks) {
-        int hitSq = popLSB(attacks);
-        int dist = std::max(std::abs(kingFile - (hitSq & 7)), std::abs(kingRank - (hitSq >> 3)));
-        if (dist <= 2) {
-            sideSafety -= engine::KING_OPEN_DIAGONAL_PENALTY / 2;
-        }
-    }
+    int closeHits = std::popcount(attacks & KING_PROXIMITY_MASKS[sq]);
+    sideSafety -= closeHits * (engine::KING_OPEN_DIAGONAL_PENALTY / 2);
 }
 
 int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
