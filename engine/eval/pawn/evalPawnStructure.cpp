@@ -126,11 +126,13 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
     }
 
     bool hasConnectedPassedPawn = false;
-    uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file];
+    // L'uso di pieces::KING_ATTACKS[sq] sostituisce il check (std::abs(adjRank - rank) <= 1)
+    // eliminando il branch all'interno del loop e mascherando direttamente in hardware
+    uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file] & pieces::KING_ATTACKS[sq];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        const int adjRank = chess::Board::rank(adjSq);
-        if (std::abs(adjRank - rank) > 1) continue;
+        //const int adjRank = chess::Board::rank(adjSq);
+        //if (std::abs(adjRank - rank) > 1) continue;
 
         const int adjFile = chess::Board::file(adjSq);
         const bool adjPassed = ((enemyPawns & ADJACENT_AND_FILE_MASKS[adjFile] & forwardFill) == 0ULL);
@@ -172,16 +174,10 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
     const bool frontControlledByEnemyPawn =
         (pieces::PAWN_ATTACKERS_TO[pawnAttackerIndex][frontSq] & enemyPawns) != 0ULL;
 
-    bool hasAdjacentHelper = false;
-    uint64_t adjacentHelpers = ownPawns & ADJACENT_FILES_ONLY[file];
-    while (adjacentHelpers) {
-        const int helperSq = popLSB(adjacentHelpers);
-        const int helperRank = chess::Board::rank(helperSq);
-        if (isWhite ? (helperRank >= rank) : (helperRank <= rank)) {
-            hasAdjacentHelper = true;
-            break;
-        }
-    }
+    const uint64_t helperRankMask = isWhite
+        ? (~0ULL << (rank * 8))
+        : (rank == 7 ? ~0ULL : ((1ULL << ((rank + 1) * 8)) - 1));
+    const bool hasAdjacentHelper = (ownPawns & ADJACENT_FILES_ONLY[file] & helperRankMask) != 0ULL;
 
     if (frontControlledByEnemyPawn && !hasAdjacentHelper) {
         score += sign * engine::BACKWARD_PAWN_PENALTY;
