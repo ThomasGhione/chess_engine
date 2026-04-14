@@ -832,7 +832,7 @@ void MoveGenerator::computeCheckEvasionMasks(
     const uint64_t occ = b.getPiecesBitMap();
 
     uint64_t checkersMask = 0ULL;
-    checkersMask |= pieces::PAWN_ATTACKERS_TO[us][kingSq] & b.pawns_bb[them];
+    checkersMask |= pieces::PAWN_ATTACKERS_TO[them][kingSq] & b.pawns_bb[them];
     checkersMask |= pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them];
     checkersMask |= pieces::KING_ATTACKS[kingSq] & b.kings_bb[them];
     checkersMask |= pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
