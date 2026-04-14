@@ -187,7 +187,6 @@ private:
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
     static inline void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
 
-    static inline bool rookIsBehindPasser(int rookRank, uint64_t filePawns, uint64_t oppPawns, bool isWhite, bool checkOwnPasser) noexcept;
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
     static inline int32_t evalOutpostsForColor(const chess::Board& b, int color) noexcept;
