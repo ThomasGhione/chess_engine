@@ -95,6 +95,10 @@ inline void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, bool 
 inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int kingFile, int kingRank,
                                             uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept {
+    const uint64_t rankBelowMask = (1ULL << (kingRank * 8)) - 1;
+    const uint64_t rankAboveMask = kingRank == 7 ? 0ULL : (~0ULL << ((kingRank + 1) * 8));
+    const uint64_t inFrontMask = side == 0 ? rankBelowMask : rankAboveMask;
+
     for (int f = std::max(0, kingFile - 1); f <= std::min(7, kingFile + 1); ++f) {
         const uint64_t fileMask = FILE_MASKS[f];
         const bool ownPawnOnFile = (ownPawns & fileMask) != 0ULL;
@@ -102,18 +106,14 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         const bool isKingFile = (f == kingFile);
 
         int shelterDist = 99;
-        uint64_t ownFilePawns = ownPawns & fileMask;
-        while (ownFilePawns) {
-            const int pawnSq = popLSB(ownFilePawns);
-            const int pawnRank = chess::Board::rank(pawnSq);
+        uint64_t ownInFront = ownPawns & fileMask & inFrontMask;
+        if (ownInFront) {
             if (side == 0) {
-                if (pawnRank < kingRank) {
-                    shelterDist = std::min(shelterDist, kingRank - pawnRank);
-                }
+                int pawnSq = 63 - __builtin_clzll(ownInFront);
+                shelterDist = kingRank - chess::Board::rank(pawnSq);
             } else {
-                if (pawnRank > kingRank) {
-                    shelterDist = std::min(shelterDist, pawnRank - kingRank);
-                }
+                int pawnSq = __builtin_ctzll(ownInFront);
+                shelterDist = chess::Board::rank(pawnSq) - kingRank;
             }
         }
 
@@ -143,18 +143,14 @@ inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int k
         }
 
         int stormDist = 99;
-        uint64_t enemyFilePawns = enemyPawns & fileMask;
-        while (enemyFilePawns) {
-            const int pawnSq = popLSB(enemyFilePawns);
-            const int pawnRank = chess::Board::rank(pawnSq);
+        uint64_t enemyInFront = enemyPawns & fileMask & inFrontMask;
+        if (enemyInFront) {
             if (side == 0) {
-                if (pawnRank < kingRank) {
-                    stormDist = std::min(stormDist, kingRank - pawnRank);
-                }
+                int pawnSq = 63 - __builtin_clzll(enemyInFront);
+                stormDist = kingRank - chess::Board::rank(pawnSq);
             } else {
-                if (pawnRank > kingRank) {
-                    stormDist = std::min(stormDist, pawnRank - kingRank);
-                }
+                int pawnSq = __builtin_ctzll(enemyInFront);
+                stormDist = chess::Board::rank(pawnSq) - kingRank;
             }
         }
 
