@@ -35,45 +35,42 @@ public:
     static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
     
     struct PawnFileStats {
-        uint8_t whiteIsolatedOnFile[8] = {};
-        uint8_t blackIsolatedOnFile[8] = {};
-        uint64_t whiteAdjAndFilePawns[8] = {};
-        uint64_t blackAdjAndFilePawns[8] = {};
+        uint8_t whiteIsolatedFiles = 0;
+        uint8_t blackIsolatedFiles = 0;
         int whiteIslands = 0;
         int blackIslands = 0;
         int32_t islandScore = 0;
         int32_t doubledScore = 0;
     };
-    
+
     static PawnFileStats evalPawnFileStats(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    
+
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
-    
+
     static bool tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                int32_t& outScore) noexcept;
     static void storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                   int32_t score) noexcept;
-    
+
     static int32_t evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                   int file, const uint64_t& forwardFill,
                                   const std::array<uint64_t, 64>& oneStepMasks,
                                   const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                  const uint64_t (&enemyAdjAndFilePawns)[8],
+                                  uint64_t enemyPawns,
                                   int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                   int32_t connectedPasserBonus, int promotionRank, int sign) noexcept;
-    
+
     static int32_t evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                      uint64_t allPawns, int file, bool hasSupport,
                                      const uint64_t& frontMask, const uint64_t& forwardFill,
-                                     const uint8_t (&ownIsolatedOnFile)[8],
+                                     uint8_t ownIsolatedFiles,
                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
                                      int32_t candidatePasserBonus, int pawnAttackerIndex,
                                      bool isWhite, int sign) noexcept;
-    
+
     static int32_t evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                    const uint8_t (&ownIsolatedOnFile)[8],
-                                    const uint64_t (&enemyAdjAndFilePawns)[8],
+                                    uint8_t ownIsolatedFiles,
                                     int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                     int32_t connectedPasserBonus, int32_t candidatePasserBonus,
                                     int sign) noexcept;

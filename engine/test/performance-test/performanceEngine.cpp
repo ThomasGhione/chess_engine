@@ -48,7 +48,7 @@ ut::suite performanceEngineSuite = [] {
     expect(avgDuration < 700);
   };
 
-  "banchmark all evaluation helper functions"_test = []{
+  "benchmark all evaluation helper functions"_test = []{
     constexpr int EVAL_HELPER_FUNCTIONS_ITERATIONS = 10'000'000;
     constexpr std::array<const char*, 8> BENCH_FENS = {
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -104,6 +104,18 @@ ut::suite performanceEngineSuite = [] {
     auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
     benchmarkSink ^= pawnSink;
     printf("Pawn structure evaluation took %lld ms\n", static_cast<long long>(duration2));
+
+    auto startPawnFileStats = std::chrono::high_resolution_clock::now();
+    int64_t pawnFileStatsSink = 0;
+    for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
+      const auto& pos = benchPosAt(i);
+      const auto stats = engine::Evaluator::evalPawnFileStats(pos.whitePawns, pos.blackPawns);
+      pawnFileStatsSink += stats.doubledScore + stats.islandScore + stats.whiteIslands - stats.blackIslands;
+    }
+    auto endPawnFileStats = std::chrono::high_resolution_clock::now();
+    auto durationPawnFileStats = std::chrono::duration_cast<std::chrono::milliseconds>(endPawnFileStats - startPawnFileStats).count();
+    benchmarkSink ^= pawnFileStatsSink;
+    printf("Pawn file stats evaluation took %lld ms\n", static_cast<long long>(durationPawnFileStats));
 
     auto start3 = std::chrono::high_resolution_clock::now();
     int64_t kingSafetySink = 0;
