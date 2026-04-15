@@ -23,6 +23,9 @@ public:
         bool hashMoveIsLegal = false;
     };
 
+    template <typename MoveType>
+    static void insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept;
+
     static MovePickerData prepareMovePicker(
         const MoveList<chess::Board::Move>& moves,
         int ply,
@@ -121,7 +124,6 @@ private:
         const chess::Board& b,
         const chess::Board::Move& m) noexcept;
 
-    static int32_t clampQMoveScore(int64_t score) noexcept;
     static bool shouldDeltaPrune(
         int32_t standPat,
         int32_t margin,

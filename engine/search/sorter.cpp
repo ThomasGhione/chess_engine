@@ -8,6 +8,22 @@
 
 namespace engine {
 
+template <typename MoveType>
+void Sorter::insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept {
+    for (int i = 1; i < moves.size; ++i) {
+        const MoveType keyMove = moves[i];
+        const int32_t keyScore = scores[i];
+        int j = i - 1;
+        while (j >= 0 && scores[j] < keyScore) {
+            scores[j + 1] = scores[j];
+            moves[j + 1] = moves[j];
+            --j;
+        }
+        scores[j + 1] = keyScore;
+        moves[j + 1] = keyMove;
+    }
+}
+
 bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
@@ -277,25 +293,23 @@ uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
     const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
     const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
     
-    //FIXME: Cambia nome
-    // Macro-step 2: Query attackers from least valuable to most valuable.
-    uint64_t bb = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
-    if (bb) return __builtin_ctzll(bb);
-
-    bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
-    if (bb) return __builtin_ctzll(bb);
-
+    // Branchless retrieval: cascade conditional moves (cmov/csel)
+    uint64_t mask = pawns_bb & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
+    
+    uint64_t bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
+    mask = mask ? mask : bb;
+    
     bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
-    if (bb) return __builtin_ctzll(bb);
-
+    mask = mask ? mask : bb;
+    
     bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
-    if (bb) return __builtin_ctzll(bb);
-
+    mask = mask ? mask : bb;
+    
     bb = kings_bb & pieces::KING_ATTACKS[sq];
-    if (bb) return __builtin_ctzll(bb);
+    mask = mask ? mask : bb;
 
-    // Macro-step 3: Return sentinel when no attacker exists.
-    return 64; // no attacker
+    // Macro-step 3: Return sentinel when no attacker exists, or ctzll.
+    return mask ? __builtin_ctzll(mask) : 64;
 }
 
 int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept {
@@ -343,19 +357,19 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
         // Determine attacker type using the piece bitboards AND the simulated occupancy
         // (safer than querying b.get(...) which reflects the original board only).
-        const uint64_t attackerMask = chess::Board::bitMask(attacker);
-        uint8_t currentAttackerType = chess::Board::PAWN; // default/fallback
-        if ((b.pawns_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::PAWN;
-        else if ((b.knights_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KNIGHT;
-        else if ((b.bishops_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::BISHOP;
-        else if ((b.rooks_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::ROOK;
-        else if ((b.queens_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::QUEEN;
-        else if ((b.kings_bb[side] & occ & attackerMask) != 0) currentAttackerType = chess::Board::KING;
+        const uint64_t occMask = occ & chess::Board::bitMask(attacker);
+        
+        uint8_t currentAttackerType = 
+            (b.pawns_bb[side] & occMask) ? chess::Board::PAWN :
+            (b.knights_bb[side] & occMask) ? chess::Board::KNIGHT :
+            (b.bishops_bb[side] & occMask) ? chess::Board::BISHOP :
+            (b.rooks_bb[side] & occMask) ? chess::Board::ROOK :
+            (b.queens_bb[side] & occMask) ? chess::Board::QUEEN : chess::Board::KING;
 
         // At this ply, capture the piece left on the target square (i.e. the previous capturer).
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
 
-        occ ^= attackerMask; // Remove the attacker from occupancy
+        occ ^= occMask; // Remove the attacker from occupancy
         capturedOnTargetType = currentAttackerType;  // The piece that just captured now stays on target and can captured on the next ply.
         side ^= 1; // Switch side
         depth++;
@@ -511,41 +525,19 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         return std::move(picker.moves);
     }
 
-    //FIXME: Controlla duplicazione
     // Macro-step 5: Run insertion-sort on score/move arrays in descending order.
-    // Insertion-sort scores and moves together (descending score).
-    // MAX_MOVES is small, and the list is often partially ordered.
-    MoveList<chess::Board::Move>& sortedMoves = picker.moves;
-    int32_t* moveScores = picker.scores;
-
-    for (int i = 1; i < sortedMoves.size; ++i) {
-        const chess::Board::Move keyMove = sortedMoves[i];
-        const int32_t keyScore = moveScores[i];
-        int j = i - 1;
-        while (j >= 0 && moveScores[j] < keyScore) {
-            moveScores[j + 1] = moveScores[j];
-            sortedMoves[j + 1] = sortedMoves[j];
-            --j;
-        }
-        moveScores[j + 1] = keyScore;
-        sortedMoves[j + 1] = keyMove;
-    }
+    insertionSort(picker.moves, picker.scores);
 
     // Macro-step 6: Report whether hash move ended up as first move.
     const bool hashMovePlacedFirst = picker.hashMoveIsLegal
-        && !sortedMoves.is_empty()
-        && (moveScores[0] == 100000);
+        && !picker.moves.is_empty()
+        && (picker.scores[0] == 100000);
 
     if (outHashMoveIsLegal != nullptr) {
         *outHashMoveIsLegal = hashMovePlacedFirst;
     }
 
     return std::move(picker.moves);
-}
-
-//FIXME: Controlla duplicazione
-int32_t Sorter::clampQMoveScore(int64_t score) noexcept {
-    return clampToInt32(score);
 }
 
 bool Sorter::shouldDeltaPrune(
@@ -650,7 +642,7 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
 
             // Score by MVV + SEE for better ordering
             // SEE-based ordering: captures with better SEE explored first
-            score = clampQMoveScore(10000 + see + MVV_TABLE[victimType]);
+            score = clampToInt32(10000 + see + MVV_TABLE[victimType]);
             // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
@@ -674,21 +666,8 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
         return sortedTacticalMoves;
     }
 
-    //FIXME: Codice duplcicato, vedi ragionamento altrove
     // Macro-step 5: Insertion-sort scored tactical moves in descending order.
-    // Insertion-sort tactical moves + scores together (descending).
-    for (int i = 1; i < sortedTacticalMoves.size; ++i) {
-        const chess::Board::Move keyMove = sortedTacticalMoves[i];
-        const int32_t keyScore = tacticalScores[i];
-        int j = i - 1;
-        while (j >= 0 && tacticalScores[j] < keyScore) {
-            tacticalScores[j + 1] = tacticalScores[j];
-            sortedTacticalMoves[j + 1] = sortedTacticalMoves[j];
-            --j;
-        }
-        tacticalScores[j + 1] = keyScore;
-        sortedTacticalMoves[j + 1] = keyMove;
-    }
+    insertionSort(sortedTacticalMoves, tacticalScores);
 
     // Macro-step 6: Return sorted tactical list.
     (void)searchDepth; // kept for API compatibility with qsearch context.
