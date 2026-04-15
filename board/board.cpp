@@ -115,30 +115,23 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
-    uint8_t attackers = 0;
-
-    const uint64_t pawnAtk = pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide];
-    if (addAttackAndDetectDouble(pawnAtk, attackers)) return true;
-
-    const uint64_t knightAtk = pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide];
-    if (addAttackAndDetectDouble(knightAtk, attackers)) return true;
-
-    const uint64_t kingAtk = pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide];
-    if (addAttackAndDetectDouble(kingAtk, attackers)) return true;
+    // Accumulate all attackers in a single bitboard
+    uint64_t attackers = (pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide])
+                       | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
 
     const uint64_t rookLike = rooks_bb[oppSide] | queens_bb[oppSide];
     if (rookLike) {
-        const uint64_t rookAtk = pieces::getRookAttacks(kingIndex, occupancy) & rookLike;
-        if (addAttackAndDetectDouble(rookAtk, attackers)) return true;
+        attackers |= (pieces::getRookAttacks(kingIndex, occupancy) & rookLike);
     }
 
     const uint64_t bishopLike = bishops_bb[oppSide] | queens_bb[oppSide];
     if (bishopLike) {
-        const uint64_t bishopAtk = pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike;
-        if (addAttackAndDetectDouble(bishopAtk, attackers)) return true;
+        attackers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
     }
 
-    return false;
+    // A double check means at least 2 distinct pieces are attacking the king.
+    // If the bitboard has more than 1 bit set, clearing the LSB will leave a non-zero value.
+    return (attackers & (attackers - 1)) != 0ULL;
 }
 
 // Simple piece pseudo-legal check
@@ -427,10 +420,8 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
         historySize = 0;
     
     if (historySize >= repetitionHistory.size()) {
-        // Shift all entries one position to the left (discard oldest)
-        for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
-            repetitionHistory[i - 1] = repetitionHistory[i];
-        }
+        // Shift all entries one position to the left (discard oldest), using memmove for vectorization
+        std::memmove(repetitionHistory.data(), repetitionHistory.data() + 1, (repetitionHistory.size() - 1) * sizeof(uint64_t));
         historySize = repetitionHistory.size() - 1;
     }
     repetitionHistory[historySize++] = currentHash;

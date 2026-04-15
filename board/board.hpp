@@ -362,7 +362,6 @@ private:
         uint8_t destPiece
     ) const noexcept;
     [[nodiscard]] static inline bool hasAtLeastTwoBits(uint64_t bb) noexcept;
-    [[nodiscard]] static inline bool addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept;
     [[nodiscard]] static inline uint8_t rookStartSlot(uint8_t index) noexcept;
     inline void clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept;
     inline void updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept;

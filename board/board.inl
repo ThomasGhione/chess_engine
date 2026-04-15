@@ -288,13 +288,6 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
 
 inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept { return (bb & (bb - 1)) != 0ULL; }
 
-inline bool Board::addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept {
-    if (!attackSet) return false;
-    if (hasAtLeastTwoBits(attackSet)) return true;
-    ++attackers;
-    return attackers >= 2;
-}
-
 inline bool Board::isKingSafeAfterMove(
     uint8_t movingColor,
     uint8_t fromIndex,
