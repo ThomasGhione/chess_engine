@@ -24,11 +24,8 @@ bool Searcher::isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isW
 }
 
 void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept {
-    if (isWhite) {
-        if (score > alpha) alpha = score;
-    } else {
-        if (score < beta) beta = score;
-    }
+    alpha = (isWhite && score > alpha) ? score : alpha;
+    beta = (!isWhite && score < beta) ? score : beta;
 }
 
 bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
@@ -225,10 +222,9 @@ void Searcher::updateMinMax(
     int32_t& bestScore,
     chess::Board::Move& bestMove,
     const chess::Board::Move& m) noexcept {
-    if (isBetter(score, bestScore, usIsWhite)) {
-        bestScore = score;
-        bestMove = m;
-    }
+    const bool better = isBetter(score, bestScore, usIsWhite);
+    bestScore = better ? score : bestScore;
+    bestMove = better ? m : bestMove;
 
     updateBound(score, alpha, beta, usIsWhite);
 }
@@ -553,10 +549,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             int bestIndex = moveIndex;
             int32_t pickScore = moveScores[moveIndex];
             for (int candidate = moveIndex + 1; candidate < orderedMoves.size; ++candidate) {
-                if (moveScores[candidate] > pickScore) {
-                    bestIndex = candidate;
-                    pickScore = moveScores[candidate];
-                }
+                const bool better = moveScores[candidate] > pickScore;
+                bestIndex = better ? candidate : bestIndex;
+                pickScore = better ? moveScores[candidate] : pickScore;
             }
             if (bestIndex != moveIndex) {
                 std::swap(orderedMoves[moveIndex], orderedMoves[bestIndex]);
