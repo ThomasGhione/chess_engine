@@ -9,9 +9,8 @@ inline int32_t Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int o
         const int sq = popLSB(piecesBb);
         const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[color][sq] & b.pawns_bb[color]) != 0;
         const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
-        if (supportedByPawn && !attackedByEnemyPawn) {
-            score += sign * Bonus;
-        }
+        
+        score += (supportedByPawn && !attackedByEnemyPawn) * sign * Bonus;
     }
     return score;
 }
@@ -48,9 +47,7 @@ inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
     while (minors) {
         const int sq = popLSB(minors);
         const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
-        if ((friends & nearby) == 0) {
-            score += sign * engine::COORDINATION_PENALTY;
-        }
+        score += ((friends & nearby) == 0) * sign * engine::COORDINATION_PENALTY;
     }
     return score;
 }

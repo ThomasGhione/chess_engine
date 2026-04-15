@@ -29,8 +29,7 @@ inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
         score += sign * __builtin_popcountll(hangingHookPawns) * engine::HANGING_HOOK_PAWN_PENALTY;
     }
 
-    score += evalHangingPiecePenalty(b.knights_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
-    score += evalHangingPiecePenalty(b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
+    score += evalHangingPiecePenalty(b.knights_bb[side] | b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
     score += evalHangingPiecePenalty(b.rooks_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_ROOK_PENALTY);
     score += evalHangingPiecePenalty(b.queens_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_QUEEN_PENALTY);
 

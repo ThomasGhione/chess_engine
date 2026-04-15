@@ -66,12 +66,11 @@ inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, b
 }
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
-    const uint64_t kingBB = 1ULL << sq;
     if (side == 0) {
-        const uint64_t shieldSquares = (kingBB >> 8) | ((kingBB & ~0x8080808080808080ULL) >> 7) | ((kingBB & ~0x0101010101010101ULL) >> 9);
+        const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & WHITE_FORWARD_FILL[sq];
         sideSafety += std::popcount(whitePawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     } else {
-        const uint64_t shieldSquares = (kingBB << 8) | ((kingBB & ~0x8080808080808080ULL) << 9) | ((kingBB & ~0x0101010101010101ULL) << 7);
+        const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & BLACK_FORWARD_FILL[sq];
         sideSafety += std::popcount(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     }
 }
