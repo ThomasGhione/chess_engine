@@ -404,14 +404,20 @@ inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) n
 
 template<bool Add>
 inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept {
-    switch (pieceType) {
-        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit, index); break;
-        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit, index); break;
-        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit, index); break;
-        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit, index); break;
-        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit, index); break;
-        case KING:   updatePieceTypeBB<KING, Add>(color, bit, index); break;
-        default: break;
+    using UpdateFunc = void (Board::*)(uint8_t, uint64_t, uint8_t) noexcept;
+    static constexpr UpdateFunc lut[8] = {
+        nullptr,
+        &Board::updatePieceTypeBB<PAWN, Add>,
+        &Board::updatePieceTypeBB<KNIGHT, Add>,
+        &Board::updatePieceTypeBB<BISHOP, Add>,
+        &Board::updatePieceTypeBB<ROOK, Add>,
+        &Board::updatePieceTypeBB<QUEEN, Add>,
+        &Board::updatePieceTypeBB<KING, Add>,
+        nullptr
+    };
+
+    if (auto func = lut[pieceType]) [[likely]] {
+        (this->*func)(color, bit, index);
     }
 }
 

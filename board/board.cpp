@@ -147,12 +147,12 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor
 ) const noexcept {
     const uint8_t oppColor = oppositeColor(movingColor);
-    const int fileDelta = file(toIndex) - file(fromIndex);
-    const int rankDelta = rank(toIndex) - rank(fromIndex);
+    const int diff = (int)toIndex - (int)fromIndex;
 
-    // Handle castling explicitly when king moves two files on same rank
-    if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
-        return canCastleToSquare(fromIndex, movingColor, fileDelta == 2);
+    // Castling moves are uniquely identified by a destination offset of +2 or -2.
+    // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
+    if (diff == 2 || diff == -2) [[unlikely]] {
+        return canCastleToSquare(fromIndex, movingColor, diff == 2);
     }
 
     // Normal king move: one-step king attack and destination not attacked
@@ -185,13 +185,11 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t fromIndex,
     bool isKingside
 ) const noexcept {
-    const uint8_t side = colorToIndex(isWhite ? WHITE : BLACK);
-    const uint8_t oppColor = oppositeColor(isWhite ? WHITE : BLACK);
+    const uint8_t side = isWhite ^ 1; // 0 for White, 1 for Black
+    const uint8_t oppColor = isWhite ? BLACK : WHITE;
     
     // Check castling rights
-    const uint8_t rightBit = isWhite 
-        ? (isKingside ? 0u : 1u)   // White O-O / O-O-O
-        : (isKingside ? 2u : 3u);  // Black O-O / O-O-O
+    const uint8_t rightBit = (!isWhite << 1) | !isKingside;
     
     if ((castle & (1u << rightBit)) == 0u) return false;
     
@@ -338,21 +336,21 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                                rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
     // --- KING MOVES (always exists, cheap to test) ---
-    uint64_t kings = kings_bb[side];
+    const uint64_t kings = kings_bb[side];
     if (kings) [[likely]] {
         const uint8_t king = __builtin_ctzll(kings);
         uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (isLegalPseudoMove(king, to, inChk, false)) return true;
+            if (!isSquareAttacked(to, oppSide << 3, king)) return true;
         }
         
         if (!inChk) {
-            const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
+            const uint8_t eIndex = (side == 0) ? 60 : 4;  // WHITE_KING_START = 60, BLACK_KING_START = 4
             if (king == eIndex) {
-                if (isLegalPseudoMove(eIndex, eIndex + 2, inChk, false)) return true;
-                if (isLegalPseudoMove(eIndex, eIndex - 2, inChk, false)) return true;
+                if (canCastleGeneric(side == 0, eIndex, true)) return true;
+                if (canCastleGeneric(side == 0, eIndex, false)) return true;
             }
         }
     }
