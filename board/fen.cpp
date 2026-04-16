@@ -5,10 +5,7 @@
 
 namespace chess {
 
-// Converts a single FEN character using compile-time lookup table
-uint8_t Board::charToPiece(char symbol) {
-    return CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(symbol)];
-}
+
 // Parses the board section of the FEN 
 bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
     std::istringstream boardStream(boardSection);
@@ -25,7 +22,7 @@ bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32
             } else {
                 if (fileIndex >= 8) 
                     return false;
-                uint8_t piece = charToPiece(symbol);
+                uint8_t piece = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(symbol)];
                 if (piece == EMPTY) return false;
 
                 parsedBoard.at(rankIndex) |= static_cast<uint32_t>(piece) << (fileIndex * 4);
@@ -39,10 +36,8 @@ bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32
 }
 // Reads the castling rights section of the FEN
 uint8_t Board::parseActiveColor(const std::string& activeSection) {
-    if (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) {
-        return BLACK;
-    }
-    return WHITE;
+    return (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B'))
+        ? BLACK : WHITE;
 }
 // Reads the en passant target square section of the FEN
 Coords Board::parseEnPassant(const std::string& enPassantSection) {
@@ -143,7 +138,7 @@ std::string Board::boardToFenPieces() const {
                 emptySquares = 0;
             }
 
-            char symbol = pieceTypeToChar(pieceType);
+            char symbol = PIECE_TYPE_TO_CHAR[pieceType & MASK_PIECE_TYPE];
             if (pieceColor == BLACK) {
                 symbol = std::tolower(static_cast<unsigned char>(symbol));
             }
@@ -153,11 +148,6 @@ std::string Board::boardToFenPieces() const {
         if (rank > 0) fen.push_back('/');
     }
     return fen;
-}
-
-// Maps internal piece type codes to FEN characters
-char Board::pieceTypeToChar(uint8_t pieceType) {
-    return PIECE_TYPE_TO_CHAR[pieceType & MASK_PIECE_TYPE];
 }
 
 // Converts castling rights into the FEN castling string
@@ -173,9 +163,7 @@ std::string Board::castlingToFen() const {
 std::string Board::enPassantToFen() const {
     if (Coords::isInBounds(enPassant)) {
         std::string ep;
-        // file: 0-7 -> 'a'-'h'
         ep.push_back('a' + enPassant.file());
-        // rank: 0-7 -> '8'-'1' (Board convention: rank 0 = row 8)
         ep.push_back('8' - enPassant.rank());
         return ep;
     }
@@ -185,7 +173,6 @@ std::string Board::enPassantToFen() const {
 std::string Board::fromBoardToFen() const {
     std::string fen;
     fen.reserve(90);
-
     fen.append(boardToFenPieces());
     fen.push_back(' ');
     fen.push_back((activeColor == WHITE) ? 'w' : 'b');
@@ -197,7 +184,6 @@ std::string Board::fromBoardToFen() const {
     fen.append(std::to_string(halfMoveClock));
     fen.push_back(' ');
     fen.append(std::to_string(fullMoveClock));
-
     return fen;
 }
 

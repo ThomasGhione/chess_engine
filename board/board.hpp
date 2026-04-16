@@ -422,13 +422,11 @@ private:
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
                               uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
     bool isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept;
-    static uint8_t charToPiece(char symbol);
     static bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     static uint8_t parseActiveColor(const std::string& activeSection);
     static Coords parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string boardToFenPieces() const;
-    static char pieceTypeToChar(uint8_t pieceType);
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
     inline void copyFromBoard(const Board& other) noexcept;
