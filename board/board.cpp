@@ -5,11 +5,9 @@ namespace chess {
 
 
 bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
-    const uint8_t fromIndex = from.index;
-    const uint8_t moving = get(fromIndex);
-    const uint8_t movingColor = moving & MASK_COLOR;
+    const uint8_t moving = get(from.index);
 
-    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(movingColor), false))
+    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(moving & MASK_COLOR), false)) [[unlikely]]
         return false;
 
     MoveState st{};
@@ -19,17 +17,12 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
 
 bool Board::promote(const Coords& at, char choice) noexcept {
     const uint8_t piece = get(at);
-    const uint8_t type = piece & MASK_PIECE_TYPE;
-    if (type != PAWN) [[unlikely]] 
+    if ((piece & MASK_PIECE_TYPE) != PAWN) [[unlikely]] 
         return false; // must be a pawn
-    
-    const uint8_t color = piece & MASK_COLOR; // WHITE if set, otherwise BLACK
-    if (rank(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
+    if (rank(at.index) != promotionRank((piece & MASK_COLOR) == WHITE)) [[unlikely]] 
         return false;
 
-    const uint8_t promo = normalizePromotionChoice(choice);
-    const uint8_t atIndex = at.index;
-    promoteUnchecked(atIndex, piece, promo);
+    promoteUnchecked(at.index, piece, normalizePromotionChoice(choice));
     return true;
 }
 
@@ -38,8 +31,6 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bo
 }
 
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
-    if (fromPiece == EMPTY) [[unlikely]] return false;
-
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
@@ -78,23 +69,19 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             return isKingSafeAfterMove(movingColor, fromIndex, toIndex, 0ULL);
         }
         case KNIGHT: {
-            const uint64_t bitMap = pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy);
-            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
+            if ((pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case BISHOP: {
-            const uint64_t bitMap = pieces::generateMovesByType<BISHOP>(fromIndex, occupancy);
-            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
+            if ((pieces::generateMovesByType<BISHOP>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case ROOK: {
-            const uint64_t bitMap = pieces::generateMovesByType<ROOK>(fromIndex, occupancy);
-            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
+            if ((pieces::generateMovesByType<ROOK>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case QUEEN: {
-            const uint64_t bitMap = pieces::generateMovesByType<QUEEN>(fromIndex, occupancy);
-            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
+            if ((pieces::generateMovesByType<QUEEN>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case KING:

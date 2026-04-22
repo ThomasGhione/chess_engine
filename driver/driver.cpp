@@ -282,12 +282,6 @@ void Driver::playerTurn() noexcept {
             continue;
         }
 
-        const bool isWhiteTurn = (engine.getActiveColor() == chess::Board::WHITE);
-        if (isWhiteTurn != (engine.board.getColor(fromCoords) == chess::Board::WHITE)) [[unlikely]] {
-            std::cout << "It's not your turn to move that piece. Please enter a valid move.\n";
-            continue;
-        }
-
         DBG_TIMER_DECLARE(moveTimer);
         DBG_TIMER_START(moveTimer);
 

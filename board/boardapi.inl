@@ -156,15 +156,13 @@ inline Board::MoveKind Board::classifyMoveKind(
 }
 
 __attribute__((always_inline))
-inline uint8_t Board::normalizePromotionChoice(char promotionChoice) noexcept {
-    uint8_t promo = promotionChoice;
-    if (promo >= 'A' && promo <= 'Z') {
-        promo = promo | 0x20;
-    }
-
-    if (promo == 'q' || promo == 'r' || promo == 'b' || promo == 'n') [[likely]] {
-        return promo;
-    }
+inline uint8_t Board::normalizePromotionChoice(char choice) noexcept {
+    if (choice >= 'A' && choice <= 'Z')
+        choice = choice | 0x20;
+    
+    if (choice == 'q' || choice == 'r' || choice == 'b' || choice == 'n') [[likely]] 
+        return choice;
+    
     return 'q';
 }
 
