@@ -79,22 +79,22 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
         }
         case KNIGHT: {
             const uint64_t bitMap = pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case BISHOP: {
             const uint64_t bitMap = pieces::generateMovesByType<BISHOP>(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case ROOK: {
             const uint64_t bitMap = pieces::generateMovesByType<ROOK>(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case QUEEN: {
             const uint64_t bitMap = pieces::generateMovesByType<QUEEN>(fromIndex, occupancy);
-            if (!isSimplePieceLegal(bitMap, toBit)) [[unlikely]] return false;
+            if ((bitMap & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
         }
         case KING:
@@ -132,11 +132,6 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     // A double check means at least 2 distinct pieces are attacking the king.
     // If the bitboard has more than 1 bit set, clearing the LSB will leave a non-zero value.
     return (attackers & (attackers - 1)) != 0ULL;
-}
-
-// Simple piece pseudo-legal check
-[[nodiscard]] inline bool Board::isSimplePieceLegal(uint64_t bitMap, uint64_t toBit) noexcept {
-    return (bitMap & toBit) != 0ULL;
 }
 
 // King move validation (normal moves + castling)

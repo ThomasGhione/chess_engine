@@ -286,8 +286,6 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
     occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
 }
 
-inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept { return (bb & (bb - 1)) != 0ULL; }
-
 inline bool Board::isKingSafeAfterMove(
     uint8_t movingColor,
     uint8_t fromIndex,
