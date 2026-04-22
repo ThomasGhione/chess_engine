@@ -1,18 +1,17 @@
-#ifndef ENGINE_MOVELIST_HPP
-#define ENGINE_MOVELIST_HPP
+#pragma once
 
-#include "engine.hpp"
+#include <cstdint>
 #include <utility>  // for std::forward
 #include <concepts>
 #include <algorithm> // for std::partial_sort
 #include <new>
 #include <type_traits>
 
-// Concept: T must expose a .score member of type int64_t
+// Concept: T must expose a .score member convertible to int32_t
 template<typename T>
 concept HasScore = requires(T a, T b) {
-    { a.score } -> std::convertible_to<int64_t>;
-    { b.score } -> std::convertible_to<int64_t>;
+    { a.score } -> std::convertible_to<int32_t>;
+    { b.score } -> std::convertible_to<int32_t>;
 };
 
 inline constexpr size_t MAX_MOVES = 218;
@@ -70,16 +69,16 @@ struct MoveList {
     inline const T& operator[](size_t i) const noexcept { return *ptr(i); }
 
     inline T* begin() noexcept { return ptr(0); }
-    inline T* end() noexcept { return ptr(static_cast<size_t>(size)); }
+    inline T* end() noexcept { return ptr(size); }
     inline const T* begin() const noexcept { return ptr(0); }
-    inline const T* end() const noexcept { return ptr(static_cast<size_t>(size)); }
+    inline const T* end() const noexcept { return ptr(size); }
 
     [[nodiscard]] inline bool is_empty() const noexcept { return size == 0; }
 
     inline void clear() noexcept {
         if constexpr (!std::is_trivially_destructible_v<T>) {
             for (int i = 0; i < size; ++i) {
-                ptr(static_cast<size_t>(i))->~T();
+                ptr(i)->~T();
             }
         }
         size = 0;
@@ -95,14 +94,14 @@ struct MoveList {
         if (size <= 1) return; // nothing to sort
         
         for (int i = 1; i < size; ++i) {
-            T key = (*this)[static_cast<size_t>(i)];
+            T key = (*this)[i];
             int j = i - 1;
 
-            while (j >= 0 && ((*this)[static_cast<size_t>(j)].score < key.score )) {
-                (*this)[static_cast<size_t>(j + 1)] = (*this)[static_cast<size_t>(j)];
+            while (j >= 0 && ((*this)[j].score < key.score )) {
+                (*this)[j + 1] = (*this)[j];
                 --j;
             }
-            (*this)[static_cast<size_t>(j + 1)] = key;
+            (*this)[j + 1] = key;
         }
     }
 
@@ -113,15 +112,15 @@ struct MoveList {
         const int n = (size < LIMIT) ? size : LIMIT;
 
         for (int i = 1; i < n; ++i) {
-            T key = (*this)[static_cast<size_t>(i)];
+            T key = (*this)[i];
             int j = i - 1;
             
             // Descending order (highest score first)
-            while (j >= 0 && (*this)[static_cast<size_t>(j)].score < key.score) {
-                (*this)[static_cast<size_t>(j + 1)] = (*this)[static_cast<size_t>(j)];
+            while (j >= 0 && (*this)[j].score < key.score) {
+                (*this)[j + 1] = (*this)[j];
                 --j;
             }
-            (*this)[static_cast<size_t>(j + 1)] = key;
+            (*this)[j + 1] = key;
         }
     }
 
@@ -134,7 +133,7 @@ private:
     inline void copyFrom(const MoveList& other) noexcept(std::is_nothrow_copy_constructible_v<T>) {
         size = 0;
         for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(*other.ptr(static_cast<size_t>(i)));
+            new (&data[i]) T(*other.ptr(i));
             ++size;
         }
     }
@@ -142,12 +141,10 @@ private:
     inline void moveFrom(MoveList&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
         size = 0;
         for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(std::move(*other.ptr(static_cast<size_t>(i))));
+            new (&data[i]) T(std::move(*other.ptr(i)));
             ++size;
         }
         other.clear();
     }
 
 };
-
-#endif // ENGINE_MOVELIST_HPP

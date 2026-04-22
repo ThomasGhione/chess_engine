@@ -1,5 +1,9 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
+    const int fileA = chess::Board::file(a);
+    const int fileB = chess::Board::file(b);
+    const int rankA = chess::Board::rank(a);
+    const int rankB = chess::Board::rank(b);
+    return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
@@ -36,8 +40,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
         uint64_t mask = 0;
-        const int rank = chess::Board::rankOf(sq);
-        const int file = chess::Board::fileOf(sq);
+        const int rank = chess::Board::rank(sq);
+        const int file = chess::Board::file(sq);
 
         for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
             for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
@@ -56,7 +60,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
 inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
     }
     return result;
@@ -65,37 +69,70 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
 inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
     }
     return result;
 }
 
 template<bool IsEndgame>
-inline constexpr int64_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    constexpr int64_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
+inline constexpr int32_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
+    constexpr int32_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
 }
 
 inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    if (!data[0].isComputed) {
-        computeAttackData(data, b, occ);
-    }
+    computeAttackData(data, b, occ);
+}
+
+inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noexcept {
+    PhaseInfo phase{};
+    phase.fullMoves = b.getFullMoveClock();
+    phase.nonPawnMajors = __builtin_popcountll(
+        b.knights_bb[0] | b.knights_bb[1] |
+        b.bishops_bb[0] | b.bishops_bb[1] |
+        b.rooks_bb[0]   | b.rooks_bb[1]   |
+        b.queens_bb[0]  | b.queens_bb[1]
+    );
+    phase.isEndgame = (phase.nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
+    phase.isOpening = !phase.isEndgame && (phase.fullMoves < OPENING_MOVES);
+    phase.isEarlyMiddlegame = !phase.isEndgame && !phase.isOpening && (phase.fullMoves < EARLY_MG_MOVES);
+    return phase;
 }
 
 inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
-    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
+    const uint8_t index = __builtin_ctzll(bb);
     bb &= (bb - 1);
     return index;
+}
+
+inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
+                                         int32_t safeBonus, int32_t forcingBonus,
+                                         int32_t& attackUnits) noexcept {
+    while (checkers) {
+        const uint8_t checkerSq = popLSB(checkers);
+        const bool isSafe = (defenderMap & chess::Board::bitMask(checkerSq)) == 0ULL;
+        attackUnits += isSafe ? safeBonus : forcingBonus;
+    }
+}
+
+inline bool Evaluator::isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept {
+    const uint64_t enemyAdjAndFile = blackPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+    return (enemyAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL;
+}
+
+inline bool Evaluator::isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept {
+    const uint64_t enemyAdjAndFile = whitePawns & ADJACENT_AND_FILE_MASKS[pawnFile];
+    return (enemyAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL;
 }
 
 inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
     return pieces::KNIGHT_ATTACKS[sq];
 }
 
-template<uint64_t (*AttackFn)(uint8_t, uint64_t), int64_t Weight>
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t Weight>
 inline void Evaluator::accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
-                                                   int& attackerCount, int64_t& attackWeight) noexcept {
+                                                   int& attackerCount, int32_t& attackWeight) noexcept {
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         if (AttackFn(sq, occ) & kingZone) {

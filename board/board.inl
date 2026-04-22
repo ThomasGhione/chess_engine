@@ -1,14 +1,12 @@
 // ==============================
 // Compile-Time Basic Utilities
 // ==============================
+
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
-inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept { return color >> 3; }
-
-inline constexpr int Board::colorBoolToIndex(bool isWhite) noexcept { return isWhite ? 0 : 1; }
-
-template<bool IsWhite>
-inline constexpr uint8_t Board::promotionRank() noexcept { return IsWhite ? 0 : 7; }
+inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
+    return ((color & MASK_COLOR) >> 3) ^ 0x1u;
+}
 
 inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
 
@@ -21,10 +19,10 @@ inline Board::Board() noexcept {
 
 inline Board::Board(const std::array<uint32_t, 8>& chessboard) noexcept
     : chessboard(chessboard)
-    , castle(CASTLING_RIGHTS_ALL)
-    , enPassant() 
     , halfMoveClock(0)
     , fullMoveClock(1)
+    , castle(CASTLING_RIGHTS_ALL)
+    , enPassant()
     , activeColor(WHITE)
 {
     updateOccupancyBB();
@@ -35,14 +33,70 @@ inline Board::Board(const std::string& fen) {
     fromFenToBoard(fen);
 }
 
+inline Board::Board(const Board& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(const Board& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline Board::Board(Board&& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(Board&& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline void Board::copyFromBoard(const Board& other) noexcept {
+    pawns_bb = other.pawns_bb;
+    knights_bb = other.knights_bb;
+    bishops_bb = other.bishops_bb;
+    rooks_bb = other.rooks_bb;
+    queens_bb = other.queens_bb;
+    kings_bb = other.kings_bb;
+
+    chessboard = other.chessboard;
+    currentHash = other.currentHash;
+
+    historySize = other.historySize;
+    if (historySize > 0) {
+        std::memcpy(repetitionHistory.data(), other.repetitionHistory.data(), historySize * sizeof(uint64_t));
+    }
+
+    occupancy = other.occupancy;
+    incrementalMaterialDelta = other.incrementalMaterialDelta;
+    incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
+    incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
+    incrementalPsqtPieces = other.incrementalPsqtPieces;
+    incrementalPsqtKingsMg = other.incrementalPsqtKingsMg;
+    incrementalPsqtKingsEg = other.incrementalPsqtKingsEg;
+    evalCache = other.evalCache;
+    lastMoveChangeFlags = other.lastMoveChangeFlags;
+    halfMoveClock = other.halfMoveClock;
+    fullMoveClock = other.fullMoveClock;
+    castle = other.castle;
+    hasMoved = other.hasMoved;
+    enPassant = other.enPassant;
+    epHashFile = other.epHashFile;
+    activeColor = other.activeColor;
+}
+
 // ==============================
 // Geometry Helpers
 // ==============================
 
 inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
 
-inline constexpr uint8_t Board::fileOf(uint8_t sq) noexcept { return sq & 7; } // Extract bits 0-2 
-inline constexpr uint8_t Board::rankOf(uint8_t sq) noexcept { return sq >> 3; } // Extract bits 3-5 
+inline constexpr uint8_t Board::file(uint8_t sq) noexcept { return chess::file(sq); } // Extract bits 0-2
+inline constexpr uint8_t Board::rank(uint8_t sq) noexcept { return chess::rank(sq); } // Extract bits 3-5
 
 // ==============================
 // Move Value Helpers
@@ -90,17 +144,62 @@ inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
 
-inline uint8_t Board::get(const std::string& square) const noexcept { 
-    const uint8_t col = square[0] - 'a';
-    const uint8_t row = square[1] - '1';
-    return get(row, col);
-}
-    
-inline std::string Board::getCurrentFen() const noexcept { return fromBoardToFen(); };
-
 inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
 
 inline Coords Board::getEnPassant() const noexcept { return enPassant; }
+
+inline constexpr int32_t Board::getIncrementalMaterialDelta() const noexcept {
+    return incrementalMaterialDelta;
+}
+
+inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
+    const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
+    const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
+    return incrementalPsqtPieces + pawns + kings;
+}
+
+inline bool Board::hasEvalCacheTerm(uint32_t term) const noexcept {
+    return (evalCache.validMask & evalCacheBit(term)) != 0;
+}
+
+template<uint32_t Term>
+inline bool Board::hasEvalCacheTerm() const noexcept {
+    return (evalCache.validMask & evalCacheBit(Term)) != 0;
+}
+
+inline int32_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
+    return evalCache.terms[term];
+}
+
+template<uint32_t Term>
+inline int32_t& Board::evalCacheTermRef() const noexcept {
+    static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
+    return evalCache.terms[Term];
+}
+
+template<uint32_t Term>
+inline int32_t Board::getEvalCacheTerm() const noexcept {
+    return evalCacheTermRef<Term>();
+}
+
+inline void Board::setEvalCacheTerm(uint32_t term, int32_t value) const noexcept {
+    evalCache.terms[term] = value;
+    evalCache.validMask |= evalCacheBit(term);
+}
+
+template<uint32_t Term>
+inline void Board::setEvalCacheTerm(int32_t value) const noexcept {
+    evalCacheTermRef<Term>() = value;
+    evalCache.validMask |= evalCacheBit(Term);
+}
+
+inline void Board::invalidateEvalCacheTerms(uint32_t terms) noexcept {
+    evalCache.validMask &= ~terms;
+}
+
+inline void Board::clearEvalCache() noexcept {
+    evalCache.validMask = 0;
+}
 
 inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
     return (castle & (1u << index));
@@ -108,12 +207,12 @@ inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(const Coords& pos) const noexcept {
-    return (get(pos) & MASK_COLOR) ? BLACK : WHITE;
+    return (get(pos) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
-    return (get(index) & MASK_COLOR) ? BLACK : WHITE;
+    return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 inline constexpr uint16_t Board::getFullMoveClock() const noexcept { return fullMoveClock; }
@@ -130,11 +229,6 @@ inline void Board::set(Coords coords, piece_id value) noexcept {
     set(coords.index, value);
 }
 
-__attribute__((always_inline))
-inline void Board::set(uint8_t row, uint8_t col, piece_id value) noexcept {
-    const uint8_t shift = col << 2; // col * 4
-    chessboard[row] = (chessboard[row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
-}
 
 inline constexpr uint8_t Board::operator[](const Coords& coords) const noexcept { return get(coords); }
 inline uint8_t Board::operator[](const Coords& coords) noexcept { return get(coords); }
@@ -146,41 +240,11 @@ inline constexpr bool Board::operator!=(const Board& other) const noexcept { ret
 // ==============================
 // Board Internals
 // ==============================
-__attribute__((always_inline))
-inline constexpr bool Board::isSameColor(const Coords& pos1, const Coords& pos2) const noexcept {
-    uint8_t p1 = get(pos1);
-    uint8_t p2 = get(pos2);
-    if (p1 == EMPTY || p2 == EMPTY) return false;
-    return (p1 & BLACK) == (p2 & BLACK);
-}
 
 __attribute__((always_inline))
 inline void Board::updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
     set(to, piece);
     set(from, EMPTY);
-/*
-    const uint8_t fromIndex = from.index;
-    const uint8_t toIndex = to.index;
-    
-    // Direct array access using index (avoids repeated conversions)
-    const uint8_t fromRank = fromIndex >> 3;
-    const uint8_t fromFile = fromIndex & 7;
-    const uint8_t toRank = toIndex >> 3;
-    const uint8_t toFile = toIndex & 7;
-    
-    const uint8_t fromRow = 7 - fromRank;
-    const uint8_t toRow = 7 - toRank;
-    
-    const uint8_t fromShift = fromFile << 2;
-    const uint8_t toShift = toFile << 2;
-    
-    // Get piece from source (1 array access)
-    const uint8_t piece = (chessboard[fromRow] >> fromShift) & MASK_PIECE;
-    
-    // Clear source and set destination (2 array writes)
-    chessboard[fromRow] = (chessboard[fromRow] & ~(MASK_PIECE << fromShift));
-    chessboard[toRow] = (chessboard[toRow] & ~(MASK_PIECE << toShift)) | ((piece & MASK_PIECE) << toShift);
-  */
 }
 
 inline uint64_t Board::getPiecesBitMap() const noexcept { return occupancy; }
@@ -194,6 +258,12 @@ inline void Board::updateOccupancyBB() noexcept {
     rooks_bb[0]     = rooks_bb[1]     = 0ULL;
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
+    incrementalMaterialDelta = 0;
+    incrementalPsqtPawnsMg = 0;
+    incrementalPsqtPawnsEg = 0;
+    incrementalPsqtPieces = 0;
+    incrementalPsqtKingsMg = 0;
+    incrementalPsqtKingsEg = 0;
 
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
@@ -203,10 +273,10 @@ inline void Board::updateOccupancyBB() noexcept {
         if (piece == EMPTY) continue;
         
         const uint64_t bit = bitMask(index);
-        const uint8_t color = piece >> 3; // Extract color bit directly (bit 3)
+        const uint8_t color = colorToIndex(piece & MASK_COLOR);
 
         occupancy |= bit;
-        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
+        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
     }
 }
 
@@ -217,13 +287,6 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
 }
 
 inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept { return (bb & (bb - 1)) != 0ULL; }
-
-inline bool Board::addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept {
-    if (!attackSet) return false;
-    if (hasAtLeastTwoBits(attackSet)) return true;
-    ++attackers;
-    return attackers >= 2;
-}
 
 inline bool Board::isKingSafeAfterMove(
     uint8_t movingColor,
@@ -290,7 +353,7 @@ inline bool Board::isKingSafeAfterEnPassant(
 }
 
 template<uint8_t PieceType, bool Add>
-inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
+inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index) noexcept {
     if constexpr (PieceType == PAWN) {
         if constexpr (Add) pawns_bb[color] |= bit;
         else pawns_bb[color] &= ~bit;
@@ -310,17 +373,44 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
         if constexpr (Add) kings_bb[color] |= bit;
         else kings_bb[color] &= ~bit;
     }
+
+    updateIncrementalEvalForPiece<PieceType, Add>(color, index);
+}
+
+template<uint8_t PieceType, bool Add>
+inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept {
+    const int32_t sideSign = (color == 0) ? 1 : -1;
+    const int32_t signedDelta = Add ? sideSign : -sideSign;
+    const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
+
+    incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
+
+    if constexpr (PieceType == PAWN) {
+        incrementalPsqtPawnsMg += signedDelta * engine::PAWN_VALUES_TABLE[psqtIndex];
+        incrementalPsqtPawnsEg += signedDelta * engine::PAWN_END_GAME_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == KNIGHT) {
+        incrementalPsqtPieces += signedDelta * engine::KNIGHT_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == BISHOP) {
+        incrementalPsqtPieces += signedDelta * engine::BISHOP_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == ROOK) {
+        incrementalPsqtPieces += signedDelta * engine::ROOK_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == QUEEN) {
+        incrementalPsqtPieces += signedDelta * engine::QUEEN_VALUES_TABLE[psqtIndex];
+    } else if constexpr (PieceType == KING) {
+        incrementalPsqtKingsMg += signedDelta * engine::KING_MIDDLE_GAME_VALUES_TABLE[psqtIndex];
+        incrementalPsqtKingsEg += signedDelta * engine::KING_END_GAME_VALUES_TABLE[psqtIndex];
+    }
 }
 
 template<bool Add>
-inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept {
+inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept {
     switch (pieceType) {
-        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit); break;
-        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit); break;
-        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit); break;
-        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit); break;
-        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit); break;
-        case KING:   updatePieceTypeBB<KING, Add>(color, bit); break;
+        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit, index); break;
+        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit, index); break;
+        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit, index); break;
+        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit, index); break;
+        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit, index); break;
+        case KING:   updatePieceTypeBB<KING, Add>(color, bit, index); break;
         default: break;
     }
 }
@@ -328,17 +418,17 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
+    const uint8_t color = colorToIndex(piece & MASK_COLOR);
     const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
+    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = static_cast<uint8_t>((piece & MASK_COLOR) >> 3); // BLACK=1, WHITE=0
+    const uint8_t color = colorToIndex(piece & MASK_COLOR);
     const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit);
+    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 
 // ==============================

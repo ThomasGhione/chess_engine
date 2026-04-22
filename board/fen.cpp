@@ -1,201 +1,103 @@
 #include "board.hpp"
+#include <algorithm>
 #include <charconv>
+#include <sstream>
 
 namespace chess {
 
-// Converts a single FEN character using compile-time lookup table
-uint8_t Board::charToPiece(char symbol) {
-    return CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(symbol)];
-}
-// Parses the board section of the FEN 
 bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
-    std::istringstream boardStream(boardSection);
-    std::string rankSegment;
-    int rankIndex = 7;
-
-    while (std::getline(boardStream, rankSegment, '/') && rankIndex >= 0) {
-        int fileIndex = 0;
-        for (char symbol : rankSegment) {
-            if (std::isdigit(static_cast<unsigned char>(symbol))) {
-                fileIndex += symbol - '0';
-                if (fileIndex > 8) 
-                    return false;
-            } else {
-                if (fileIndex >= 8) 
-                    return false;
-                uint8_t piece = charToPiece(symbol);
-                if (piece == EMPTY) return false;
-
-                parsedBoard.at(rankIndex) |= static_cast<uint32_t>(piece) << (fileIndex * 4);
-                ++fileIndex;
-            }
+    int rank = 7, file = 0;
+    for (char c : boardSection) {
+        if (c == '/') { --rank; file = 0; }
+        else if (std::isdigit(c)) file += c - '0';
+        else {
+            if (rank < 0 || file > 7) return false;
+            uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
+            if (p == EMPTY) return false;
+            parsedBoard[rank] |= static_cast<uint32_t>(p) << (file++ * 4);
         }
-        if (fileIndex != 8) return false;
-        --rankIndex;
     }
-    return rankIndex == -1;
+    return rank == 0 && file == 8;
 }
-// Reads the castling rights section of the FEN
+
 uint8_t Board::parseActiveColor(const std::string& activeSection) {
-    if (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) {
-        return BLACK;
-    }
-    return WHITE;
+    return (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) ? BLACK : WHITE;
 }
-// Reads the en passant target square section of the FEN
-Coords Board::parseEnPassant(const std::string& enPassantSection) {
-    if (enPassantSection.size() != 2 || enPassantSection == "-") {
-        return Coords{};
-    }
-    char fileChar = enPassantSection[0];
-    char rankChar = enPassantSection[1];
 
-    if (fileChar < 'a' || fileChar > 'h' || rankChar < '1' || rankChar > '8') {
-        return Coords{};
-    }
-    uint8_t file = static_cast<uint8_t>(fileChar - 'a');
-    // Board convention: rank 0 = row 8 (top), rank 7 = row 1 (bottom)
-    // FEN uses '1'-'8' where '8' is the top row -> we need to invert
-    uint8_t rank = static_cast<uint8_t>('8' - rankChar);
-    return Coords(file, rank);
+Coords Board::parseEnPassant(const std::string& ep) {
+    if (ep.size() != 2 || ep == "-" || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return Coords{};
+    return Coords(ep[0] - 'a', '8' - ep[1]);
 }
-// Safely converts a string to an integer with error handling.
+
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
-    if (section.empty()) {
-        return static_cast<uint8_t>(defaultValue);
-    }
-
-    int value = 0;
-    const char* first = section.data();
-    const char* last = first + section.size();
-    const auto result = std::from_chars(first, last, value);
-
-    // Fail if parsing failed or not all characters were consumed
-    if (result.ec != std::errc{} || result.ptr != last) {
-        return static_cast<uint8_t>(defaultValue);
-    }
-
-    value = std::clamp(value, min, max);
-    return static_cast<uint8_t>(value);
+    if (section.empty()) return defaultValue;
+    int v = 0;
+    auto res = std::from_chars(section.data(), section.data() + section.size(), v);
+    return (res.ec == std::errc{} && res.ptr == section.data() + section.size()) ? std::clamp(v, min, max) : defaultValue;
 }
 
 void Board::fromFenToBoard(const std::string& fen) {
     std::istringstream fenStream(fen);
-    std::string boardSection, activeSection, castlingSection, enPassantSection, halfMoveSection, fullMoveSection;
-
-    if (!(fenStream >> boardSection >> activeSection >> castlingSection >> enPassantSection >> halfMoveSection >> fullMoveSection)) {
-        return;
-    }
+    std::string board, active, castling, ep, half, full;
+    if (!(fenStream >> board >> active >> castling >> ep >> half >> full)) return;
 
     std::array<uint32_t, 8> parsedBoard{};
-    if (!parseBoardSection(boardSection, parsedBoard)) {
-        return;
-    }
+    if (!parseBoardSection(board, parsedBoard)) return;
 
-    this->chessboard = parsedBoard;
-    this->activeColor = parseActiveColor(activeSection);
-
-    // Initialize castling bitmask (KQkq) from FEN
-    castle = 0x00;
-    if (castlingSection != "-") {
-        for (char c : castlingSection) {
-            switch (c) {
-                case 'K': castle |= (1u << 0); break; // white king side
-                case 'Q': castle |= (1u << 1); break; // white queen side
-                case 'k': castle |= (1u << 2); break; // black king side
-                case 'q': castle |= (1u << 3); break; // black queen side
-                default: break;
-            }
-        }
-    }
-
+    chessboard = parsedBoard;
+    activeColor = parseActiveColor(active);
     
-    this->enPassant = parseEnPassant(enPassantSection);
+    castle = 0;
+    for (char c : castling) {
+        if (c == 'K') castle |= 1;
+        else if (c == 'Q') castle |= 2;
+        else if (c == 'k') castle |= 4;
+        else if (c == 'q') castle |= 8;
+    }
 
-    this->halfMoveClock = safeParseInt(halfMoveSection, 0, 255, 0);
-    this->fullMoveClock = safeParseInt(fullMoveSection, 1, 255, 1);
+    enPassant = parseEnPassant(ep);
+    halfMoveClock = safeParseInt(half, 0, 255, 0);
+    fullMoveClock = safeParseInt(full, 1, 255, 1);
 
-    this->updateOccupancyBB();
-    this->rebuildRepetitionHistory();
+    clearEvalCache();
+    lastMoveChangeFlags = MOVE_CHANGE_NONE;
+    updateOccupancyBB();
+    rebuildRepetitionHistory();
 }
 
-// Converts the internal board representation into the FEN piece placement string
 std::string Board::boardToFenPieces() const {
     std::string fen;
     for (int rank = 7; rank >= 0; --rank) {
-        int emptySquares = 0;
+        int emptySq = 0;
         for (int file = 0; file < 8; ++file) {
-            const uint8_t rawPiece = static_cast<uint8_t>((chessboard.at(rank) >> (file * 4)) & MASK_PIECE);
-            const uint8_t pieceType = rawPiece & MASK_PIECE_TYPE;
-            const uint8_t pieceColor = rawPiece & MASK_COLOR;
-
-            if (pieceType == EMPTY) {
-                ++emptySquares;
-                continue;
-            }
-
-            if (emptySquares > 0) {
-                fen.append(std::to_string(emptySquares));
-                emptySquares = 0;
-            }
-
-            char symbol = pieceTypeToChar(pieceType);
-            if (pieceColor == BLACK) {
-                symbol = static_cast<char>(std::tolower(static_cast<unsigned char>(symbol)));
-            }
-            fen.push_back(symbol);
+            uint8_t p = (chessboard[rank] >> (file * 4)) & MASK_PIECE;
+            if (p == EMPTY) { ++emptySq; continue; }
+            if (emptySq) { fen += std::to_string(emptySq); emptySq = 0; }
+            char sym = PIECE_TYPE_TO_CHAR[p & MASK_PIECE_TYPE];
+            fen += (p & MASK_COLOR) == BLACK ? std::tolower(sym) : sym;
         }
-        if (emptySquares > 0) fen.append(std::to_string(emptySquares));
-        if (rank > 0) fen.push_back('/');
+        if (emptySq) fen += std::to_string(emptySq);
+        if (rank > 0) fen += '/';
     }
     return fen;
 }
 
-// Maps internal piece type codes to FEN characters
-char Board::pieceTypeToChar(uint8_t pieceType) {
-    return PIECE_TYPE_TO_CHAR[pieceType & MASK_PIECE_TYPE];
+std::string Board::castlingToFen() const {
+    std::string s;
+    if (castle & 1) s += 'K';
+    if (castle & 2) s += 'Q';
+    if (castle & 4) s += 'k';
+    if (castle & 8) s += 'q';
+    return s.empty() ? "-" : s;
 }
 
-// Converts castling rights into the FEN castling string
-std::string Board::castlingToFen() const {
-    std::string castlingStr;
-    if (castle & (1u << 0)) castlingStr.push_back('K');
-    if (castle & (1u << 1)) castlingStr.push_back('Q');
-    if (castle & (1u << 2)) castlingStr.push_back('k');
-    if (castle & (1u << 3)) castlingStr.push_back('q');
-    return castlingStr.empty() ? "-" : castlingStr;
-}
-// Converts en passant target square into FEN notation
 std::string Board::enPassantToFen() const {
-    if (Coords::isInBounds(enPassant)) {
-        std::string ep;
-        // file: 0-7 -> 'a'-'h'
-        ep.push_back(static_cast<char>('a' + enPassant.file()));
-        // rank: 0-7 -> '8'-'1' (Board convention: rank 0 = row 8)
-        ep.push_back(static_cast<char>('8' - enPassant.rank()));
-        return ep;
-    }
-    return "-";
+    if (!Coords::isInBounds(enPassant)) return "-";
+    return std::string(1, 'a' + enPassant.file()) + static_cast<char>('8' - enPassant.rank());
 }
 
 std::string Board::fromBoardToFen() const {
-    std::string fen;
-    fen.reserve(90);
-
-    fen.append(boardToFenPieces());
-    fen.push_back(' ');
-    fen.push_back((activeColor == WHITE) ? 'w' : 'b');
-    fen.push_back(' ');
-    fen.append(castlingToFen());
-    fen.push_back(' ');
-    fen.append(enPassantToFen());
-    fen.push_back(' ');
-    fen.append(std::to_string(halfMoveClock));
-    fen.push_back(' ');
-    fen.append(std::to_string(fullMoveClock));
-
-    return fen;
+    return boardToFenPieces() + " " + (activeColor == WHITE ? "w " : "b ") + castlingToFen() + " " + enPassantToFen() + " " + std::to_string(halfMoveClock) + " " + std::to_string(fullMoveClock);
 }
-
 
 }

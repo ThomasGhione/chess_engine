@@ -21,7 +21,7 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # Balanced production flags (safety + speed)
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
-		-ffunction-sections -fdata-sections 
+		-ffunction-sections -fdata-sections -O3 
 
 # Uncomment if codebase is exception-free
 
@@ -37,14 +37,14 @@ COMPILATION_DB = script/compile_commands.json
 NAME_APP = chess
 TEST_APP = tests/test
 PERF_APP = tests/perf
+TT_HP_BENCH_APP = tests/tt_hugepage_bench
 NAME_APP_WIN = chess.exe
 OUTPUT_DIR = output
 
 # File paths by module
 MAIN_SRC = main.cpp
-ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/search/*.cpp)
+ENGINE_SRCS = $(wildcard ./engine/*.cpp) $(wildcard ./engine/eval/*.cpp) $(wildcard ./engine/eval/*/*.cpp) $(wildcard ./engine/search/*.cpp) $(wildcard ./engine/movegen/*.cpp)
 COORDS_SRCS = $(wildcard ./coords/*.cpp)
-PRINTER_SRCS = $(wildcard ./printer/*.cpp)
 DRIVER_SRCS = $(wildcard ./driver/*.cpp)
 PIECE_SRCS = $(wildcard ./piece/*.cpp)
 GAMESTATUS_SRCS = $(wildcard ./gamestatus/*.cpp)
@@ -56,9 +56,8 @@ ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
                   $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
-ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp) $(wildcard ./engine/search/*.hpp)
+ENGINE_HDRS = $(wildcard ./engine/*.hpp) $(wildcard ./engine/eval/*.hpp) $(wildcard ./engine/search/*.hpp) $(wildcard ./engine/movegen/*.hpp)
 COORDS_HDRS = $(wildcard ./coords/*.hpp)
-PRINTER_HDRS = $(wildcard ./printer/*.hpp)
 DRIVER_HDRS = $(wildcard ./driver/*.hpp)
 PIECE_HDRS = $(wildcard ./piece/*.hpp)
 GAMESTATUS_HDRS = $(wildcard ./gamestatus/*.hpp)
@@ -85,7 +84,6 @@ ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
 TEST_MAIN_SRC = tests/mainTest.cpp
 TEST_ENGINE_SRCS = $(wildcard ./engine/test/*.cpp)
 TEST_COORDS_SRCS = $(wildcard ./coords/test/*.cpp)
-TEST_PRINTER_SRCS = $(wildcard ./printer/test/*.cpp)
 TEST_DRIVER_SRCS = $(wildcard ./driver/test/*.cpp)
 TEST_PIECE_SRCS = $(wildcard ./piece/test/*.cpp)
 TEST_GAMESTATUS_SRCS = $(wildcard ./gamestatus/test/*.cpp)
@@ -111,11 +109,15 @@ ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
 PERF_MAIN_OBJ = $(OUTPUT_DIR)/$(PERF_MAIN_SRC:.cpp=.o)
 PERF_OBJS = $(addprefix $(OUTPUT_DIR)/,$(ALL_PERF_MODULE_SRCS:.cpp=.o))
 
+# Huge-page TT benchmark
+TT_HP_BENCH_SRC = tests/tt_hugepage_bench.cpp
+TT_HP_BENCH_OBJ = $(OUTPUT_DIR)/$(TT_HP_BENCH_SRC:.cpp=.o)
+
 # Auto-generated dependency files (header dependencies)
-DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d)
+DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d) $(TT_HP_BENCH_OBJ:.o=.d)
 
 # Main targets
-.PHONY: prod prod_windows parallel_prod debug test perf all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
+.PHONY: prod prod_windows parallel_prod debug test perf tt-huge-bench all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files help
 
 # Default target for plain `make`
 all: PRODFLAGS += -DDEBUG -fomit-frame-pointer -O3
@@ -155,6 +157,10 @@ test: $(TEST_APP)
 perf: $(PERF_APP)
 	@printf "\n✅ Performance test compilato: $(PERF_APP)\n\n"
 
+# Build command for huge-page TT benchmark
+tt-huge-bench: $(TT_HP_BENCH_APP)
+	@printf "\n✅ TT huge-page benchmark compilato: $(TT_HP_BENCH_APP)\n\n"
+
 # Command to run all tests (functional + performance)
 all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
@@ -184,6 +190,11 @@ $(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
 
+# Final executable generation: TT huge-page benchmark
+$(TT_HP_BENCH_APP): $(MODULE_OBJS) $(TT_HP_BENCH_OBJ)
+	@printf "\nLinking TT huge-page benchmark $(TT_HP_BENCH_APP)..."
+	$(CXX) $(PRODFLAGS) $(MODULE_OBJS) $(TT_HP_BENCH_OBJ) -o $(TT_HP_BENCH_APP)
+
 # Analisi completa del codice
 analyze: analyze-setup
 	@$(MAKE) analyze-cppcheck
@@ -200,12 +211,12 @@ analyze-setup:
 	@printf "⚠️  This will take some minutes...\n"
 	@printf "Analyzing %s files (.cpp + .hpp)...\n\n" $(words $(ALL_ANALYSIS_FILES))
 	@mkdir -p doc/output-analisi
-	@rm -f doc/output-analisi/analisi.log
-	@rm -rf doc/output-analisi/scan-build-report
-	@rm -f doc/output-analisi/complexity-report.csv
-	@printf "=== STATIC ANALYSIS REPORT ===\n" > doc/output-analisi/analisi.log
-	@printf "Date: %s\n" "$$(date '+%Y-%m-%d %H:%M:%S')" >> doc/output-analisi/analisi.log
-	@printf "Files analyzed: %s\n\n" $(words $(ALL_ANALYSIS_FILES)) >> doc/output-analisi/analisi.log
+	@rm -f analisi.log
+	@rm -rf scan-build-report
+	@rm -f complexity-report.csv
+	@printf "=== STATIC ANALYSIS REPORT ===\n" > analisi.log
+	@printf "Date: %s\n" "$$(date '+%Y-%m-%d %H:%M:%S')" >> analisi.log
+	@printf "Files analyzed: %s\n\n" $(words $(ALL_ANALYSIS_FILES)) >> analisi.log
 	@if command -v bear >/dev/null 2>&1; then \
 		bear -- $(MAKE) prod > /dev/null 2>&1; \
 	else \
@@ -228,75 +239,75 @@ analyze-clang-tidy:
 	@printf "[2/7] Running clang-tidy terminated\n"
 
 analyze-iwyu:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "3. INCLUDE-WHAT-YOU-USE ANALYSIS\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "3. INCLUDE-WHAT-YOU-USE ANALYSIS\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
 	@for file in $(MAIN_SRC) $(ALL_MODULE_SRCS); do \
-		printf "Checking $$file...\n" >> doc/output-analisi/analisi.log; \
-		include-what-you-use -std=c++23 -fopenmp -DDEBUG -march=native $$file >> doc/output-analisi/analisi.log 2>&1 || true; \
+		printf "Checking $$file...\n" >> analisi.log; \
+		include-what-you-use -std=c++23 -fopenmp -DDEBUG -march=native $$file >> analisi.log 2>&1 || true; \
 	done 2>/dev/null
 	@printf "[3/7] Running include-what-you-use terminated\n"
 
 analyze-scan-build:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "4. SCAN-BUILD (CLANG STATIC ANALYZER)\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@printf "Path-sensitive dataflow analysis in progress...\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "4. SCAN-BUILD (CLANG STATIC ANALYZER)\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
+	@printf "Path-sensitive dataflow analysis in progress...\n" >> analisi.log
 	@$(MAKE) cls-compile-files > /dev/null
-	@scan-build -o doc/output-analisi/scan-build-report --status-bugs -v -analyzer-config aggressive-binary-operation-simplification=true $(MAKE) prod >> doc/output-analisi/analisi.log 2>&1 || echo "scan-build exited with error code $$?" >> doc/output-analisi/analisi.log
-	@printf "\n--- Scan-build text summary ---\n" >> doc/output-analisi/analisi.log
-	@if [ -d doc/output-analisi/scan-build-report ] && [ -n "$$(ls -A doc/output-analisi/scan-build-report 2>/dev/null)" ]; then \
-		printf "HTML Report location: doc/output-analisi/scan-build-report/\n" >> doc/output-analisi/analisi.log; \
-		find doc/output-analisi/scan-build-report -name "*.html" -type f | head -1 | xargs -I {} printf "Main report: {}\n" >> doc/output-analisi/analisi.log 2>&1; \
-		printf "\nBugs found by scan-build:\n" >> doc/output-analisi/analisi.log; \
-		if ! find doc/output-analisi/scan-build-report -name "*.html" -exec grep -h "<!-- BUGTYPE" {} \; 2>/dev/null | sort | uniq -c >> doc/output-analisi/analisi.log; then \
-			printf "No bugs found or unable to parse HTML reports\n" >> doc/output-analisi/analisi.log; \
+	@scan-build -o scan-build-report --status-bugs -v -analyzer-config aggressive-binary-operation-simplification=true $(MAKE) prod >> analisi.log 2>&1 || echo "scan-build exited with error code $$?" >>  analisi.log
+	@printf "\n--- Scan-build text summary ---\n" >> analisi.log
+	@if [ -d scan-build-report ] && [ -n "$$(ls -A scan-build-report 2>/dev/null)" ]; then \
+		printf "HTML Report location: scan-build-report/\n" >> analisi.log; \
+		find scan-build-report -name "*.html" -type f | head -1 | xargs -I {} printf "Main report: {}\n" >> analisi.log 2>&1; \
+		printf "\nBugs found by scan-build:\n" >> analisi.log; \
+		if ! find scan-build-report -name "*.html" -exec grep -h "<!-- BUGTYPE" {} \; 2>/dev/null | sort | uniq -c >> analisi.log; then \
+			printf "No bugs found or unable to parse HTML reports\n" >> analisi.log; \
 		fi; \
 	else \
-		printf "No bugs detected by scan-build!\n" >> doc/output-analisi/analisi.log; \
+		printf "No bugs detected by scan-build!\n" >> analisi.log; \
 	fi
 	@printf "[4/7] Running scan-build terminated\n"
 
 analyze-gcc-analyzer:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "5. GCC STATIC ANALYZER\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "5. GCC STATIC ANALYZER\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
 	@$(MAKE) cls-compile-files > /dev/null
-	@$(CXX) -fanalyzer -fsyntax-only $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> doc/output-analisi/analisi.log 2>&1 || echo "GCC analyzer exited with error code $$?" >> doc/output-analisi/analisi.log
+	@$(CXX) -fanalyzer -fsyntax-only $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> analisi.log 2>&1 || echo "GCC analyzer exited with error code $$?" >> analisi.log
 	@printf "[5/7] Running GCC analyzer terminated\n"
 
 analyze-cppclean:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "6. CPPCLEAN (DEAD CODE & DEPENDENCIES)\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
-	@cppclean . >> doc/output-analisi/analisi.log 2>&1 || echo "cppclean exited with error code $$?" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "6. CPPCLEAN (DEAD CODE & DEPENDENCIES)\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
+	@cppclean . >> analisi.log 2>&1 || echo "cppclean exited with error code $$?" >> analisi.log
 	@printf "[6/7] Running cppclean terminated\n"
 
 analyze-lizard:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "7. LIZARD COMPLEXITY ANALYSIS\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "7. LIZARD COMPLEXITY ANALYSIS\n" >> analisi.log
+	@printf "========================================\n\n" >> analisi.log
 	@if [ -f script/lizard-1.19.0/lizard.py ]; then \
-		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 --csv . > doc/output-analisi/complexity-report.csv 2>&1 || true; \
-		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 . >> doc/output-analisi/analisi.log 2>&1 || true; \
+		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 --csv . > complexity-report.csv 2>&1 || true; \
+		python3 script/lizard-1.19.0/lizard.py -l cpp -w -L 60 -C 15 . >> analisi.log 2>&1 || true; \
 		printf "[7/7] Running lizard terminated\n"; \
 	else \
-		printf "Lizard not found - skipping\n" >> doc/output-analisi/analisi.log; \
+		printf "Lizard not found - skipping\n" >> analisi.log; \
 		printf "[7/7] Running lizard skipped\n"; \
 	fi
 
 analyze-summary:
-	@printf "\n========================================\n" >> doc/output-analisi/analisi.log
-	@printf "COMPLETE ANALYSIS FINISHED\n" >> doc/output-analisi/analisi.log
-	@printf "========================================\n" >> doc/output-analisi/analisi.log
+	@printf "\n========================================\n" >> analisi.log
+	@printf "COMPLETE ANALYSIS FINISHED\n" >> analisi.log
+	@printf "========================================\n" >> analisi.log
 	@printf "\n========================================\n"
 	@printf "✅ Complete analysis finished!\n"
 	@printf "========================================\n"
 	@printf "\n📊 Reports generated:\n"
-	@printf "   1. doc/output-analisi/analisi.log (main report)\n"
-	@printf "   2. doc/output-analisi/scan-build-report/*/index.html (interactive HTML)\n"
-	@if [ -f doc/output-analisi/complexity-report.csv ]; then \
-		printf "   3. doc/output-analisi/complexity-report.csv (spreadsheet)\n"; \
+	@printf "   1. analisi.log (main report)\n"
+	@printf "   2. scan-build-report/*/index.html (interactive HTML)\n"
+	@if [ -f complexity-report.csv ]; then \
+		printf "   3. complexity-report.csv (spreadsheet)\n"; \
 	fi
 	@printf "\n[7/7] Generating LLM prompt...\n\n"
 	@printf "=== LLM PROMPT (copy below) ===\n\n"
@@ -315,8 +326,8 @@ test-valgrind: $(TEST_APP)
 	fi
 	@printf "\nRunning valgrind on $(TEST_APP)...\n"
 	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-		--error-exitcode=1 ./$(TEST_APP) > doc/output-analisi/valgrind-report.txt 2>&1
-	@printf "✅ Valgrind report: doc/output-analisi/valgrind-report.txt\n\n"
+		--error-exitcode=1 ./$(TEST_APP) > valgrind-report.txt 2>&1
+	@printf "✅ Valgrind report: valgrind-report.txt\n\n"
 
 # Include dependency files generated by -MMD -MP
 -include $(DEPFILES)
@@ -359,10 +370,10 @@ help:
 	@printf "  make debug-vars     - Stampa variabili Makefile\n"
 	@printf "  make help           - Mostra questo help\n"
 	@printf "\n📊 REPORTS GENERATED:\n"
-	@printf "  - doc/output-analisi/analisi.log                    (main text report)\n"
-	@printf "  - doc/output-analisi/scan-build-report/*.html       (interactive HTML)\n"
-	@printf "  - doc/output-analisi/complexity-report.txt/.csv     (complexity metrics)\n"
-	@printf "  - doc/output-analisi/valgrind-report.txt            (memory analysis)\n"
+	@printf "  - analisi.log                    (main text report)\n"
+	@printf "  - scan-build-report/*.html       (interactive HTML)\n"
+	@printf "  - complexity-report.txt/.csv     (complexity metrics)\n"
+	@printf "  - valgrind-report.txt            (memory analysis)\n"
 	@printf "\n⚙️  TOOL LOCATIONS:\n"
 	@printf "  - lizard: script/lizard-1.19.0/lizard.py\n"
 	@printf "  - valgrind: install with 'sudo apt install valgrind'\n"

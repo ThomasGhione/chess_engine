@@ -1,11 +1,13 @@
-#ifndef COORDS
-#define COORDS
+#pragma once
 
 #include <string>
 #include <cstdint>
 #include <cctype>
 
 namespace chess {
+
+inline constexpr uint8_t file(uint8_t sq) noexcept { return sq & 7; }
+inline constexpr uint8_t rank(uint8_t sq) noexcept { return sq >> 3; }
 
 struct Coords {
 
@@ -24,7 +26,7 @@ struct Coords {
     {}
 
     constexpr Coords(uint8_t f, uint8_t r) noexcept
-        : index((f < 8 && r < 8) ? static_cast<uint8_t>(r * 8 + f) : INVALID_COORDS) 
+        : index((f < 8 && r < 8) ? (r * 8 + f) : INVALID_COORDS) 
     {}
 
     // Constructor from algebraic notation string (e.g. "e4", "a8")
@@ -38,8 +40,8 @@ struct Coords {
 
         if (!isLetter(fileChar) || !isNumber(rankChar)) [[unlikely]] return;
 
-        const uint8_t f = static_cast<uint8_t>(fileChar - 'a');
-        const uint8_t r = static_cast<uint8_t>('8' - rankChar);
+        const uint8_t f = fileChar - 'a';
+        const uint8_t r = '8' - rankChar;
 
         this->index = r * 8 + f;
     }
@@ -62,7 +64,6 @@ struct Coords {
 
     // ============== UTILITY STATIC METHODS ==============
 
-    static constexpr bool isValid(uint8_t x) noexcept { return x < 8; }
     static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
     static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
     static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }
@@ -75,8 +76,8 @@ struct Coords {
 
         std::string result(2, ' ');
 
-        result[0] = static_cast<char>('a' + this->file()); // file: 0-7 -> 'a'-'h'
-        result[1] = static_cast<char>('8' - this->rank()); // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
+        result[0] = 'a' + this->file(); // file: 0-7 -> 'a'-'h'
+        result[1] = '8' - this->rank(); // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
 
         return result;
     }
@@ -86,4 +87,3 @@ struct Coords {
 }; // class Coords
 
 } // namespace chess
-#endif

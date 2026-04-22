@@ -1,45 +1,44 @@
-#ifndef UCI_HPP
-#define UCI_HPP
+#pragma once
 
-#include "../engine/engine.hpp"
 #include <string>
-#include <iostream>
+#include <string_view>
+
+namespace engine {
+    class Engine;
+}
 
 namespace uci {
 
-    class UCI {
+class UCI {
 
-        public:
-            UCI();
-            UCI(engine::Engine& engine);
+public:
 
-            engine::Engine& engine;
+    UCI();
+    UCI(engine::Engine& engine);
 
+    engine::Engine& engine;
 
-            [[noreturn]] void mainLoop() noexcept;
+    [[noreturn]] void mainLoop() noexcept;
 
-            // Parser
-            void parseCommand(const std::string& command) noexcept;
+    // Parser
+    void parseCommand(std::string_view command) noexcept;
 
-            // Standard UCI commands
-            void quit() noexcept;
-            void uci() noexcept;
-            void setOption() noexcept;
-            void position(const std::string& command) noexcept;
-            void ucinewgame() noexcept;
-            void isready() noexcept;
-            void go(const std::string& args) noexcept;
-            void stop() noexcept;
-            void ponderhit() noexcept;
+    // Standard UCI commands
+    void quit() noexcept;
+    void uci() noexcept;
+    void setOption(std::string_view args) noexcept;
+    void position(std::string_view command) noexcept;
+    void ucinewgame() noexcept;
+    void isready() noexcept;
+    void go(std::string_view args) noexcept;
+    void stop() noexcept;
+    void ponderhit() noexcept;
 
-        private:
+private:
 
-            void parseMoves(const std::string& moves) noexcept;
-            void parseFEN(const std::string& fen) noexcept;
+    void parseMoves(std::string_view moves) noexcept;
+    void parseFEN(std::string_view fen) noexcept;
 
-    }; // class UCI
+}; // class UCI
 
 }
-
-
-#endif
