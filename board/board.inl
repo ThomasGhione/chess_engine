@@ -158,17 +158,9 @@ inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
     return incrementalPsqtPieces + pawns + kings;
 }
 
-inline bool Board::hasEvalCacheTerm(uint32_t term) const noexcept {
-    return (evalCache.validMask & evalCacheBit(term)) != 0;
-}
-
 template<uint32_t Term>
 inline bool Board::hasEvalCacheTerm() const noexcept {
     return (evalCache.validMask & evalCacheBit(Term)) != 0;
-}
-
-inline int32_t Board::getEvalCacheTerm(uint32_t term) const noexcept {
-    return evalCache.terms[term];
 }
 
 template<uint32_t Term>
@@ -180,11 +172,6 @@ inline int32_t& Board::evalCacheTermRef() const noexcept {
 template<uint32_t Term>
 inline int32_t Board::getEvalCacheTerm() const noexcept {
     return evalCacheTermRef<Term>();
-}
-
-inline void Board::setEvalCacheTerm(uint32_t term, int32_t value) const noexcept {
-    evalCache.terms[term] = value;
-    evalCache.validMask |= evalCacheBit(term);
 }
 
 template<uint32_t Term>
@@ -206,11 +193,6 @@ inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
 }
 
 __attribute__((always_inline))
-inline constexpr uint8_t Board::getColor(const Coords& pos) const noexcept {
-    return (get(pos) & MASK_COLOR) ? WHITE : BLACK;
-}
-
-__attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
     return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
@@ -223,29 +205,16 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
     const uint8_t shift = (index & 7) << 2; // file * 4
     chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
 }
-    
-__attribute__((always_inline))
-inline void Board::set(Coords coords, piece_id value) noexcept {
-    set(coords.index, value);
-}
 
 
 inline constexpr uint8_t Board::operator[](const Coords& coords) const noexcept { return get(coords); }
-inline uint8_t Board::operator[](const Coords& coords) noexcept { return get(coords); }
 inline constexpr uint8_t Board::operator[](uint8_t index) const noexcept { return get(index); } // assert index 0-63
-inline uint8_t Board::operator[](uint8_t index) noexcept { return get(index); }
 inline constexpr bool Board::operator==(const Board& other) const noexcept { return chessboard == other.chessboard; }
 inline constexpr bool Board::operator!=(const Board& other) const noexcept { return chessboard != other.chessboard; }
 
 // ==============================
 // Board Internals
 // ==============================
-
-__attribute__((always_inline))
-inline void Board::updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept {
-    set(to, piece);
-    set(from, EMPTY);
-}
 
 inline uint64_t Board::getPiecesBitMap() const noexcept { return occupancy; }
 

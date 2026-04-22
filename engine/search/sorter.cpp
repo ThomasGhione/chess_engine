@@ -682,7 +682,7 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m
     const uint8_t fromType = fromPiece & chess::Board::MASK_PIECE_TYPE;
     if (fromType != chess::Board::PAWN) return false;
 
-    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE));
+    const bool isPromotion = (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from.index) == chess::Board::WHITE));
     if (isPromotion) return true;
 
     return hasEnPassant
@@ -723,7 +723,7 @@ bool Sorter::isPromotionMove(const chess::Board& board, const chess::Board::Move
     const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
     if (pieceType != chess::Board::PAWN) return false;
 
-    return toRank == chess::Board::promotionRank(board.getColor(move.from) == chess::Board::WHITE);
+    return toRank == chess::Board::promotionRank(board.getColor(move.from.index) == chess::Board::WHITE);
 }
 
 bool Sorter::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {    

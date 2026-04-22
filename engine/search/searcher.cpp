@@ -147,7 +147,7 @@ bool Searcher::isPromotionMove(const chess::Board& board, const chess::Board::Mo
     const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
     if (pieceType != chess::Board::PAWN) return false;
 
-    return toRank == chess::Board::promotionRank(board.getColor(move.from) == chess::Board::WHITE);
+    return toRank == chess::Board::promotionRank(board.getColor(move.from.index) == chess::Board::WHITE);
 }
 
 bool Searcher::isEnPassantCapture(const chess::Board& board, const chess::Board::Move& move) noexcept {

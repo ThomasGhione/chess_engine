@@ -175,19 +175,10 @@ public:
     constexpr inline uint8_t get(uint8_t row, uint8_t col) const noexcept;
 
     __attribute__((always_inline))
-    constexpr inline uint8_t getColor(const Coords& pos) const noexcept;
-
-    __attribute__((always_inline))
     constexpr inline uint8_t getColor(uint8_t index) const noexcept;
     
     __attribute__((hot, always_inline))
     inline void set(uint8_t index, piece_id value) noexcept;
-
-    __attribute__((always_inline))
-    inline void set(Coords coords, piece_id value) noexcept;
-
-    __attribute__((always_inline))
-    inline void updateChessboard(const Coords& from, const Coords& to, piece_id piece) noexcept;
 
     __attribute__((always_inline))
     void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;
@@ -206,9 +197,7 @@ public:
     constexpr uint16_t getFullMoveClock() const noexcept;
     
     constexpr uint8_t operator[](const Coords& coords) const noexcept;
-    uint8_t operator[](const Coords& coords) noexcept;
     constexpr uint8_t operator[](uint8_t index) const noexcept; // assert index 0-63
-    uint8_t operator[](uint8_t index) noexcept;
     constexpr bool operator==(const Board& other) const noexcept;
     constexpr bool operator!=(const Board& other) const noexcept;
     
@@ -222,11 +211,9 @@ public:
     
     bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
     bool promote(const Coords& at, char choice) noexcept;
-    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inCheck, bool inDoubleCheck = false) const noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck, bool inDoubleCheck) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept;
-    bool isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
     bool isDoubleCheck(uint8_t color) const noexcept;
     bool hasAnyLegalMove(uint8_t color) const noexcept;
@@ -247,13 +234,10 @@ public:
     constexpr uint64_t getHash() const noexcept { return currentHash; }
     constexpr int32_t getIncrementalMaterialDelta() const noexcept;
     int32_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
-    bool hasEvalCacheTerm(uint32_t term) const noexcept;
     template<uint32_t Term>
     bool hasEvalCacheTerm() const noexcept;
-    int32_t getEvalCacheTerm(uint32_t term) const noexcept;
     template<uint32_t Term>
     int32_t getEvalCacheTerm() const noexcept;
-    void setEvalCacheTerm(uint32_t term, int32_t value) const noexcept;
     template<uint32_t Term>
     void setEvalCacheTerm(int32_t value) const noexcept;
     void invalidateEvalCacheTerms(uint32_t terms) noexcept;
@@ -352,7 +336,6 @@ private:
         uint64_t toBit,
         uint8_t movingColor
     ) const noexcept;
-    [[nodiscard]] inline bool canCastleToSquare(uint8_t fromIndex, uint8_t movingColor, bool isKingside) const noexcept;
     [[nodiscard]] inline bool canCastleGeneric(bool isWhite, uint8_t fromIndex, bool isKingside) const noexcept;
     [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(
         uint8_t fromIndex,

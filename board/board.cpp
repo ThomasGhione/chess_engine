@@ -26,10 +26,6 @@ bool Board::promote(const Coords& at, char choice) noexcept {
     return true;
 }
 
-bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, bool inChk, bool inDoubleChk) const noexcept {
-    return isLegalPseudoMove(fromIndex, toIndex, get(fromIndex), inChk, inDoubleChk);
-}
-
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
@@ -134,7 +130,11 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     // Castling moves are uniquely identified by a destination offset of +2 or -2.
     // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
     if (diff == 2 || diff == -2) [[unlikely]] {
-        return canCastleToSquare(fromIndex, movingColor, diff == 2);
+        if (file(fromIndex) != 4) return false;
+        const bool isWhite = (movingColor == WHITE);
+        const uint8_t expectedRank = isWhite ? 7 : 0;
+        if (rank(fromIndex) != expectedRank) return false;
+        return canCastleGeneric(isWhite, fromIndex, diff == 2);
     }
 
     // Normal king move: one-step king attack and destination not attacked
@@ -143,22 +143,6 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (isSquareAttacked(toIndex, oppColor, fromIndex)) return false;
 
     return true;
-}
-
-// Castling dispatcher — caller already guarantees rankDelta==0 and |fileDelta|==2
-[[nodiscard]] inline bool Board::canCastleToSquare(
-    uint8_t fromIndex,
-    uint8_t movingColor,
-    bool isKingside
-) const noexcept {
-    if (file(fromIndex) != 4) return false;
-    
-    const bool isWhite = (movingColor == WHITE);
-    const uint8_t expectedRank = isWhite ? 7 : 0;
-
-    if (rank(fromIndex) != expectedRank) return false;
-    
-    return canCastleGeneric(isWhite, fromIndex, isKingside);
 }
 
 // Generic castling validation (consolidated logic)
@@ -194,7 +178,13 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     
     // Check castle path safety
     const uint64_t castlePath = Board::bitMask(fromIndex) | Board::bitMask(sq1) | Board::bitMask(sq2);
-    return isCastlePathSafe(castlePath, oppColor);
+    uint64_t mask = castlePath;
+    while (mask) {
+        const uint8_t sq = __builtin_ctzll(mask);
+        mask &= mask - 1;
+        if (isSquareAttacked(sq, oppColor)) return false;
+    }
+    return true;
 }
 
 // King safety check for non-king, non-pawn pieces
@@ -232,17 +222,6 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
                                 rooks_bb[side], queens_bb[side], kings_bb[side]);
 }
 
-
-// Returns true if all squares are safe, false if ANY square is attacked
-// Used for castling to avoid 3 separate isSquareAttacked calls
-bool Board::isCastlePathSafe(uint64_t squaresMask, uint8_t byColor) const noexcept {
-    while (squaresMask) {
-        const uint8_t sq = __builtin_ctzll(squaresMask);
-        squaresMask &= squaresMask - 1;
-        if (isSquareAttacked(sq, byColor)) return false;
-    }
-    return true;
-}
 
 // Helper: check if king at kingSq is attacked using custom bitboards
 // Used internally to avoid code duplication when simulating moves

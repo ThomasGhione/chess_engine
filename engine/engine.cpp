@@ -54,7 +54,7 @@ char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Boar
         return '\0';
     }
 
-    const bool isWhite = (board.getColor(move.from) == chess::Board::WHITE);
+    const bool isWhite = (board.getColor(move.from.index) == chess::Board::WHITE);
     const bool isPromotion = (move.to.rank() == chess::Board::promotionRank(isWhite));
     if (!isPromotion) {
         return '\0';

@@ -75,11 +75,11 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
 
     if (!inCheck) { // castling: illegal when in check.
         const uint8_t f = chess::Board::file(from);
-        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, inCheck)) {
+        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, kingPiece, false, false)) {
             const uint8_t castleTo = from + 2;
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
         }
-        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, inCheck)) {
+        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, kingPiece, false, false)) {
             const uint8_t castleTo = from - 2;
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
         }
