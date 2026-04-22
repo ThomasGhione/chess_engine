@@ -43,6 +43,107 @@ inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, uint8
     n.promotionPiece = 'n';
 }
 
+template<bool InCheck, uint8_t PieceType>
+__attribute__((always_inline))
+inline void appendNonPawnTacticalNoChecks(
+    const chess::Board& b,
+    MoveList<chess::Board::Move>& moves,
+    uint64_t pieceBB,
+    uint64_t occ,
+    uint64_t oppOcc,
+    uint64_t pinnedMask,
+    const uint64_t pinRayBySquare[64],
+    uint64_t evasionMask,
+    uint8_t pieceCode) noexcept {
+    while (pieceBB) {
+        const uint8_t from = engine::popLSB(pieceBB);
+        const uint64_t fromBit = chess::Board::bitMask(from);
+
+        uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
+        if constexpr (InCheck) {
+            attacks &= evasionMask;
+        }
+        if (pinnedMask & fromBit) {
+            attacks &= pinRayBySquare[from];
+        }
+
+        if constexpr (InCheck) {
+            while (attacks) {
+                const uint8_t to = engine::popLSB(attacks);
+                if (b.isLegalPseudoMove(from, to, pieceCode, true, false)) {
+                    appendMoveByIndex(moves, from, to);
+                }
+            }
+        } else {
+            while (attacks) {
+                appendMoveByIndex(moves, from, engine::popLSB(attacks));
+            }
+        }
+    }
+}
+
+template<bool InCheck>
+__attribute__((always_inline))
+inline void appendPawnTacticalNoChecks(
+    const chess::Board& b,
+    MoveList<chess::Board::Move>& moves,
+    uint64_t pawnBB,
+    int side,
+    bool isWhite,
+    uint64_t occ,
+    uint64_t oppOcc,
+    uint64_t enPassantBit,
+    uint8_t enPassantIndex,
+    uint64_t pinnedMask,
+    const uint64_t pinRayBySquare[64],
+    uint64_t evasionMask,
+    uint8_t pawnPiece) noexcept {
+    const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
+    const uint8_t prePromotionRank = isWhite ? 1 : 6;
+    const int pawnPushDelta = isWhite ? -8 : 8;
+
+    while (pawnBB) {
+        const uint8_t from = engine::popLSB(pawnBB);
+        const uint64_t fromBit = chess::Board::bitMask(from);
+        const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
+        const uint64_t epCandidate = pawnAttacks & enPassantBit;
+        uint64_t attacks = (pawnAttacks & oppOcc) | epCandidate;
+
+        if (chess::Board::rank(from) == prePromotionRank) {
+            const uint8_t frontSq = static_cast<uint8_t>(static_cast<int>(from) + pawnPushDelta);
+            attacks |= chess::Board::bitMask(frontSq) & ~occ;
+        }
+
+        if constexpr (InCheck) {
+            attacks &= evasionMask;
+        }
+        if (pinnedMask & fromBit) {
+            attacks &= pinRayBySquare[from];
+        }
+        attacks |= epCandidate;
+
+        while (attacks) {
+            const uint8_t to = engine::popLSB(attacks);
+            if constexpr (InCheck) {
+                if (!b.isLegalPseudoMove(from, to, pawnPiece, true, false)) {
+                    continue;
+                }
+            } else {
+                const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
+                if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, false, false)) {
+                    continue;
+                }
+            }
+
+            if (chess::Board::rank(to) == promotionRank) {
+                appendPromotionSetByIndex(moves, from, to);
+            } else {
+                appendMoveByIndex(moves, from, to);
+            }
+        }
+    }
+}
+
 } // namespace
 
 MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
@@ -276,164 +377,34 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
     }
 
     if (!includeChecks) {
-        const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
-        const uint8_t prePromotionRank = isWhite ? 1 : 6;
-        const int pawnPushDelta = isWhite ? -8 : 8;
         const uint8_t enPassantIndex = hasEnPassant ? enPassant.index : 0;
 
         if (!inCheck) {
-            uint64_t bb = pawns;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-                const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
-                const uint64_t epCandidate = pawnAttacks & enPassantBit;
-                uint64_t attacks = (pawnAttacks & oppOcc) | epCandidate;
-
-                if (chess::Board::rank(from) == prePromotionRank) {
-                    const uint8_t frontSq = static_cast<uint8_t>(static_cast<int>(from) + pawnPushDelta);
-                    attacks |= chess::Board::bitMask(frontSq) & ~occ;
-                }
-                if (isPinned) attacks &= pinRayBySquare[from];
-                attacks |= epCandidate;
-
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
-                    if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, false, false)) {
-                        continue;
-                    }
-                    if (chess::Board::rank(to) == promotionRank) {
-                        appendPromotionSetByIndex(moves, from, to);
-                    } else {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
-
-            bb = knights;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) appendMoveByIndex(moves, from, engine::popLSB(attacks));
-            }
-
-            bb = bishops;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) appendMoveByIndex(moves, from, engine::popLSB(attacks));
-            }
-
-            bb = rooks;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) appendMoveByIndex(moves, from, engine::popLSB(attacks));
-            }
-
-            bb = queens;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) appendMoveByIndex(moves, from, engine::popLSB(attacks));
-            }
+            appendPawnTacticalNoChecks<false>(
+                b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
+                pinnedMask, pinRayBySquare.data(), 0ULL, pawnPiece);
+            appendNonPawnTacticalNoChecks<false, chess::Board::KNIGHT>(
+                b, moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, knightPiece);
+            appendNonPawnTacticalNoChecks<false, chess::Board::BISHOP>(
+                b, moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, bishopPiece);
+            appendNonPawnTacticalNoChecks<false, chess::Board::ROOK>(
+                b, moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, rookPiece);
+            appendNonPawnTacticalNoChecks<false, chess::Board::QUEEN>(
+                b, moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, queenPiece);
         } else {
             uint64_t evasionMask = ~0ULL;
             computeCheckEvasionMasks(b, color, true, false, evasionMask);
-
-            uint64_t bb = pawns;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-                const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
-                const uint64_t epCandidate = pawnAttacks & enPassantBit;
-                uint64_t attacks = (pawnAttacks & oppOcc) | epCandidate;
-
-                if (chess::Board::rank(from) == prePromotionRank) {
-                    const uint8_t frontSq = static_cast<uint8_t>(static_cast<int>(from) + pawnPushDelta);
-                    attacks |= chess::Board::bitMask(frontSq) & ~occ;
-                }
-                attacks &= evasionMask;
-                if (isPinned) attacks &= pinRayBySquare[from];
-                attacks |= epCandidate;
-
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    if (!b.isLegalPseudoMove(from, to, pawnPiece, true, false)) continue;
-                    if (chess::Board::rank(to) == promotionRank) {
-                        appendPromotionSetByIndex(moves, from, to);
-                    } else {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
-
-            bb = knights;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = (pieces::KNIGHT_ATTACKS[from] & oppOcc) & evasionMask;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    if (b.isLegalPseudoMove(from, to, knightPiece, true, false)) {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
-
-            bb = bishops;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = (pieces::getBishopAttacks(from, occ) & oppOcc) & evasionMask;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    if (b.isLegalPseudoMove(from, to, bishopPiece, true, false)) {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
-
-            bb = rooks;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = (pieces::getRookAttacks(from, occ) & oppOcc) & evasionMask;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    if (b.isLegalPseudoMove(from, to, rookPiece, true, false)) {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
-
-            bb = queens;
-            while (bb) {
-                const uint8_t from = engine::popLSB(bb);
-                const uint64_t fromBit = chess::Board::bitMask(from);
-                uint64_t attacks = (pieces::getQueenAttacks(from, occ) & oppOcc) & evasionMask;
-                if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-                while (attacks) {
-                    const uint8_t to = engine::popLSB(attacks);
-                    if (b.isLegalPseudoMove(from, to, queenPiece, true, false)) {
-                        appendMoveByIndex(moves, from, to);
-                    }
-                }
-            }
+            appendPawnTacticalNoChecks<true>(
+                b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
+                pinnedMask, pinRayBySquare.data(), evasionMask, pawnPiece);
+            appendNonPawnTacticalNoChecks<true, chess::Board::KNIGHT>(
+                b, moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, knightPiece);
+            appendNonPawnTacticalNoChecks<true, chess::Board::BISHOP>(
+                b, moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, bishopPiece);
+            appendNonPawnTacticalNoChecks<true, chess::Board::ROOK>(
+                b, moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, rookPiece);
+            appendNonPawnTacticalNoChecks<true, chess::Board::QUEEN>(
+                b, moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, queenPiece);
         }
 
         uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
