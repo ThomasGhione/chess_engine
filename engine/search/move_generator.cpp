@@ -107,19 +107,14 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
         const uint64_t fromBit = chess::Board::bitMask(from);
         const bool isPinned = (pinnedMask & fromBit) != 0ULL;
         uint64_t mask = pieces::getPawnForwardPushes(from, isWhite, occ);
-        uint64_t caps = pieces::PAWN_ATTACKS[side][from] & oppOcc;
-        uint64_t epCandidate = 0ULL;
-        if (hasEnPassant && (pieces::PAWN_ATTACKS[side][from] & enPassantBit)) {
-            caps |= enPassantBit;
-            epCandidate = enPassantBit;
-        }
+        const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
+        const uint64_t epCandidate = (pawnAttacks & enPassantBit) ? enPassantBit : 0ULL;
+        const uint64_t caps = (pawnAttacks & oppOcc) | epCandidate;
         mask |= caps;
         if (singleCheck) mask &= evasionMask;
         if (isPinned) mask &= pinRayBySquare[from];
-        if (epCandidate) {
-            // Keep EP candidate for legality check because EP changes occupancy on two squares.
-            mask |= epCandidate;
-        }
+        // Keep EP candidate for legality check because EP changes occupancy on two squares.
+        mask |= epCandidate;
         addPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece, enPassant, hasEnPassant);
     }
 
@@ -258,13 +253,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             const uint8_t from = engine::popLSB(bb);
             const uint64_t fromBit = chess::Board::bitMask(from);
             const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-
-            uint64_t attacks = pieces::PAWN_ATTACKS[side][from] & oppOcc;
-            uint64_t epCandidate = 0ULL;
-            if (hasEnPassant && (pieces::PAWN_ATTACKS[side][from] & enPassantBit)) {
-                attacks |= enPassantBit;
-                epCandidate = enPassantBit;
-            }
+            const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
+            const uint64_t epCandidate = (pawnAttacks & enPassantBit) ? enPassantBit : 0ULL;
+            uint64_t attacks = (pawnAttacks & oppOcc) | epCandidate;
 
             const uint8_t rank = chess::Board::rank(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
@@ -276,7 +267,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                 }
             }
             if (isPinned) attacks &= pinRayBySquare[from];
-            if (epCandidate) attacks |= epCandidate;
+            attacks |= epCandidate;
 
             addTacticalMovesFromMask(b, attacks, from, pawnPiece, true, isWhite, includeChecks,
                                      enPassant, hasEnPassant, moves);
@@ -338,13 +329,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             const uint8_t from = engine::popLSB(bb);
             const uint64_t fromBit = chess::Board::bitMask(from);
             const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-
-            uint64_t attacks = pieces::PAWN_ATTACKS[side][from] & oppOcc;
-            uint64_t epCandidate = 0ULL;
-            if (hasEnPassant && (pieces::PAWN_ATTACKS[side][from] & enPassantBit)) {
-                attacks |= enPassantBit;
-                epCandidate = enPassantBit;
-            }
+            const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
+            const uint64_t epCandidate = (pawnAttacks & enPassantBit) ? enPassantBit : 0ULL;
+            uint64_t attacks = (pawnAttacks & oppOcc) | epCandidate;
 
             const uint8_t rank = chess::Board::rank(from);
             const uint8_t prePromotionRank = isWhite ? 1 : 6;
@@ -357,7 +344,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
             }
             attacks &= evasionMask;
             if (isPinned) attacks &= pinRayBySquare[from];
-            if (epCandidate) attacks |= epCandidate;
+            attacks |= epCandidate;
 
             if (useSpecializedInCheckHelper) {
                 addTacticalMovesFromMaskInCheck(b, attacks, from, pawnPiece, true, isWhite, moves);

@@ -224,9 +224,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 ) const noexcept {
     // Note: own-color captures are already rejected by isLegalPseudoMove,
     // so if destPiece != EMPTY it is guaranteed to be an enemy piece.
-    const uint64_t capturedEnemyMask = (destPiece != EMPTY)
-        ? Board::bitMask(toIndex)
-        : 0ULL;
+    const uint64_t captureMask = static_cast<uint64_t>(-static_cast<int64_t>(destPiece != EMPTY));
+    const uint64_t capturedEnemyMask = Board::bitMask(toIndex) & captureMask;
     return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
 }
 
@@ -315,7 +314,7 @@ template<uint8_t PieceType>
             const uint8_t to = __builtin_ctzll(movesMask);
             movesMask &= movesMask - 1;
             const uint64_t toBit = Board::bitMask(to);
-            const uint64_t capturedMask = (toBit & enemyOcc) ? toBit : 0ULL;
+            const uint64_t capturedMask = toBit & enemyOcc;
             if (board->isKingSafeAfterMove(movingColor, from, to, capturedMask)) return true;
         }
     }
