@@ -27,11 +27,7 @@ inline int32_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color)
 }
 
 int32_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
-    int32_t score = 0;
-    for (int side = 0; side < 2; ++side) {
-        score += evalOutpostsForColor(b, side);
-    }
-    return score;
+    return evalOutpostsForColor(b, 0) + evalOutpostsForColor(b, 1);
 }
 
 inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
@@ -39,10 +35,6 @@ inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
     const int sign = (color == 0) ? -1 : 1;
 
     uint64_t minors = b.knights_bb[color] | b.bishops_bb[color];
-    if (!minors) {
-      return score;
-    }
-
     const uint64_t friends = b.pawns_bb[color] | b.knights_bb[color] | b.bishops_bb[color] | b.rooks_bb[color] | b.queens_bb[color];
     while (minors) {
         const int sq = popLSB(minors);
@@ -53,11 +45,7 @@ inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
 }
 
 int32_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
-    int32_t score = 0;
-    for (int side = 0; side < 2; ++side) {
-        score += evalPieceCoordinationForColor(b, side);
-    }
-    return score;
+    return evalPieceCoordinationForColor(b, 0) + evalPieceCoordinationForColor(b, 1);
 }
 
 } // namespace engine

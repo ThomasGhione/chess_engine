@@ -18,7 +18,7 @@ inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     score += sign * __builtin_popcountll(hangingPawns) * engine::HANGING_PAWN_PENALTY;
 
     const uint64_t kingBB = b.kings_bb[side];
-    if (kingBB) {
+    if (kingBB) [[likely]] {
         const int kingSq = __builtin_ctzll(kingBB);
         const uint64_t kingProximity = KING_PROXIMITY_MASKS[kingSq];
         const uint64_t criticalHangingPawns = hangingPawns & kingProximity;
