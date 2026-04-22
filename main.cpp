@@ -6,9 +6,6 @@ using namespace chess;
 using namespace engine;
 using namespace driver;
 
-#include <iostream>
-#include <string>
-
 #ifndef _WIN32
 #include <unistd.h>   // isatty, STDIN_FILENO
 #else
@@ -36,7 +33,7 @@ static bool stdinIsPipe() noexcept {
 
 int main(int argc, char *argv[]) {
     // UCI auto-detection: if stdin is a pipe (launched by a GUI / lichess-bot),
-    // enter UCI mode immediately — this is the standard UCI protocol behaviour.
+    // enter UCI mode immediately - this is the standard UCI protocol behaviour.
     if (argc == 1 && stdinIsPipe()) {
         Engine engine = Engine();
         uci::UCI uciInterface(engine);

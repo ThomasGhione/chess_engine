@@ -18,7 +18,7 @@ inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     score += sign * __builtin_popcountll(hangingPawns) * engine::HANGING_PAWN_PENALTY;
 
     const uint64_t kingBB = b.kings_bb[side];
-    if (kingBB) {
+    if (kingBB) [[likely]] {
         const int kingSq = __builtin_ctzll(kingBB);
         const uint64_t kingProximity = KING_PROXIMITY_MASKS[kingSq];
         const uint64_t criticalHangingPawns = hangingPawns & kingProximity;
@@ -29,8 +29,7 @@ inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
         score += sign * __builtin_popcountll(hangingHookPawns) * engine::HANGING_HOOK_PAWN_PENALTY;
     }
 
-    score += evalHangingPiecePenalty(b.knights_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
-    score += evalHangingPiecePenalty(b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
+    score += evalHangingPiecePenalty(b.knights_bb[side] | b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
     score += evalHangingPiecePenalty(b.rooks_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_ROOK_PENALTY);
     score += evalHangingPiecePenalty(b.queens_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_QUEEN_PENALTY);
 

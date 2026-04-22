@@ -1,5 +1,4 @@
-#ifndef ENGINE_PIECEVALUETABLES_HPP
-#define ENGINE_PIECEVALUETABLES_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -112,4 +111,3 @@ inline constexpr std::array<int32_t, 64> KING_END_GAME_VALUES_TABLE{
 
 } // namespace engine
 
-#endif // ENGINE_PIECEVALUETABLES_HPP

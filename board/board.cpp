@@ -24,16 +24,12 @@ bool Board::promote(const Coords& at, char choice) noexcept {
         return false; // must be a pawn
     
     const uint8_t color = piece & MASK_COLOR; // WHITE if set, otherwise BLACK
-    if (rankOf(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
+    if (rank(at.index) != promotionRank(color == WHITE)) [[unlikely]] 
         return false;
 
     const uint8_t promo = normalizePromotionChoice(choice);
-    const uint8_t newPiece = promotedPieceFromChoice(promo, color);
-    
     const uint8_t atIndex = at.index;
-    removePieceFromBB(piece, atIndex);
-    addPieceToBB(newPiece, atIndex);
-    set(at, static_cast<piece_id>(newPiece));
+    promoteUnchecked(atIndex, piece, promo);
     return true;
 }
 
@@ -67,7 +63,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
                 if (destPiece == EMPTY) {
                     if (Coords::isInBounds(enPassant) && toIndex == enPassant.index) {
                         const int8_t epDir = isWhite ? 8 : -8;
-                        const uint8_t capturedPawnIdx = static_cast<uint8_t>(toIndex + epDir);
+                        const uint8_t capturedPawnIdx = toIndex + epDir;
                         return isKingSafeAfterEnPassant(movingColor, fromIndex, toIndex, capturedPawnIdx);
                     }
                     return false; // diagonal to empty square but not en-passant
@@ -119,30 +115,23 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
-    uint8_t attackers = 0;
-
-    const uint64_t pawnAtk = pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide];
-    if (addAttackAndDetectDouble(pawnAtk, attackers)) return true;
-
-    const uint64_t knightAtk = pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide];
-    if (addAttackAndDetectDouble(knightAtk, attackers)) return true;
-
-    const uint64_t kingAtk = pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide];
-    if (addAttackAndDetectDouble(kingAtk, attackers)) return true;
+    // Accumulate all attackers in a single bitboard
+    uint64_t attackers = (pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide])
+                       | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
 
     const uint64_t rookLike = rooks_bb[oppSide] | queens_bb[oppSide];
     if (rookLike) {
-        const uint64_t rookAtk = pieces::getRookAttacks(kingIndex, occupancy) & rookLike;
-        if (addAttackAndDetectDouble(rookAtk, attackers)) return true;
+        attackers |= (pieces::getRookAttacks(kingIndex, occupancy) & rookLike);
     }
 
     const uint64_t bishopLike = bishops_bb[oppSide] | queens_bb[oppSide];
     if (bishopLike) {
-        const uint64_t bishopAtk = pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike;
-        if (addAttackAndDetectDouble(bishopAtk, attackers)) return true;
+        attackers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
     }
 
-    return false;
+    // A double check means at least 2 distinct pieces are attacking the king.
+    // If the bitboard has more than 1 bit set, clearing the LSB will leave a non-zero value.
+    return (attackers & (attackers - 1)) != 0ULL;
 }
 
 // Simple piece pseudo-legal check
@@ -158,12 +147,12 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor
 ) const noexcept {
     const uint8_t oppColor = oppositeColor(movingColor);
-    const int fileDelta = fileOf(toIndex) - fileOf(fromIndex);
-    const int rankDelta = rankOf(toIndex) - rankOf(fromIndex);
+    const int diff = (int)toIndex - (int)fromIndex;
 
-    // Handle castling explicitly when king moves two files on same rank
-    if (rankDelta == 0 && (fileDelta == 2 || fileDelta == -2)) {
-        return canCastleToSquare(fromIndex, movingColor, fileDelta == 2);
+    // Castling moves are uniquely identified by a destination offset of +2 or -2.
+    // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
+    if (diff == 2 || diff == -2) [[unlikely]] {
+        return canCastleToSquare(fromIndex, movingColor, diff == 2);
     }
 
     // Normal king move: one-step king attack and destination not attacked
@@ -180,12 +169,12 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t movingColor,
     bool isKingside
 ) const noexcept {
-    if (fileOf(fromIndex) != 4) return false;
+    if (file(fromIndex) != 4) return false;
     
     const bool isWhite = (movingColor == WHITE);
     const uint8_t expectedRank = isWhite ? 7 : 0;
 
-    if (rankOf(fromIndex) != expectedRank) return false;
+    if (rank(fromIndex) != expectedRank) return false;
     
     return canCastleGeneric(isWhite, fromIndex, isKingside);
 }
@@ -196,13 +185,11 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t fromIndex,
     bool isKingside
 ) const noexcept {
-    const uint8_t side = colorBoolToIndex(isWhite);
-    const uint8_t oppColor = oppositeColor(isWhite ? WHITE : BLACK);
+    const uint8_t side = isWhite ^ 1; // 0 for White, 1 for Black
+    const uint8_t oppColor = isWhite ? BLACK : WHITE;
     
     // Check castling rights
-    const uint8_t rightBit = isWhite 
-        ? (isKingside ? 0u : 1u)   // White O-O / O-O-O
-        : (isKingside ? 2u : 3u);  // Black O-O / O-O-O
+    const uint8_t rightBit = (!isWhite << 1) | !isKingside;
     
     if ((castle & (1u << rightBit)) == 0u) return false;
     
@@ -302,7 +289,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false;
-    const uint8_t kingSq = static_cast<uint8_t>(__builtin_ctzll(kingBB));
+    const uint8_t kingSq = __builtin_ctzll(kingBB);
     const uint8_t bySide = side ^ 1;
     return isKingAttackedCustom(kingSq, bySide, occupancy,
                                 pawns_bb[bySide], knights_bb[bySide], bishops_bb[bySide],
@@ -349,21 +336,21 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
                                rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
     // --- KING MOVES (always exists, cheap to test) ---
-    uint64_t kings = kings_bb[side];
+    const uint64_t kings = kings_bb[side];
     if (kings) [[likely]] {
         const uint8_t king = __builtin_ctzll(kings);
         uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (isLegalPseudoMove(king, to, inChk, false)) return true;
+            if (!isSquareAttacked(to, oppSide << 3, king)) return true;
         }
         
         if (!inChk) {
-            const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
+            const uint8_t eIndex = (side == 0) ? 60 : 4;  // WHITE_KING_START = 60, BLACK_KING_START = 4
             if (king == eIndex) {
-                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex + 2), inChk, false)) return true;
-                if (isLegalPseudoMove(eIndex, static_cast<uint8_t>(eIndex - 2), inChk, false)) return true;
+                if (canCastleGeneric(side == 0, eIndex, true)) return true;
+                if (canCastleGeneric(side == 0, eIndex, false)) return true;
             }
         }
     }
@@ -431,11 +418,9 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
         historySize = 0;
     
     if (historySize >= repetitionHistory.size()) {
-        // Shift all entries one position to the left (discard oldest)
-        for (uint8_t i = 1; i < repetitionHistory.size(); ++i) {
-            repetitionHistory[i - 1] = repetitionHistory[i];
-        }
-        historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
+        // Shift all entries one position to the left (discard oldest), using memmove for vectorization
+        std::memmove(repetitionHistory.data(), repetitionHistory.data() + 1, (repetitionHistory.size() - 1) * sizeof(uint64_t));
+        historySize = repetitionHistory.size() - 1;
     }
     repetitionHistory[historySize++] = currentHash;
 }

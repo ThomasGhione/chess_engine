@@ -1,5 +1,4 @@
-#ifndef TT_ZOBRIST_HPP
-#define TT_ZOBRIST_HPP
+#pragma once
 
 #include <cstdint>
 #include <cstddef>
@@ -67,7 +66,7 @@ namespace zobrist {
     inline constexpr Tables TABLES = makeTables();
 
     // Helper to XOR pieces from bitboards (more readable and reusable)
-    inline void xorPiecesFromBitboard(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) noexcept {
+    inline void xorPiecesFromBB(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) noexcept {
         while (bitboard) {
             const uint8_t square = static_cast<uint8_t>(__builtin_ctzll(bitboard));
             bitboard &= (bitboard - 1);
@@ -89,21 +88,21 @@ namespace zobrist {
         // White side bitboards are always index 0, black side bitboards index 1.
         // The encoded piece ids are derived from Board constants to stay robust
         // to internal color-bit layout changes.
-        xorPiecesFromBitboard(hashKey, board.pawns_bb[0],   static_cast<std::size_t>(chess::Board::PAWN   | chess::Board::WHITE));
-        xorPiecesFromBitboard(hashKey, board.knights_bb[0], static_cast<std::size_t>(chess::Board::KNIGHT | chess::Board::WHITE));
-        xorPiecesFromBitboard(hashKey, board.bishops_bb[0], static_cast<std::size_t>(chess::Board::BISHOP | chess::Board::WHITE));
-        xorPiecesFromBitboard(hashKey, board.rooks_bb[0],   static_cast<std::size_t>(chess::Board::ROOK   | chess::Board::WHITE));
-        xorPiecesFromBitboard(hashKey, board.queens_bb[0],  static_cast<std::size_t>(chess::Board::QUEEN  | chess::Board::WHITE));
-        xorPiecesFromBitboard(hashKey, board.kings_bb[0],   static_cast<std::size_t>(chess::Board::KING   | chess::Board::WHITE));
+        xorPiecesFromBB(hashKey, board.pawns_bb[0],   chess::Board::PAWN   | chess::Board::WHITE);
+        xorPiecesFromBB(hashKey, board.knights_bb[0], chess::Board::KNIGHT | chess::Board::WHITE);
+        xorPiecesFromBB(hashKey, board.bishops_bb[0], chess::Board::BISHOP | chess::Board::WHITE);
+        xorPiecesFromBB(hashKey, board.rooks_bb[0],   chess::Board::ROOK   | chess::Board::WHITE);
+        xorPiecesFromBB(hashKey, board.queens_bb[0],  chess::Board::QUEEN  | chess::Board::WHITE);
+        xorPiecesFromBB(hashKey, board.kings_bb[0],   chess::Board::KING   | chess::Board::WHITE);
 
-        xorPiecesFromBitboard(hashKey, board.pawns_bb[1],   static_cast<std::size_t>(chess::Board::PAWN   | chess::Board::BLACK));
-        xorPiecesFromBitboard(hashKey, board.knights_bb[1], static_cast<std::size_t>(chess::Board::KNIGHT | chess::Board::BLACK));
-        xorPiecesFromBitboard(hashKey, board.bishops_bb[1], static_cast<std::size_t>(chess::Board::BISHOP | chess::Board::BLACK));
-        xorPiecesFromBitboard(hashKey, board.rooks_bb[1],   static_cast<std::size_t>(chess::Board::ROOK   | chess::Board::BLACK));
-        xorPiecesFromBitboard(hashKey, board.queens_bb[1],  static_cast<std::size_t>(chess::Board::QUEEN  | chess::Board::BLACK));
-        xorPiecesFromBitboard(hashKey, board.kings_bb[1],   static_cast<std::size_t>(chess::Board::KING   | chess::Board::BLACK));
+        xorPiecesFromBB(hashKey, board.pawns_bb[1],   chess::Board::PAWN   | chess::Board::BLACK);
+        xorPiecesFromBB(hashKey, board.knights_bb[1], chess::Board::KNIGHT | chess::Board::BLACK);
+        xorPiecesFromBB(hashKey, board.bishops_bb[1], chess::Board::BISHOP | chess::Board::BLACK);
+        xorPiecesFromBB(hashKey, board.rooks_bb[1],   chess::Board::ROOK   | chess::Board::BLACK);
+        xorPiecesFromBB(hashKey, board.queens_bb[1],  chess::Board::QUEEN  | chess::Board::BLACK);
+        xorPiecesFromBB(hashKey, board.kings_bb[1],   chess::Board::KING   | chess::Board::BLACK);
 
-        const uint64_t stmMask = static_cast<uint64_t>(-static_cast<int64_t>(board.getActiveColor() == chess::Board::BLACK));
+        const uint64_t stmMask = (board.getActiveColor() == chess::Board::BLACK) ? ~0ULL : 0ULL;
         hashKey ^= TABLES.sideToMove & stmMask;
 
         // Castling rights (0-15 bitmask)
@@ -119,12 +118,10 @@ namespace zobrist {
         // pseudo-legally capture on the EP square.
         const chess::Coords epSquare = board.getEnPassant();
         const bool epHashable = hasPseudoLegalEnPassantCapture(board, epSquare);
-        const uint64_t epMask = static_cast<uint64_t>(-static_cast<int64_t>(epHashable));
+        const uint64_t epMask = epHashable ? ~0ULL : 0ULL;
         const uint8_t epFile = epHashable ? epSquare.file() : 0;
         hashKey ^= TABLES.enPassant[epFile] & epMask;
 
         return hashKey;
     }
 }
-
-#endif // TT_ZOBRIST_HPP

@@ -1,17 +1,76 @@
 #include "engine.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <string_view>
+#include <utility>
+
+#include <omp.h>
+
 #include "../board/piece.hpp"
+#include "../debug_timer.hpp"
+#include "eval/evaluator.hpp"
 
 namespace engine {
 
 namespace {
-inline int16_t clampHeuristic16(int32_t value) noexcept {
-    constexpr int32_t MIN_I16 = -32768;
-    constexpr int32_t MAX_I16 = 32767;
-    return static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
+
+[[nodiscard]] bool iequalsAscii(std::string_view lhs, std::string_view rhs) noexcept {
+    if (lhs.size() != rhs.size()) return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i) {
+        const char a = std::tolower(static_cast<unsigned char>(lhs[i]));
+        const char b = std::tolower(static_cast<unsigned char>(rhs[i]));
+        if (a != b) return false;
+    }
+    return true;
 }
+
+[[nodiscard]] bool resolveSearchApiMutexGuardDefault() noexcept {
+    const char* envValue = std::getenv("CHESS_ENGINE_SEARCH_MUTEX_GUARD");
+    if (envValue == nullptr || *envValue == '\0') {
+        return true;
+    }
+
+    const std::string_view value(envValue);
+    if (iequalsAscii(value, "0") || iequalsAscii(value, "off") || iequalsAscii(value, "false")) {
+        return false;
+    }
+    if (iequalsAscii(value, "1") || iequalsAscii(value, "on") || iequalsAscii(value, "true")) {
+        return true;
+    }
+    return true;
+}
+
 } // namespace
 
-// Static method to ensure magic tables are initialized exactly once
+char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
+    if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
+        return '\0';
+    }
+
+    const uint8_t fromPieceType = board.get(move.from) & chess::Board::MASK_PIECE_TYPE;
+    if (fromPieceType != chess::Board::PAWN) {
+        return '\0';
+    }
+
+    const bool isWhite = (board.getColor(move.from) == chess::Board::WHITE);
+    const bool isPromotion = (move.to.rank() == chess::Board::promotionRank(isWhite));
+    if (!isPromotion) {
+        return '\0';
+    }
+
+    return (move.promotionPiece != '\0') ? move.promotionPiece : 'q';
+}
+
+void Engine::bindSearchRuntime() noexcept {
+    searchRuntime.transpositionTable = &tt;
+    searchRuntime.stopSearchRequested = &stopSearchRequested;
+    searchRuntime.ponderingStopRequested = &ponderingStopRequested;
+    searchRuntime.searchInterrupted = &searchInterrupted;
+    searchRuntime.orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING;
+}
+
 void Engine::ensureMagicTablesInitialized() noexcept {
     if (!magicTablesInitialized) {
         pieces::initMagicBitboards();
@@ -21,17 +80,20 @@ void Engine::ensureMagicTablesInitialized() noexcept {
 
 Engine::Engine()
     : board(chess::Board())
-    , isPlayerWhite(true)
-    , depth(DEFAULTDEPTH)
-    , MAX_THREADS(omp_get_max_threads())
-{
+    , searchRuntime{}
+    , depth(searchRuntime.depth)
+    , eval(searchRuntime.eval)
+    , nodesSearched(searchRuntime.nodesSearched)
+    , MAX_THREADS(searchRuntime.maxThreads) {
     ensureMagicTablesInitialized();
+    searchApiMutexEnabled.store(resolveSearchApiMutexGuardDefault(), std::memory_order_relaxed);
+    searchRuntime.maxThreads = omp_get_max_threads();
+    bindSearchRuntime();
     this->tt.clear();
 }
 
 Engine::Engine(const std::string& fen)
-    : Engine()
-{
+    : Engine() {
     board = chess::Board(fen);
 }
 
@@ -42,19 +104,16 @@ Engine::~Engine() noexcept {
 void Engine::reset() noexcept {
     this->stopPondering();
     board = chess::Board();
-    depth = DEFAULTDEPTH;
-    eval = 0;
-    gameResult = ONGOING;
-    isPlayerWhite = true;
-    nodesSearched = 0;
     bestMove = chess::Board::Move{};
     moveHistory.clear();
+    isPlayerWhite = true;
+    gameResult = ONGOING;
+
+    searchRuntime = Searcher::SearchRuntime{};
+    searchRuntime.maxThreads = omp_get_max_threads();
+    bindSearchRuntime();
+
     this->tt.clear();
-    const chess::Board::Move emptyMove{};
-    std::fill_n(&killerMoves[0][0], 2 * MAX_PLY, emptyMove);
-    std::memset(history, 0, sizeof(history));
-    std::memset(counterMoves, 0, sizeof(counterMoves));
-    std::memset(captureHistory, 0, sizeof(captureHistory));
     this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
     this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
     this->ponderLastCompletedEvenDepth.store(0, std::memory_order_relaxed);
@@ -66,6 +125,14 @@ void Engine::reset() noexcept {
 
 void Engine::setPonderDebugEnabled(bool enabled) noexcept {
     this->ponderDebugEnabled.store(enabled, std::memory_order_relaxed);
+}
+
+void Engine::setSearchApiMutexEnabled(bool enabled) noexcept {
+    this->searchApiMutexEnabled.store(enabled, std::memory_order_release);
+}
+
+bool Engine::isSearchApiMutexEnabled() const noexcept {
+    return this->searchApiMutexEnabled.load(std::memory_order_acquire);
 }
 
 bool Engine::isPonderDebugEnabled() const noexcept {
@@ -84,7 +151,6 @@ uint64_t Engine::getPonderInterruptedDepth() const noexcept {
     return this->ponderInterruptedDepth.load(std::memory_order_relaxed);
 }
 
-
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     this->stopPondering();
@@ -92,14 +158,25 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
     const bool result = (promotionPiece == '\0')
         ? this->board.move(from, to)
         : this->board.move(from, to, promotionPiece);
-    
+
     if (result) [[likely]] {
         appendMoveHistoryEntry(from, to, promotionPiece);
     }
 
     this->updateGameResult();
-
     return result;
+}
+
+int32_t Engine::evaluate(const chess::Board& board) noexcept {
+    return Evaluator::evaluate(board);
+}
+
+int32_t Engine::evaluateTrace(const chess::Board& board) noexcept {
+    return Evaluator::evaluateTrace(board);
+}
+
+int32_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
+    return Evaluator::evaluateCheckmate(board);
 }
 
 void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
@@ -127,10 +204,9 @@ void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coor
     moveHistory += '\n';
 }
 
-
 void Engine::updateGameResult() noexcept {
     gameResult = GameResult::ONGOING;
-    uint8_t toMove = board.getActiveColor();
+    const uint8_t toMove = board.getActiveColor();
     if (board.kings_bb[0] == 0) {
         gameResult = GameResult::BLACK_WINS;
     } else if (board.kings_bb[1] == 0) {
@@ -142,74 +218,176 @@ void Engine::updateGameResult() noexcept {
     }
 }
 
+void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
+    this->stopSearchRequested.store(false, std::memory_order_relaxed);
+    this->searchInterrupted.store(false, std::memory_order_relaxed);
+    this->nodesSearched = 0;
+    this->tt.incrementGeneration();
+    this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
+    this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
+    this->ponderLastCompletedEvenDepth.store(0, std::memory_order_relaxed);
+    this->ponderInterruptedDepth.store(0, std::memory_order_relaxed);
+    this->ponderAspirationResearches.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailLow.store(0, std::memory_order_relaxed);
+    this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 
-__attribute__((hot))
-void Engine::updateKillerAndHistoryOnBetaCutoff(const chess::Board& b, const chess::Board::Move& m, int32_t depth, int ply, uint8_t us, int16_t (&history)[2][64][64], chess::Board::Move (&killerMoves)[2][Engine::MAX_PLY], const chess::Board::Move* previousMove) noexcept {
-    if (ply >= Engine::MAX_PLY) return; // Out of bounds
-    
-    const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-    const bool isEpCapture = isEnPassantCapture(b, m);
-    const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-    const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
-    
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex = m.to.index;
+    if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
+        DBG_LOG_STREAM("[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n");
+    }
 
-    // CAPTURE HISTORY: bonus for captures that cause cutoffs
-    if (isCapture) {
-        const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-        const int32_t depthPlusOne = depth + 1;
-        const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
-        
-        // GRAVITY FORMULA: prevents overflow and naturally saturates
-        // h += bonus - h * |bonus| / MAX_CAPTURE_HISTORY
-        constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
-        auto& chPrimary = captureHistory[colorIndex][toIndex][victimType][0];
-        auto& chSecondary = captureHistory[colorIndex][toIndex][victimType][1];
-        int32_t primaryScore = static_cast<int32_t>(chPrimary);
-        primaryScore += bonus - primaryScore * std::abs(bonus) / MAX_CAPTURE_HISTORY;
-        chPrimary = clampHeuristic16(primaryScore);
+    const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
+        rootBoard,
+        this->searchRuntime,
+        Engine::DEFAULTDEPTH,
+        Engine::MAX_PLY,
+        true);
 
-        const int32_t secondaryBonus = (bonus >> 1);
-        int32_t secondaryScore = static_cast<int32_t>(chSecondary);
-        secondaryScore += secondaryBonus - secondaryScore * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
-        chSecondary = clampHeuristic16(secondaryScore);
-        if (chSecondary > chPrimary) {
-            std::swap(chPrimary, chSecondary);
+    this->ponderCurrentDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
+    this->ponderLastCompletedDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
+    this->ponderLastCompletedEvenDepth.store(ponderResult.completedEvenDepth, std::memory_order_relaxed);
+    this->ponderInterruptedDepth.store(ponderResult.interruptedDepth, std::memory_order_relaxed);
+    this->ponderAspirationResearches.store(ponderResult.aspirationResearches, std::memory_order_relaxed);
+    this->ponderAspirationFailLow.store(ponderResult.aspirationFailLow, std::memory_order_relaxed);
+    this->ponderAspirationFailHigh.store(ponderResult.aspirationFailHigh, std::memory_order_relaxed);
+
+    if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
+        DBG_LOG_STREAM("[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
+                      << ", last completed depth: " << this->getPonderLastCompletedDepth()
+                      << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                      << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                      << ", asp retries: " << ponderResult.aspirationResearches
+                      << ", fail-low: " << ponderResult.aspirationFailLow
+                      << ", fail-high: " << ponderResult.aspirationFailHigh << "\n");
+    }
+
+    this->ponderingActive.store(false, std::memory_order_release);
+}
+
+void Engine::startPondering() noexcept {
+    if (this->isGameOver()) return;
+
+    this->stopPondering();
+
+    this->ponderingStopRequested.store(false, std::memory_order_release);
+    this->stopSearchRequested.store(false, std::memory_order_release);
+    this->searchInterrupted.store(false, std::memory_order_release);
+    this->ponderingActive.store(true, std::memory_order_release);
+
+    try {
+        this->ponderingThread = std::thread([this, rootBoard = chess::Board(this->board)]() mutable {
+            this->ponderLoop(std::move(rootBoard));
+        });
+    } catch (...) {
+        this->ponderingActive.store(false, std::memory_order_release);
+        this->ponderingStopRequested.store(false, std::memory_order_release);
+        this->stopSearchRequested.store(false, std::memory_order_release);
+    }
+}
+
+void Engine::stopPondering() noexcept {
+    const bool hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed)
+        || this->ponderingThread.joinable();
+
+    this->ponderingStopRequested.store(true, std::memory_order_release);
+    this->stopSearchRequested.store(true, std::memory_order_release);
+
+    if (this->ponderingThread.joinable()) {
+        this->ponderingThread.join();
+    }
+
+    this->ponderingActive.store(false, std::memory_order_release);
+    this->ponderingStopRequested.store(false, std::memory_order_release);
+    this->stopSearchRequested.store(false, std::memory_order_release);
+    this->searchInterrupted.store(false, std::memory_order_release);
+
+    if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
+        DBG_LOG_STREAM("[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
+                      << ", last completed depth: " << this->getPonderLastCompletedDepth()
+                      << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
+                      << ", interrupted depth: " << this->getPonderInterruptedDepth()
+                      << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
+                      << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
+                      << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n");
+    }
+}
+
+void Engine::stopThinking() noexcept {
+    this->stopPondering();
+}
+
+chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
+    std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
+    if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
+        searchApiGuard.lock();
+    }
+
+    this->stopPondering();
+
+    const uint64_t targetDepth = (requestedDepth == 0)
+        ? Engine::DEFAULTDEPTH
+        : requestedDepth;
+    if (targetDepth == 0) return chess::Board::Move{};
+
+    this->stopSearchRequested.store(false, std::memory_order_relaxed);
+    this->searchInterrupted.store(false, std::memory_order_relaxed);
+
+    chess::Board searchBoard = this->board;
+    const chess::Board::Move candidate = Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth);
+    if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
+        this->bestMove = chess::Board::Move{};
+        return this->bestMove;
+    }
+
+    this->bestMove = candidate;
+    return this->bestMove;
+}
+
+void Engine::search(uint64_t requestedDepth) noexcept {
+    std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
+    if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
+        searchApiGuard.lock();
+    }
+
+    this->stopPondering();
+
+    const uint64_t targetDepth = (requestedDepth == 0)
+        ? Engine::DEFAULTDEPTH
+        : requestedDepth;
+    if (targetDepth == 0) return;
+
+    this->stopSearchRequested.store(false, std::memory_order_relaxed);
+    this->searchInterrupted.store(false, std::memory_order_relaxed);
+
+    const chess::Board::Move candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
+    if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
+        this->bestMove = chess::Board::Move{};
+        this->updateGameResult();
+        return;
+    }
+
+    const char promotionPiece = Engine::promotionChoiceForMove(this->board, candidate);
+    const bool moveOk = this->board.move(candidate.from, candidate.to, promotionPiece);
+    if (!moveOk) {
+        this->bestMove = chess::Board::Move{};
+        this->updateGameResult();
+        return;
+    }
+
+    this->bestMove = candidate;
+    this->updateGameResult();
+    this->appendMoveHistoryEntry(candidate.from, candidate.to, candidate.promotionPiece);
+
+    if (!this->isGameOver()) {
+        this->startPondering();
+    }
+
+    DBG_ONLY(
+        std::string moveStr = chess::Coords::toAlgebric(candidate.from) + chess::Coords::toAlgebric(candidate.to);
+        if (candidate.promotionPiece != '\0') {
+            moveStr += candidate.promotionPiece;
         }
-        
-        return; // Don't process as quiet move
-    }
-
-    // COUNTER-MOVE: Track best response to opponent's previous move (quiet moves only)
-    if (previousMove != nullptr && previousMove->from.index < 64) {
-        counterMoves[previousMove->from.index][previousMove->to.index] =
-            tt::TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
-    }
-    // KILLER MOVES: Update avoiding duplicates
-    auto& km1 = killerMoves[0][ply];
-
-    // Note: previously this used single '&'
-    const bool isAlreadyKm1 = (fromIndex == km1.from.index) && (toIndex == km1.to.index);
-    
-    if (!isAlreadyKm1) {
-	auto& km2 = killerMoves[1][ply];
-        km2 = km1;
-        km1 = m;
-    }
-    // If already km1, do nothing (avoid duplicates)
-
-    // HISTORY HEURISTIC: Bonus based on depth
-    // GRAVITY FORMULA: h += bonus - h * |bonus| / MAX_HISTORY
-    const int colorIndex = (us == chess::Board::WHITE) ? 0 : 1;
-    const int32_t depthPlusOne = depth + 1;
-    const int32_t bonus = static_cast<int32_t>(depthPlusOne * depthPlusOne);
-    
-    constexpr int32_t MAX_HISTORY = 16384;
-    auto& h = history[colorIndex][fromIndex][toIndex];
-    int32_t historyScore = static_cast<int32_t>(h);
-    historyScore += bonus - historyScore * std::abs(bonus) / MAX_HISTORY;
-    h = clampHeuristic16(historyScore);
+        DBG_LOG_STREAM("Engine plays: " << moveStr << " (score: " << this->eval << ")\n");
+    );
 }
 
 } // namespace engine

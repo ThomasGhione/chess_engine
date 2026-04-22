@@ -3,28 +3,6 @@
 
 namespace engine {
 
-inline bool Evaluator::rookIsBehindPasser(int rookRank, uint64_t filePawns, uint64_t oppPawns, bool isWhite, bool checkOwnPasser) noexcept {
-    uint64_t pawns = filePawns;
-    while (pawns) {
-        const int pawnSq = popLSB(pawns);
-        const int file = pawnSq & 7;
-        
-        const bool isPassed = checkOwnPasser
-            ? (isWhite ? isWhitePassedPawn(pawnSq, file, oppPawns) : isBlackPassedPawn(pawnSq, file, oppPawns))
-            : (isWhite ? isBlackPassedPawn(pawnSq, file, oppPawns) : isWhitePassedPawn(pawnSq, file, oppPawns));
-        
-        if (!isPassed) continue;
-        
-        const int pawnRank = pawnSq >> 3;
-        const bool isBehind = checkOwnPasser
-            ? (isWhite ? (rookRank > pawnRank) : (rookRank < pawnRank))
-            : (isWhite ? (rookRank < pawnRank) : (rookRank > pawnRank));
-        
-        if (isBehind) return true;
-    }
-    return false;
-}
-
 inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
     int32_t score = 0;
 
@@ -33,22 +11,55 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
     const int targetRank = (color == 0) ? 6 : 1;
 
     while (rooks) {
-        const int sq = popLSB(rooks);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
+        const int sq = __builtin_ctzll(rooks);
+        const int file = chess::Board::file(sq);
+        const int rank = chess::Board::rank(sq);
         const uint64_t fm = FILE_MASKS[file];
-        const bool ownPawnOnFile = (ownPawns & fm) != 0;
-        const bool oppPawnOnFile = (oppPawns & fm) != 0;
-        const int32_t fileBonus = (!ownPawnOnFile) * ((!oppPawnOnFile) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
-        score += fileBonus + (rank == targetRank) * (sign * engine::ROOK_ON_SEVENTH_BONUS);
+        const uint64_t ownFilePawns = ownPawns & fm;
+        const uint64_t oppFilePawns = oppPawns & fm;
 
-        if (rookIsBehindPasser(rank, ownPawns & fm, oppPawns, isWhite, true)) {
-            score += sign * engine::ROOK_BEHIND_OWN_PASSER_BONUS;
+        if (!ownFilePawns) {
+            score += ((!oppFilePawns) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
         }
 
-        if (rookIsBehindPasser(rank, oppPawns & fm, ownPawns, isWhite, false)) {
-            score += sign * engine::ROOK_BEHIND_ENEMY_PASSER_BONUS;
+        if (rank == targetRank) {
+            score += sign * engine::ROOK_ON_SEVENTH_BONUS;
         }
+
+        const uint64_t rankAboveMask = rank == 7 ? 0ULL : (~0ULL << ((rank + 1) * 8));
+        const uint64_t rankBelowMask = (1ULL << (rank * 8)) - 1;
+
+        const uint64_t ownPasserCandidates = ownFilePawns & (isWhite ? rankBelowMask : rankAboveMask);
+        if (ownPasserCandidates) {
+            uint64_t pawnsLoop = ownPasserCandidates;
+            const uint64_t enemyAdjAndFile = oppPawns & ADJACENT_AND_FILE_MASKS[file];
+            do {
+                const int pawnSq = __builtin_ctzll(pawnsLoop);
+                const uint64_t forwardFill = isWhite ? WHITE_FORWARD_FILL[pawnSq] : BLACK_FORWARD_FILL[pawnSq];
+                if ((enemyAdjAndFile & forwardFill) == 0ULL) {
+                    score += sign * engine::ROOK_BEHIND_OWN_PASSER_BONUS;
+                    break;
+                }
+                pawnsLoop &= pawnsLoop - 1;
+            } while (pawnsLoop);
+        }
+
+        const uint64_t enemyPasserCandidates = oppFilePawns & (isWhite ? rankAboveMask : rankBelowMask);
+        if (enemyPasserCandidates) {
+            uint64_t pawnsLoop = enemyPasserCandidates;
+            const uint64_t ourAdjAndFile = ownPawns & ADJACENT_AND_FILE_MASKS[file];
+            do {
+                const int pawnSq = __builtin_ctzll(pawnsLoop);
+                const uint64_t forwardFill = isWhite ? BLACK_FORWARD_FILL[pawnSq] : WHITE_FORWARD_FILL[pawnSq];
+                if ((ourAdjAndFile & forwardFill) == 0ULL) {
+                    score += sign * engine::ROOK_BEHIND_ENEMY_PASSER_BONUS;
+                    break;
+                }
+                pawnsLoop &= pawnsLoop - 1;
+            } while (pawnsLoop);
+        }
+        
+        rooks &= rooks - 1;
     }
 
     return score;
@@ -72,8 +83,8 @@ inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int
     if (!enemyKingBB) return 0;
 
     const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rankOf(enemyKingSq);
-    const int file = chess::Board::fileOf(enemyKingSq);
+    const int rank = chess::Board::rank(enemyKingSq);
+    const int file = chess::Board::file(enemyKingSq);
 
     const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
     const int edgeProximity = 7 - distToEdge;
@@ -114,8 +125,8 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     if (!enemyKingBB) return 0;
 
     const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rankOf(enemyKingSq);
-    const int file = chess::Board::fileOf(enemyKingSq);
+    const int rank = chess::Board::rank(enemyKingSq);
+    const int file = chess::Board::file(enemyKingSq);
 
     const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
     const int edgeProximity = 7 - distToEdge;
@@ -129,10 +140,10 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
         rooksBB &= (rooksBB - 1);
         const int rook2 = __builtin_ctzll(rooksBB);
 
-        const int r1_rank = chess::Board::rankOf(rook1);
-        const int r1_file = chess::Board::fileOf(rook1);
-        const int r2_rank = chess::Board::rankOf(rook2);
-        const int r2_file = chess::Board::fileOf(rook2);
+        const int r1_rank = chess::Board::rank(rook1);
+        const int r1_file = chess::Board::file(rook1);
+        const int r2_rank = chess::Board::rank(rook2);
+        const int r2_file = chess::Board::file(rook2);
 
         if (r1_rank == r2_rank || r1_file == r2_file) {
             score += sign * 28;

@@ -5,13 +5,8 @@
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
 inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
-    return static_cast<uint8_t>(((color & MASK_COLOR) >> 3) ^ 0x1u);
+    return ((color & MASK_COLOR) >> 3) ^ 0x1u;
 }
-
-inline constexpr int Board::colorBoolToIndex(bool isWhite) noexcept { return isWhite ? 0 : 1; }
-
-template<bool IsWhite>
-inline constexpr uint8_t Board::promotionRank() noexcept { return IsWhite ? 0 : 7; }
 
 inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
 
@@ -24,10 +19,10 @@ inline Board::Board() noexcept {
 
 inline Board::Board(const std::array<uint32_t, 8>& chessboard) noexcept
     : chessboard(chessboard)
-    , castle(CASTLING_RIGHTS_ALL)
-    , enPassant() 
     , halfMoveClock(0)
     , fullMoveClock(1)
+    , castle(CASTLING_RIGHTS_ALL)
+    , enPassant()
     , activeColor(WHITE)
 {
     updateOccupancyBB();
@@ -38,14 +33,70 @@ inline Board::Board(const std::string& fen) {
     fromFenToBoard(fen);
 }
 
+inline Board::Board(const Board& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(const Board& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline Board::Board(Board&& other) noexcept {
+    copyFromBoard(other);
+}
+
+inline Board& Board::operator=(Board&& other) noexcept {
+    if (this != &other) {
+        copyFromBoard(other);
+    }
+    return *this;
+}
+
+inline void Board::copyFromBoard(const Board& other) noexcept {
+    pawns_bb = other.pawns_bb;
+    knights_bb = other.knights_bb;
+    bishops_bb = other.bishops_bb;
+    rooks_bb = other.rooks_bb;
+    queens_bb = other.queens_bb;
+    kings_bb = other.kings_bb;
+
+    chessboard = other.chessboard;
+    currentHash = other.currentHash;
+
+    historySize = other.historySize;
+    if (historySize > 0) {
+        std::memcpy(repetitionHistory.data(), other.repetitionHistory.data(), historySize * sizeof(uint64_t));
+    }
+
+    occupancy = other.occupancy;
+    incrementalMaterialDelta = other.incrementalMaterialDelta;
+    incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
+    incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
+    incrementalPsqtPieces = other.incrementalPsqtPieces;
+    incrementalPsqtKingsMg = other.incrementalPsqtKingsMg;
+    incrementalPsqtKingsEg = other.incrementalPsqtKingsEg;
+    evalCache = other.evalCache;
+    lastMoveChangeFlags = other.lastMoveChangeFlags;
+    halfMoveClock = other.halfMoveClock;
+    fullMoveClock = other.fullMoveClock;
+    castle = other.castle;
+    hasMoved = other.hasMoved;
+    enPassant = other.enPassant;
+    epHashFile = other.epHashFile;
+    activeColor = other.activeColor;
+}
+
 // ==============================
 // Geometry Helpers
 // ==============================
 
 inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
 
-inline constexpr uint8_t Board::fileOf(uint8_t sq) noexcept { return sq & 7; } // Extract bits 0-2 
-inline constexpr uint8_t Board::rankOf(uint8_t sq) noexcept { return sq >> 3; } // Extract bits 3-5 
+inline constexpr uint8_t Board::file(uint8_t sq) noexcept { return chess::file(sq); } // Extract bits 0-2
+inline constexpr uint8_t Board::rank(uint8_t sq) noexcept { return chess::rank(sq); } // Extract bits 3-5
 
 // ==============================
 // Move Value Helpers
@@ -92,14 +143,6 @@ __attribute__((always_inline))
 inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
-
-inline uint8_t Board::get(const std::string& square) const noexcept {
-    const uint8_t col = square[0] - 'a';
-    const uint8_t row = square[1] - '1';
-    return get(row, col);
-}
-
-inline std::string Board::getCurrentFen() const noexcept { return fromBoardToFen(); };
 
 inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
 
@@ -244,13 +287,6 @@ inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noe
 }
 
 inline bool Board::hasAtLeastTwoBits(uint64_t bb) noexcept { return (bb & (bb - 1)) != 0ULL; }
-
-inline bool Board::addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept {
-    if (!attackSet) return false;
-    if (hasAtLeastTwoBits(attackSet)) return true;
-    ++attackers;
-    return attackers >= 2;
-}
 
 inline bool Board::isKingSafeAfterMove(
     uint8_t movingColor,

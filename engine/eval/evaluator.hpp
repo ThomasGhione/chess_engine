@@ -1,5 +1,4 @@
-#ifndef ENGINE_EVAL_EVALUATOR_HPP
-#define ENGINE_EVAL_EVALUATOR_HPP
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -23,10 +22,9 @@ public:
 
     // Static methods
     static int32_t evaluate(const chess::Board& board) noexcept;
-
     static int32_t evaluateTrace(const chess::Board& board) noexcept;
-    
     static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
+
     static int32_t getMaterialDelta(const chess::Board& b) noexcept;
 
     static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
@@ -35,47 +33,46 @@ public:
     static int32_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
     static int32_t evalEndgameKingActivity(const chess::Board& b) noexcept;
     static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
+    static int32_t evalRookEndgamePressureSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept;
+    static int32_t evalDoubleRookEndgameSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept;
     
     struct PawnFileStats {
-        uint8_t whiteIsolatedOnFile[8] = {};
-        uint8_t blackIsolatedOnFile[8] = {};
-        uint64_t whiteAdjAndFilePawns[8] = {};
-        uint64_t blackAdjAndFilePawns[8] = {};
+        uint8_t whiteIsolatedFiles = 0;
+        uint8_t blackIsolatedFiles = 0;
         int whiteIslands = 0;
         int blackIslands = 0;
         int32_t islandScore = 0;
         int32_t doubledScore = 0;
     };
-    
+
     static PawnFileStats evalPawnFileStats(uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    
+
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
-    
+
     static bool tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                int32_t& outScore) noexcept;
     static void storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                   int32_t score) noexcept;
-    
+
     static int32_t evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                   int file, const uint64_t& forwardFill,
                                   const std::array<uint64_t, 64>& oneStepMasks,
                                   const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                  const uint64_t (&enemyAdjAndFilePawns)[8],
+                                  uint64_t enemyPawns,
                                   int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                   int32_t connectedPasserBonus, int promotionRank, int sign) noexcept;
-    
+
     static int32_t evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                      uint64_t allPawns, int file, bool hasSupport,
                                      const uint64_t& frontMask, const uint64_t& forwardFill,
-                                     const uint8_t (&ownIsolatedOnFile)[8],
+                                     uint8_t ownIsolatedFiles,
                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
                                      int32_t candidatePasserBonus, int pawnAttackerIndex,
                                      bool isWhite, int sign) noexcept;
-    
+
     static int32_t evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                    const uint8_t (&ownIsolatedOnFile)[8],
-                                    const uint64_t (&enemyAdjAndFilePawns)[8],
+                                    uint8_t ownIsolatedFiles,
                                     int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                     int32_t connectedPasserBonus, int32_t candidatePasserBonus,
                                     int sign) noexcept;
@@ -190,7 +187,6 @@ private:
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
     static inline void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
 
-    static inline bool rookIsBehindPasser(int rookRank, uint64_t filePawns, uint64_t oppPawns, bool isWhite, bool checkOwnPasser) noexcept;
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
     static inline int32_t evalOutpostsForColor(const chess::Board& b, int color) noexcept;
@@ -209,17 +205,14 @@ private:
     static inline int32_t evalCastlingBonusSide(const chess::Board& b, int side) noexcept;
     static int32_t evalBlockedPawnByBishops(const chess::Board& b) noexcept;
     static int32_t evalRookEndgamePressure(const chess::Board& b) noexcept;
-    static inline int32_t evalRookEndgamePressureSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept;
     static int32_t evalQueenEndgamePressure(const chess::Board& b) noexcept;
     static inline int32_t evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept;
     static int32_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
-    static inline int32_t evalDoubleRookEndgameSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept;
     static inline int32_t evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept;
     static inline uint8_t popLSB(uint64_t& bb) noexcept;
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
-
     static int32_t getMaterialDeltaCached(const chess::Board& b) noexcept;
     static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
     static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
@@ -248,4 +241,3 @@ private:
 
 } // namespace engine
 
-#endif // ENGINE_EVAL_EVALUATOR_HPP

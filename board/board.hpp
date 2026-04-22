@@ -1,13 +1,11 @@
-#ifndef BOARD_HPP
-#define BOARD_HPP
+#pragma once
 
 #include <string>
 #include <array>
 #include <cstdint>
 #include <cctype>
-#include <sstream>
-#include <algorithm>
 #include <cstddef>
+#include <cstring>
 
 #include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"
@@ -77,7 +75,7 @@ public:
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
-    enum MoveChangeFlag : uint32_t {
+    enum MoveChangeFlag : uint16_t {
         MOVE_CHANGE_NONE        = 0u,
         MOVE_CHANGE_CAPTURE     = 1u << 0,
         MOVE_CHANGE_PROMOTION   = 1u << 1,
@@ -87,7 +85,16 @@ public:
         MOVE_CHANGE_ROOK_MOVE   = 1u << 5,
         MOVE_CHANGE_QUEEN_MOVE  = 1u << 6,
         MOVE_CHANGE_KING_MOVE   = 1u << 7,
-        MOVE_CHANGE_CASTLING    = 1u << 8
+        MOVE_CHANGE_CASTLING    = 1u << 8,
+        MOVE_CHANGE_ALL         = MOVE_CHANGE_CAPTURE
+                                | MOVE_CHANGE_PROMOTION
+                                | MOVE_CHANGE_PAWN_MOVE
+                                | MOVE_CHANGE_KNIGHT_MOVE
+                                | MOVE_CHANGE_BISHOP_MOVE
+                                | MOVE_CHANGE_ROOK_MOVE
+                                | MOVE_CHANGE_QUEEN_MOVE
+                                | MOVE_CHANGE_KING_MOVE
+                                | MOVE_CHANGE_CASTLING
     };
 
     struct EvalCache {
@@ -111,13 +118,13 @@ public:
     };
 
     struct MoveState {
-        uint16_t prevHalfMoveClock{};
-        uint16_t prevFullMoveClock{};
-        uint8_t  prevHistorySize{};
         uint64_t prevHistoryHead{};
+        EvalCache prevEvalCache{};
+        uint16_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
 
-        // Game state before the move
-        uint8_t  prevActiveColor{};
+        uint8_t  prevHalfMoveClock{};
+        uint8_t  prevFullMoveClock{};
+        uint8_t  prevHistorySize{};
 
         // En passant and castling rights
         Coords  prevEnPassant{};
@@ -130,42 +137,33 @@ public:
         uint8_t fromPiece{};            // original piece on "from" before the move (useful for promotions)
         uint8_t promotionPieceType{};   // non-zero if the move is a promotion (PAWN=0 -> no promotion)
 
-        bool    wasEnPassantCapture{};  // true if the move was an en-passant capture
         uint8_t enPassantCapturedIndex{}; // index (0..63) of the pawn captured en-passant
 
-        bool    wasCastling{};          // true if the move was a castling move
         uint8_t rookFromIndex{};        // rook start square index in castling
         uint8_t rookToIndex{};          // rook destination square index in castling
-        bool    historyWasReset{};      // true if repetition history was reset by the move
         MoveKind moveKind{MoveKind::Quiet};
-        EvalCache prevEvalCache{};
-        uint32_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
     };
+
+    static_assert(sizeof(MoveState) <= 80, "MoveState layout regressed; keep it compact for search stack usage.");
     // Structs and enums end
     
     // Constructors start
     Board() noexcept;
     explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept;
     explicit Board(const std::string& fen);
+    Board(const Board& other) noexcept;
+    Board& operator=(const Board& other) noexcept;
+    Board(Board&& other) noexcept;
+    Board& operator=(Board&& other) noexcept;
     // Constructors end
 
     // Methods start
     static constexpr uint8_t oppositeColor(uint8_t color) noexcept;
     static constexpr uint8_t colorToIndex(uint8_t color) noexcept;
-    static constexpr int colorBoolToIndex(bool isWhite) noexcept;
     static constexpr uint8_t promotionRank(bool isWhite) noexcept;
     static constexpr uint64_t bitMask(uint8_t sq) noexcept;
-    static constexpr uint8_t fileOf(uint8_t sq) noexcept;
-    static constexpr uint8_t rankOf(uint8_t sq) noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t promotionRank() noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t backRank() noexcept;
-
-    template<bool IsWhite>
-    static constexpr uint8_t seventhRank() noexcept;
+    static constexpr uint8_t file(uint8_t sq) noexcept;
+    static constexpr uint8_t rank(uint8_t sq) noexcept;
 
     __attribute__((hot, always_inline))
     constexpr inline uint8_t get(uint8_t index) const noexcept;
@@ -203,8 +201,6 @@ public:
     __attribute__((hot))
     bool isCheckmate(uint8_t color) const noexcept;
 
-    uint8_t get(const std::string& square) const noexcept;
-    std::string getCurrentFen() const noexcept;
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
     constexpr uint16_t getFullMoveClock() const noexcept;
@@ -276,6 +272,8 @@ public:
     static constexpr uint8_t BLACK_ROOK_A_START = 0;   // a8
     static constexpr uint8_t BLACK_ROOK_H_START = 7;   // h8
     static constexpr uint8_t CASTLING_RIGHTS_ALL = 0x0F; // All 4 castling rights
+    // 50-move rule bounds reversible plies to 100; +1 keeps current position.
+    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 101;
 
     static constexpr std::array<uint8_t, 256> CHAR_TO_PIECE_TYPE = []() {
         std::array<uint8_t, 256> table{};
@@ -364,7 +362,6 @@ private:
         uint8_t destPiece
     ) const noexcept;
     [[nodiscard]] static inline bool hasAtLeastTwoBits(uint64_t bb) noexcept;
-    [[nodiscard]] static inline bool addAttackAndDetectDouble(uint64_t attackSet, uint8_t& attackers) noexcept;
     [[nodiscard]] static inline uint8_t rookStartSlot(uint8_t index) noexcept;
     inline void clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept;
     inline void updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept;
@@ -379,7 +376,12 @@ private:
     inline int32_t& evalCacheTermRef() const noexcept;
     [[nodiscard]] static constexpr bool isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool isPromotionKind(MoveKind kind) noexcept;
-    [[nodiscard]] static inline uint32_t computeMoveChangeFlags(const MoveState& st) noexcept;
+    [[nodiscard]] static inline uint16_t computeMoveChangeFlags(const MoveState& st) noexcept;
+    template<uint16_t MoveFlags>
+    [[nodiscard]] static constexpr uint32_t evalInvalidationMaskFromMoveFlagsConstexpr() noexcept;
+    template<uint16_t... MoveFlags>
+    [[nodiscard]] static constexpr std::array<uint32_t, sizeof...(MoveFlags)>
+    buildEvalInvalidationMaskLut(std::integer_sequence<uint16_t, MoveFlags...>) noexcept;
     [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
     [[nodiscard]] static inline MoveKind classifyMoveKind(
         uint8_t movingType,
@@ -391,6 +393,7 @@ private:
     ) noexcept;
     [[nodiscard]] static inline uint8_t normalizePromotionChoice(char promotionChoice) noexcept;
     [[nodiscard]] static inline uint8_t promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
+    inline void promoteUnchecked(uint8_t atIndex, uint8_t pawnPiece, uint8_t promo) noexcept;
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
     inline void prepareNullMoveState(MoveState& st) const noexcept;
@@ -398,8 +401,6 @@ private:
     inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(
-        const Coords& from,
-        const Coords& to,
         MoveState& st,
         uint8_t moving,
         uint8_t movingType,
@@ -411,8 +412,6 @@ private:
     ) noexcept;
     template<MoveKind Kind>
     inline void undoMoveByKind(
-        const Coords& from,
-        const Coords& to,
         const MoveState& st,
         uint8_t& pieceOnTo,
         uint8_t fromIndex,
@@ -423,15 +422,14 @@ private:
                               uint64_t pawns, uint64_t knights, uint64_t bishops,
                               uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
     bool isSquareAttackedWithOcc(uint8_t targetIndex, uint8_t byColor, uint64_t occ) const noexcept;
-    static uint8_t charToPiece(char symbol);
     static bool parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     static uint8_t parseActiveColor(const std::string& activeSection);
     static Coords parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string boardToFenPieces() const;
-    static char pieceTypeToChar(uint8_t pieceType);
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
+    inline void copyFromBoard(const Board& other) noexcept;
     void rebuildRepetitionHistory() noexcept;
     void updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
     // Methods end
@@ -439,18 +437,8 @@ private:
     // Variables start
 
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
-
-    uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
-    uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
-    Coords   enPassant{};                   // En-passant target square
-    uint8_t  epHashFile = 0xFF;             // hashed EP file in currentHash, or 0xFF if not hashed
-    uint16_t halfMoveClock = 0;             // 50-move rule counter
-    uint16_t fullMoveClock = 1;             // Current move number
-    uint8_t  activeColor = WHITE;           // Current side to move
     uint64_t currentHash = 0ULL;            // Zobrist hash of current position
-    std::array<uint64_t, 128> repetitionHistory{}; // Ring buffer of recent positions (bounded by 50-move rule)
-    uint8_t  historySize = 0;               // Entries valid in repetitionHistory
-    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{}; // Recent reversible-position hashes
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     int32_t incrementalMaterialDelta = 0;
     int32_t incrementalPsqtPawnsMg = 0;
@@ -459,7 +447,16 @@ private:
     int32_t incrementalPsqtKingsMg = 0;
     int32_t incrementalPsqtKingsEg = 0;
     mutable EvalCache evalCache{};
-    uint32_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
+    uint16_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
+    uint8_t halfMoveClock = 0;             // 50-move rule counter
+    uint8_t fullMoveClock = 1;             // Current move number
+    uint8_t  castle = CASTLING_RIGHTS_ALL;  // Castling rights (KQkq) - 4 bits
+    uint8_t  hasMoved = 0x00;               // Piece movement tracking - 6 bits
+    Coords   enPassant{};                   // En-passant target square
+    uint8_t  epHashFile = 0xFF;             // hashed EP file in currentHash, or 0xFF if not hashed
+    uint8_t  activeColor = WHITE;           // Current side to move
+    uint8_t  historySize = 0;               // Entries valid in repetitionHistory
+    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // Variables end
 }; // Class Board
 
@@ -467,5 +464,3 @@ private:
 #include "boardapi.inl"
 
 } // namespace chess
-
-#endif

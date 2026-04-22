@@ -5,10 +5,10 @@ namespace engine {
 static constexpr auto WHITE_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = sq & 7;
+        const int file = chess::Board::file(sq);
         uint64_t mask = 0ULL;
-        if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 7));
-        if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq + 9));
+        if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(sq + 7);
+        if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(sq + 9);
         masks[sq] = mask;
     }
     return masks;
@@ -17,10 +17,10 @@ static constexpr auto WHITE_SUPPORT_MASKS = [] {
 static constexpr auto BLACK_SUPPORT_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int file = sq & 7;
+        const int file = chess::Board::file(sq);
         uint64_t mask = 0ULL;
-        if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 7));
-        if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(static_cast<uint8_t>(sq - 9));
+        if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(sq - 7);
+        if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(sq - 9);
         masks[sq] = mask;
     }
     return masks;
@@ -29,7 +29,7 @@ static constexpr auto BLACK_SUPPORT_MASKS = [] {
 static constexpr auto WHITE_ONE_STEP_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq >= 8) ? chess::Board::bitMask(static_cast<uint8_t>(sq - 8)) : 0ULL;
+        masks[sq] = (sq >= 8) ? chess::Board::bitMask(sq - 8) : 0ULL;
     }
     return masks;
 }();
@@ -37,10 +37,25 @@ static constexpr auto WHITE_ONE_STEP_MASKS = [] {
 static constexpr auto BLACK_ONE_STEP_MASKS = [] {
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq <= 55) ? chess::Board::bitMask(static_cast<uint8_t>(sq + 8)) : 0ULL;
+        masks[sq] = (sq <= 55) ? chess::Board::bitMask(sq + 8) : 0ULL;
     }
     return masks;
 }();
+
+struct PawnEvalCacheEntry {
+    uint64_t whitePawns = 0ULL;
+    uint64_t blackPawns = 0ULL;
+    int32_t score = 0;
+    uint8_t isEndgame = 0;
+    uint8_t valid = 0;
+    uint16_t stamp = 0;
+};
+
+constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
+constexpr size_t PAWN_CACHE_WAYS = 2;
+constexpr uint64_t PAWN_CACHE_MASK = PAWN_CACHE_SIZE - 1u;
+thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
+thread_local uint16_t pawnCacheStamp = 0;
 
 inline const std::array<uint64_t, 64>& Evaluator::getPawnSupportMasks(bool isWhite) noexcept {
     return isWhite ? WHITE_SUPPORT_MASKS : BLACK_SUPPORT_MASKS;
@@ -50,38 +65,26 @@ inline const std::array<uint64_t, 64>& Evaluator::getPawnOneStepMasks(bool isWhi
     return isWhite ? WHITE_ONE_STEP_MASKS : BLACK_ONE_STEP_MASKS;
 }
 
+inline uint8_t pawnFileMask(uint64_t pawns) noexcept {
+    pawns |= pawns >> 32;
+    pawns |= pawns >> 16;
+    pawns |= pawns >> 8;
+    return static_cast<uint8_t>(pawns & 0xFF);
+}
+
 Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     PawnFileStats stats;
-    bool prevWhiteFileOccupied = false;
-    bool prevBlackFileOccupied = false;
 
-    for (int f = 0; f < 8; ++f) {
-        const uint64_t fileMask = FILE_MASKS[f];
-        const uint64_t adjacentMask = ADJACENT_FILES_ONLY[f];
-        const uint64_t adjacentAndFileMask = ADJACENT_AND_FILE_MASKS[f];
-        const int whiteOnFile = __builtin_popcountll(whitePawns & fileMask);
-        const int blackOnFile = __builtin_popcountll(blackPawns & fileMask);
-        const bool whiteFileOccupied = (whiteOnFile > 0);
-        const bool blackFileOccupied = (blackOnFile > 0);
+    const uint8_t wFiles = pawnFileMask(whitePawns);
+    const uint8_t bFiles = pawnFileMask(blackPawns);
 
-        if (whiteFileOccupied && !prevWhiteFileOccupied) {
-            ++stats.whiteIslands;
-        }
-        if (blackFileOccupied && !prevBlackFileOccupied) {
-            ++stats.blackIslands;
-        }
-        prevWhiteFileOccupied = whiteFileOccupied;
-        prevBlackFileOccupied = blackFileOccupied;
+    // Isolated files bitmask (file is isolated if adjacent files have no pawns)
+    stats.whiteIsolatedFiles = static_cast<uint8_t>(~((wFiles << 1) | (wFiles >> 1)));
+    stats.blackIsolatedFiles = static_cast<uint8_t>(~((bFiles << 1) | (bFiles >> 1)));
 
-        if (whiteOnFile > 1) stats.doubledScore += (whiteOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
-        if (blackOnFile > 1) stats.doubledScore -= (blackOnFile - 1) * engine::DOUBLED_PAWN_PENALTY;
-
-        stats.whiteIsolatedOnFile[f] = static_cast<uint8_t>((whitePawns & adjacentMask) == 0ULL);
-        stats.blackIsolatedOnFile[f] = static_cast<uint8_t>((blackPawns & adjacentMask) == 0ULL);
-
-        stats.whiteAdjAndFilePawns[f] = whitePawns & adjacentAndFileMask;
-        stats.blackAdjAndFilePawns[f] = blackPawns & adjacentAndFileMask;
-    }
+    // Islands counts as number of consecutive 1s blocks in wFiles/bFiles
+    stats.whiteIslands = std::popcount(static_cast<unsigned int>(wFiles & static_cast<uint8_t>(~(wFiles << 1))));
+    stats.blackIslands = std::popcount(static_cast<unsigned int>(bFiles & static_cast<uint8_t>(~(bFiles << 1))));
 
     if (stats.whiteIslands > 1) {
         stats.islandScore += (stats.whiteIslands - 1) * engine::PAWN_ISLAND_PENALTY;
@@ -90,6 +93,14 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
         stats.islandScore -= (stats.blackIslands - 1) * engine::PAWN_ISLAND_PENALTY;
     }
 
+    const int totalWhitePawns = std::popcount(whitePawns);
+    const int totalBlackPawns = std::popcount(blackPawns);
+    const int whiteOccupiedFiles = std::popcount(static_cast<unsigned int>(wFiles));
+    const int blackOccupiedFiles = std::popcount(static_cast<unsigned int>(bFiles));
+
+    stats.doubledScore += (totalWhitePawns - whiteOccupiedFiles) * engine::DOUBLED_PAWN_PENALTY;
+    stats.doubledScore -= (totalBlackPawns - blackOccupiedFiles) * engine::DOUBLED_PAWN_PENALTY;
+
     return stats;
 }
 
@@ -97,7 +108,7 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
                                   int file, const uint64_t& forwardFill,
                                   const std::array<uint64_t, 64>& oneStepMasks,
                                   const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                  const uint64_t (&enemyAdjAndFilePawns)[8],
+                                  uint64_t enemyPawns,
                                   int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                   int32_t connectedPasserBonus, int promotionRank, int sign) noexcept {
     int32_t score = sign * engine::PASSED_PAWN_BONUS;
@@ -115,13 +126,16 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
     }
 
     bool hasConnectedPassedPawn = false;
-    uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file];
+    // L'uso di pieces::KING_ATTACKS[sq] sostituisce il check (std::abs(adjRank - rank) <= 1)
+    // eliminando il branch all'interno del loop e mascherando direttamente in hardware
+    uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file] & pieces::KING_ATTACKS[sq];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        if (std::abs((adjSq >> 3) - rank) > 1) continue;
+        //const int adjRank = chess::Board::rank(adjSq);
+        //if (std::abs(adjRank - rank) > 1) continue;
 
-        const int adjFile = adjSq & 7;
-        const bool adjPassed = ((enemyAdjAndFilePawns[adjFile] & forwardFill) == 0ULL);
+        const int adjFile = chess::Board::file(adjSq);
+        const bool adjPassed = ((enemyPawns & ADJACENT_AND_FILE_MASKS[adjFile] & forwardFill) == 0ULL);
         if (adjPassed) {
             hasConnectedPassedPawn = true;
             break;
@@ -138,7 +152,7 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
 int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                      uint64_t allPawns, int file, bool hasSupport,
                                      const uint64_t& frontMask, const uint64_t& forwardFill,
-                                     const uint8_t (&ownIsolatedOnFile)[8],
+                                     uint8_t ownIsolatedFiles,
                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
                                      int32_t candidatePasserBonus, int pawnAttackerIndex,
                                      bool isWhite, int sign) noexcept {
@@ -146,14 +160,13 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
 
     const bool noEnemySameFileAhead = ((enemyPawns & FILE_MASKS[file] & forwardFill) == 0ULL);
     if (noEnemySameFileAhead && (frontMask == 0ULL || (allPawns & frontMask) == 0ULL) && hasSupport) {
-        const int enemyAdjacentAhead = __builtin_popcountll(
-            enemyPawns & ADJACENT_FILES_ONLY[file] & forwardFill);
-        if (enemyAdjacentAhead <= 1) {
+        const uint64_t enemyAdjacentAhead = enemyPawns & ADJACENT_FILES_ONLY[file] & forwardFill;
+        if ((enemyAdjacentAhead & (enemyAdjacentAhead - 1ULL)) == 0ULL) {
             score += sign * candidatePasserBonus;
         }
     }
 
-    if (ownIsolatedOnFile[file] != 0 || hasSupport || frontMask == 0ULL) {
+    if (((ownIsolatedFiles & (1 << file)) != 0) || hasSupport || frontMask == 0ULL) {
         return score;
     }
 
@@ -161,16 +174,10 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
     const bool frontControlledByEnemyPawn =
         (pieces::PAWN_ATTACKERS_TO[pawnAttackerIndex][frontSq] & enemyPawns) != 0ULL;
 
-    bool hasAdjacentHelper = false;
-    uint64_t adjacentHelpers = ownPawns & ADJACENT_FILES_ONLY[file];
-    while (adjacentHelpers) {
-        const int helperSq = popLSB(adjacentHelpers);
-        const int helperRank = helperSq >> 3;
-        if (isWhite ? (helperRank >= rank) : (helperRank <= rank)) {
-            hasAdjacentHelper = true;
-            break;
-        }
-    }
+    const uint64_t helperRankMask = isWhite
+        ? (~0ULL << (rank * 8))
+        : (rank == 7 ? ~0ULL : ((1ULL << ((rank + 1) * 8)) - 1));
+    const bool hasAdjacentHelper = (ownPawns & ADJACENT_FILES_ONLY[file] & helperRankMask) != 0ULL;
 
     if (frontControlledByEnemyPawn && !hasAdjacentHelper) {
         score += sign * engine::BACKWARD_PAWN_PENALTY;
@@ -180,8 +187,7 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
 }
 
 int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                    const uint8_t (&ownIsolatedOnFile)[8],
-                                    const uint64_t (&enemyAdjAndFilePawns)[8],
+                                    uint8_t ownIsolatedFiles,
                                     int32_t passedAdvancementScale, int32_t passedNearPromotionBonus,
                                     int32_t connectedPasserBonus, int32_t candidatePasserBonus,
                                     int sign) noexcept {
@@ -198,36 +204,36 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
     uint64_t pawns = ownPawns;
     while (pawns) {
         const int sq = popLSB(pawns);
-        const int file = sq & 7;
-        const int rank = sq >> 3;
+        const int file = chess::Board::file(sq);
+        const int rank = chess::Board::rank(sq);
         const bool hasSupport = (ownPawns & supportMasks[sq]) != 0ULL;
         const uint64_t frontMask = oneStepMasks[sq];
         const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);
-        const uint64_t enemyForwardAdjFile = enemyAdjAndFilePawns[file];
+        const uint64_t enemyForwardAdjFile = enemyPawns & ADJACENT_AND_FILE_MASKS[file];
         const bool isPassed = ((enemyForwardAdjFile & forwardFill[sq]) == 0ULL);
 
-        if (ownIsolatedOnFile[file]) {
+        if ((ownIsolatedFiles & (1 << file)) != 0) {
             score += sign * engine::ISOLATED_PAWN_PENALTY;
         }
 
         if (hasSupport) {
             score += sign * engine::PAWN_SUPPORT_BONUS;
         } else if (frontBlockedByPawn) {
-	    // Suppose that !hasSuppport == true 
+	        // Suppose that !hasSuppport == true 
             score += sign * (engine::ISOLATED_PAWN_PENALTY / 2);
         }
 
         if (isPassed) {
             score += evalPassedPawn(sq, rank, ownPawns, allPawns, file, forwardFill[sq],
-                                   oneStepMasks, ADJACENT_FILES_ONLY, enemyAdjAndFilePawns,
+                                   oneStepMasks, ADJACENT_FILES_ONLY, enemyPawns,
                                    passedAdvancementScale, passedNearPromotionBonus,
                                    connectedPasserBonus, promotionRank, sign);
-	  continue;
+	    continue;
         } 
 	
 	// Suppose isPassed == false
 	score += evalNonPassedPawn(rank, ownPawns, enemyPawns, allPawns, file, hasSupport,
-				  frontMask, forwardFill[sq], ownIsolatedOnFile,
+				  frontMask, forwardFill[sq], ownIsolatedFiles,
 				  ADJACENT_FILES_ONLY,
 				  candidatePasserBonus, pawnAttackerIndex, isWhite, sign);
     }
@@ -237,28 +243,12 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
 
 bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                int32_t& outScore) noexcept {
-    struct PawnEvalCacheEntry {
-        uint64_t whitePawns = 0ULL;
-        uint64_t blackPawns = 0ULL;
-        int32_t score = 0;
-        uint8_t isEndgame = 0;
-        uint8_t valid = 0;
-        uint16_t stamp = 0;
-    };
-
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
-    constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
-    thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
-    thread_local uint16_t pawnCacheStamp = 0;
-
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
-        static_cast<uint64_t>(isEndgame);
+        isEndgame;
     std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    const uint8_t endgameTag = static_cast<uint8_t>(isEndgame);
-    const uint16_t currentStamp = ++pawnCacheStamp;
+    const uint8_t endgameTag = isEndgame;
 
     for (size_t way = 0; way < PAWN_CACHE_WAYS; ++way) {
         PawnEvalCacheEntry& cacheEntry = cacheBucket[way];
@@ -266,7 +256,7 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
             && cacheEntry.whitePawns == whitePawns
             && cacheEntry.blackPawns == blackPawns
             && cacheEntry.isEndgame == endgameTag) {
-            cacheEntry.stamp = currentStamp;
+            cacheEntry.stamp = ++pawnCacheStamp;
             outScore = cacheEntry.score;
             return true;
         }
@@ -277,27 +267,12 @@ bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool i
 
 void Evaluator::storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame,
                                   int32_t score) noexcept {
-    struct PawnEvalCacheEntry {
-        uint64_t whitePawns = 0ULL;
-        uint64_t blackPawns = 0ULL;
-        int32_t score = 0;
-        uint8_t isEndgame = 0;
-        uint8_t valid = 0;
-        uint16_t stamp = 0;
-    };
-
-    constexpr size_t PAWN_CACHE_SIZE = 1u << 13;
-    constexpr size_t PAWN_CACHE_WAYS = 2;
-    constexpr uint64_t PAWN_CACHE_MASK = static_cast<uint64_t>(PAWN_CACHE_SIZE - 1u);
-    thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CACHE_SIZE> pawnCache{};
-    thread_local uint16_t pawnCacheStamp = 0;
-
     const uint64_t cacheHash =
         (whitePawns * 0x9E3779B97F4A7C15ULL) ^
         (blackPawns * 0xC2B2AE3D27D4EB4FULL) ^
-        static_cast<uint64_t>(isEndgame);
+        isEndgame;
     std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    const uint8_t endgameTag = static_cast<uint8_t>(isEndgame);
+    const uint8_t endgameTag = isEndgame;
     const uint16_t currentStamp = ++pawnCacheStamp;
 
     PawnEvalCacheEntry* replaceEntry = &cacheBucket[0];
@@ -338,12 +313,12 @@ int32_t Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, b
     const uint64_t allPawns = whitePawns | blackPawns;
 
     score += Evaluator::evalPawnsByColor(whitePawns, blackPawns, allPawns,
-                                         fileStats.whiteIsolatedOnFile, fileStats.blackAdjAndFilePawns,
+                                         fileStats.whiteIsolatedFiles,
                                          passedAdvancementScale, passedNearPromotionBonus,
                                          connectedPasserBonus, candidatePasserBonus, 1);
 
     score += Evaluator::evalPawnsByColor(blackPawns, whitePawns, allPawns,
-                                         fileStats.blackIsolatedOnFile, fileStats.whiteAdjAndFilePawns,
+                                         fileStats.blackIsolatedFiles,
                                          passedAdvancementScale, passedNearPromotionBonus,
                                          connectedPasserBonus, candidatePasserBonus, -1);
 

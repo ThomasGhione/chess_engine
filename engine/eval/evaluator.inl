@@ -1,5 +1,9 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    return std::abs((a & 7) - (b & 7)) + std::abs((a >> 3) - (b >> 3));
+    const int fileA = chess::Board::file(a);
+    const int fileB = chess::Board::file(b);
+    const int rankA = chess::Board::rank(a);
+    const int rankB = chess::Board::rank(b);
+    return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
@@ -36,8 +40,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
         uint64_t mask = 0;
-        const int rank = chess::Board::rankOf(sq);
-        const int file = chess::Board::fileOf(sq);
+        const int rank = chess::Board::rank(sq);
+        const int file = chess::Board::file(sq);
 
         for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
             for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
@@ -56,7 +60,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
 inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
     }
     return result;
@@ -65,7 +69,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
 inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rankOf(sq);
+        const int rank = chess::Board::rank(sq);
         result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
     }
     return result;
@@ -97,7 +101,7 @@ inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noex
 }
 
 inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
-    const uint8_t index = static_cast<uint8_t>(__builtin_ctzll(bb));
+    const uint8_t index = __builtin_ctzll(bb);
     bb &= (bb - 1);
     return index;
 }

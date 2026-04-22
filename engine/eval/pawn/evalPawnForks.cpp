@@ -38,7 +38,7 @@ static inline int32_t evalPawnForksSide(const chess::Board& b, int side) noexcep
 }
 
 int32_t Evaluator::evalPawnForks(const chess::Board& b) noexcept {
-    return evalPawnForksSide(b, 1) - evalPawnForksSide(b, 0);
+    return evalPawnForksSide(b, 0) - evalPawnForksSide(b, 1); // white - black
 }
 
 } // namespace engine

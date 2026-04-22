@@ -1,7 +1,7 @@
-#ifndef TT_TRANSPOSITION_TABLE_HPP
-#define TT_TRANSPOSITION_TABLE_HPP
+#pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,9 +16,8 @@
 
 #include "zobrist.hpp"
 
-namespace tt {
-
 class TranspositionTable {
+
 public:
     enum class HugePageMode : uint8_t {
         Auto = 0,
@@ -28,12 +27,14 @@ public:
 
     struct Entry {
         // 16-byte layout:
-        // key(8) + score(4) + bestMove(2) + packed(depth/age/flag)(2)
+        // key(8) + payload(8)
+        // payload packing:
+        //   bits  0..15  -> packed(depth/age/flag)
+        //   bits 16..31  -> bestMove
+        //   bits 32..63  -> score (int32_t)
         // 4 entries = 64 bytes (1 cache line).
         uint64_t key = 0ULL;
-        int32_t score = 0;
-        uint16_t bestMove = 0;
-        uint16_t packed = 0;
+        uint64_t payload = 0ULL;
 
         enum Flag : uint8_t {
             INVALID = 0,
@@ -52,24 +53,75 @@ public:
         static constexpr uint16_t FLAG_MASK = static_cast<uint16_t>((1u << FLAG_BITS) - 1u);
         static constexpr uint8_t AGE_SHIFT = DEPTH_BITS + FLAG_BITS;
 
-        inline uint8_t depth() const noexcept {
-            return static_cast<uint8_t>(packed & DEPTH_MASK);
-        }
-
-        inline uint8_t flag() const noexcept {
-            return static_cast<uint8_t>((packed >> FLAG_SHIFT) & FLAG_MASK);
-        }
-
-        inline uint8_t age() const noexcept {
-            return static_cast<uint8_t>(packed >> AGE_SHIFT);
-        }
-
-        inline void setPacked(uint8_t depthValue, uint8_t ageValue, uint8_t flagValue) noexcept {
-            // depthValue is clamped by caller in hot paths (store/probe wrappers).
+        static constexpr uint16_t packedMeta(uint8_t depthValue, uint8_t ageValue, uint8_t flagValue) noexcept {
             const uint16_t d = static_cast<uint16_t>(depthValue);
             const uint16_t a = static_cast<uint16_t>(ageValue);
             const uint16_t f = static_cast<uint16_t>(flagValue & FLAG_MASK);
-            packed = static_cast<uint16_t>(d | (f << FLAG_SHIFT) | (a << AGE_SHIFT));
+            return static_cast<uint16_t>(d | (f << FLAG_SHIFT) | (a << AGE_SHIFT));
+        }
+
+        static constexpr uint16_t packedFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<uint16_t>(payloadValue & 0xFFFFULL);
+        }
+
+        static constexpr uint8_t depthFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<uint8_t>(packedFromPayload(payloadValue) & DEPTH_MASK);
+        }
+
+        static constexpr uint8_t flagFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<uint8_t>((packedFromPayload(payloadValue) >> FLAG_SHIFT) & FLAG_MASK);
+        }
+
+        static constexpr uint8_t ageFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<uint8_t>(packedFromPayload(payloadValue) >> AGE_SHIFT);
+        }
+
+        static constexpr uint16_t bestMoveFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<uint16_t>((payloadValue >> 16) & 0xFFFFULL);
+        }
+
+        static constexpr int32_t scoreFromPayload(uint64_t payloadValue) noexcept {
+            return static_cast<int32_t>(static_cast<uint32_t>(payloadValue >> 32));
+        }
+
+        static constexpr uint64_t encodePayload(
+            int32_t scoreValue,
+            uint16_t bestMoveValue,
+            uint8_t depthValue,
+            uint8_t ageValue,
+            uint8_t flagValue) noexcept {
+            return (static_cast<uint64_t>(static_cast<uint32_t>(scoreValue)) << 32)
+                 | (static_cast<uint64_t>(bestMoveValue) << 16)
+                 | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
+        }
+
+        inline uint8_t depth() const noexcept {
+            return depthFromPayload(payload);
+        }
+
+        inline uint8_t flag() const noexcept {
+            return flagFromPayload(payload);
+        }
+
+        inline uint8_t age() const noexcept {
+            return ageFromPayload(payload);
+        }
+
+        inline uint16_t bestMove() const noexcept {
+            return bestMoveFromPayload(payload);
+        }
+
+        inline int32_t score() const noexcept {
+            return scoreFromPayload(payload);
+        }
+
+        inline void setPayload(
+            int32_t scoreValue,
+            uint16_t bestMoveValue,
+            uint8_t depthValue,
+            uint8_t ageValue,
+            uint8_t flagValue) noexcept {
+            payload = encodePayload(scoreValue, bestMoveValue, depthValue, ageValue, flagValue);
         }
 
         static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
@@ -138,8 +190,13 @@ public:
     TranspositionTable& operator=(TranspositionTable&&) = default;
 
 private:
+    struct BucketSeq {
+        std::atomic<uint32_t> value{0U};
+    };
+
     struct alignas(64) TableStorage {
         std::array<Entry, TABLE_SIZE> entries{};
+        std::array<BucketSeq, BUCKET_COUNT> bucketSeq{};
     };
 
     enum class AllocationKind : uint8_t {
@@ -173,6 +230,77 @@ private:
 
     inline Entry* data() noexcept { return table_->entries.data(); }
     inline const Entry* data() const noexcept { return table_->entries.data(); }
+    inline BucketSeq* seqData() noexcept { return table_->bucketSeq.data(); }
+    inline const BucketSeq* seqData() const noexcept { return table_->bucketSeq.data(); }
+
+    struct EntrySnapshot {
+        uint64_t key = 0ULL;
+        uint64_t payload = 0ULL;
+    };
+
+    [[nodiscard]] static inline uint64_t loadEntryKeyAtomic(const Entry& entry) noexcept {
+        auto& keyRef = const_cast<uint64_t&>(entry.key);
+        return std::atomic_ref<uint64_t>(keyRef).load(std::memory_order_relaxed);
+    }
+
+    [[nodiscard]] static inline uint64_t loadEntryPayloadAtomic(const Entry& entry) noexcept {
+        auto& payloadRef = const_cast<uint64_t&>(entry.payload);
+        return std::atomic_ref<uint64_t>(payloadRef).load(std::memory_order_relaxed);
+    }
+
+    static inline void storeEntryKeyAtomic(Entry& entry, uint64_t key) noexcept {
+        std::atomic_ref<uint64_t>(entry.key).store(key, std::memory_order_relaxed);
+    }
+
+    static inline void storeEntryPayloadAtomic(Entry& entry, uint64_t payload) noexcept {
+        std::atomic_ref<uint64_t>(entry.payload).store(payload, std::memory_order_relaxed);
+    }
+
+    [[nodiscard]] static inline uint32_t lockBucket(BucketSeq& bucketSeq) noexcept {
+        uint32_t expected = bucketSeq.value.load(std::memory_order_relaxed);
+        for (;;) {
+            while ((expected & 1U) != 0U) {
+                expected = bucketSeq.value.load(std::memory_order_acquire);
+            }
+
+            const uint32_t desired = expected + 1U; // odd => writer owns lock
+            if (bucketSeq.value.compare_exchange_weak(
+                    expected,
+                    desired,
+                    std::memory_order_acq_rel,
+                    std::memory_order_relaxed)) {
+                return expected;
+            }
+        }
+    }
+
+    static inline void unlockBucket(BucketSeq& bucketSeq, uint32_t lockBase) noexcept {
+        bucketSeq.value.store(lockBase + 2U, std::memory_order_release);
+    }
+
+    [[nodiscard]] static inline bool readBucketSnapshot(
+        const Entry* bucket,
+        const BucketSeq& bucketSeq,
+        EntrySnapshot (&snapshot)[ENTRIES_PER_BUCKET]) noexcept {
+        constexpr int MAX_RETRIES = 8;
+        for (int attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+            const uint32_t seqStart = bucketSeq.value.load(std::memory_order_acquire);
+            if ((seqStart & 1U) != 0U) {
+                continue;
+            }
+
+            for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+                snapshot[i].key = loadEntryKeyAtomic(bucket[i]);
+                snapshot[i].payload = loadEntryPayloadAtomic(bucket[i]);
+            }
+
+            const uint32_t seqEnd = bucketSeq.value.load(std::memory_order_acquire);
+            if (seqStart == seqEnd && (seqEnd & 1U) == 0U) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     [[nodiscard]] static inline bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
         if (lhs.size() != rhs.size()) return false;
@@ -290,16 +418,23 @@ inline void TranspositionTable::prefetch(uint64_t key) noexcept {
 inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-
-    for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const Entry& entry = bucket[i];
-        if (entry.key != key) continue;
-        if (entry.flag() == Entry::INVALID) continue;
-
-        outBestMove = entry.bestMove;
-        return outBestMove != 0;
+    const BucketSeq& bucketSeq = seqData()[bucketIndex];
+    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) {
+        outBestMove = 0;
+        return false;
     }
 
+    for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+        const EntrySnapshot& entry = snapshot[i];
+        if (entry.key != key) continue;
+
+        const uint8_t flag = Entry::flagFromPayload(entry.payload);
+        if (flag == Entry::INVALID) continue;
+
+        outBestMove = Entry::bestMoveFromPayload(entry.payload);
+        return outBestMove != 0;
+    }
     outBestMove = 0;
     return false;
 }
@@ -309,16 +444,21 @@ inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
     const uint8_t neededDepth = clampDepth(depth);
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    const BucketSeq& bucketSeq = seqData()[bucketIndex];
+    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) {
+        return false;
+    }
 
     for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const Entry& entry = bucket[i];
+        const EntrySnapshot& entry = snapshot[i];
         if (entry.key != key) continue;
 
-        const uint8_t flag = entry.flag();
+        const uint8_t flag = Entry::flagFromPayload(entry.payload);
         if (flag == Entry::INVALID) continue;
-        if (entry.depth() < neededDepth) continue;
+        if (Entry::depthFromPayload(entry.payload) < neededDepth) continue;
 
-        const int32_t score = entry.score;
+        const int32_t score = Entry::scoreFromPayload(entry.payload);
         if (flag == Entry::EXACT
             || (flag == Entry::LOWERBOUND && score >= beta)
             || (flag == Entry::UPPERBOUND && score <= alpha)) {
@@ -336,18 +476,24 @@ inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
     const uint8_t neededDepth = clampDepth(depth);
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    const BucketSeq& bucketSeq = seqData()[bucketIndex];
+    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) {
+        outBestMove = 0;
+        return false;
+    }
 
     for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const Entry& entry = bucket[i];
+        const EntrySnapshot& entry = snapshot[i];
         if (entry.key != key) continue;
 
-        const uint8_t flag = entry.flag();
+        const uint8_t flag = Entry::flagFromPayload(entry.payload);
         if (flag == Entry::INVALID) continue;
 
-        outBestMove = entry.bestMove;
-        if (entry.depth() < neededDepth) return false;
+        outBestMove = Entry::bestMoveFromPayload(entry.payload);
+        if (Entry::depthFromPayload(entry.payload) < neededDepth) return false;
 
-        const int32_t score = entry.score;
+        const int32_t score = Entry::scoreFromPayload(entry.payload);
         if (flag == Entry::EXACT
             || (flag == Entry::LOWERBOUND && score >= beta)
             || (flag == Entry::UPPERBOUND && score <= alpha)) {
@@ -365,6 +511,8 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     const uint8_t storedDepth = clampDepth(depth);
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    BucketSeq& bucketSeq = seqData()[bucketIndex];
+    const uint32_t lockBase = lockBucket(bucketSeq);
 
     Entry* replaceEntry = &bucket[0];
     Entry* emptyEntry = nullptr;
@@ -372,26 +520,27 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
 
     for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
         Entry& entry = bucket[i];
-        const uint8_t entryFlag = entry.flag();
+        const uint64_t entryKey = loadEntryKeyAtomic(entry);
+        const uint64_t entryPayload = loadEntryPayloadAtomic(entry);
+        const uint8_t entryFlag = Entry::flagFromPayload(entryPayload);
 
         if (entryFlag == Entry::INVALID) {
             if (emptyEntry == nullptr) emptyEntry = &entry;
             continue;
         }
 
-        if (entry.key == key) {
-            if (storedDepth >= entry.depth() || flag == Entry::EXACT) {
-                const uint16_t keepBestMove = entry.bestMove;
-                entry.key = key;
-                entry.score = score;
-                entry.bestMove = keepBestMove;
-                entry.setPacked(storedDepth, generation_, flag);
+        if (entryKey == key) {
+            if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
+                const uint16_t keepBestMove = Entry::bestMoveFromPayload(entryPayload);
+                const uint64_t newPayload = Entry::encodePayload(score, keepBestMove, storedDepth, generation_, flag);
+                storeEntryPayloadAtomic(entry, newPayload);
             }
+            unlockBucket(bucketSeq, lockBase);
             return;
         }
 
-        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - entry.age()));
-        const int replaceScore = (ageDiff << 8) - (static_cast<int>(entry.depth()) << 2);
+        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - Entry::ageFromPayload(entryPayload)));
+        const int replaceScore = (ageDiff << 8) - (static_cast<int>(Entry::depthFromPayload(entryPayload)) << 2);
         if (replaceScore > bestReplaceScore) {
             bestReplaceScore = replaceScore;
             replaceEntry = &entry;
@@ -399,16 +548,18 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     }
 
     Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
-    target->key = key;
-    target->score = score;
-    target->bestMove = 0;
-    target->setPacked(storedDepth, generation_, flag);
+    const uint64_t newPayload = Entry::encodePayload(score, 0, storedDepth, generation_, flag);
+    storeEntryPayloadAtomic(*target, newPayload);
+    storeEntryKeyAtomic(*target, key);
+    unlockBucket(bucketSeq, lockBase);
 }
 
 inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
     const uint8_t storedDepth = clampDepth(depth);
     const std::size_t bucketIndex = static_cast<std::size_t>(key) & (BUCKET_COUNT - 1);
     Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    BucketSeq& bucketSeq = seqData()[bucketIndex];
+    const uint32_t lockBase = lockBucket(bucketSeq);
 
     Entry* replaceEntry = &bucket[0];
     Entry* emptyEntry = nullptr;
@@ -416,25 +567,26 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
 
     for (std::size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
         Entry& entry = bucket[i];
-        const uint8_t entryFlag = entry.flag();
+        const uint64_t entryKey = loadEntryKeyAtomic(entry);
+        const uint64_t entryPayload = loadEntryPayloadAtomic(entry);
+        const uint8_t entryFlag = Entry::flagFromPayload(entryPayload);
 
         if (entryFlag == Entry::INVALID) {
             if (emptyEntry == nullptr) emptyEntry = &entry;
             continue;
         }
 
-        if (entry.key == key) {
-            if (storedDepth >= entry.depth() || flag == Entry::EXACT) {
-                entry.key = key;
-                entry.score = score;
-                entry.bestMove = bestMove;
-                entry.setPacked(storedDepth, generation_, flag);
+        if (entryKey == key) {
+            if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
+                const uint64_t newPayload = Entry::encodePayload(score, bestMove, storedDepth, generation_, flag);
+                storeEntryPayloadAtomic(entry, newPayload);
             }
+            unlockBucket(bucketSeq, lockBase);
             return;
         }
 
-        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - entry.age()));
-        const int replaceScore = (ageDiff << 8) - (static_cast<int>(entry.depth()) << 2);
+        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - Entry::ageFromPayload(entryPayload)));
+        const int replaceScore = (ageDiff << 8) - (static_cast<int>(Entry::depthFromPayload(entryPayload)) << 2);
         if (replaceScore > bestReplaceScore) {
             bestReplaceScore = replaceScore;
             replaceEntry = &entry;
@@ -442,14 +594,18 @@ inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score
     }
 
     Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
-    target->key = key;
-    target->score = score;
-    target->bestMove = bestMove;
-    target->setPacked(storedDepth, generation_, flag);
+    const uint64_t newPayload = Entry::encodePayload(score, bestMove, storedDepth, generation_, flag);
+    storeEntryPayloadAtomic(*target, newPayload);
+    storeEntryKeyAtomic(*target, key);
+    unlockBucket(bucketSeq, lockBase);
 }
 
 inline void TranspositionTable::clear() noexcept {
     std::fill_n(data(), TABLE_SIZE, Entry{});
+    BucketSeq* bucketSeq = seqData();
+    for (std::size_t i = 0; i < BUCKET_COUNT; ++i) {
+        bucketSeq[i].value.store(0U, std::memory_order_relaxed);
+    }
 }
 
 inline constexpr TranspositionTable::Entry::Flag
@@ -463,6 +619,3 @@ static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "
 static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
 static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");
 
-} // namespace tt
-
-#endif // TT_TRANSPOSITION_TABLE_HPP

@@ -34,8 +34,8 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
     if (!enemyKingBB) return 0;
 
     const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rankOf(enemyKingSq);
-    const int file = chess::Board::fileOf(enemyKingSq);
+    const int rank = chess::Board::rank(enemyKingSq);
+    const int file = chess::Board::file(enemyKingSq);
 
     const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
     const int edgeProximity = 7 - distToEdge;

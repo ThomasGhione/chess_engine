@@ -20,16 +20,15 @@ int32_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t o
 
     const bool whiteBlocked = (b.pawns_bb[0] & WHITE_D4_PAWN) && (occ & BLACK_D5_PIECE);
     score -= whiteBlocked * BLOCKED_CENTER_PENALTY;
-    score -= whiteBlocked * static_cast<bool>(b.knights_bb[0] & WHITE_BLOCKED_KNIGHTS) * BLOCKED_PIECE_PENALTY;
-    score -= whiteBlocked * static_cast<bool>(b.bishops_bb[0] & WHITE_BLOCKED_BISHOPS) * BLOCKED_PIECE_PENALTY;
+    score -= whiteBlocked * ((b.knights_bb[0] & WHITE_BLOCKED_KNIGHTS) != 0ULL) * BLOCKED_PIECE_PENALTY;
+    score -= whiteBlocked * ((b.bishops_bb[0] & WHITE_BLOCKED_BISHOPS) != 0ULL) * BLOCKED_PIECE_PENALTY;
 
     const bool blackBlocked = (b.pawns_bb[1] & BLACK_D5_PAWN) && (occ & WHITE_D4_PIECE);
     score += blackBlocked * BLOCKED_CENTER_PENALTY;
-    score += blackBlocked * static_cast<bool>(b.knights_bb[1] & BLACK_BLOCKED_KNIGHTS) * BLOCKED_PIECE_PENALTY;
-    score += blackBlocked * static_cast<bool>(b.bishops_bb[1] & BLACK_BLOCKED_BISHOPS) * BLOCKED_PIECE_PENALTY;
+    score += blackBlocked * ((b.knights_bb[1] & BLACK_BLOCKED_KNIGHTS) != 0ULL) * BLOCKED_PIECE_PENALTY;
+    score += blackBlocked * ((b.bishops_bb[1] & BLACK_BLOCKED_BISHOPS) != 0ULL) * BLOCKED_PIECE_PENALTY;
 
     return score;
 }
 
 } // namespace engine
-
