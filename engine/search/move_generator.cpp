@@ -237,67 +237,34 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
     }
 
     // Macro-step 5: Generate all non-king moves applying check/pin filtering.
-    //FIXME: Trasformare serie di cicli while in funzione con template 
     uint64_t bb = pawns;
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
         const uint64_t fromBit = chess::Board::bitMask(from);
-        const bool isPinned = (pinnedMask & fromBit) != 0ULL;
         uint64_t mask = pieces::getPawnForwardPushes(from, isWhite, occ);
-        const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[side][from];
-        const uint64_t epCandidate = (pawnAttacks & enPassantBit) ? enPassantBit : 0ULL;
-        const uint64_t caps = (pawnAttacks & oppOcc) | epCandidate;
-        mask |= caps;
+        const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
+        mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
         if (singleCheck) mask &= evasionMask;
-        if (isPinned) mask &= pinRayBySquare[from];
+        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
         addPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece, enPassant, hasEnPassant);
-    }
+    }    
+    
+    auto processPieces = [&](uint64_t bb, auto getAttacks, uint8_t pt) noexcept {
+        while (bb) {
+            const uint8_t from = engine::popLSB(bb);
+            uint64_t mask = getAttacks(from, occ) & ~ownOcc;
+            if (singleCheck) mask &= evasionMask;
+            if ((pinnedMask & chess::Board::bitMask(from))) mask &= pinRayBySquare[from];
+            addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pt);
+        }
+    };
 
-    bb = knights;
-    while (bb) {
-        const uint8_t from = engine::popLSB(bb);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-        uint64_t mask = pieces::KNIGHT_ATTACKS[from] & ~ownOcc;
-        if (singleCheck) mask &= evasionMask;
-        if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, knightPiece);
-    }
-
-    bb = bishops;
-    while (bb) {
-        const uint8_t from = engine::popLSB(bb);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-        uint64_t mask = pieces::getBishopAttacks(from, occ) & ~ownOcc;
-        if (singleCheck) mask &= evasionMask;
-        if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, bishopPiece);
-    }
-
-    bb = rooks;
-    while (bb) {
-        const uint8_t from = engine::popLSB(bb);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-        uint64_t mask = pieces::getRookAttacks(from, occ) & ~ownOcc;
-        if (singleCheck) mask &= evasionMask;
-        if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, rookPiece);
-    }
-
-    bb = queens;
-    while (bb) {
-        const uint8_t from = engine::popLSB(bb);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        const bool isPinned = (pinnedMask & fromBit) != 0ULL;
-        uint64_t mask = pieces::getQueenAttacks(from, occ) & ~ownOcc;
-        if (singleCheck) mask &= evasionMask;
-        if (isPinned) mask &= pinRayBySquare[from];
-        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, queenPiece);
-    }
+    processPieces(knights, [](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }, knightPiece);
+    processPieces(bishops, pieces::getBishopAttacks, bishopPiece);
+    processPieces(rooks, pieces::getRookAttacks, rookPiece);
+    processPieces(queens, pieces::getQueenAttacks, queenPiece);
 
     return moves;
 }

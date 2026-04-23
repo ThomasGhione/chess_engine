@@ -223,8 +223,8 @@ ut::suite performanceEngineSuite = [] {
     printf("Rook endgame pressure evaluation took %lld ms\n", static_cast<long long>(duration14));
 
     printf("Benchmark sink: %lld\n", static_cast<long long>(benchmarkSink));
-
+    
     expect(true);
-    printf("Benchmark completed.");
+    printf("Benchmark completed.\n");
   };
 };
