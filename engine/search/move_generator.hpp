@@ -41,8 +41,6 @@ public:
 
 private:
 
-    static uint64_t betweenMaskExclusive(uint8_t from, uint8_t to) noexcept;
-
     static void addPromotionMoves(
         MoveList<chess::Board::Move>& moves,
         const chess::Coords& fromC,
@@ -61,36 +59,6 @@ private:
         chess::Coords enPassant,
         bool hasEnPassant) noexcept;
 
-    static void addNonPawnMovesFromMask(
-        const chess::Board& b,
-        MoveList<chess::Board::Move>& moves,
-        uint8_t from,
-        uint64_t mask,
-        bool inCheck,
-        bool inDoubleCheck,
-        uint8_t piece) noexcept;
-
-    static void addTacticalMovesFromMask(
-        const chess::Board& b,
-        uint64_t mask,
-        uint8_t from,
-        uint8_t piece,
-        bool isPawn,
-        bool isWhite,
-        bool includeChecks,
-        chess::Coords enPassant,
-        bool hasEnPassant,
-        MoveList<chess::Board::Move>& moves) noexcept;
-
-    static void addTacticalMovesFromMaskInCheck(
-        const chess::Board& b,
-        uint64_t mask,
-        uint8_t from,
-        uint8_t piece,
-        bool isPawn,
-        bool isWhite,
-        MoveList<chess::Board::Move>& moves) noexcept;
-
     static void computePinRays(
         const chess::Board& b,
         chess::Coords kingPos,
@@ -103,14 +71,17 @@ private:
         uint8_t color,
         uint64_t& evasionMask) noexcept;
 
-    template<uint8_t PieceType>
+    template<bool InCheck, uint8_t PieceType>
     static void generateNonPawnLegalMoves(
         const chess::Board& b,
         MoveList<chess::Board::Move>& moves,
-        uint64_t bb, uint64_t occ, uint64_t ownOcc,
-        bool singleCheck, uint64_t evasionMask,
-        uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
-        bool inCheck, bool inDoubleCheck, uint8_t pt) noexcept;
+        uint64_t bb,
+        uint64_t occ,
+        uint64_t ownOcc,
+        uint64_t evasionMask,
+        uint64_t pinnedMask,
+        const uint64_t pinRayBySquare[64],
+        uint8_t pt) noexcept;
 
     template<uint8_t PieceType>
     static void generateNonPawnTacticalMoves(
