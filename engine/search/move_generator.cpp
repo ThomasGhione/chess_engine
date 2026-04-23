@@ -304,10 +304,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     const bool singleCheck = inCheck && !inDoubleCheck;
     const uint8_t pawnPiece = chess::Board::PAWN | color;
     const uint8_t pawnPromotionRank = chess::Board::promotionRank(isWhite);
-    const uint8_t knightPiece = chess::Board::KNIGHT | color;
-    const uint8_t bishopPiece = chess::Board::BISHOP | color;
-    const uint8_t rookPiece = chess::Board::ROOK | color;
-    const uint8_t queenPiece = chess::Board::QUEEN | color;
     const uint8_t kingPiece = chess::Board::KING | color;
 
     // Macro-step 2: Compute check-evasion mask when in single-check.
@@ -381,22 +377,22 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     
     if (singleCheck) {
         generateNonPawnLegalMoves<true, chess::Board::KNIGHT>(
-            b, moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data(), knightPiece);
+            moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<true, chess::Board::BISHOP>(
-            b, moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data(), bishopPiece);
+            moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<true, chess::Board::ROOK>(
-            b, moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data(), rookPiece);
+            moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<true, chess::Board::QUEEN>(
-            b, moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data(), queenPiece);
+            moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
     } else {
         generateNonPawnLegalMoves<false, chess::Board::KNIGHT>(
-            b, moves, knights, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data(), knightPiece);
+            moves, knights, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<false, chess::Board::BISHOP>(
-            b, moves, bishops, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data(), bishopPiece);
+            moves, bishops, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<false, chess::Board::ROOK>(
-            b, moves, rooks, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data(), rookPiece);
+            moves, rooks, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
         generateNonPawnLegalMoves<false, chess::Board::QUEEN>(
-            b, moves, queens, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data(), queenPiece);
+            moves, queens, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
     }
 
     return moves;
@@ -767,15 +763,13 @@ void MoveGenerator::computeCheckEvasionMasks(
 
 template<bool InCheck, uint8_t PieceType>
 void MoveGenerator::generateNonPawnLegalMoves(
-    const chess::Board& b,
     MoveList<chess::Board::Move>& moves,
     uint64_t bb,
     uint64_t occ,
     uint64_t ownOcc,
     uint64_t evasionMask,
     uint64_t pinnedMask,
-    const uint64_t pinRayBySquare[64],
-    uint8_t pt) noexcept {
+    const uint64_t pinRayBySquare[64]) noexcept {
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
         uint64_t mask = pieces::generateMovesByType<PieceType>(from, occ) & ~ownOcc;
@@ -784,17 +778,8 @@ void MoveGenerator::generateNonPawnLegalMoves(
         }
         if (pinnedMask & chess::Board::bitMask(from)) mask &= pinRayBySquare[from];
 
-        if constexpr (InCheck) {
-            while (mask) {
-                const uint8_t to = engine::popLSB(mask);
-                if (b.isLegalPseudoMove(from, to, pt, true)) {
-                    appendMoveByIndex(moves, from, to);
-                }
-            }
-        } else {
-            while (mask) {
-                appendMoveByIndex(moves, from, engine::popLSB(mask));
-            }
+        while (mask) {
+            appendMoveByIndex(moves, from, engine::popLSB(mask));
         }
     }
 }
