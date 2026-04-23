@@ -190,6 +190,67 @@ inline void appendPawnTacticalNoChecks(
     }
 }
 
+template<bool IncludeChecks>
+__attribute__((always_inline))
+inline void appendTacticalMovesFromMask(
+    const chess::Board& b,
+    uint64_t mask,
+    uint8_t from,
+    uint8_t piece,
+    bool isPawn,
+    bool isWhite,
+    chess::Coords enPassant,
+    bool hasEnPassant,
+    MoveList<chess::Board::Move>& moves) noexcept {
+    const chess::Coords fromC{from};
+    const uint8_t fromFile = chess::Board::file(from);
+    uint8_t oppColor = chess::Board::WHITE;
+    if constexpr (IncludeChecks) {
+        oppColor = chess::Board::oppositeColor(b.getActiveColor());
+    }
+
+    while (mask) {
+        const uint8_t to = __builtin_ctzll(mask);
+        mask &= (mask - 1);
+
+        const uint8_t toPiece = b.get(to);
+        const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
+            && (chess::Board::file(to) != fromFile) && (toPiece == chess::Board::EMPTY);
+        const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
+        const bool isPromotion = isPawn && (chess::Board::rank(to) == chess::Board::promotionRank(isWhite));
+
+        if constexpr (!IncludeChecks) {
+            if (!isCapture && !isPromotion) {
+                continue;
+            }
+        }
+
+        if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece)) {
+            continue;
+        }
+
+        if (isPromotion) {
+            appendPromotionSetByIndex(moves, from, to);
+            continue;
+        }
+
+        bool shouldAdd = isCapture;
+        if constexpr (IncludeChecks) {
+            if (!shouldAdd) {
+                chess::Board::MoveState tmpState;
+                const auto checkMove = chess::Board::Move{fromC, chess::Coords{to}, '\0'};
+                const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
+                shouldAdd = const_cast<chess::Board&>(b).inCheck(oppColor);
+                const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
+            }
+        }
+
+        if (shouldAdd) {
+            appendMoveByIndex(moves, from, to);
+        }
+    }
+}
+
 } // namespace
 
 MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b, bool inCheckKnown, 
@@ -231,7 +292,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     // Macro-step 2: Compute check-evasion mask when in single-check.
     uint64_t evasionMask = ~0ULL;
     if (singleCheck) {
-        computeCheckEvasionMasks(b, color, inCheck, inDoubleCheck, evasionMask);
+        computeCheckEvasionMasks(b, color, evasionMask);
     }
 
     //FIXME: Mettere precodizione per eliminare codizione
@@ -293,13 +354,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
         addPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece, enPassant, hasEnPassant);
     }    
     
-    generateNonPawnLegalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+    generateNonPawnLegalMoves<chess::Board::KNIGHT>(
         b, moves, knights, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, knightPiece);
-    generateNonPawnLegalMoves<pieces::getBishopAttacks>(
+    generateNonPawnLegalMoves<chess::Board::BISHOP>(
         b, moves, bishops, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, bishopPiece);
-    generateNonPawnLegalMoves<pieces::getRookAttacks>(
+    generateNonPawnLegalMoves<chess::Board::ROOK>(
         b, moves, rooks, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, rookPiece);
-    generateNonPawnLegalMoves<pieces::getQueenAttacks>(
+    generateNonPawnLegalMoves<chess::Board::QUEEN>(
         b, moves, queens, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, queenPiece);
 
     return moves;
@@ -360,8 +421,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 appendMoveByIndex(moves, kingIndex, engine::popLSB(attacks));
             }
         } else {
-            addTacticalMovesFromMask(b, attacks, kingIndex, kingPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
+            appendTacticalMovesFromMask<true>(
+                b, attacks, kingIndex, kingPiece, false, isWhite, enPassant, hasEnPassant, moves);
         }
         return moves;
     }
@@ -389,7 +450,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 b, moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, queenPiece);
         } else {
             uint64_t evasionMask = ~0ULL;
-            computeCheckEvasionMasks(b, color, true, false, evasionMask);
+            computeCheckEvasionMasks(b, color, evasionMask);
             appendPawnTacticalNoChecks<true>(
                 b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
                 pinnedMask, pinRayBySquare.data(), evasionMask, pawnPiece);
@@ -429,21 +490,21 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             if (isPinned) attacks &= pinRayBySquare[from];
             attacks |= epCandidate;
 
-            addTacticalMovesFromMask(b, attacks, from, pawnPiece, true, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
+            appendTacticalMovesFromMask<true>(
+                b, attacks, from, pawnPiece, true, isWhite, enPassant, hasEnPassant, moves);
         }
 
-        generateNonPawnTacticalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+        generateNonPawnTacticalMoves<chess::Board::KNIGHT>(
             b, moves, knights, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), knightPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getBishopAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::BISHOP>(
             b, moves, bishops, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), bishopPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getRookAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::ROOK>(
             b, moves, rooks, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), rookPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getQueenAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::QUEEN>(
             b, moves, queens, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), queenPiece, isWhite, enPassant, hasEnPassant);
     } else {
         uint64_t evasionMask = ~0ULL;
-        computeCheckEvasionMasks(b, color, true, false, evasionMask);
+        computeCheckEvasionMasks(b, color, evasionMask);
 
         uint64_t bb = pawns;
         while (bb) {
@@ -464,23 +525,23 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
             if (isPinned) attacks &= pinRayBySquare[from];
             attacks |= epCandidate;
 
-            addTacticalMovesFromMask(b, attacks, from, pawnPiece, true, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
+            appendTacticalMovesFromMask<true>(
+                b, attacks, from, pawnPiece, true, isWhite, enPassant, hasEnPassant, moves);
         }
 
-        generateNonPawnTacticalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+        generateNonPawnTacticalMoves<chess::Board::KNIGHT>(
             b, moves, knights, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), knightPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getBishopAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::BISHOP>(
             b, moves, bishops, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), bishopPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getRookAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::ROOK>(
             b, moves, rooks, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), rookPiece, isWhite, enPassant, hasEnPassant);
-        generateNonPawnTacticalMoves<pieces::getQueenAttacks>(
+        generateNonPawnTacticalMoves<chess::Board::QUEEN>(
             b, moves, queens, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), queenPiece, isWhite, enPassant, hasEnPassant);
     }
 
     uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
-    addTacticalMovesFromMask(b, kingAttacks, kingIndex, kingPiece, false, isWhite, true,
-                             enPassant, hasEnPassant, moves);
+    appendTacticalMovesFromMask<true>(
+        b, kingAttacks, kingIndex, kingPiece, false, isWhite, enPassant, hasEnPassant, moves);
     return moves;
 }
 
@@ -598,60 +659,12 @@ void MoveGenerator::addTacticalMovesFromMask(const chess::Board& b, uint64_t mas
                                              uint8_t piece, bool isPawn, bool isWhite, bool includeChecks, 
                                              chess::Coords enPassant, bool hasEnPassant, 
                                              MoveList<chess::Board::Move>& moves) noexcept {
-    // Macro-step 1: Initialize context needed for tactical filtering.
-    const chess::Coords fromC{from};
-    const uint8_t defaultOppColor = chess::Board::WHITE;
-    const uint8_t oppColor = includeChecks
-        ? chess::Board::oppositeColor(b.getActiveColor())
-        : defaultOppColor;
-    const uint8_t fromFile = chess::Board::file(from);
-
-    // Macro-step 2: Iterate candidates and identify tactical categories.
-    while (mask) {
-        const uint8_t to = __builtin_ctzll(mask);
-        mask &= (mask - 1);
-
-	//FIXME: Rendere resto del codice in funzione helper
-        const uint8_t toPiece = b.get(to);
-        const bool isEnPassant = isPawn && hasEnPassant && (to == enPassant.index)
-            && (chess::Board::file(to) != fromFile) && (toPiece == chess::Board::EMPTY);
-        const bool isCapture = (toPiece != chess::Board::EMPTY) || isEnPassant;
-        const bool isPromotion = isPawn && (chess::Board::rank(to) == chess::Board::promotionRank(isWhite));
-
-        // Fast path: when checks are disabled, skip non-tactical quiet moves immediately.
-        if (!includeChecks && !isCapture && !isPromotion) {
-            continue;
-        }
-
-        // Check legality for en passant and promotions
-            if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece)) {
-            continue;
-        }
-
-        const chess::Coords toC{to};
-
-        if (isPromotion) {
-            addPromotionMoves(moves, fromC, toC);
-            continue;
-        }
-
-        bool shouldAdd = isCapture;
-
-        // Macro-step 3: Optionally include quiet checking moves.
-        if (!shouldAdd && includeChecks) {
-            chess::Board::MoveState tmpState;
-            const auto checkMove = chess::Board::Move{fromC, toC, '\0'};
-            const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
-            if (const_cast<chess::Board&>(b).inCheck(oppColor)) {
-                shouldAdd = true;
-            }
-            const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
-        }
-
-        // Macro-step 4: Emit tactical move.
-        if (shouldAdd) {
-            moves.emplace_back(chess::Board::Move{fromC, toC});
-        }
+    if (includeChecks) {
+        appendTacticalMovesFromMask<true>(
+            b, mask, from, piece, isPawn, isWhite, enPassant, hasEnPassant, moves);
+    } else {
+        appendTacticalMovesFromMask<false>(
+            b, mask, from, piece, isPawn, isWhite, enPassant, hasEnPassant, moves);
     }
 }
 
@@ -752,38 +765,31 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
 void MoveGenerator::computeCheckEvasionMasks(
     const chess::Board& b,
     uint8_t color,
-    bool inCheck,
-    bool inDoubleCheck,
     uint64_t& evasionMask) noexcept {
-    // Macro-step 1: Initialize mask and early-outs for non-check nodes.
-    evasionMask = ~0ULL;
+    // This helper is called only from single-check paths.
+    evasionMask = 0ULL;
 
-    if (!inCheck) return;
-    
-    //FIXME: Fare pre codizione
     const int us = chess::Board::colorToIndex(color);
     const int them = us ^ 1;
     const uint64_t kingBB = b.kings_bb[us];
     if (!kingBB) [[unlikely]] {
-        evasionMask = 0ULL;
         return;
     }
   
-    //FIXME: Creare funzione helper per restituire direttamente checkersMask
-    // Macro-step 2: Build checker mask from all enemy piece classes.
     const uint8_t kingSq = __builtin_ctzll(kingBB);
     const uint64_t occ = b.getPiecesBitMap();
 
-    uint64_t checkersMask = 0ULL;
-    checkersMask |= pieces::PAWN_ATTACKERS_TO[them][kingSq] & b.pawns_bb[them];
-    checkersMask |= pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them];
-    checkersMask |= pieces::KING_ATTACKS[kingSq] & b.kings_bb[them];
-    checkersMask |= pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
-    checkersMask |= pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
+    const uint64_t rookCheckers = pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
+    const uint64_t bishopCheckers = pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
+    const uint64_t checkersMask =
+        (pieces::PAWN_ATTACKERS_TO[them][kingSq] & b.pawns_bb[them])
+        | (pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them])
+        | (pieces::KING_ATTACKS[kingSq] & b.kings_bb[them])
+        | rookCheckers
+        | bishopCheckers;
 
-    // Macro-step 3: Derive evasion constraints for double/single checker cases.
-    if (inDoubleCheck || ((checkersMask & (checkersMask - 1)) != 0ULL)) {
-        evasionMask = 0ULL;
+    // single-check expected; fallback to king-only evasions on inconsistent data
+    if ((checkersMask & (checkersMask - 1)) != 0ULL) {
         return;
     }
 
@@ -793,20 +799,16 @@ void MoveGenerator::computeCheckEvasionMasks(
     }
 
     const uint8_t checkerSq = __builtin_ctzll(checkersMask);
-    const uint8_t checkerType = b.get(checkerSq) & chess::Board::MASK_PIECE_TYPE;
-
-    evasionMask = chess::Board::bitMask(checkerSq);
-    //FIXME: Creare funzione inline helper per codizone dentro if.
-    if (checkerType == chess::Board::ROOK
-        || checkerType == chess::Board::BISHOP
-        || checkerType == chess::Board::QUEEN) {
-        evasionMask |= betweenMaskExclusive(kingSq, checkerSq);
+    const uint64_t checkerBit = chess::Board::bitMask(checkerSq);
+    evasionMask = checkerBit;
+    if ((rookCheckers | bishopCheckers) & checkerBit) {
+        evasionMask |= BETWEEN_EXCLUSIVE_LUT[kingSq][checkerSq];
     }
 }
 
 
 
-template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+template<uint8_t PieceType>
 void MoveGenerator::generateNonPawnLegalMoves(
     const chess::Board& b,
     MoveList<chess::Board::Move>& moves,
@@ -816,14 +818,14 @@ void MoveGenerator::generateNonPawnLegalMoves(
     bool inCheck, bool inDoubleCheck, uint8_t pt) noexcept {
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
-        uint64_t mask = GetAttacks(from, occ) & ~ownOcc;
+        uint64_t mask = pieces::generateMovesByType<PieceType>(from, occ) & ~ownOcc;
         if (singleCheck) mask &= evasionMask;
         if (pinnedMask & chess::Board::bitMask(from)) mask &= pinRayBySquare[from];
         addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pt);
     }
 }
 
-template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+template<uint8_t PieceType>
 void MoveGenerator::generateNonPawnTacticalMoves(
     const chess::Board& b,
     MoveList<chess::Board::Move>& moves,
@@ -832,11 +834,11 @@ void MoveGenerator::generateNonPawnTacticalMoves(
     uint8_t piece, bool isWhite, chess::Coords enPassant, bool hasEnPassant) noexcept {
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
-        uint64_t attacks = GetAttacks(from, occ) & oppOcc;
+        uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
         attacks &= evasionMask;
         if (pinnedMask & chess::Board::bitMask(from)) attacks &= pinRayBySquare[from];
-        addTacticalMovesFromMask(b, attacks, from, piece, false, isWhite, true,
-                                 enPassant, hasEnPassant, moves);
+        appendTacticalMovesFromMask<true>(
+            b, attacks, from, piece, false, isWhite, enPassant, hasEnPassant, moves);
     }
 }
 } // namespace engine

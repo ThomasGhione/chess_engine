@@ -99,11 +99,9 @@ private:
     static void computeCheckEvasionMasks(
         const chess::Board& b,
         uint8_t color,
-        bool inCheck,
-        bool inDoubleCheck,
         uint64_t& evasionMask) noexcept;
 
-    template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+    template<uint8_t PieceType>
     static void generateNonPawnLegalMoves(
         const chess::Board& b,
         MoveList<chess::Board::Move>& moves,
@@ -112,7 +110,7 @@ private:
         uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
         bool inCheck, bool inDoubleCheck, uint8_t pt) noexcept;
 
-    template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+    template<uint8_t PieceType>
     static void generateNonPawnTacticalMoves(
         const chess::Board& b,
         MoveList<chess::Board::Move>& moves,
@@ -122,4 +120,3 @@ private:
 };
 
 } // namespace engine
-
