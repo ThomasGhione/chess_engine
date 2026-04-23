@@ -8,6 +8,7 @@
 #include "../../tt/tt.hpp"
 #include "../eval_constants.hpp"
 #include "../movelist.hpp"
+#include "sorter.hpp"
 
 namespace engine {
 
@@ -232,8 +233,7 @@ private:
 
     static SearchMoveResult searchMoves(
         chess::Board& b,
-        MoveList<chess::Board::Move>& orderedMoves,
-        int32_t* moveScores,
+        Sorter::MovePickerData& movePicker,
         bool usIsWhite,
         const SearchContext& ctx,
         AlphaBeta& bounds,

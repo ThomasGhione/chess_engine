@@ -474,8 +474,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
 Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board& b,
-    MoveList<chess::Board::Move>& orderedMoves,
-    int32_t* moveScores,
+    Sorter::MovePickerData& movePicker,
     bool usIsWhite,
     const SearchContext& ctx,
     AlphaBeta& bounds,
@@ -485,7 +484,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     bool allowTTWrite) noexcept {
     // Macro-step 1: Initialize best-score tracking and quiet-move malus buffers.
     int32_t best = initialBest(usIsWhite);
-    chess::Board::Move bestMove = orderedMoves[0];
+    chess::Board::Move bestMove{};
     bool searchedAnyMove = false;
 
     struct QuietEntry { uint8_t from; uint8_t to; };
@@ -538,28 +537,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
 
     // Macro-step 3: Incremental move picker + visit loop with LMP/futility/LMR/PVS logic.
-    for (int moveIndex = 0; moveIndex < orderedMoves.size; ++moveIndex) {
+    while (movePicker.hasNext()) {
+        const int moveIndex = movePicker.currentIndex;
+        const chess::Board::Move m = movePicker.nextMove();
+        
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
             break;
         }
 
-        if (moveScores != nullptr) {
-            // Pick best remaining move without globally sorting the full list.
-            int bestIndex = moveIndex;
-            int32_t pickScore = moveScores[moveIndex];
-            for (int candidate = moveIndex + 1; candidate < orderedMoves.size; ++candidate) {
-                const bool better = moveScores[candidate] > pickScore;
-                bestIndex = better ? candidate : bestIndex;
-                pickScore = better ? moveScores[candidate] : pickScore;
-            }
-            if (bestIndex != moveIndex) {
-                std::swap(orderedMoves[moveIndex], orderedMoves[bestIndex]);
-                std::swap(moveScores[moveIndex], moveScores[bestIndex]);
-            }
-        }
-
-        const chess::Board::Move m = orderedMoves[moveIndex];
         const bool isFirstMove = (moveIndex == 0);
 
         const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
@@ -845,46 +831,22 @@ int32_t Searcher::searchPosition(
             : stalemateScoreFromMaterialDelta(Evaluator::getMaterialDelta(b));
     }
 
-    static constexpr int INCREMENTAL_PICKER_BRANCHING_THRESHOLD = 40;
-    const bool useIncrementalPicker = (moves.size >= INCREMENTAL_PICKER_BRANCHING_THRESHOLD);
-
-    Sorter::MovePickerData movePicker;
-    MoveList<chess::Board::Move> orderedMoves;
-    int32_t* moveScores = nullptr;
     bool hasHashMove = false;
 
-    if (useIncrementalPicker) {
-        movePicker = Sorter::prepareMovePicker(
-            moves,
-            ply,
-            b,
-            node.usIsWhite,
-            hashKey,
-            runtime.history,
-            runtime.killerMoves,
-            runtime.counterMoves,
-            runtime.captureHistory,
-            canUseTT ? runtime.transpositionTable : nullptr,
-            ctx.previousMove,
-            runtime.orderingPenaltySamePawnOpening);
-        hasHashMove = movePicker.hashMoveIsLegal;
-        moveScores = movePicker.scores;
-    } else {
-        orderedMoves = Sorter::sortLegalMoves(
-            moves,
-            ply,
-            b,
-            node.usIsWhite,
-            hashKey,
-            runtime.history,
-            runtime.killerMoves,
-            runtime.counterMoves,
-            runtime.captureHistory,
-            canUseTT ? runtime.transpositionTable : nullptr,
-            ctx.previousMove,
-            &hasHashMove,
-            runtime.orderingPenaltySamePawnOpening);
-    }
+    Sorter::MovePickerData movePicker = Sorter::sortLegalMoves(
+        moves,
+        ply,
+        b,
+        node.usIsWhite,
+        hashKey,
+        runtime.history,
+        runtime.killerMoves,
+        runtime.counterMoves,
+        runtime.captureHistory,
+        canUseTT ? runtime.transpositionTable : nullptr,
+        ctx.previousMove,
+        &hasHashMove,
+        runtime.orderingPenaltySamePawnOpening);
 
     if (!hasHashMove && depth >= 6 && ply > 0) {
         ctx.depth -= 1;
@@ -893,9 +855,8 @@ int32_t Searcher::searchPosition(
     const int32_t alphaOrig = bounds.alpha;
     const int32_t betaOrig = bounds.beta;
 
-    MoveList<chess::Board::Move>& searchMovesList = useIncrementalPicker ? movePicker.moves : orderedMoves;
     SearchMoveResult result = searchMoves(
-        b, searchMovesList, moveScores, node.usIsWhite, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
+        b, movePicker, node.usIsWhite, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
     if (isInterrupted(runtime)) {
@@ -1047,9 +1008,9 @@ int32_t Searcher::quiescenceSearch(
     }
 
     // Macro-step 4: Generate tactical set, recurse, apply cutoffs, and optionally store TT.
-    MoveList<chess::Board::Move> tacticalMoves = engine::MoveGenerator::generateQSearchTacticalMoves(
+    Sorter::MovePickerData tacticalMoves = engine::MoveGenerator::generateQSearchTacticalMoves(
         b, standPat, alpha, beta, ply, usIsWhite, runtime.depth);
-    if (tacticalMoves.is_empty()) {
+    if (!tacticalMoves.hasNext()) {
         return standPat;
     }
 
@@ -1058,7 +1019,9 @@ int32_t Searcher::quiescenceSearch(
     int32_t best = standPat;
 
     //FIXME: Eliminare costanti magiche
-    for (const auto& m : tacticalMoves) {
+    while (tacticalMoves.hasNext()) {
+        const auto m = tacticalMoves.nextMove();
+        
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
             return Evaluator::evaluate(b);
@@ -1111,7 +1074,7 @@ chess::Board::Move Searcher::getBestMove(
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
-    MoveList<chess::Board::Move> orderedRootMoves = Sorter::sortLegalMoves(
+    Sorter::MovePickerData orderedRootMoves = Sorter::sortLegalMoves(
         moves,
         0,
         rootBoard,
@@ -1125,7 +1088,11 @@ chess::Board::Move Searcher::getBestMove(
         nullptr,
         nullptr,
         runtime.orderingPenaltySamePawnOpening);
-    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves;
+    
+    // YBWC and Root iterations require fully sorted list upfront.
+    Sorter::insertionSort(orderedRootMoves.moves, orderedRootMoves.scores);
+    
+    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.moves;
 
     const bool useYBWC = (rootMoves.size >= 10
         && runtime.depth >= DEFAULT_DEPTH - 2);

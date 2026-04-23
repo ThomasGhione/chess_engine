@@ -490,7 +490,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     return picker;
 }
 
-MoveList<chess::Board::Move> Sorter::sortLegalMoves(
+Sorter::MovePickerData Sorter::sortLegalMoves(
     const MoveList<chess::Board::Move>& moves,
     int ply,
     chess::Board& b,
@@ -522,22 +522,19 @@ MoveList<chess::Board::Move> Sorter::sortLegalMoves(
         if (outHashMoveIsLegal != nullptr) {
             *outHashMoveIsLegal = false;
         }
-        return std::move(picker.moves);
+        return picker;
     }
-
-    // Macro-step 5: Run insertion-sort on score/move arrays in descending order.
-    insertionSort(picker.moves, picker.scores);
 
     // Macro-step 6: Report whether hash move ended up as first move.
-    const bool hashMovePlacedFirst = picker.hashMoveIsLegal
-        && !picker.moves.is_empty()
-        && (picker.scores[0] == 100000);
+    // Notice: without insertionSort, the hash move score is just checked to be 100000.
+    const bool hashMoveFound = picker.hashMoveIsLegal
+        && !picker.moves.is_empty();
 
     if (outHashMoveIsLegal != nullptr) {
-        *outHashMoveIsLegal = hashMovePlacedFirst;
+        *outHashMoveIsLegal = hashMoveFound;
     }
 
-    return std::move(picker.moves);
+    return picker;
 }
 
 bool Sorter::shouldDeltaPrune(
@@ -556,7 +553,7 @@ bool Sorter::shouldDeltaPrune(
     return isWhite ? (standPat64 + margin64 < alpha64) : (standPat64 - margin64 > beta64);
 }
 
-MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
+Sorter::MovePickerData Sorter::sortTacticalMoves(
     const MoveList<chess::Board::Move>& tacticalMoves,
     const chess::Board& b,
     int32_t standPat,
@@ -566,13 +563,12 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
     bool usIsWhite,
     int32_t searchDepth) noexcept {
     // Macro-step 1: Copy the input tactical list and early-return when empty.
-    MoveList<chess::Board::Move> sortedTacticalMoves = tacticalMoves;
-    if (sortedTacticalMoves.is_empty()) {
-        return sortedTacticalMoves;
+    MovePickerData picker;
+    if (tacticalMoves.is_empty()) {
+        return picker;
     }
 
     // Sort tactical moves by MVV-LVA and SEE using compact parallel score storage.
-    int32_t tacticalScores[MAX_MOVES] {};
     int filteredCount = 0;
 
     // Macro-step 2: Precompute shared metadata and dynamic pruning thresholds.
@@ -590,8 +586,8 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
 
     //FIXME: Trasforma in funzione helper
     // Macro-step 3: Filter and score tactical moves with copied qsearch policy.
-    for (int i = 0; i < sortedTacticalMoves.size; ++i) {
-        const auto& m = sortedTacticalMoves[i];
+    for (int i = 0; i < tacticalMoves.size; ++i) {
+        const auto& m = tacticalMoves[i];
         const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
         const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
@@ -606,7 +602,7 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
 
         int32_t score = 0;
       
-	//FIXME: Trasforma in funzione helper
+        //FIXME: Trasforma in funzione helper
         if (isCapture) {
             // TODO test this better!!
             // ============================================================================
@@ -653,28 +649,18 @@ MoveList<chess::Board::Move> Sorter::sortTacticalMoves(
             }
         }
 
-        sortedTacticalMoves[filteredCount] = m;
-        tacticalScores[filteredCount] = score;
+        picker.moves[filteredCount] = m;
+        picker.scores[filteredCount] = score;
         ++filteredCount;
     }
 
-    sortedTacticalMoves.size = filteredCount;
-
-    // Macro-step 4: Return early if all tactical moves were pruned.
-    // If all captures were pruned, return stand-pat
-    if (sortedTacticalMoves.is_empty()) {
-        return sortedTacticalMoves;
-    }
-
-    // Macro-step 5: Insertion-sort scored tactical moves in descending order.
-    insertionSort(sortedTacticalMoves, tacticalScores);
+    picker.size = filteredCount;
+    picker.moves.size = filteredCount;
 
     // Macro-step 6: Return sorted tactical list.
     (void)searchDepth; // kept for API compatibility with qsearch context.
-    return sortedTacticalMoves;
-}
-
-bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
+    return picker;
+}bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     if (toPieceType != chess::Board::EMPTY) return true;
 
@@ -733,5 +719,7 @@ bool Sorter::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, c
     b.doMove(m, state, promoChoice);
     return isPromo;
 }
+
+template void Sorter::insertionSort<chess::Board::Move>(MoveList<chess::Board::Move>&, int32_t*) noexcept;
 
 } // namespace engine

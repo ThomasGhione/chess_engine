@@ -20,7 +20,38 @@ public:
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};
         int size = 0;
+        int currentIndex = 0;
         bool hashMoveIsLegal = false;
+
+        inline bool hasNext() const noexcept {
+            return currentIndex < size;
+        }
+
+        inline chess::Board::Move nextMove() noexcept {
+            if (currentIndex >= size) return chess::Board::Move{};
+
+            int bestIdx = currentIndex;
+            int32_t bestScore = scores[currentIndex];
+            for (int i = currentIndex + 1; i < size; ++i) {
+                if (scores[i] > bestScore) {
+                    bestScore = scores[i];
+                    bestIdx = i;
+                }
+            }
+
+            // Swap
+            if (bestIdx != currentIndex) {
+                const auto tempMove = moves[currentIndex];
+                moves[currentIndex] = moves[bestIdx];
+                moves[bestIdx] = tempMove;
+
+                const auto tempScore = scores[currentIndex];
+                scores[currentIndex] = scores[bestIdx];
+                scores[bestIdx] = tempScore;
+            }
+
+            return moves[currentIndex++];
+        }
     };
 
     template <typename MoveType>
@@ -40,7 +71,7 @@ public:
         const chess::Board::Move* previousMove = nullptr,
         int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
 
-    static MoveList<chess::Board::Move> sortLegalMoves(
+    static MovePickerData sortLegalMoves(
         const MoveList<chess::Board::Move>& moves,
         int ply,
         chess::Board& b,
@@ -55,7 +86,7 @@ public:
         bool* outHashMoveIsLegal = nullptr,
         int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
 
-    static MoveList<chess::Board::Move> sortTacticalMoves(
+    static MovePickerData sortTacticalMoves(
         const MoveList<chess::Board::Move>& tacticalMoves,
         const chess::Board& b,
         int32_t standPat,

@@ -591,7 +591,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateQSearchEvasions(const chess:
     return engine::Sorter::sortEvasionsForcingFirst(evasions, b);
 }
 
-MoveList<chess::Board::Move> MoveGenerator::generateQSearchTacticalMoves(
+engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
@@ -600,20 +600,18 @@ MoveList<chess::Board::Move> MoveGenerator::generateQSearchTacticalMoves(
     bool usIsWhite,
     int32_t searchDepth) noexcept {
     // Macro-step 1: Generate tactical candidate moves for qsearch.
-    //FIXME: Rendere chiamata senza true e false che non significano nulla. 
+    //FIXME: Rendere chiamata senza true e false che non significano nulla.
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b, false, true, false, false);
 
     // Macro-step 2: Return early when no tactical continuation exists.
     if (tacticalMoves.is_empty()) {
-        return tacticalMoves;
+        return engine::Sorter::MovePickerData{};
     }
 
     // Macro-step 3: Apply qsearch tactical ordering/pruning policy via Sorter.
     return engine::Sorter::sortTacticalMoves(
         tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite, searchDepth);
-}
-
-void MoveGenerator::addPromotionMoves(
+}void MoveGenerator::addPromotionMoves(
     MoveList<chess::Board::Move>& moves,
     const chess::Coords& fromC,
     const chess::Coords& toC) noexcept {

@@ -5,9 +5,9 @@
 
 #include "../../board/board.hpp"
 #include "../movelist.hpp"
+#include "sorter.hpp"
 
 namespace engine {
-class Sorter;
 
 class MoveGenerator final {
 
@@ -30,7 +30,7 @@ public:
 
     static MoveList<chess::Board::Move> generateQSearchEvasions(const chess::Board& b) noexcept;
 
-    static MoveList<chess::Board::Move> generateQSearchTacticalMoves(
+    static engine::Sorter::MovePickerData generateQSearchTacticalMoves(
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
