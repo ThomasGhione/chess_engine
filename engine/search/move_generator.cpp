@@ -92,15 +92,13 @@ inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT 
 template<bool InCheck, uint8_t PieceType>
 __attribute__((always_inline))
 inline void appendNonPawnTacticalNoChecks(
-    const chess::Board& b,
     MoveList<chess::Board::Move>& moves,
     uint64_t pieceBB,
     uint64_t occ,
     uint64_t oppOcc,
     uint64_t pinnedMask,
     const uint64_t pinRayBySquare[64],
-    uint64_t evasionMask,
-    uint8_t pieceCode) noexcept {
+    uint64_t evasionMask) noexcept {
     while (pieceBB) {
         const uint8_t from = engine::popLSB(pieceBB);
         const uint64_t fromBit = chess::Board::bitMask(from);
@@ -116,9 +114,7 @@ inline void appendNonPawnTacticalNoChecks(
         if constexpr (InCheck) {
             while (attacks) {
                 const uint8_t to = engine::popLSB(attacks);
-                if (b.isLegalPseudoMove(from, to, pieceCode, true)) {
-                    appendMoveByIndex(moves, from, to);
-                }
+                appendMoveByIndex(moves, from, to);
             }
         } else {
             while (attacks) {
@@ -170,14 +166,13 @@ inline void appendPawnTacticalNoChecks(
 
         while (attacks) {
             const uint8_t to = engine::popLSB(attacks);
-            if constexpr (InCheck) {
-                if (!b.isLegalPseudoMove(from, to, pawnPiece, true)) {
-                    continue;
-                }
-            } else {
-                const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
-                if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece)) {
-                    continue;
+            const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
+
+            if (isEnPassant) {
+                if constexpr (InCheck) {
+                    if (!b.isLegalPseudoMove(from, to, pawnPiece, true)) continue;
+                } else {
+                    if (!b.isLegalPseudoMove(from, to, pawnPiece, false)) continue;
                 }
             }
 
@@ -225,7 +220,7 @@ inline void appendTacticalMovesFromMask(
             }
         }
 
-        if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece)) {
+        if (isEnPassant && !b.isLegalPseudoMove(from, to, piece)) {
             continue;
         }
 
@@ -237,11 +232,36 @@ inline void appendTacticalMovesFromMask(
         bool shouldAdd = isCapture;
         if constexpr (IncludeChecks) {
             if (!shouldAdd) {
-                chess::Board::MoveState tmpState;
-                const auto checkMove = chess::Board::Move{fromC, chess::Coords{to}, '\0'};
-                const_cast<chess::Board&>(b).doMove(checkMove, tmpState, '\0');
-                shouldAdd = const_cast<chess::Board&>(b).inCheck(oppColor);
-                const_cast<chess::Board&>(b).undoMove(checkMove, tmpState);
+                const uint64_t fromBit = chess::Board::bitMask(from);
+                const uint64_t toBit = chess::Board::bitMask(to);
+                const uint64_t occTemp = (b.getPiecesBitMap() ^ fromBit) | toBit;
+                const uint8_t oppKingSq = __builtin_ctzll(b.kings_bb[oppColor]);
+                const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
+                
+                shouldAdd = false;
+                const uint64_t oppKingBit = chess::Board::bitMask(oppKingSq);
+                
+                if (pieceType == chess::Board::PAWN) {
+                    if (pieces::PAWN_ATTACKS[isWhite ? 0 : 1][to] & oppKingBit) shouldAdd = true;
+                } else if (pieceType == chess::Board::KNIGHT) {
+                    if (pieces::KNIGHT_ATTACKS[to] & oppKingBit) shouldAdd = true;
+                } else if (pieceType == chess::Board::BISHOP) {
+                    if (pieces::getBishopAttacks(to, occTemp) & oppKingBit) shouldAdd = true;
+                } else if (pieceType == chess::Board::ROOK) {
+                    if (pieces::getRookAttacks(to, occTemp) & oppKingBit) shouldAdd = true;
+                } else if (pieceType == chess::Board::QUEEN) {
+                    if ((pieces::getBishopAttacks(to, occTemp) | pieces::getRookAttacks(to, occTemp)) & oppKingBit) shouldAdd = true;
+                }
+                
+                if (!shouldAdd) {
+                    const int usSide = isWhite ? 0 : 1;
+                    const uint64_t rookLike = b.rooks_bb[usSide] | b.queens_bb[usSide];
+                    const uint64_t bishopLike = b.bishops_bb[usSide] | b.queens_bb[usSide];
+                    if ((rookLike && (pieces::getRookAttacks(oppKingSq, occTemp) & rookLike)) ||
+                        (bishopLike && (pieces::getBishopAttacks(oppKingSq, occTemp) & bishopLike))) {
+                        shouldAdd = true;
+                    }
+                }
             }
         }
 
@@ -455,13 +475,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
                 pinnedMask, pinRayBySquare.data(), 0ULL, pawnPiece);
             appendNonPawnTacticalNoChecks<false, chess::Board::KNIGHT>(
-                b, moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, knightPiece);
+                moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
             appendNonPawnTacticalNoChecks<false, chess::Board::BISHOP>(
-                b, moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, bishopPiece);
+                moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
             appendNonPawnTacticalNoChecks<false, chess::Board::ROOK>(
-                b, moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, rookPiece);
+                moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
             appendNonPawnTacticalNoChecks<false, chess::Board::QUEEN>(
-                b, moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL, queenPiece);
+                moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
         } else {
             uint64_t evasionMask = ~0ULL;
             computeCheckEvasionMasks(b, color, evasionMask);
@@ -469,13 +489,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
                 b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
                 pinnedMask, pinRayBySquare.data(), evasionMask, pawnPiece);
             appendNonPawnTacticalNoChecks<true, chess::Board::KNIGHT>(
-                b, moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, knightPiece);
+                moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask);
             appendNonPawnTacticalNoChecks<true, chess::Board::BISHOP>(
-                b, moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, bishopPiece);
+                moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask);
             appendNonPawnTacticalNoChecks<true, chess::Board::ROOK>(
-                b, moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, rookPiece);
+                moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask);
             appendNonPawnTacticalNoChecks<true, chess::Board::QUEEN>(
-                b, moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask, queenPiece);
+                moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), evasionMask);
         }
 
         uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
