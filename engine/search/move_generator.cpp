@@ -283,6 +283,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
         : false;
     const bool singleCheck = inCheck && !inDoubleCheck;
     const uint8_t pawnPiece = chess::Board::PAWN | color;
+    const uint8_t pawnPromotionRank = chess::Board::promotionRank(isWhite);
     const uint8_t knightPiece = chess::Board::KNIGHT | color;
     const uint8_t bishopPiece = chess::Board::BISHOP | color;
     const uint8_t rookPiece = chess::Board::ROOK | color;
@@ -351,7 +352,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
         if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
-        addPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece, enPassant, hasEnPassant);
+        addPawnMovesFromMask(
+            b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece,
+            isWhite, pawnPromotionRank, enPassant, hasEnPassant);
     }    
     
     generateNonPawnLegalMoves<chess::Board::KNIGHT>(
@@ -593,15 +596,15 @@ void MoveGenerator::addPromotionMoves(
 // ============================================================================
 void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves, 
                                          uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck, 
-                                         uint8_t pawnPiece, chess::Coords enPassant, bool hasEnPassant) noexcept {
+                                         uint8_t pawnPiece, bool isWhite, uint8_t promotionRank,
+                                         chess::Coords enPassant, bool hasEnPassant) noexcept {
     //FIXME: Creare pre codizione
     // Macro-step 1: Guard empty mask and precompute pawn metadata.
     if (!mask) [[unlikely]] return;
 
+    (void)isWhite;
     const chess::Coords fromC{from};
     const uint8_t fromFile = chess::Board::file(from);
-    const bool isWhite = (b.getColor(from) == chess::Board::WHITE);
-    const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
 
     // Macro-step 2: Iterate destinations and enforce EP legality checks.
     while (mask) {

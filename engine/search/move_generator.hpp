@@ -56,6 +56,8 @@ private:
         bool inCheck,
         bool inDoubleCheck,
         uint8_t pawnPiece,
+        bool isWhite,
+        uint8_t promotionRank,
         chess::Coords enPassant,
         bool hasEnPassant) noexcept;
 
