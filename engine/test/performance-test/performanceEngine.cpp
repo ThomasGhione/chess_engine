@@ -2,6 +2,8 @@
 
 #include "../../engine.hpp"
 #include "../../eval/evaluator.hpp"
+#include "../../search/move_generator.hpp"
+#include "../../movelist.hpp"
 #include "../../../tests/ut.hpp"
 
 namespace ut = boost::ut;
@@ -19,7 +21,7 @@ ut::suite performanceEngineSuite = [] {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     printf("Depth 11 search completed in %lu ms\n", duration);
-    printf("Nodes searched: %lu\n", e.nodesSearched);
+    printf("Nodes searched: %lu\n\n", e.nodesSearched);
     expect(duration < 9000);
   };
 
@@ -44,7 +46,7 @@ ut::suite performanceEngineSuite = [] {
     double avgDuration = static_cast<double>(totalDuration) / runs;
 
     // Attesa che la ricerca media venga completata in meno di 500 millisecondi
-    printf("Average Depth 10 search time over %d runs: %.2f ms\n", runs, avgDuration);
+    printf("Average Depth 10 search time over %d runs: %.2f ms\n\n", runs, avgDuration);
     expect(avgDuration < 700);
   };
 
@@ -221,10 +223,52 @@ ut::suite performanceEngineSuite = [] {
     auto duration14 = std::chrono::duration_cast<std::chrono::milliseconds>(end14 - start14).count();
     benchmarkSink ^= rookPressureSink;
     printf("Rook endgame pressure evaluation took %lld ms\n", static_cast<long long>(duration14));
-
-    printf("Benchmark sink: %lld\n", static_cast<long long>(benchmarkSink));
+    printf("Benchmark sink: %lld\n\n", static_cast<long long>(benchmarkSink));
     
+
+    constexpr std::array<const char*, 16> ALL_FENS = {
+      // 8 normal
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "r3kbnr/pppbpppp/4q3/8/1n6/P1NPB3/1PP1NPPP/R2QKB1R b KQkq - 0 1",
+      "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 3",
+      "rnbqk2r/ppp2ppp/4pn2/3p4/1b1P4/2N1PN2/PPP2PPP/R1BQKB1R w KQkq - 2 5",
+      "r2q1rk1/pp2bppp/2np1n2/2p1p3/2P1P3/2NP1N2/PP2BPPP/R1BQ1RK1 w - - 0 9",
+      "8/2p5/3p2k1/2P1p1p1/4P3/3P1K2/8/8 w - - 0 40",
+      "4rrk1/pp3ppp/2n1bn2/2bp4/3P4/2P1PN2/PP1NBPPP/R2QR1K1 w - - 4 13",
+      "r3k2r/pppq1ppp/2npbn2/3Np3/2P1P3/2N1B3/PP2QPPP/R3KB1R w KQkq - 2 10",
+      // 8 endgame
+      "8/p7/4k3/1R6/2K5/8/P7/8 w - - 0 1",
+      "8/8/8/3R4/8/3k4/8/1R3K2 w - - 0 1",
+      "8/8/1r6/8/8/3k4/8/1R3K2 w - - 0 1",
+      "8/8/8/3R4/8/3k4/8/1R1R1K2 w - - 0 1",
+      "r1b1k2r/pppq1ppp/2npbn2/3Np3/2P1P3/2N1B3/PP2QPPP/R3KB1R w KQkq - 2 10",
+      "rnbqk2r/ppp2ppp/4pn2/3p4/1b1P4/2N1PN2/PPP2PPP/R1BQKB1R w KQkq - 2 5",
+      "r2q1rk1/pp2bppp/2np1n2/2p1p3/2P1P3/2NP1N2/PP2BPPP/R1BQ1RK1 w - - 0 9",
+      "8/2p5/3p2k1/2P1p1p1/4P3/3P1K2/8/8 w - - 0 40"
+    };
+
+    std::array<chess::Board, 16> boards;
+    for (int i = 0; i < 16; ++i) {
+      boards[i] = chess::Board(ALL_FENS[i]);
+    }
+
+    constexpr int ITERATIONS = 500'000;
+    int64_t dummySink = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int iter = 0; iter < ITERATIONS; ++iter) {
+      for (int i = 0; i < 16; ++i) {
+        MoveList moves = engine::MoveGenerator::generateLegalMoves(boards[i]);
+        dummySink += moves.size;
+      }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    printf("generateLegalMoves on 16 FENs * %d iterations took %lu ms\n", ITERATIONS, static_cast<unsigned long>(duration));
+    printf("Dummy sink: %lld\n\n", static_cast<long long>(dummySink));
+
     expect(true);
-    printf("Benchmark completed.\n");
+    printf("\nBenchmark completed.\n\n");
   };
 };
