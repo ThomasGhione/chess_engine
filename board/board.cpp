@@ -205,17 +205,9 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 // CHECK / CHECKMATE / STALEMATE UTILITIES
 // ------------------------------------------------------------
 // Returns true if square 'targetIndex' is attacked by 'byColor'
-bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor) const noexcept {
-    const uint8_t side = colorToIndex(byColor);
-    return isKingAttackedCustom(targetIndex, side, occupancy,
-                                pawns_bb[side], knights_bb[side], bishops_bb[side],
-                                rooks_bb[side], queens_bb[side], kings_bb[side]);
-}
-
-
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const uint64_t occMinus = occupancy & ~Board::bitMask(excludeSquare);
+    const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~Board::bitMask(excludeSquare)) : occupancy;
     const uint8_t side = colorToIndex(byColor);
     return isKingAttackedCustom(targetIndex, side, occMinus,
                                 pawns_bb[side], knights_bb[side], bishops_bb[side],
