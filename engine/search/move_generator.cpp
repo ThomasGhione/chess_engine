@@ -683,6 +683,13 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
         return;
     }
 
+    // Geometric fast-path: if no enemy slider is geometrically aligned with our king
+    // (even with an empty board), we don't need to compute real occupancy rays.
+    if (!(pieces::getRookAttacks(kingSq, 0ULL) & rookLikeEnemy) &&
+        !(pieces::getBishopAttacks(kingSq, 0ULL) & bishopLikeEnemy)) {
+        return;
+    }
+
     const uint64_t occWithoutOwn = b.getPiecesBitMap() & ~ownOcc;
     uint64_t rookPinners = pieces::getRookAttacks(kingSq, occWithoutOwn) & rookLikeEnemy;
     uint64_t bishopPinners = pieces::getBishopAttacks(kingSq, occWithoutOwn) & bishopLikeEnemy;
