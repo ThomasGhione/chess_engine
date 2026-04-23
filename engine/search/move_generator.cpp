@@ -146,10 +146,6 @@ inline void appendPawnTacticalNoChecks(
 
 } // namespace
 
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b) noexcept {
-    return generateLegalMoves(b, false, false, false);
-}
-
 MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
     const chess::Board& b,
     bool inCheckKnown,

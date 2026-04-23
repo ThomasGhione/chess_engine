@@ -15,13 +15,11 @@ public:
 
     MoveGenerator() = delete;
 
-    static MoveList<chess::Board::Move> generateLegalMoves(const chess::Board& b) noexcept;
-
-    static MoveList<chess::Board::Move> generateLegalMoves(
-        const chess::Board& b,
-        bool inCheckKnown,
-        bool inCheckValue,
-        bool inDoubleCheckValue) noexcept;
+        static MoveList<chess::Board::Move> generateLegalMoves(
+            const chess::Board& b,
+            bool inCheckKnown = false,
+            bool inCheckValue = false,
+            bool inDoubleCheckValue = false) noexcept;
 
     static MoveList<chess::Board::Move> generateTacticalMoves(
         const chess::Board& b,
