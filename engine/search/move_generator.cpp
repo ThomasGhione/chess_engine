@@ -161,7 +161,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
     //FIXME: modificare Board per non dover avere queste variabili qui
     const uint64_t occ = b.getPiecesBitMap();
 
-    const uint64_t pawns   = b.pawns_bb[side];
+    uint64_t pawns   = b.pawns_bb[side];
     const uint64_t knights = b.knights_bb[side];
     const uint64_t bishops = b.bishops_bb[side];
     const uint64_t rooks   = b.rooks_bb[side];
@@ -237,9 +237,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
     }
 
     // Macro-step 5: Generate all non-king moves applying check/pin filtering.
-    uint64_t bb = pawns;
-    while (bb) {
-        const uint8_t from = engine::popLSB(bb);
+    while (pawns) {
+        const uint8_t from = engine::popLSB(pawns);
         const uint64_t fromBit = chess::Board::bitMask(from);
         uint64_t mask = pieces::getPawnForwardPushes(from, isWhite, occ);
         const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
@@ -251,20 +250,14 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
         addPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece, enPassant, hasEnPassant);
     }    
     
-    auto processPieces = [&](uint64_t bb, auto getAttacks, uint8_t pt) noexcept {
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            uint64_t mask = getAttacks(from, occ) & ~ownOcc;
-            if (singleCheck) mask &= evasionMask;
-            if ((pinnedMask & chess::Board::bitMask(from))) mask &= pinRayBySquare[from];
-            addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pt);
-        }
-    };
-
-    processPieces(knights, [](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }, knightPiece);
-    processPieces(bishops, pieces::getBishopAttacks, bishopPiece);
-    processPieces(rooks, pieces::getRookAttacks, rookPiece);
-    processPieces(queens, pieces::getQueenAttacks, queenPiece);
+    generateNonPawnLegalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+        b, moves, knights, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, knightPiece);
+    generateNonPawnLegalMoves<pieces::getBishopAttacks>(
+        b, moves, bishops, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, bishopPiece);
+    generateNonPawnLegalMoves<pieces::getRookAttacks>(
+        b, moves, rooks, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, rookPiece);
+    generateNonPawnLegalMoves<pieces::getQueenAttacks>(
+        b, moves, queens, occ, ownOcc, singleCheck, evasionMask, pinnedMask, pinRayBySquare.data(), inCheck, inDoubleCheck, queenPiece);
 
     return moves;
 }
@@ -400,45 +393,14 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                                      enPassant, hasEnPassant, moves);
         }
 
-        bb = knights;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = pieces::KNIGHT_ATTACKS[from] & oppOcc;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, knightPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = bishops;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = pieces::getBishopAttacks(from, occ) & oppOcc;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, bishopPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = rooks;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = pieces::getRookAttacks(from, occ) & oppOcc;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, rookPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = queens;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = pieces::getQueenAttacks(from, occ) & oppOcc;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, queenPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
+        generateNonPawnTacticalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+            b, moves, knights, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), knightPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getBishopAttacks>(
+            b, moves, bishops, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), bishopPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getRookAttacks>(
+            b, moves, rooks, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), rookPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getQueenAttacks>(
+            b, moves, queens, occ, oppOcc, ~0ULL, pinnedMask, pinRayBySquare.data(), queenPiece, isWhite, enPassant, hasEnPassant);
     } else {
         uint64_t evasionMask = ~0ULL;
         computeCheckEvasionMasks(b, color, true, false, evasionMask);
@@ -466,45 +428,14 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
                                      enPassant, hasEnPassant, moves);
         }
 
-        bb = knights;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = (pieces::KNIGHT_ATTACKS[from] & oppOcc) & evasionMask;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, knightPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = bishops;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = (pieces::getBishopAttacks(from, occ) & oppOcc) & evasionMask;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, bishopPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = rooks;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = (pieces::getRookAttacks(from, occ) & oppOcc) & evasionMask;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, rookPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
-
-        bb = queens;
-        while (bb) {
-            const uint8_t from = engine::popLSB(bb);
-            const uint64_t fromBit = chess::Board::bitMask(from);
-            uint64_t attacks = (pieces::getQueenAttacks(from, occ) & oppOcc) & evasionMask;
-            if (pinnedMask & fromBit) attacks &= pinRayBySquare[from];
-            addTacticalMovesFromMask(b, attacks, from, queenPiece, false, isWhite, true,
-                                     enPassant, hasEnPassant, moves);
-        }
+        generateNonPawnTacticalMoves<[](uint8_t sq, uint64_t) { return pieces::KNIGHT_ATTACKS[sq]; }>(
+            b, moves, knights, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), knightPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getBishopAttacks>(
+            b, moves, bishops, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), bishopPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getRookAttacks>(
+            b, moves, rooks, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), rookPiece, isWhite, enPassant, hasEnPassant);
+        generateNonPawnTacticalMoves<pieces::getQueenAttacks>(
+            b, moves, queens, occ, oppOcc, evasionMask, pinnedMask, pinRayBySquare.data(), queenPiece, isWhite, enPassant, hasEnPassant);
     }
 
     uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
@@ -928,4 +859,39 @@ void MoveGenerator::computeCheckEvasionMasks(
     }
 }
 
+
+
+template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+void MoveGenerator::generateNonPawnLegalMoves(
+    const chess::Board& b,
+    MoveList<chess::Board::Move>& moves,
+    uint64_t bb, uint64_t occ, uint64_t ownOcc,
+    bool singleCheck, uint64_t evasionMask,
+    uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
+    bool inCheck, bool inDoubleCheck, uint8_t pt) noexcept {
+    while (bb) {
+        const uint8_t from = engine::popLSB(bb);
+        uint64_t mask = GetAttacks(from, occ) & ~ownOcc;
+        if (singleCheck) mask &= evasionMask;
+        if (pinnedMask & chess::Board::bitMask(from)) mask &= pinRayBySquare[from];
+        addNonPawnMovesFromMask(b, moves, from, mask, inCheck, inDoubleCheck, pt);
+    }
+}
+
+template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+void MoveGenerator::generateNonPawnTacticalMoves(
+    const chess::Board& b,
+    MoveList<chess::Board::Move>& moves,
+    uint64_t bb, uint64_t occ, uint64_t oppOcc, uint64_t evasionMask,
+    uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
+    uint8_t piece, bool isWhite, chess::Coords enPassant, bool hasEnPassant) noexcept {
+    while (bb) {
+        const uint8_t from = engine::popLSB(bb);
+        uint64_t attacks = GetAttacks(from, occ) & oppOcc;
+        attacks &= evasionMask;
+        if (pinnedMask & chess::Board::bitMask(from)) attacks &= pinRayBySquare[from];
+        addTacticalMovesFromMask(b, attacks, from, piece, false, isWhite, true,
+                                 enPassant, hasEnPassant, moves);
+    }
+}
 } // namespace engine

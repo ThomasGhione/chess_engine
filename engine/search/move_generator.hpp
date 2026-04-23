@@ -102,6 +102,23 @@ private:
         bool inCheck,
         bool inDoubleCheck,
         uint64_t& evasionMask) noexcept;
+
+    template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+    static void generateNonPawnLegalMoves(
+        const chess::Board& b,
+        MoveList<chess::Board::Move>& moves,
+        uint64_t bb, uint64_t occ, uint64_t ownOcc,
+        bool singleCheck, uint64_t evasionMask,
+        uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
+        bool inCheck, bool inDoubleCheck, uint8_t pt) noexcept;
+
+    template<uint64_t (*GetAttacks)(uint8_t, uint64_t)>
+    static void generateNonPawnTacticalMoves(
+        const chess::Board& b,
+        MoveList<chess::Board::Move>& moves,
+        uint64_t bb, uint64_t occ, uint64_t oppOcc, uint64_t evasionMask,
+        uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
+        uint8_t piece, bool isWhite, chess::Coords enPassant, bool hasEnPassant) noexcept;
 };
 
 } // namespace engine
