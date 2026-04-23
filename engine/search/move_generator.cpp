@@ -43,6 +43,52 @@ inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, uint8
     n.promotionPiece = 'n';
 }
 
+constexpr uint64_t computeBetweenExclusiveConstexpr(uint8_t from, uint8_t to) noexcept {
+    if (from == to) return 0ULL;
+
+    const int fromFile = chess::file(from);
+    const int fromRank = chess::rank(from);
+    const int toFile = chess::file(to);
+    const int toRank = chess::rank(to);
+    const int df = toFile - fromFile;
+    const int dr = toRank - fromRank;
+
+    int stepFile = 0;
+    int stepRank = 0;
+    if (df == 0) {
+        stepRank = (dr > 0) ? 1 : -1;
+    } else if (dr == 0) {
+        stepFile = (df > 0) ? 1 : -1;
+    } else if ((df > 0 ? df : -df) == (dr > 0 ? dr : -dr)) {
+        stepFile = (df > 0) ? 1 : -1;
+        stepRank = (dr > 0) ? 1 : -1;
+    } else {
+        return 0ULL;
+    }
+
+    uint64_t mask = 0ULL;
+    int f = fromFile + stepFile;
+    int r = fromRank + stepRank;
+    while (f != toFile || r != toRank) {
+        const uint8_t sq = static_cast<uint8_t>((r << 3) | f);
+        mask |= chess::Board::bitMask(sq);
+        f += stepFile;
+        r += stepRank;
+    }
+
+    return mask & ~chess::Board::bitMask(to);
+}
+
+inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT = [] {
+    std::array<std::array<uint64_t, 64>, 64> lut{};
+    for (uint8_t from = 0; from < 64; ++from) {
+        for (uint8_t to = 0; to < 64; ++to) {
+            lut[from][to] = computeBetweenExclusiveConstexpr(from, to);
+        }
+    }
+    return lut;
+}();
+
 template<bool InCheck, uint8_t PieceType>
 __attribute__((always_inline))
 inline void appendNonPawnTacticalNoChecks(
@@ -146,11 +192,8 @@ inline void appendPawnTacticalNoChecks(
 
 } // namespace
 
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
-    const chess::Board& b,
-    bool inCheckKnown,
-    bool inCheckValue,
-    bool inDoubleCheckValue) noexcept {
+MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b, bool inCheckKnown, 
+                                                               bool inCheckValue, bool inDoubleCheckValue) noexcept {
     // Macro-step 1: Initialize side-to-move context and occupancy masks.
     MoveList<chess::Board::Move> moves;
 
@@ -271,12 +314,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
 // 3. Checks (optional, controlled by QSEARCH_INCLUDE_CHECKS (TODO))
 //
 // This is a simplified version of generateLegalMoves() optimized for qsearch
-MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(
-    const chess::Board& b,
-    bool includeChecks,
-    bool inCheckKnown,
-    bool inCheckValue,
-    bool inDoubleCheckValue) noexcept {
+MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::Board& b, bool includeChecks, 
+                                                                  bool inCheckKnown, bool inCheckValue, 
+                                                                  bool inDoubleCheckValue) noexcept {
     MoveList<chess::Board::Move> moves;
 
     const uint8_t color = b.getActiveColor();
@@ -490,16 +530,9 @@ void MoveGenerator::addPromotionMoves(
 // ============================================================================
 // addPawnMovesFromMask
 // ============================================================================
-void MoveGenerator::addPawnMovesFromMask(
-    const chess::Board& b,
-    MoveList<chess::Board::Move>& moves,
-    uint8_t from,
-    uint64_t mask,
-    bool inCheck,
-    bool inDoubleCheck,
-    uint8_t pawnPiece,
-    chess::Coords enPassant,
-    bool hasEnPassant) noexcept {
+void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves, 
+                                         uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck, 
+                                         uint8_t pawnPiece, chess::Coords enPassant, bool hasEnPassant) noexcept {
     //FIXME: Creare pre codizione
     // Macro-step 1: Guard empty mask and precompute pawn metadata.
     if (!mask) [[unlikely]] return;
@@ -561,17 +594,10 @@ void MoveGenerator::addNonPawnMovesFromMask(
 // ============================================================================
 // addTacticalMovesFromMask
 // ============================================================================
-void MoveGenerator::addTacticalMovesFromMask(
-    const chess::Board& b,
-    uint64_t mask,
-    uint8_t from,
-    uint8_t piece,
-    bool isPawn,
-    bool isWhite,
-    bool includeChecks,
-    chess::Coords enPassant,
-    bool hasEnPassant,
-    MoveList<chess::Board::Move>& moves) noexcept {
+void MoveGenerator::addTacticalMovesFromMask(const chess::Board& b, uint64_t mask, uint8_t from, 
+                                             uint8_t piece, bool isPawn, bool isWhite, bool includeChecks, 
+                                             chess::Coords enPassant, bool hasEnPassant, 
+                                             MoveList<chess::Board::Move>& moves) noexcept {
     // Macro-step 1: Initialize context needed for tactical filtering.
     const chess::Coords fromC{from};
     const uint8_t defaultOppColor = chess::Board::WHITE;
@@ -632,14 +658,9 @@ void MoveGenerator::addTacticalMovesFromMask(
 // ============================================================================
 // addTacticalMovesFromMaskInCheck
 // ============================================================================
-void MoveGenerator::addTacticalMovesFromMaskInCheck(
-    const chess::Board& b,
-    uint64_t mask,
-    uint8_t from,
-    uint8_t piece,
-    bool isPawn,
-    bool isWhite,
-    MoveList<chess::Board::Move>& moves) noexcept {
+void MoveGenerator::addTacticalMovesFromMaskInCheck(const chess::Board& b, uint64_t mask, 
+                                                    uint8_t from, uint8_t piece, bool isPawn, 
+                                                    bool isWhite, MoveList<chess::Board::Move>& moves) noexcept {
     // Macro-step 1: Iterate in-check candidates (all legal evasions are tactical).
     const chess::Coords fromC{from};
 
@@ -665,45 +686,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
 }
 
 uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept {
-    //FIXME: Mettere in pre codizione
-    // Macro-step 1: Detect invalid geometry and compute stepping direction.
-    if (from == to) [[unlikely]] return 0ULL;
-
-    const int fromFile = chess::Board::file(from);
-    const int fromRank = chess::Board::rank(from);
-    const int toFile = chess::Board::file(to);
-    const int toRank = chess::Board::rank(to);
-    //FIXME: Mettere dei nomi migliori
-    const int df = toFile - fromFile;
-    const int dr = toRank - fromRank;
-
-    int stepFile = 0;
-    int stepRank = 0;
-    if (df == 0) {
-        stepRank = (dr > 0) ? 1 : -1;
-    } else if (dr == 0) {
-        stepFile = (df > 0) ? 1 : -1;
-    } else if ((df > 0 ? df : -df) == (dr > 0 ? dr : -dr)) {
-        stepFile = (df > 0) ? 1 : -1;
-        stepRank = (dr > 0) ? 1 : -1;
-    } else {
-        return 0ULL;
-    }
-
-    // Macro-step 2: Accumulate all intermediate squares between endpoints.
-    uint64_t mask = 0ULL;
-    int f = fromFile + stepFile;
-    int r = fromRank + stepRank;
-    while (f != toFile || r != toRank) {
-        const uint8_t sq = (r << 3) | f;
-        mask |= chess::Board::bitMask(sq);
-        f += stepFile;
-        r += stepRank;
-    }
-
-    // Macro-step 3: Exclude destination square from the final mask.
-    mask &= ~chess::Board::bitMask(to);
-    return mask;
+    return BETWEEN_EXCLUSIVE_LUT[from][to];
 }
 
 // ============================================================================
@@ -711,90 +694,52 @@ uint64_t MoveGenerator::betweenMaskExclusive(uint8_t from, uint8_t to) noexcept 
 // ============================================================================
 // Returns a mask with bits for pieces pinned to the king (pinnedMask)
 // and an array that stores the pin-ray mask for each square (pinRayBySquare).
-void MoveGenerator::computePinRays(
-    const chess::Board& b,
-    chess::Coords kingPos,
-    bool isWhite,
-    uint64_t& pinnedMask,
-    uint64_t pinRays[64]) noexcept {
-    // Macro-step 1: Prepare side metadata and zero outputs.
+void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos, bool isWhite, 
+                                   uint64_t& pinnedMask, uint64_t pinRays[64]) noexcept {
     pinnedMask = 0ULL;
-    //FIXME: Non possiamo usare il dato di board?
     const uint8_t ownColor = isWhite ? chess::Board::WHITE : chess::Board::BLACK;
     const int us = chess::Board::colorToIndex(ownColor);
     const int them = us ^ 1;
-
-    // pinRays is consumed only when the corresponding bit is set in pinnedMask.
-    // We overwrite entries for pinned squares below, so full zero-initialization is redundant.
-
     const uint8_t kingSq = kingPos.index;
+
+    const uint64_t ownOcc = b.pawns_bb[us]
+        | b.knights_bb[us]
+        | b.bishops_bb[us]
+        | b.rooks_bb[us]
+        | b.queens_bb[us];
+    if (!ownOcc) {
+        return;
+    }
+
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
-
     if ((rookLikeEnemy | bishopLikeEnemy) == 0ULL) {
         return;
     }
 
-    // Fast bailout: if no enemy slider is even geometrically aligned with the king,
-    // no pin can exist and we can skip directional scans entirely.
-    if (((pieces::getRookAttacks(kingSq, 0ULL) & rookLikeEnemy) |
-         (pieces::getBishopAttacks(kingSq, 0ULL) & bishopLikeEnemy)) == 0ULL) {
-        return;
+    const uint64_t occWithoutOwn = b.getPiecesBitMap() & ~ownOcc;
+    uint64_t rookPinners = pieces::getRookAttacks(kingSq, occWithoutOwn) & rookLikeEnemy;
+    uint64_t bishopPinners = pieces::getBishopAttacks(kingSq, occWithoutOwn) & bishopLikeEnemy;
+
+    while (rookPinners) {
+        const uint8_t pinnerSq = engine::popLSB(rookPinners);
+        const uint64_t between = BETWEEN_EXCLUSIVE_LUT[kingSq][pinnerSq];
+        const uint64_t blockers = between & ownOcc;
+        if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
+            const uint8_t pinnedSq = static_cast<uint8_t>(__builtin_ctzll(blockers));
+            pinnedMask |= blockers;
+            pinRays[pinnedSq] = between | chess::Board::bitMask(pinnerSq);
+        }
     }
 
-    //FIXME: Convertire in funzione helper
-    // Macro-step 2: Scan each line from king to detect own piece + enemy pinner alignment.
-    const int kingFile = chess::Board::file(kingSq);
-    const int kingRank = chess::Board::rank(kingSq);
-
-    static constexpr int DIRS[8][2] = {
-        {0, 1}, {0, -1}, {1, 0}, {-1, 0},
-        {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
-    };
-
-    //FIXME: Questo ciclo e' poco limpido nel suo funzionamento, fare in modo di avere dei passaggi con helper chiari
-    for (const auto* dir : DIRS) {
-        const int df = dir[0];
-        const int dr = dir[1];
-        const bool orthogonal = (df == 0 || dr == 0);
-
-        int f = kingFile + df;
-        int r = kingRank + dr;
-        int pinnedSq = -1;
-
-        while (static_cast<unsigned>(f) < 8U && static_cast<unsigned>(r) < 8U) {
-            const uint8_t sq = (r << 3) | f;
-            const uint8_t piece = b.get(sq);
-
-            if (piece == chess::Board::EMPTY) {
-                f += df;
-                r += dr;
-                continue;
-            }
-
-            const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
-            if (pieceColor == ownColor) {  // Own piece
-                if (pinnedSq >= 0) {
-                    break;
-                }
-                pinnedSq = sq;
-                f += df;
-                r += dr;
-                continue;
-            }
-
-            if (pinnedSq >= 0) {
-                const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-                const bool isPinner = orthogonal
-                    ? (pieceType == chess::Board::ROOK || pieceType == chess::Board::QUEEN)
-                    : (pieceType == chess::Board::BISHOP || pieceType == chess::Board::QUEEN);
-                if (isPinner) {
-                    pinnedMask |= chess::Board::bitMask(pinnedSq);
-                    pinRays[pinnedSq] =
-                        betweenMaskExclusive(kingSq, sq) | chess::Board::bitMask(sq);
-                }
-            }
-            break;
+    while (bishopPinners) {
+        const uint8_t pinnerSq = engine::popLSB(bishopPinners);
+        const uint64_t between = BETWEEN_EXCLUSIVE_LUT[kingSq][pinnerSq];
+        const uint64_t blockers = between & ownOcc;
+        if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
+            const uint8_t pinnedSq = static_cast<uint8_t>(__builtin_ctzll(blockers));
+            pinnedMask |= blockers;
+            pinRays[pinnedSq] = between | chess::Board::bitMask(pinnerSq);
         }
     }
 }
