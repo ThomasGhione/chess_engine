@@ -70,7 +70,7 @@ inline void appendNonPawnTacticalNoChecks(
         if constexpr (InCheck) {
             while (attacks) {
                 const uint8_t to = engine::popLSB(attacks);
-                if (b.isLegalPseudoMove(from, to, pieceCode, true, false)) {
+                if (b.isLegalPseudoMove(from, to, pieceCode, true)) {
                     appendMoveByIndex(moves, from, to);
                 }
             }
@@ -125,12 +125,12 @@ inline void appendPawnTacticalNoChecks(
         while (attacks) {
             const uint8_t to = engine::popLSB(attacks);
             if constexpr (InCheck) {
-                if (!b.isLegalPseudoMove(from, to, pawnPiece, true, false)) {
+                if (!b.isLegalPseudoMove(from, to, pawnPiece, true)) {
                     continue;
                 }
             } else {
                 const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
-                if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, false, false)) {
+                if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece)) {
                     continue;
                 }
             }
@@ -212,11 +212,11 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(
 
     if (!inCheck) { // castling: illegal when in check.
         const uint8_t f = chess::Board::file(from);
-        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, kingPiece, false, false)) {
+        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, kingPiece)) {
             const uint8_t castleTo = from + 2;
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
         }
-        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, kingPiece, false, false)) {
+        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, kingPiece)) {
             const uint8_t castleTo = from - 2;
             moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
         }
@@ -700,7 +700,7 @@ void MoveGenerator::addTacticalMovesFromMask(
         }
 
         // Check legality for en passant and promotions
-        if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece, false, false)) {
+            if ((isEnPassant || isPromotion) && !b.isLegalPseudoMove(from, to, piece)) {
             continue;
         }
 
@@ -750,7 +750,7 @@ void MoveGenerator::addTacticalMovesFromMaskInCheck(
         mask &= (mask - 1);
 
         // In check evasion: all legal moves are tactical
-        if (!b.isLegalPseudoMove(from, to, piece, true, false)) {
+        if (!b.isLegalPseudoMove(from, to, piece, true)) {
             continue;
         }
 

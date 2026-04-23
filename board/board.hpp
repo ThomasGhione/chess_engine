@@ -211,7 +211,7 @@ public:
     
     bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
     bool promote(const Coords& at, char choice) noexcept;
-    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck, bool inDoubleCheck) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck = false, bool inDoubleCheck = false) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
     bool isDoubleCheck(uint8_t color) const noexcept;
