@@ -32,19 +32,6 @@ bool Sorter::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) n
     return m.from.index == from && m.to.index == to;
 }
 
-bool Sorter::containsMoveWithPromotion(
-    const MoveList<chess::Board::Move>& moves,
-    uint8_t from,
-    uint8_t to,
-    char promotionPiece) noexcept {
-    for (const auto& m : moves) {
-        if (sameFromTo(m, from, to) && m.promotionPiece == promotionPiece) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool Sorter::givesCheckAfterQuietMoveFast(
     const chess::Board& b,
     const chess::Board::Move& m,
@@ -95,10 +82,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     int32_t see,
     bool isPromotionCandidate,
     int moveIndex,
-    bool hashMoveIsLegal,
-    uint8_t hashFrom,
-    uint8_t hashTo,
-    char hashPromo,
+    bool isHashMove,
     int ply,
     const chess::Board::Move* previousMove,
     int usSide,
@@ -127,7 +111,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     // =========================================================
 
     // Macro-step 1: Give absolute top priority to a validated hash move.
-    if (hashMoveIsLegal && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
+    if (isHashMove) {
         return 100000; // Highest priority
     }
 
@@ -428,16 +412,15 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     uint8_t hashFrom = 64;
     uint8_t hashTo = 64;
     char hashPromo = '\0';
-    bool hashMoveIsLegal = false;
+    bool isHashMoveProbed = false;
 
     // Probe TT with move-only API (no alpha/beta/score overhead).
     if (transpositionTable != nullptr && transpositionTable->probeMove(hashKey, encodedHashMove)) {
         TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
-
-        // Validate hash move is in legal moves list (guards against TT collisions)
-        hashMoveIsLegal = containsMoveWithPromotion(picker.moves, hashFrom, hashTo, hashPromo);
+        isHashMoveProbed = true;
     }
-    picker.hashMoveIsLegal = hashMoveIsLegal;
+
+    bool hashMoveFound = false;
 
     //FIXME: trasforma in funzione helper
     // Macro-step 4: Score every move with copied ordering policy.
@@ -459,9 +442,15 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
         const int32_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
 
+        bool isHashMove = false;
+        if (isHashMoveProbed && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
+            isHashMove = true;
+            hashMoveFound = true;
+        }
+
         int32_t score = scoreMoveOrderingPriorityInline(
             b, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate, moveIndex,
-            hashMoveIsLegal, hashFrom, hashTo, hashPromo, ply, previousMove, usSide, oppKingSq, occ,
+            isHashMove, ply, previousMove, usSide, oppKingSq, occ,
             usIsWhite, isEndgameOrdering, fullMoveClock, history, killerMoves, counterMoves,
             captureHistory, PIECE_VALUES, orderingPenaltySamePawnOpening);
 
@@ -484,6 +473,8 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
 
         picker.scores[moveIndex] = score;
     }
+
+    picker.hashMoveIsLegal = hashMoveFound;
 
     return picker;
 }

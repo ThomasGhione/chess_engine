@@ -103,11 +103,6 @@ public:
 private:
     static bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
     static bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
-    static bool containsMoveWithPromotion(
-        const MoveList<chess::Board::Move>& moves,
-        uint8_t from,
-        uint8_t to,
-        char promotionPiece) noexcept;
 
     static bool givesCheckAfterQuietMoveFast(
         const chess::Board& b,
@@ -126,10 +121,7 @@ private:
         int32_t see,
         bool isPromotionCandidate,
         int moveIndex,
-        bool hashMoveIsLegal,
-        uint8_t hashFrom,
-        uint8_t hashTo,
-        char hashPromo,
+        bool isHashMove,
         int ply,
         const chess::Board::Move* previousMove,
         int usSide,
