@@ -88,12 +88,7 @@ inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& 
 inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noexcept {
     PhaseInfo phase{};
     phase.fullMoves = b.getFullMoveClock();
-    phase.nonPawnMajors = __builtin_popcountll(
-        b.knights_bb[0] | b.knights_bb[1] |
-        b.bishops_bb[0] | b.bishops_bb[1] |
-        b.rooks_bb[0]   | b.rooks_bb[1]   |
-        b.queens_bb[0]  | b.queens_bb[1]
-    );
+    phase.nonPawnMajors = b.getIncrementalNonPawnMajorCount();
     phase.isEndgame = (phase.nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
     phase.isOpening = !phase.isEndgame && (phase.fullMoves < OPENING_MOVES);
     phase.isEarlyMiddlegame = !phase.isEndgame && !phase.isOpening && (phase.fullMoves < EARLY_MG_MOVES);

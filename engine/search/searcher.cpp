@@ -494,11 +494,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     int numSearchedQuiets = 0;
 
     // Macro-step 2: Precompute pruning buckets and loop invariants.
-    const int nonPawnMajorsForLMR = __builtin_popcountll(
-        b.knights_bb[0] | b.knights_bb[1] |
-        b.bishops_bb[0] | b.bishops_bb[1] |
-        b.rooks_bb[0]   | b.rooks_bb[1]   |
-        b.queens_bb[0]  | b.queens_bb[1]);
+    const int nonPawnMajorsForLMR = b.getIncrementalNonPawnMajorCount();
     const bool isDelicateEndgame = (nonPawnMajorsForLMR <= 2);
     const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
@@ -777,11 +773,7 @@ int32_t Searcher::searchPosition(
     node.usIsWhite = (node.activeColor == chess::Board::WHITE);
     node.inCheck = b.inCheck(node.activeColor);
     node.isPVNode = isPVNode;
-    const int nonPawnMajorsAll = __builtin_popcountll(
-        b.knights_bb[0] | b.knights_bb[1] |
-        b.bishops_bb[0] | b.bishops_bb[1] |
-        b.rooks_bb[0]   | b.rooks_bb[1]   |
-        b.queens_bb[0]  | b.queens_bb[1]);
+    const int nonPawnMajorsAll = b.getIncrementalNonPawnMajorCount();
     node.isPawnEndgameForPruning =
         ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
 
