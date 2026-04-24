@@ -185,14 +185,12 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     // Balances tactical strength with performance overhead
     if (moveIndex < 8 && oppKingSq < 64) {
         bool givesCheck = false;
-        const bool isCastling = (fromPieceType == chess::Board::KING)
-            && (std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index)) == 2);
-        if (isPromotionCandidate || isCastling) {
-            chess::Board::MoveState tmpState;
-            doMoveWithPromotion(b, m, tmpState);
-            givesCheck = b.inCheck(b.getActiveColor());
-            b.undoMove(m, tmpState);
-        } else {
+        
+        // We skip exact geometric check evaluation for promotion and castling 
+        // to avoid the crippling performance penalty of doMove/undoMove.
+        // Both of these move types naturally receive massive bonuses elsewhere
+        // in this function, ensuring they are searched extremely early regardless.
+        if (!isPromotionCandidate && fromPieceType != chess::Board::KING) {
             givesCheck = givesCheckAfterQuietMoveFast(
                 b, m, fromPieceType, usSide, oppKingSq, occ);
         }
@@ -698,26 +696,6 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(const MoveList<che
     }
 
     return orderedEvasions;
-}
-
-bool Sorter::isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    
-    const uint8_t toRank = move.to.rank();
-    if (toRank != 0 && toRank != 7) return false;
-
-    const uint8_t piece = board.get(move.from);
-    const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-    if (pieceType != chess::Board::PAWN) return false;
-
-    return toRank == chess::Board::promotionRank(board.getColor(move.from.index) == chess::Board::WHITE);
-}
-
-bool Sorter::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {    
-    const bool isPromo = isPromotionMove(b, m);
-    const char promoChoice = isPromo ? m.promotionPiece : '\0';
-
-    b.doMove(m, state, promoChoice);
-    return isPromo;
 }
 
 template void Sorter::insertionSort<chess::Board::Move>(MoveList<chess::Board::Move>&, int32_t*) noexcept;

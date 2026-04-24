@@ -167,15 +167,6 @@ private:
         const chess::Board::Move& m,
         const chess::Coords& enPassant,
         bool hasEnPassant) noexcept;
-
-    static bool isPromotionMove(
-        const chess::Board& board,
-        const chess::Board::Move& move) noexcept;
-
-    static bool doMoveWithPromotion(
-        chess::Board& b,
-        const chess::Board::Move& m,
-        chess::Board::MoveState& state) noexcept;
 };
 
 } // namespace engine
