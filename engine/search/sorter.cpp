@@ -392,11 +392,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     const uint8_t activeColor = b.getActiveColor();
     const bool inCheck = b.inCheck(activeColor);
     const int fullMoveClock = b.getFullMoveClock();
-    const int nonPawnMajors = __builtin_popcountll(
-        b.knights_bb[0] | b.knights_bb[1] |
-        b.bishops_bb[0] | b.bishops_bb[1] |
-        b.rooks_bb[0]   | b.rooks_bb[1]   |
-        b.queens_bb[0]  | b.queens_bb[1]);
+    const int nonPawnMajors = b.getIncrementalNonPawnMajorCount();
     const bool isEndgameOrdering = (nonPawnMajors <= 5);
     const int usSide = chess::Board::colorToIndex(usIsWhite ? chess::Board::WHITE : chess::Board::BLACK);
     const int oppSide = usSide ^ 1;

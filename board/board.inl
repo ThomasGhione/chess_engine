@@ -73,6 +73,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 
     occupancy = other.occupancy;
     incrementalMaterialDelta = other.incrementalMaterialDelta;
+    incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
     incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
     incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
     incrementalPsqtPieces = other.incrementalPsqtPieces;
@@ -152,6 +153,10 @@ inline constexpr int32_t Board::getIncrementalMaterialDelta() const noexcept {
     return incrementalMaterialDelta;
 }
 
+inline constexpr int32_t Board::getIncrementalNonPawnMajorCount() const noexcept {
+    return incrementalNonPawnMajorCount;
+}
+
 inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
     const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
     const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
@@ -228,6 +233,7 @@ inline void Board::updateOccupancyBB() noexcept {
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
     incrementalMaterialDelta = 0;
+    incrementalNonPawnMajorCount = 0;
     incrementalPsqtPawnsMg = 0;
     incrementalPsqtPawnsEg = 0;
     incrementalPsqtPieces = 0;
@@ -351,6 +357,10 @@ inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) n
     const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
 
     incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
+    
+    if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
+        incrementalNonPawnMajorCount += (Add ? 1 : -1);
+    }
 
     if constexpr (PieceType == PAWN) {
         incrementalPsqtPawnsMg += signedDelta * engine::PAWN_VALUES_TABLE[psqtIndex];

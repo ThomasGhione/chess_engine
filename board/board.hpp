@@ -232,6 +232,7 @@ public:
     Coords getEnPassant() const noexcept;
     constexpr uint64_t getHash() const noexcept { return currentHash; }
     constexpr int32_t getIncrementalMaterialDelta() const noexcept;
+    constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept;
     int32_t getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     template<uint32_t Term>
     bool hasEvalCacheTerm() const noexcept;
@@ -420,6 +421,7 @@ private:
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{}; // Recent reversible-position hashes
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
     int32_t incrementalMaterialDelta = 0;
+    int32_t incrementalNonPawnMajorCount = 0;
     int32_t incrementalPsqtPawnsMg = 0;
     int32_t incrementalPsqtPawnsEg = 0;
     int32_t incrementalPsqtPieces = 0;
