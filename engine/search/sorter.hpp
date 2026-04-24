@@ -60,7 +60,7 @@ public:
     static MovePickerData prepareMovePicker(
         const MoveList<chess::Board::Move>& moves,
         int ply,
-        chess::Board& b,
+        const chess::Board& b,
         bool usIsWhite,
         uint64_t hashKey,
         const int16_t (&history)[2][64][64],
@@ -74,7 +74,7 @@ public:
     static MovePickerData sortLegalMoves(
         const MoveList<chess::Board::Move>& moves,
         int ply,
-        chess::Board& b,
+        const chess::Board& b,
         bool usIsWhite,
         uint64_t hashKey,
         const int16_t (&history)[2][64][64],
@@ -113,7 +113,7 @@ private:
         uint64_t occ) noexcept;
 
     static int32_t scoreMoveOrderingPriorityInline(
-        chess::Board& b,
+        const chess::Board& b,
         const chess::Board::Move& m,
         uint8_t fromPieceType,
         bool isCapture,

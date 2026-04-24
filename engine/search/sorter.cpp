@@ -74,7 +74,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(
 }
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(
-    chess::Board& b,
+    const chess::Board& b,
     const chess::Board::Move& m,
     uint8_t fromPieceType,
     bool isCapture,
@@ -369,7 +369,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 Sorter::MovePickerData Sorter::prepareMovePicker(
     const MoveList<chess::Board::Move>& moves,
     int ply,
-    chess::Board& b,
+    const chess::Board& b,
     bool usIsWhite,
     uint64_t hashKey,
     const int16_t (&history)[2][64][64],
@@ -478,7 +478,7 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
 Sorter::MovePickerData Sorter::sortLegalMoves(
     const MoveList<chess::Board::Move>& moves,
     int ply,
-    chess::Board& b,
+    const chess::Board& b,
     bool usIsWhite,
     uint64_t hashKey,
     const int16_t (&history)[2][64][64],
