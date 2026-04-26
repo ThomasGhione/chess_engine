@@ -40,6 +40,7 @@ PERF_APP = tests/perf
 TT_HP_BENCH_APP = tests/tt_hugepage_bench
 NAME_APP_WIN = chess.exe
 OUTPUT_DIR = output
+GENERATED_BINS = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BENCH_APP)
 
 # File paths by module
 MAIN_SRC = main.cpp
@@ -335,7 +336,7 @@ test-valgrind: $(TEST_APP)
 # Clean object files and binaries only
 cls-compile-files:
 	rm -rf $(OUTPUT_DIR)
-	rm -f $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP)
+	rm -f $(GENERATED_BINS)
 
 # Clean temporary files
 cls: cls-compile-files

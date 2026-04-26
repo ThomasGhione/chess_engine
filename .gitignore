@@ -1,6 +1,7 @@
 /.*
 .vscode
 *.out
+*.elf
 *.o
 *.d
 /output/
@@ -13,6 +14,7 @@ perf
 chess.exe
 /tests/test
 /tests/perf
+/tests/tt_hugepage_bench
 /games/
 /saves/
 /stockfish/
