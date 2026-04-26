@@ -19,6 +19,10 @@ namespace driver {
 namespace {
 
 using chess::Board;
+constexpr int32_t MAX_PARAM_LENGTH = 3;
+constexpr int32_t MODE = 1;
+constexpr int32_t COLOR = 2;
+constexpr int32_t NO_ARGS = 1;
 
 [[noreturn]] void exitGame() noexcept {
     std::cout << "Thank you for playing! See you next time." << std::endl;
@@ -67,12 +71,12 @@ bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
 }
 
 bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
-    if (argc < Driver::MAX_PARAM_LENGTH) {
+    if (argc < MAX_PARAM_LENGTH) {
         std::cout << missingArgMessage << "\n";
         return false;
     }
 
-    if (!parseColorOption(argv[Driver::COLOR], outIsWhite)) {
+    if (!parseColorOption(argv[COLOR], outIsWhite)) {
         std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
         return false;
     }

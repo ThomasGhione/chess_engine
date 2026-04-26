@@ -28,11 +28,6 @@ public:
 
     const Metadata metadata{};
 
-    static constexpr int32_t MAX_PARAM_LENGTH = 3;
-    static constexpr int32_t MODE = 1;
-    static constexpr int32_t COLOR = 2;
-    static constexpr int32_t NO_ARGS = 1;
-
     engine::Engine& engine;
 
     explicit Driver(engine::Engine& engine);
@@ -70,4 +65,3 @@ private:
 };
 
 } // namespace driver
-

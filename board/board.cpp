@@ -15,17 +15,6 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
     return true;
 }
 
-bool Board::promote(const Coords& at, char choice) noexcept {
-    const uint8_t piece = get(at);
-    if ((piece & MASK_PIECE_TYPE) != PAWN) [[unlikely]] 
-        return false; // must be a pawn
-    if (rank(at.index) != promotionRank((piece & MASK_COLOR) == WHITE)) [[unlikely]] 
-        return false;
-
-    promoteUnchecked(at.index, piece, normalizePromotionChoice(choice));
-    return true;
-}
-
 bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
@@ -298,7 +287,9 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
         
         if (!inChk) {
-            const uint8_t eIndex = (side == 0) ? 60 : 4;  // WHITE_KING_START = 60, BLACK_KING_START = 4
+            constexpr uint8_t WHITE_KING_START = 60;  // e1
+            constexpr uint8_t BLACK_KING_START = 4;   // e8
+            const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
             if (king == eIndex) {
                 if (canCastleGeneric(side == 0, eIndex, true)) return true;
                 if (canCastleGeneric(side == 0, eIndex, false)) return true;

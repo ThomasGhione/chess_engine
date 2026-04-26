@@ -210,7 +210,6 @@ public:
     void undoNullMove(const MoveState& state) noexcept;
     
     bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
-    bool promote(const Coords& at, char choice) noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck = false, bool inDoubleCheck = false) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
@@ -249,8 +248,6 @@ public:
     static constexpr uint8_t MASK_PIECE = 0x0F;      // 0000 1111
     static constexpr uint8_t MASK_COLOR = 0x08;      // 0000 1000
     static constexpr uint8_t MASK_PIECE_TYPE = 0x07; // 0000 0111
-    static constexpr uint8_t WHITE_KING_START  = 60;  // e1
-    static constexpr uint8_t BLACK_KING_START  = 4;   // e8
     static constexpr uint8_t WHITE_ROOK_A_START = 56;  // a1
     static constexpr uint8_t WHITE_ROOK_H_START = 63;  // h1
     static constexpr uint8_t BLACK_ROOK_A_START = 0;   // a8
@@ -262,20 +259,17 @@ public:
     static constexpr std::array<uint8_t, 256> CHAR_TO_PIECE_TYPE = []() {
         std::array<uint8_t, 256> table{};
         for (int i = 0; i < 256; ++i) table[i] = EMPTY;
-        
+
         table['P'] = PAWN | WHITE;   table['p'] = PAWN | BLACK;
         table['N'] = KNIGHT | WHITE; table['n'] = KNIGHT | BLACK;
         table['B'] = BISHOP | WHITE; table['b'] = BISHOP | BLACK;
         table['R'] = ROOK | WHITE;   table['r'] = ROOK | BLACK;
         table['Q'] = QUEEN | WHITE;  table['q'] = QUEEN | BLACK;
         table['K'] = KING | WHITE;   table['k'] = KING | BLACK;
-        
+
         return table;
     }();
 
-    static constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
-        '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
-    };
     static constexpr std::array<int32_t, 8> MATERIAL_VALUES = {
         0,
         engine::PAWN_VALUE,
@@ -286,28 +280,6 @@ public:
         engine::KING_VALUE,
         0
     };
-    static constexpr uint64_t FILE_MASKS[8] = {
-        0x0101010101010101ULL,  // a-file
-        0x0202020202020202ULL,  // b-file
-        0x0404040404040404ULL,  // c-file
-        0x0808080808080808ULL,  // d-file
-        0x1010101010101010ULL,  // e-file
-        0x2020202020202020ULL,  // f-file
-        0x4040404040404040ULL,  // g-file
-        0x8080808080808080ULL,  // h-file
-    };
-    
-    static constexpr uint64_t RANK_MASKS[8] = {
-        0x00000000000000FFULL,  // rank 1
-        0x000000000000FF00ULL,  // rank 2
-        0x0000000000FF0000ULL,  // rank 3
-        0x00000000FF000000ULL,  // rank 4
-        0x000000FF00000000ULL,  // rank 5
-        0x0000FF0000000000ULL,  // rank 6
-        0x00FF000000000000ULL,  // rank 7
-        0xFF00000000000000ULL,  // rank 8
-    };
-
     static constexpr std::array<uint64_t, 64> BIT_MASKS = []() constexpr {
         std::array<uint64_t, 64> masks{};
         for (int i = 0; i < 64; ++i) masks[i] = (1ULL << i);

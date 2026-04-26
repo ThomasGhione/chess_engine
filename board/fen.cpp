@@ -4,6 +4,13 @@
 #include <sstream>
 
 namespace chess {
+namespace {
+
+constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
+    '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
+};
+
+} // namespace
 
 bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
     int rank = 7, file = 0;
@@ -12,7 +19,7 @@ bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32
         else if (std::isdigit(c)) file += c - '0';
         else {
             if (rank < 0 || file > 7) return false;
-            uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
+            uint8_t p = Board::CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
             if (p == EMPTY) return false;
             parsedBoard[rank] |= static_cast<uint32_t>(p) << (file++ * 4);
         }
@@ -73,7 +80,7 @@ std::string Board::boardToFenPieces() const {
             uint8_t p = (chessboard[rank] >> (file * 4)) & MASK_PIECE;
             if (p == EMPTY) { ++emptySq; continue; }
             if (emptySq) { fen += std::to_string(emptySq); emptySq = 0; }
-            char sym = PIECE_TYPE_TO_CHAR[p & MASK_PIECE_TYPE];
+            char sym = PIECE_TYPE_TO_CHAR[p & Board::MASK_PIECE_TYPE];
             fen += (p & MASK_COLOR) == BLACK ? std::tolower(sym) : sym;
         }
         if (emptySq) fen += std::to_string(emptySq);
