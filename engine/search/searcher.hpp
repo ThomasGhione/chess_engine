@@ -157,8 +157,6 @@ private:
     static void markInterrupted(SearchRuntime& runtime) noexcept;
     static bool isInterrupted(const SearchRuntime& runtime) noexcept;
     static void clearInterrupted(SearchRuntime& runtime) noexcept;
-    static bool hasSearchStopControl(const SearchRuntime& runtime) noexcept;
-
     // Helper: check early terminal conditions (abort, MAX_PLY, king-capture)
     static bool checkEarlyTerminalConditions(
         const chess::Board& b,

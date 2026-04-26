@@ -152,8 +152,6 @@ private:
     static inline void addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
                                          int32_t safeBonus, int32_t forcingBonus,
                                          int32_t& attackUnits) noexcept;
-    static inline bool isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept;
-    static inline bool isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t Weight>
     static inline void accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
                                                    int& attackerCount, int32_t& attackWeight) noexcept;
@@ -240,4 +238,3 @@ private:
 #include "evaluator.inl"
 
 } // namespace engine
-

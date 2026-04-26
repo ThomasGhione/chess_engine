@@ -111,16 +111,6 @@ inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap
     }
 }
 
-inline bool Evaluator::isWhitePassedPawn(int pawnSq, int pawnFile, uint64_t blackPawns) noexcept {
-    const uint64_t enemyAdjAndFile = blackPawns & ADJACENT_AND_FILE_MASKS[pawnFile];
-    return (enemyAdjAndFile & WHITE_FORWARD_FILL[pawnSq]) == 0ULL;
-}
-
-inline bool Evaluator::isBlackPassedPawn(int pawnSq, int pawnFile, uint64_t whitePawns) noexcept {
-    const uint64_t enemyAdjAndFile = whitePawns & ADJACENT_AND_FILE_MASKS[pawnFile];
-    return (enemyAdjAndFile & BLACK_FORWARD_FILL[pawnSq]) == 0ULL;
-}
-
 inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {
     return pieces::KNIGHT_ATTACKS[sq];
 }

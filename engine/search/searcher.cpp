@@ -67,10 +67,6 @@ int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
     return std::clamp(value, MIN_I16, MAX_I16);
 }
 
-bool Searcher::hasSearchStopControl(const SearchRuntime& runtime) noexcept {
-    return runtime.stopSearchRequested != nullptr || runtime.ponderingStopRequested != nullptr;
-}
-
 bool Searcher::shouldAbortSearch(const SearchRuntime& runtime) noexcept {
     const bool stopRequested = runtime.stopSearchRequested != nullptr
         && runtime.stopSearchRequested->load(std::memory_order_acquire);

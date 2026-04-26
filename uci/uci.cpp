@@ -156,6 +156,7 @@ namespace uci {
             << "id name Fenty The Chess Engine 1.0.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name PonderDebug type check default false\n"
+            << "option name SearchApiMutexGuard type check default true\n"
             << "uciok\n";
     }
 
@@ -172,18 +173,27 @@ namespace uci {
             (valuePos == string_view::npos) ? string_view{} : trimLeft(rest.substr(valuePos + 5));
 
         if (optionName.empty()) return;
-        if (normalizedOptionName(optionName) != "ponderdebug") return;
+        const std::string normalizedName = normalizedOptionName(optionName);
+        if (normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") return;
 
         bool enabled = false;
         if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
-            std::cout << "info string invalid value for PonderDebug: '" << optionValue
+            std::cout << "info string invalid value for " << optionName << ": '" << optionValue
                       << "' (use true/false)\n";
             return;
         }
 
-        engine.setPonderDebugEnabled(enabled);
-        std::cout << "info string PonderDebug "
-                  << (engine.isPonderDebugEnabled() ? "enabled" : "disabled")
+        if (normalizedName == "ponderdebug") {
+            engine.setPonderDebugEnabled(enabled);
+            std::cout << "info string PonderDebug "
+                      << (engine.isPonderDebugEnabled() ? "enabled" : "disabled")
+                      << '\n';
+            return;
+        }
+
+        engine.setSearchApiMutexEnabled(enabled);
+        std::cout << "info string SearchApiMutexGuard "
+                  << (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled")
                   << '\n';
     }
 

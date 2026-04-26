@@ -95,33 +95,8 @@ public:
                  | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
         }
 
-        inline uint8_t depth() const noexcept {
-            return depthFromPayload(payload);
-        }
-
         inline uint8_t flag() const noexcept {
             return flagFromPayload(payload);
-        }
-
-        inline uint8_t age() const noexcept {
-            return ageFromPayload(payload);
-        }
-
-        inline uint16_t bestMove() const noexcept {
-            return bestMoveFromPayload(payload);
-        }
-
-        inline int32_t score() const noexcept {
-            return scoreFromPayload(payload);
-        }
-
-        inline void setPayload(
-            int32_t scoreValue,
-            uint16_t bestMoveValue,
-            uint8_t depthValue,
-            uint8_t ageValue,
-            uint8_t flagValue) noexcept {
-            payload = encodePayload(scoreValue, bestMoveValue, depthValue, ageValue, flagValue);
         }
 
         static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
@@ -181,8 +156,6 @@ public:
 
     inline void incrementGeneration() noexcept { ++generation_; }
     inline void clear() noexcept;
-    [[nodiscard]] inline HugePageMode hugePageMode() const noexcept { return hugePageMode_; }
-    [[nodiscard]] inline bool isHugePageBacked() const noexcept { return hugePagesBacked_; }
 
     TranspositionTable(const TranspositionTable&) = delete;
     TranspositionTable& operator=(const TranspositionTable&) = delete;
@@ -618,4 +591,3 @@ determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
 static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "determineFlag logic error");
 static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
 static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");
-
