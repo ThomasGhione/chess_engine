@@ -89,7 +89,7 @@ inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT 
     return lut;
 }();
 
-template<bool InCheck, uint8_t PieceType>
+template<uint8_t PieceType>
 __attribute__((always_inline))
 inline void appendNonPawnTacticalNoChecks(
     MoveList<chess::Board::Move>& moves,
@@ -97,34 +97,22 @@ inline void appendNonPawnTacticalNoChecks(
     uint64_t occ,
     uint64_t oppOcc,
     uint64_t pinnedMask,
-    const uint64_t pinRayBySquare[64],
-    uint64_t evasionMask) noexcept {
+    const uint64_t pinRayBySquare[64]) noexcept {
     while (pieceBB) {
         const uint8_t from = engine::popLSB(pieceBB);
         const uint64_t fromBit = chess::Board::bitMask(from);
 
         uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
-        if constexpr (InCheck) {
-            attacks &= evasionMask;
-        }
         if (pinnedMask & fromBit) {
             attacks &= pinRayBySquare[from];
         }
 
-        if constexpr (InCheck) {
-            while (attacks) {
-                const uint8_t to = engine::popLSB(attacks);
-                appendMoveByIndex(moves, from, to);
-            }
-        } else {
-            while (attacks) {
-                appendMoveByIndex(moves, from, engine::popLSB(attacks));
-            }
+        while (attacks) {
+            appendMoveByIndex(moves, from, engine::popLSB(attacks));
         }
     }
 }
 
-template<bool InCheck>
 __attribute__((always_inline))
 inline void appendPawnTacticalNoChecks(
     const chess::Board& b,
@@ -138,7 +126,6 @@ inline void appendPawnTacticalNoChecks(
     uint8_t enPassantIndex,
     uint64_t pinnedMask,
     const uint64_t pinRayBySquare[64],
-    uint64_t evasionMask,
     uint8_t pawnPiece) noexcept {
     const uint8_t promotionRank = chess::Board::promotionRank(isWhite);
     const uint8_t prePromotionRank = isWhite ? 1 : 6;
@@ -156,9 +143,6 @@ inline void appendPawnTacticalNoChecks(
             attacks |= chess::Board::bitMask(frontSq) & ~occ;
         }
 
-        if constexpr (InCheck) {
-            attacks &= evasionMask;
-        }
         if (pinnedMask & fromBit) {
             attacks &= pinRayBySquare[from];
         }
@@ -169,11 +153,7 @@ inline void appendPawnTacticalNoChecks(
             const bool isEnPassant = (epCandidate != 0ULL) && (to == enPassantIndex);
 
             if (isEnPassant) {
-                if constexpr (InCheck) {
-                    if (!b.isLegalPseudoMove(from, to, pawnPiece, true)) continue;
-                } else {
-                    if (!b.isLegalPseudoMove(from, to, pawnPiece, false)) continue;
-                }
+                if (!b.isLegalPseudoMove(from, to, pawnPiece, false)) continue;
             }
 
             if (chess::Board::rank(to) == promotionRank) {
@@ -446,17 +426,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
     }
 
     const uint8_t enPassantIndex = hasEnPassant ? enPassant.index : 0;
-    appendPawnTacticalNoChecks<false>(
+    appendPawnTacticalNoChecks(
         b, moves, pawns, side, isWhite, occ, oppOcc, enPassantBit, enPassantIndex,
-        pinnedMask, pinRayBySquare.data(), 0ULL, pawnPiece);
-    appendNonPawnTacticalNoChecks<false, chess::Board::KNIGHT>(
-        moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
-    appendNonPawnTacticalNoChecks<false, chess::Board::BISHOP>(
-        moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
-    appendNonPawnTacticalNoChecks<false, chess::Board::ROOK>(
-        moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
-    appendNonPawnTacticalNoChecks<false, chess::Board::QUEEN>(
-        moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data(), 0ULL);
+        pinnedMask, pinRayBySquare.data(), pawnPiece);
+    appendNonPawnTacticalNoChecks<chess::Board::KNIGHT>(moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    appendNonPawnTacticalNoChecks<chess::Board::BISHOP>(moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    appendNonPawnTacticalNoChecks<chess::Board::ROOK>(moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    appendNonPawnTacticalNoChecks<chess::Board::QUEEN>(moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data());
 
     uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
     while (kingAttacks) {
