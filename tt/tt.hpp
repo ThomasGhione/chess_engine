@@ -95,10 +95,6 @@ public:
                  | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
         }
 
-        inline uint8_t flag() const noexcept {
-            return flagFromPayload(payload);
-        }
-
         static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
             uint8_t promoCode = 0;
             if (promo == 'q' || promo == 'Q') promoCode = 1;
