@@ -65,15 +65,12 @@ public:
 
     // Evaluation API
     int32_t evaluate(const chess::Board& board) noexcept;
-    int32_t evaluateTrace(const chess::Board& board) noexcept;
-    int32_t evaluateCheckmate(const chess::Board& board) noexcept;
 
     // Game state
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
     void updateGameResult() noexcept;
-    GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
 
     // Shared bitboard init (all Engine instances)

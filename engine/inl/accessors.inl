@@ -12,10 +12,6 @@ inline bool Engine::isStalemate() const noexcept {
     return gameResult == DRAW;
 }
 
-inline Engine::GameResult Engine::getGameResult() const noexcept {
-    return gameResult;
-}
-
 inline uint8_t Engine::getActiveColor() const noexcept {
     return board.getActiveColor();
 }

@@ -171,14 +171,6 @@ int32_t Engine::evaluate(const chess::Board& board) noexcept {
     return Evaluator::evaluate(board);
 }
 
-int32_t Engine::evaluateTrace(const chess::Board& board) noexcept {
-    return Evaluator::evaluateTrace(board);
-}
-
-int32_t Engine::evaluateCheckmate(const chess::Board& board) noexcept {
-    return Evaluator::evaluateCheckmate(board);
-}
-
 void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
     const size_t appendLen = (promotionPiece == '\0') ? size_t{5} : size_t{6};
 
