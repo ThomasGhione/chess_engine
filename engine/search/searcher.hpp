@@ -116,8 +116,6 @@ public:
 private:
     struct SearchContext {
         int32_t depth;
-        int32_t alpha;
-        int32_t beta;
         int ply;
         uint8_t activeColor;
         const chess::Board::Move* previousMove = nullptr;
@@ -221,7 +219,7 @@ private:
         int32_t& outScore) noexcept;
 
     static bool tryReverseFutilityPruning(
-        chess::Board& b,
+        const chess::Board& b,
         const SearchNodeState& node,
         int32_t depth,
         int32_t alpha,

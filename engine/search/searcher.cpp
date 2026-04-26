@@ -369,7 +369,7 @@ bool Searcher::tryNullMovePruning(
 }
 
 bool Searcher::tryReverseFutilityPruning(
-    chess::Board& b,
+    const chess::Board& b,
     const SearchNodeState& node,
     int32_t depth,
     int32_t alpha,
@@ -722,9 +722,8 @@ int32_t Searcher::searchPosition(
         if (alpha < matingAlpha) alpha = matingAlpha;
         if (beta > matingBeta)   beta = matingBeta;
         if (alpha >= beta) return alpha;
-    }
 
-    if (ply > 0) {
+
         // Threefold repetition is claimable draw: treat as terminal.
         if (b.isThreefoldRepetition()) {
             return repetitionDrawScore(b);
@@ -806,7 +805,7 @@ int32_t Searcher::searchPosition(
 
     // Macro-step 4: Generate/sort moves, recurse through searchMoves, and write TT.
     SearchContext ctx{
-        depth, bounds.alpha, bounds.beta, ply, node.activeColor,
+        depth, ply, node.activeColor,
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter
     };
 
@@ -1096,7 +1095,7 @@ chess::Board::Move Searcher::getBestMove(
 
             const auto& m = rootMoves[i];
             int32_t score = 0;
-	    //FIXME: Fare prima interazione fuori ciclo e poi il resto paretendo da i=1
+	        //FIXME: Fare prima interazione fuori ciclo e poi il resto paretendo da i=1
             if (i == 0) {
                 score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
             } else {
@@ -1136,13 +1135,13 @@ chess::Board::Move Searcher::getBestMove(
 
     if (isInterrupted(runtime)) {
         runtime.nodesSearched += localNodes;
-        if (searchedAnyMove) runtime.eval = bestScore;
+        runtime.eval = bestScore;
         return bestMove;
     }
 
     if (rootMoves.size <= 1) [[unlikely]] {
         runtime.nodesSearched += localNodes;
-        if (searchedAnyMove) runtime.eval = bestScore;
+        runtime.eval = bestScore;
         return bestMove;
     }
 
@@ -1252,7 +1251,7 @@ chess::Board::Move Searcher::getBestMove(
 
     localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.end(), localNodes);
     runtime.nodesSearched += localNodes;
-    if (searchedAnyMove) runtime.eval = bestScore;
+    runtime.eval = bestScore;
     return bestMove;
 }
 

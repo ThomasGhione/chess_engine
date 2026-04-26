@@ -48,7 +48,7 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     AttackData attackData[2];
     computeAttackData(attackData, board, occ);
 
-    int32_t result = eval;
+    int32_t result;
     if (phase.isOpening) {
         result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
     } else if (phase.isEarlyMiddlegame) {
