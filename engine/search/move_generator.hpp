@@ -22,11 +22,7 @@ public:
             bool inDoubleCheckValue = false) noexcept;
 
     static MoveList<chess::Board::Move> generateTacticalMoves(
-        const chess::Board& b,
-        bool includeChecks = false,
-        bool inCheckKnown = false,
-        bool inCheckValue = false,
-        bool inDoubleCheckValue = false) noexcept;
+        const chess::Board& b) noexcept;
 
     static MoveList<chess::Board::Move> generateQSearchEvasions(const chess::Board& b) noexcept;
 
@@ -81,13 +77,6 @@ private:
         uint64_t pinnedMask,
         const uint64_t pinRayBySquare[64]) noexcept;
 
-    template<uint8_t PieceType>
-    static void generateNonPawnTacticalMoves(
-        const chess::Board& b,
-        MoveList<chess::Board::Move>& moves,
-        uint64_t bb, uint64_t occ, uint64_t oppOcc, uint64_t evasionMask,
-        uint64_t pinnedMask, const uint64_t pinRayBySquare[64],
-        uint8_t piece, bool isWhite, chess::Coords enPassant, bool hasEnPassant) noexcept;
 };
 
 } // namespace engine
