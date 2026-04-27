@@ -202,29 +202,6 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         score += pieceValues[promoType];
     }
     
-    //FIXME: Trasforma in funzione helper
-    // Discourage placing a bishop directly in front of own pawn (blocks pawn advance)
-    if (fromPieceType == chess::Board::BISHOP) {
-        const int toIdx = m.to.index;
-        const int behind = usIsWhite ? (toIdx - 8) : (toIdx + 8);
-        if (behind >= 0 && behind < 64) {
-            const uint64_t pawnMask = usIsWhite ? b.pawns_bb[0] : b.pawns_bb[1];
-            if (pawnMask & chess::Board::bitMask(behind)) {
-                int bishopBlockPenalty = 80;
-                const int pawnFile = chess::Board::file(behind);
-                const int pawnRank = chess::Board::rank(behind);
-                const int pawnStartRank = usIsWhite ? 6 : 1;
-                // In opening, strongly de-prioritize bishop moves that sit in front of d/e pawns.
-                if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4) && pawnRank == pawnStartRank) {
-                    bishopBlockPenalty += 140;
-                } else if (fullMoveClock < 16 && (pawnFile == 3 || pawnFile == 4)) {
-                    bishopBlockPenalty += 70;
-                }
-                score -= bishopBlockPenalty;
-            }
-        }
-    }
-
     // History heuristic (for regular quiet moves)
     if (score == 0 && ply >= 0 && ply < MAX_PLY) {
         int32_t histScore = history[usSide][m.from.index][m.to.index];

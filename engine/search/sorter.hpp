@@ -112,6 +112,8 @@ private:
         uint8_t oppKingSq,
         uint64_t occ) noexcept;
 
+    static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept;
+
     static int32_t scoreMoveOrderingPriorityInline(
         const chess::Board& b,
         const chess::Board::Move& m,
@@ -142,10 +144,6 @@ private:
         uint8_t sq,
         uint64_t occLocal,
         int sideLocal) noexcept;
-
-    static int32_t staticExchangeEvaluation(
-        const chess::Board& b,
-        const chess::Board::Move& m) noexcept;
 
     static bool shouldDeltaPrune(
         int32_t standPat,
