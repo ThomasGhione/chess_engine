@@ -24,7 +24,7 @@ public:
     static MoveList<chess::Board::Move> generateTacticalMoves(
         const chess::Board& b) noexcept;
 
-    static MoveList<chess::Board::Move> generateQSearchEvasions(const chess::Board& b) noexcept;
+    static engine::Sorter::MovePickerData generateQSearchEvasions(const chess::Board& b) noexcept;
 
     static engine::Sorter::MovePickerData generateQSearchTacticalMoves(
         const chess::Board& b,

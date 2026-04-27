@@ -355,17 +355,23 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
     return moves;
 }
 
-MoveList<chess::Board::Move> MoveGenerator::generateQSearchEvasions(const chess::Board& b) noexcept {
+engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(const chess::Board& b) noexcept {
     // Macro-step 1: Generate full legal evasions from the current board.
     MoveList<chess::Board::Move> evasions = generateLegalMoves(b);
 
     // Macro-step 2: Fast-return for checkmate/stalemate nodes.
     if (evasions.is_empty()) {
-        return evasions;
+        return engine::Sorter::MovePickerData{};
     }
 
     // Macro-step 3: Reorder evasions with forcing moves first using Sorter policy.
-    return engine::Sorter::sortEvasionsForcingFirst(evasions, b);
+    MoveList<chess::Board::Move> sorted = engine::Sorter::sortEvasionsForcingFirst(evasions, b);
+    
+    engine::Sorter::MovePickerData data;
+    data.moves = sorted;
+    data.size = sorted.size;
+    data.currentIndex = 0;
+    return data;
 }
 
 engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(

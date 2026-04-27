@@ -913,105 +913,92 @@ int32_t Searcher::quiescenceSearch(
         return Evaluator::evaluate(b);
     }
 
-    // Macro-step 2: Handle in-check evasions as mandatory tactical recursion.
-    if (inCheck) {
-        MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateQSearchEvasions(b);
-        if (evasions.is_empty()) {
-            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
-        }
-
-        int32_t best = initialBest(usIsWhite);
-        for (const auto& m : evasions) {
-            if (shouldAbortSearch(runtime)) {
-                markInterrupted(runtime);
-                return Evaluator::evaluate(b);
-            }
-
-            chess::Board::MoveState state;
-            doMoveWithPromotion(b, m, state);
-            const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
-            b.undoMove(m, state);
-
-            if (isBetter(score, best, usIsWhite)) {
-                best = score;
-            }
-
-            updateBound(score, alpha, beta, usIsWhite);
-            if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-                return cutoffValue(alpha, beta, usIsWhite);
-            }
-        }
-
-        return best;
-    }
-
-    // Macro-step 3: Evaluate stand-pat and apply dynamic delta pruning guards.
-    const int32_t standPat = Evaluator::evaluate(b);
-
-    if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
-        return cutoffValue(alpha, beta, usIsWhite);
-    }
-
-    updateBound(standPat, alpha, beta, usIsWhite);
-
-    //FIXME: Spostare costante fuori
-    static constexpr int32_t EARLY_DELTA_MARGIN = 950;
-    if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
-        return usIsWhite ? alpha : beta;
-    }
-
-    //FIXME: Chiamare namespace
-    int32_t deltaMargin = QUEEN_VALUE;
-    const int side = chess::Board::colorToIndex(activeColor);
-    const uint64_t ourPawns = b.pawns_bb[side];
-    //FIXME: Eliminare costanti magiche
-    const uint64_t nearPromoPawns = usIsWhite
-        ? (ourPawns & 0x00FF000000000000ULL)
-        : (ourPawns & 0x000000000000FF00ULL);
-    if (nearPromoPawns) {
-        deltaMargin += 150;
-    }
-
-    const int32_t materialBalance = usIsWhite
-        ? standPat
-        : (standPat == NEG_INF ? POS_INF : -standPat);
-    //FIXME: Eliminare costanti magiche
-    if (materialBalance < -400) {
-        deltaMargin += 150;
-    } else if (materialBalance < -200) {
-        deltaMargin += 75;
-    }
-
-    //FIXME: Eliminare costanti magiche
-    const int runtimeDepth = runtime.depth;
-    const int qsearchDepth = std::max(0, ply - runtimeDepth);
-    if (qsearchDepth > 5) {
-        deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
-        deltaMargin = std::max(deltaMargin, QUEEN_VALUE);
-    }
-
-    if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
-        return usIsWhite ? alpha : beta;
-    }
-
-    // Macro-step 4: Generate tactical set, recurse, apply cutoffs, and optionally store TT.
-    Sorter::MovePickerData tacticalMoves = engine::MoveGenerator::generateQSearchTacticalMoves(
-        b, standPat, alpha, beta, ply, usIsWhite, runtime.depth);
-    if (!tacticalMoves.hasNext()) {
-        return standPat;
-    }
-
+    // Macro-step 2 & 3: Handle evasions or stand-pat and generate tactical moves
+    Sorter::MovePickerData movePicker;
+    int32_t best;
     const int32_t alphaOrig = alpha;
     const int32_t betaOrig = beta;
-    int32_t best = standPat;
 
+    if (inCheck) {
+        movePicker = engine::MoveGenerator::generateQSearchEvasions(b);
+        if (!movePicker.hasNext()) {
+            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
+        }
+        best = initialBest(usIsWhite);
+    } else {
+        const int32_t standPat = Evaluator::evaluate(b);
+        if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
+            return cutoffValue(alpha, beta, usIsWhite);
+        }
+        updateBound(standPat, alpha, beta, usIsWhite);
+
+        //FIXME: Spostare costante fuori
+        static constexpr int32_t EARLY_DELTA_MARGIN = 950;
+        if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
+            return usIsWhite ? alpha : beta;
+        }
+
+        //FIXME: Chiamare namespace
+        int32_t deltaMargin = QUEEN_VALUE;
+        const int side = chess::Board::colorToIndex(activeColor);
+        const uint64_t ourPawns = b.pawns_bb[side];
+        //FIXME: Eliminare costanti magiche
+        const uint64_t nearPromoPawns = usIsWhite
+            ? (ourPawns & 0x00FF000000000000ULL)
+            : (ourPawns & 0x000000000000FF00ULL);
+        if (nearPromoPawns) {
+            deltaMargin += 150;
+        }
+
+        const int32_t materialBalance = usIsWhite
+            ? standPat
+            : (standPat == NEG_INF ? POS_INF : -standPat);
+        //FIXME: Eliminare costanti magiche
+        if (materialBalance < -400) {
+            deltaMargin += 150;
+        } else if (materialBalance < -200) {
+            deltaMargin += 75;
+        }
+
+        //FIXME: Eliminare costanti magiche
+        const int runtimeDepth = runtime.depth;
+        const int qsearchDepth = std::max(0, ply - runtimeDepth);
+        if (qsearchDepth > 5) {
+            deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
+            deltaMargin = std::max(deltaMargin, QUEEN_VALUE);
+        }
+
+        if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
+            return usIsWhite ? alpha : beta;
+        }
+
+        movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
+            b, standPat, alphaOrig, betaOrig, ply, usIsWhite, runtime.depth);
+        if (!movePicker.hasNext()) {
+            return standPat;
+        }
+        best = standPat;
+    }
+
+    // Macro-step 4: Unified child visiting loop for both tactical and evasions
     //FIXME: Eliminare costanti magiche
-    while (tacticalMoves.hasNext()) {
-        const auto m = tacticalMoves.nextMove();
+    while (movePicker.hasNext()) {
+        const auto m = movePicker.nextMove();
         
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
             return Evaluator::evaluate(b);
+        }
+
+        // PRE-MOVE validations / checks could go here smoothly
+        if (!inCheck) {
+            const uint8_t fromPiece = b.get(m.from.index);
+            const uint8_t pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+            if (pieceType == chess::Board::KING) {
+                if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece, false, false)) {
+                    continue;
+                }
+            }
         }
 
         chess::Board::MoveState state;
@@ -1025,7 +1012,7 @@ int32_t Searcher::quiescenceSearch(
 
         updateBound(score, alpha, beta, usIsWhite);
         if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
-            if (canUseTT && allowTTWrite) {
+            if (!inCheck && canUseTT && allowTTWrite) {
                 const uint64_t hashKey = b.getHash();
                 const auto flag = determineFlag(best, alphaOrig, betaOrig);
                 runtime.transpositionTable->store(
@@ -1038,7 +1025,7 @@ int32_t Searcher::quiescenceSearch(
         }
     }
 
-    if (canUseTT && allowTTWrite) {
+    if (!inCheck && canUseTT && allowTTWrite) {
         const uint64_t hashKey = b.getHash();
         const auto flag = determineFlag(best, alphaOrig, betaOrig);
         runtime.transpositionTable->store(hashKey, 0, clampToInt32(best), static_cast<uint8_t>(flag));
