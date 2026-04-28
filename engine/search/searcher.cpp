@@ -196,9 +196,17 @@ bool Searcher::isEnPassantCapture(const chess::Board& board, const chess::Board:
 
 bool Searcher::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     const bool isPromo = isPromotionMove(b, m);
-    const char promoChoice = isPromo ? m.promotionPiece : '\0';
+    return doMoveWithPromotion(b, m, state, isPromo);
+}
+
+bool Searcher::doMoveWithPromotion(
+    chess::Board& b,
+    const chess::Board::Move& m,
+    chess::Board::MoveState& state,
+    bool isPromotion) noexcept {
+    const char promoChoice = isPromotion ? m.promotionPiece : '\0';
     b.doMove(m, state, promoChoice);
-    return isPromo;
+    return isPromotion;
 }
 
 int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
@@ -212,7 +220,7 @@ int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
 }
 
 int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
-    const int32_t matDelta = Evaluator::getMaterialDelta(b);
+    const int32_t matDelta = b.getIncrementalMaterialDelta();
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
         return 0;
     }
@@ -398,7 +406,7 @@ bool Searcher::tryNullMovePruning(
     }
 
     if (!b.hasAnyLegalMove(node.activeColor)) {
-        outScore = stalemateScoreFromMaterialDelta(Evaluator::getMaterialDelta(b));
+        outScore = stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
         return true;
     }
 
@@ -429,7 +437,7 @@ bool Searcher::tryReverseFutilityPruning(
     }
 
     if (!b.hasAnyLegalMove(node.activeColor)) {
-        outScore = stalemateScoreFromMaterialDelta(Evaluator::getMaterialDelta(b));
+        outScore = stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
         return true;
     }
 
@@ -438,8 +446,9 @@ bool Searcher::tryReverseFutilityPruning(
 }
 
 void Searcher::updateKillerAndHistoryOnBetaCutoff(
-    const chess::Board& b,
     const chess::Board::Move& m,
+    bool isCapture,
+    uint8_t victimType,
     int32_t depth,
     int ply,
     uint8_t us,
@@ -447,11 +456,6 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const chess::Board::Move* previousMove) noexcept {
     if (ply < 0 || ply >= MAX_PLY) return;
 
-    const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-    const bool isEpCapture = isEnPassantCapture(b, m);
-    const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-    const uint8_t epVictimType = chess::Board::PAWN;
-    const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex = m.to.index;
 
@@ -563,6 +567,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.knights_bb[oppSide] | b.bishops_bb[oppSide] |
         b.rooks_bb[oppSide]   | b.queens_bb[oppSide] |
         b.kings_bb[oppSide];
+    const chess::Coords enPassant = b.getEnPassant();
+    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
 
@@ -578,18 +585,29 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isFirstMove = (moveIndex == 0);
 
-        const bool wasCapture = (b.get(m.to) != chess::Board::EMPTY) || isEnPassantCapture(b, m);
-        const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN)
-            && (m.to.rank() == chess::Board::promotionRank(usIsWhite));
+        const uint8_t fromIndex = m.from.index;
+        const uint8_t toIndex = m.to.index;
+        const uint8_t fromPieceType = b.get(fromIndex) & chess::Board::MASK_PIECE_TYPE;
+        const uint8_t toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
+        const bool isPawnMove = (fromPieceType == chess::Board::PAWN);
+        const bool isSameFileMove = chess::Board::file(fromIndex) == chess::Board::file(toIndex);
+        const bool isEpCapture = isPawnMove
+            && (toPieceType == chess::Board::EMPTY)
+            && !isSameFileMove
+            && hasEnPassant
+            && (m.to == enPassant);
+        const bool wasCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const bool isPromotionCandidate = isPawnMove && (m.to.rank() == promotionRank);
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
-        const bool isQuietPawnPush = isQuietMove
-            && (fromPieceType == chess::Board::PAWN)
-            && (chess::Board::file(m.from.index) == chess::Board::file(m.to.index));
-        const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][m.to.index] & enemyForkTargets;
-        const bool createsPawnForkThreat = isQuietPawnPush
-            && ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
-            && (__builtin_popcountll(forkTargets) >= 2);
+        const bool isQuietPawnPush = isQuietMove && isPawnMove && isSameFileMove;
+        bool createsPawnForkThreat = false;
+        if (isQuietPawnPush) {
+            const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][toIndex] & enemyForkTargets;
+            createsPawnForkThreat =
+                ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
+                && (__builtin_popcountll(forkTargets) >= 2);
+        }
 
         if (canLMP && isQuietMove && !createsPawnForkThreat && moveIndex >= lmpThreshold) {
             continue;
@@ -602,7 +620,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         chess::Board::MoveState state;
-        const bool isPromo = doMoveWithPromotion(b, m, state);
+        const bool isPromo = doMoveWithPromotion(b, m, state, isPromotionCandidate);
 
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
         const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 12;
@@ -698,7 +716,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
-                    b, m, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove);
+                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove);
 
                 if (isQuietMove) {
                     const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
@@ -770,7 +788,7 @@ int32_t Searcher::searchPosition(
         // Twofold is only a potential draw. Avoid premature draw cutoff when
         // the side to move is materially ahead and should keep pressing.
         if (b.isTwofoldRepetition()) {
-            const int32_t matDelta = Evaluator::getMaterialDelta(b);
+            const int32_t matDelta = b.getIncrementalMaterialDelta();
             constexpr int32_t TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN = 220;
             const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
             const bool sideToMoveAhead = whiteToMove
@@ -853,7 +871,7 @@ int32_t Searcher::searchPosition(
     if (moves.is_empty()) {
         return node.inCheck
             ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
-            : stalemateScoreFromMaterialDelta(Evaluator::getMaterialDelta(b));
+            : stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
     }
 
     bool hasHashMove = false;
@@ -1020,6 +1038,7 @@ int32_t Searcher::quiescenceSearch(
 
     // Macro-step 4: Unified child visiting loop for both tactical and evasions
     //FIXME: Eliminare costanti magiche
+    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
     while (movePicker.hasNext()) {
         const auto m = movePicker.nextMove();
         
@@ -1029,9 +1048,9 @@ int32_t Searcher::quiescenceSearch(
         }
 
         // PRE-MOVE validations / checks could go here smoothly
+        const uint8_t fromPiece = b.get(m.from.index);
+        const uint8_t pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
         if (!inCheck) {
-            const uint8_t fromPiece = b.get(m.from.index);
-            const uint8_t pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
             if (pieceType == chess::Board::KING) {
                 if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece, false, false)) {
                     continue;
@@ -1040,7 +1059,9 @@ int32_t Searcher::quiescenceSearch(
         }
 
         chess::Board::MoveState state;
-        doMoveWithPromotion(b, m, state);
+        const bool isPromotionCandidate =
+            (pieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
+        doMoveWithPromotion(b, m, state, isPromotionCandidate);
         const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
 

@@ -170,6 +170,8 @@ private:
     static bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     static bool isEnPassantCapture(const chess::Board& board, const chess::Board::Move& move) noexcept;
     static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
+    static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state,
+                                    bool isPromotion) noexcept;
 
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
@@ -239,8 +241,9 @@ private:
         bool allowTTWrite) noexcept;
 
     static void updateKillerAndHistoryOnBetaCutoff(
-        const chess::Board& b,
         const chess::Board::Move& m,
+        bool isCapture,
+        uint8_t victimType,
         int32_t depth,
         int ply,
         uint8_t us,
