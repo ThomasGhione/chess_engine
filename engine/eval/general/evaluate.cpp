@@ -45,18 +45,22 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     eval += evalBishopPairBonusCached(board);
 
-    AttackData attackData[2];
-    computeAttackData(attackData, board, occ);
-
     int32_t result;
-    if (phase.isOpening) {
-        result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
-    } else if (phase.isEarlyMiddlegame) {
-        result = evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
-    } else if (!phase.isEndgame) {
-        result = evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+    if (phase.isEndgame && phase.nonPawnMajors == 0) {
+        result = evaluatePawnOnlyEndgamePhase(board, eval, whitePawns, blackPawns);
     } else {
-        result = evaluateEndgamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+        AttackData attackData[2];
+        computeAttackData(attackData, board, occ);
+
+        if (phase.isOpening) {
+            result = evaluateOpeningPhase(board, eval, whitePawns, blackPawns, attackData);
+        } else if (phase.isEarlyMiddlegame) {
+            result = evaluateEarlyMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+        } else if (!phase.isEndgame) {
+            result = evaluateMiddlegamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+        } else {
+            result = evaluateEndgamePhase(board, eval, whitePawns, blackPawns, occ, attackData);
+        }
     }
 
     cacheEntry.key = evalCacheKey;

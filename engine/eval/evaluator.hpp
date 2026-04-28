@@ -232,6 +232,8 @@ private:
     static int32_t evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
     __attribute__((noinline))
     static int32_t evaluateEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
+    __attribute__((noinline))
+    static int32_t evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     // Methods end
 };
 
