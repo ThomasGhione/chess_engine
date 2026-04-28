@@ -973,7 +973,7 @@ int32_t Searcher::quiescenceSearch(
         }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
-            b, standPat, alphaOrig, betaOrig, ply, usIsWhite, runtime.depth);
+            b, standPat, alpha, beta, ply, usIsWhite, runtime.depth);
         if (!movePicker.hasNext()) {
             return standPat;
         }
