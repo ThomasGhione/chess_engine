@@ -413,12 +413,16 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
         const uint8_t epVictimType = chess::Board::PAWN;
         const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
-        const int32_t see = isCapture ? staticExchangeEvaluation(b, m) : 0;
 
         bool isHashMove = false;
         if (isHashMoveProbed && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
             isHashMove = true;
             hashMoveFound = true;
+        }
+
+        int32_t see = 0;
+        if (isCapture && !isHashMove) {
+            see = staticExchangeEvaluation(b, m);
         }
 
         int32_t score = scoreMoveOrderingPriorityInline(
