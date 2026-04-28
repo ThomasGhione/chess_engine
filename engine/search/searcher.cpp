@@ -11,6 +11,44 @@
 
 namespace engine {
 
+namespace {
+
+inline void publishSharedRootBound(
+    bool usIsWhite,
+    int32_t score,
+    std::atomic<int32_t>& sharedAlpha,
+    std::atomic<int32_t>& sharedBeta) noexcept {
+    if (usIsWhite) {
+        const int32_t betaLimit = sharedBeta.load(std::memory_order_relaxed);
+        score = (score >= betaLimit && betaLimit > NEG_INF) ? (betaLimit - 1) : score;
+        int32_t current = sharedAlpha.load(std::memory_order_relaxed);
+        while (score > current
+            && !sharedAlpha.compare_exchange_weak(
+                current, score, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        }
+        return;
+    }
+
+    const int32_t alphaLimit = sharedAlpha.load(std::memory_order_relaxed);
+    score = (score <= alphaLimit && alphaLimit < POS_INF) ? (alphaLimit + 1) : score;
+    int32_t current = sharedBeta.load(std::memory_order_relaxed);
+    while (score < current
+        && !sharedBeta.compare_exchange_weak(
+            current, score, std::memory_order_relaxed, std::memory_order_relaxed)) {
+    }
+}
+
+inline void loadSharedRootBounds(
+    const std::atomic<int32_t>& sharedAlpha,
+    const std::atomic<int32_t>& sharedBeta,
+    int32_t& alpha,
+    int32_t& beta) noexcept {
+    alpha = sharedAlpha.load(std::memory_order_relaxed);
+    beta = sharedBeta.load(std::memory_order_relaxed);
+}
+
+} // namespace
+
 constexpr int32_t Searcher::initialBest(bool isWhite) noexcept {
     return isWhite ? NEG_INF : POS_INF;
 }
@@ -1132,11 +1170,8 @@ chess::Board::Move Searcher::getBestMove(
         return bestMove;
     }
 
-    const int32_t sharedAlpha = alpha;
-    const int32_t sharedBeta = beta;
-    int32_t nullAlpha = 0;
-    int32_t nullBeta = 0;
-    rootNullWindow(usIsWhite, sharedAlpha, sharedBeta, nullAlpha, nullBeta);
+    std::atomic<int32_t> sharedAlpha{alpha};
+    std::atomic<int32_t> sharedBeta{beta};
 
     std::array<int32_t, MAX_MOVES> threadScores;
     threadScores.fill(initialBest(usIsWhite));
@@ -1157,12 +1192,21 @@ chess::Board::Move Searcher::getBestMove(
             chess::Board threadBoard = rootBoard;
             const auto m = rootMoves[i];
             uint64_t workerNodes = 0;
+            int32_t localAlpha = 0;
+            int32_t localBeta = 0;
+            int32_t nullAlpha = 0;
+            int32_t nullBeta = 0;
+            loadSharedRootBounds(sharedAlpha, sharedBeta, localAlpha, localBeta);
+            rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
             const int32_t score = searchRootMoveScore(
                 threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
             threadScores[i] = score;
             threadNodeCounts[i] = workerNodes;
-            threadNeedsResearch[i] = shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite);
+            threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
+            if (!isInterrupted(runtime)) {
+                publishSharedRootBound(usIsWhite, score, sharedAlpha, sharedBeta);
+            }
             if (isInterrupted(runtime)) {
                 break;
             }
@@ -1192,12 +1236,21 @@ chess::Board::Move Searcher::getBestMove(
 
                                     const auto m = rootMoves[i];
                                     uint64_t workerNodes = 0;
+                                    int32_t localAlpha = 0;
+                                    int32_t localBeta = 0;
+                                    int32_t nullAlpha = 0;
+                                    int32_t nullBeta = 0;
+                                    loadSharedRootBounds(sharedAlpha, sharedBeta, localAlpha, localBeta);
+                                    rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
                                     const int32_t score = searchRootMoveScore(
                                         threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
                                     threadScores[i] = score;
                                     threadNodeCounts[i] = workerNodes;
-                                    threadNeedsResearch[i] = shouldResearchPVS(score, sharedAlpha, sharedBeta, usIsWhite);
+                                    threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
+                                    if (!isInterrupted(runtime)) {
+                                        publishSharedRootBound(usIsWhite, score, sharedAlpha, sharedBeta);
+                                    }
                                     if (isInterrupted(runtime)) {
                                         break;
                                     }
