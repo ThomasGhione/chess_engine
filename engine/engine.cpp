@@ -103,6 +103,7 @@ Engine::~Engine() noexcept {
 
 void Engine::reset() noexcept {
     this->stopPondering();
+    this->clearPonderResult();
     board = chess::Board();
     bestMove = chess::Board::Move{};
     moveHistory.clear();
@@ -139,6 +140,14 @@ bool Engine::isPonderDebugEnabled() const noexcept {
     return this->ponderDebugEnabled.load(std::memory_order_relaxed);
 }
 
+void Engine::clearPonderResult() noexcept {
+    this->ponderRootHash = 0;
+    this->ponderResultDepth = 0;
+    this->ponderResultScore = 0;
+    this->ponderResultMove = chess::Board::Move{};
+    this->ponderResultReady = false;
+}
+
 uint64_t Engine::getPonderCurrentDepth() const noexcept {
     return this->ponderCurrentDepth.load(std::memory_order_relaxed);
 }
@@ -153,7 +162,7 @@ uint64_t Engine::getPonderInterruptedDepth() const noexcept {
 
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
-    this->stopPondering();
+    this->requestStopPondering();
 
     const bool result = (promotionPiece == '\0')
         ? this->board.move(from, to)
@@ -211,6 +220,7 @@ void Engine::updateGameResult() noexcept {
 }
 
 void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
+    this->ponderRootHash = rootBoard.getHash();
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
     this->searchInterrupted.store(false, std::memory_order_relaxed);
     this->nodesSearched = 0;
@@ -241,6 +251,13 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->ponderAspirationResearches.store(ponderResult.aspirationResearches, std::memory_order_relaxed);
     this->ponderAspirationFailLow.store(ponderResult.aspirationFailLow, std::memory_order_relaxed);
     this->ponderAspirationFailHigh.store(ponderResult.aspirationFailHigh, std::memory_order_relaxed);
+    this->ponderResultMove = ponderResult.bestMove;
+    this->ponderResultScore = ponderResult.bestScore;
+    this->ponderResultDepth = ponderResult.completedDepth;
+    this->ponderResultReady = ponderResult.hasLegalMoves
+        && ponderResult.completedAnyDepth
+        && chess::Coords::isInBounds(ponderResult.bestMove.from)
+        && chess::Coords::isInBounds(ponderResult.bestMove.to);
 
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         DBG_LOG_STREAM("[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
@@ -255,10 +272,36 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->ponderingActive.store(false, std::memory_order_release);
 }
 
+void Engine::requestStopPondering() noexcept {
+    if (!this->ponderingActive.load(std::memory_order_relaxed)
+        && !this->ponderingThread.joinable()) {
+        return;
+    }
+
+    this->ponderingStopRequested.store(true, std::memory_order_release);
+    this->stopSearchRequested.store(true, std::memory_order_release);
+}
+
+bool Engine::tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept {
+    const uint64_t targetDepth = (requestedDepth == 0)
+        ? Engine::DEFAULTDEPTH
+        : requestedDepth;
+
+    if (!this->ponderResultReady) return false;
+    if (this->ponderRootHash != this->board.getHash()) return false;
+    if (this->ponderResultDepth < targetDepth) return false;
+
+    outMove = this->ponderResultMove;
+    this->searchRuntime.depth = this->ponderResultDepth;
+    this->searchRuntime.eval = this->ponderResultScore;
+    return true;
+}
+
 void Engine::startPondering() noexcept {
     if (this->isGameOver()) return;
 
     this->stopPondering();
+    this->clearPonderResult();
 
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
@@ -280,8 +323,7 @@ void Engine::stopPondering() noexcept {
     const bool hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed)
         || this->ponderingThread.joinable();
 
-    this->ponderingStopRequested.store(true, std::memory_order_release);
-    this->stopSearchRequested.store(true, std::memory_order_release);
+    this->requestStopPondering();
 
     if (this->ponderingThread.joinable()) {
         this->ponderingThread.join();
@@ -304,7 +346,7 @@ void Engine::stopPondering() noexcept {
 }
 
 void Engine::stopThinking() noexcept {
-    this->stopPondering();
+    this->requestStopPondering();
 }
 
 chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
@@ -320,8 +362,15 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
         : requestedDepth;
     if (targetDepth == 0) return chess::Board::Move{};
 
+    chess::Board::Move ponderMove{};
+    if (this->tryUsePonderResult(targetDepth, ponderMove)) {
+        this->bestMove = ponderMove;
+        return this->bestMove;
+    }
+
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
     this->searchInterrupted.store(false, std::memory_order_relaxed);
+    this->clearPonderResult();
 
     chess::Board searchBoard = this->board;
     const chess::Board::Move candidate = Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth);
@@ -347,10 +396,15 @@ void Engine::search(uint64_t requestedDepth) noexcept {
         : requestedDepth;
     if (targetDepth == 0) return;
 
-    this->stopSearchRequested.store(false, std::memory_order_relaxed);
-    this->searchInterrupted.store(false, std::memory_order_relaxed);
+    chess::Board::Move candidate{};
+    if (!this->tryUsePonderResult(targetDepth, candidate)) {
+        this->stopSearchRequested.store(false, std::memory_order_relaxed);
+        this->searchInterrupted.store(false, std::memory_order_relaxed);
+        this->clearPonderResult();
 
-    const chess::Board::Move candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
+        candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
+    }
+
     if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
         this->bestMove = chess::Board::Move{};
         this->updateGameResult();
@@ -368,6 +422,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     this->bestMove = candidate;
     this->updateGameResult();
     this->appendMoveHistoryEntry(candidate.from, candidate.to, candidate.promotionPiece);
+    this->clearPonderResult();
 
     if (!this->isGameOver()) {
         this->startPondering();

@@ -15,8 +15,8 @@ Le priorita' sotto sono ordinate per impatto atteso su nodi/secondo, branching e
 [V]| P1 | Evaluator / king safety | `engine/eval/general/evaluate.cpp`, `engine/eval/king/*` | `computeAttackData()` costruisce attacchi completi e king safety e' il benchmark helper piu' pesante. | Calcolare attack data solo quando serve, valutare cache piu' associativa/grande. |
 [ ]| P1 | Legal move generation completa | `engine/search/move_generator.cpp` | Ogni nodo genera liste complete con pin rays, king legality e array locali. | Generatori specializzati: evasion-only, tactical-only, staged legal generation. |
 [ ]| P1 | Micro-overhead nel loop caldo | `engine/search/searcher.cpp` | Per ogni mossa si ripetono controlli su board, promotion, EP, fork threat e material delta non sempre cached. | Reusare metadati gia' calcolati e usare funzioni cached/incrementali. |
-[ ]| P1/P2 | Root parallel / YBWC | `engine/search/searcher.cpp` | Board copy per task, alpha condivisa solo in merge, worker senza TT write/heuristic updates. | Benchmark `MAX_THREADS=1/2/N`; abilitare YBWC solo dove vince o introdurre shared alpha atomico. |
-[ ]| P2 | Stop ponder blocking | `engine/engine.cpp` | `searchUCI()` chiama sempre `stopPondering()` e puo' attendere `join()`. | Misurare latenza con ponder attivo e riusare il risultato ponder quando possibile. |
+[V]| P1/P2 | Root parallel / YBWC | `engine/search/searcher.cpp` | Board copy per task, alpha condivisa solo in merge, worker senza TT write/heuristic updates. | Benchmark `MAX_THREADS=1/2/N`; abilitare YBWC solo dove vince o introdurre shared alpha atomico. |
+[V]| P2 | Stop ponder blocking | `engine/engine.cpp` | `searchUCI()` chiama sempre `stopPondering()` e puo' attendere `join()`. | Misurare latenza con ponder attivo e riusare il risultato ponder quando possibile. |
 [V]| P2 | Cache evaluator direct-mapped | `engine/eval/general/evaluate.cpp`, `engine/eval/general/attack_data.cpp` | Cache piccole e direct-mapped, quindi collisioni probabili in search larga. | Provare size tuning o cache 2-way/4-way con benchmark A/B. |
 
 ## Guardrail Di Misura

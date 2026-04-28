@@ -122,11 +122,19 @@ private:
     std::atomic<uint32_t> ponderAspirationResearches {0};
     std::atomic<uint32_t> ponderAspirationFailLow {0};
     std::atomic<uint32_t> ponderAspirationFailHigh {0};
+    uint64_t ponderRootHash = 0;
+    uint64_t ponderResultDepth = 0;
+    int32_t ponderResultScore = 0;
+    chess::Board::Move ponderResultMove {};
+    bool ponderResultReady = false;
 
     // Internal helpers
     static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
+    void clearPonderResult() noexcept;
+    void requestStopPondering() noexcept;
+    bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     void ponderLoop(chess::Board&& rootBoard) noexcept;
