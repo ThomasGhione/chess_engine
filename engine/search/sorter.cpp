@@ -248,8 +248,9 @@ uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
     // Macro-step 1: Restrict bitboards to simulated occupancy.
     const uint64_t pawns_bb = b.pawns_bb[sideLocal] & occLocal;
     const uint64_t knights_bb = b.knights_bb[sideLocal] & occLocal;
-    const uint64_t bishops_queens_bb = (b.bishops_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
-    const uint64_t rooks_queens_bb = (b.rooks_bb[sideLocal] | b.queens_bb[sideLocal]) & occLocal;
+    const uint64_t bishops_bb = b.bishops_bb[sideLocal] & occLocal;
+    const uint64_t rooks_bb = b.rooks_bb[sideLocal] & occLocal;
+    const uint64_t queens_bb = b.queens_bb[sideLocal] & occLocal;
     const uint64_t kings_bb = b.kings_bb[sideLocal] & occLocal;
     
     // Branchless retrieval: cascade conditional moves (cmov/csel)
@@ -258,12 +259,22 @@ uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
     uint64_t bb = knights_bb & pieces::KNIGHT_ATTACKS[sq];
     mask = mask ? mask : bb;
     
-    bb = bishops_queens_bb & pieces::getBishopAttacks(sq, occLocal);
+    //TODO: 
+    // unificare queen a bishop/rook portava veramente ad un bug in caso
+    // di allineamento su stesso ray con pezzo intermedio che blocca attacco di uno dei due?
+    // per ora ho disaccopiato queen, ma sarebbe importante capire 
+    // se è possibile unificare senza rischiare regressioni, 
+    // dato che è più efficiente (1 getAttacks invece di 2)
+
+    bb = bishops_bb & pieces::getBishopAttacks(sq, occLocal);
     mask = mask ? mask : bb;
     
-    bb = rooks_queens_bb & pieces::getRookAttacks(sq, occLocal);
+    bb = rooks_bb & pieces::getRookAttacks(sq, occLocal);
     mask = mask ? mask : bb;
     
+    bb = queens_bb & (pieces::getBishopAttacks(sq, occLocal) | pieces::getRookAttacks(sq, occLocal));
+    mask = mask ? mask : bb;
+
     bb = kings_bb & pieces::KING_ATTACKS[sq];
     mask = mask ? mask : bb;
 
