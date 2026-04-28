@@ -21,10 +21,18 @@ public:
             bool inCheckValue = false,
             bool inDoubleCheckValue = false) noexcept;
 
+    static MoveList<chess::Board::Move> generateLegalEvasions(
+        const chess::Board& b,
+        bool inDoubleCheckKnown = false,
+        bool inDoubleCheckValue = false) noexcept;
+
     static MoveList<chess::Board::Move> generateTacticalMoves(
         const chess::Board& b) noexcept;
 
-    static engine::Sorter::MovePickerData generateQSearchEvasions(const chess::Board& b) noexcept;
+    static engine::Sorter::MovePickerData generateQSearchEvasions(
+        const chess::Board& b,
+        bool inDoubleCheckKnown = false,
+        bool inDoubleCheckValue = false) noexcept;
 
     static engine::Sorter::MovePickerData generateQSearchTacticalMoves(
         const chess::Board& b,

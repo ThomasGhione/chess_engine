@@ -292,6 +292,86 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
     return moves;
 }
 
+MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasions(
+    const chess::Board& b,
+    bool inDoubleCheckKnown,
+    bool inDoubleCheckValue) noexcept {
+    MoveList<chess::Board::Move> moves;
+
+    const uint8_t color = b.getActiveColor();
+    const int side = chess::Board::colorToIndex(color);
+    const bool isWhite = (color == chess::Board::WHITE);
+
+    const uint64_t occ = b.getPiecesBitMap();
+    uint64_t pawns = b.pawns_bb[side];
+    const uint64_t knights = b.knights_bb[side];
+    const uint64_t bishops = b.bishops_bb[side];
+    const uint64_t rooks = b.rooks_bb[side];
+    const uint64_t queens = b.queens_bb[side];
+    const uint64_t kings = b.kings_bb[side];
+
+    if (!kings) [[unlikely]] return moves;
+
+    const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
+    const uint64_t oppOcc = occ & ~ownOcc;
+    const chess::Coords enPassant = b.getEnPassant();
+    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
+    const bool inDoubleCheck = inDoubleCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color);
+    const bool singleCheck = !inDoubleCheck;
+    const uint8_t pawnPiece = chess::Board::PAWN | color;
+    const uint8_t pawnPromotionRank = chess::Board::promotionRank(isWhite);
+    const uint8_t kingPiece = chess::Board::KING | color;
+
+    uint64_t evasionMask = ~0ULL;
+    if (singleCheck) {
+        computeCheckEvasionMasks(b, color, evasionMask);
+    }
+
+    const uint8_t kingFrom = __builtin_ctzll(kings);
+    const chess::Coords kingFromC{kingFrom};
+    uint64_t kingTargets = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
+    while (kingTargets) {
+        const uint8_t to = engine::popLSB(kingTargets);
+        if (b.isLegalPseudoMove(kingFrom, to, kingPiece, true, inDoubleCheck)) {
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{to}});
+        }
+    }
+
+    if (inDoubleCheck) return moves;
+
+    uint64_t pinnedMask = 0ULL;
+    std::array<uint64_t, 64> pinRayBySquare;
+    if (pawns | knights | bishops | rooks | queens) [[likely]] {
+        computePinRays(b, kingFromC, isWhite, pinnedMask, pinRayBySquare.data());
+    }
+
+    while (pawns) {
+        const uint8_t from = engine::popLSB(pawns);
+        const uint64_t fromBit = chess::Board::bitMask(from);
+        uint64_t mask = pieces::getPawnForwardPushes(from, isWhite, occ);
+        const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
+        mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
+        mask &= evasionMask;
+        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
+        mask |= epCandidate;
+        addPawnMovesFromMask(
+            b, moves, from, mask, true, false, pawnPiece,
+            isWhite, pawnPromotionRank, enPassant, hasEnPassant);
+    }
+
+    generateNonPawnLegalMoves<true, chess::Board::KNIGHT>(
+        moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    generateNonPawnLegalMoves<true, chess::Board::BISHOP>(
+        moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    generateNonPawnLegalMoves<true, chess::Board::ROOK>(
+        moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    generateNonPawnLegalMoves<true, chess::Board::QUEEN>(
+        moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+
+    return moves;
+}
+
 // ============================================================================
 // GENERATE TACTICAL MOVES - Helper for quiescence search
 // ============================================================================
@@ -355,9 +435,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::B
     return moves;
 }
 
-engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(const chess::Board& b) noexcept {
-    // Macro-step 1: Generate full legal evasions from the current board.
-    MoveList<chess::Board::Move> evasions = generateLegalMoves(b);
+engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(
+    const chess::Board& b,
+    bool inDoubleCheckKnown,
+    bool inDoubleCheckValue) noexcept {
+    // Macro-step 1: Generate only legal check evasions from the current board.
+    MoveList<chess::Board::Move> evasions = generateLegalEvasions(
+        b, inDoubleCheckKnown, inDoubleCheckValue);
 
     // Macro-step 2: Fast-return for checkmate/stalemate nodes.
     if (evasions.is_empty()) {

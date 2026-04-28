@@ -866,8 +866,9 @@ int32_t Searcher::searchPosition(
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
-    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(
-        b, true, node.inCheck, nodeInDoubleCheck);
+    MoveList<chess::Board::Move> moves = node.inCheck
+        ? engine::MoveGenerator::generateLegalEvasions(b, true, nodeInDoubleCheck)
+        : engine::MoveGenerator::generateLegalMoves(b, true, false, false);
     if (moves.is_empty()) {
         return node.inCheck
             ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
@@ -955,13 +956,13 @@ int32_t Searcher::quiescenceSearch(
     const uint8_t activeColor = b.getActiveColor();
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
     const bool inCheck = b.inCheck(activeColor);
+    const bool inDoubleCheck = inCheck && b.isDoubleCheck(activeColor);
 
     static constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            const bool inDoubleCheck = b.isDoubleCheck(activeColor);
-            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalMoves(
-                b, true, true, inDoubleCheck);
+            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalEvasions(
+                b, true, inDoubleCheck);
             if (evasions.is_empty()) {
                 return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
             }
@@ -976,7 +977,7 @@ int32_t Searcher::quiescenceSearch(
     const int32_t betaOrig = beta;
 
     if (inCheck) {
-        movePicker = engine::MoveGenerator::generateQSearchEvasions(b);
+        movePicker = engine::MoveGenerator::generateQSearchEvasions(b, true, inDoubleCheck);
         if (!movePicker.hasNext()) {
             return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
         }
