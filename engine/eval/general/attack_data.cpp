@@ -2,7 +2,7 @@
 
 namespace engine {
 
-static constexpr size_t ATTACK_CACHE_SIZE = 1u << 8; // 256 entries (~16 KiB), L1-friendly.
+static constexpr size_t ATTACK_CACHE_SIZE = 1u << 9; // 512 entries (~32 KiB), tests/perf tuned.
 static constexpr uint64_t ATTACK_CACHE_MASK = ATTACK_CACHE_SIZE - 1u;
 
 inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept {
