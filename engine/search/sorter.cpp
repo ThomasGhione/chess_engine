@@ -581,11 +581,11 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
 
     // Dynamic SEE pruning threshold based on depth and material balance
     // The engine should NOT speculate with losing captures hoping for positional comp
-    // Shallow qsearch (ply < 10): SEE >= -15cp (only tiny tactical losses)
-    // Mid qsearch (10-20): SEE >= -8cp (very conservative)
-    // Deep qsearch (ply >= 20): SEE >= 0cp (neutral or better only)
+    // Shallow qsearch (ply < 10): SEE >= -24cp (small tactical losses)
+    // Mid qsearch (10-20): SEE >= -12cp (conservative)
+    // Deep qsearch (ply >= 20): SEE >= -4cp (almost neutral or better)
     //FIXME: Elimina numeri magici
-    const int32_t seeThreshold = (ply < 10) ? -15 : ((ply < 20) ? -8 : 0);
+    const int32_t seeThreshold = (ply < 10) ? -24 : ((ply < 20) ? -12 : -4);
 
     //FIXME: Trasforma in funzione helper
     // Macro-step 3: Filter and score tactical moves with copied qsearch policy.
@@ -641,7 +641,7 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            static constexpr int32_t MOVE_DELTA_MARGIN = 100; // Minimal margin - material > position
+            static constexpr int32_t MOVE_DELTA_MARGIN = 140; // Slightly wider tactical margin.
 
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
                 continue; // Per-move delta pruning

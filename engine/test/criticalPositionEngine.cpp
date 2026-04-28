@@ -250,4 +250,18 @@ ut::suite criticalPositionEngineSuite = [] {
     }
   };
 
+  "critical position 18, avoid Qe3 hanging queen to bishop"_test = []{
+    constexpr const char* FEN = "2r1r1k1/1p3pp1/2b1p2p/p2p2b1/Pq1P4/2NQ1N2/RPP2PPP/4R1K1 w - - 4 20";
+    engine::Engine e = engine::Engine(FEN);
+    e.depth = 10;
+
+    const chess::Board::Move bestMove = e.searchUCI(e.depth);
+    const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
+      && bestMove.to == chess::Coords("e3");
+
+    expect(!playsHangingQueen)
+      << "Critical regression: engine played Qe3, hanging the queen to Bg5xe3. Got "
+      << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
 }; // ut::suite criticalPositionEngineSuite

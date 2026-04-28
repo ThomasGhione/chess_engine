@@ -11,6 +11,31 @@ namespace ut = boost::ut;
 ut::suite performanceEngineSuite = [] {
   using namespace ut;
 
+  "critical position 18, avoid Qe3 hanging queen to bishop"_test = []{
+    constexpr const char* FEN = "2r1r1k1/1p3pp1/2b1p2p/p2p2b1/Pq1P4/2NQ1N2/RPP2PPP/4R1K1 w - - 4 20";
+    engine::Engine e(FEN);
+    e.depth = 8;
+
+    const chess::Board::Move bestMove = e.searchUCI(e.depth);
+    const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
+      && bestMove.to == chess::Coords("e3");
+
+    expect(!playsHangingQueen)
+      << "Critical regression: engine played Qe3, hanging the queen to Bg5xe3. Got "
+      << bestMove.from.toString() << bestMove.to.toString() << '\n';
+  };
+
+  "critical position 18, black sees Bg5xe3 after Qe3"_test = []{
+    engine::Engine e("2r1r1k1/1p3pp1/2b1p2p/p2p2b1/Pq1P4/2NQ1N2/RPP2PPP/4R1K1 w - - 4 20");
+    chess::Board::MoveState state;
+    e.board.doMove(chess::Board::Move{chess::Coords("d3"), chess::Coords("e3")}, state);
+
+    const chess::Board::Move reply = e.searchUCI(1);
+    expect(reply.from == chess::Coords("g5") && reply.to == chess::Coords("e3"))
+      << "Expected black to immediately punish Qe3 with Bg5xe3, got "
+      << reply.from.toString() << reply.to.toString() << '\n';
+  };
+
   "performance searchPosition depth 11"_test = []{
     engine::Engine e = engine::Engine();
     e.depth = 11;
