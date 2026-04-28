@@ -128,6 +128,15 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         // GOOD CAPTURES: priority based on SEE + capture history
         int32_t score = 10000 + MVV_TABLE[victimType];
 
+        if (isPromotionCandidate) {
+            const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
+            uint8_t promoType = chess::Board::QUEEN;
+            if (promo == 'r') promoType = chess::Board::ROOK;
+            else if (promo == 'b') promoType = chess::Board::BISHOP;
+            else if (promo == 'n') promoType = chess::Board::KNIGHT;
+            score += pieceValues[promoType];
+        }
+
         // Add capture history bonus (0-500 range)
         const int32_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
         const int32_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
@@ -292,9 +301,24 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     // Value of the initially captured piece
     uint8_t capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
-    if (capturedType == chess::Board::EMPTY) {
+    const bool isEp = (capturedType == chess::Board::EMPTY);
+    if (isEp) {
         // En passant: captures a pawn
         capturedType = chess::Board::PAWN;
+    }
+
+    int32_t initialGain = PIECE_VALUES[capturedType];
+    uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+
+    if (m.promotionPiece != '\0') {
+        const char lowerPromo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
+        uint8_t promoType = chess::Board::QUEEN;
+        if (lowerPromo == 'r') promoType = chess::Board::ROOK;
+        else if (lowerPromo == 'b') promoType = chess::Board::BISHOP;
+        else if (lowerPromo == 'n') promoType = chess::Board::KNIGHT;
+
+        initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
+        capturedOnTargetType = promoType;
     }
 
     // Canonical SEE (swap algorithm):
@@ -304,15 +328,17 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     // where captured_piece is the piece that just moved to the target square in the previous ply.
     constexpr int MAX_SEE_DEPTH = 16;
     int32_t gain[MAX_SEE_DEPTH];
-    gain[0] = PIECE_VALUES[capturedType];
+    gain[0] = initialGain;
 
     // Macro-step 2: Build local occupancy after the initial capture move.
     uint64_t occ = b.getPiecesBitMap();
     occ ^= chess::Board::bitMask(fromSq); // remove the piece that makes the first capture from its square
+    if (isEp) {
+        const uint8_t epCapturedSq = (chess::Board::rank(fromSq) * 8) + chess::Board::file(toSq);
+        occ ^= chess::Board::bitMask(epCapturedSq);
+    }
 
     // After the initial move, the piece now "on target" is our initial attacker.
-    uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
-
     int depth = 1;
     int side = sidePassive; // the opponent captures next
 
@@ -587,7 +613,15 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             // ============================================================================
             // Skip captures that can't possibly raise alpha, even if they win material.
             // This is aggressive pruning based on material value alone.
-            const int32_t capturedValue = PIECE_VALUES[victimType];
+            int32_t capturedValue = PIECE_VALUES[victimType];
+            if (isPromotion) {
+                const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
+                uint8_t promoType = chess::Board::QUEEN;
+                if (promo == 'r') promoType = chess::Board::ROOK;
+                else if (promo == 'b') promoType = chess::Board::BISHOP;
+                else if (promo == 'n') promoType = chess::Board::KNIGHT;
+                capturedValue += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
+            }
             static constexpr int32_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
 
             // Check if this capture can possibly improve our position enough
