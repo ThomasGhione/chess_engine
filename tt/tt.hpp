@@ -292,7 +292,7 @@ private:
         return false;
     }
 
-    [[nodiscard]] static inline bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
+    [[nodiscard]] static constexpr bool isEquals(std::string_view lhs, std::string_view rhs) noexcept {
         if (lhs.size() != rhs.size()) return false;
         for (size_t i = 0; i < lhs.size(); ++i) {
             char a = lhs[i];
@@ -309,10 +309,10 @@ private:
         if (envValue == nullptr || *envValue == '\0') return HugePageMode::Auto;
 
         const std::string_view value(envValue);
-        if (iequals(value, "on") || iequals(value, "1") || iequals(value, "true") || iequals(value, "force")) {
+        if (isEquals(value, "on") || isEquals(value, "1") || isEquals(value, "true") || isEquals(value, "force")) {
             return HugePageMode::On;
         }
-        if (iequals(value, "off") || iequals(value, "0") || iequals(value, "false")) {
+        if (isEquals(value, "off") || isEquals(value, "0") || isEquals(value, "false")) {
             return HugePageMode::Off;
         }
         return HugePageMode::Auto;
@@ -325,7 +325,7 @@ private:
         return requestedMode;
     }
 
-    [[nodiscard]] static inline size_t alignUp(size_t value, size_t alignment) noexcept {
+    [[nodiscard]] static constexpr size_t alignUp(size_t value, size_t alignment) noexcept {
         return (value + alignment - 1u) & ~(alignment - 1u);
     }
 
@@ -393,7 +393,7 @@ private:
         return allocateHeapTable();
     }
 
-    [[nodiscard]] static inline uint8_t clampDepth(uint8_t depth) noexcept {
+    [[nodiscard]] static constexpr uint8_t clampDepth(uint8_t depth) noexcept {
         return (depth <= Entry::MAX_DEPTH) ? depth : Entry::MAX_DEPTH;
     }
 
@@ -407,18 +407,10 @@ inline void TranspositionTable::prefetch(uint64_t key) noexcept {
     __builtin_prefetch(bucket, 0, 3);
 }
 
-static_assert(
-    TranspositionTable::Entry::encodeMove(12, 28, 'q') == TranspositionTable::Entry::encodeMove(12, 28, 'Q'),
-    "promotion encoding should be case-insensitive");
-static_assert(
-    TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).from == 12,
-    "move decode from mismatch");
-static_assert(
-    TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).to == 28,
-    "move decode to mismatch");
-static_assert(
-    TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).promo == 'n',
-    "move decode promotion mismatch");
+static_assert(TranspositionTable::Entry::encodeMove(12, 28, 'q') == TranspositionTable::Entry::encodeMove(12, 28, 'Q'), "promotion encoding should be case-insensitive");
+static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).from == 12, "move decode from mismatch");
+static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).to == 28, "move decode to mismatch");
+static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).promo == 'n', "move decode promotion mismatch");
 
 inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
