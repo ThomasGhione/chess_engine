@@ -42,4 +42,99 @@ int32_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData dat
     return scoreBlack + scoreWhite;
 }
 
+inline uint64_t Evaluator::collectPawnAttacks(uint64_t pawns, int side) noexcept {
+    uint64_t attacks = 0ULL;
+    while (pawns) {
+        attacks |= pieces::PAWN_ATTACKS[side][popLSB(pawns)];
+    }
+    return attacks;
+}
+
+inline uint64_t Evaluator::collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept {
+    uint64_t attacks = 0ULL;
+    while (pawns) {
+        const int sq = popLSB(pawns);
+        const uint64_t push = pieces::PAWN_SINGLE_PUSH_TARGETS[side][sq];
+        if (push != 0ULL && (push & occ) == 0ULL) {
+            attacks |= pieces::PAWN_ATTACKS[side][__builtin_ctzll(push)];
+        }
+    }
+    return attacks;
+}
+
+inline uint64_t Evaluator::collectKnightAttacks(uint64_t knights) noexcept {
+    uint64_t attacks = 0ULL;
+    while (knights) {
+        attacks |= pieces::KNIGHT_ATTACKS[popLSB(knights)];
+    }
+    return attacks;
+}
+
+inline uint64_t Evaluator::collectBishopAttacks(uint64_t bishops, uint64_t occ) noexcept {
+    uint64_t attacks = 0ULL;
+    while (bishops) {
+        attacks |= pieces::getBishopAttacks(popLSB(bishops), occ);
+    }
+    return attacks;
+}
+
+inline uint64_t Evaluator::collectRookAttacks(uint64_t rooks, uint64_t occ) noexcept {
+    uint64_t attacks = 0ULL;
+    while (rooks) {
+        attacks |= pieces::getRookAttacks(popLSB(rooks), occ);
+    }
+    return attacks;
+}
+
+inline int32_t Evaluator::evalThreatsSide(const chess::Board& b, const AttackData data[2], int side,
+                                          int sign, uint64_t occ) noexcept {
+    const int opp = side ^ 1;
+    const uint64_t ownMinors = b.knights_bb[side] | b.bishops_bb[side];
+    const uint64_t ownRooks = b.rooks_bb[side];
+    const uint64_t ownQueens = b.queens_bb[side];
+    const uint64_t ownValuable = ownMinors | ownRooks | ownQueens;
+    if (ownValuable == 0ULL) return 0;
+
+    const uint64_t pawnThreats = collectPawnAttacks(b.pawns_bb[opp], opp);
+    const uint64_t minorThreats =
+        collectKnightAttacks(b.knights_bb[opp]) | collectBishopAttacks(b.bishops_bb[opp], occ);
+    const uint64_t rookThreats = collectRookAttacks(b.rooks_bb[opp], occ);
+    const uint64_t pawnPushThreats = collectPawnPushAttacks(b.pawns_bb[opp], opp, occ);
+
+    const uint64_t rookByPawn = ownRooks & pawnThreats;
+    const uint64_t rookByMinor = ownRooks & minorThreats & ~rookByPawn;
+    const uint64_t queenByPawn = ownQueens & pawnThreats;
+    const uint64_t queenByMinor = ownQueens & minorThreats & ~queenByPawn;
+    const uint64_t queenByRook = ownQueens & rookThreats & ~(queenByPawn | queenByMinor);
+
+    int32_t score = 0;
+    score += sign * __builtin_popcountll(ownMinors & pawnThreats) * engine::THREAT_PAWN_ATTACK_MINOR_PENALTY;
+    score += sign * __builtin_popcountll(rookByPawn) * engine::THREAT_PAWN_ATTACK_ROOK_PENALTY;
+    score += sign * __builtin_popcountll(rookByMinor) * engine::THREAT_MINOR_ATTACK_ROOK_PENALTY;
+    score += sign * __builtin_popcountll(queenByPawn) * engine::THREAT_PAWN_ATTACK_QUEEN_PENALTY;
+    score += sign * __builtin_popcountll(queenByMinor) * engine::THREAT_MINOR_ATTACK_QUEEN_PENALTY;
+    score += sign * __builtin_popcountll(queenByRook) * engine::THREAT_ROOK_ATTACK_QUEEN_PENALTY;
+
+    score += sign * __builtin_popcountll(ownMinors & pawnPushThreats) * engine::THREAT_PAWN_PUSH_MINOR_PENALTY;
+    score += sign * __builtin_popcountll(ownRooks & pawnPushThreats) * engine::THREAT_PAWN_PUSH_ROOK_PENALTY;
+    score += sign * __builtin_popcountll(ownQueens & pawnPushThreats) * engine::THREAT_PAWN_PUSH_QUEEN_PENALTY;
+
+    const uint64_t looseValuable = ownValuable & data[opp].allAttacks & ~data[side].allAttacks;
+    score += sign * __builtin_popcountll(looseValuable & ownMinors) * engine::THREAT_LOOSE_MINOR_PENALTY;
+    score += sign * __builtin_popcountll(looseValuable & ownRooks) * engine::THREAT_LOOSE_ROOK_PENALTY;
+    score += sign * __builtin_popcountll(looseValuable & ownQueens) * engine::THREAT_LOOSE_QUEEN_PENALTY;
+
+    return score;
+}
+
+int32_t Evaluator::evalThreats(const chess::Board& b, const AttackData data[2], uint64_t occ, bool isEndgame) noexcept {
+    int32_t score = evalThreatsSide(b, data, 0, 1, occ)
+                  + evalThreatsSide(b, data, 1, -1, occ);
+
+    if (isEndgame) {
+        score = (score * 70) / 100;
+    }
+    return score;
+}
+
 } // namespace engine

@@ -90,6 +90,22 @@ inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -10;
 inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -5;
 
 // ===================================================
+// EXPLICIT THREATS
+// ===================================================
+inline static constexpr int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -18;
+inline static constexpr int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -35;
+inline static constexpr int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -55;
+inline static constexpr int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -22;
+inline static constexpr int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -32;
+inline static constexpr int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -24;
+inline static constexpr int32_t THREAT_PAWN_PUSH_MINOR_PENALTY = -10;
+inline static constexpr int32_t THREAT_PAWN_PUSH_ROOK_PENALTY = -18;
+inline static constexpr int32_t THREAT_PAWN_PUSH_QUEEN_PENALTY = -28;
+inline static constexpr int32_t THREAT_LOOSE_MINOR_PENALTY = -8;
+inline static constexpr int32_t THREAT_LOOSE_ROOK_PENALTY = -14;
+inline static constexpr int32_t THREAT_LOOSE_QUEEN_PENALTY = -20;
+
+// ===================================================
 // PAWN FORKS (defended pawn attacking 2+ enemy pieces)
 // ===================================================
 inline static constexpr int32_t PAWN_FORK_BASE_BONUS       = 45;  // Base bonus for any defended pawn fork
@@ -138,6 +154,9 @@ inline static constexpr int32_t KING_FILE_PRESSURE_PENALTY = 9;
 inline static constexpr int32_t KING_OPEN_DIAGONAL_PENALTY = 14;
 inline static constexpr int32_t KING_EXPOSED_PENALTY = -25;
 inline static constexpr int32_t EARLY_KING_PENALTY = -20;
+inline static constexpr int32_t KING_SAFETY_SIDE_CAP = 180;
+inline static constexpr int32_t KING_ATTACK_MATERIAL_MIN_SCALE = 45;
+inline static constexpr int32_t KING_ATTACK_MATERIAL_MAX_SCALE = 150;
 inline static constexpr int32_t KING_ATTACK_WEIGHT_KNIGHT = 10;
 inline static constexpr int32_t KING_ATTACK_WEIGHT_BISHOP = 10;
 inline static constexpr int32_t KING_ATTACK_WEIGHT_ROOK   = 18;
@@ -176,4 +195,3 @@ inline constexpr int32_t MVV_TABLE[7] = {
 };
 
 } // namespace engine
-

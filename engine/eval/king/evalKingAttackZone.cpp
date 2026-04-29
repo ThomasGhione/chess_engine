@@ -55,6 +55,8 @@ inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const At
 
     const int scaleIndex = std::min(attackerCount, 8);
     int32_t attackDanger = (attackUnits * ATTACKER_SCALE_PERCENT[scaleIndex]) / 100;
+    const int32_t materialScale = attackMaterialScalePercent(b, side, chess::Board::file(enemyKingSq), b.pawns_bb[oppSide]);
+    attackDanger = (attackDanger * materialScale) / 100;
     attackDanger = std::min<int32_t>(attackDanger, engine::KING_ATTACK_DANGER_CAP);
 
     return sign * attackDanger;

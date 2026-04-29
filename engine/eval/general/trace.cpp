@@ -47,6 +47,8 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         traceTerm(eval, evalEarlyQueen(board), "earlyQueen");
         traceTerm(eval, evalCastlingBonus(board), "castling");
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
+        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
+        traceTerm(eval, evalPawnForks(board), "pawnForks");
         traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
         traceTerm(eval, evalPieceCoordination(board), "coordination");
         traceTerm(eval, evalOutposts(board), "outposts");
@@ -61,6 +63,8 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
         traceTerm(eval, evalCastlingBonus(board), "castling");
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
+        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
+        traceTerm(eval, evalPawnForks(board), "pawnForks");
         traceTerm(eval, evalTrappedPieces(board, occ), "trappedPieces");
         traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, false), "pawnStructure");
         traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
@@ -74,6 +78,8 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
     } else if (isMiddlegame) {
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
+        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
+        traceTerm(eval, evalPawnForks(board), "pawnForks");
         traceTerm(eval, evalTrappedPieces(board, occ), "trappedPieces");
         traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, false), "pawnStructure");
         traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
@@ -93,6 +99,7 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     } else {
         // Endgame
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
+        traceTerm(eval, evalThreats(board, attackData, occ, true), "threats");
         traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, true), "pawnStructure");
         traceTerm(eval, evalKingActivity(board, true), "kingActivity");
         traceTerm(eval, evalEndgameKingActivity(board), "endgameKingActivity");

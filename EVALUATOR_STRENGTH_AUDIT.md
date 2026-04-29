@@ -13,7 +13,6 @@ I problemi piu importanti sono:
 1. **Fase a bucket rigidi**: opening/earlyMG/MG/EG produce salti artificiali e rende tuning/cache piu fragili.
 2. **Mancanza di tuning sistematico MG/EG**: molti coefficienti sono plausibili ma manuali; il salto Elo grosso arriva da PSQT/termini tuneati.
 3. **Endgame troppo generico**: mancano scale factor, drawishness e finali specialistici.
-4. **Threat model ancora debole**: hanging/trapped guardano pattern statici, non valore dello scambio, overloaded defenders, minacce future e safe attacks.
 
 ## P1 - Massimo ROI Elo
 
@@ -60,65 +59,7 @@ Nota pratica:
 - Questo e' probabilmente il singolo intervento piu redditizio ora che le correzioni di base sono state chiuse.
 - Non va fatto a mano oltre una prima bozza: serve tuning automatico.
 
-### 3. Threat model esplicito
-
-- File: `engine/eval/general/hanging.cpp`, `engine/eval/general/trapped.cpp`, `engine/eval/pawn/evalPawnForks.cpp`
-- Priorita: P1
-- Elo atteso: +20 / +70
-
-Oggi hai hanging pieces, trapped pieces e pawn forks. Mancano pero:
-
-- minacce su pezzi difesi male ma non appesi;
-- pezzi attaccati da pezzi di valore inferiore;
-- overload dei difensori;
-- minacce a una mossa, specialmente pawn push che attacca pezzi;
-- safe attacks su regina/torre/re;
-- SEE/static exchange per capire se "attaccato" e' realmente perdente.
-
-Come fare:
-
-- Costruire `AttackInfo` con:
-  - attackers per square;
-  - defenders per square;
-  - least valuable attacker;
-  - safe attack mask;
-  - attack count per piece.
-- Aggiungere termini:
-  - minor/rook/queen attacked by lower piece;
-  - loose piece attacked twice;
-  - queen attacked by minor/rook;
-  - rook trapped by king/pawns;
-  - pawn push threats su pezzi maggiori;
-  - discovered attack/ray pressure semplificata.
-- Usare SEE solo dove necessario, per evitare costo eccessivo.
-
-### 4. King safety: scalare con materiale offensivo e rendere piu legale
-
-- File: `engine/eval/king/evalKingSafety.cpp`, `engine/eval/king/evalKingAttackZone.cpp`
-- Priorita: P1
-- Elo atteso: +15 / +50
-
-Il modello ha gia shelter/storm, file aperti, diagonali e attack zone. Buona base. I problemi:
-
-- il danger non sembra scalato abbastanza con materiale offensivo residuo;
-- `hasCastled` e' inferito da king square + rights lost; se il re torna su g1/c1 dopo aver mosso puo sembrare "castled";
-- hook pawn controlla solo un pattern fisso kingside;
-- safe/forcing contacts usano defender map, ma non verificano pienamente legalita/safety dello square;
-- king safety e king attack zone rischiano overlap/doppio conteggio.
-
-Come fare:
-
-- Introdurre `attackMaterialScale`: queen presente, heavy pieces, minor attackers, open files.
-- Tenere uno stato esplicito "has castled" oppure evitare bonus castled binario e valutare solo pawn shelter + king file.
-- Generalizzare hook pawns: g/h per kingside, b/a per queenside, lato del re reale.
-- Separare:
-  - shelter/storm difensivo;
-  - attack danger offensivo;
-  - open file/diagonal pressure;
-  - safe checks.
-- Applicare saturazione unica finale per evitare punteggi king safety troppo doppiati.
-
-### 5. Endgame scaling e material signatures
+### 3. Endgame scaling e material signatures
 
 - File: `engine/eval/general/eval_phases.cpp:64-101`, `engine/eval/rook/eval_rook.cpp`, `engine/eval/queen/eval_queen.cpp`
 - Priorita: P1
@@ -143,7 +84,7 @@ Come fare:
 - Funzione `scaleFactor(position, rawEval)` che riduce eval in finali drawish.
 - Regole specialistiche prima semplici, poi Syzygy opzionale per <=5/6 pezzi.
 
-### 6. Passed pawns piu concreti
+### 4. Passed pawns piu concreti
 
 - File: `engine/eval/pawn/evalPawnStructure.cpp:107-238`, `engine/eval/rook/eval_rook.cpp:32-59`
 - Priorita: P1
@@ -170,7 +111,7 @@ Come fare:
 
 ## P2 - Miglioramenti importanti ma dopo P1
 
-### 7. Mobility piece-specific e safe mobility
+### 5. Mobility piece-specific e safe mobility
 
 - File: `engine/eval/general/attack_data.cpp`
 - Priorita: P2
@@ -186,7 +127,7 @@ Come fare:
 - Penalita per queen mobility precoce separata, non uguale a mobilita sana.
 - Per alfieri/torri, distinguere raggi bloccati da propri pedoni vs pezzi mobili.
 
-### 8. Outposts piu restrittivi
+### 6. Outposts piu restrittivi
 
 - File: `engine/eval/general/coordination.cpp:6-31`
 - Priorita: P2
@@ -206,7 +147,7 @@ Come fare:
 - Bonus scalato da rank/file.
 - Extra se il pezzo attacca key squares o re.
 
-### 9. Bad bishop da struttura, non solo colore pedoni
+### 7. Bad bishop da struttura, non solo colore pedoni
 
 - File: `engine/eval/bishop/eval_bishop.cpp:5-23`
 - Priorita: P2
@@ -221,7 +162,7 @@ Come fare:
 - Extra malus se tutti i pedoni sono su un lato e l'alfiere non controlla promotion square.
 - Bonus per bishop pair deve dipendere da apertura della posizione e pedoni su entrambi i lati.
 
-### 10. Rook/queen endgame pressure troppo generico
+### 8. Rook/queen endgame pressure troppo generico
 
 - File: `engine/eval/rook/eval_rook.cpp:68-166`, `engine/eval/queen/eval_queen.cpp`
 - Priorita: P2
@@ -239,7 +180,7 @@ Come fare:
 - Usare scala piu piatta fino a quando il re avversario non e' davvero vicino al bordo.
 - Non sommare pressione rook/queen con generic king activity senza cap finale.
 
-### 11. Initiative/tempo piu prudente
+### 9. Initiative/tempo piu prudente
 
 - File: `engine/eval/general/material.cpp:18-22`, `engine/eval/evaluator.inl:78-82`
 - Priorita: P2
@@ -255,7 +196,7 @@ Come fare:
 
 ## P3 - Qualita, tuning e performance
 
-### 12. Eval trace e test per feature
+### 10. Eval trace e test per feature
 
 - File: `engine/eval/general/trace.cpp`, `tests/`
 - Priorita: P3 ma abilitante
@@ -273,7 +214,7 @@ Test minimi:
 - king safety: castled vs non-castled, file aperto, pawn storm;
 - no-kings/mate sentinel gia coperto dal search, ma meglio testare.
 
-### 13. Tuning pipeline
+### 11. Tuning pipeline
 
 - Priorita: P1 come progetto, P3 come infrastruttura
 - Elo atteso: +50 / +150 nel medio periodo
@@ -299,7 +240,7 @@ Metriche:
 - score stability per iterazione;
 - WDL/self-play.
 
-### 14. Cache e dati: dopo la correttezza
+### 12. Cache e dati: dopo la correttezza
 
 - File: `engine/eval/general/evaluate.cpp`, `engine/eval/general/attack_data.cpp`, `engine/eval/pawn/evalPawnStructure.cpp`
 - Priorita: P3
@@ -332,16 +273,7 @@ Elo atteso: +40 / +120.
 
 Elo atteso: +30 / +100.
 
-### Sprint 3 - Threats/king safety
-
-1. AttackInfo arricchito.
-2. Threats con least valuable attacker e safe attacks.
-3. King danger scalato da materiale offensivo.
-4. Cap finale anti double-count.
-
-Elo atteso: +30 / +100.
-
-### Sprint 4 - Tuning serio
+### Sprint 3 - Tuning serio
 
 1. Dataset.
 2. Texel/logistic tuning.
@@ -358,6 +290,6 @@ La traiettoria piu promettente non e' aggiungere altri dieci micro-termini subit
 
 1. passare a MG/EG tapered;
 2. tuneare PSQT e coefficienti;
-3. aggiungere endgame scaling e threat model.
+3. aggiungere endgame scaling specialistico.
 
 Questa sequenza e' quella con il miglior rapporto rischio/Elo.

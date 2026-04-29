@@ -161,6 +161,13 @@ private:
     static inline int32_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                   int sign, int penalty) noexcept;
     static inline int32_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
+    static inline uint64_t collectPawnAttacks(uint64_t pawns, int side) noexcept;
+    static inline uint64_t collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept;
+    static inline uint64_t collectKnightAttacks(uint64_t knights) noexcept;
+    static inline uint64_t collectBishopAttacks(uint64_t bishops, uint64_t occ) noexcept;
+    static inline uint64_t collectRookAttacks(uint64_t rooks, uint64_t occ) noexcept;
+    static inline int32_t evalThreatsSide(const chess::Board& b, const AttackData data[2], int side,
+                                          int sign, uint64_t occ) noexcept;
     template<int32_t Bonus>
     static inline int32_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
     template<bool IsEndgame>
@@ -174,14 +181,17 @@ private:
     static inline void addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept;
     static inline int32_t evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
                                              bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept;
-    static inline void applyNonCastledPenalties(const chess::Board& b, int side, bool rightsLost, bool hasCastled,
+    static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile,
+                                              uint64_t targetPawns) noexcept;
+    static inline int32_t scaleKingDanger(int32_t value, int32_t scalePercent) noexcept;
+    static inline void applyNonCastledPenalties(const chess::Board& b, int side, bool rightsLost, bool kingOnWing,
                                                 bool canCastleKingside, bool canCastleQueenside,
-                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety, int sq) noexcept;
+                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
     static inline void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyHookPawnPenalty(const chess::Board& b, int side, bool kingSideRelevant, uint64_t ownPawns,
+    static inline void applyHookPawnPenalty(const chess::Board& b, int side, int kingFile, uint64_t ownPawns,
                                             uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
     static inline void applyShelterAndStorm(const chess::Board& b, int side, int kingFile, int kingRank,
-                                            uint64_t ownPawns, uint64_t enemyPawns, bool hasCastled,
+                                            uint64_t ownPawns, uint64_t enemyPawns, bool kingOnWing,
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
     static inline void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
 
@@ -191,6 +201,7 @@ private:
     static int32_t evalMobility(const AttackData data[2]) noexcept;
     static int32_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static int32_t evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
+    static int32_t evalThreats(const chess::Board& b, const AttackData data[2], uint64_t occ, bool isEndgame) noexcept;
     static int32_t evalPawnForks(const chess::Board& b) noexcept;
     static int32_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
     static int32_t evalCentralControl(uint64_t whitePawns, uint64_t blackPawns) noexcept;
