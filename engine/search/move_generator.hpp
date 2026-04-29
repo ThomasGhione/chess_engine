@@ -50,6 +50,7 @@ private:
         const chess::Coords& fromC,
         const chess::Coords& toC) noexcept;
 
+    template<bool IsWhite>
     static void addPawnMovesFromMask(
         const chess::Board& b,
         MoveList<chess::Board::Move>& moves,
@@ -58,15 +59,30 @@ private:
         bool inCheck,
         bool inDoubleCheck,
         uint8_t pawnPiece,
-        bool isWhite,
-        uint8_t promotionRank,
         chess::Coords enPassant,
         bool hasEnPassant) noexcept;
 
+    template<bool IsWhite>
+    static MoveList<chess::Board::Move> generateLegalMovesFor(
+        const chess::Board& b,
+        bool inCheckKnown,
+        bool inCheckValue,
+        bool inDoubleCheckValue) noexcept;
+
+    template<bool IsWhite>
+    static MoveList<chess::Board::Move> generateLegalEvasionsFor(
+        const chess::Board& b,
+        bool inDoubleCheckKnown,
+        bool inDoubleCheckValue) noexcept;
+
+    template<bool IsWhite>
+    static MoveList<chess::Board::Move> generateTacticalMovesFor(
+        const chess::Board& b) noexcept;
+
+    template<bool IsWhite>
     static void computePinRays(
         const chess::Board& b,
         chess::Coords kingPos,
-        bool isWhite,
         uint64_t& pinnedMask,
         uint64_t pinRays[64]) noexcept;
 
