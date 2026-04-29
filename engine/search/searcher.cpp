@@ -57,7 +57,7 @@ constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest, bool is
     return isWhite ? (newScore > currentBest) : (newScore < currentBest);
 }
 
-bool Searcher::isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept {
+constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept {
     return isWhite ? (score >= beta) : (score <= alpha);
 }
 
@@ -66,7 +66,7 @@ void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool is
     beta = (!isWhite && score < beta) ? score : beta;
 }
 
-bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
+constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
     const int64_t standPat64 = static_cast<int64_t>(standPat);
     const int64_t margin64 = static_cast<int64_t>(margin);
     const int64_t alpha64 = static_cast<int64_t>(alpha);
@@ -74,11 +74,11 @@ bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha,
     return isWhite ? (standPat64 + margin64 < alpha64) : (standPat64 - margin64 > beta64);
 }
 
-int32_t Searcher::cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept {
+constexpr int32_t Searcher::cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept {
     return isWhite ? beta : alpha;
 }
 
-bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept {
+constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept {
     return isWhite ? (score > alphaBound) : (score < betaBound);
 }
 
@@ -89,17 +89,17 @@ void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, in
     ttBeta = clampToInt32(expandedBeta);
 }
 
-int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
+constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
     return clampToInt32(sum);
 }
 
-int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
+constexpr int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
     return clampToInt32(diff);
 }
 
-int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
+constexpr int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
     constexpr int32_t MIN_I16 = -32768;
     constexpr int32_t MAX_I16 = 32767;
     return std::clamp(value, MIN_I16, MAX_I16);

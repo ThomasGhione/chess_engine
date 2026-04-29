@@ -1,12 +1,24 @@
 #include "sorter.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdlib>
 
 #include "../engine.hpp"
 
 namespace engine {
+
+namespace {
+
+constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
+    switch (promotionPiece) {
+        case 'r': case 'R': return chess::Board::ROOK;
+        case 'b': case 'B': return chess::Board::BISHOP;
+        case 'n': case 'N': return chess::Board::KNIGHT;
+        default: return chess::Board::QUEEN;
+    }
+}
+
+} // namespace
 
 template <typename MoveType>
 void Sorter::insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept {
@@ -24,11 +36,11 @@ void Sorter::insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept 
     }
 }
 
-bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
+constexpr bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
 
-bool Sorter::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
+constexpr bool Sorter::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
     return m.from.index == from && m.to.index == to;
 }
 
@@ -129,11 +141,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
         int32_t score = 10000 + MVV_TABLE[victimType];
 
         if (isPromotionCandidate) {
-            const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
-            uint8_t promoType = chess::Board::QUEEN;
-            if (promo == 'r') promoType = chess::Board::ROOK;
-            else if (promo == 'b') promoType = chess::Board::BISHOP;
-            else if (promo == 'n') promoType = chess::Board::KNIGHT;
+            const uint8_t promoType = promotionPieceType(m.promotionPiece);
             score += pieceValues[promoType];
         }
 
@@ -200,12 +208,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     // Promotion bonus (if it's not a capture and no check was already detected)
     if (score == 0 && isPromotionCandidate) {
         score = 7000;
-
-        const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
-        uint8_t promoType = chess::Board::QUEEN; // default if promo char is missing
-        if (promo == 'r') promoType = chess::Board::ROOK;
-        else if (promo == 'b') promoType = chess::Board::BISHOP;
-        else if (promo == 'n') promoType = chess::Board::KNIGHT;
+        const uint8_t promoType = promotionPieceType(m.promotionPiece);
 
         // Tie-break promotions naturally: Q > R > B > N
         score += pieceValues[promoType];
@@ -311,11 +314,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
 
     if (m.promotionPiece != '\0') {
-        const char lowerPromo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
-        uint8_t promoType = chess::Board::QUEEN;
-        if (lowerPromo == 'r') promoType = chess::Board::ROOK;
-        else if (lowerPromo == 'b') promoType = chess::Board::BISHOP;
-        else if (lowerPromo == 'n') promoType = chess::Board::KNIGHT;
+        const uint8_t promoType = promotionPieceType(m.promotionPiece);
 
         initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
         capturedOnTargetType = promoType;
@@ -615,11 +614,7 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             // This is aggressive pruning based on material value alone.
             int32_t capturedValue = PIECE_VALUES[victimType];
             if (isPromotion) {
-                const char promo = std::tolower(static_cast<unsigned char>(m.promotionPiece));
-                uint8_t promoType = chess::Board::QUEEN;
-                if (promo == 'r') promoType = chess::Board::ROOK;
-                else if (promo == 'b') promoType = chess::Board::BISHOP;
-                else if (promo == 'n') promoType = chess::Board::KNIGHT;
+                const uint8_t promoType = promotionPieceType(m.promotionPiece);
                 capturedValue += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
             }
             static constexpr int32_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!

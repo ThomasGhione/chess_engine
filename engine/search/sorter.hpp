@@ -101,8 +101,8 @@ public:
         const chess::Board& b) noexcept;
 
 private:
-    static bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
-    static bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
+    static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
+    static constexpr bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
 
     static bool givesCheckAfterQuietMoveFast(
         const chess::Board& b,

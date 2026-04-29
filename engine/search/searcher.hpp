@@ -141,15 +141,15 @@ private:
 
     static constexpr int32_t initialBest(bool isWhite) noexcept;
     static constexpr bool isBetter(int32_t newScore, int32_t currentBest, bool isWhite) noexcept;
-    static bool isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept;
+    static constexpr bool isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept;
     static void updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept;
-    static bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    static int32_t cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    static bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
+    static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept;
+    static constexpr int32_t cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept;
+    static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
     static void toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept;
-    static int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
-    static int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
-    static int16_t clampHeuristic16(int32_t value) noexcept;
+    static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
+    static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
+    static constexpr int16_t clampHeuristic16(int32_t value) noexcept;
 
     static bool shouldAbortSearch(const SearchRuntime& runtime) noexcept;
     static void markInterrupted(SearchRuntime& runtime) noexcept;
