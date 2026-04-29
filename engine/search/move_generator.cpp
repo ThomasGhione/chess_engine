@@ -100,7 +100,7 @@ inline constexpr uint64_t pawnForwardPushes(uint8_t from, uint64_t occ) noexcept
     return pieces::PAWN_FORWARD_PUSH_LOOKUP[Side][from][occBits];
 }
 
-template<uint8_t PieceType>
+template<bool HasPins, uint8_t PieceType>
 __attribute__((always_inline))
 inline void appendNonPawnTacticalNoChecks(
     MoveList<chess::Board::Move>& moves,
@@ -109,13 +109,20 @@ inline void appendNonPawnTacticalNoChecks(
     uint64_t oppOcc,
     uint64_t pinnedMask,
     const uint64_t pinRayBySquare[64]) noexcept {
+    if constexpr (!HasPins) {
+        (void)pinnedMask;
+        (void)pinRayBySquare;
+    }
+
     while (pieceBB) {
         const uint8_t from = engine::popLSB(pieceBB);
-        const uint64_t fromBit = chess::Board::bitMask(from);
 
         uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
-        if (pinnedMask & fromBit) {
-            attacks &= pinRayBySquare[from];
+        if constexpr (HasPins) {
+            const uint64_t fromBit = chess::Board::bitMask(from);
+            if (pinnedMask & fromBit) {
+                attacks &= pinRayBySquare[from];
+            }
         }
 
         while (attacks) {
@@ -220,7 +227,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     // Macro-step 2: Compute check-evasion mask when in single-check.
     uint64_t evasionMask = ~0ULL;
     if (singleCheck) {
-        computeCheckEvasionMasks(b, color, evasionMask);
+        computeCheckEvasionMasks<IsWhite>(b, evasionMask);
     }
 
     //FIXME: Mettere precodizione per eliminare codizione
@@ -287,23 +294,45 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     }    
     
     if (singleCheck) {
-        generateNonPawnLegalMoves<true, chess::Board::KNIGHT>(
-            moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<true, chess::Board::BISHOP>(
-            moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<true, chess::Board::ROOK>(
-            moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<true, chess::Board::QUEEN>(
-            moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        if (pinnedMask) {
+            generateNonPawnLegalMoves<true, true, chess::Board::KNIGHT>(
+                moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, true, chess::Board::BISHOP>(
+                moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, true, chess::Board::ROOK>(
+                moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, true, chess::Board::QUEEN>(
+                moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        } else {
+            generateNonPawnLegalMoves<false, true, chess::Board::KNIGHT>(
+                moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, true, chess::Board::BISHOP>(
+                moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, true, chess::Board::ROOK>(
+                moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, true, chess::Board::QUEEN>(
+                moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        }
     } else {
-        generateNonPawnLegalMoves<false, chess::Board::KNIGHT>(
-            moves, knights, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<false, chess::Board::BISHOP>(
-            moves, bishops, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<false, chess::Board::ROOK>(
-            moves, rooks, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
-        generateNonPawnLegalMoves<false, chess::Board::QUEEN>(
-            moves, queens, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+        if (pinnedMask) {
+            generateNonPawnLegalMoves<true, false, chess::Board::KNIGHT>(
+                moves, knights, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, false, chess::Board::BISHOP>(
+                moves, bishops, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, false, chess::Board::ROOK>(
+                moves, rooks, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<true, false, chess::Board::QUEEN>(
+                moves, queens, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+        } else {
+            generateNonPawnLegalMoves<false, false, chess::Board::KNIGHT>(
+                moves, knights, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, false, chess::Board::BISHOP>(
+                moves, bishops, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, false, chess::Board::ROOK>(
+                moves, rooks, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+            generateNonPawnLegalMoves<false, false, chess::Board::QUEEN>(
+                moves, queens, occ, ownOcc, 0ULL, pinnedMask, pinRayBySquare.data());
+        }
     }
 
     return moves;
@@ -350,7 +379,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
 
     uint64_t evasionMask = ~0ULL;
     if (singleCheck) {
-        computeCheckEvasionMasks(b, color, evasionMask);
+        computeCheckEvasionMasks<IsWhite>(b, evasionMask);
     }
 
     const uint8_t kingFrom = __builtin_ctzll(kings);
@@ -385,14 +414,25 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
             enPassant, hasEnPassant);
     }
 
-    generateNonPawnLegalMoves<true, chess::Board::KNIGHT>(
-        moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-    generateNonPawnLegalMoves<true, chess::Board::BISHOP>(
-        moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-    generateNonPawnLegalMoves<true, chess::Board::ROOK>(
-        moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
-    generateNonPawnLegalMoves<true, chess::Board::QUEEN>(
-        moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    if (pinnedMask) {
+        generateNonPawnLegalMoves<true, true, chess::Board::KNIGHT>(
+            moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<true, true, chess::Board::BISHOP>(
+            moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<true, true, chess::Board::ROOK>(
+            moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<true, true, chess::Board::QUEEN>(
+            moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    } else {
+        generateNonPawnLegalMoves<false, true, chess::Board::KNIGHT>(
+            moves, knights, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<false, true, chess::Board::BISHOP>(
+            moves, bishops, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<false, true, chess::Board::ROOK>(
+            moves, rooks, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+        generateNonPawnLegalMoves<false, true, chess::Board::QUEEN>(
+            moves, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
+    }
 
     return moves;
 }
@@ -454,10 +494,17 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess
     appendPawnTacticalNoChecks<IsWhite>(
         b, moves, pawns, occ, oppOcc, enPassantBit, enPassantIndex,
         pinnedMask, pinRayBySquare.data(), pawnPiece);
-    appendNonPawnTacticalNoChecks<chess::Board::KNIGHT>(moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data());
-    appendNonPawnTacticalNoChecks<chess::Board::BISHOP>(moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data());
-    appendNonPawnTacticalNoChecks<chess::Board::ROOK>(moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data());
-    appendNonPawnTacticalNoChecks<chess::Board::QUEEN>(moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    if (pinnedMask) {
+        appendNonPawnTacticalNoChecks<true, chess::Board::KNIGHT>(moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<true, chess::Board::BISHOP>(moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<true, chess::Board::ROOK>(moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<true, chess::Board::QUEEN>(moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    } else {
+        appendNonPawnTacticalNoChecks<false, chess::Board::KNIGHT>(moves, knights, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<false, chess::Board::BISHOP>(moves, bishops, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<false, chess::Board::ROOK>(moves, rooks, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+        appendNonPawnTacticalNoChecks<false, chess::Board::QUEEN>(moves, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data());
+    }
 
     uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
     while (kingAttacks) {
@@ -620,15 +667,15 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
 // ============================================================================
 // Returns a mask with bits for squares where pieces can move or interpose
 // to evade check (evasionMask).
+template<bool IsWhite>
 void MoveGenerator::computeCheckEvasionMasks(
     const chess::Board& b,
-    uint8_t color,
     uint64_t& evasionMask) noexcept {
     // This helper is called only from single-check paths.
     evasionMask = 0ULL;
 
-    const int us = chess::Board::colorToIndex(color);
-    const int them = us ^ 1;
+    constexpr int us = IsWhite ? 0 : 1;
+    constexpr int them = us ^ 1;
     const uint64_t kingBB = b.kings_bb[us];
     if (!kingBB) [[unlikely]] {
         return;
@@ -666,7 +713,7 @@ void MoveGenerator::computeCheckEvasionMasks(
 
 
 
-template<bool InCheck, uint8_t PieceType>
+template<bool HasPins, bool InCheck, uint8_t PieceType>
 void MoveGenerator::generateNonPawnLegalMoves(
     MoveList<chess::Board::Move>& moves,
     uint64_t bb,
@@ -675,13 +722,23 @@ void MoveGenerator::generateNonPawnLegalMoves(
     uint64_t evasionMask,
     uint64_t pinnedMask,
     const uint64_t pinRayBySquare[64]) noexcept {
+    if constexpr (!HasPins) {
+        (void)pinnedMask;
+        (void)pinRayBySquare;
+    }
+    if constexpr (!InCheck) {
+        (void)evasionMask;
+    }
+
     while (bb) {
         const uint8_t from = engine::popLSB(bb);
         uint64_t mask = pieces::generateMovesByType<PieceType>(from, occ) & ~ownOcc;
         if constexpr (InCheck) {
             mask &= evasionMask;
         }
-        if (pinnedMask & chess::Board::bitMask(from)) mask &= pinRayBySquare[from];
+        if constexpr (HasPins) {
+            if (pinnedMask & chess::Board::bitMask(from)) mask &= pinRayBySquare[from];
+        }
 
         while (mask) {
             appendMoveByIndex(moves, from, engine::popLSB(mask));

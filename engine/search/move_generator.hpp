@@ -86,12 +86,12 @@ private:
         uint64_t& pinnedMask,
         uint64_t pinRays[64]) noexcept;
 
+    template<bool IsWhite>
     static void computeCheckEvasionMasks(
         const chess::Board& b,
-        uint8_t color,
         uint64_t& evasionMask) noexcept;
 
-    template<bool InCheck, uint8_t PieceType>
+    template<bool HasPins, bool InCheck, uint8_t PieceType>
     static void generateNonPawnLegalMoves(
         MoveList<chess::Board::Move>& moves,
         uint64_t bb,
