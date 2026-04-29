@@ -1234,7 +1234,7 @@ chess::Board::Move Searcher::getBestMove(
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk);
 
-	//FIXME: Eliminare indentazioni
+	    //FIXME: Eliminare indentazioni
         #pragma omp parallel num_threads(threadsToUse)
         {
             #pragma omp single nowait
