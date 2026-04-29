@@ -1192,9 +1192,6 @@ chess::Board::Move Searcher::getBestMove(
         return bestMove;
     }
 
-    std::atomic<int32_t> sharedAlpha{alpha};
-    std::atomic<int32_t> sharedBeta{beta};
-
     std::array<int32_t, MAX_MOVES> threadScores;
     threadScores.fill(initialBest(usIsWhite));
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
@@ -1203,7 +1200,22 @@ chess::Board::Move Searcher::getBestMove(
     int candidateThreads = std::max(1, rootMoves.size - 1);
     const int threadsToUse = std::max(1, std::min(runtime.maxThreads, candidateThreads));
 
-    //FIXME: Fare funzione helper
+    auto searchDeferredRootMove = [&](int i, chess::Board& threadBoard) noexcept {
+        const auto m = rootMoves[i];
+        uint64_t workerNodes = 0;
+        int32_t localAlpha = alpha;
+        int32_t localBeta = beta;
+        int32_t nullAlpha = 0;
+        int32_t nullBeta = 0;
+        rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
+        const int32_t score = searchRootMoveScore(
+            threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
+
+        threadScores[i] = score;
+        threadNodeCounts[i] = workerNodes;
+        threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
+    };
+
     if (threadsToUse <= 1) {
         for (int i = 1; i < rootMoves.size; ++i) {
             if (shouldAbortSearch(runtime)) {
@@ -1212,23 +1224,7 @@ chess::Board::Move Searcher::getBestMove(
             }
 
             chess::Board threadBoard = rootBoard;
-            const auto m = rootMoves[i];
-            uint64_t workerNodes = 0;
-            int32_t localAlpha = 0;
-            int32_t localBeta = 0;
-            int32_t nullAlpha = 0;
-            int32_t nullBeta = 0;
-            loadSharedRootBounds(sharedAlpha, sharedBeta, localAlpha, localBeta);
-            rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
-            const int32_t score = searchRootMoveScore(
-                threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
-
-            threadScores[i] = score;
-            threadNodeCounts[i] = workerNodes;
-            threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
-            if (!isInterrupted(runtime)) {
-                publishSharedRootBound(usIsWhite, score, sharedAlpha, sharedBeta);
-            }
+            searchDeferredRootMove(i, threadBoard);
             if (isInterrupted(runtime)) {
                 break;
             }
@@ -1256,23 +1252,7 @@ chess::Board::Move Searcher::getBestMove(
                                         break;
                                     }
 
-                                    const auto m = rootMoves[i];
-                                    uint64_t workerNodes = 0;
-                                    int32_t localAlpha = 0;
-                                    int32_t localBeta = 0;
-                                    int32_t nullAlpha = 0;
-                                    int32_t nullBeta = 0;
-                                    loadSharedRootBounds(sharedAlpha, sharedBeta, localAlpha, localBeta);
-                                    rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
-                                    const int32_t score = searchRootMoveScore(
-                                        threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
-
-                                    threadScores[i] = score;
-                                    threadNodeCounts[i] = workerNodes;
-                                    threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
-                                    if (!isInterrupted(runtime)) {
-                                        publishSharedRootBound(usIsWhite, score, sharedAlpha, sharedBeta);
-                                    }
+                                    searchDeferredRootMove(i, threadBoard);
                                     if (isInterrupted(runtime)) {
                                         break;
                                     }
