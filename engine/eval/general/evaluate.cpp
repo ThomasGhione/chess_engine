@@ -12,6 +12,7 @@ struct EvalCacheEntry {
 
 static constexpr size_t EVAL_CACHE_SIZE = 1u << 11; // 2048 entries (~32 KiB), tests/perf tuned.
 static constexpr uint64_t EVAL_CACHE_MASK = EVAL_CACHE_SIZE - 1u;
+static constexpr uint64_t FULLMOVE_CACHE_SALT = 0x9E3779B97F4A7C15ULL;
 
 } // namespace
 
@@ -27,9 +28,8 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     thread_local std::array<EvalCacheEntry, EVAL_CACHE_SIZE> evalCache{};
 
-    //const uint64_t fullMoveTag = board.getFullMoveClock();
-    //const uint64_t evalCacheKey = board.getHash() ^ (fullMoveTag * 0x9E3779B97F4A7C15ULL);
-    const uint64_t evalCacheKey = board.getHash();
+    const uint64_t fullMoveTag = board.getFullMoveClock();
+    const uint64_t evalCacheKey = board.getHash() ^ (fullMoveTag * FULLMOVE_CACHE_SALT);
     EvalCacheEntry& cacheEntry = evalCache[(evalCacheKey * 0xBF58476D1CE4E5B9ULL) & EVAL_CACHE_MASK];
     if (cacheEntry.valid && cacheEntry.key == evalCacheKey) [[likely]] {
         return cacheEntry.score;
