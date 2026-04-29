@@ -148,7 +148,6 @@ public:
     static constexpr size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
     static constexpr size_t TABLE_BYTES = sizeof(Entry) * TABLE_SIZE;
     static constexpr size_t HUGE_PAGE_MIN_BYTES = 32u * 1024u * 1024u; // 32 MiB, common huge page size on x86-64 Linux.
-    static constexpr int32_t ADJUSTMENT = 50;
 
     static_assert(sizeof(Entry) == 16, "TT entry must be 16 bytes");
     static_assert((sizeof(Entry) * ENTRIES_PER_BUCKET) == 64, "Each bucket should be exactly one cache line");

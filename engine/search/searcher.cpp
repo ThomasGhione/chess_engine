@@ -83,8 +83,8 @@ constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, in
 }
 
 void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
-    const int64_t expandedAlpha = static_cast<int64_t>(alpha) - TranspositionTable::ADJUSTMENT;
-    const int64_t expandedBeta = static_cast<int64_t>(beta) + TranspositionTable::ADJUSTMENT;
+    const int64_t expandedAlpha = static_cast<int64_t>(alpha);
+    const int64_t expandedBeta = static_cast<int64_t>(beta);
     ttAlpha = clampToInt32(expandedAlpha);
     ttBeta = clampToInt32(expandedBeta);
 }
