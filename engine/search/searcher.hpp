@@ -174,6 +174,7 @@ private:
                                     bool isPromotion) noexcept;
 
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
+    static int32_t drawAdvantageScore(const chess::Board& b) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
     static bool hasInsufficientMaterialDraw(const chess::Board& b) noexcept;
 

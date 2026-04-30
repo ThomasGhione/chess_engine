@@ -13,6 +13,11 @@ namespace engine {
 
 namespace {
 
+constexpr int32_t DRAW_SCORE_MATERIAL_WEIGHT_PERCENT = 40;
+constexpr int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT = 60;
+constexpr int32_t DRAW_SCORE_WEIGHT_DENOMINATOR = 100;
+constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
+
 inline void publishSharedRootBound(
     bool usIsWhite,
     int32_t score,
@@ -219,18 +224,28 @@ int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
     return (matDelta > 0) ? -stalematePenalty : stalematePenalty;
 }
 
+int32_t Searcher::drawAdvantageScore(const chess::Board& b) noexcept {
+    const int32_t materialDelta = b.getIncrementalMaterialDelta();
+    const int32_t staticEval = Evaluator::evaluate(b);
+    const int64_t blendedScore =
+        static_cast<int64_t>(materialDelta) * DRAW_SCORE_MATERIAL_WEIGHT_PERCENT
+        + static_cast<int64_t>(staticEval) * DRAW_SCORE_EVAL_WEIGHT_PERCENT;
+
+    return clampToInt32(blendedScore / DRAW_SCORE_WEIGHT_DENOMINATOR);
+}
+
 int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
-    const int32_t matDelta = b.getIncrementalMaterialDelta();
-    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) {
+    const int32_t drawDelta = drawAdvantageScore(b);
+    if (std::abs(drawDelta) <= REPETITION_DRAW_ADVANTAGE_THRESHOLD) {
         return 0;
     }
 
-    const int32_t advantage = std::abs(matDelta);
+    const int32_t advantage = std::abs(drawDelta);
     const int32_t scaledPenalty =
-        STALEMATE_DRAW_PENALTY_MINOR + (advantage - STALEMATE_MATERIAL_THRESHOLD) / 2;
+        STALEMATE_DRAW_PENALTY_MINOR + (advantage - REPETITION_DRAW_ADVANTAGE_THRESHOLD) / 2;
     const int32_t contempt = std::clamp<int32_t>(
         scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
-    return (matDelta > 0) ? -contempt : contempt;
+    return (drawDelta > 0) ? -contempt : contempt;
 }
 
 bool Searcher::hasInsufficientMaterialDraw(const chess::Board& b) noexcept {
@@ -786,15 +801,14 @@ int32_t Searcher::searchPosition(
         }
 
         // Twofold is only a potential draw. Avoid premature draw cutoff when
-        // the side to move has at least a practical two-pawn edge and should
-        // keep pressing instead of accepting a repeat in rook/pawn endgames.
+        // the side to move has enough blended material/static-eval leverage
+        // to keep pressing instead of accepting a repeat in conversion endgames.
         if (b.isTwofoldRepetition()) {
-            const int32_t matDelta = b.getIncrementalMaterialDelta();
-            constexpr int32_t TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN = PAWN_VALUE + PAWN_VALUE / 2;
+            const int32_t drawDelta = drawAdvantageScore(b);
             const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
             const bool sideToMoveAhead = whiteToMove
-                ? (matDelta > TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN)
-                : (matDelta < -TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN);
+                ? (drawDelta > REPETITION_DRAW_ADVANTAGE_THRESHOLD)
+                : (drawDelta < -REPETITION_DRAW_ADVANTAGE_THRESHOLD);
             if (!sideToMoveAhead) {
                 return repetitionDrawScore(b);
             }
