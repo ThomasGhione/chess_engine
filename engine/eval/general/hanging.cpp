@@ -62,26 +62,11 @@ inline uint64_t Evaluator::collectPawnPushAttacks(uint64_t pawns, int side, uint
     return attacks;
 }
 
-inline uint64_t Evaluator::collectKnightAttacks(uint64_t knights) noexcept {
+template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
+inline uint64_t Evaluator::collectPieceAttacks(uint64_t piecesBb, uint64_t occ) noexcept {
     uint64_t attacks = 0ULL;
-    while (knights) {
-        attacks |= pieces::KNIGHT_ATTACKS[popLSB(knights)];
-    }
-    return attacks;
-}
-
-inline uint64_t Evaluator::collectBishopAttacks(uint64_t bishops, uint64_t occ) noexcept {
-    uint64_t attacks = 0ULL;
-    while (bishops) {
-        attacks |= pieces::getBishopAttacks(popLSB(bishops), occ);
-    }
-    return attacks;
-}
-
-inline uint64_t Evaluator::collectRookAttacks(uint64_t rooks, uint64_t occ) noexcept {
-    uint64_t attacks = 0ULL;
-    while (rooks) {
-        attacks |= pieces::getRookAttacks(popLSB(rooks), occ);
+    while (piecesBb) {
+        attacks |= AttackFn(popLSB(piecesBb), occ);
     }
     return attacks;
 }
@@ -96,9 +81,9 @@ inline int32_t Evaluator::evalThreatsSide(const chess::Board& b, const AttackDat
     if (ownValuable == 0ULL) return 0;
 
     const uint64_t pawnThreats = collectPawnAttacks(b.pawns_bb[opp], opp);
-    const uint64_t minorThreats =
-        collectKnightAttacks(b.knights_bb[opp]) | collectBishopAttacks(b.bishops_bb[opp], occ);
-    const uint64_t rookThreats = collectRookAttacks(b.rooks_bb[opp], occ);
+    const uint64_t minorThreats = collectPieceAttacks<knightAttacksLookup>(b.knights_bb[opp], occ) 
+                                | collectPieceAttacks<pieces::getBishopAttacks>(b.bishops_bb[opp], occ);
+    const uint64_t rookThreats = collectPieceAttacks<pieces::getRookAttacks>(b.rooks_bb[opp], occ);
     const uint64_t pawnPushThreats = collectPawnPushAttacks(b.pawns_bb[opp], opp, occ);
 
     const uint64_t rookByPawn = ownRooks & pawnThreats;
