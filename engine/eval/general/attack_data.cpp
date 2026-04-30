@@ -14,39 +14,12 @@ inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhi
     }
 }
 
-inline void Evaluator::processKnights(uint64_t knights, AttackData& data, uint64_t mobilityMask) noexcept {
-    while (knights) {
-        const int sq = popLSB(knights);
-        const uint64_t attacks = pieces::KNIGHT_ATTACKS[sq];
+template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>
+inline void Evaluator::processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
+    while (piecesBb) {
+        const uint64_t attacks = AttackFn(popLSB(piecesBb), occ);
         data.allAttacks |= attacks;
-        data.knightMobility += __builtin_popcountll(attacks & mobilityMask);
-    }
-}
-
-inline void Evaluator::processBishops(uint64_t bishops, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
-    while (bishops) {
-        const int sq = popLSB(bishops);
-        const uint64_t attacks = pieces::getBishopAttacks(sq, occ);
-        data.allAttacks |= attacks;
-        data.bishopMobility += __builtin_popcountll(attacks & mobilityMask);
-    }
-}
-
-inline void Evaluator::processRooks(uint64_t rooks, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
-    while (rooks) {
-        const int sq = popLSB(rooks);
-        const uint64_t attacks = pieces::getRookAttacks(sq, occ);
-        data.allAttacks |= attacks;
-        data.rookMobility += __builtin_popcountll(attacks & mobilityMask);
-    }
-}
-
-inline void Evaluator::processQueens(uint64_t queens, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
-    while (queens) {
-        const int sq = popLSB(queens);
-        const uint64_t attacks = pieces::getQueenAttacks(sq, occ);
-        data.allAttacks |= attacks;
-        data.queenMobility += __builtin_popcountll(attacks & mobilityMask);
+        data.*MobilityField += __builtin_popcountll(attacks & mobilityMask);
     }
 }
 
@@ -57,10 +30,10 @@ inline void Evaluator::computeAttackDataForSide(int side, AttackData& data, cons
     const bool isWhite = (side == 0);
 
     processPawns(b.pawns_bb[side], data, isWhite);
-    processKnights(b.knights_bb[side], data, mobilityMask);
-    processBishops(b.bishops_bb[side], data, mobilityMask, occ);
-    processRooks(b.rooks_bb[side], data, mobilityMask, occ);
-    processQueens(b.queens_bb[side], data, mobilityMask, occ);
+    processPieces<knightAttacksLookup, &AttackData::knightMobility>(b.knights_bb[side], data, mobilityMask, occ);
+    processPieces<pieces::getBishopAttacks, &AttackData::bishopMobility>(b.bishops_bb[side], data, mobilityMask, occ);
+    processPieces<pieces::getRookAttacks, &AttackData::rookMobility>(b.rooks_bb[side], data, mobilityMask, occ);
+    processPieces<pieces::getQueenAttacks, &AttackData::queenMobility>(b.queens_bb[side], data, mobilityMask, occ);
 }
 
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
