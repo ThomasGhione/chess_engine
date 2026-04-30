@@ -989,8 +989,7 @@ int32_t Searcher::quiescenceSearch(
         }
         updateBound(standPat, alpha, beta, usIsWhite);
 
-        //FIXME: Spostare costante fuori
-        static constexpr int32_t EARLY_DELTA_MARGIN = 950;
+        static constexpr int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
         if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
             return usIsWhite ? alpha : beta;
         }

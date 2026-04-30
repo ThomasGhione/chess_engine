@@ -9,10 +9,10 @@ namespace engine {
 // PIECE BASE VALUES
 // ===================================================
 inline static constexpr int32_t PAWN_VALUE   =       100;
-inline static constexpr int32_t KNIGHT_VALUE =       320;
-inline static constexpr int32_t BISHOP_VALUE =       330;
-inline static constexpr int32_t ROOK_VALUE   =       500;
-inline static constexpr int32_t QUEEN_VALUE  =       900;
+inline static constexpr int32_t KNIGHT_VALUE =       330;
+inline static constexpr int32_t BISHOP_VALUE =       340;
+inline static constexpr int32_t ROOK_VALUE   =       525;
+inline static constexpr int32_t QUEEN_VALUE  =       975;
 inline static constexpr int32_t KING_VALUE   =    20'000;
 inline static constexpr int32_t MATE_SCORE   = std::numeric_limits<int32_t>::max();
 
@@ -29,143 +29,152 @@ inline static constexpr int32_t PHASE_FINAL_THRESHOLD = 8;
 // ===================================================
 // PAWN STRUCTURE EVALUATION
 // ===================================================
-inline static constexpr int32_t DOUBLED_PAWN_PENALTY = -8;
-inline static constexpr int32_t ISOLATED_PAWN_PENALTY = -12;
-inline static constexpr int32_t PASSED_PAWN_BONUS = 32;
-inline static constexpr int32_t PAWN_ISLAND_PENALTY = -10;
-inline static constexpr int32_t PAWN_SUPPORT_BONUS = 15;
-inline static constexpr int32_t CANDIDATE_PASSER_BONUS = 12;
-inline static constexpr int32_t CONNECTED_PASSER_BONUS = 18;
-inline static constexpr int32_t BACKWARD_PAWN_PENALTY = -10;
-inline static constexpr int32_t PASSED_PAWN_BLOCKED_PENALTY = -16;
-inline static constexpr int32_t CENTER_CONTROL_BONUS = 15;
+inline static constexpr int32_t DOUBLED_PAWN_PENALTY = -7;
+inline static constexpr int32_t ISOLATED_PAWN_PENALTY = -10;
+inline static constexpr int32_t PASSED_PAWN_BONUS = 28;
+inline static constexpr int32_t PAWN_ISLAND_PENALTY = -8;
+inline static constexpr int32_t PAWN_SUPPORT_BONUS = 10;
+inline static constexpr int32_t CANDIDATE_PASSER_BONUS = 8;
+inline static constexpr int32_t CONNECTED_PASSER_BONUS = 14;
+inline static constexpr int32_t BACKWARD_PAWN_PENALTY = -8;
+inline static constexpr int32_t PASSED_PAWN_BLOCKED_PENALTY = -18;
+inline static constexpr int32_t CENTER_CONTROL_BONUS = 10;
 
 // ===================================================
 // BISHOP PAIR
 // ===================================================
-inline static constexpr int32_t BISHOP_PAIR_BONUS = 30;
+inline static constexpr int32_t BISHOP_PAIR_BONUS = 28;
 
 // ===================================================
 // CASTLING
 // ===================================================
-inline static constexpr int32_t CASTLING_BONUS = 30;
-inline static constexpr int32_t KING_NON_CASTLING_PENALTY = 10;
-inline static constexpr int32_t KING_LOST_CASTLING_RIGHTS_PENALTY = 25;
-inline static constexpr int32_t LOSS_OF_CASTLING_PENALTY = 35;
+inline static constexpr int32_t CASTLING_BONUS = 20;
+inline static constexpr int32_t KING_NON_CASTLING_PENALTY = 8;
+inline static constexpr int32_t KING_LOST_CASTLING_RIGHTS_PENALTY = 16;
+inline static constexpr int32_t LOSS_OF_CASTLING_PENALTY = 24;
 
 // ===================================================
 // DEVELOPMENT & INITIATIVE
 // ===================================================
-inline static constexpr int32_t INIT_BONUS_MG = 6;
-inline static constexpr int32_t INIT_BONUS_EG = 3;
-inline static constexpr int32_t EARLY_ROOK_PENALTY = -30;
-inline static constexpr int32_t DEVELOPMENT_BONUS = 10;
+inline static constexpr int32_t INIT_BONUS_MG = 4;
+inline static constexpr int32_t INIT_BONUS_EG = 0;
+inline static constexpr int32_t EARLY_ROOK_PENALTY = -24;
+inline static constexpr int32_t DEVELOPMENT_BONUS = 7;
 
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
 // ===================================================
-inline static constexpr int32_t LOW_MOBILITY_KNIGHT_PENALTY = 8;
-inline static constexpr int32_t PINNED_KNIGHT_PENALTY = 25;
+inline static constexpr int32_t LOW_MOBILITY_KNIGHT_PENALTY = 10;
+inline static constexpr int32_t PINNED_KNIGHT_PENALTY = 35;
 inline static constexpr int32_t LOW_MOBILITY_BISHOP_PENALTY = 12;
-inline static constexpr int32_t PINNED_BISHOP_PENALTY = 25;
-inline static constexpr int32_t LOW_MOBILITY_ROOK_PENALTY = 35;
-inline static constexpr int32_t PINNED_ROOK_PENALTY = 60;
-inline static constexpr int32_t LOW_MOBILITY_QUEEN_PENALTY = 40;
-inline static constexpr int32_t PINNED_QUEEN_PENALTY = 90;
-inline static constexpr int32_t COORDINATION_PENALTY = 12;
-inline static constexpr int32_t OUTPOST_BISHOP_BONUS = 15;
-inline static constexpr int32_t OUTPOST_KNIGHT_BONUS = 25;
+inline static constexpr int32_t PINNED_BISHOP_PENALTY = 35;
+inline static constexpr int32_t LOW_MOBILITY_ROOK_PENALTY = 30;
+inline static constexpr int32_t PINNED_ROOK_PENALTY = 80;
+inline static constexpr int32_t LOW_MOBILITY_QUEEN_PENALTY = 36;
+inline static constexpr int32_t PINNED_QUEEN_PENALTY = 130;
+inline static constexpr int32_t MOBILITY_CENTER_BONUS = 1;
+inline static constexpr int32_t MOBILITY_OWN_PAWN_BLOCKER_PENALTY = 4;
+inline static constexpr int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;
+inline static constexpr int32_t QUEEN_EARLY_MOBILITY_PENALTY = 5;
+inline static constexpr int32_t OUTPOST_CENTER_FILE_BONUS = 4;
+inline static constexpr int32_t OUTPOST_NEAR_CENTER_FILE_BONUS = 2;
+inline static constexpr int32_t OUTPOST_ADVANCED_RANK_BONUS = 4;
+inline static constexpr int32_t OUTPOST_KING_ZONE_BONUS = 5;
+inline static constexpr int32_t OUTPOST_KEY_SQUARE_BONUS = 3;
+inline static constexpr int32_t COORDINATION_PENALTY = 8;
+inline static constexpr int32_t OUTPOST_BISHOP_BONUS = 10;
+inline static constexpr int32_t OUTPOST_KNIGHT_BONUS = 18;
 inline static constexpr int32_t ORDERING_PENALTY_SAME_PAWN_OPENING = -15;
 
 // ===================================================
 // HANGING PIECES
 // ===================================================
-inline static constexpr int32_t HANGING_PAWN_PENALTY = -12;
-inline static constexpr int32_t HANGING_PAWN_NEAR_KING_PENALTY = -28;
-inline static constexpr int32_t HANGING_HOOK_PAWN_PENALTY = -16;
-inline static constexpr int32_t HANGING_MINOR_PENALTY = -25;
-inline static constexpr int32_t HANGING_ROOK_PENALTY = -35;
-inline static constexpr int32_t HANGING_QUEEN_PENALTY = -50;
-inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -10;
-inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -5;
+inline static constexpr int32_t HANGING_PAWN_PENALTY = -10;
+inline static constexpr int32_t HANGING_PAWN_NEAR_KING_PENALTY = -22;
+inline static constexpr int32_t HANGING_HOOK_PAWN_PENALTY = -14;
+inline static constexpr int32_t HANGING_MINOR_PENALTY = -45;
+inline static constexpr int32_t HANGING_ROOK_PENALTY = -75;
+inline static constexpr int32_t HANGING_QUEEN_PENALTY = -130;
+inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -8;
+inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -4;
 
 // ===================================================
 // EXPLICIT THREATS
 // ===================================================
-inline static constexpr int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -18;
-inline static constexpr int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -35;
-inline static constexpr int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -55;
-inline static constexpr int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -22;
-inline static constexpr int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -32;
-inline static constexpr int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -24;
-inline static constexpr int32_t THREAT_PAWN_PUSH_MINOR_PENALTY = -10;
-inline static constexpr int32_t THREAT_PAWN_PUSH_ROOK_PENALTY = -18;
-inline static constexpr int32_t THREAT_PAWN_PUSH_QUEEN_PENALTY = -28;
-inline static constexpr int32_t THREAT_LOOSE_MINOR_PENALTY = -8;
-inline static constexpr int32_t THREAT_LOOSE_ROOK_PENALTY = -14;
-inline static constexpr int32_t THREAT_LOOSE_QUEEN_PENALTY = -20;
+inline static constexpr int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -26;
+inline static constexpr int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -55;
+inline static constexpr int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -95;
+inline static constexpr int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -32;
+inline static constexpr int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -50;
+inline static constexpr int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -35;
+inline static constexpr int32_t THREAT_PAWN_PUSH_MINOR_PENALTY = -14;
+inline static constexpr int32_t THREAT_PAWN_PUSH_ROOK_PENALTY = -28;
+inline static constexpr int32_t THREAT_PAWN_PUSH_QUEEN_PENALTY = -45;
+inline static constexpr int32_t THREAT_LOOSE_MINOR_PENALTY = -12;
+inline static constexpr int32_t THREAT_LOOSE_ROOK_PENALTY = -24;
+inline static constexpr int32_t THREAT_LOOSE_QUEEN_PENALTY = -42;
 
 // ===================================================
 // PAWN FORKS (defended pawn attacking 2+ enemy pieces)
 // ===================================================
-inline static constexpr int32_t PAWN_FORK_BASE_BONUS       = 45;  // Base bonus for any defended pawn fork
-inline static constexpr int32_t PAWN_FORK_MAJOR_BONUS      = 30;  // Extra if forking at least one rook/queen
-inline static constexpr int32_t PAWN_FORK_ROYAL_BONUS      = 20;  // Extra if forking the king (fork + check)
+inline static constexpr int32_t PAWN_FORK_BASE_BONUS       = 35;  // Base bonus for any defended pawn fork
+inline static constexpr int32_t PAWN_FORK_MAJOR_BONUS      = 24;  // Extra if forking at least one rook/queen
+inline static constexpr int32_t PAWN_FORK_ROYAL_BONUS      = 16;  // Extra if forking the king (fork + check)
 // ===================================================
 // ROOK EVALUATION
 // ===================================================
-inline static constexpr int32_t OPEN_FILE_ROOK_BONUS = 30;
-inline static constexpr int32_t SEMI_OPEN_FILE_ROOK_BONUS = 15;
-inline static constexpr int32_t ROOK_ON_SEVENTH_BONUS = 25;
-inline static constexpr int32_t ROOK_BEHIND_OWN_PASSER_BONUS = 18;
-inline static constexpr int32_t ROOK_BEHIND_ENEMY_PASSER_BONUS = 14;
+inline static constexpr int32_t OPEN_FILE_ROOK_BONUS = 24;
+inline static constexpr int32_t SEMI_OPEN_FILE_ROOK_BONUS = 10;
+inline static constexpr int32_t ROOK_ON_SEVENTH_BONUS = 20;
+inline static constexpr int32_t ROOK_BEHIND_OWN_PASSER_BONUS = 14;
+inline static constexpr int32_t ROOK_BEHIND_ENEMY_PASSER_BONUS = 10;
 
 // ===================================================
 // ROOK ENDGAME (R+K vs K)
 // ===================================================
-inline static constexpr int32_t ROOK_EG_EDGE_BONUS = 35;
-inline static constexpr int32_t ROOK_EG_PRESSURE_BONUS = 20;
+inline static constexpr int32_t ROOK_EG_EDGE_BONUS = 28;
+inline static constexpr int32_t ROOK_EG_PRESSURE_BONUS = 16;
 
 // ===================================================
 // QUEEN EVALUATION
 // ===================================================
-inline static constexpr int32_t ATTACKED_QUEEN_PENALTY = -25;
+inline static constexpr int32_t ATTACKED_QUEEN_PENALTY = -40;
 
 // ===================================================
 // KING SAFETY & ACTIVITY
 // ===================================================
-inline static constexpr int32_t KING_SAFETY_PENALTY = -12;
-inline static constexpr int32_t KING_ACTIVITY_BONUS = 8;
-inline static constexpr int32_t CASTLE_PAWN_SUPPORT_BONUS = 8;
-inline static constexpr int32_t KING_SHELTER_STRONG_BONUS = 12;
-inline static constexpr int32_t KING_SHELTER_WEAK_BONUS = 7;
-inline static constexpr int32_t KING_SHELTER_MISSING_PENALTY = 14;
-inline static constexpr int32_t KING_PAWN_STORM_NEAR_PENALTY = 16;
-inline static constexpr int32_t KING_PAWN_STORM_FAR_PENALTY = 8;
-inline static constexpr int32_t KING_CASTLED_SHIELD_BREAK_PENALTY = 10;
-inline static constexpr int32_t KING_SHELTER_ADVANCE_ONE_PENALTY = 4;
-inline static constexpr int32_t KING_SHELTER_ADVANCE_TWO_PENALTY = 9;
-inline static constexpr int32_t KING_HOOK_PAWN_ATTACKED_PENALTY = 20;
-inline static constexpr int32_t KING_HOOK_PAWN_HANGING_PENALTY = 25;
-inline static constexpr int32_t KING_SAFETY_OPENING_SCALE_PERCENT = 35;
-inline static constexpr int32_t KING_SEMI_OPEN_FILE_PENALTY = 10;
-inline static constexpr int32_t KING_OPEN_FILE_PENALTY = 16;
-inline static constexpr int32_t KING_FILE_PRESSURE_PENALTY = 9;
-inline static constexpr int32_t KING_OPEN_DIAGONAL_PENALTY = 14;
-inline static constexpr int32_t KING_EXPOSED_PENALTY = -25;
-inline static constexpr int32_t EARLY_KING_PENALTY = -20;
-inline static constexpr int32_t KING_SAFETY_SIDE_CAP = 180;
-inline static constexpr int32_t KING_ATTACK_MATERIAL_MIN_SCALE = 45;
-inline static constexpr int32_t KING_ATTACK_MATERIAL_MAX_SCALE = 150;
-inline static constexpr int32_t KING_ATTACK_WEIGHT_KNIGHT = 10;
-inline static constexpr int32_t KING_ATTACK_WEIGHT_BISHOP = 10;
-inline static constexpr int32_t KING_ATTACK_WEIGHT_ROOK   = 18;
-inline static constexpr int32_t KING_ATTACK_WEIGHT_QUEEN  = 27;
-inline static constexpr int32_t KING_SAFE_CONTACT_BONUS = 6;
-inline static constexpr int32_t KING_FORCING_CONTACT_BONUS = 3;
-inline static constexpr int32_t KING_SAFE_CHECK_BONUS = 12;
-inline static constexpr int32_t KING_FORCING_CHECK_BONUS = 5;
-inline static constexpr int32_t KING_ATTACK_DANGER_CAP = 145;
+inline static constexpr int32_t KING_SAFETY_PENALTY = -10;
+inline static constexpr int32_t KING_ACTIVITY_BONUS = 6;
+inline static constexpr int32_t CASTLE_PAWN_SUPPORT_BONUS = 6;
+inline static constexpr int32_t KING_SHELTER_STRONG_BONUS = 10;
+inline static constexpr int32_t KING_SHELTER_WEAK_BONUS = 5;
+inline static constexpr int32_t KING_SHELTER_MISSING_PENALTY = 12;
+inline static constexpr int32_t KING_PAWN_STORM_NEAR_PENALTY = 14;
+inline static constexpr int32_t KING_PAWN_STORM_FAR_PENALTY = 7;
+inline static constexpr int32_t KING_CASTLED_SHIELD_BREAK_PENALTY = 8;
+inline static constexpr int32_t KING_SHELTER_ADVANCE_ONE_PENALTY = 3;
+inline static constexpr int32_t KING_SHELTER_ADVANCE_TWO_PENALTY = 7;
+inline static constexpr int32_t KING_HOOK_PAWN_ATTACKED_PENALTY = 18;
+inline static constexpr int32_t KING_HOOK_PAWN_HANGING_PENALTY = 24;
+inline static constexpr int32_t KING_SAFETY_OPENING_SCALE_PERCENT = 30;
+inline static constexpr int32_t KING_SEMI_OPEN_FILE_PENALTY = 9;
+inline static constexpr int32_t KING_OPEN_FILE_PENALTY = 14;
+inline static constexpr int32_t KING_FILE_PRESSURE_PENALTY = 8;
+inline static constexpr int32_t KING_OPEN_DIAGONAL_PENALTY = 12;
+inline static constexpr int32_t KING_EXPOSED_PENALTY = -20;
+inline static constexpr int32_t EARLY_KING_PENALTY = -16;
+inline static constexpr int32_t KING_SAFETY_SIDE_CAP = 150;
+inline static constexpr int32_t KING_ATTACK_MATERIAL_MIN_SCALE = 40;
+inline static constexpr int32_t KING_ATTACK_MATERIAL_MAX_SCALE = 130;
+inline static constexpr int32_t KING_ATTACK_WEIGHT_KNIGHT = 8;
+inline static constexpr int32_t KING_ATTACK_WEIGHT_BISHOP = 8;
+inline static constexpr int32_t KING_ATTACK_WEIGHT_ROOK   = 15;
+inline static constexpr int32_t KING_ATTACK_WEIGHT_QUEEN  = 23;
+inline static constexpr int32_t KING_SAFE_CONTACT_BONUS = 4;
+inline static constexpr int32_t KING_FORCING_CONTACT_BONUS = 2;
+inline static constexpr int32_t KING_SAFE_CHECK_BONUS = 10;
+inline static constexpr int32_t KING_FORCING_CHECK_BONUS = 4;
+inline static constexpr int32_t KING_ATTACK_DANGER_CAP = 125;
 
 // ===================================================
 // STALEMATE HANDLING
