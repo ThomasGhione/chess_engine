@@ -89,14 +89,14 @@ inline static constexpr int32_t ORDERING_PENALTY_SAME_PAWN_OPENING = -15;
 // ===================================================
 // HANGING PIECES
 // ===================================================
-inline static constexpr int32_t HANGING_PAWN_PENALTY = -10;
-inline static constexpr int32_t HANGING_PAWN_NEAR_KING_PENALTY = -22;
-inline static constexpr int32_t HANGING_HOOK_PAWN_PENALTY = -14;
-inline static constexpr int32_t HANGING_MINOR_PENALTY = -45;
-inline static constexpr int32_t HANGING_ROOK_PENALTY = -75;
-inline static constexpr int32_t HANGING_QUEEN_PENALTY = -130;
-inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -8;
-inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -4;
+inline static constexpr int32_t HANGING_PAWN_PENALTY = -12;
+inline static constexpr int32_t HANGING_PAWN_NEAR_KING_PENALTY = -28;
+inline static constexpr int32_t HANGING_HOOK_PAWN_PENALTY = -16;
+inline static constexpr int32_t HANGING_MINOR_PENALTY = -25;
+inline static constexpr int32_t HANGING_ROOK_PENALTY = -35;
+inline static constexpr int32_t HANGING_QUEEN_PENALTY = -50;
+inline static constexpr int32_t UNDEFENDED_PAWN_PENALTY = -10;
+inline static constexpr int32_t ATTACKED_PAWN_PENALTY = -5;
 
 // ===================================================
 // EXPLICIT THREATS
