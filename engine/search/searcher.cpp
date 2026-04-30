@@ -786,10 +786,11 @@ int32_t Searcher::searchPosition(
         }
 
         // Twofold is only a potential draw. Avoid premature draw cutoff when
-        // the side to move is materially ahead and should keep pressing.
+        // the side to move has at least a practical two-pawn edge and should
+        // keep pressing instead of accepting a repeat in rook/pawn endgames.
         if (b.isTwofoldRepetition()) {
             const int32_t matDelta = b.getIncrementalMaterialDelta();
-            constexpr int32_t TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN = 220;
+            constexpr int32_t TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN = PAWN_VALUE + PAWN_VALUE / 2;
             const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
             const bool sideToMoveAhead = whiteToMove
                 ? (matDelta > TWOFOLD_AVOID_DRAW_MATERIAL_MARGIN)
