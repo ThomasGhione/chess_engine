@@ -101,6 +101,23 @@ public:
         const chess::Board& b) noexcept;
 
 private:
+    struct MoveOrderingContext {
+        const chess::Board& b;
+        int ply;
+        const chess::Board::Move* previousMove;
+        int usSide;
+        uint8_t oppKingSq;
+        uint64_t occ;
+        bool usIsWhite;
+        bool isEndgameOrdering;
+        int fullMoveClock;
+        const int16_t (&history)[2][64][64];
+        const chess::Board::Move (&killerMoves)[2][MAX_PLY];
+        const uint16_t (&counterMoves)[64][64];
+        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS];
+        int32_t orderingPenaltySamePawnOpening;
+    };
+
     static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
     static constexpr bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
 
@@ -115,7 +132,7 @@ private:
     static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept;
 
     static int32_t scoreMoveOrderingPriorityInline(
-        const chess::Board& b,
+        const MoveOrderingContext& ctx,
         const chess::Board::Move& m,
         uint8_t fromPieceType,
         bool isCapture,
@@ -123,21 +140,7 @@ private:
         int32_t see,
         bool isPromotionCandidate,
         int moveIndex,
-        bool isHashMove,
-        int ply,
-        const chess::Board::Move* previousMove,
-        int usSide,
-        uint8_t oppKingSq,
-        uint64_t occ,
-        bool usIsWhite,
-        bool isEndgameOrdering,
-        int fullMoveClock,
-        const int16_t (&history)[2][64][64],
-        const chess::Board::Move (&killerMoves)[2][MAX_PLY],
-        const uint16_t (&counterMoves)[64][64],
-        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-        const int32_t (&pieceValues)[8],
-        int32_t orderingPenaltySamePawnOpening) noexcept;
+        bool isHashMove) noexcept;
 
     static uint8_t getLeastValuableAttackerTo(
         const chess::Board& b,

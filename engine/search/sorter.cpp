@@ -51,7 +51,6 @@ bool Sorter::givesCheckAfterQuietMoveFast(
     int usSide,
     uint8_t oppKingSq,
     uint64_t occ) noexcept {
-
     const uint64_t fromBit = chess::Board::bitMask(m.from.index);
     const uint64_t toBit = chess::Board::bitMask(m.to.index);
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
@@ -76,17 +75,12 @@ bool Sorter::givesCheckAfterQuietMoveFast(
     if (pieces::PAWN_ATTACKERS_TO[usSide][oppKingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights) return true;
     if (pieces::KING_ATTACKS[oppKingSq] & kings) return true;
-
-    const uint64_t rookLike = rooks | queens;
-    if (rookLike && (pieces::getRookAttacks(oppKingSq, occAfter) & rookLike)) return true;
-    const uint64_t bishopLike = bishops | queens;
-    if (bishopLike && (pieces::getBishopAttacks(oppKingSq, occAfter) & bishopLike)) return true;
-
-    return false;
+    if ((rooks | queens) && (pieces::getRookAttacks(oppKingSq, occAfter) & (rooks | queens))) return true;
+    return (bishops | queens) && (pieces::getBishopAttacks(oppKingSq, occAfter) & (bishops | queens));
 }
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(
-    const chess::Board& b,
+    const MoveOrderingContext& ctx,
     const chess::Board::Move& m,
     uint8_t fromPieceType,
     bool isCapture,
@@ -94,162 +88,63 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     int32_t see,
     bool isPromotionCandidate,
     int moveIndex,
-    bool isHashMove,
-    int ply,
-    const chess::Board::Move* previousMove,
-    int usSide,
-    uint8_t oppKingSq,
-    uint64_t occ,
-    bool usIsWhite,
-    bool isEndgameOrdering,
-    int fullMoveClock,
-    const int16_t (&history)[2][64][64],
-    const chess::Board::Move (&killerMoves)[2][MAX_PLY],
-    const uint16_t (&counterMoves)[64][64],
-    const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-    const int32_t (&pieceValues)[8],
-    int32_t orderingPenaltySamePawnOpening) noexcept {
-    // =========================================================
-    // MOVE ORDERING PRIORITY (from highest to lowest):
-    // 1. Hash move (from TT) -> 100000
-    // 2. Good captures (SEE >= 0) -> 10000 + MVV (1000-9000)
-    // 3. Killer move 1 -> 9000
-    // 4. Killer move 2 -> 8500
-    // 5. Counter-move (response to prev move) -> 8200
-    // 6. Checks (non-capture, lazy: first 8 moves) -> 8000
-    // 7. Promotions (non-capture) -> 7000
-    // 8. History heuristic -> 0-2000
-    // 9. Bad captures (SEE < 0) -> -10000 + SEE
-    // =========================================================
-
-    // Macro-step 1: Give absolute top priority to a validated hash move.
+    bool isHashMove) noexcept {
+        
     if (isHashMove) {
-        return 100000; // Highest priority
+        return 100000;
     }
 
-    //FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
-    // Macro-step 2: Score captures with SEE + capture-history policy.
     if (isCapture) {
-        // BAD CAPTURE: low priority, ordered by SEE value
-        // Simpler single-tier approach: all bad captures get -10000 + SEE
-        // Total: -10000 to -10001+ (worse SEE = lower priority)
         if (see < 0) {
             return clampToInt32(-10000 + see);
         }
-
-        // GOOD CAPTURES: priority based on SEE + capture history
         int32_t score = 10000 + MVV_TABLE[victimType];
-
         if (isPromotionCandidate) {
-            const uint8_t promoType = promotionPieceType(m.promotionPiece);
-            score += pieceValues[promoType];
+            score += PIECE_VALUES[promotionPieceType(m.promotionPiece)];
         }
-
-        // Add capture history bonus (0-500 range)
-        const int32_t capHistPrimary = captureHistory[usSide][m.to.index][victimType][0];
-        const int32_t capHistSecondary = captureHistory[usSide][m.to.index][victimType][1];
-        const int32_t capHist = capHistPrimary + (capHistSecondary >> 1);
-        score += std::min(500, capHist / 20); // Scale down
-        // Total: 10000-19500
+        score += std::min<int32_t>(
+            500,
+            (ctx.captureHistory[ctx.usSide][m.to.index][victimType][0]
+             + (ctx.captureHistory[ctx.usSide][m.to.index][victimType][1] >> 1)) / 20);
         return clampToInt32(score);
     }
 
-    // Macro-step 3: Score non-captures via killer/counter/check/promotion/history.
-
-    //FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
-    // Check for killer moves FIRST (high priority)
-    if (ply >= 0 && ply < MAX_PLY) {
-        const auto& km1 = killerMoves[0][ply];
-        const auto& km2 = killerMoves[1][ply];
-
-        if (sameFromTo(m, km1)) {
-            return 9000;
-        }
-        if (sameFromTo(m, km2)) {
-            return 8500;
-        }
+    if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
+        if (sameFromTo(m, ctx.killerMoves[0][ctx.ply])) return 9000;
+        if (sameFromTo(m, ctx.killerMoves[1][ctx.ply])) return 8500;
     }
 
-    // Check for counter-move (response to opponent's previous move)
-    if (previousMove != nullptr && previousMove->from.index < 64) {
-	//FIXME: Elimina costanti magiche E trasforma condizione in funzione helper
-        const uint16_t counter = counterMoves[previousMove->from.index][previousMove->to.index];
+    if (ctx.previousMove != nullptr && ctx.previousMove->from.index < 64) {
+        const uint16_t counter = ctx.counterMoves[ctx.previousMove->from.index][ctx.previousMove->to.index];
         if (counter != 0
             && counter == TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
-            return 8200; // Between killer moves and checks
+            return 8200;
         }
     }
 
     int32_t score = 0;
-
-    // LAZY CHECK DETECTION: only for first 8 non-capture moves
-    // Balances tactical strength with performance overhead
-    if (moveIndex < 8 && oppKingSq < 64) {
-        bool givesCheck = false;
-        
-        // We skip exact geometric check evaluation for promotion and castling 
-        // to avoid the crippling performance penalty of doMove/undoMove.
-        // Both of these move types naturally receive massive bonuses elsewhere
-        // in this function, ensuring they are searched extremely early regardless.
-        if (!isPromotionCandidate && fromPieceType != chess::Board::KING) {
-            givesCheck = givesCheckAfterQuietMoveFast(
-                b, m, fromPieceType, usSide, oppKingSq, occ);
-        }
-
-	//FIXME: Elimina costanti magiche
-        if (givesCheck) {
-            score = 8000; // High priority for checking moves
-        }
+    if (moveIndex < 8 && ctx.oppKingSq < 64 && !isPromotionCandidate && fromPieceType != chess::Board::KING
+        && givesCheckAfterQuietMoveFast(ctx.b, m, fromPieceType, ctx.usSide, ctx.oppKingSq, ctx.occ)) {
+        score = 8000;
     }
 
-    // Macro-step 4: Apply quiet bonuses/penalties and history tie-breakers.
-
-    //FIXME: Elimina costanti magiche
-    // Promotion bonus (if it's not a capture and no check was already detected)
     if (score == 0 && isPromotionCandidate) {
-        score = 7000;
-        const uint8_t promoType = promotionPieceType(m.promotionPiece);
-
-        // Tie-break promotions naturally: Q > R > B > N
-        score += pieceValues[promoType];
-    }
-    
-    // History heuristic (for regular quiet moves)
-    if (score == 0 && ply >= 0 && ply < MAX_PLY) {
-        int32_t histScore = history[usSide][m.from.index][m.to.index];
-        // Map history to [-2000, 4000] range for better move differentiation
-        // Negative history = moves that consistently fail = ordered below neutral
-        score = std::min(4000, std::max(-2000, histScore));
+        score = 7000 + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
     }
 
-    // Macro-step 5: Apply pawn-specific ordering refinements and clamp.
-    if (fromPieceType != chess::Board::PAWN) {
-        return clampToInt32(score);
+    if (score == 0 && ctx.ply >= 0 && ctx.ply < MAX_PLY) {
+        score = std::min(4000, std::max(-2000, static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index])));
     }
 
-    // In endgames prioritize pawn pushes slightly, especially advanced ones.
-    // This is ordering-only: it does not force pushes, but avoids searching
-    // king shuffles before obvious pawn-race candidates.
-    if (isEndgameOrdering) {
-        const int fromFile = chess::Board::file(m.from.index);
-        const int toFile = chess::Board::file(m.to.index);
-        if (fromFile == toFile) {
-            const int toRank = chess::Board::rank(m.to.index);
-            const int advancement = usIsWhite ? (6 - toRank) : (toRank - 1);
-            if (advancement > 0) {
-                score += 20 + advancement * 12;
-            }
+    if (fromPieceType == chess::Board::PAWN && ctx.isEndgameOrdering) {
+        const int advancement = ctx.usIsWhite ? (6 - chess::Board::rank(m.to.index)) : (chess::Board::rank(m.to.index) - 1);
+        if (chess::Board::file(m.from.index) == chess::Board::file(m.to.index) && advancement > 0) {
+            score += 20 + advancement * 12;
         }
-        return clampToInt32(score);
-    }
-
-    // Discourage moving the same pawn twice in the opening: small negative ordering penalty
-    // Simple heuristic: if the pawn is not on its starting rank in the opening, it's likely a second move
-    if (fullMoveClock < 8) {
-        const int fromRank = chess::Board::rank(m.from.index);
-        const int pawnStartRank = usIsWhite ? 6 : 1; // white pawns start on rank index 6, black on 1
-        if (fromRank != pawnStartRank) {
-            score += orderingPenaltySamePawnOpening; // negative value lowers priority
+    } else if (fromPieceType == chess::Board::PAWN && ctx.fullMoveClock < 8) {
+        const int pawnStartRank = ctx.usIsWhite ? 6 : 1;
+        if (chess::Board::rank(m.from.index) != pawnStartRank) {
+            score += ctx.orderingPenaltySamePawnOpening;
         }
     }
 
@@ -406,7 +301,6 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     const bool inCheck = b.inCheck(activeColor);
     const int fullMoveClock = b.getFullMoveClock();
     const int nonPawnMajors = b.getIncrementalNonPawnMajorCount();
-    const bool isEndgameOrdering = (nonPawnMajors <= 5);
     const int usSide = chess::Board::colorToIndex(usIsWhite ? chess::Board::WHITE : chess::Board::BLACK);
     const int oppSide = usSide ^ 1;
     const uint64_t occ = b.getPiecesBitMap();
@@ -415,6 +309,12 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
     const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const MoveOrderingContext orderingCtx{
+        b, ply, previousMove, usSide, oppKingSq, occ,
+        usIsWhite, nonPawnMajors <= 5, fullMoveClock,
+        history, killerMoves, counterMoves, captureHistory,
+        orderingPenaltySamePawnOpening
+    };
 
     // Macro-step 3: Probe and validate TT hash move.
     uint16_t encodedHashMove = 0;
@@ -462,10 +362,8 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
         }
 
         int32_t score = scoreMoveOrderingPriorityInline(
-            b, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate, moveIndex,
-            isHashMove, ply, previousMove, usSide, oppKingSq, occ,
-            usIsWhite, isEndgameOrdering, fullMoveClock, history, killerMoves, counterMoves,
-            captureHistory, PIECE_VALUES, orderingPenaltySamePawnOpening);
+            orderingCtx, m, fromPieceType, isCapture, victimType, see, isPromotionCandidate,
+            moveIndex, isHashMove);
 
         // NOTE: Stalemate check removed from move ordering (too expensive: doMove/undoMove per move!)
         // Stalemate is now handled ONLY in searchPosition() terminal node evaluation
