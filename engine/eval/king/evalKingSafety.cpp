@@ -90,17 +90,17 @@ inline void Evaluator::applyNonCastledPenalties(const chess::Board&, int side, b
         }
     }
 
-    if (canCastleKingside) sideSafety -= std::popcount(KS_SHIELD & ~ownPawns) * 12;
-    if (canCastleQueenside) sideSafety -= std::popcount(QS_SHIELD & ~ownPawns) * 12;
+    if (canCastleKingside) sideSafety -= __builtin_popcountll(KS_SHIELD & ~ownPawns) * 12;
+    if (canCastleQueenside) sideSafety -= __builtin_popcountll(QS_SHIELD & ~ownPawns) * 12;
 }
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     if (side == 0) {
         const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & WHITE_FORWARD_FILL[sq];
-        sideSafety += std::popcount(whitePawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
+        sideSafety += __builtin_popcountll(whitePawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     } else {
         const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & BLACK_FORWARD_FILL[sq];
-        sideSafety += std::popcount(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
+        sideSafety += __builtin_popcountll(blackPawns & shieldSquares) * engine::CASTLE_PAWN_SUPPORT_BONUS;
     }
 }
 
@@ -207,10 +207,10 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int, int 
     uint64_t attacks = pieces::getBishopAttacks(sq, b.getPiecesBitMap()) & enemyBishopsQueens;
     if (!attacks) return;
 
-    int hits = std::popcount(attacks);
+    int hits = __builtin_popcountll(attacks);
     sideSafety -= hits * engine::KING_OPEN_DIAGONAL_PENALTY;
 
-    int closeHits = std::popcount(attacks & KING_PROXIMITY_MASKS[sq]);
+    int closeHits = __builtin_popcountll(attacks & KING_PROXIMITY_MASKS[sq]);
     sideSafety -= closeHits * (engine::KING_OPEN_DIAGONAL_PENALTY / 2);
 }
 

@@ -83,8 +83,8 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
     stats.blackIsolatedFiles = static_cast<uint8_t>(~((bFiles << 1) | (bFiles >> 1)));
 
     // Islands counts as number of consecutive 1s blocks in wFiles/bFiles
-    stats.whiteIslands = std::popcount(static_cast<unsigned int>(wFiles & static_cast<uint8_t>(~(wFiles << 1))));
-    stats.blackIslands = std::popcount(static_cast<unsigned int>(bFiles & static_cast<uint8_t>(~(bFiles << 1))));
+    stats.whiteIslands = __builtin_popcountll(static_cast<unsigned int>(wFiles & static_cast<uint8_t>(~(wFiles << 1))));
+    stats.blackIslands = __builtin_popcountll(static_cast<unsigned int>(bFiles & static_cast<uint8_t>(~(bFiles << 1))));
 
     if (stats.whiteIslands > 1) {
         stats.islandScore += (stats.whiteIslands - 1) * engine::PAWN_ISLAND_PENALTY;
@@ -93,10 +93,10 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
         stats.islandScore -= (stats.blackIslands - 1) * engine::PAWN_ISLAND_PENALTY;
     }
 
-    const int totalWhitePawns = std::popcount(whitePawns);
-    const int totalBlackPawns = std::popcount(blackPawns);
-    const int whiteOccupiedFiles = std::popcount(static_cast<unsigned int>(wFiles));
-    const int blackOccupiedFiles = std::popcount(static_cast<unsigned int>(bFiles));
+    const int totalWhitePawns = __builtin_popcountll(whitePawns);
+    const int totalBlackPawns = __builtin_popcountll(blackPawns);
+    const int whiteOccupiedFiles = __builtin_popcountll(static_cast<unsigned int>(wFiles));
+    const int blackOccupiedFiles = __builtin_popcountll(static_cast<unsigned int>(bFiles));
 
     stats.doubledScore += (totalWhitePawns - whiteOccupiedFiles) * engine::DOUBLED_PAWN_PENALTY;
     stats.doubledScore -= (totalBlackPawns - blackOccupiedFiles) * engine::DOUBLED_PAWN_PENALTY;

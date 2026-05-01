@@ -228,8 +228,8 @@ ut::suite performanceEngineSuite = [] {
     int64_t doubleRookSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 6, true);
-      int wR = std::popcount(pos.whiteRooks);
-      int bR = std::popcount(pos.blackRooks);
+      int wR = __builtin_popcountll(pos.whiteRooks);
+      int bR = __builtin_popcountll(pos.blackRooks);
       doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 0, wR, bR);
       doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 1, wR, bR);
     }
@@ -242,8 +242,8 @@ ut::suite performanceEngineSuite = [] {
     int64_t rookPressureSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 7, true);
-      int wR = std::popcount(pos.whiteRooks);
-      int bR = std::popcount(pos.blackRooks);
+      int wR = __builtin_popcountll(pos.whiteRooks);
+      int bR = __builtin_popcountll(pos.blackRooks);
       rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 0, wR, bR);
       rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 1, wR, bR);
     }
