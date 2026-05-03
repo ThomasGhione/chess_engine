@@ -89,7 +89,7 @@ Driver::Driver(engine::Engine& e) : engine(e) {}
 
 void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Please select a valid option.\n"; }
 
-void Driver::startGame(int argc, char* argv[]) noexcept {
+[[noreturn]] void Driver::startGame(int argc, char* argv[]) noexcept {
     parse(argc, argv);
 
     while (true) {
