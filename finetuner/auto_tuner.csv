@@ -1,0 +1,6 @@
+w_name, w_default, w_min, w_max
+QUEEN_VALUE, 900
+
+
+delta_max_weight = w_default +- (w_default / 10)
+w_change = w_default / 100

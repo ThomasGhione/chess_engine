@@ -8,6 +8,7 @@
 *.log
 *.png
 *.csv
+!auto_tuner.csv
 chess
 test
 perf
