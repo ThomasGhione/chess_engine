@@ -32,7 +32,7 @@ public:
 
     explicit Driver(engine::Engine& engine);
 
-    void startGame(int argc, char* argv[]) noexcept;
+    [[noreturn]] void startGame(int argc, char* argv[]) noexcept;
     static std::string getBasicBoard(const chess::Board& board);
 
 private:

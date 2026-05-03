@@ -153,7 +153,7 @@ namespace uci {
 
     void UCI::uci() noexcept {
         std::cout
-            << "id name Fenty The Chess Engine 1.0.0\n"
+            << "id name HydraY 1.1.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n"
