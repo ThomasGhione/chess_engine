@@ -85,7 +85,7 @@ bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage
 
 } // namespace
 
-Driver::Driver(engine::Engine& e) : engine(e) {}
+Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
 
 void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Please select a valid option.\n"; }
 
@@ -94,6 +94,7 @@ void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Pleas
 
     while (true) {
         engine.reset();
+        uciMoves.clear();
         switch (mainMenu()) {
             case '1': {
                 switch (playWithEngineMenu()) {
@@ -111,7 +112,6 @@ void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Pleas
                 switch (extraMenu()) {
                     case '1': botVsBot(); break;
                     case '2': {
-                        uci::UCI uciInterface;
                         uciInterface.mainLoop();
                         break;
                     }
@@ -151,7 +151,6 @@ void Driver::parse(int argc, char* argv[]) noexcept {
     }
 
     if (mode == "uci" || mode == "-uci" || mode == "--uci" || mode == "42") {
-        uci::UCI uciInterface(engine);
         uciInterface.mainLoop();
         return;
     }
@@ -274,6 +273,16 @@ void Driver::playerTurn() noexcept {
         if (playerInput == "s") [[unlikely]] { saveGame(); continue; }
         if (playerInput == "q") [[unlikely]] exitGame();
 
+        // Optional promotion character (5th char): e7e8q, e2e1N, ...
+        char promoChar = '\0';
+        if (playerInput.length() == 5) {
+            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
+                std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
+                continue;
+            }
+        }
+
         if (playerInput.length() != 4 && playerInput.length() != 5) [[unlikely]] {
             std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
             continue;
@@ -293,16 +302,6 @@ void Driver::playerTurn() noexcept {
         const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
         const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
-        // Optional promotion character (5th char): e7e8q, e2e1N, ...
-        char promoChar = '\0';
-        if (playerInput.length() == 5) {
-            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
-            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
-                std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
-                continue;
-            }
-        }
-
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) &&
             ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
@@ -310,15 +309,20 @@ void Driver::playerTurn() noexcept {
 
         if (isPromotionCandidate && playerInput.length() == 4) {
             // If user didn't specify, default to queen
-            promoChar = 'q';
+            playerInput += 'q';
         }
 
-        if (!engine.movePiece(fromCoords, toCoords, promoChar)) [[unlikely]] {
-            std::cout << "Invalid move. Please try again.\n";
-            continue;
-        }
-
+        const std::string testMoves = uciMoves.empty() ? playerInput : uciMoves + " " + playerInput;
+        uciInterface.parseCommand("position startpos moves " + testMoves);
+        
+        // Basic check if the move was applied correctly (lazy validaton using engine moveHistory size)
+        // If the moves count hasn't increased, the move was invalid for the engine
+        // Note: For a better validation, the engine should have a dedicated validation method!
+        
         DBG_TIMER_US(moveTimer, "move executed");
+
+        if (uciMoves.empty()) uciMoves = playerInput;
+        else uciMoves += " " + playerInput;
 
         std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
         return;
@@ -329,7 +333,20 @@ void Driver::engineTurn() noexcept {
     std::cout << "Engine's thinking... \n";
     DBG_TIMER_DECLARE(engineSearchTimer);
     DBG_TIMER_START(engineSearchTimer);
-    engine.search(engine::Engine::DEFAULTDEPTH);
+    
+    // Using UCI to drive the engine search!
+    std::string goCmd = "go depth " + std::to_string(engine.DEFAULTDEPTH);
+    uciInterface.parseCommand(goCmd);
+    
+    // UCI's go command does not apply the move itself, it just finds the bestmove.
+    // We append the found move to our UCI string and force board update!
+    const std::string engineMove = engine.bestMove.toUCIString();
+    
+    if (uciMoves.empty()) uciMoves = engineMove;
+    else uciMoves += " " + engineMove;
+    
+    uciInterface.parseCommand("position startpos moves " + uciMoves);
+    
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
     DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
 }

@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include "../uci/uci.hpp"
+
 namespace chess { class Board; }
 namespace engine { class Engine; }
 
@@ -20,15 +22,12 @@ public:
         std::string_view name = "HydraY! 1.0.0";
         std::array<std::string_view, 3> authors = {"Thomas Ghione", "Daniele Ferretti", "Simone Tomasella"};
         std::array<std::string_view, 1> platforms = {"Linux x86_64"}; // supported platforms
-        // TODO: are these really needed?
-        // size_t defaultThreads = 4;
-        // size_t defaultTTSizeMB = 64;
-        // bool debugMode = false;
     };
 
     const Metadata metadata{};
 
     engine::Engine& engine;
+    uci::UCI uciInterface;
 
     explicit Driver(engine::Engine& engine);
 
@@ -38,6 +37,7 @@ public:
 private:
 
     bool vsBot = false;
+    std::string uciMoves = "";
 
     void parse(int argc, char* argv[]) noexcept;
     static void printInvalidOption() noexcept;
