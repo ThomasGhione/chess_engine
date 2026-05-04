@@ -1,5 +1,6 @@
 /.*
 .vscode
+.venv
 *.out
 *.elf
 *.o
@@ -19,3 +20,4 @@ chess.exe
 /games/
 /saves/
 /stockfish/
+/cutechess/
