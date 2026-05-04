@@ -52,20 +52,38 @@ def parse_fen_from_csv():
         list_of_fens.append((row.fen))
 
 
+def spawn_engine_process():
+    # TODO: implement function to spawn engine process with the generated CSV configuration
+    
+    # ./chess pvb -w
+    # ./chess pvb -b
+
+    # this can be an idea: ./chess --auto-tune --config auto_tuner.csv  --output results.csv
+    pass
+    
+
 
 def main():
     # weights_data = pd.read_csv(auto_tuner_csv)
 
+    # 1) read eval_constants.hpp and parse weights into list_of_weights
     with eval_constants_file.open('r', encoding='utf-8') as eval_constants:
         parse_weights_from_header(eval_constants.read())
 
+    # 2) write list_of_weights to auto_tuner.csv
     write_weights_to_csv()
 
-
-
+    # 3) read fens from fen_data.csv and store in list_of_fens
     parse_fen_from_csv()
 
+    # 4) spawn engine processes (w_old)
+    spawn_engine_process()
+
+    # 5) spawn engine processes (w_new)
+    spawn_engine_process()
     
+
+
     # Debug only!
     print(*list_of_weights, sep = '\n')
 
