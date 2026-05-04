@@ -5,7 +5,7 @@ import pandas as pd
 ROOT_DIR = Path(__file__).resolve().parent.parent
 eval_constants_file = ROOT_DIR / 'engine' / 'eval_constants.hpp'
 auto_tuner_csv = ROOT_DIR / 'finetuner' / 'auto_tuner.csv'
-fen_csv = ROOT_DIR / 'finetuner' / 'fen_data.csv'
+fen_csv = ROOT_DIR / 'finetuner' / 'positions.csv'
 
 list_of_weights = []
 list_of_fens = []
@@ -49,7 +49,7 @@ def write_weights_to_csv():
 def parse_fen_from_csv():
     data = pd.read_csv(fen_csv)
     for row in data.itertuples():
-        list_of_fens.append((row.fen))
+        list_of_fens.append(row.fen)
 
 
 def spawn_engine_process():
