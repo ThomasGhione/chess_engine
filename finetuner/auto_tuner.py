@@ -6,9 +6,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 eval_constants_file = ROOT_DIR / 'engine' / 'eval_constants.hpp'
 csv_file = ROOT_DIR / 'finetuner' / 'auto_tuner.csv'
 
-list_of_constants = []
+list_of_weights = []
 
-def build_list_of_constants_from_hpp(file):
+def build_list_of_weights_from_hpp(file):
     line = file.find('int32_t')
     name_idx = file.find('int32_t', line)
     value_idx = file.find('=', line)
@@ -25,8 +25,11 @@ def build_list_of_constants_from_hpp(file):
 
 
         if w_value.find("{") == -1 and w_value.find("max") == -1:
-            pair = (w_name, w_value)        
-            list_of_constants.append(pair)
+            w_min = int(int(w_value) - (int(w_value) / 10))
+            w_max = int(int(w_value) + (int(w_value) / 10))
+            step = int(int(w_value) / 100)
+            row = (w_name, w_value, w_min, w_max, step, True, 'default')        
+            list_of_weights.append(row)
             
 
         line = file.find('int32_t', end_idx)
@@ -34,13 +37,22 @@ def build_list_of_constants_from_hpp(file):
         value_idx = file.find('=', line)
         end_idx = file.find(';', value_idx)
 
+def write_weights_to_csv():
+    data = pd.DataFrame(list_of_weights, 
+                        columns=['w_name', 'w_default', 'w_min', 'w_max', 'step', 'enabled', 'group'])
+    data.to_csv(csv_file, index=False)
+
+
 def main():
     weights_data = pd.read_csv(csv_file)
 
     with eval_constants_file.open('r', encoding='utf-8') as eval_constants:
-        build_list_of_constants_from_hpp(eval_constants.read())
+        build_list_of_weights_from_hpp(eval_constants.read())
 
-    print(*list_of_constants, sep = '\n')
+    write_weights_to_csv()
+
+    # Debug only!
+    print(*list_of_weights, sep = '\n')
 
     
 
