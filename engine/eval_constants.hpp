@@ -166,14 +166,14 @@ inline int32_t EARLY_KING_PENALTY = -16;
 inline int32_t KING_SAFETY_SIDE_CAP = 150;
 inline int32_t KING_ATTACK_MATERIAL_MIN_SCALE = 40;
 inline int32_t KING_ATTACK_MATERIAL_MAX_SCALE = 130;
-inline int32_t KING_ATTACK_WEIGHT_KNIGHT = 8;
-inline int32_t KING_ATTACK_WEIGHT_BISHOP = 8;
-inline int32_t KING_ATTACK_WEIGHT_ROOK   = 15;
-inline int32_t KING_ATTACK_WEIGHT_QUEEN  = 23;
-inline int32_t KING_SAFE_CONTACT_BONUS = 4;
-inline int32_t KING_FORCING_CONTACT_BONUS = 2;
-inline int32_t KING_SAFE_CHECK_BONUS = 10;
-inline int32_t KING_FORCING_CHECK_BONUS = 4;
+inline int32_t KING_ATTACK_WEIGHT_KNIGHT = 7;
+inline int32_t KING_ATTACK_WEIGHT_BISHOP = 6;
+inline int32_t KING_ATTACK_WEIGHT_ROOK   = 12;
+inline int32_t KING_ATTACK_WEIGHT_QUEEN  = 22;
+inline int32_t KING_SAFE_CONTACT_BONUS = 5;
+inline int32_t KING_FORCING_CONTACT_BONUS = 6;
+inline int32_t KING_SAFE_CHECK_BONUS = 11;
+inline int32_t KING_FORCING_CHECK_BONUS = 6;
 inline int32_t KING_ATTACK_DANGER_CAP = 125;
 
 // ===================================================
