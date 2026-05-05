@@ -38,28 +38,28 @@ inline int32_t CANDIDATE_PASSER_BONUS = 9;
 inline int32_t CONNECTED_PASSER_BONUS = 14;
 inline int32_t BACKWARD_PAWN_PENALTY = -8;
 inline int32_t PASSED_PAWN_BLOCKED_PENALTY = -17;
-inline int32_t CENTER_CONTROL_BONUS = 10;
+inline int32_t CENTER_CONTROL_BONUS = 8;
 
 // ===================================================
 // BISHOP PAIR
 // ===================================================
-inline int32_t BISHOP_PAIR_BONUS = 28;
+inline int32_t BISHOP_PAIR_BONUS = 32;
 
 // ===================================================
 // CASTLING
 // ===================================================
-inline int32_t CASTLING_BONUS = 20;
-inline int32_t KING_NON_CASTLING_PENALTY = 8;
-inline int32_t KING_LOST_CASTLING_RIGHTS_PENALTY = 16;
-inline int32_t LOSS_OF_CASTLING_PENALTY = 24;
+inline int32_t CASTLING_BONUS = 18;
+inline int32_t KING_NON_CASTLING_PENALTY = 7;
+inline int32_t KING_LOST_CASTLING_RIGHTS_PENALTY = 17;
+inline int32_t LOSS_OF_CASTLING_PENALTY = 22;
 
 // ===================================================
 // DEVELOPMENT & INITIATIVE
 // ===================================================
-inline int32_t INIT_BONUS_MG = 4;
+inline int32_t INIT_BONUS_MG = 3;
 inline int32_t INIT_BONUS_EG = 0;
 inline int32_t EARLY_ROOK_PENALTY = -24;
-inline int32_t DEVELOPMENT_BONUS = 7;
+inline int32_t DEVELOPMENT_BONUS = 6;
 
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES

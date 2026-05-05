@@ -17,23 +17,24 @@
   ],
 
   "parameter_ranges": {
-      "OPEN_FILE_ROOK_BONUS": "Integer(20, 28)",
-      "SEMI_OPEN_FILE_ROOK_BONUS": "Integer(8, 12)",
-      "ROOK_ON_SEVENTH_BONUS": "Integer(16, 24)",
-      "ROOK_BEHIND_OWN_PASSER_BONUS": "Integer(10, 18)",
-      "ROOK_BEHIND_ENEMY_PASSER_BONUS": "Integer(8, 14)",
-      "ROOK_EG_EDGE_BONUS": "Integer(24, 32)",
-      "ROOK_EG_PRESSURE_BONUS": "Integer(12, 20)"
+      "CENTER_CONTROL_BONUS": "Integer(7, 13)",
+      "BISHOP_PAIR_BONUS": "Integer(24, 34)",
+      "CASTLING_BONUS": "Integer(16, 24)",
+      "KING_NON_CASTLING_PENALTY": "Integer(5, 12)",
+      "KING_LOST_CASTLING_RIGHTS_PENALTY": "Integer(12, 22)",
+      "LOSS_OF_CASTLING_PENALTY": "Integer(18, 30)",
+      "INIT_BONUS_MG": "Integer(2, 7)",
+      "DEVELOPMENT_BONUS": "Integer(5, 10)"
   },
 
   "engine1_depth": 6,
   "engine2_depth": 6,
-  "rounds": 4,
+  "rounds": 8,
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "rook_data.npz",
-  "model_path": "rook_model.pkl",
+  "data_path": "opening_fundamentals_data.npz",
+  "model_path": "opening_fundamentals_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }
