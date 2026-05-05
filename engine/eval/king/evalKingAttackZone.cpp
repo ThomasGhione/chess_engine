@@ -5,14 +5,14 @@ namespace engine {
 inline void Evaluator::accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
                                                       uint64_t developedKnights, uint64_t developedBishops,
                                                       int& attackerCount, int32_t& attackWeight) noexcept {
-    accumulateKingZoneAttackers<knightAttacksLookup, engine::KING_ATTACK_WEIGHT_KNIGHT>(
-        developedKnights, kingZone, occ, attackerCount, attackWeight);
-    accumulateKingZoneAttackers<pieces::getBishopAttacks, engine::KING_ATTACK_WEIGHT_BISHOP>(
-        developedBishops, kingZone, occ, attackerCount, attackWeight);
-    accumulateKingZoneAttackers<pieces::getRookAttacks, engine::KING_ATTACK_WEIGHT_ROOK>(
-        b.rooks_bb[side], kingZone, occ, attackerCount, attackWeight);
-    accumulateKingZoneAttackers<pieces::getQueenAttacks, engine::KING_ATTACK_WEIGHT_QUEEN>(
-        b.queens_bb[side], kingZone, occ, attackerCount, attackWeight);
+    accumulateKingZoneAttackers<knightAttacksLookup>(
+        developedKnights, kingZone, occ, engine::KING_ATTACK_WEIGHT_KNIGHT, attackerCount, attackWeight);
+    accumulateKingZoneAttackers<pieces::getBishopAttacks>(
+        developedBishops, kingZone, occ, engine::KING_ATTACK_WEIGHT_BISHOP, attackerCount, attackWeight);
+    accumulateKingZoneAttackers<pieces::getRookAttacks>(
+        b.rooks_bb[side], kingZone, occ, engine::KING_ATTACK_WEIGHT_ROOK, attackerCount, attackWeight);
+    accumulateKingZoneAttackers<pieces::getQueenAttacks>(
+        b.queens_bb[side], kingZone, occ, engine::KING_ATTACK_WEIGHT_QUEEN, attackerCount, attackWeight);
 }
 
 inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept {

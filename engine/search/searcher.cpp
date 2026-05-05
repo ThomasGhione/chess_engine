@@ -13,10 +13,10 @@ namespace engine {
 
 namespace {
 
-constexpr int32_t DRAW_SCORE_MATERIAL_WEIGHT_PERCENT = 40;
-constexpr int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT = 60;
-constexpr int32_t DRAW_SCORE_WEIGHT_DENOMINATOR = 100;
-constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
+const int32_t DRAW_SCORE_MATERIAL_WEIGHT_PERCENT = 40;
+const int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT = 60;
+const int32_t DRAW_SCORE_WEIGHT_DENOMINATOR = 100;
+const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
 inline void publishSharedRootBound(
     bool usIsWhite,
@@ -1004,7 +1004,7 @@ int32_t Searcher::quiescenceSearch(
         }
         updateBound(standPat, alpha, beta, usIsWhite);
 
-        static constexpr int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
+        static const int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
         if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
             return usIsWhite ? alpha : beta;
         }

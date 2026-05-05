@@ -131,7 +131,7 @@ private:
     static constexpr int manhattan(int a, int b) noexcept;
 
     template<bool IsEndgame>
-    static constexpr int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;
+    static int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;
 
     template<int Side>
     static constexpr int32_t evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept;
@@ -150,11 +150,12 @@ private:
     static inline void addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
                                          int32_t safeBonus, int32_t forcingBonus,
                                          int32_t& attackUnits) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t Weight>
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
     static inline void accumulateKingZoneAttackers(uint64_t piecesBb, uint64_t kingZone, uint64_t occ,
-                                                   int& attackerCount, int32_t& attackWeight) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int32_t PinnedPenalty, int32_t LowMobPenalty>
-    static inline int32_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask, int sign) noexcept;
+                                                   int32_t weight, int& attackerCount, int32_t& attackWeight) noexcept;
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
+    static inline int32_t evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask,
+                                                   int sign, int32_t pinnedPenalty, int32_t lowMobPenalty) noexcept;
     static inline int32_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
     static inline int32_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                   int sign, int penalty) noexcept;
@@ -165,8 +166,8 @@ private:
     static inline uint64_t collectPieceAttacks(uint64_t piecesBb, uint64_t occ) noexcept;
     static inline int32_t evalThreatsSide(const chess::Board& b, const AttackData data[2], int side,
                                           int sign, uint64_t occ) noexcept;
-    template<int32_t Bonus>
-    static inline int32_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign, const chess::Board& b) noexcept;
+    static inline int32_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
+                                             const chess::Board& b, int32_t bonus) noexcept;
     template<bool IsEndgame>
     static inline int32_t evalKingActivitySide(const chess::Board& b, int side) noexcept;
     template<int Side>

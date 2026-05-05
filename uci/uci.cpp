@@ -1,6 +1,8 @@
 #include "uci.hpp"
 
+#include "../board/board.hpp"
 #include "../engine/engine.hpp"
+#include "../engine/eval_constants.hpp"
 
 #include <charconv>
 #include <cctype>
@@ -48,6 +50,188 @@ namespace {
         }
         return normalized;
     }
+
+    static std::string optionDisplayName(std::string_view rawName) {
+        std::string display;
+        display.reserve(rawName.size());
+        bool upperNext = true;
+        for (const char c : rawName) {
+            if (c == '_' || c == '-' || c == ' ') {
+                upperNext = true;
+                continue;
+            }
+            display.push_back(upperNext ? static_cast<char>(std::toupper(static_cast<unsigned char>(c)))
+                                         : static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            upperNext = false;
+        }
+        return display;
+    }
+
+    struct EvalOption final {
+        const char* key;
+        int32_t* value;
+        bool refreshPieceTables;
+        bool hasRange;
+        int32_t minValue;
+        int32_t maxValue;
+    };
+
+    static void defaultRangeFor(int32_t value, int32_t& minValue, int32_t& maxValue) noexcept {
+        const int64_t absValue = std::llabs(static_cast<int64_t>(value));
+        const int64_t delta = absValue / 10;
+        const int64_t minCandidate = static_cast<int64_t>(value) - delta;
+        const int64_t maxCandidate = static_cast<int64_t>(value) + delta;
+        minValue = static_cast<int32_t>(std::clamp(minCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
+        maxValue = static_cast<int32_t>(std::clamp(maxCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
+    }
+
+    static void refreshPieceTables() noexcept {
+        engine::PIECE_VALUES[0] = 0;
+        engine::PIECE_VALUES[1] = engine::PAWN_VALUE;
+        engine::PIECE_VALUES[2] = engine::KNIGHT_VALUE;
+        engine::PIECE_VALUES[3] = engine::BISHOP_VALUE;
+        engine::PIECE_VALUES[4] = engine::ROOK_VALUE;
+        engine::PIECE_VALUES[5] = engine::QUEEN_VALUE;
+        engine::PIECE_VALUES[6] = engine::KING_VALUE;
+        engine::PIECE_VALUES[7] = 0;
+
+        engine::MVV_TABLE[0] = 0;
+        engine::MVV_TABLE[1] = engine::PAWN_VALUE * 10;
+        engine::MVV_TABLE[2] = engine::KNIGHT_VALUE * 10;
+        engine::MVV_TABLE[3] = engine::BISHOP_VALUE * 10;
+        engine::MVV_TABLE[4] = engine::ROOK_VALUE * 10;
+        engine::MVV_TABLE[5] = engine::QUEEN_VALUE * 10;
+        engine::MVV_TABLE[6] = engine::KING_VALUE * 10;
+
+        chess::Board::MATERIAL_VALUES[0] = 0;
+        chess::Board::MATERIAL_VALUES[1] = engine::PAWN_VALUE;
+        chess::Board::MATERIAL_VALUES[2] = engine::KNIGHT_VALUE;
+        chess::Board::MATERIAL_VALUES[3] = engine::BISHOP_VALUE;
+        chess::Board::MATERIAL_VALUES[4] = engine::ROOK_VALUE;
+        chess::Board::MATERIAL_VALUES[5] = engine::QUEEN_VALUE;
+        chess::Board::MATERIAL_VALUES[6] = engine::KING_VALUE;
+        chess::Board::MATERIAL_VALUES[7] = 0;
+    }
+
+    static EvalOption kEvalOptions[] = {
+        {"PAWN_VALUE", &engine::PAWN_VALUE, true, false, 0, 0},
+        {"KNIGHT_VALUE", &engine::KNIGHT_VALUE, true, false, 0, 0},
+        {"BISHOP_VALUE", &engine::BISHOP_VALUE, true, false, 0, 0},
+        {"ROOK_VALUE", &engine::ROOK_VALUE, true, false, 0, 0},
+        {"QUEEN_VALUE", &engine::QUEEN_VALUE, true, false, 0, 0},
+        {"KING_VALUE", &engine::KING_VALUE, true, false, 0, 0},
+        {"MATE_SCORE", &engine::MATE_SCORE, false, true, 0, 2'000'000'000},
+        {"PHASE_FINAL_THRESHOLD", &engine::PHASE_FINAL_THRESHOLD, false, false, 0, 0},
+        {"DOUBLED_PAWN_PENALTY", &engine::DOUBLED_PAWN_PENALTY, false, false, 0, 0},
+        {"ISOLATED_PAWN_PENALTY", &engine::ISOLATED_PAWN_PENALTY, false, false, 0, 0},
+        {"PASSED_PAWN_BONUS", &engine::PASSED_PAWN_BONUS, false, false, 0, 0},
+        {"PAWN_ISLAND_PENALTY", &engine::PAWN_ISLAND_PENALTY, false, false, 0, 0},
+        {"PAWN_SUPPORT_BONUS", &engine::PAWN_SUPPORT_BONUS, false, false, 0, 0},
+        {"CANDIDATE_PASSER_BONUS", &engine::CANDIDATE_PASSER_BONUS, false, false, 0, 0},
+        {"CONNECTED_PASSER_BONUS", &engine::CONNECTED_PASSER_BONUS, false, false, 0, 0},
+        {"BACKWARD_PAWN_PENALTY", &engine::BACKWARD_PAWN_PENALTY, false, false, 0, 0},
+        {"PASSED_PAWN_BLOCKED_PENALTY", &engine::PASSED_PAWN_BLOCKED_PENALTY, false, false, 0, 0},
+        {"CENTER_CONTROL_BONUS", &engine::CENTER_CONTROL_BONUS, false, false, 0, 0},
+        {"BISHOP_PAIR_BONUS", &engine::BISHOP_PAIR_BONUS, false, false, 0, 0},
+        {"CASTLING_BONUS", &engine::CASTLING_BONUS, false, false, 0, 0},
+        {"KING_NON_CASTLING_PENALTY", &engine::KING_NON_CASTLING_PENALTY, false, false, 0, 0},
+        {"KING_LOST_CASTLING_RIGHTS_PENALTY", &engine::KING_LOST_CASTLING_RIGHTS_PENALTY, false, false, 0, 0},
+        {"LOSS_OF_CASTLING_PENALTY", &engine::LOSS_OF_CASTLING_PENALTY, false, false, 0, 0},
+        {"INIT_BONUS_MG", &engine::INIT_BONUS_MG, false, false, 0, 0},
+        {"INIT_BONUS_EG", &engine::INIT_BONUS_EG, false, false, 0, 0},
+        {"EARLY_ROOK_PENALTY", &engine::EARLY_ROOK_PENALTY, false, false, 0, 0},
+        {"DEVELOPMENT_BONUS", &engine::DEVELOPMENT_BONUS, false, false, 0, 0},
+        {"LOW_MOBILITY_KNIGHT_PENALTY", &engine::LOW_MOBILITY_KNIGHT_PENALTY, false, false, 0, 0},
+        {"PINNED_KNIGHT_PENALTY", &engine::PINNED_KNIGHT_PENALTY, false, false, 0, 0},
+        {"LOW_MOBILITY_BISHOP_PENALTY", &engine::LOW_MOBILITY_BISHOP_PENALTY, false, false, 0, 0},
+        {"PINNED_BISHOP_PENALTY", &engine::PINNED_BISHOP_PENALTY, false, false, 0, 0},
+        {"LOW_MOBILITY_ROOK_PENALTY", &engine::LOW_MOBILITY_ROOK_PENALTY, false, false, 0, 0},
+        {"PINNED_ROOK_PENALTY", &engine::PINNED_ROOK_PENALTY, false, false, 0, 0},
+        {"LOW_MOBILITY_QUEEN_PENALTY", &engine::LOW_MOBILITY_QUEEN_PENALTY, false, false, 0, 0},
+        {"PINNED_QUEEN_PENALTY", &engine::PINNED_QUEEN_PENALTY, false, false, 0, 0},
+        {"MOBILITY_CENTER_BONUS", &engine::MOBILITY_CENTER_BONUS, false, false, 0, 0},
+        {"MOBILITY_OWN_PAWN_BLOCKER_PENALTY", &engine::MOBILITY_OWN_PAWN_BLOCKER_PENALTY, false, false, 0, 0},
+        {"QUEEN_EARLY_MOBILITY_THRESHOLD", &engine::QUEEN_EARLY_MOBILITY_THRESHOLD, false, false, 0, 0},
+        {"QUEEN_EARLY_MOBILITY_PENALTY", &engine::QUEEN_EARLY_MOBILITY_PENALTY, false, false, 0, 0},
+        {"OUTPOST_CENTER_FILE_BONUS", &engine::OUTPOST_CENTER_FILE_BONUS, false, false, 0, 0},
+        {"OUTPOST_NEAR_CENTER_FILE_BONUS", &engine::OUTPOST_NEAR_CENTER_FILE_BONUS, false, false, 0, 0},
+        {"OUTPOST_ADVANCED_RANK_BONUS", &engine::OUTPOST_ADVANCED_RANK_BONUS, false, false, 0, 0},
+        {"OUTPOST_KING_ZONE_BONUS", &engine::OUTPOST_KING_ZONE_BONUS, false, false, 0, 0},
+        {"OUTPOST_KEY_SQUARE_BONUS", &engine::OUTPOST_KEY_SQUARE_BONUS, false, false, 0, 0},
+        {"COORDINATION_PENALTY", &engine::COORDINATION_PENALTY, false, false, 0, 0},
+        {"OUTPOST_BISHOP_BONUS", &engine::OUTPOST_BISHOP_BONUS, false, false, 0, 0},
+        {"OUTPOST_KNIGHT_BONUS", &engine::OUTPOST_KNIGHT_BONUS, false, false, 0, 0},
+        {"ORDERING_PENALTY_SAME_PAWN_OPENING", &engine::ORDERING_PENALTY_SAME_PAWN_OPENING, false, false, 0, 0},
+        {"HANGING_PAWN_PENALTY", &engine::HANGING_PAWN_PENALTY, false, false, 0, 0},
+        {"HANGING_PAWN_NEAR_KING_PENALTY", &engine::HANGING_PAWN_NEAR_KING_PENALTY, false, false, 0, 0},
+        {"HANGING_HOOK_PAWN_PENALTY", &engine::HANGING_HOOK_PAWN_PENALTY, false, false, 0, 0},
+        {"HANGING_MINOR_PENALTY", &engine::HANGING_MINOR_PENALTY, false, false, 0, 0},
+        {"HANGING_ROOK_PENALTY", &engine::HANGING_ROOK_PENALTY, false, false, 0, 0},
+        {"HANGING_QUEEN_PENALTY", &engine::HANGING_QUEEN_PENALTY, false, false, 0, 0},
+        {"UNDEFENDED_PAWN_PENALTY", &engine::UNDEFENDED_PAWN_PENALTY, false, false, 0, 0},
+        {"ATTACKED_PAWN_PENALTY", &engine::ATTACKED_PAWN_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_ATTACK_MINOR_PENALTY", &engine::THREAT_PAWN_ATTACK_MINOR_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_ATTACK_ROOK_PENALTY", &engine::THREAT_PAWN_ATTACK_ROOK_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_ATTACK_QUEEN_PENALTY", &engine::THREAT_PAWN_ATTACK_QUEEN_PENALTY, false, false, 0, 0},
+        {"THREAT_MINOR_ATTACK_ROOK_PENALTY", &engine::THREAT_MINOR_ATTACK_ROOK_PENALTY, false, false, 0, 0},
+        {"THREAT_MINOR_ATTACK_QUEEN_PENALTY", &engine::THREAT_MINOR_ATTACK_QUEEN_PENALTY, false, false, 0, 0},
+        {"THREAT_ROOK_ATTACK_QUEEN_PENALTY", &engine::THREAT_ROOK_ATTACK_QUEEN_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_PUSH_MINOR_PENALTY", &engine::THREAT_PAWN_PUSH_MINOR_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_PUSH_ROOK_PENALTY", &engine::THREAT_PAWN_PUSH_ROOK_PENALTY, false, false, 0, 0},
+        {"THREAT_PAWN_PUSH_QUEEN_PENALTY", &engine::THREAT_PAWN_PUSH_QUEEN_PENALTY, false, false, 0, 0},
+        {"THREAT_LOOSE_MINOR_PENALTY", &engine::THREAT_LOOSE_MINOR_PENALTY, false, false, 0, 0},
+        {"THREAT_LOOSE_ROOK_PENALTY", &engine::THREAT_LOOSE_ROOK_PENALTY, false, false, 0, 0},
+        {"THREAT_LOOSE_QUEEN_PENALTY", &engine::THREAT_LOOSE_QUEEN_PENALTY, false, false, 0, 0},
+        {"PAWN_FORK_BASE_BONUS", &engine::PAWN_FORK_BASE_BONUS, false, false, 0, 0},
+        {"PAWN_FORK_MAJOR_BONUS", &engine::PAWN_FORK_MAJOR_BONUS, false, false, 0, 0},
+        {"PAWN_FORK_ROYAL_BONUS", &engine::PAWN_FORK_ROYAL_BONUS, false, false, 0, 0},
+        {"OPEN_FILE_ROOK_BONUS", &engine::OPEN_FILE_ROOK_BONUS, false, false, 0, 0},
+        {"SEMI_OPEN_FILE_ROOK_BONUS", &engine::SEMI_OPEN_FILE_ROOK_BONUS, false, false, 0, 0},
+        {"ROOK_ON_SEVENTH_BONUS", &engine::ROOK_ON_SEVENTH_BONUS, false, false, 0, 0},
+        {"ROOK_BEHIND_OWN_PASSER_BONUS", &engine::ROOK_BEHIND_OWN_PASSER_BONUS, false, false, 0, 0},
+        {"ROOK_BEHIND_ENEMY_PASSER_BONUS", &engine::ROOK_BEHIND_ENEMY_PASSER_BONUS, false, false, 0, 0},
+        {"ROOK_EG_EDGE_BONUS", &engine::ROOK_EG_EDGE_BONUS, false, false, 0, 0},
+        {"ROOK_EG_PRESSURE_BONUS", &engine::ROOK_EG_PRESSURE_BONUS, false, false, 0, 0},
+        {"ATTACKED_QUEEN_PENALTY", &engine::ATTACKED_QUEEN_PENALTY, false, false, 0, 0},
+        {"KING_SAFETY_PENALTY", &engine::KING_SAFETY_PENALTY, false, false, 0, 0},
+        {"KING_ACTIVITY_BONUS", &engine::KING_ACTIVITY_BONUS, false, false, 0, 0},
+        {"CASTLE_PAWN_SUPPORT_BONUS", &engine::CASTLE_PAWN_SUPPORT_BONUS, false, false, 0, 0},
+        {"KING_SHELTER_STRONG_BONUS", &engine::KING_SHELTER_STRONG_BONUS, false, false, 0, 0},
+        {"KING_SHELTER_WEAK_BONUS", &engine::KING_SHELTER_WEAK_BONUS, false, false, 0, 0},
+        {"KING_SHELTER_MISSING_PENALTY", &engine::KING_SHELTER_MISSING_PENALTY, false, false, 0, 0},
+        {"KING_PAWN_STORM_NEAR_PENALTY", &engine::KING_PAWN_STORM_NEAR_PENALTY, false, false, 0, 0},
+        {"KING_PAWN_STORM_FAR_PENALTY", &engine::KING_PAWN_STORM_FAR_PENALTY, false, false, 0, 0},
+        {"KING_CASTLED_SHIELD_BREAK_PENALTY", &engine::KING_CASTLED_SHIELD_BREAK_PENALTY, false, false, 0, 0},
+        {"KING_SHELTER_ADVANCE_ONE_PENALTY", &engine::KING_SHELTER_ADVANCE_ONE_PENALTY, false, false, 0, 0},
+        {"KING_SHELTER_ADVANCE_TWO_PENALTY", &engine::KING_SHELTER_ADVANCE_TWO_PENALTY, false, false, 0, 0},
+        {"KING_HOOK_PAWN_ATTACKED_PENALTY", &engine::KING_HOOK_PAWN_ATTACKED_PENALTY, false, false, 0, 0},
+        {"KING_HOOK_PAWN_HANGING_PENALTY", &engine::KING_HOOK_PAWN_HANGING_PENALTY, false, false, 0, 0},
+        {"KING_SAFETY_OPENING_SCALE_PERCENT", &engine::KING_SAFETY_OPENING_SCALE_PERCENT, false, false, 0, 0},
+        {"KING_SEMI_OPEN_FILE_PENALTY", &engine::KING_SEMI_OPEN_FILE_PENALTY, false, false, 0, 0},
+        {"KING_OPEN_FILE_PENALTY", &engine::KING_OPEN_FILE_PENALTY, false, false, 0, 0},
+        {"KING_FILE_PRESSURE_PENALTY", &engine::KING_FILE_PRESSURE_PENALTY, false, false, 0, 0},
+        {"KING_OPEN_DIAGONAL_PENALTY", &engine::KING_OPEN_DIAGONAL_PENALTY, false, false, 0, 0},
+        {"KING_EXPOSED_PENALTY", &engine::KING_EXPOSED_PENALTY, false, false, 0, 0},
+        {"EARLY_KING_PENALTY", &engine::EARLY_KING_PENALTY, false, false, 0, 0},
+        {"KING_SAFETY_SIDE_CAP", &engine::KING_SAFETY_SIDE_CAP, false, false, 0, 0},
+        {"KING_ATTACK_MATERIAL_MIN_SCALE", &engine::KING_ATTACK_MATERIAL_MIN_SCALE, false, false, 0, 0},
+        {"KING_ATTACK_MATERIAL_MAX_SCALE", &engine::KING_ATTACK_MATERIAL_MAX_SCALE, false, false, 0, 0},
+        {"KING_ATTACK_WEIGHT_KNIGHT", &engine::KING_ATTACK_WEIGHT_KNIGHT, false, false, 0, 0},
+        {"KING_ATTACK_WEIGHT_BISHOP", &engine::KING_ATTACK_WEIGHT_BISHOP, false, false, 0, 0},
+        {"KING_ATTACK_WEIGHT_ROOK", &engine::KING_ATTACK_WEIGHT_ROOK, false, false, 0, 0},
+        {"KING_ATTACK_WEIGHT_QUEEN", &engine::KING_ATTACK_WEIGHT_QUEEN, false, false, 0, 0},
+        {"KING_SAFE_CONTACT_BONUS", &engine::KING_SAFE_CONTACT_BONUS, false, false, 0, 0},
+        {"KING_FORCING_CONTACT_BONUS", &engine::KING_FORCING_CONTACT_BONUS, false, false, 0, 0},
+        {"KING_SAFE_CHECK_BONUS", &engine::KING_SAFE_CHECK_BONUS, false, false, 0, 0},
+        {"KING_FORCING_CHECK_BONUS", &engine::KING_FORCING_CHECK_BONUS, false, false, 0, 0},
+        {"KING_ATTACK_DANGER_CAP", &engine::KING_ATTACK_DANGER_CAP, false, false, 0, 0},
+        {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, false, 0, 0},
+        {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, false, 0, 0},
+        {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, false, 0, 0},
+        {"CHECK_BONUS", &engine::CHECK_BONUS, false, false, 0, 0},
+        {"KILLER1_BONUS", &engine::KILLER1_BONUS, false, false, 0, 0},
+        {"KILLER2_BONUS", &engine::KILLER2_BONUS, false, false, 0, 0}
+    };
 
     static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {
         const string_view value = trimLeft(rawValue);
@@ -156,8 +340,19 @@ namespace uci {
             << "id name HydraY 1.1.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name PonderDebug type check default false\n"
-            << "option name SearchApiMutexGuard type check default true\n"
-            << "uciok\n";
+            << "option name SearchApiMutexGuard type check default true\n";
+        for (const auto& option : kEvalOptions) {
+            int32_t minValue = option.minValue;
+            int32_t maxValue = option.maxValue;
+            if (!option.hasRange) {
+                defaultRangeFor(*option.value, minValue, maxValue);
+            }
+            std::cout << "option name " << optionDisplayName(option.key)
+                      << " type spin default " << *option.value
+                      << " min " << minValue
+                      << " max " << maxValue << "\n";
+        }
+        std::cout << "uciok\n";
     }
 
     void UCI::setOption(std::string_view args) noexcept {
@@ -174,7 +369,36 @@ namespace uci {
 
         if (optionName.empty()) return;
         const std::string normalizedName = normalizedOptionName(optionName);
-        if (normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") return;
+        if (normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") {
+            for (auto& option : kEvalOptions) {
+                if (normalizedName != normalizedOptionName(option.key)) continue;
+                int parsedValue = 0;
+                string_view valueRest = optionValue;
+                string_view valueToken = nextToken(valueRest);
+                if (!parseInt(valueToken, parsedValue)) {
+                    std::cout << "info string invalid value for " << optionName << "\n";
+                    return;
+                }
+                int32_t minValue = option.minValue;
+                int32_t maxValue = option.maxValue;
+                if (!option.hasRange) {
+                    defaultRangeFor(*option.value, minValue, maxValue);
+                }
+                if (parsedValue < minValue || parsedValue > maxValue) {
+                    std::cout << "info string value out of range for " << optionName
+                              << " (" << minValue << ".." << maxValue << ")\n";
+                    return;
+                }
+                *option.value = parsedValue;
+                if (option.refreshPieceTables) {
+                    refreshPieceTables();
+                }
+                std::cout << "info string " << optionDisplayName(option.key)
+                          << " set to " << *option.value << "\n";
+                return;
+            }
+            return;
+        }
 
         bool enabled = false;
         if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {

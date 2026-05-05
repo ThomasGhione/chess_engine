@@ -17,9 +17,9 @@ class Driver {
 public:
 
     struct Metadata {
-        std::string_view id = "1.0.0";
+        std::string_view id = "1.1.0";
         std::string_view license = "MIT License";
-        std::string_view name = "HydraY! 1.0.0";
+        std::string_view name = "HydraY! 1.1.0";
         std::array<std::string_view, 3> authors = {"Thomas Ghione", "Daniele Ferretti", "Simone Tomasella"};
         std::array<std::string_view, 1> platforms = {"Linux x86_64"}; // supported platforms
     };

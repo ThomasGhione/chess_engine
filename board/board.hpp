@@ -270,7 +270,7 @@ public:
         return table;
     }();
 
-    static constexpr std::array<int32_t, 8> MATERIAL_VALUES = {
+    inline static std::array<int32_t, 8> MATERIAL_VALUES = {
         0,
         engine::PAWN_VALUE,
         engine::KNIGHT_VALUE,
