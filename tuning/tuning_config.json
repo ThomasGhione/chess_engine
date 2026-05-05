@@ -17,14 +17,14 @@
   ],
 
   "parameter_ranges": {
-      "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(8, 12)",
-      "PINNED_KNIGHT_PENALTY": "Integer(32, 38)",
-      "LOW_MOBILITY_BISHOP_PENALTY": "Integer(10, 14)",
-      "PINNED_BISHOP_PENALTY": "Integer(32, 38)",
-      "LOW_MOBILITY_ROOK_PENALTY": "Integer(27, 33)",
-      "PINNED_ROOK_PENALTY": "Integer(72, 88)",
-      "LOW_MOBILITY_QUEEN_PENALTY": "Integer(33, 39)",
-      "PINNED_QUEEN_PENALTY": "Integer(117, 143)"
+      "OUTPOST_CENTER_FILE_BONUS": "Integer(2, 6)",
+      "OUTPOST_NEAR_CENTER_FILE_BONUS": "Integer(0, 4)",
+      "OUTPOST_ADVANCED_RANK_BONUS": "Integer(2, 6)",
+      "OUTPOST_KING_ZONE_BONUS": "Integer(3, 7)",
+      "OUTPOST_KEY_SQUARE_BONUS": "Integer(1, 5)",
+      "COORDINATION_PENALTY": "Integer(6, 10)",
+      "OUTPOST_BISHOP_BONUS": "Integer(8, 12)",
+      "OUTPOST_KNIGHT_BONUS": "Integer(16, 20)"
   },
 
   "engine1_depth": 6,
@@ -33,8 +33,8 @@
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "mobility_data.npz",
-  "model_path": "mobility_model.pkl",
+  "data_path": "outpost_data.npz",
+  "model_path": "outpost_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }
