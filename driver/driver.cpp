@@ -336,7 +336,7 @@ void Driver::engineTurn() noexcept {
     
     // Using UCI to drive the engine search!
     std::string goCmd = "go depth " + std::to_string(engine.DEFAULTDEPTH);
-    uciInterface.parseCommand("goCmd");
+    uciInterface.parseCommand(goCmd);
     
     // UCI's go command does not apply the move itself, it just finds the bestmove.
     // We append the found move to our UCI string and force board update!
