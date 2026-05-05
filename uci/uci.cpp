@@ -4,6 +4,7 @@
 #include "../engine/engine.hpp"
 #include "../engine/eval_constants.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cctype>
 #include <cstdlib>
@@ -78,7 +79,7 @@ namespace {
 
     static void defaultRangeFor(int32_t value, int32_t& minValue, int32_t& maxValue) noexcept {
         const int64_t absValue = std::llabs(static_cast<int64_t>(value));
-        const int64_t delta = absValue / 10;
+        const int64_t delta = std::max<int64_t>(2, absValue / 10);
         const int64_t minCandidate = static_cast<int64_t>(value) - delta;
         const int64_t maxCandidate = static_cast<int64_t>(value) + delta;
         minValue = static_cast<int32_t>(std::clamp(minCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
@@ -120,7 +121,7 @@ namespace {
         {"ROOK_VALUE", &engine::ROOK_VALUE, true, false, 0, 0},
         {"QUEEN_VALUE", &engine::QUEEN_VALUE, true, false, 0, 0},
         {"KING_VALUE", &engine::KING_VALUE, true, false, 0, 0},
-        {"MATE_SCORE", &engine::MATE_SCORE, false, true, 0, 2'000'000'000},
+        {"MATE_SCORE", &engine::MATE_SCORE, false, true, 0, 2'147'483'647},
         {"PHASE_FINAL_THRESHOLD", &engine::PHASE_FINAL_THRESHOLD, false, false, 0, 0},
         {"DOUBLED_PAWN_PENALTY", &engine::DOUBLED_PAWN_PENALTY, false, false, 0, 0},
         {"ISOLATED_PAWN_PENALTY", &engine::ISOLATED_PAWN_PENALTY, false, false, 0, 0},
@@ -353,6 +354,7 @@ namespace uci {
                       << " max " << maxValue << "\n";
         }
         std::cout << "uciok\n";
+        std::cout.flush();
     }
 
     void UCI::setOption(std::string_view args) noexcept {
@@ -457,6 +459,7 @@ namespace uci {
 
     void UCI::isready() noexcept {
         std::cout << "readyok\n";
+        std::cout.flush();
     }
     
     void UCI::go(std::string_view args) noexcept {
