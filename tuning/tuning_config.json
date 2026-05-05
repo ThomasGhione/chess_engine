@@ -17,24 +17,23 @@
   ],
 
   "parameter_ranges": {
-      "OUTPOST_CENTER_FILE_BONUS": "Integer(2, 6)",
-      "OUTPOST_NEAR_CENTER_FILE_BONUS": "Integer(0, 4)",
-      "OUTPOST_ADVANCED_RANK_BONUS": "Integer(2, 6)",
-      "OUTPOST_KING_ZONE_BONUS": "Integer(3, 7)",
-      "OUTPOST_KEY_SQUARE_BONUS": "Integer(1, 5)",
-      "COORDINATION_PENALTY": "Integer(6, 10)",
-      "OUTPOST_BISHOP_BONUS": "Integer(8, 12)",
-      "OUTPOST_KNIGHT_BONUS": "Integer(16, 20)"
+      "OPEN_FILE_ROOK_BONUS": "Integer(20, 28)",
+      "SEMI_OPEN_FILE_ROOK_BONUS": "Integer(8, 12)",
+      "ROOK_ON_SEVENTH_BONUS": "Integer(16, 24)",
+      "ROOK_BEHIND_OWN_PASSER_BONUS": "Integer(10, 18)",
+      "ROOK_BEHIND_ENEMY_PASSER_BONUS": "Integer(8, 14)",
+      "ROOK_EG_EDGE_BONUS": "Integer(24, 32)",
+      "ROOK_EG_PRESSURE_BONUS": "Integer(12, 20)"
   },
 
   "engine1_depth": 6,
   "engine2_depth": 6,
-  "rounds": 1,
+  "rounds": 4,
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "outpost_data.npz",
-  "model_path": "outpost_model.pkl",
+  "data_path": "rook_data.npz",
+  "model_path": "rook_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }

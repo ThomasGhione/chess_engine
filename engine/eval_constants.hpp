@@ -124,16 +124,16 @@ inline int32_t PAWN_FORK_ROYAL_BONUS      = 16;  // Extra if forking the king (f
 // ROOK EVALUATION
 // ===================================================
 inline int32_t OPEN_FILE_ROOK_BONUS = 24;
-inline int32_t SEMI_OPEN_FILE_ROOK_BONUS = 10;
-inline int32_t ROOK_ON_SEVENTH_BONUS = 20;
-inline int32_t ROOK_BEHIND_OWN_PASSER_BONUS = 14;
-inline int32_t ROOK_BEHIND_ENEMY_PASSER_BONUS = 10;
+inline int32_t SEMI_OPEN_FILE_ROOK_BONUS = 9;
+inline int32_t ROOK_ON_SEVENTH_BONUS = 24;
+inline int32_t ROOK_BEHIND_OWN_PASSER_BONUS = 13;
+inline int32_t ROOK_BEHIND_ENEMY_PASSER_BONUS = 11;
 
 // ===================================================
 // ROOK ENDGAME (R+K vs K)
 // ===================================================
-inline int32_t ROOK_EG_EDGE_BONUS = 28;
-inline int32_t ROOK_EG_PRESSURE_BONUS = 16;
+inline int32_t ROOK_EG_EDGE_BONUS = 26;
+inline int32_t ROOK_EG_PRESSURE_BONUS = 17;
 
 // ===================================================
 // QUEEN EVALUATION
