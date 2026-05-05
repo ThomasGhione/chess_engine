@@ -17,14 +17,14 @@
   ],
 
   "parameter_ranges": {
-      "CENTER_CONTROL_BONUS": "Integer(7, 13)",
-      "BISHOP_PAIR_BONUS": "Integer(24, 34)",
-      "CASTLING_BONUS": "Integer(16, 24)",
-      "KING_NON_CASTLING_PENALTY": "Integer(5, 12)",
-      "KING_LOST_CASTLING_RIGHTS_PENALTY": "Integer(12, 22)",
-      "LOSS_OF_CASTLING_PENALTY": "Integer(18, 30)",
-      "INIT_BONUS_MG": "Integer(2, 7)",
-      "DEVELOPMENT_BONUS": "Integer(5, 10)"
+      "KING_SHELTER_STRONG_BONUS": "Integer(7, 13)",
+      "KING_SHELTER_WEAK_BONUS": "Integer(3, 8)",
+      "KING_SHELTER_MISSING_PENALTY": "Integer(8, 16)",
+      "KING_PAWN_STORM_NEAR_PENALTY": "Integer(10, 18)",
+      "KING_PAWN_STORM_FAR_PENALTY": "Integer(4, 10)",
+      "KING_SEMI_OPEN_FILE_PENALTY": "Integer(6, 12)",
+      "KING_OPEN_FILE_PENALTY": "Integer(10, 18)",
+      "KING_FILE_PRESSURE_PENALTY": "Integer(5, 11)"
   },
 
   "engine1_depth": 6,
@@ -33,8 +33,8 @@
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "opening_fundamentals_data.npz",
-  "model_path": "opening_fundamentals_model.pkl",
+  "data_path": "king_shelter_files_data.npz",
+  "model_path": "king_shelter_files_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }
