@@ -17,23 +17,24 @@
   ],
 
   "parameter_ranges": {
-      "DOUBLED_PAWN_PENALTY": "Integer(-8, -6)",
-      "ISOLATED_PAWN_PENALTY": "Integer(-11, -9)",
-      "PASSED_PAWN_BONUS": "Integer(25, 31)",
-      "PAWN_ISLAND_PENALTY": "Integer(-9, -7)",
-      "BACKWARD_PAWN_PENALTY": "Integer(-9, -7)",
-      "CANDIDATE_PASSER_BONUS": "Integer(7, 9)",
-      "CONNECTED_PASSER_BONUS": "Integer(13, 16)",
-      "PASSED_PAWN_BLOCKED_PENALTY": "Integer(-20, -16)"
+      "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(8, 12)",
+      "PINNED_KNIGHT_PENALTY": "Integer(32, 38)",
+      "LOW_MOBILITY_BISHOP_PENALTY": "Integer(10, 14)",
+      "PINNED_BISHOP_PENALTY": "Integer(32, 38)",
+      "LOW_MOBILITY_ROOK_PENALTY": "Integer(27, 33)",
+      "PINNED_ROOK_PENALTY": "Integer(72, 88)",
+      "LOW_MOBILITY_QUEEN_PENALTY": "Integer(33, 39)",
+      "PINNED_QUEEN_PENALTY": "Integer(117, 143)"
   },
 
-  "engine1_tc": "10+0.5",
-  "engine2_tc": "10+0.5",
+  "engine1_depth": 6,
+  "engine2_depth": 6,
   "rounds": 1,
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "data.npz",
+  "data_path": "mobility_data.npz",
+  "model_path": "mobility_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }

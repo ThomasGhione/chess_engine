@@ -64,14 +64,14 @@ inline int32_t DEVELOPMENT_BONUS = 7;
 // ===================================================
 // PIECE MOBILITY & TRAPPED PIECES
 // ===================================================
-inline int32_t LOW_MOBILITY_KNIGHT_PENALTY = 10;
-inline int32_t PINNED_KNIGHT_PENALTY = 35;
-inline int32_t LOW_MOBILITY_BISHOP_PENALTY = 12;
-inline int32_t PINNED_BISHOP_PENALTY = 35;
+inline int32_t LOW_MOBILITY_KNIGHT_PENALTY = 8;
+inline int32_t PINNED_KNIGHT_PENALTY = 33;
+inline int32_t LOW_MOBILITY_BISHOP_PENALTY = 11;
+inline int32_t PINNED_BISHOP_PENALTY = 37;
 inline int32_t LOW_MOBILITY_ROOK_PENALTY = 30;
-inline int32_t PINNED_ROOK_PENALTY = 80;
-inline int32_t LOW_MOBILITY_QUEEN_PENALTY = 36;
-inline int32_t PINNED_QUEEN_PENALTY = 130;
+inline int32_t PINNED_ROOK_PENALTY = 75;
+inline int32_t LOW_MOBILITY_QUEEN_PENALTY = 33;
+inline int32_t PINNED_QUEEN_PENALTY = 141;
 inline int32_t MOBILITY_CENTER_BONUS = 1;
 inline int32_t MOBILITY_OWN_PAWN_BLOCKER_PENALTY = 4;
 inline int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;

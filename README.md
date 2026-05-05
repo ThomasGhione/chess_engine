@@ -17,6 +17,8 @@ Windows builds.
 - Optional tools for analysis: `valgrind`, `clang-tidy`, `scan-build`,
   `include-what-you-use`, `cppclean`, `bear`, `perf`
 - Optional for Windows cross-builds: `mingw-w64`
+- Optional for evaluator tuning: Python 3, `chess-tuning-tools`, `cutechess-cli`,
+  and an opening book under `tuning/books/`
 
 ## Quick Start
 
@@ -156,7 +158,7 @@ values are `off`, `0`, and `false`.
 
 ## UCI Options
 
-The engine exposes these UCI options:
+The engine exposes general UCI options:
 
 ```txt
 PonderDebug          check, default false
@@ -175,6 +177,141 @@ setoption name SearchApiMutexGuard value false
 ```sh
 CHESS_ENGINE_SEARCH_MUTEX_GUARD=false ./chess uci
 ```
+
+Most evaluator and search-ordering constants from `engine/eval_constants.hpp`
+are also exposed as UCI `spin` options. The displayed UCI names use CamelCase,
+for example `PassedPawnBonus`, while tuning configs may also use the constant
+names with underscores, for example `PASSED_PAWN_BONUS`.
+
+## Evaluator Fine Tuning
+
+HydraY can tune evaluator constants through self-play using
+`chess-tuning-tools` and `cutechess-cli`. The tuning workflow lives in:
+
+```txt
+tuning/tuning_config.json   active experiment configuration
+tuning/run_tune_local.sh    local launcher
+tuning/chess_uci.sh         launches the engine in UCI mode
+tuning/cutechess-cli        compatibility wrapper for local cutechess-cli
+tuning/books/openings.pgn   opening suite used by cutechess
+```
+
+Install the external tools in a Python environment:
+
+```sh
+python3 -m venv tuning/.venv
+source tuning/.venv/bin/activate
+pip install chess-tuning-tools
+```
+
+Install `cutechess-cli` with your system package manager or from its upstream
+build. Verify both tools are visible:
+
+```sh
+tune --help
+cutechess-cli --version
+```
+
+Build the engine before starting a tuning run:
+
+```sh
+make prod
+```
+
+Run the active local experiment:
+
+```sh
+cd tuning
+./run_tune_local.sh --no-resume --no-fast-resume
+```
+
+Use `--no-resume --no-fast-resume` when changing the tuned parameter set. Resume
+only when continuing the same experiment with the same `parameter_ranges`,
+`data_path`, and `model_path`.
+
+### Tuning Config
+
+The active experiment is controlled by `tuning/tuning_config.json`. Keep each
+experiment focused: tune no more than about 8 related parameters at once, and
+use a separate data/model pair for each group.
+
+Example depth-limited experiment:
+
+```json
+{
+  "parameter_ranges": {
+    "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(8, 12)",
+    "PINNED_KNIGHT_PENALTY": "Integer(32, 38)"
+  },
+  "engine1_depth": 6,
+  "engine2_depth": 6,
+  "rounds": 1,
+  "opening_file": "books/openings.pgn",
+  "data_path": "mobility_data.npz",
+  "model_path": "mobility_model.pkl"
+}
+```
+
+For slower but more realistic testing, replace depth limits with time controls:
+
+```json
+"engine1_tc": "10+0.5",
+"engine2_tc": "10+0.5"
+```
+
+Do not keep depth and time-control settings for the same engine at the same
+time. For quick exploration use depth 6 or a short TC; for confirmation runs use
+more rounds and a longer TC.
+
+### Monitoring
+
+Watch the tuner log:
+
+```sh
+tail -f log.txt
+```
+
+Watch games as PGN:
+
+```sh
+tail -f out.pgn
+```
+
+Check that processes are alive:
+
+```sh
+ps -ef | grep -E 'tune|cutechess|chess_uci|/chess' | grep -v grep
+```
+
+Generated tuning artifacts are intentionally ignored by git:
+
+```txt
+tuning/engines.json
+tuning/log.txt
+tuning/out.pgn
+tuning/*.npz
+tuning/*.pkl
+tuning/plots/
+```
+
+### Reading Results
+
+Important log lines:
+
+```txt
+Testing {...}          parameter point currently being tested
+Got Elo: X +- Y        raw result of that tested point
+Current optimum: {...} best point estimated by the Bayesian model
+Estimated Elo: X +- Y  model estimate for the current optimum
+```
+
+Use `Current optimum`, not a single lucky `Got Elo`, when applying tuned values.
+If the 90% confidence interval includes zero, the result is still uncertain and
+should be confirmed with more games.
+
+To apply tuned values, stop the run with `Ctrl+C`, copy the latest stable
+`Current optimum` values into `engine/eval_constants.hpp`, rebuild with
+`make prod`, then validate with a separate self-play or test run.
 
 ## How the Engine Works
 
