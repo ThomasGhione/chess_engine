@@ -21,3 +21,11 @@ chess.exe
 /saves/
 /stockfish/
 /cutechess/
+
+# Local tuning artifacts
+/tuning/engines.json
+/tuning/log.txt
+/tuning/out.pgn
+/tuning/*.npz
+/tuning/*.pkl
+/tuning/plots/
