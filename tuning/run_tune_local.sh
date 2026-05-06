@@ -18,4 +18,13 @@ fi
 data_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("data_path", "data.npz"))' "${config}")"
 model_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("model_path", "model.pkl"))' "${config}")"
 
+state_file=".last_tuning_dataset"
+state_key="${data_path}|${model_path}"
+if [[ -f "${state_file}" && "$(cat "${state_file}")" != "${state_key}" ]]; then
+  [[ " $* " == *" --no-resume "* ]] || set -- --no-resume "$@"
+  [[ " $* " == *" --no-fast-resume "* ]] || set -- --no-fast-resume "$@"
+  echo "Dataset changed: forcing no-resume."
+fi
+printf '%s\n' "${state_key}" > "${state_file}"
+
 exec tune local -c "${config}" -d "${data_path}" --model-path "${model_path}" "$@"
