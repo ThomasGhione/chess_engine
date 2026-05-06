@@ -29,15 +29,15 @@ inline int32_t PHASE_FINAL_THRESHOLD = 8;
 // ===================================================
 // PAWN STRUCTURE EVALUATION
 // ===================================================
-inline int32_t DOUBLED_PAWN_PENALTY = -7;
-inline int32_t ISOLATED_PAWN_PENALTY = -11;
-inline int32_t PASSED_PAWN_BONUS = 28;
-inline int32_t PAWN_ISLAND_PENALTY = -8;
+inline int32_t DOUBLED_PAWN_PENALTY = -9;
+inline int32_t ISOLATED_PAWN_PENALTY = -13;
+inline int32_t PASSED_PAWN_BONUS = 20;
+inline int32_t PAWN_ISLAND_PENALTY = -12;
 inline int32_t PAWN_SUPPORT_BONUS = 10;
-inline int32_t CANDIDATE_PASSER_BONUS = 9;
-inline int32_t CONNECTED_PASSER_BONUS = 14;
-inline int32_t BACKWARD_PAWN_PENALTY = -8;
-inline int32_t PASSED_PAWN_BLOCKED_PENALTY = -17;
+inline int32_t CANDIDATE_PASSER_BONUS = 10;
+inline int32_t CONNECTED_PASSER_BONUS = 23;
+inline int32_t BACKWARD_PAWN_PENALTY = -12;
+inline int32_t PASSED_PAWN_BLOCKED_PENALTY = -21;
 inline int32_t CENTER_CONTROL_BONUS = 8;
 
 // ===================================================
