@@ -189,7 +189,9 @@ HydraY can tune evaluator constants through self-play using
 `chess-tuning-tools` and `cutechess-cli`. The tuning workflow lives in:
 
 ```txt
-tuning/tuning_config.json   active experiment configuration
+tuning/base_config.json     shared engine, depth, rounds, and book settings
+tuning/groups/*.json        tracked parameter groups
+tuning/tuning_config.json   generated/active experiment configuration
 tuning/run_tune_local.sh    local launcher
 tuning/chess_uci.sh         launches the engine in UCI mode
 tuning/cutechess-cli        compatibility wrapper for local cutechess-cli
@@ -218,11 +220,13 @@ Build the engine before starting a tuning run:
 make prod
 ```
 
-Run the active local experiment:
+Run a tracked parameter group:
 
 ```sh
 cd tuning
-./run_tune_local.sh --no-resume --no-fast-resume
+./run_tune_local.sh pawn_refine --no-resume --no-fast-resume
+./run_tune_local.sh threats_direct --no-resume --no-fast-resume
+./run_tune_local.sh king_attack_units --no-resume --no-fast-resume
 ```
 
 Use `--no-resume --no-fast-resume` when changing the tuned parameter set. Resume
@@ -231,9 +235,26 @@ only when continuing the same experiment with the same `parameter_ranges`,
 
 ### Tuning Config
 
-The active experiment is controlled by `tuning/tuning_config.json`. Keep each
-experiment focused: tune no more than about 8 related parameters at once, and
-use a separate data/model pair for each group.
+Common settings live in `tuning/base_config.json`. Each tracked tuning group
+lives under `tuning/groups/` and contains its own `parameter_ranges`,
+`data_path`, and `model_path`. `run_tune_local.sh` merges the selected group
+with the base config and writes the active `tuning_config.json`.
+
+Available group files include:
+
+```txt
+pawn_refine.json
+threats_direct.json
+mobility_outposts.json
+rook_activity.json
+opening_fundamentals.json
+king_shelter_files.json
+king_attack_units.json
+king_safety_residual.json
+```
+
+Keep each experiment focused: tune no more than about 8 related parameters at
+once, and use a separate data/model pair for each group.
 
 Example depth-limited experiment:
 
