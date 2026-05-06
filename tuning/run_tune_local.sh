@@ -18,13 +18,15 @@ fi
 data_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("data_path", "data.npz"))' "${config}")"
 model_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("model_path", "model.pkl"))' "${config}")"
 
-state_file=".last_tuning_dataset"
-state_key="${data_path}|${model_path}"
-if [[ -f "${state_file}" && "$(cat "${state_file}")" != "${state_key}" ]]; then
+state_dir=".tuning_state"
+mkdir -p "${state_dir}"
+read -r state_id config_hash < <(python3 -c 'import hashlib,json,sys; c=json.load(open(sys.argv[1])); key=str(c.get("data_path","data.npz"))+"|"+str(c.get("model_path","model.pkl")); body=json.dumps(c,sort_keys=True,separators=(",",":")); print(hashlib.sha256(key.encode()).hexdigest()[:16], hashlib.sha256(body.encode()).hexdigest())' "${config}")
+state_file="${state_dir}/${state_id}"
+if [[ ! -f "${state_file}" || "$(cat "${state_file}")" != "${config_hash}" ]]; then
   [[ " $* " == *" --no-resume "* ]] || set -- --no-resume "$@"
   [[ " $* " == *" --no-fast-resume "* ]] || set -- --no-fast-resume "$@"
-  echo "Dataset changed: forcing no-resume."
+  echo "New or changed tuning dataset: forcing no-resume."
 fi
-printf '%s\n' "${state_key}" > "${state_file}"
+printf '%s\n' "${config_hash}" > "${state_file}"
 
 exec tune local -c "${config}" -d "${data_path}" --model-path "${model_path}" "$@"

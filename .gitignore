@@ -29,4 +29,5 @@ chess.exe
 /tuning/*.npz
 /tuning/*.pkl
 /tuning/.last_tuning_dataset
+/tuning/.tuning_state/
 /tuning/plots/

@@ -229,11 +229,10 @@ cd tuning
 ./run_tune_local.sh king_attack_units
 ```
 
-`run_tune_local.sh` tracks the last used dataset in
-`tuning/.last_tuning_dataset`. If the selected group changes `data_path` or
-`model_path`, the script automatically adds `--no-resume --no-fast-resume` to
-avoid contaminating the Bayesian model. Running the same group again resumes the
-existing experiment.
+`run_tune_local.sh` tracks each dataset under `tuning/.tuning_state/` using the
+group's `data_path`, `model_path`, and full config hash. A new dataset or a
+changed config automatically gets `--no-resume --no-fast-resume`; an unchanged
+dataset resumes, even if other groups were run in between.
 
 ### Tuning Config
 
