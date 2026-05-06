@@ -224,14 +224,16 @@ Run a tracked parameter group:
 
 ```sh
 cd tuning
-./run_tune_local.sh pawn_refine --no-resume --no-fast-resume
-./run_tune_local.sh threats_direct --no-resume --no-fast-resume
-./run_tune_local.sh king_attack_units --no-resume --no-fast-resume
+./run_tune_local.sh pawn_refine
+./run_tune_local.sh threats_direct
+./run_tune_local.sh king_attack_units
 ```
 
-Use `--no-resume --no-fast-resume` when changing the tuned parameter set. Resume
-only when continuing the same experiment with the same `parameter_ranges`,
-`data_path`, and `model_path`.
+`run_tune_local.sh` tracks the last used dataset in
+`tuning/.last_tuning_dataset`. If the selected group changes `data_path` or
+`model_path`, the script automatically adds `--no-resume --no-fast-resume` to
+avoid contaminating the Bayesian model. Running the same group again resumes the
+existing experiment.
 
 ### Tuning Config
 
