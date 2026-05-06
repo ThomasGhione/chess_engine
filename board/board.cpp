@@ -266,6 +266,7 @@ template<uint8_t PieceType>
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const int side = colorToIndex(color);
     const int oppSide = side ^ 1;
+    const uint8_t oppColor = oppositeColor(color);
 
     const bool inChk = inCheck(color);
     const bool inDoubleChk = inChk && isDoubleCheck(color);
@@ -283,7 +284,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         while (moves) {
             const uint8_t to = __builtin_ctzll(moves);
             moves &= moves - 1;
-            if (!isSquareAttacked(to, oppSide << 3, king)) return true;
+            if (!isSquareAttacked(to, oppColor, king)) return true;
         }
         
         if (!inChk) {
