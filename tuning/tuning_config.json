@@ -17,14 +17,14 @@
   ],
 
   "parameter_ranges": {
-      "KING_ATTACK_WEIGHT_KNIGHT": "Integer(7, 11)",
-      "KING_ATTACK_WEIGHT_BISHOP": "Integer(4, 8)",
-      "KING_ATTACK_WEIGHT_ROOK": "Integer(11, 16)",
-      "KING_ATTACK_WEIGHT_QUEEN": "Integer(19, 24)",
-      "KING_SAFE_CONTACT_BONUS": "Integer(2, 5)",
-      "KING_FORCING_CONTACT_BONUS": "Integer(3, 6)",
-      "KING_SAFE_CHECK_BONUS": "Integer(8, 12)",
-      "KING_FORCING_CHECK_BONUS": "Integer(4, 7)"
+      "CASTLE_PAWN_SUPPORT_BONUS": "Integer(3, 9)",
+      "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(5, 12)",
+      "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(12, 24)",
+      "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(18, 32)",
+      "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
+      "KING_OPEN_DIAGONAL_PENALTY": "Integer(8, 16)",
+      "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(115, 145)",
+      "KING_ATTACK_DANGER_CAP": "Integer(105, 145)"
   },
 
   "engine1_depth": 7,
@@ -33,8 +33,8 @@
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "king_attack_units_data.npz",
-  "model_path": "king_attack_units_model.pkl",
+  "data_path": "king_safety_residual_data.npz",
+  "model_path": "king_safety_residual_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }
