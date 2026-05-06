@@ -17,14 +17,14 @@
   ],
 
   "parameter_ranges": {
-      "CASTLE_PAWN_SUPPORT_BONUS": "Integer(3, 9)",
-      "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(5, 12)",
-      "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(12, 24)",
-      "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(18, 32)",
-      "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
-      "KING_OPEN_DIAGONAL_PENALTY": "Integer(8, 16)",
-      "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(115, 145)",
-      "KING_ATTACK_DANGER_CAP": "Integer(105, 145)"
+      "THREAT_PAWN_ATTACK_MINOR_PENALTY": "Integer(-34, -18)",
+      "THREAT_PAWN_ATTACK_ROOK_PENALTY": "Integer(-70, -40)",
+      "THREAT_PAWN_ATTACK_QUEEN_PENALTY": "Integer(-120, -75)",
+      "THREAT_MINOR_ATTACK_ROOK_PENALTY": "Integer(-44, -22)",
+      "THREAT_MINOR_ATTACK_QUEEN_PENALTY": "Integer(-65, -35)",
+      "THREAT_ROOK_ATTACK_QUEEN_PENALTY": "Integer(-50, -25)",
+      "THREAT_LOOSE_MINOR_PENALTY": "Integer(-18, -6)",
+      "THREAT_LOOSE_ROOK_PENALTY": "Integer(-34, -14)"
   },
 
   "engine1_depth": 7,
@@ -33,8 +33,8 @@
   "opening_file": "books/openings.pgn",
 
   "timemargin": 1000,
-  "data_path": "king_safety_residual_data.npz",
-  "model_path": "king_safety_residual_model.pkl",
+  "data_path": "threats_direct_data.npz",
+  "model_path": "threats_direct_model.pkl",
   "plot_every": 0,
   "result_every": 1
 }

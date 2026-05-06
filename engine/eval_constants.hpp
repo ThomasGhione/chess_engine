@@ -101,17 +101,17 @@ inline int32_t ATTACKED_PAWN_PENALTY = -5;
 // ===================================================
 // EXPLICIT THREATS
 // ===================================================
-inline int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -26;
-inline int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -55;
-inline int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -95;
-inline int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -32;
-inline int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -50;
-inline int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -35;
+inline int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -33;
+inline int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -65;
+inline int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -114;
+inline int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -42;
+inline int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -53;
+inline int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -48;
 inline int32_t THREAT_PAWN_PUSH_MINOR_PENALTY = -14;
 inline int32_t THREAT_PAWN_PUSH_ROOK_PENALTY = -28;
 inline int32_t THREAT_PAWN_PUSH_QUEEN_PENALTY = -45;
-inline int32_t THREAT_LOOSE_MINOR_PENALTY = -12;
-inline int32_t THREAT_LOOSE_ROOK_PENALTY = -24;
+inline int32_t THREAT_LOOSE_MINOR_PENALTY = -13;
+inline int32_t THREAT_LOOSE_ROOK_PENALTY = -19;
 inline int32_t THREAT_LOOSE_QUEEN_PENALTY = -42;
 
 // ===================================================
