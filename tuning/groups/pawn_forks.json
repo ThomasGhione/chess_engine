@@ -1,0 +1,9 @@
+{
+  "parameter_ranges": {
+    "PAWN_FORK_BASE_BONUS": "Integer(30, 42)",
+    "PAWN_FORK_MAJOR_BONUS": "Integer(12, 28)",
+    "PAWN_FORK_ROYAL_BONUS": "Integer(30, 64)"
+  },
+  "data_path": "pawn_forks_data.npz",
+  "model_path": "pawn_forks_model.pkl"
+}
