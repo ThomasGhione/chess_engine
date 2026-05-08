@@ -246,6 +246,7 @@ Available group files include:
 ```txt
 pawn_refine.json
 pawn_forks.json
+material_values.json
 threats_direct.json
 mobility_outposts.json
 rook_activity.json
