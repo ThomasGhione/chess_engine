@@ -117,9 +117,9 @@ inline int32_t THREAT_LOOSE_QUEEN_PENALTY = -42;
 // ===================================================
 // PAWN FORKS (defended pawn attacking 2+ enemy pieces)
 // ===================================================
-inline int32_t PAWN_FORK_BASE_BONUS       = 35;  // Base bonus for any defended pawn fork
-inline int32_t PAWN_FORK_MAJOR_BONUS      = 24;  // Extra if forking at least one rook/queen
-inline int32_t PAWN_FORK_ROYAL_BONUS      = 16;  // Extra if forking the king (fork + check)
+inline int32_t PAWN_FORK_BASE_BONUS       = 37;  // Base bonus for any defended pawn fork
+inline int32_t PAWN_FORK_MAJOR_BONUS      = 28;  // Extra if forking at least one rook/queen
+inline int32_t PAWN_FORK_ROYAL_BONUS      = 42;  // Extra if forking the king (fork + check)
 // ===================================================
 // ROOK EVALUATION
 // ===================================================
