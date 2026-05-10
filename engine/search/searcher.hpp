@@ -161,6 +161,9 @@ private:
         SearchRuntime& runtime,
         int ply,
         int32_t& outScore) noexcept;
+    static bool checkDrawTerminalConditions(
+        const chess::Board& b,
+        int32_t& outScore) noexcept;
 
     static bool isKillerMove(
         const chess::Board::Move& m,

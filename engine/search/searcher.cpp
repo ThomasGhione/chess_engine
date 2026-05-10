@@ -166,6 +166,31 @@ bool Searcher::checkEarlyTerminalConditions(
     return false;
 }
 
+bool Searcher::checkDrawTerminalConditions(
+    const chess::Board& b,
+    int32_t& outScore) noexcept {
+    if (b.isThreefoldRepetition()) {
+        outScore = repetitionDrawScore(b);
+        return true;
+    }
+
+    if (b.isFiftyMoveRule()) [[unlikely]] {
+        outScore = 0;
+        return true;
+    }
+
+    const uint64_t heavyMaterial =
+        b.pawns_bb[0] | b.pawns_bb[1] |
+        b.rooks_bb[0] | b.rooks_bb[1] |
+        b.queens_bb[0] | b.queens_bb[1];
+    if (heavyMaterial == 0ULL && hasInsufficientMaterialDraw(b)) [[unlikely]] {
+        outScore = 0;
+        return true;
+    }
+
+    return false;
+}
+
 bool Searcher::isKillerMove(
     const chess::Board::Move& m,
     const chess::Board::Move killerMoves[2][MAX_PLY],
@@ -780,10 +805,6 @@ int32_t Searcher::searchPosition(
         return earlyScore;
     }
 
-    if (depth <= 0) {
-        return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
-    }
-
     // Macro-step 2: Terminal/repetition/mate-distance pruning and TT prelude.
     const bool isPVNode = (static_cast<int64_t>(beta) - static_cast<int64_t>(alpha) > 1);
 
@@ -793,13 +814,16 @@ int32_t Searcher::searchPosition(
         if (alpha < matingAlpha) alpha = matingAlpha;
         if (beta > matingBeta)   beta = matingBeta;
         if (alpha >= beta) return alpha;
+    }
 
+    // Actual draw terminals must be recognized before qsearch. Otherwise a
+    // horizon node that completes a repetition is scored by static material.
+    int32_t drawScore = 0;
+    if (checkDrawTerminalConditions(b, drawScore)) {
+        return drawScore;
+    }
 
-        // Threefold repetition is claimable draw: treat as terminal.
-        if (b.isThreefoldRepetition()) {
-            return repetitionDrawScore(b);
-        }
-
+    if (ply > 0) {
         // Twofold is only a potential draw. Avoid premature draw cutoff when
         // the side to move has enough blended material/static-eval leverage
         // to keep pressing instead of accepting a repeat in conversion endgames.
@@ -815,14 +839,8 @@ int32_t Searcher::searchPosition(
         }
     }
 
-    if (b.isFiftyMoveRule()) [[unlikely]] return 0;
-
-    const uint64_t heavyMaterial =
-        b.pawns_bb[0] | b.pawns_bb[1] |
-        b.rooks_bb[0] | b.rooks_bb[1] |
-        b.queens_bb[0] | b.queens_bb[1];
-    if (heavyMaterial == 0ULL && hasInsufficientMaterialDraw(b)) [[unlikely]] {
-        return 0;
+    if (depth <= 0) {
+        return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
 
     const uint64_t hashKey = b.getHash();
@@ -954,6 +972,11 @@ int32_t Searcher::quiescenceSearch(
     int32_t earlyScore = 0;
     if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
         return earlyScore;
+    }
+
+    int32_t drawScore = 0;
+    if (checkDrawTerminalConditions(b, drawScore)) {
+        return drawScore;
     }
 
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
