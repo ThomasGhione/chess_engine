@@ -1,9 +1,9 @@
 {
   "parameter_ranges": {
-    "KNIGHT_VALUE": "Integer(320, 345)",
-    "BISHOP_VALUE": "Integer(330, 360)",
-    "ROOK_VALUE": "Integer(500, 560)",
-    "QUEEN_VALUE": "Integer(930, 1030)"
+    "KNIGHT_VALUE": "Integer(338, 352)",
+    "BISHOP_VALUE": "Integer(352, 366)",
+    "ROOK_VALUE": "Integer(490, 520)",
+    "QUEEN_VALUE": "Integer(940, 985)"
   },
   "data_path": "material_values_data.npz",
   "model_path": "material_values_model.pkl"

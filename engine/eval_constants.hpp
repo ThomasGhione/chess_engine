@@ -9,10 +9,10 @@ namespace engine {
 // PIECE BASE VALUES
 // ===================================================
 inline int32_t PAWN_VALUE   =       100;
-inline int32_t KNIGHT_VALUE =       330;
-inline int32_t BISHOP_VALUE =       340;
-inline int32_t ROOK_VALUE   =       525;
-inline int32_t QUEEN_VALUE  =       975;
+inline int32_t KNIGHT_VALUE =       344;
+inline int32_t BISHOP_VALUE =       359;
+inline int32_t ROOK_VALUE   =       502;
+inline int32_t QUEEN_VALUE  =       960;
 inline int32_t KING_VALUE   =    20'000;
 inline int32_t MATE_SCORE   = std::numeric_limits<int32_t>::max();
 
