@@ -1,0 +1,10 @@
+{
+  "parameter_ranges": {
+    "PINNED_KNIGHT_PENALTY": "Integer(20, 50)",
+    "PINNED_BISHOP_PENALTY": "Integer(24, 58)",
+    "PINNED_ROOK_PENALTY": "Integer(50, 105)",
+    "PINNED_QUEEN_PENALTY": "Integer(95, 190)"
+  },
+  "data_path": "pinned_pieces_data.npz",
+  "model_path": "pinned_pieces_model.pkl"
+}

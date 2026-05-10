@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "MOBILITY_CENTER_BONUS": "Integer(0, 4)",
+    "QUEEN_EARLY_MOBILITY_THRESHOLD": "Integer(5, 11)",
+    "QUEEN_EARLY_MOBILITY_PENALTY": "Integer(2, 10)",
+    "OUTPOST_CENTER_FILE_BONUS": "Integer(1, 8)",
+    "OUTPOST_NEAR_CENTER_FILE_BONUS": "Integer(1, 7)",
+    "OUTPOST_ADVANCED_RANK_BONUS": "Integer(2, 10)",
+    "OUTPOST_KING_ZONE_BONUS": "Integer(1, 8)",
+    "OUTPOST_KEY_SQUARE_BONUS": "Integer(0, 4)"
+  },
+  "data_path": "mobility_outpost_details_data.npz",
+  "model_path": "mobility_outpost_details_model.pkl"
+}

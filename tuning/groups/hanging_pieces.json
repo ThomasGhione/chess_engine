@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "HANGING_PAWN_PENALTY": "Integer(-20, -6)",
+    "HANGING_PAWN_NEAR_KING_PENALTY": "Integer(-42, -16)",
+    "HANGING_HOOK_PAWN_PENALTY": "Integer(-26, -8)",
+    "HANGING_MINOR_PENALTY": "Integer(-42, -14)",
+    "HANGING_ROOK_PENALTY": "Integer(-58, -22)",
+    "HANGING_QUEEN_PENALTY": "Integer(-85, -32)",
+    "UNDEFENDED_PAWN_PENALTY": "Integer(-18, -4)",
+    "ATTACKED_PAWN_PENALTY": "Integer(-10, -1)"
+  },
+  "data_path": "hanging_pieces_data.npz",
+  "model_path": "hanging_pieces_model.pkl"
+}

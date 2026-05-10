@@ -245,16 +245,24 @@ Available group files include:
 
 ```txt
 pawn_refine.json
+pawn_support_center.json
 pawn_forks.json
 material_values.json
 threats_direct.json
+threats_secondary.json
 mobility_outposts.json
+mobility_outpost_details.json
+pinned_pieces.json
+hanging_pieces.json
 rook_activity.json
 opening_fundamentals.json
+phase_initiative.json
 king_shelter_files.json
 king_attack_units.json
 king_safety_residual.json
+king_activity_exposure.json
 stalemate_draw.json
+search_ordering.json
 ```
 
 Keep each experiment focused: tune no more than about 8 related parameters at

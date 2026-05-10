@@ -1,0 +1,8 @@
+{
+  "parameter_ranges": {
+    "PHASE_FINAL_THRESHOLD": "Integer(5, 12)",
+    "INIT_BONUS_EG": "Integer(0, 5)"
+  },
+  "data_path": "phase_initiative_data.npz",
+  "model_path": "phase_initiative_model.pkl"
+}
