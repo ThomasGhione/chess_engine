@@ -114,15 +114,32 @@ inline int32_t THREAT_LOOSE_MINOR_PENALTY = -11;
 inline int32_t THREAT_LOOSE_ROOK_PENALTY = -32;
 inline int32_t THREAT_LOOSE_QUEEN_PENALTY = -42;
 
+// Magic number constant for threat scaling (tunable)
+inline int32_t ENDGAME_THREAT_SCALE_PERCENT = 70;              // Reduce threats value in endgame
+
 // ===================================================
 // PAWN FORKS (defended pawn attacking 2+ enemy pieces)
 // ===================================================
 inline int32_t PAWN_FORK_BASE_BONUS       = 37;  // Base bonus for any defended pawn fork
 inline int32_t PAWN_FORK_MAJOR_BONUS      = 28;  // Extra if forking at least one rook/queen
 inline int32_t PAWN_FORK_ROYAL_BONUS      = 42;  // Extra if forking the king (fork + check)
+
 // ===================================================
-// ROOK EVALUATION
+// BISHOP EVALUATION (tunable)
 // ===================================================
+inline int32_t BAD_BISHOP_PAWN_MULTIPLIER = 8;        // Bad bishop pawn penalty factor
+inline int32_t BLOCK_PENALTY_BISHOP = 34;             // Central block penalty: bishop
+inline int32_t BLOCK_PENALTY_KNIGHT = 28;             // Central block penalty: knight
+inline int32_t BLOCK_PENALTY_QUEEN = 24;              // Central block penalty: queen
+inline int32_t BLOCK_PENALTY_ROOK = 18;               // Central block penalty: rook
+inline int32_t BLOCK_PENALTY_DEFAULT = 12;            // Central block penalty: default
+inline int32_t BLOCK_OPENING_BONUS = 10;              // Early opening bonus (moves <= 10)
+inline int32_t BLOCK_MIDGAME_BONUS = 5;               // Midgame bonus (moves <= 16)
+inline int32_t BLOCK_MIDGAME_THRESHOLD = 16;          // Move threshold for midgame bonus
+inline int32_t BLOCK_MIDGAME_EARLY_THRESHOLD = 10;    // Move threshold for opening bonus
+inline int32_t BLOCK_PAWN_BISHOP_PENALTY = 10;        // Bishop blocking pawn base penalty
+inline int32_t BLOCK_PAWN_CENTER_FILE_BONUS = 8;      // Extra penalty on center files (d,e)
+inline int32_t BLOCK_PAWN_START_BONUS = 6;            // Extra penalty if pawn on starting rank
 inline int32_t OPEN_FILE_ROOK_BONUS = 24;
 inline int32_t SEMI_OPEN_FILE_ROOK_BONUS = 9;
 inline int32_t ROOK_ON_SEVENTH_BONUS = 24;
@@ -175,6 +192,20 @@ inline int32_t KING_FORCING_CONTACT_BONUS = 6;
 inline int32_t KING_SAFE_CHECK_BONUS = 11;
 inline int32_t KING_FORCING_CHECK_BONUS = 6;
 inline int32_t KING_ATTACK_DANGER_CAP = 112;
+
+// Magic number constants for king safety (tunable)
+inline int32_t KING_SHELTER_PAWN_MULTIPLIER = 12;             // Shield pawn penalty per missing
+inline int32_t KING_ATTACK_QUEEN_WEIGHT = 34;                 // Material scale: queen
+inline int32_t KING_ATTACK_ROOK_WEIGHT = 16;                  // Material scale: rook
+inline int32_t KING_ATTACK_MINOR_WEIGHT = 8;                  // Material scale: minor
+inline int32_t KING_ATTACK_OPEN_FILE_INCREMENT = 4;           // Material scale: open file
+inline int32_t KING_ATTACK_HEAVY_FILE_INCREMENT = 8;          // Material scale: heavy piece on file
+inline int32_t KING_SHELTER_INIT_DISTANCE = 99;               // Initial shelter distance (invalid marker)
+inline int32_t KING_SHELTER_VERY_CLOSE = 1;                   // Pawn 1 square in front
+inline int32_t KING_SHELTER_CLOSE = 2;                        // Pawn 2 squares in front
+inline int32_t KING_SHELTER_FAR = 3;                          // Pawn 3 squares in front
+inline int32_t KING_SHELTER_MIN_ADVANCE_CHECK = 2;            // Min distance for advance penalties
+inline int32_t KING_SHELTER_ADVANCE_PAWN_MULTIPLIER = 2;      // Storm advance penalty multiplier
 
 // ===================================================
 // STALEMATE HANDLING

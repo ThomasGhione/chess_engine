@@ -15,8 +15,8 @@
       }
     }
   ],
-  "engine1_depth": 7,
-  "engine2_depth": 7,
+  "engine1_depth": 8,
+  "engine2_depth": 8,
   "rounds": 8,
   "opening_file": "books/openings.pgn",
   "timemargin": 1000,

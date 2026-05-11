@@ -12,7 +12,7 @@ inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t
     const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
     const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
 
-    const int32_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * 8);
+    const int32_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * BAD_BISHOP_PAWN_MULTIPLIER);
 
     if constexpr (Side == 0) {
         return score;
@@ -28,17 +28,17 @@ int32_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noe
 inline int32_t Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept {
     int penalty;
     switch (blockerType) {
-        case chess::Board::BISHOP: penalty = 34; break;
-        case chess::Board::KNIGHT: penalty = 28; break;
-        case chess::Board::QUEEN:  penalty = 24; break;
-        case chess::Board::ROOK:   penalty = 18; break;
-        default: penalty = 12; break;
+        case chess::Board::BISHOP: penalty = BLOCK_PENALTY_BISHOP; break;
+        case chess::Board::KNIGHT: penalty = BLOCK_PENALTY_KNIGHT; break;
+        case chess::Board::QUEEN:  penalty = BLOCK_PENALTY_QUEEN; break;
+        case chess::Board::ROOK:   penalty = BLOCK_PENALTY_ROOK; break;
+        default: penalty = BLOCK_PENALTY_DEFAULT; break;
     }
 
-    if (fullMoves <= 10) {
-        penalty += 10;
-    } else if (fullMoves <= 16) {
-        penalty += 5;
+    if (fullMoves <= BLOCK_MIDGAME_EARLY_THRESHOLD) {
+        penalty += BLOCK_OPENING_BONUS;
+    } else if (fullMoves <= BLOCK_MIDGAME_THRESHOLD) {
+        penalty += BLOCK_MIDGAME_BONUS;
     }
 
     return penalty;
@@ -61,9 +61,11 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, in
     }
 
     if (bishops & chess::Board::bitMask(forward)) {
-        int blockPenalty = 10;
-        if (file == 3 || file == 4) blockPenalty += 8;
-        if (pawnOnStart) blockPenalty += 6;
+        int blockPenalty = BLOCK_PAWN_BISHOP_PENALTY;
+        if (file == 3 || file == 4) {
+            blockPenalty += BLOCK_PAWN_CENTER_FILE_BONUS;
+        }
+        if (pawnOnStart) blockPenalty += BLOCK_PAWN_START_BONUS;
         penalty += blockPenalty;
     }
 

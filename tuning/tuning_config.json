@@ -15,18 +15,19 @@
       }
     }
   ],
-  "engine1_depth": 7,
-  "engine2_depth": 7,
+  "engine1_depth": 8,
+  "engine2_depth": 8,
   "rounds": 8,
   "opening_file": "books/openings.pgn",
   "timemargin": 1000,
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "HANGING_MINOR_PENALTY": "Integer(-34, -16)",
-    "HANGING_ROOK_PENALTY": "Integer(-52, -26)",
-    "HANGING_QUEEN_PENALTY": "Integer(-75, -38)"
+    "ORDERING_PENALTY_SAME_PAWN_OPENING": "Integer(-28, -6)",
+    "CHECK_BONUS": "Integer(25, 90)",
+    "KILLER1_BONUS": "Integer(1500, 2600)",
+    "KILLER2_BONUS": "Integer(1400, 2500)"
   },
-  "data_path": "hanging_pieces_only_data.npz",
-  "model_path": "hanging_pieces_only_model.pkl"
+  "data_path": "search_ordering_data.npz",
+  "model_path": "search_ordering_model.pkl"
 }

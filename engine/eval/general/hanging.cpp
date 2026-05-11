@@ -117,7 +117,7 @@ int32_t Evaluator::evalThreats(const chess::Board& b, const AttackData data[2], 
                   + evalThreatsSide(b, data, 1, -1, occ);
 
     if (isEndgame) {
-        score = (score * 70) / 100;
+        score = (score * engine::ENDGAME_THREAT_SCALE_PERCENT) / 100;
     }
     return score;
 }
