@@ -223,29 +223,29 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     // ================= KING =================
     if (!kings) [[unlikely]] return moves; // No king found, return empty move list
 
+    const uint8_t kingFrom = __builtin_ctzll(kings);
+    const chess::Coords kingFromC{kingFrom};
+
     //FIXME: Rendere codice tra "---" una funzione helper AKA: generateKingMoves
     //---
-    const uint8_t from = __builtin_ctzll(kings);
-    const chess::Coords fromC{from};
-
     // King moves MUST always check legality (can't move to attacked squares)
-    uint64_t mask = pieces::KING_ATTACKS[from] & ~ownOcc;
+    uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (mask) {
         const uint8_t to = engine::popLSB(mask);
-        if (b.isLegalPseudoMove(from, to, kingPiece, inCheck, inDoubleCheck)) {
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{to}});
+        if (b.isLegalPseudoMove(kingFrom, to, kingPiece, inCheck, inDoubleCheck)) {
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{to}});
         }
     }
 
     if (!inCheck) { // castling: illegal when in check.
-        const uint8_t f = chess::Board::file(from);
-        if (f <= 5 && b.isLegalPseudoMove(from, from + 2, kingPiece)) {
-            const uint8_t castleTo = from + 2;
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
+        const uint8_t f = chess::Board::file(kingFrom);
+        if (f <= 5 && b.isLegalPseudoMove(kingFrom, kingFrom + 2, kingPiece)) {
+            const uint8_t castleTo = kingFrom + 2;
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{castleTo}});
         }
-        if (f >= 2 && b.isLegalPseudoMove(from, from - 2, kingPiece)) {
-            const uint8_t castleTo = from - 2;
-            moves.emplace_back(chess::Board::Move{fromC, chess::Coords{castleTo}});
+        if (f >= 2 && b.isLegalPseudoMove(kingFrom, kingFrom - 2, kingPiece)) {
+            const uint8_t castleTo = kingFrom - 2;
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{castleTo}});
         }
     }
     //---
@@ -262,7 +262,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     std::array<uint64_t, 64> pinRayBySquare;
     //FIXME: Rendere piu' leggibile codizione. Creare funzione helper
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays<IsWhite>(b, fromC, pinnedMask, pinRayBySquare.data());
+        computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
     }
 
     // Macro-step 5: Generate all non-king moves applying check/pin filtering.

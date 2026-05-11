@@ -1090,27 +1090,30 @@ chess::Board::Move Searcher::getBestMove(
 
     // Macro-step 2: Sequential PVS root search when YBWC is not profitable.
     if (!useYBWC) {
-        for (int i = 0; i < rootMoves.size; ++i) {
+        // Process first move outside loop to avoid branch miss on every iteration
+        if (rootMoves.size > 0 && !shouldAbortSearch(runtime)) {
+            const auto& m = rootMoves[0];
+            const int32_t score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
+            searchedAnyMove = true;
+            updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
+        }
+
+        // Process remaining moves starting from index 1
+        for (int i = 1; i < rootMoves.size; ++i) {
             if (shouldAbortSearch(runtime)) {
                 markInterrupted(runtime);
                 break;
             }
 
             const auto& m = rootMoves[i];
-            int32_t score = 0;
-	        //FIXME: Fare prima interazione fuori ciclo e poi il resto paretendo da i=1
-            if (i == 0) {
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
-            } else {
-                int32_t nullAlpha = 0;
-                int32_t nullBeta = 0;
-                rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
+            int32_t nullAlpha = 0;
+            int32_t nullBeta = 0;
+            rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
 
-                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
-                const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
-                if (shouldResearch) {
-                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
-                }
+            int32_t score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
+            const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
+            if (shouldResearch) {
+                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
             }
 
             searchedAnyMove = true;
