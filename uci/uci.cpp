@@ -493,7 +493,6 @@ namespace uci {
         finishSearch(true, false);
         uint64_t requestedDepth = engine::Engine::DEFAULTDEPTH;
         bool ponder = false;
-        bool explicitDepth = false;
 
         while (!args.empty()) {
             const string_view token = nextToken(args);
@@ -508,7 +507,6 @@ namespace uci {
                 int depth = 0;
                 if (parseInt(nextToken(args), depth) && depth >= 0) {
                     requestedDepth = static_cast<uint64_t>(depth);
-                    explicitDepth = true;
                 }
                 continue;
             }
@@ -519,7 +517,6 @@ namespace uci {
             }
         }
 
-        if (ponder && !explicitDepth) requestedDepth = engine::Engine::MAX_PLY;
         {
             std::lock_guard<std::mutex> lock(searchMutex);
             searchBestMove = "0000";
