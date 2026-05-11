@@ -41,12 +41,12 @@ namespace {
     return true;
 }
 
-[[nodiscard]] bool applyTTPonderMove(chess::Board& board, const TranspositionTable& tt) noexcept {
+[[nodiscard]] chess::Board::Move getTTPonderMove(const chess::Board& board, const TranspositionTable& tt) noexcept {
     uint16_t encodedMove = 0;
-    if (!tt.probeMove(board.getHash(), encodedMove)) return false;
+    if (!tt.probeMove(board.getHash(), encodedMove)) return {};
 
     const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-    return board.move(chess::Coords{move.from}, chess::Coords{move.to}, move.promo);
+    return {chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
 }
 
 } // namespace
@@ -300,8 +300,11 @@ void Engine::startPondering() noexcept {
     this->stopPondering();
     this->clearPonderResult();
 
+    const auto ponderMove = getTTPonderMove(this->board, this->tt);
+    if (!chess::Coords::isInBounds(ponderMove.from)) return;
+
     chess::Board rootBoard = this->board;
-    if (!applyTTPonderMove(rootBoard, this->tt)) return;
+    if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) return;
 
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
