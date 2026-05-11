@@ -369,12 +369,12 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
 }
 
 bool Board::isThreefoldRepetition() const noexcept {
-    if (historySize == 0) return false;
-    const uint64_t target = currentHash;
-    int count = 1; // FIX: Start at 1 because currentHash is already in history (last entry)
-    // Search history excluding the last entry (which is currentHash)
-    for (uint8_t i = historySize - 1; i > 0; --i) {
-        if (repetitionHistory[i - 1] == target) {
+    if (historySize < 3) return false;  // Can't have threefold with < 3 entries
+    
+    int count = 0;
+    // Count all occurrences of current position in history
+    for (uint8_t i = 0; i < historySize; ++i) {
+        if (repetitionHistory[i] == currentHash) {
             if (++count >= 3) return true;
         }
     }
