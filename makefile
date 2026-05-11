@@ -59,35 +59,25 @@ GENERATED_BINS = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BEN
 # File paths by module
 MAIN_SRC = $(ROOT_DIR)/main.cpp
 ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp)
-COORDS_SRCS = $(wildcard $(ROOT_DIR)/coords/*.cpp)
 DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
-PIECE_SRCS = $(wildcard $(ROOT_DIR)/piece/*.cpp)
-GAMESTATUS_SRCS = $(wildcard $(ROOT_DIR)/gamestatus/*.cpp)
 BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
 UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
 
 # Module source paths in a single variable
-ALL_MODULE_SRCS = $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
-                  $(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
+ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
 ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp)
-COORDS_HDRS = $(wildcard $(ROOT_DIR)/coords/*.hpp)
 DRIVER_HDRS = $(wildcard $(ROOT_DIR)/driver/*.hpp)
-PIECE_HDRS = $(wildcard $(ROOT_DIR)/piece/*.hpp)
-GAMESTATUS_HDRS = $(wildcard $(ROOT_DIR)/gamestatus/*.hpp)
 BOARD_HDRS = $(wildcard $(ROOT_DIR)/board/*.hpp)
 UCI_HDRS = $(wildcard $(ROOT_DIR)/uci/*.hpp)
 
 # All header paths
-ALL_MODULE_HDRS = $(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
-                  $(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
+ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
 
 # All files to analyze (.cpp and .hpp)
-ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(COORDS_SRCS) $(PRINTER_SRCS) $(DRIVER_SRCS) \
-                  	$(PIECE_SRCS) $(GAMESTATUS_SRCS) $(BOARD_SRCS) \
-			$(ENGINE_HDRS) $(COORDS_HDRS) $(PRINTER_HDRS) $(DRIVER_HDRS) \
-			$(PIECE_HDRS) $(GAMESTATUS_HDRS) $(BOARD_HDRS)
+ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) \
+			$(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS)
 
 
 # Helper to generate .o paths inside output/
@@ -98,16 +88,11 @@ ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
 # Test file paths
 TEST_MAIN_SRC = $(TESTS_DIR)/mainTest.cpp
 TEST_ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/test/*.cpp)
-TEST_COORDS_SRCS = $(wildcard $(ROOT_DIR)/coords/test/*.cpp)
 TEST_DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/test/*.cpp)
-TEST_PIECE_SRCS = $(wildcard $(ROOT_DIR)/piece/test/*.cpp)
-TEST_GAMESTATUS_SRCS = $(wildcard $(ROOT_DIR)/gamestatus/test/*.cpp)
 TEST_BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/test/*.cpp)
 
 # Test file paths in a single variable
-ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_COORDS_SRCS) $(TEST_PRINTER_SRCS) \
-											 $(TEST_DRIVER_SRCS) $(TEST_PIECE_SRCS) $(TEST_GAMESTATUS_SRCS) \
-											 $(TEST_BOARD_SRCS)
+ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_DRIVER_SRCS) $(TEST_BOARD_SRCS)
 
 # Test .o file paths in output/
 TEST_MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(TEST_MAIN_SRC))

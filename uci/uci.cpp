@@ -297,15 +297,9 @@ namespace {
             static_cast<uint8_t>('8' - rank));
     }
 
-    static engine::Engine& defaultEngineInstance() noexcept {
-        static engine::Engine engine;
-        return engine;
-    }
 }
 
 namespace uci {
-    UCI::UCI() : engine(defaultEngineInstance()) {}
-
     UCI::UCI(engine::Engine& e) : engine(e) {}
 
     [[noreturn]] void UCI::mainLoop() noexcept {

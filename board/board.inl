@@ -17,18 +17,6 @@ inline Board::Board() noexcept {
     fromFenToBoard(STARTING_FEN);
 }
 
-inline Board::Board(const std::array<uint32_t, 8>& chessboard) noexcept
-    : chessboard(chessboard)
-    , halfMoveClock(0)
-    , fullMoveClock(1)
-    , castle(CASTLING_RIGHTS_ALL)
-    , enPassant()
-    , activeColor(WHITE)
-{
-    updateOccupancyBB();
-    rebuildRepetitionHistory();
-}
-
 inline Board::Board(const std::string& fen) {
     fromFenToBoard(fen);
 }
@@ -211,11 +199,6 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
     chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
 }
 
-
-inline constexpr uint8_t Board::operator[](const Coords& coords) const noexcept { return get(coords); }
-inline constexpr uint8_t Board::operator[](uint8_t index) const noexcept { return get(index); } // assert index 0-63
-inline constexpr bool Board::operator==(const Board& other) const noexcept { return chessboard == other.chessboard; }
-inline constexpr bool Board::operator!=(const Board& other) const noexcept { return chessboard != other.chessboard; }
 
 // ==============================
 // Board Internals

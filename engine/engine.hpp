@@ -39,7 +39,6 @@ public:
 
     // Lifecycle
     Engine();
-    explicit Engine(const std::string& fen);
     ~Engine() noexcept;
 
     Engine(const Engine&) = delete;
@@ -62,9 +61,6 @@ public:
     uint64_t getPonderCurrentDepth() const noexcept;
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
-
-    // Evaluation API
-    int32_t evaluate(const chess::Board& board) noexcept;
 
     // Game state
     bool isGameOver() const noexcept;

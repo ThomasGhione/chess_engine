@@ -42,8 +42,6 @@ public:
     BLACK  = 0x0, // 0000
     WHITE  = 0x8, // 1000
 
-    INVALID_WHITE = 0xF, // 1111
-    INVALID_BLACK = 0x7, // 0111
 };
 
     enum class MoveKind : uint8_t {
@@ -149,7 +147,6 @@ public:
     
     // Constructors start
     Board() noexcept;
-    explicit Board(const std::array<uint32_t, 8>& chessboard) noexcept;
     explicit Board(const std::string& fen);
     Board(const Board& other) noexcept;
     Board& operator=(const Board& other) noexcept;
@@ -195,11 +192,6 @@ public:
     constexpr uint8_t getActiveColor() const noexcept;
     constexpr bool getCastle(uint8_t index) const noexcept;
     constexpr uint16_t getFullMoveClock() const noexcept;
-    
-    constexpr uint8_t operator[](const Coords& coords) const noexcept;
-    constexpr uint8_t operator[](uint8_t index) const noexcept; // assert index 0-63
-    constexpr bool operator==(const Board& other) const noexcept;
-    constexpr bool operator!=(const Board& other) const noexcept;
     
     uint64_t getPiecesBitMap() const noexcept;
     void updateOccupancyBB() noexcept;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <string_view>
 
 namespace engine {
@@ -13,7 +12,6 @@ class UCI {
 
 public:
 
-    UCI();
     UCI(engine::Engine& engine);
 
     engine::Engine& engine;

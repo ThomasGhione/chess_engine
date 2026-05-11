@@ -10,7 +10,6 @@
 
 #include "../board/piece.hpp"
 #include "../debug.hpp"
-#include "eval/evaluator.hpp"
 
 namespace engine {
 
@@ -92,11 +91,6 @@ Engine::Engine()
     this->tt.clear();
 }
 
-Engine::Engine(const std::string& fen)
-    : Engine() {
-    board = chess::Board(fen);
-}
-
 Engine::~Engine() noexcept {
     this->stopPondering();
 }
@@ -174,10 +168,6 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
 
     this->updateGameResult();
     return result;
-}
-
-int32_t Engine::evaluate(const chess::Board& board) noexcept {
-    return Evaluator::evaluate(board);
 }
 
 void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
