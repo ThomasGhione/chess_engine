@@ -1,17 +1,120 @@
 SHELL := /bin/bash
 ROOT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-OUTPUT_DIR := $(ROOT_DIR)/output
-TESTS_DIR := $(ROOT_DIR)/tests
-SCRIPT_DIR := $(ROOT_DIR)/script
-DOC_DIR := $(ROOT_DIR)/doc
-ANALYSIS_DIR := $(DOC_DIR)/analysis-output
-SCAN_BUILD_DIR := $(ROOT_DIR)/scan-build-report
-ANALYSIS_LOG := $(ROOT_DIR)/analysis.log
-COMPLEXITY_REPORT := $(ROOT_DIR)/complexity-report.csv
-VALGRIND_REPORT := $(ROOT_DIR)/valgrind-report.txt
-GPROF_OUTPUT := $(ROOT_DIR)/gmon.out
-PROFILE_IMAGE := $(ROOT_DIR)/output.png
 
+# ============================================================================
+# DIRECTORY STRUCTURE
+# ============================================================================
+OUTPUT_DIR   := $(ROOT_DIR)/output
+TESTS_DIR    := $(ROOT_DIR)/tests
+SCRIPT_DIR   := $(ROOT_DIR)/script
+DOC_DIR      := $(ROOT_DIR)/doc
+ANALYSIS_DIR := $(DOC_DIR)/analysis-output
+
+# ============================================================================
+# COMPILER & FLAGS
+# ============================================================================
+CXX = g++
+WIN_CXX = x86_64-w64-mingw32-g++
+
+# Common C++ standard and warnings
+COMMON_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native
+
+# Test flags: O3 optimization + debug symbols + LTO
+TEST_FLAGS = $(COMMON_FLAGS) -O3 -DDEBUG -flto=8 -fext-numeric-literals -g
+
+# Production flags: balanced optimization + LTO + function sections
+PRODFLAGS = $(COMMON_FLAGS) -mtune=native -flto=auto -fno-math-errno \
+            -fno-trapping-math -funroll-loops -ffunction-sections -fdata-sections -O3
+
+# Windows cross-compile flags
+WIN_PRODFLAGS = $(COMMON_FLAGS) -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -flto=4 -fext-numeric-literals
+
+# ============================================================================
+# BUILD TOOLS & ANALYSIS
+# ============================================================================
+CPPCHECK             := $(SCRIPT_DIR)/cppcheck-2.19.0/cppcheck
+COMPILATION_DB       := $(ROOT_DIR)/compile_commands.json
+LIZARD               := $(SCRIPT_DIR)/lizard-1.19.0/lizard.py
+GPROF2DOT            := $(SCRIPT_DIR)/gprof2dot.py
+LLM_ANALYSIS_PROMPT  := $(DOC_DIR)/static-analysis-summary-prompt.txt
+
+# Output reports
+ANALYSIS_LOG         := $(ROOT_DIR)/analysis.log
+COMPLEXITY_REPORT    := $(ROOT_DIR)/complexity-report.csv
+VALGRIND_REPORT      := $(ROOT_DIR)/valgrind-report.txt
+SCAN_BUILD_DIR       := $(ROOT_DIR)/scan-build-report
+GPROF_OUTPUT         := $(ROOT_DIR)/gmon.out
+PROFILE_IMAGE        := $(ROOT_DIR)/output.png
+
+# ============================================================================
+# SOURCE FILES: Helper function for wildcards
+# ============================================================================
+SRC_WILDCARD = $(wildcard $(ROOT_DIR)/$(1)/*.cpp) $(wildcard $(ROOT_DIR)/$(1)/*/*.cpp)
+HDR_WILDCARD = $(wildcard $(ROOT_DIR)/$(1)/*.hpp) $(wildcard $(ROOT_DIR)/$(1)/*/*.hpp)
+
+# Main + Module sources
+MAIN_SRC      = $(ROOT_DIR)/main.cpp
+ENGINE_SRCS   = $(call SRC_WILDCARD,engine)
+DRIVER_SRCS   = $(call SRC_WILDCARD,driver)
+BOARD_SRCS    = $(call SRC_WILDCARD,board)
+UCI_SRCS      = $(call SRC_WILDCARD,uci)
+ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
+
+# Module headers
+ENGINE_HDRS  = $(call HDR_WILDCARD,engine)
+DRIVER_HDRS  = $(call HDR_WILDCARD,driver)
+BOARD_HDRS   = $(call HDR_WILDCARD,board)
+UCI_HDRS     = $(call HDR_WILDCARD,uci)
+ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
+
+# Analysis files (main code only, excluding tests)
+ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS)
+
+# ============================================================================
+# TEST SOURCES
+# ============================================================================
+TEST_MAIN_SRC       = $(TESTS_DIR)/mainTest.cpp
+TEST_MODULE_SRCS    = $(call SRC_WILDCARD,engine/test) $(call SRC_WILDCARD,driver/test) $(call SRC_WILDCARD,board/test)
+PERF_MAIN_SRC       = $(TESTS_DIR)/mainPerformanceTest.cpp
+PERF_MODULE_SRCS    = $(call SRC_WILDCARD,engine/test/performance-test)
+TT_HP_BENCH_SRC     = $(TESTS_DIR)/tt_hugepage_bench.cpp
+
+# ============================================================================
+# OBJECT FILES: Helper function for .o paths
+# ============================================================================
+OBJ_FROM_SRC = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(1))
+
+# Main + Module objects
+MAIN_OBJ     = $(call OBJ_FROM_SRC,$(MAIN_SRC))
+MODULE_OBJS  = $(call OBJ_FROM_SRC,$(ALL_MODULE_SRCS))
+ALL_OBJS     = $(MAIN_OBJ) $(MODULE_OBJS)
+
+# Test objects
+TEST_MAIN_OBJ  = $(call OBJ_FROM_SRC,$(TEST_MAIN_SRC))
+TEST_OBJS      = $(call OBJ_FROM_SRC,$(TEST_MODULE_SRCS))
+PERF_MAIN_OBJ  = $(call OBJ_FROM_SRC,$(PERF_MAIN_SRC))
+PERF_OBJS      = $(call OBJ_FROM_SRC,$(PERF_MODULE_SRCS))
+TT_HP_BENCH_OBJ = $(call OBJ_FROM_SRC,$(TT_HP_BENCH_SRC))
+
+# ============================================================================
+# OUTPUT BINARIES
+# ============================================================================
+NAME_APP        = $(ROOT_DIR)/chess
+NAME_APP_WIN    = $(ROOT_DIR)/chess.exe
+TEST_APP        = $(TESTS_DIR)/test
+PERF_APP        = $(TESTS_DIR)/perf
+TT_HP_BENCH_APP = $(TESTS_DIR)/tt_hugepage_bench
+GENERATED_BINS  = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BENCH_APP)
+
+# ============================================================================
+# DEPENDENCY FILES
+# ============================================================================
+DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) \
+           $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d) $(TT_HP_BENCH_OBJ:.o=.d)
+
+# ============================================================================
+# PARALLEL BUILD
+# ============================================================================
 NUMBER_OF_CORES := $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 ifeq ($(MAKELEVEL),0)
 ifeq ($(filter -j%,$(MAKEFLAGS)),)
@@ -19,185 +122,83 @@ MAKEFLAGS += -j$(NUMBER_OF_CORES)
 endif
 endif
 
-# Compiler variables
-CXX = g++
-TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
+# ============================================================================
+# BUILD TARGETS
+# ============================================================================
+.PHONY: all prod prod_windows prod_sequential debug test perf tt-huge-bench all-tests \
+        analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu \
+        analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard \
+        analyze-summary complexity test-valgrind cls cls-compile-files get-image help debug-vars
 
-# -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
-# -march=native: Use all CPU features (SSE4.2, AVX2, BMI2, POPCNT)
-# -mtune=native: Optimize instruction scheduling for your CPU
-# -flto=auto: Let compiler decide LTO threads (usually better than fixed number)
-# -fno-math-errno: Don't set errno on math functions (safe for chess)
-# -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
-# -funroll-loops: Unroll hot loops (good for bitboard operations)
-# Balanced production flags (safety + speed)
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
-		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
-		-ffunction-sections -fdata-sections -O3 
-
-# Uncomment if codebase is exception-free
-
-# Windows cross-compiler (requires mingw-w64)
-WIN_CXX = x86_64-w64-mingw32-g++
-WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -fopenmp -flto=4 -fext-numeric-literals
-
-# Local static-analysis tools
-CPPCHECK = $(SCRIPT_DIR)/cppcheck-2.19.0/cppcheck
-COMPILATION_DB = $(ROOT_DIR)/compile_commands.json
-LIZARD = $(SCRIPT_DIR)/lizard-1.19.0/lizard.py
-GPROF2DOT = $(SCRIPT_DIR)/gprof2dot.py
-LLM_ANALYSIS_PROMPT = $(DOC_DIR)/static-analysis-summary-prompt.txt
-
-# Output binaries
-NAME_APP = $(ROOT_DIR)/chess
-TEST_APP = $(TESTS_DIR)/test
-PERF_APP = $(TESTS_DIR)/perf
-TT_HP_BENCH_APP = $(TESTS_DIR)/tt_hugepage_bench
-NAME_APP_WIN = $(ROOT_DIR)/chess.exe
-GENERATED_BINS = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BENCH_APP)
-
-# File paths by module
-MAIN_SRC = $(ROOT_DIR)/main.cpp
-ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp)
-DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
-BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
-UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
-
-# Module source paths in a single variable
-ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
-
-# Header file paths (excluding stockfish and test utils)
-ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp)
-DRIVER_HDRS = $(wildcard $(ROOT_DIR)/driver/*.hpp)
-BOARD_HDRS = $(wildcard $(ROOT_DIR)/board/*.hpp)
-UCI_HDRS = $(wildcard $(ROOT_DIR)/uci/*.hpp)
-
-# All header paths
-ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
-
-# All files to analyze (.cpp and .hpp)
-ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) \
-			$(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS)
-
-
-# Helper to generate .o paths inside output/
-MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(MAIN_SRC))
-MODULE_OBJS = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(ALL_MODULE_SRCS))
-ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
-
-# Test file paths
-TEST_MAIN_SRC = $(TESTS_DIR)/mainTest.cpp
-TEST_ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/test/*.cpp)
-TEST_DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/test/*.cpp)
-TEST_BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/test/*.cpp)
-
-# Test file paths in a single variable
-ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_DRIVER_SRCS) $(TEST_BOARD_SRCS)
-
-# Test .o file paths in output/
-TEST_MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(TEST_MAIN_SRC))
-TEST_OBJS = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(ALL_TEST_MODULE_SRCS))
-
-# Performance-test file paths
-PERF_MAIN_SRC = $(TESTS_DIR)/mainPerformanceTest.cpp
-PERF_ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/test/performance-test/*.cpp)
-
-# Performance-test paths in a single variable
-ALL_PERF_MODULE_SRCS = $(PERF_ENGINE_SRCS)
-
-# Performance-test .o paths in output/
-PERF_MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(PERF_MAIN_SRC))
-PERF_OBJS = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(ALL_PERF_MODULE_SRCS))
-
-# Huge-page TT benchmark
-TT_HP_BENCH_SRC = $(TESTS_DIR)/tt_hugepage_bench.cpp
-TT_HP_BENCH_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(TT_HP_BENCH_SRC))
-
-# Auto-generated dependency files (header dependencies)
-DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OBJS:.o=.d) $(PERF_MAIN_OBJ:.o=.d) $(TT_HP_BENCH_OBJ:.o=.d)
-
-# Main targets
-.PHONY: all prod prod_windows parallel_prod prod_sequential debug test perf tt-huge-bench all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files get-image help debug-vars
-
-# Default target for plain `make`
-all: PRODFLAGS += -DDEBUG -fomit-frame-pointer -O3
+# Default target
 all: prod
 
-chess: $(NAME_APP)
+# Main build targets
+chess prod: $(NAME_APP)
+	@printf "\n✓ Build completed: $(NAME_APP)\n\n"
 
-# Parallel production build
-# Note: faster after the first build but keeps .o files
-prod: $(NAME_APP)
-	@printf "\nBuild completed: $(NAME_APP)\n\n"
-
-# Explicit alias for parallel build
-parallel_prod: prod
-
-# Windows production build (cross-compile from Linux)
 prod_windows:
-	@printf "\nCompiling Windows binary..."
+	@printf "✓ Compiling Windows binary...\n"
 	$(WIN_CXX) $(WIN_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP_WIN)
-	@printf "\nBuild completed: $(NAME_APP_WIN)\n\n"
+	@printf "✓ Build completed: $(NAME_APP_WIN)\n\n"
 
-# Sequential production build
-# Note: no slower, but does not generate .o files
 prod_sequential:
 	$(CXX) $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
-	@printf "\nBuild completed: $(NAME_APP)\n\n"
+	@printf "✓ Build completed: $(NAME_APP)\n\n"
 
-# Build command for debug executable
-# Adds -g to include debug symbols
 debug: PRODFLAGS += -DDEBUG -g -pg -O1
 debug: $(NAME_APP)
-	@printf "\nDebug build completed: $(NAME_APP)\n\n"
+	@printf "✓ Debug build completed: $(NAME_APP)\n\n"
 
-# Build command for test executable
+# Test targets
 test: $(TEST_APP)
-	@printf "\nTest binary built: $(TEST_APP)\n\n"
+	@printf "✓ Test binary built: $(TEST_APP)\n\n"
 
-# Build command for performance-test executable
 perf: $(PERF_APP)
-	@printf "\nPerformance-test binary built: $(PERF_APP)\n\n"
+	@printf "✓ Performance-test binary built: $(PERF_APP)\n\n"
 
-# Build command for huge-page TT benchmark
 tt-huge-bench: $(TT_HP_BENCH_APP)
-	@printf "\nTT huge-page benchmark built: $(TT_HP_BENCH_APP)\n\n"
+	@printf "✓ TT huge-page benchmark built: $(TT_HP_BENCH_APP)\n\n"
 
-# Command to run all tests (functional + performance)
 all-tests: test perf
 	@printf "\n=== Running functional tests ===\n"
 	$(TEST_APP)
 	@printf "\n=== Running performance tests ===\n"
 	$(PERF_APP)
-	@printf "\nAll tests completed\n\n"
+	@printf "\n✓ All tests completed\n\n"
 
-# Final executable generation: 'chess'
+# ============================================================================
+# COMPILATION RULES
+# ============================================================================
+# Main executable linking
 $(NAME_APP): $(ALL_OBJS)
-	@printf "\nLinking $(NAME_APP)..."
+	@printf "Linking $(NAME_APP)...\n"
 	$(CXX) $(PRODFLAGS) $(ALL_OBJS) -o $(NAME_APP)
 
-# .o file generation
+# Object file compilation
 $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
-	@printf "\nCompiling $<..."
+	@printf "Compiling $<...\n"
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
 
-# Final executable generation: 'outputTest'
+# Test executable linking
 $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
-	@printf "\nLinking test $(TEST_APP)..."
+	@printf "Linking test executable...\n"
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
 
-# Final executable generation: 'outputPerformance'
+# Performance test executable linking
 $(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
-	@printf "\nLinking performance test $(PERF_APP)..."
+	@printf "Linking performance test executable...\n"
 	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
 
-# Final executable generation: TT huge-page benchmark
+# TT huge-page benchmark linking
 $(TT_HP_BENCH_APP): $(MODULE_OBJS) $(TT_HP_BENCH_OBJ)
-	@printf "\nLinking TT huge-page benchmark $(TT_HP_BENCH_APP)..."
+	@printf "Linking TT huge-page benchmark...\n"
 	$(CXX) $(PRODFLAGS) $(MODULE_OBJS) $(TT_HP_BENCH_OBJ) -o $(TT_HP_BENCH_APP)
 
-# Complete static-analysis suite
+# ============================================================================
+# STATIC ANALYSIS
+# ============================================================================
 analyze: analyze-setup
 	@$(MAKE) -C $(ROOT_DIR) analyze-cppcheck
 	@$(MAKE) -C $(ROOT_DIR) analyze-clang-tidy
@@ -209,8 +210,10 @@ analyze: analyze-setup
 	@$(MAKE) -C $(ROOT_DIR) analyze-summary
 
 analyze-setup:
-	@printf "\n=== Complete Static Analysis Suite ===\n"
-	@printf "This will take some minutes...\n"
+	@printf "\n╔════════════════════════════════════════╗\n"
+	@printf "║  Complete Static Analysis Suite      ║\n"
+	@printf "╚════════════════════════════════════════╝\n"
+	@printf "This will take ~5 minutes...\n"
 	@printf "Analyzing %s files (.cpp + .hpp)...\n\n" $(words $(ALL_ANALYSIS_FILES))
 	@mkdir -p $(ANALYSIS_DIR)
 	@rm -f $(ANALYSIS_LOG)
@@ -222,28 +225,30 @@ analyze-setup:
 	@if command -v bear >/dev/null 2>&1; then \
 		cd $(ROOT_DIR) && bear -- $(MAKE) prod > /dev/null 2>&1; \
 	else \
-		printf "bear not found: skipping compile_commands.json generation\n"; \
+		printf "⚠ bear not found: skipping compile_commands.json\n"; \
 	fi
 	@printf "[0/7] Generating compilation database\n"
 
+# Individual analysis tools
+define ANALYZE_TOOL
+@printf "\n========================================\n" >> $(ANALYSIS_LOG)
+@printf "$(1)\n" >> $(ANALYSIS_LOG)
+@printf "========================================\n\n" >> $(ANALYSIS_LOG)
+endef
+
 analyze-cppcheck:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "1. CPPCHECK ANALYSIS\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
-	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> $(ANALYSIS_LOG) 2>&1
+	$(call ANALYZE_TOOL,1. CPPCHECK ANALYSIS)
+	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all \
+		--suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> $(ANALYSIS_LOG) 2>&1
 	@printf "[1/7] Running cppcheck terminated\n"
 
 analyze-clang-tidy:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "2. CLANG-TIDY ANALYSIS\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
-	@clang-tidy -p $(COMPILATION_DB) $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS) >> $(ANALYSIS_LOG) 2>&1 || echo "clang-tidy exited with error code $$?" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,2. CLANG-TIDY ANALYSIS)
+	@clang-tidy -p $(COMPILATION_DB) $(MAIN_SRC) $(ALL_MODULE_SRCS) $(ALL_MODULE_HDRS) >> $(ANALYSIS_LOG) 2>&1 || true
 	@printf "[2/7] Running clang-tidy terminated\n"
 
 analyze-iwyu:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "3. INCLUDE-WHAT-YOU-USE ANALYSIS\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,3. INCLUDE-WHAT-YOU-USE ANALYSIS)
 	@for file in $(MAIN_SRC) $(ALL_MODULE_SRCS); do \
 		printf "Checking $$file...\n" >> $(ANALYSIS_LOG); \
 		include-what-you-use -std=c++23 -fopenmp -DDEBUG -march=native $$file >> $(ANALYSIS_LOG) 2>&1 || true; \
@@ -251,148 +256,133 @@ analyze-iwyu:
 	@printf "[3/7] Running include-what-you-use terminated\n"
 
 analyze-scan-build:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "4. SCAN-BUILD (CLANG STATIC ANALYZER)\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,4. SCAN-BUILD (CLANG STATIC ANALYZER))
 	@printf "Path-sensitive dataflow analysis in progress...\n" >> $(ANALYSIS_LOG)
 	@$(MAKE) -C $(ROOT_DIR) cls-compile-files > /dev/null
-	@scan-build -o $(SCAN_BUILD_DIR) --status-bugs -v -analyzer-config aggressive-binary-operation-simplification=true $(MAKE) -C $(ROOT_DIR) prod >> $(ANALYSIS_LOG) 2>&1 || echo "scan-build exited with error code $$?" >>  $(ANALYSIS_LOG)
-	@printf "\n--- Scan-build text summary ---\n" >> $(ANALYSIS_LOG)
+	@scan-build -o $(SCAN_BUILD_DIR) --status-bugs -v \
+		-analyzer-config aggressive-binary-operation-simplification=true \
+		$(MAKE) -C $(ROOT_DIR) prod >> $(ANALYSIS_LOG) 2>&1 || true
+	@printf "\n--- Scan-build summary ---\n" >> $(ANALYSIS_LOG)
 	@if [ -d $(SCAN_BUILD_DIR) ] && [ -n "$$(ls -A $(SCAN_BUILD_DIR) 2>/dev/null)" ]; then \
-		printf "HTML Report location: $(SCAN_BUILD_DIR)/\n" >> $(ANALYSIS_LOG); \
-		find $(SCAN_BUILD_DIR) -name "*.html" -type f | head -1 | xargs -I {} printf "Main report: {}\n" >> $(ANALYSIS_LOG) 2>&1; \
-		printf "\nBugs found by scan-build:\n" >> $(ANALYSIS_LOG); \
-		if ! find $(SCAN_BUILD_DIR) -name "*.html" -exec grep -h "<!-- BUGTYPE" {} \; 2>/dev/null | sort | uniq -c >> $(ANALYSIS_LOG); then \
-			printf "No bugs found or unable to parse HTML reports\n" >> $(ANALYSIS_LOG); \
-		fi; \
+		printf "HTML Report: $(SCAN_BUILD_DIR)/\n" >> $(ANALYSIS_LOG); \
+		find $(SCAN_BUILD_DIR) -name "*.html" -type f | head -1 | xargs -I {} printf "Main: {}\n" >> $(ANALYSIS_LOG) 2>&1; \
 	else \
-		printf "No bugs detected by scan-build!\n" >> $(ANALYSIS_LOG); \
+		printf "✓ No bugs detected by scan-build!\n" >> $(ANALYSIS_LOG); \
 	fi
 	@printf "[4/7] Running scan-build terminated\n"
 
 analyze-gcc-analyzer:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "5. GCC STATIC ANALYZER\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,5. GCC STATIC ANALYZER)
 	@$(MAKE) -C $(ROOT_DIR) cls-compile-files > /dev/null
-	@$(CXX) -fanalyzer -fsyntax-only $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> $(ANALYSIS_LOG) 2>&1 || echo "GCC analyzer exited with error code $$?" >> $(ANALYSIS_LOG)
+	@$(CXX) -fanalyzer -fsyntax-only $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> $(ANALYSIS_LOG) 2>&1 || true
 	@printf "[5/7] Running GCC analyzer terminated\n"
 
 analyze-cppclean:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "6. CPPCLEAN (DEAD CODE & DEPENDENCIES)\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
-	@cd $(ROOT_DIR) && cppclean . >> $(ANALYSIS_LOG) 2>&1 || echo "cppclean exited with error code $$?" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,6. CPPCLEAN (DEAD CODE & DEPENDENCIES))
+	@cd $(ROOT_DIR) && cppclean . >> $(ANALYSIS_LOG) 2>&1 || true
 	@printf "[6/7] Running cppclean terminated\n"
 
 analyze-lizard:
-	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "7. LIZARD COMPLEXITY ANALYSIS\n" >> $(ANALYSIS_LOG)
-	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
+	$(call ANALYZE_TOOL,7. LIZARD COMPLEXITY ANALYSIS)
 	@if [ -f $(LIZARD) ]; then \
 		python3 $(LIZARD) -l cpp -w -L 60 -C 15 --csv $(ROOT_DIR) > $(COMPLEXITY_REPORT) 2>&1 || true; \
 		python3 $(LIZARD) -l cpp -w -L 60 -C 15 $(ROOT_DIR) >> $(ANALYSIS_LOG) 2>&1 || true; \
 		printf "[7/7] Running lizard terminated\n"; \
 	else \
-		printf "Lizard not found - skipping\n" >> $(ANALYSIS_LOG); \
+		printf "⚠ Lizard not found - skipping\n" >> $(ANALYSIS_LOG); \
 		printf "[7/7] Running lizard skipped\n"; \
 	fi
 
 analyze-summary:
 	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
-	@printf "COMPLETE ANALYSIS FINISHED\n" >> $(ANALYSIS_LOG)
+	@printf "ANALYSIS FINISHED\n" >> $(ANALYSIS_LOG)
 	@printf "========================================\n" >> $(ANALYSIS_LOG)
-	@printf "\n========================================\n"
-	@printf "Complete analysis finished!\n"
-	@printf "========================================\n"
-	@printf "\nReports generated:\n"
-	@printf "   1. $(ANALYSIS_LOG) (main report)\n"
-	@printf "   2. $(SCAN_BUILD_DIR)/*/index.html (interactive HTML)\n"
+	@printf "\n╔════════════════════════════════════════╗\n"
+	@printf "║  ✓ Analysis Finished!                ║\n"
+	@printf "╚════════════════════════════════════════╝\n\n"
+	@printf "Reports:\n"
+	@printf "  1. $(ANALYSIS_LOG)\n"
+	@printf "  2. $(SCAN_BUILD_DIR)/*/index.html\n"
 	@if [ -f $(COMPLEXITY_REPORT) ]; then \
-		printf "   3. $(COMPLEXITY_REPORT) (spreadsheet)\n"; \
+		printf "  3. $(COMPLEXITY_REPORT)\n"; \
 	fi
-	@printf "\n[7/7] Generating LLM prompt...\n\n"
-	@printf "=== LLM PROMPT (copy below) ===\n\n"
+	@printf "\nLLM Prompt:\n"
 	@if [ -f $(LLM_ANALYSIS_PROMPT) ]; then \
 		cat $(LLM_ANALYSIS_PROMPT); \
 	else \
-		printf "Prompt template not found: $(LLM_ANALYSIS_PROMPT)\n"; \
+		printf "⚠ Prompt template not found\n"; \
 	fi
-	@printf "\n\n=== END PROMPT ===\n"
 
-# Complexity-analysis alias
 complexity: analyze-lizard
 
-# Memory leak detection with report saved to file
+# ============================================================================
+# RUNTIME TESTING & UTILITIES
+# ============================================================================
 test-valgrind: $(TEST_APP)
 	@mkdir -p $(ANALYSIS_DIR)
 	@if ! command -v valgrind >/dev/null 2>&1; then \
-		printf "valgrind not found. Install it with: sudo apt install valgrind\n"; \
+		printf "❌ valgrind not found. Install: sudo apt install valgrind\n"; \
 		exit 1; \
 	fi
-	@printf "\nRunning valgrind on $(TEST_APP)...\n"
+	@printf "Running valgrind on $(TEST_APP)...\n"
 	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
 		--error-exitcode=1 $(TEST_APP) > $(VALGRIND_REPORT) 2>&1
-	@printf "Valgrind report: $(VALGRIND_REPORT)\n\n"
+	@printf "✓ Report: $(VALGRIND_REPORT)\n\n"
 
-# Include dependency files generated by -MMD -MP
--include $(DEPFILES)
-
-# Clean object files and binaries only
 cls-compile-files:
 	rm -rf $(OUTPUT_DIR)
 	rm -f $(GENERATED_BINS)
 
-# Clean temporary files
 cls: cls-compile-files
-	@printf "\nCleaning..."
+	@printf "Cleaning...\n"
 	rm -f $(DOC_DIR)/main-doc.{aux,log,pdf,toc}
 	rm -f $(COMPILATION_DB)
-	#rm -rf $(ANALYSIS_DIR)
 	rm -rf $(GPROF_OUTPUT)
-	@printf "\nClean completed\n\n"
+	@printf "✓ Clean completed\n\n"
 
-# Generate a profiling call graph image from gprof output.
 get-image:
 	gprof $(NAME_APP) $(GPROF_OUTPUT) | python3 $(GPROF2DOT) -s -w | dot -Tpng -Gdpi=200 -o $(PROFILE_IMAGE)
-	@printf "\nImage created: $(PROFILE_IMAGE)\n\n"
+	@printf "✓ Profile image: $(PROFILE_IMAGE)\n\n"
 
-# Command help
+# ============================================================================
+# DEPENDENCY TRACKING & HELP
+# ============================================================================
+-include $(DEPFILES)
+
 help:
-	@printf "\n=== Chess Build System ===\n"
-	@printf "\nBUILD TARGETS:\n"
-	@printf "  make prod           - Optimized production build\n"
-	@printf "  make prod_windows   - Windows cross-build (requires mingw-w64)\n"
-	@printf "  make debug          - Build with debug symbols\n"
-	@printf "  make test           - Build functional tests\n"
-	@printf "  make perf           - Build performance tests\n"
-	@printf "  make all-tests      - Run functional and performance tests\n"
-	@printf "\nSTATIC ANALYSIS:\n"
-	@printf "  make analyze        - Full static-analysis suite (7 tools, about 5 min)\n"
-	@printf "\nRUNTIME TESTING:\n"
-	@printf "  make test-valgrind  - Memory leak detection (valgrind)\n"
-	@printf "\nUTILITIES:\n"
-	@printf "  make cls            - Remove compiled files and generated reports\n"
-	@printf "  make debug-vars     - Print makefile variables\n"
-	@printf "  make help           - Show this help message\n"
-	@printf "\nGENERATED REPORTS:\n"
-	@printf "  - $(ANALYSIS_LOG)                    (main text report)\n"
-	@printf "  - $(SCAN_BUILD_DIR)/*.html       (interactive HTML)\n"
-	@printf "  - $(COMPLEXITY_REPORT)     (complexity metrics)\n"
-	@printf "  - $(VALGRIND_REPORT)            (memory analysis)\n"
-	@printf "\nTOOL LOCATIONS:\n"
-	@printf "  - lizard: $(LIZARD)\n"
-	@printf "  - valgrind: install with 'sudo apt install valgrind'\n"
-	@printf "\n==================================\n"
+	@printf "\n╔════════════════════════════════════════╗\n"
+	@printf "║  Chess Engine Build System           ║\n"
+	@printf "╚════════════════════════════════════════╝\n\n"
+	@printf "BUILD TARGETS:\n"
+	@printf "  prod              Optimized production build\n"
+	@printf "  prod_windows      Cross-compile for Windows\n"
+	@printf "  prod_sequential   Sequential (no parallel jobs)\n"
+	@printf "  debug             Build with debug symbols + gprof\n"
+	@printf "  test              Build functional tests\n"
+	@printf "  perf              Build performance tests\n"
+	@printf "  tt-huge-bench     Build TT huge-page benchmark\n"
+	@printf "  all-tests         Run all tests\n\n"
+	@printf "STATIC ANALYSIS:\n"
+	@printf "  analyze           Full suite (cppcheck, clang-tidy, scan-build, etc.)\n"
+	@printf "  complexity        Code complexity metrics (lizard)\n\n"
+	@printf "RUNTIME TESTING:\n"
+	@printf "  test-valgrind     Memory leak detection\n\n"
+	@printf "UTILITIES:\n"
+	@printf "  cls               Clean compiled files\n"
+	@printf "  get-image         Generate gprof call graph\n"
+	@printf "  debug-vars        Show makefile variables\n"
+	@printf "  help              Show this message\n\n"
+	@printf "REPORTS:\n"
+	@printf "  $(ANALYSIS_LOG)\n"
+	@printf "  $(SCAN_BUILD_DIR)/\n"
+	@printf "  $(COMPLEXITY_REPORT)\n"
+	@printf "  $(VALGRIND_REPORT)\n\n"
 
-# Print variables
-.PHONY: debug-vars
 debug-vars:
-	@printf "\n"
-	@printf "SHELL = $(SHELL)"
-	@printf "Compiler = $(CXX)"
-	@printf "Test flags = $(TEST_FLAGS)"
-	@printf "Production flags = $(PRODFLAGS)"
-	@printf "Module sources = $(ALL_MODULE_SRCS)"
-	@printf "Test module sources = $(ALL_TEST_MODULE_SRCS)"
-	@printf "MODULE_OBJS = $(MODULE_OBJS)"
+	@printf "\nCOMPILER: $(CXX)\n"
+	@printf "CORES: $(NUMBER_OF_CORES)\n"
+	@printf "TEST_FLAGS: $(TEST_FLAGS)\n"
+	@printf "PRODFLAGS: $(PRODFLAGS)\n"
+	@printf "\nMODULE_SRCS: $(words $(ALL_MODULE_SRCS)) files\n"
+	@printf "MODULE_OBJS: $(words $(MODULE_OBJS)) objects\n"
+	@printf "TOTAL_ANALYSIS_FILES: $(words $(ALL_ANALYSIS_FILES))\n\n"
