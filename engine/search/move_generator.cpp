@@ -542,8 +542,7 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
     int32_t alpha,
     int32_t beta,
     int ply,
-    bool usIsWhite,
-    int32_t searchDepth) noexcept {
+    bool usIsWhite) noexcept {
     // Macro-step 1: Generate tactical candidate moves for qsearch.
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
 
@@ -554,7 +553,7 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
 
     // Macro-step 3: Apply qsearch tactical ordering/pruning policy via Sorter.
     return engine::Sorter::sortTacticalMoves(
-        tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite, searchDepth);
+        tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite);
 }
 
 void MoveGenerator::addPromotionMoves(

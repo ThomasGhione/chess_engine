@@ -93,8 +93,7 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        bool usIsWhite,
-        int32_t searchDepth) noexcept;
+        bool usIsWhite) noexcept;
 
     static MoveList<chess::Board::Move> sortEvasionsForcingFirst(
         const MoveList<chess::Board::Move>& evasions,

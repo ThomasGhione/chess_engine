@@ -460,8 +460,7 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     int32_t alpha,
     int32_t beta,
     int ply,
-    bool usIsWhite,
-    int32_t searchDepth) noexcept {
+    bool usIsWhite) noexcept {
     // Macro-step 1: Copy the input tactical list and early-return when empty.
     MovePickerData picker;
     if (tacticalMoves.is_empty()) {
@@ -561,10 +560,10 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     picker.size = filteredCount;
     picker.moves.size = filteredCount;
 
-    // Macro-step 6: Return sorted tactical list.
-    (void)searchDepth; // kept for API compatibility with qsearch context.
     return picker;
-}bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
+}
+
+bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
     const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     if (toPieceType != chess::Board::EMPTY) return true;
 

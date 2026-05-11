@@ -18,40 +18,6 @@ const int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT = 60;
 const int32_t DRAW_SCORE_WEIGHT_DENOMINATOR = 100;
 const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
-inline void publishSharedRootBound(
-    bool usIsWhite,
-    int32_t score,
-    std::atomic<int32_t>& sharedAlpha,
-    std::atomic<int32_t>& sharedBeta) noexcept {
-    if (usIsWhite) {
-        const int32_t betaLimit = sharedBeta.load(std::memory_order_relaxed);
-        score = (score >= betaLimit && betaLimit > NEG_INF) ? (betaLimit - 1) : score;
-        int32_t current = sharedAlpha.load(std::memory_order_relaxed);
-        while (score > current
-            && !sharedAlpha.compare_exchange_weak(
-                current, score, std::memory_order_relaxed, std::memory_order_relaxed)) {
-        }
-        return;
-    }
-
-    const int32_t alphaLimit = sharedAlpha.load(std::memory_order_relaxed);
-    score = (score <= alphaLimit && alphaLimit < POS_INF) ? (alphaLimit + 1) : score;
-    int32_t current = sharedBeta.load(std::memory_order_relaxed);
-    while (score < current
-        && !sharedBeta.compare_exchange_weak(
-            current, score, std::memory_order_relaxed, std::memory_order_relaxed)) {
-    }
-}
-
-inline void loadSharedRootBounds(
-    const std::atomic<int32_t>& sharedAlpha,
-    const std::atomic<int32_t>& sharedBeta,
-    int32_t& alpha,
-    int32_t& beta) noexcept {
-    alpha = sharedAlpha.load(std::memory_order_relaxed);
-    beta = sharedBeta.load(std::memory_order_relaxed);
-}
-
 } // namespace
 
 constexpr int32_t Searcher::initialBest(bool isWhite) noexcept {
@@ -210,16 +176,6 @@ bool Searcher::isPromotionMove(const chess::Board& board, const chess::Board::Mo
     return toRank == chess::Board::promotionRank(board.getColor(move.from.index) == chess::Board::WHITE);
 }
 
-bool Searcher::isEnPassantCapture(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    const uint8_t fromPieceType = board.get(move.from) & chess::Board::MASK_PIECE_TYPE;
-    if (fromPieceType != chess::Board::PAWN) return false;
-    if (board.get(move.to) != chess::Board::EMPTY) return false;
-    if (chess::Board::file(move.from.index) == chess::Board::file(move.to.index)) return false;
-
-    const chess::Coords ep = board.getEnPassant();
-    return chess::Coords::isInBounds(ep) && (move.to == ep);
-}
-
 bool Searcher::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
     const bool isPromo = isPromotionMove(b, m);
     return doMoveWithPromotion(b, m, state, isPromo);
@@ -321,7 +277,7 @@ chess::Board::Move Searcher::searchBestMove(
     softResetHistory(runtime);
 
     // Macro-step 3: Run iterative deepening on the provided board.
-    IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth, false);
+    IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth);
     runtime.depth = targetDepth;
 
     // Macro-step 4: Return terminal/completed search result, or deterministic fallback when interrupted/empty.
@@ -1034,7 +990,7 @@ int32_t Searcher::quiescenceSearch(
         }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
-            b, standPat, alpha, beta, ply, usIsWhite, runtime.depth);
+            b, standPat, alpha, beta, ply, usIsWhite);
         if (!movePicker.hasNext()) {
             return standPat;
         }
@@ -1332,11 +1288,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     chess::Board& rootBoard,
     SearchRuntime& runtime,
     uint64_t startDepth,
-    uint64_t targetDepth,
-    bool allowStop) noexcept {
+    uint64_t targetDepth) noexcept {
     // Macro-step 1: Initialize iterative-deepening bounds and root legal move set.
-    (void)allowStop; // kept for API compatibility with Engine flow.
-
+    
     IterativeSearchResult result;
     const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
     const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);

@@ -241,8 +241,7 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
         rootBoard,
         this->searchRuntime,
         Engine::DEFAULTDEPTH,
-        Engine::MAX_PLY,
-        true);
+        Engine::MAX_PLY);
 
     this->ponderCurrentDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
     this->ponderLastCompletedDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);

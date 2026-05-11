@@ -79,8 +79,7 @@ public:
         chess::Board& rootBoard,
         SearchRuntime& runtime,
         uint64_t startDepth,
-        uint64_t targetDepth,
-        bool allowStop) noexcept;
+        uint64_t targetDepth) noexcept;
 
     static chess::Board::Move getBestMove(
         chess::Board& rootBoard,
@@ -172,7 +171,6 @@ private:
         int ply) noexcept;
 
     static bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
-    static bool isEnPassantCapture(const chess::Board& board, const chess::Board::Move& move) noexcept;
     static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
     static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state,
                                     bool isPromotion) noexcept;
