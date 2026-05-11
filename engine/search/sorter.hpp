@@ -16,6 +16,44 @@ public:
     static constexpr int MAX_PLY = 64;
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
 
+    // Move ordering score thresholds
+    static constexpr int32_t HASH_MOVE_SCORE = 100000;
+    static constexpr int32_t CAPTURE_BASE_SCORE = 10000;
+    static constexpr int32_t KILLER_1_SCORE = 9000;
+    static constexpr int32_t KILLER_2_SCORE = 8500;
+    static constexpr int32_t COUNTER_MOVE_SCORE = 8200;
+    static constexpr int32_t CHECK_QUIET_SCORE = 8000;
+    static constexpr int32_t PROMOTION_BASE_SCORE = 7000;
+    static constexpr int32_t HISTORY_SCORE_MAX = 4000;
+    static constexpr int32_t HISTORY_SCORE_MIN = -2000;
+    
+    // King move ordering penalties/bonuses (opening phase)
+    static constexpr int32_t OPENING_KING_MOVE_PENALTY = 220;
+    static constexpr int32_t CASTLING_BONUS = 550;
+    static constexpr int OPENING_FULLMOVE_THRESHOLD = 10;
+    
+    // Tactical move scoring (qsearch)
+    static constexpr int32_t TACTICAL_PROMOTION_SCORE = 9000;
+    static constexpr int32_t FUTILITY_MARGIN = 100;
+    static constexpr int32_t MOVE_DELTA_MARGIN = 140;
+    static constexpr int32_t SEE_THRESHOLD_SHALLOW = -24;  // ply < 10
+    static constexpr int32_t SEE_THRESHOLD_MID = -12;      // 10 <= ply < 20
+    static constexpr int32_t SEE_THRESHOLD_DEEP = -4;      // ply >= 20
+
+    // Helper functions for promotion piece handling (inlined in header for guaranteed inlining)
+    static inline constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
+        switch (promotionPiece) {
+            case 'r': case 'R': return chess::Board::ROOK;
+            case 'b': case 'B': return chess::Board::BISHOP;
+            case 'n': case 'N': return chess::Board::KNIGHT;
+            default: return chess::Board::QUEEN;
+        }
+    }
+
+    static inline constexpr int32_t getPromotionValueDelta(char promotionPiece) noexcept {
+        return PIECE_VALUES[promotionPieceType(promotionPiece)] - PIECE_VALUES[chess::Board::PAWN];
+    }
+
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};

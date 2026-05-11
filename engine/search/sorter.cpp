@@ -9,14 +9,47 @@ namespace engine {
 
 namespace {
 
-constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
-    switch (promotionPiece) {
-        case 'r': case 'R': return chess::Board::ROOK;
-        case 'b': case 'B': return chess::Board::BISHOP;
-        case 'n': case 'N': return chess::Board::KNIGHT;
-        default: return chess::Board::QUEEN;
+// Helper struct to consolidate move parsing logic (reduce duplication between prepareMovePicker and sortTacticalMoves)
+struct ParsedMove {
+    uint8_t fromPieceType;
+    uint8_t toPieceType;
+    bool isCapture;
+    bool isEpCapture;
+    bool isPromotion;
+    uint8_t victimType;
+    
+    inline static ParsedMove parse(
+        const chess::Board& b,
+        const chess::Board::Move& m,
+        bool hasEnPassant,
+        const chess::Coords& enPassant,
+        uint8_t promotionRank) noexcept {
+        
+        const uint8_t fromPiece = b.get(m.from);
+        const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        const uint8_t toPiece = b.get(m.to);
+        const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
+        
+        const bool isEpCapture = hasEnPassant
+            && fromPieceType == chess::Board::PAWN
+            && toPieceType == chess::Board::EMPTY
+            && (m.to == enPassant)
+            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+        
+        const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
+        
+        return ParsedMove{
+            fromPieceType,
+            toPieceType,
+            isCapture,
+            isEpCapture,
+            isPromotion,
+            victimType
+        };
     }
-}
+};
 
 } // namespace
 
@@ -91,16 +124,16 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     bool isHashMove) noexcept {
         
     if (isHashMove) {
-        return 100000;
+        return HASH_MOVE_SCORE;
     }
 
     if (isCapture) {
         if (see < 0) {
-            return clampToInt32(-10000 + see);
+            return clampToInt32(-CAPTURE_BASE_SCORE + see);
         }
-        int32_t score = 10000 + MVV_TABLE[victimType];
+        int32_t score = CAPTURE_BASE_SCORE + MVV_TABLE[victimType];
         if (isPromotionCandidate) {
-            score += PIECE_VALUES[promotionPieceType(m.promotionPiece)];
+            score += Sorter::getPromotionValueDelta(m.promotionPiece);
         }
         score += std::min<int32_t>(
             500,
@@ -110,30 +143,30 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(
     }
 
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        if (sameFromTo(m, ctx.killerMoves[0][ctx.ply])) return 9000;
-        if (sameFromTo(m, ctx.killerMoves[1][ctx.ply])) return 8500;
+        if (sameFromTo(m, ctx.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
+        if (sameFromTo(m, ctx.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
     }
 
     if (ctx.previousMove != nullptr && ctx.previousMove->from.index < 64) {
         const uint16_t counter = ctx.counterMoves[ctx.previousMove->from.index][ctx.previousMove->to.index];
         if (counter != 0
             && counter == TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
-            return 8200;
+            return COUNTER_MOVE_SCORE;
         }
     }
 
     int32_t score = 0;
     if (moveIndex < 8 && ctx.oppKingSq < 64 && !isPromotionCandidate && fromPieceType != chess::Board::KING
         && givesCheckAfterQuietMoveFast(ctx.b, m, fromPieceType, ctx.usSide, ctx.oppKingSq, ctx.occ)) {
-        score = 8000;
+        score = CHECK_QUIET_SCORE;
     }
 
     if (score == 0 && isPromotionCandidate) {
-        score = 7000 + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
+        score = PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
     }
 
     if (score == 0 && ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        score = std::min(4000, std::max(-2000, static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index])));
+        score = std::min(HISTORY_SCORE_MAX, std::max(HISTORY_SCORE_MIN, static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index])));
     }
 
     if (fromPieceType == chess::Board::PAWN && ctx.isEndgameOrdering) {
@@ -331,24 +364,15 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
 
     bool hashMoveFound = false;
 
-    //FIXME: trasforma in funzione helper
     // Macro-step 4: Score every move with copied ordering policy.
     for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
         const auto& m = picker.moves[moveIndex];
-        const uint8_t fromPiece = b.get(m.from);
-        const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-
-        const uint8_t toPiece = b.get(m.to);
-        const uint8_t toPieceType = toPiece & chess::Board::MASK_PIECE_TYPE;
-        const bool isEpCapture = hasEnPassant
-            && fromPieceType == chess::Board::PAWN
-            && toPieceType == chess::Board::EMPTY
-            && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t epVictimType = chess::Board::PAWN;
-        const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
-        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
+        const ParsedMove pm = ParsedMove::parse(b, m, hasEnPassant, enPassant, promotionRank);
+        
+        const uint8_t fromPieceType = pm.fromPieceType;
+        const bool isCapture = pm.isCapture;
+        const uint8_t victimType = pm.victimType;
+        const bool isPromotionCandidate = pm.isPromotion;
 
         bool isHashMove = false;
         if (isHashMoveProbed && sameFromTo(m, hashFrom, hashTo) && m.promotionPiece == hashPromo) {
@@ -374,11 +398,10 @@ Sorter::MovePickerData Sorter::prepareMovePicker(
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));
             const bool isCastling = (fileDelta == 2);
 
-	    //FIXME: Elimina costanti magiche
-            if (fullMoveClock < 10 && !inCheck && !isCastling) {
-                score -= 220; // opening-only ordering penalty
+            if (fullMoveClock < OPENING_FULLMOVE_THRESHOLD && !inCheck && !isCastling) {
+                score -= OPENING_KING_MOVE_PENALTY;
             } else if (isCastling) {
-                score += 550; // keep castling high priority without overpowering tactical quiets
+                score += CASTLING_BONUS;
             }
         }
 
@@ -480,28 +503,19 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     // Shallow qsearch (ply < 10): SEE >= -24cp (small tactical losses)
     // Mid qsearch (10-20): SEE >= -12cp (conservative)
     // Deep qsearch (ply >= 20): SEE >= -4cp (almost neutral or better)
-    //FIXME: Elimina numeri magici
-    const int32_t seeThreshold = (ply < 10) ? -24 : ((ply < 20) ? -12 : -4);
+    const int32_t seeThreshold = (ply < 10) ? SEE_THRESHOLD_SHALLOW : ((ply < 20) ? SEE_THRESHOLD_MID : SEE_THRESHOLD_DEEP);
 
-    //FIXME: Trasforma in funzione helper
     // Macro-step 3: Filter and score tactical moves with copied qsearch policy.
     for (int i = 0; i < tacticalMoves.size; ++i) {
         const auto& m = tacticalMoves[i];
-        const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-        const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-        const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
-        const bool isEpCapture = hasEnPassant
-            && fromPieceType == chess::Board::PAWN
-            && toPieceType == chess::Board::EMPTY
-            && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t epVictimType = chess::Board::PAWN;
-        const uint8_t victimType = isEpCapture ? epVictimType : toPieceType;
+        const ParsedMove pm = ParsedMove::parse(b, m, hasEnPassant, enPassant, promotionRank);
+        
+        const bool isPromotion = pm.isPromotion;
+        const bool isCapture = pm.isCapture;
+        const uint8_t victimType = pm.victimType;
 
         int32_t score = 0;
-      
-        //FIXME: Trasforma in funzione helper
+
         if (isCapture) {
             // TODO test this better!!
             // ============================================================================
@@ -511,10 +525,8 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             // This is aggressive pruning based on material value alone.
             int32_t capturedValue = PIECE_VALUES[victimType];
             if (isPromotion) {
-                const uint8_t promoType = promotionPieceType(m.promotionPiece);
-                capturedValue += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
+                capturedValue += Sorter::getPromotionValueDelta(m.promotionPiece);
             }
-            static constexpr int32_t FUTILITY_MARGIN = 100; // Minimal margin - prioritize material!
 
             // Check if this capture can possibly improve our position enough
             if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha, beta, usIsWhite)) {
@@ -533,20 +545,18 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             // PER-MOVE DELTA PRUNING: prune captures that can't improve position
             // Even if this capture is "good" by SEE, if standPat + captureValue + margin
             // still can't reach alpha/beta, skip it
-            static constexpr int32_t MOVE_DELTA_MARGIN = 140; // Slightly wider tactical margin.
-
             if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) {
                 continue; // Per-move delta pruning
             }
 
             // Score by MVV + SEE for better ordering
             // SEE-based ordering: captures with better SEE explored first
-            score = clampToInt32(10000 + see + MVV_TABLE[victimType]);
+            score = clampToInt32(CAPTURE_BASE_SCORE + see + MVV_TABLE[victimType]);
             // Total: 10000 + see + MVV (1000-9000)
         } else {
             // Non-capture: must be a promotion
             if (isPromotion) {
-                score = 9000; // Promotion (high priority)
+                score = TACTICAL_PROMOTION_SCORE;
             } else {
                 continue;
             }
