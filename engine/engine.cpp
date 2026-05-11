@@ -97,10 +97,18 @@ Engine::Engine()
     searchRuntime.maxThreads = omp_get_max_threads();
     bindSearchRuntime();
     this->tt.clear();
+    this->ponderingThread = std::thread([this] { this->ponderWorkerLoop(); });
 }
 
 Engine::~Engine() noexcept {
-    this->stopPondering();
+    {
+        std::lock_guard<std::mutex> lock(this->ponderingMutex);
+        this->ponderingWorkerStopping = true;
+        this->ponderingWorkReady = false;
+    }
+    this->requestStopPondering();
+    this->ponderingCv.notify_one();
+    if (this->ponderingThread.joinable()) this->ponderingThread.join();
 }
 
 void Engine::reset() noexcept {
@@ -310,26 +318,28 @@ void Engine::startPondering() noexcept {
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
     this->ponderingActive.store(true, std::memory_order_release);
-
-    try {
-        this->ponderingThread = std::thread([this, rootBoard = std::move(rootBoard)]() mutable {
-            this->ponderLoop(std::move(rootBoard));
-        });
-    } catch (...) {
-        this->ponderingActive.store(false, std::memory_order_release);
-        this->ponderingStopRequested.store(false, std::memory_order_release);
-        this->stopSearchRequested.store(false, std::memory_order_release);
+    {
+        std::lock_guard<std::mutex> lock(this->ponderingMutex);
+        this->ponderingBoard = std::move(rootBoard);
+        this->ponderingWorkReady = true;
     }
+    this->ponderingCv.notify_one();
 }
 
 void Engine::stopPondering() noexcept {
-    const bool hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed)
-        || this->ponderingThread.joinable();
+    bool hadActivePonder = false;
+    {
+        std::lock_guard<std::mutex> lock(this->ponderingMutex);
+        hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed) || this->ponderingWorkReady;
+    }
 
     this->requestStopPondering();
 
-    if (this->ponderingThread.joinable()) {
-        this->ponderingThread.join();
+    {
+        std::unique_lock<std::mutex> lock(this->ponderingMutex);
+        this->ponderingCv.wait(lock, [this] {
+            return !this->ponderingWorkReady && !this->ponderingActive.load(std::memory_order_relaxed);
+        });
     }
 
     this->ponderingActive.store(false, std::memory_order_release);
@@ -346,6 +356,25 @@ void Engine::stopPondering() noexcept {
                       << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
                       << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n");
     }
+}
+
+void Engine::ponderWorkerLoop() noexcept {
+    while (true) {
+        chess::Board rootBoard;
+        {
+            std::unique_lock<std::mutex> lock(this->ponderingMutex);
+            this->ponderingCv.wait(lock, [this] {
+                return this->ponderingWorkReady || this->ponderingWorkerStopping;
+            });
+            if (this->ponderingWorkerStopping) break;
+            rootBoard = std::move(this->ponderingBoard);
+            this->ponderingWorkReady = false;
+        }
+        this->ponderLoop(std::move(rootBoard));
+        this->ponderingCv.notify_all();
+    }
+    this->ponderingActive.store(false, std::memory_order_release);
+    this->ponderingCv.notify_all();
 }
 
 void Engine::stopThinking() noexcept {

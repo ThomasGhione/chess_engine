@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -105,6 +106,11 @@ private:
 
     // Search/pondering coordination
     std::thread ponderingThread;
+    std::mutex ponderingMutex;
+    std::condition_variable ponderingCv;
+    chess::Board ponderingBoard {};
+    bool ponderingWorkReady = false;
+    bool ponderingWorkerStopping = false;
     std::atomic<bool> ponderingStopRequested {false};
     std::atomic<bool> ponderingActive {false};
     std::atomic<bool> stopSearchRequested {false};
@@ -134,6 +140,7 @@ private:
     bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
+    void ponderWorkerLoop() noexcept;
     void ponderLoop(chess::Board&& rootBoard) noexcept;
 };
 
