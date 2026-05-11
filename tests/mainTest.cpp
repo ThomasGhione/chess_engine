@@ -48,6 +48,14 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
     assert(runtime.nodesSearched == 0);
 }
 
+void testBoardMoveRejectsWrongSideToMove() {
+    chess::Board board;
+    assert(!board.move(chess::Coords("e7"), chess::Coords("e5")));
+    assert(board.getActiveColor() == chess::Board::WHITE);
+    assert(board.move(chess::Coords("e2"), chess::Coords("e4")));
+    assert(!board.move(chess::Coords("d2"), chess::Coords("d4")));
+}
+
 } // namespace
 
 int main(){
@@ -55,4 +63,5 @@ int main(){
     pieces::initMagicBitboards();
     testQuiescenceScoresThreefoldAsDrawBeforeStaticEval();
     testRootDrawTerminalDoesNotSearchFallbackMove();
+    testBoardMoveRejectsWrongSideToMove();
 }

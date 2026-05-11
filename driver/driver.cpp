@@ -314,12 +314,11 @@ void Driver::playerTurn() noexcept {
             playerInput += 'q';
         }
 
-        const std::string testMoves = uciMoves.empty() ? playerInput : uciMoves + " " + playerInput;
-        uciInterface.parseCommand("position startpos moves " + testMoves);
-        
-        // Basic check if the move was applied correctly (lazy validaton using engine moveHistory size)
-        // If the moves count hasn't increased, the move was invalid for the engine
-        // Note: For a better validation, the engine should have a dedicated validation method!
+        const char movePromotion = (playerInput.length() == 5) ? playerInput[4] : '\0';
+        if (!engine.movePiece(fromCoords, toCoords, movePromotion)) {
+            std::cout << "Illegal move.\n";
+            continue;
+        }
         
         DBG_TIMER_US(moveTimer, "move executed");
 

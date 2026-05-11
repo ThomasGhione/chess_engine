@@ -6,6 +6,8 @@ namespace chess {
 
 bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
     const uint8_t moving = get(from.index);
+    if (moving == EMPTY || (moving & MASK_COLOR) != activeColor) [[unlikely]]
+        return false;
 
     if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(moving & MASK_COLOR), false)) [[unlikely]]
         return false;

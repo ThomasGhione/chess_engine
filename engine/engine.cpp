@@ -49,6 +49,15 @@ namespace {
     return {chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
 }
 
+[[nodiscard]] chess::Board::Move getFallbackPonderMove(
+    chess::Board& board,
+    const Searcher::SearchRuntime& sourceRuntime) noexcept {
+    Searcher::SearchRuntime runtime{};
+    runtime.maxThreads = sourceRuntime.maxThreads;
+    runtime.orderingPenaltySamePawnOpening = sourceRuntime.orderingPenaltySamePawnOpening;
+    return Searcher::searchBestMove(board, runtime, 1);
+}
+
 } // namespace
 
 char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
@@ -311,11 +320,18 @@ void Engine::startPondering() noexcept {
     chess::Board rootBoard = this->board;
     auto ponderMove = getTTPonderMove(rootBoard, this->tt);
     if (!chess::Coords::isInBounds(ponderMove.from)) { // did the TT fail?
-        ponderMove = Searcher::searchBestMove(rootBoard, this->searchRuntime, 1);
+        ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
     }
     if (!chess::Coords::isInBounds(ponderMove.from)) return; // did the fallback fail too?
 
-    if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) return;
+    if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
+        rootBoard = this->board;
+        ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
+        if (!chess::Coords::isInBounds(ponderMove.from)
+            || !rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
+            return;
+        }
+    }
 
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
