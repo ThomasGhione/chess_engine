@@ -9,7 +9,7 @@
 #include <omp.h>
 
 #include "../board/piece.hpp"
-#include "../debug_timer.hpp"
+#include "../debug.hpp"
 #include "eval/evaluator.hpp"
 
 namespace engine {

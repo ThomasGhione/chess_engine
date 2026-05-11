@@ -1,24 +1,59 @@
-#include "../evaluator.hpp"
+#pragma once
 
-#include <algorithm>
-#include <cstring>
+#ifdef DEBUG
+
+#include <chrono>
+#include <cstdint>
 #include <iostream>
+
+#include "engine/eval/evaluator.hpp"
+
+
+
+class DebugTimer {
+public:
+    void start() noexcept { t0_ = std::chrono::steady_clock::now(); }
+
+    void us(const char* label) const noexcept {
+        const auto t = std::chrono::steady_clock::now();
+        const std::chrono::duration<double, std::micro> d = t - t0_;
+        std::cout << "[DEBUG] " << label << ": " << d.count() << " us\n";
+    }
+
+    void ms(const char* label) const noexcept {
+        const auto t = std::chrono::steady_clock::now();
+        const std::chrono::duration<double, std::milli> d = t - t0_;
+        std::cout << "[DEBUG] " << label << ": " << d.count() << " ms\n";
+    }
+
+private:
+    std::chrono::steady_clock::time_point t0_{};
+};
+
+#define DBG_TIMER_DECLARE(name) DebugTimer name
+#define DBG_TIMER_START(name)   (name).start()
+#define DBG_TIMER_US(name, msg) (name).us(msg)
+#define DBG_TIMER_MS(name, msg) (name).ms(msg)
+#define DBG_LOG_STREAM(expr)    do { std::cout << expr; } while (0)
+#define DBG_ONLY(...)           do { __VA_ARGS__ } while (0)
+
+
 
 namespace engine {
 
-void Evaluator::traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept {
+inline void Evaluator::traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept {
     eval += delta;
-    std::cout << "  [TRACE] +" << label << ": " << eval << " (delta=" << delta << ")" << std::endl;
+    std::cout << "  [TRACE] +" << label << ": " << eval << " (delta=" << delta << ")\n";
 }
 
-int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
+inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return evaluateCheckmate(board);
     }
 
     int32_t eval = board.getIncrementalMaterialDelta();
     int32_t prev = eval;
-    std::cout << "  [TRACE] material: " << eval << std::endl;
+    std::cout << "  [TRACE] material: " << eval << '\n';
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
@@ -27,21 +62,19 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     const bool isMiddlegame = !phase.isEndgame && !phase.isOpening && !phase.isEarlyMiddlegame;
     const char* phaseLabel = phase.isEndgame ? "ENDGAME" : phase.isOpening ? "OPENING" : phase.isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
     std::cout << "  [TRACE] phase: " << phaseLabel << " (nonPawnMajors=" << phase.nonPawnMajors
-              << ", fullMoves=" << phase.fullMoves << ")" << std::endl;
+              << ", fullMoves=" << phase.fullMoves << ")\n";
 
     eval += board.getIncrementalPsqtDelta(phase.isEndgame);
-    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval - prev) << ")" << std::endl;
+    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval - prev) << ")\n";
     prev = eval;
 
     if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
     if (((board.bishops_bb[1] & (board.bishops_bb[1] - 1)) != 0ULL)) eval -= engine::BISHOP_PAIR_BONUS;
-    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval - prev) << ")" << std::endl;
-    prev = eval;
+    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval - prev) << ")\n";
 
     AttackData attackData[2] = {};
     ensureAttackData(attackData, board, occ);
 
-    // Evaluate using the SAME phase-specific terms as evaluate()
     if (phase.isOpening) {
         traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
         traceTerm(eval, evalEarlyQueen(board), "earlyQueen");
@@ -97,7 +130,6 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         traceTerm(eval, evalInitiative(board, false), "initiative");
         traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
     } else {
-        // Endgame
         traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
         traceTerm(eval, evalThreats(board, attackData, occ, true), "threats");
         traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, true), "pawnStructure");
@@ -114,8 +146,19 @@ int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         traceTerm(eval, evalInitiative(board, true), "initiative");
     }
 
-    std::cout << "  [TRACE] TOTAL: " << eval << std::endl;
+    std::cout << "  [TRACE] TOTAL: " << eval << '\n';
     return eval;
 }
 
 } // namespace engine
+
+#else
+
+#define DBG_TIMER_DECLARE(name)
+#define DBG_TIMER_START(name)   ((void)0)
+#define DBG_TIMER_US(name, msg) ((void)0)
+#define DBG_TIMER_MS(name, msg) ((void)0)
+#define DBG_LOG_STREAM(expr)    ((void)0)
+#define DBG_ONLY(...)           ((void)0)
+
+#endif

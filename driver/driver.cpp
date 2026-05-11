@@ -2,7 +2,7 @@
 
 #include "../engine/engine.hpp"
 #include "../uci/uci.hpp"
-#include "../debug_timer.hpp"
+#include "../debug.hpp"
 
 #include <cctype>
 #include <cstdlib>
