@@ -308,10 +308,13 @@ void Engine::startPondering() noexcept {
     this->stopPondering();
     this->clearPonderResult();
 
-    const auto ponderMove = getTTPonderMove(this->board, this->tt);
-    if (!chess::Coords::isInBounds(ponderMove.from)) return;
-
     chess::Board rootBoard = this->board;
+    auto ponderMove = getTTPonderMove(rootBoard, this->tt);
+    if (!chess::Coords::isInBounds(ponderMove.from)) { // did the TT fail?
+        ponderMove = Searcher::searchBestMove(rootBoard, this->searchRuntime, 1);
+    }
+    if (!chess::Coords::isInBounds(ponderMove.from)) return; // did the fallback fail too?
+
     if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) return;
 
     this->ponderingStopRequested.store(false, std::memory_order_release);
