@@ -35,10 +35,23 @@ void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     assert(qScore < 0);
 }
 
+void testRootDrawTerminalDoesNotSearchFallbackMove() {
+    chess::Board board("k7/8/8/8/8/8/8/KB6 w - - 0 1");
+    engine::Searcher::SearchRuntime runtime{};
+
+    const chess::Board::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
+
+    assert(!chess::Coords::isInBounds(bestMove.from));
+    assert(!chess::Coords::isInBounds(bestMove.to));
+    assert(runtime.eval == 0);
+    assert(runtime.nodesSearched == 0);
+}
+
 } // namespace
 
 int main(){
     // Initialize magic bitboards before running tests
     pieces::initMagicBitboards();
     testQuiescenceScoresThreefoldAsDrawBeforeStaticEval();
+    testRootDrawTerminalDoesNotSearchFallbackMove();
 }

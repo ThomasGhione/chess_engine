@@ -346,7 +346,12 @@ chess::Board::Move Searcher::searchBestMove(
     IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth, false);
     runtime.depth = targetDepth;
 
-    // Macro-step 4: Return best move or deterministic fallback when interrupted/empty.
+    // Macro-step 4: Return terminal/completed search result, or deterministic fallback when interrupted/empty.
+    if (result.terminalRoot || result.completedAnyDepth) {
+        runtime.eval = result.bestScore;
+        return result.bestMove;
+    }
+
     if (!result.hasLegalMoves || !result.completedAnyDepth) {
         MoveList<chess::Board::Move> fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
         if (fallbackMoves.is_empty()) {
@@ -1360,14 +1365,34 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     result.startDepth = firstDepth;
     result.targetDepth = maxDepth;
 
+    if (rootBoard.kings_bb[0] == 0) {
+        result.terminalRoot = true;
+        result.completedAnyDepth = true;
+        result.bestScore = NEG_INF;
+        runtime.eval = result.bestScore;
+        return result;
+    }
+    if (rootBoard.kings_bb[1] == 0) {
+        result.terminalRoot = true;
+        result.completedAnyDepth = true;
+        result.bestScore = POS_INF;
+        runtime.eval = result.bestScore;
+        return result;
+    }
+
+    int32_t rootDrawScore = 0;
+    if (checkDrawTerminalConditions(rootBoard, rootDrawScore)) {
+        result.terminalRoot = true;
+        result.completedAnyDepth = true;
+        result.bestScore = rootDrawScore;
+        runtime.eval = rootDrawScore;
+        return result;
+    }
+
     MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
-        if (rootBoard.kings_bb[0] == 0) {
-            result.bestScore = NEG_INF;
-        } else if (rootBoard.kings_bb[1] == 0) {
-            result.bestScore = POS_INF;
-        } else if (rootBoard.isCheckmate(toMove)) {
+        if (rootBoard.isCheckmate(toMove)) {
             result.bestScore = (toMove == chess::Board::WHITE) ? NEG_INF : POS_INF;
         } else if (rootBoard.isDraw(toMove)) {
             result.bestScore = 0;
