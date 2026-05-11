@@ -381,15 +381,4 @@ bool Board::isThreefoldRepetition() const noexcept {
     return false;
 }
 
-bool Board::isTwofoldRepetition() const noexcept {
-    if (historySize == 0) return false;
-    const uint64_t target = currentHash;
-    for (uint8_t i = historySize - 1; i > 0; --i) {
-        if (repetitionHistory[i - 1] == target) {
-            return true; // Position seen at least once before
-        }
-    }
-    return false;
-}
-
 }; // namespace chess

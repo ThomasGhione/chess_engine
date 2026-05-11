@@ -225,7 +225,6 @@ public:
     bool isFiftyMoveRule() const noexcept;
     bool isDraw(uint8_t color) const noexcept;
     bool isThreefoldRepetition() const noexcept;
-    bool isTwofoldRepetition() const noexcept;
     void fromFenToBoard(const std::string& fen);
     std::string fromBoardToFen() const;
     Coords getEnPassant() const noexcept;

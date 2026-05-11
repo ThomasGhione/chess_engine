@@ -823,22 +823,6 @@ int32_t Searcher::searchPosition(
         return drawScore;
     }
 
-    if (ply > 0) {
-        // Twofold is only a potential draw. Avoid premature draw cutoff when
-        // the side to move has enough blended material/static-eval leverage
-        // to keep pressing instead of accepting a repeat in conversion endgames.
-        if (b.isTwofoldRepetition()) {
-            const int32_t drawDelta = drawAdvantageScore(b);
-            const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
-            const bool sideToMoveAhead = whiteToMove
-                ? (drawDelta > REPETITION_DRAW_ADVANTAGE_THRESHOLD)
-                : (drawDelta < -REPETITION_DRAW_ADVANTAGE_THRESHOLD);
-            if (!sideToMoveAhead) {
-                return repetitionDrawScore(b);
-            }
-        }
-    }
-
     if (depth <= 0) {
         return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
