@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <string>
+#include <thread>
 #include <string_view>
 
 namespace engine {
@@ -13,6 +16,7 @@ class UCI {
 public:
 
     UCI(engine::Engine& engine);
+    ~UCI() noexcept;
 
     engine::Engine& engine;
 
@@ -34,6 +38,14 @@ public:
 
 private:
 
+    std::thread searchThread;
+    std::mutex searchMutex;
+    std::string searchBestMove = "0000";
+    bool searchPonder = false;
+    bool searchDone = false;
+    bool searchPrinted = true;
+
+    void finishSearch(bool requestStop, bool printBestMove) noexcept;
     void parseMoves(std::string_view moves) noexcept;
     void parseFEN(std::string_view fen) noexcept;
 

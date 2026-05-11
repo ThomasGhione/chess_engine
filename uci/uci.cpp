@@ -297,10 +297,40 @@ namespace {
             static_cast<uint8_t>('8' - rank));
     }
 
+    static std::string ponderSuffix(const engine::Engine& engine, const chess::Board::Move& bestMove) noexcept {
+        chess::Board board = engine.board;
+        if (!board.move(bestMove.from, bestMove.to, bestMove.promotionPiece)) return {};
+
+        uint16_t encodedMove = 0;
+        if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
+
+        const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
+        const chess::Board::Move ponderMove{chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
+        return board.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)
+            ? (" ponder " + ponderMove.toUCIString())
+            : std::string{};
+    }
+
 }
 
 namespace uci {
     UCI::UCI(engine::Engine& e) : engine(e) {}
+
+    UCI::~UCI() noexcept {
+        finishSearch(true, false);
+    }
+
+    void UCI::finishSearch(bool requestStop, bool printBestMove) noexcept {
+        if (requestStop) engine.stopThinking();
+        if (searchThread.joinable()) searchThread.join();
+
+        std::lock_guard<std::mutex> lock(searchMutex);
+        if (printBestMove && !searchPrinted) {
+            std::cout << "bestmove " << searchBestMove << '\n';
+            std::cout.flush();
+            searchPrinted = true;
+        }
+    }
 
     [[noreturn]] void UCI::mainLoop() noexcept {
         std::string command;
@@ -314,7 +344,10 @@ namespace uci {
 
     void UCI::parseCommand(std::string_view command) noexcept {
         string_view args;
-        if (command == "quit") return quit();
+        if (command == "quit") {
+            finishSearch(true, true);
+            return quit();
+        }
         if (command == "uci") return uci();
         if (command == "ucinewgame") return ucinewgame();
         if (command == "isready") return isready();
@@ -418,7 +451,7 @@ namespace uci {
     }
 
     void UCI::position(std::string_view command) noexcept {
-        engine.stopThinking();
+        finishSearch(true, false);
         string_view moves;
 
         if (command.starts_with("startpos") && (command.size() == 8 || isSpace(command[8]))) {
@@ -447,7 +480,7 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
-        engine.stopThinking();
+        finishSearch(true, false);
         engine.reset();
     }
 
@@ -457,16 +490,25 @@ namespace uci {
     }
     
     void UCI::go(std::string_view args) noexcept {
+        finishSearch(true, false);
         uint64_t requestedDepth = engine::Engine::DEFAULTDEPTH;
+        bool ponder = false;
+        bool explicitDepth = false;
 
         while (!args.empty()) {
             const string_view token = nextToken(args);
             if (token.empty()) break;
 
+            if (token == "ponder") {
+                ponder = true;
+                continue;
+            }
+
             if (token == "depth") {
                 int depth = 0;
                 if (parseInt(nextToken(args), depth) && depth >= 0) {
                     requestedDepth = static_cast<uint64_t>(depth);
+                    explicitDepth = true;
                 }
                 continue;
             }
@@ -477,16 +519,52 @@ namespace uci {
             }
         }
 
-        engine.stopThinking();
-        const chess::Board::Move bestMove = engine.searchUCI(requestedDepth);
-        std::cout << "bestmove " << bestMove.toUCIString() << '\n';
+        if (ponder && !explicitDepth) requestedDepth = engine::Engine::MAX_PLY;
+        {
+            std::lock_guard<std::mutex> lock(searchMutex);
+            searchBestMove = "0000";
+            searchPonder = ponder;
+            searchDone = false;
+            searchPrinted = false;
+        }
+        try {
+            searchThread = std::thread([this, requestedDepth, ponder] {
+                const chess::Board::Move move = engine.searchUCI(requestedDepth);
+                std::string bestMove = move.toUCIString();
+                if (!ponder) bestMove += ponderSuffix(engine, move);
+                std::lock_guard<std::mutex> lock(searchMutex);
+                searchBestMove = bestMove;
+                searchDone = true;
+                if (!searchPonder && !searchPrinted) {
+                    std::cout << "bestmove " << searchBestMove << '\n';
+                    std::cout.flush();
+                    searchPrinted = true;
+                }
+            });
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(searchMutex);
+            searchDone = true;
+            if (!ponder) {
+                std::cout << "bestmove 0000\n";
+                std::cout.flush();
+                searchPrinted = true;
+            }
+        }
     }
     
     void UCI::stop() noexcept {
-        engine.stopThinking();
+        finishSearch(true, true);
     }
 
-    void UCI::ponderhit() noexcept {}
+    void UCI::ponderhit() noexcept {
+        std::lock_guard<std::mutex> lock(searchMutex);
+        searchPonder = false;
+        if (searchDone && !searchPrinted) {
+            std::cout << "bestmove " << searchBestMove << '\n';
+            std::cout.flush();
+            searchPrinted = true;
+        }
+    }
 
     void UCI::parseMoves(std::string_view moves) noexcept {
         moves = trimLeft(moves);

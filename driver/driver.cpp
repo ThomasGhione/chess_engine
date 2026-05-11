@@ -336,19 +336,12 @@ void Driver::engineTurn() noexcept {
     DBG_TIMER_DECLARE(engineSearchTimer);
     DBG_TIMER_START(engineSearchTimer);
     
-    // Using UCI to drive the engine search!
-    std::string goCmd = "go depth " + std::to_string(engine.DEFAULTDEPTH);
-    uciInterface.parseCommand(goCmd);
-    
-    // UCI's go command does not apply the move itself, it just finds the bestmove.
-    // We append the found move to our UCI string and force board update!
+    engine.search(engine.DEFAULTDEPTH);
     const std::string engineMove = engine.bestMove.toUCIString();
     
     if (uciMoves.empty()) uciMoves = engineMove;
     else uciMoves += " " + engineMove;
-    
-    uciInterface.parseCommand("position startpos moves " + uciMoves);
-    
+
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
     DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
 }
