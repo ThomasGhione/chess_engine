@@ -41,6 +41,14 @@ namespace {
     return true;
 }
 
+[[nodiscard]] bool applyTTPonderMove(chess::Board& board, const TranspositionTable& tt) noexcept {
+    uint16_t encodedMove = 0;
+    if (!tt.probeMove(board.getHash(), encodedMove)) return false;
+
+    const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
+    return board.move(chess::Coords{move.from}, chess::Coords{move.to}, move.promo);
+}
+
 } // namespace
 
 char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
@@ -292,13 +300,16 @@ void Engine::startPondering() noexcept {
     this->stopPondering();
     this->clearPonderResult();
 
+    chess::Board rootBoard = this->board;
+    if (!applyTTPonderMove(rootBoard, this->tt)) return;
+
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
     this->ponderingActive.store(true, std::memory_order_release);
 
     try {
-        this->ponderingThread = std::thread([this, rootBoard = chess::Board(this->board)]() mutable {
+        this->ponderingThread = std::thread([this, rootBoard = std::move(rootBoard)]() mutable {
             this->ponderLoop(std::move(rootBoard));
         });
     } catch (...) {
