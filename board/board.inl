@@ -419,5 +419,5 @@ inline bool Board::isStalemate(uint8_t color) const noexcept {return !inCheck(co
 inline bool Board::isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
 
 inline bool Board::isDraw(uint8_t color) const noexcept {
-    return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition();
+    return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw();
 }

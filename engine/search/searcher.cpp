@@ -179,11 +179,7 @@ bool Searcher::checkDrawTerminalConditions(
         return true;
     }
 
-    const uint64_t heavyMaterial =
-        b.pawns_bb[0] | b.pawns_bb[1] |
-        b.rooks_bb[0] | b.rooks_bb[1] |
-        b.queens_bb[0] | b.queens_bb[1];
-    if (heavyMaterial == 0ULL && hasInsufficientMaterialDraw(b)) [[unlikely]] {
+    if (b.hasInsufficientMaterialDraw()) [[unlikely]] {
         outScore = 0;
         return true;
     }
@@ -271,24 +267,6 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
     const int32_t contempt = std::clamp<int32_t>(
         scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
     return (drawDelta > 0) ? -contempt : contempt;
-}
-
-bool Searcher::hasInsufficientMaterialDraw(const chess::Board& b) noexcept {
-    const uint64_t wKnights = b.knights_bb[0];
-    const uint64_t bKnights = b.knights_bb[1];
-    const uint64_t wBishops = b.bishops_bb[0];
-    const uint64_t bBishops = b.bishops_bb[1];
-    const uint64_t wMinors = wKnights | wBishops;
-    const uint64_t bMinors = bKnights | bBishops;
-
-    if (wMinors == 0ULL && bMinors == 0ULL) {
-        return true;
-    }
-
-    const int wMinorCount = __builtin_popcountll(wMinors);
-    const int bMinorCount = __builtin_popcountll(bMinors);
-    return (wMinorCount <= 1 && bMinorCount == 0)
-        || (bMinorCount <= 1 && wMinorCount == 0);
 }
 
 void Searcher::rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept {

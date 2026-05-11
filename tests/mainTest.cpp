@@ -39,6 +39,7 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
     chess::Board board("k7/8/8/8/8/8/8/KB6 w - - 0 1");
     engine::Searcher::SearchRuntime runtime{};
 
+    assert(board.isDraw(board.getActiveColor()));
     const chess::Board::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
 
     assert(!chess::Coords::isInBounds(bestMove.from));

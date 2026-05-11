@@ -180,7 +180,6 @@ private:
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
     static int32_t drawAdvantageScore(const chess::Board& b) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
-    static bool hasInsufficientMaterialDraw(const chess::Board& b) noexcept;
 
     static void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
     static void updateMinMax(

@@ -381,4 +381,13 @@ bool Board::isThreefoldRepetition() const noexcept {
     return false;
 }
 
+bool Board::hasInsufficientMaterialDraw() const noexcept {
+    if (pawns_bb[0] || pawns_bb[1] || rooks_bb[0] || rooks_bb[1] || queens_bb[0] || queens_bb[1]) return false;
+    const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
+    const uint64_t bMinors = knights_bb[1] | bishops_bb[1];
+    return (wMinors == 0ULL && bMinors == 0ULL)
+        || (__builtin_popcountll(wMinors) <= 1 && bMinors == 0ULL)
+        || (__builtin_popcountll(bMinors) <= 1 && wMinors == 0ULL);
+}
+
 }; // namespace chess
