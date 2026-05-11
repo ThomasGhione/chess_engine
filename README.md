@@ -253,6 +253,7 @@ threats_secondary.json
 mobility_outposts.json
 mobility_outpost_details.json
 pinned_pieces.json
+hanging_pawns.json
 hanging_pieces.json
 rook_activity.json
 opening_fundamentals.json

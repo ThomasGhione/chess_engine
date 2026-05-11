@@ -23,11 +23,10 @@
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "KNIGHT_VALUE": "Integer(320, 345)",
-    "BISHOP_VALUE": "Integer(330, 360)",
-    "ROOK_VALUE": "Integer(500, 560)",
-    "QUEEN_VALUE": "Integer(930, 1030)"
+    "HANGING_MINOR_PENALTY": "Integer(-34, -16)",
+    "HANGING_ROOK_PENALTY": "Integer(-52, -26)",
+    "HANGING_QUEEN_PENALTY": "Integer(-75, -38)"
   },
-  "data_path": "material_values_data.npz",
-  "model_path": "material_values_model.pkl"
+  "data_path": "hanging_pieces_only_data.npz",
+  "model_path": "hanging_pieces_only_model.pkl"
 }
