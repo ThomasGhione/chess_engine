@@ -70,6 +70,7 @@ public:
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
+    bool isDraw() const noexcept;
     void updateGameResult() noexcept;
     uint8_t getActiveColor() const noexcept;
 

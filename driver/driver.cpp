@@ -215,6 +215,8 @@ void Driver::endGame() noexcept {
         std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
     } else if (engine.isStalemate()) {
         std::cout << "\nStalemate. Game drawn.\n";
+    } else if (engine.isDraw()) {
+        std::cout << "\nDraw.\n";
     }
 
     std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
