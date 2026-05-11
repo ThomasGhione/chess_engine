@@ -22,6 +22,27 @@ public:
     static constexpr int32_t MAX_PLY = 64;
     static constexpr int32_t CAPTURE_HISTORY_SLOTS = 2;
 
+    // Null move pruning thresholds
+    static constexpr int NULL_MOVE_VERIFICATION_DEPTH = 10;  // Verify null move if depth >= 10
+
+    // Quiescence search delta pruning thresholds
+    static constexpr int32_t QSEARCH_PAWN_PROMO_DELTA = 150;      // Bonus for near-promotion pawns
+    static constexpr int32_t QSEARCH_MATERIAL_BAD = -400;         // Material balance threshold (bad)
+    static constexpr int32_t QSEARCH_MATERIAL_WORSE = -200;       // Material balance threshold (worse)
+    static constexpr int32_t QSEARCH_MATERIAL_BAD_DELTA = 150;    // Delta margin if bad
+    static constexpr int32_t QSEARCH_MATERIAL_WORSE_DELTA = 75;   // Delta margin if worse
+    static constexpr int32_t QSEARCH_DEPTH_REDUCTION_THRESHOLD = 5;  // Reduce deltaMargin if qsearchDepth > 5
+    static constexpr int32_t QSEARCH_DEPTH_REDUCTION_PER_5 = 50;  // Reduce by 50cp per 5 plies
+    static constexpr int32_t QSEARCH_DELTAMARGIN_MIN = 960;  // Minimum delta margin (QUEEN_VALUE)
+
+    // Pawn promotion bitboards (rank 7/2 for white/black)
+    static constexpr uint64_t WHITE_NEAR_PROMO_PAWNS = 0x00FF000000000000ULL;  // Rank 7 (row 2)
+    static constexpr uint64_t BLACK_NEAR_PROMO_PAWNS = 0x000000000000FF00ULL;  // Rank 2 (row 7)
+
+    // Root search parallelization thresholds
+    static constexpr int YBWC_MIN_MOVES = 10;        // Min moves to enable YBWC
+    static constexpr int YBWC_MIN_DEPTH = DEFAULT_DEPTH - 2;  // Min depth to enable YBWC
+
     struct SearchMoveResult {
         chess::Board::Move move;
         int32_t score;

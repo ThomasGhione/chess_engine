@@ -372,8 +372,7 @@ bool Searcher::tryNullMovePruning(
     }
 
     bool confirmedCutoff = true;
-    //FIXME: Elimina numero magico
-    if (depth >= 10) {
+    if (depth >= NULL_MOVE_VERIFICATION_DEPTH) {
         const int32_t verifyScore = searchPosition(
             b, runtime, depth - reduction, alpha, beta, ply,
             useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
@@ -959,30 +958,29 @@ int32_t Searcher::quiescenceSearch(
         int32_t deltaMargin = QUEEN_VALUE;
         const int side = chess::Board::colorToIndex(activeColor);
         const uint64_t ourPawns = b.pawns_bb[side];
-        //FIXME: Eliminare costanti magiche
+        
         const uint64_t nearPromoPawns = usIsWhite
-            ? (ourPawns & 0x00FF000000000000ULL)
-            : (ourPawns & 0x000000000000FF00ULL);
+            ? (ourPawns & WHITE_NEAR_PROMO_PAWNS)
+            : (ourPawns & BLACK_NEAR_PROMO_PAWNS);
         if (nearPromoPawns) {
-            deltaMargin += 150;
+            deltaMargin += QSEARCH_PAWN_PROMO_DELTA;
         }
 
         const int32_t materialBalance = usIsWhite
             ? standPat
             : (standPat == NEG_INF ? POS_INF : -standPat);
-        //FIXME: Eliminare costanti magiche
-        if (materialBalance < -400) {
-            deltaMargin += 150;
-        } else if (materialBalance < -200) {
-            deltaMargin += 75;
+        
+        if (materialBalance < QSEARCH_MATERIAL_BAD) {
+            deltaMargin += QSEARCH_MATERIAL_BAD_DELTA;
+        } else if (materialBalance < QSEARCH_MATERIAL_WORSE) {
+            deltaMargin += QSEARCH_MATERIAL_WORSE_DELTA;
         }
 
-        //FIXME: Eliminare costanti magiche
         const int runtimeDepth = runtime.depth;
         const int qsearchDepth = std::max(0, ply - runtimeDepth);
-        if (qsearchDepth > 5) {
-            deltaMargin -= 50 * ((qsearchDepth - 5) / 5);
-            deltaMargin = std::max(deltaMargin, QUEEN_VALUE);
+        if (qsearchDepth > QSEARCH_DEPTH_REDUCTION_THRESHOLD) {
+            deltaMargin -= QSEARCH_DEPTH_REDUCTION_PER_5 * ((qsearchDepth - QSEARCH_DEPTH_REDUCTION_THRESHOLD) / 5);
+            deltaMargin = std::max(deltaMargin, QSEARCH_DELTAMARGIN_MIN);
         }
 
         if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
@@ -998,7 +996,6 @@ int32_t Searcher::quiescenceSearch(
     }
 
     // Macro-step 4: Unified child visiting loop for both tactical and evasions
-    //FIXME: Eliminare costanti magiche
     const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
     while (movePicker.hasNext()) {
         const auto m = movePicker.nextMove();
@@ -1088,10 +1085,9 @@ chess::Board::Move Searcher::getBestMove(
     
     const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.moves;
 
-    const bool useYBWC = (rootMoves.size >= 10
-        && runtime.depth >= DEFAULT_DEPTH - 2);
+    const bool useYBWC = (rootMoves.size >= Searcher::YBWC_MIN_MOVES
+        && runtime.depth >= Searcher::YBWC_MIN_DEPTH);
 
-    //FIXME: Eliminare costanti magiche
     // Macro-step 2: Sequential PVS root search when YBWC is not profitable.
     if (!useYBWC) {
         for (int i = 0; i < rootMoves.size; ++i) {
