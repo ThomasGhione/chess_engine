@@ -225,7 +225,6 @@ private:
     static int32_t evalCastlingBonusCached(const chess::Board& b) noexcept;
     static int32_t evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalBadBishopCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int32_t evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
     static int32_t evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept;
     static int32_t evalEarlyQueenCached(const chess::Board& b) noexcept;
     static int32_t evalOutpostsCached(const chess::Board& b) noexcept;

@@ -16,7 +16,7 @@ int32_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int32_t eval, uin
     eval += evalMobility(data);
     eval += (evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishopsCached(b);
+    eval += evalBlockedPawnByBishops(b);
 
     return eval;
 }
@@ -36,7 +36,7 @@ int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t e
     eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishopsCached(b);
+    eval += evalBlockedPawnByBishops(b);
 
     return eval;
 }
@@ -59,7 +59,7 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalKingAttackZone(b, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishopsCached(b);
+    eval += evalBlockedPawnByBishops(b);
 
     return eval;
 }

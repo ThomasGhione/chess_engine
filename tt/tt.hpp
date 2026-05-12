@@ -166,8 +166,6 @@ public:
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
     inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
-
-    inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
     inline void incrementGeneration() noexcept { ++generation_; }
@@ -461,42 +459,6 @@ inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
         }
         return false;
     }
-    return false;
-}
-
-inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
-                                      int32_t alpha, int32_t beta, int32_t& outScore, uint16_t& outBestMove) noexcept {
-    const uint8_t neededDepth = clampDepth(depth);
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
-    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-    const BucketSeq& bucketSeq = seqData()[bucketIndex];
-    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
-    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) {
-        outBestMove = 0;
-        return false;
-    }
-
-    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const EntrySnapshot& entry = snapshot[i];
-        if (entry.key != key) continue;
-
-        const uint8_t flag = Entry::flagFromPayload(entry.payload);
-        if (flag == Entry::INVALID) continue;
-
-        outBestMove = Entry::bestMoveFromPayload(entry.payload);
-        if (Entry::depthFromPayload(entry.payload) < neededDepth) return false;
-
-        const int32_t score = Entry::scoreFromPayload(entry.payload);
-        if (flag == Entry::EXACT
-            || (flag == Entry::LOWERBOUND && score >= beta)
-            || (flag == Entry::UPPERBOUND && score <= alpha)) {
-            outScore = score;
-            return true;
-        }
-        return false;
-    }
-
-    outBestMove = 0;
     return false;
 }
 

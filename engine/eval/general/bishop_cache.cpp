@@ -26,8 +26,4 @@ int32_t Evaluator::evalBadBishopCached(const chess::Board& b, uint64_t whitePawn
     return score;
 }
 
-int32_t Evaluator::evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept {
-    return evalBlockedPawnByBishops(b);
-}
-
 } // namespace engine
