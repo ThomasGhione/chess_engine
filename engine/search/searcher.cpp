@@ -60,11 +60,7 @@ void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool is
 }
 
 constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
-    const int64_t standPat64 = static_cast<int64_t>(standPat);
-    const int64_t margin64 = static_cast<int64_t>(margin);
-    const int64_t alpha64 = static_cast<int64_t>(alpha);
-    const int64_t beta64 = static_cast<int64_t>(beta);
-    return isWhite ? (standPat64 + margin64 < alpha64) : (standPat64 - margin64 > beta64);
+    return isWhite ? (standPat + margin < alpha) : (standPat - margin > beta);
 }
 
 constexpr int32_t Searcher::cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept {
@@ -75,10 +71,6 @@ constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, in
     return isWhite ? (score > alphaBound) : (score < betaBound);
 }
 
-void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
-    ttAlpha = alpha;
-    ttBeta  = beta;
-}
 
 constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
@@ -353,10 +345,7 @@ bool Searcher::handleSearchPrelude(
     if (depth >= 2) runtime.transpositionTable->prefetch(hashKey);
 
     int32_t ttScore = 0;
-    int32_t ttAlpha = 0;
-    int32_t ttBeta = 0;
-    toTTProbeBounds(bounds.alpha, bounds.beta, ttAlpha, ttBeta);
-    if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), ttAlpha, ttBeta, ttScore)) {
+    if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, ttScore)) {
         score = ttScore;
         return true;
     }
@@ -524,7 +513,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     bool searchedAnyMove = false;
 
     struct QuietEntry { uint8_t from; uint8_t to; };
-    //FIXME: Spostare fuori costanti
     constexpr int MAX_QUIETS_TRACKED = 64;
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
@@ -653,7 +641,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const int32_t searchAlpha = isFirstMove ? bounds.alpha : (usIsWhite ? bounds.alpha : saturatingSub32(bounds.beta, 1));
         const int32_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? saturatingAdd32(bounds.alpha, 1) : bounds.beta);
 
-	//FIXME: Trasformare in funzione helper
         int32_t score = 0;
         if (canReduce) {
             int32_t reduction = 1;
@@ -708,7 +695,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
-	//FIXME: Trasformare in funzione helper
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
@@ -763,7 +749,7 @@ int32_t Searcher::searchPosition(
     }
 
     // Macro-step 2: Terminal/repetition/mate-distance pruning and TT prelude.
-    const bool isPVNode = (static_cast<int64_t>(beta) - static_cast<int64_t>(alpha) > 1);
+    const bool isPVNode = (beta - alpha > 1);
 
     if (ply > 0) {
         const int32_t matingAlpha = NEG_INF + ply;
@@ -924,10 +910,7 @@ int32_t Searcher::quiescenceSearch(
     if (canUseTT) {
         const uint64_t hashKey = b.getHash();
         int32_t ttScore = 0;
-        int32_t ttAlpha = 0;
-        int32_t ttBeta = 0;
-        toTTProbeBounds(alpha, beta, ttAlpha, ttBeta);
-        if (runtime.transpositionTable->probe(hashKey, 0, ttAlpha, ttBeta, ttScore)) {
+        if (runtime.transpositionTable->probe(hashKey, 0, alpha, beta, ttScore)) {
             return ttScore;
         }
     }
@@ -968,12 +951,11 @@ int32_t Searcher::quiescenceSearch(
         }
         updateBound(standPat, alpha, beta, usIsWhite);
 
-        static const int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
+        const int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
         if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
             return usIsWhite ? alpha : beta;
         }
 
-        //FIXME: Chiamare namespace
         int32_t deltaMargin = QUEEN_VALUE;
         const int side = chess::Board::colorToIndex(activeColor);
         const uint64_t ourPawns = b.pawns_bb[side];
@@ -1024,7 +1006,6 @@ int32_t Searcher::quiescenceSearch(
             return Evaluator::evaluate(b);
         }
 
-        // PRE-MOVE validations / checks could go here smoothly
         const uint8_t fromPiece = b.get(m.from.index);
         const uint8_t pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
         if (!inCheck) {
@@ -1148,8 +1129,6 @@ chess::Board::Move Searcher::getBestMove(
         if (searchedAnyMove) runtime.eval = bestScore;
         return bestMove;
     }
-    //FIXME: Eliminare scopo anonimo
-
     // Macro-step 3: YBWC root search (first move serial, remaining moves task-parallel).
     {
         const auto& firstMove = rootMoves[0];
@@ -1212,7 +1191,6 @@ chess::Board::Move Searcher::getBestMove(
         int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
         const int chunk = std::min(16, estimatedChunk);
 
-	    //FIXME: Eliminare indentazioni
         #pragma omp parallel num_threads(threadsToUse)
         {
             #pragma omp single nowait
@@ -1269,7 +1247,7 @@ chess::Board::Move Searcher::getBestMove(
         }
     }
 
-    localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.end(), localNodes);
+    localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.begin() + rootMoves.size, localNodes);
     runtime.nodesSearched += localNodes;
     runtime.eval = bestScore;
     return bestMove;
@@ -1282,7 +1260,6 @@ void Searcher::storeRootHashMove(
     int32_t score,
     SearchRuntime& runtime,
     uint8_t flag) noexcept {
-    //FIXME: Mettere in pre codizioni
     if (runtime.transpositionTable == nullptr) {
         return;
     }
@@ -1367,8 +1344,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         return (v >= 0) ? v : -v;
     };
 
-    //FIXME: Fare funzione helper
-    // Macro-step 2: Iterate depth-by-depth with aspiration windows when stable.
     for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (shouldAbortSearch(runtime)) {
             interruptedDepth = currentDepth;
