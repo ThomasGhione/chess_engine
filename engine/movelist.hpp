@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <utility>  // for std::forward
 #include <concepts>
 #include <algorithm> // for std::partial_sort
@@ -131,20 +132,26 @@ private:
     inline const T* ptr(size_t i) const noexcept { return reinterpret_cast<const T*>(&data[i]); }
 
     inline void copyFrom(const MoveList& other) noexcept(std::is_nothrow_copy_constructible_v<T>) {
-        size = 0;
-        for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(*other.ptr(i));
-            ++size;
+        size = other.size;
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(data, other.data, static_cast<size_t>(size) * sizeof(T));
+        } else {
+            for (int i = 0; i < size; ++i) {
+                new (&data[i]) T(*other.ptr(i));
+            }
         }
     }
 
     inline void moveFrom(MoveList&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
-        size = 0;
-        for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(std::move(*other.ptr(i)));
-            ++size;
+        size = other.size;
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(data, other.data, static_cast<size_t>(size) * sizeof(T));
+        } else {
+            for (int i = 0; i < size; ++i) {
+                new (&data[i]) T(std::move(*other.ptr(i)));
+            }
         }
-        other.clear();
+        other.size = 0;
     }
 
 };

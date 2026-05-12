@@ -838,7 +838,7 @@ int32_t Searcher::searchPosition(
     bool hasHashMove = false;
 
     Sorter::MovePickerData movePicker = Sorter::sortLegalMoves(
-        moves,
+        std::move(moves),
         ply,
         b,
         node.usIsWhite,

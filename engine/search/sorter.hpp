@@ -95,22 +95,8 @@ public:
     template <typename MoveType>
     static void insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept;
 
-    static MovePickerData prepareMovePicker(
-        const MoveList<chess::Board::Move>& moves,
-        int ply,
-        const chess::Board& b,
-        bool usIsWhite,
-        uint64_t hashKey,
-        const int16_t (&history)[2][64][64],
-        const chess::Board::Move (&killerMoves)[2][MAX_PLY],
-        const uint16_t (&counterMoves)[64][64],
-        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
-        const TranspositionTable* transpositionTable,
-        const chess::Board::Move* previousMove = nullptr,
-        int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
-
     static MovePickerData sortLegalMoves(
-        const MoveList<chess::Board::Move>& moves,
+        MoveList<chess::Board::Move> moves,
         int ply,
         const chess::Board& b,
         bool usIsWhite,
@@ -134,7 +120,7 @@ public:
         bool usIsWhite) noexcept;
 
     static MoveList<chess::Board::Move> sortEvasionsForcingFirst(
-        const MoveList<chess::Board::Move>& evasions,
+        MoveList<chess::Board::Move> evasions,
         const chess::Board& b) noexcept;
 
 private:

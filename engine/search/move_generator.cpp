@@ -471,7 +471,7 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(
     if (evasions.is_empty()) return engine::Sorter::MovePickerData{};
 
     engine::Sorter::MovePickerData data;
-    data.moves = engine::Sorter::sortEvasionsForcingFirst(evasions, b);
+    data.moves = engine::Sorter::sortEvasionsForcingFirst(std::move(evasions), b);
     data.size = data.moves.size;
     data.currentIndex = 0;
     return data;

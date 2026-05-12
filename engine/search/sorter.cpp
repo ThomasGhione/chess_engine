@@ -211,7 +211,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 }
 
 Sorter::MovePickerData Sorter::sortLegalMoves(
-    const MoveList<chess::Board::Move>& moves,
+    MoveList<chess::Board::Move> moves,
     int ply,
     const chess::Board& b,
     bool usIsWhite,
@@ -226,8 +226,8 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     int32_t orderingPenaltySamePawnOpening) noexcept {
 
     MovePickerData picker;
-    picker.moves = moves;
     picker.size  = moves.size;
+    picker.moves = std::move(moves);
     if (picker.moves.is_empty()) [[unlikely]] {
         if (outHashMoveIsLegal != nullptr) *outHashMoveIsLegal = false;
         return picker;
@@ -307,6 +307,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     picker.hashMoveIsLegal = hashMoveFound;
     if (outHashMoveIsLegal != nullptr) *outHashMoveIsLegal = hashMoveFound;
     return picker;
+
 }
 
 Sorter::MovePickerData Sorter::sortTacticalMoves(
@@ -388,7 +389,7 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m
         && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
 }
 
-MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(const MoveList<chess::Board::Move>& evasions, const chess::Board& b) noexcept {
+MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Board::Move> evasions, const chess::Board& b) noexcept {
     MoveList<chess::Board::Move> orderedEvasions;
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
