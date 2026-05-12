@@ -21,6 +21,7 @@ chess.exe
 /saves/
 /stockfish/
 /cutechess/
+CLAUDE.md
 
 # Local tuning artifacts
 /tuning/engines.json

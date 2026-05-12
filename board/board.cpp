@@ -55,22 +55,18 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             if (!(pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy) & toBit)) return false;
             return isKingSafeAfterMove(movingColor, fromIndex, toIndex, 0ULL);
         }
-        case KNIGHT: {
+        case KNIGHT:
             if ((pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
-        }
-        case BISHOP: {
+        case BISHOP:
             if ((pieces::generateMovesByType<BISHOP>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
-        }
-        case ROOK: {
+        case ROOK:
             if ((pieces::generateMovesByType<ROOK>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
-        }
-        case QUEEN: {
+        case QUEEN:
             if ((pieces::generateMovesByType<QUEEN>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
             return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
-        }
         case KING:
             return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
         default:
@@ -82,8 +78,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 // HELPER FUNCTIONS FOR isLegalPseudoMove
 // ============================================
 
-// Lazy double-check detection - called ONLY when inChk=true && fromType != KING
-[[nodiscard]] inline bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
+[[nodiscard]] bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
     const uint8_t side = colorToIndex(movingColor);
     if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
@@ -108,8 +103,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     return (attackers & (attackers - 1)) != 0ULL;
 }
 
-// King move validation (normal moves + castling)
-[[nodiscard]] inline bool Board::isKingMoveLegal(
+[[nodiscard]] bool Board::isKingMoveLegal(
     uint8_t fromIndex,
     uint8_t toIndex,
     uint64_t toBit,
@@ -136,8 +130,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     return true;
 }
 
-// Generic castling validation (consolidated logic)
-[[nodiscard]] inline bool Board::canCastleGeneric(
+[[nodiscard]] bool Board::canCastleGeneric(
     bool isWhite,
     uint8_t fromIndex,
     bool isKingside
@@ -167,28 +160,19 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if ((rooks_bb[side] & Board::bitMask(rookIdx)) == 0ULL)
         return false;
     
-    // Check castle path safety
-    const uint64_t castlePath = Board::bitMask(fromIndex) | Board::bitMask(sq1) | Board::bitMask(sq2);
-    uint64_t mask = castlePath;
-    while (mask) {
-        const uint8_t sq = __builtin_ctzll(mask);
-        mask &= mask - 1;
-        if (isSquareAttacked(sq, oppColor)) return false;
-    }
+    if (isSquareAttacked(fromIndex, oppColor)) return false;
+    if (isSquareAttacked(sq1, oppColor)) return false;
+    if (isSquareAttacked(sq2, oppColor)) return false;
     return true;
 }
 
-// King safety check for non-king, non-pawn pieces
-[[nodiscard]] inline bool Board::verifyKingSafetyForSimplePiece(
+[[nodiscard]] bool Board::verifyKingSafetyForSimplePiece(
     uint8_t fromIndex,
     uint8_t toIndex,
     uint8_t movingColor,
     uint8_t destPiece
 ) const noexcept {
-    // Note: own-color captures are already rejected by isLegalPseudoMove,
-    // so if destPiece != EMPTY it is guaranteed to be an enemy piece.
-    const uint64_t captureMask = static_cast<uint64_t>(-static_cast<int64_t>(destPiece != EMPTY));
-    const uint64_t capturedEnemyMask = Board::bitMask(toIndex) & captureMask;
+    const uint64_t capturedEnemyMask = (destPiece != EMPTY) ? Board::bitMask(toIndex) : 0ULL;
     return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
 }
 
@@ -339,45 +323,38 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     return false;
 }
 
+static void recomputeHashAndEp(Board& b, uint64_t& hash, uint8_t& epFile) noexcept {
+    hash = zobrist::computeHashKey(b);
+    epFile = 0xFF;
+    if (Coords::isInBounds(b.getEnPassant()) && zobrist::hasPseudoLegalEnPassantCapture(b, b.getEnPassant()))
+        epFile = b.getEnPassant().file();
+}
+
 void Board::rebuildRepetitionHistory() noexcept {
-    currentHash = zobrist::computeHashKey(*this);
-    epHashFile = 0xFF;
-    if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
-        epHashFile = enPassant.file();
-    }
+    recomputeHashAndEp(*this, currentHash, epHashFile);
     historySize = 0;
     repetitionHistory[historySize++] = currentHash;
 }
 
 void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
-    if (recomputeHash) {
-        currentHash = zobrist::computeHashKey(*this);
-        epHashFile = 0xFF;
-        if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
-            epHashFile = enPassant.file();
-        }
-    }
+    if (recomputeHash)
+        recomputeHashAndEp(*this, currentHash, epHashFile);
 
-    if (resetHistory) 
+    if (resetHistory)
         historySize = 0;
-    
+
     if (historySize >= repetitionHistory.size()) {
-        // Shift all entries one position to the left (discard oldest), using memmove for vectorization
         std::memmove(repetitionHistory.data(), repetitionHistory.data() + 1, (repetitionHistory.size() - 1) * sizeof(uint64_t));
-        historySize = repetitionHistory.size() - 1;
+        historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
     }
     repetitionHistory[historySize++] = currentHash;
 }
 
 bool Board::isThreefoldRepetition() const noexcept {
-    if (historySize < 3) return false;  // Can't have threefold with < 3 entries
-    
+    if (historySize < 3) return false;
     int count = 0;
-    // Count all occurrences of current position in history
-    for (uint8_t i = 0; i < historySize; ++i) {
-        if (repetitionHistory[i] == currentHash) {
-            if (++count >= 3) return true;
-        }
+    for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
+        if (*p == currentHash && ++count >= 3) return true;
     }
     return false;
 }
