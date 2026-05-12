@@ -394,15 +394,12 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Bo
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
 
-    // Two-pass stable partition: forcing moves first, quiet moves after.
-    for (int i = 0; i < evasions.size; ++i) {
+    for (int i = 0; i < evasions.size; ++i)
         if (isForcingEvasion(b, evasions[i], enPassant, hasEnPassant))
             orderedEvasions.push_back(evasions[i]);
-    }
-    for (int i = 0; i < evasions.size; ++i) {
+    for (int i = 0; i < evasions.size; ++i)
         if (!isForcingEvasion(b, evasions[i], enPassant, hasEnPassant))
             orderedEvasions.push_back(evasions[i]);
-    }
 
     return orderedEvasions;
 }

@@ -437,8 +437,31 @@ inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) c
 
 inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
                                       int32_t alpha, int32_t beta, int32_t& outScore) noexcept {
-    uint16_t ignoredBestMove = 0;
-    return probe(key, depth, alpha, beta, outScore, ignoredBestMove);
+    const uint8_t neededDepth = clampDepth(depth);
+    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    const BucketSeq& bucketSeq = seqData()[bucketIndex];
+    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
+
+    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+        const EntrySnapshot& entry = snapshot[i];
+        if (entry.key != key) continue;
+
+        const uint8_t flag = Entry::flagFromPayload(entry.payload);
+        if (flag == Entry::INVALID) continue;
+        if (Entry::depthFromPayload(entry.payload) < neededDepth) return false;
+
+        const int32_t score = Entry::scoreFromPayload(entry.payload);
+        if (flag == Entry::EXACT
+            || (flag == Entry::LOWERBOUND && score >= beta)
+            || (flag == Entry::UPPERBOUND && score <= alpha)) {
+            outScore = score;
+            return true;
+        }
+        return false;
+    }
+    return false;
 }
 
 inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
