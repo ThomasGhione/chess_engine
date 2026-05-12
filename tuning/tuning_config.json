@@ -23,11 +23,15 @@
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "ORDERING_PENALTY_SAME_PAWN_OPENING": "Integer(-28, -6)",
-    "CHECK_BONUS": "Integer(25, 90)",
-    "KILLER1_BONUS": "Integer(1500, 2600)",
-    "KILLER2_BONUS": "Integer(1400, 2500)"
+    "CASTLE_PAWN_SUPPORT_BONUS": "Integer(3, 9)",
+    "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(5, 12)",
+    "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(12, 24)",
+    "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(18, 32)",
+    "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
+    "KING_OPEN_DIAGONAL_PENALTY": "Integer(8, 16)",
+    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(115, 145)",
+    "KING_ATTACK_DANGER_CAP": "Integer(105, 145)"
   },
-  "data_path": "search_ordering_data.npz",
-  "model_path": "search_ordering_model.pkl"
+  "data_path": "king_safety_residual_data.npz",
+  "model_path": "king_safety_residual_model.pkl"
 }

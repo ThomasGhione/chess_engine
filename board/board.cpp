@@ -216,10 +216,9 @@ bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
     
     const uint64_t rookLike = rooks | queens;
-    const uint64_t bishopLike = bishops | queens;
-    if ((rookLike | bishopLike) == 0ULL) return false;
-
     if (rookLike && (pieces::getRookAttacks(kingSq, occ) & rookLike)) return true;
+
+    const uint64_t bishopLike = bishops | queens;
     if (bishopLike && (pieces::getBishopAttacks(kingSq, occ) & bishopLike)) return true;
     
     return false;
