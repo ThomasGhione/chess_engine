@@ -48,7 +48,6 @@ inline int32_t BISHOP_PAIR_BONUS = 32;
 // ===================================================
 // CASTLING
 // ===================================================
-inline int32_t CASTLING_BONUS = 18;
 inline int32_t KING_NON_CASTLING_PENALTY = 7;
 inline int32_t KING_LOST_CASTLING_RIGHTS_PENALTY = 17;
 inline int32_t LOSS_OF_CASTLING_PENALTY = 22;
@@ -58,7 +57,6 @@ inline int32_t LOSS_OF_CASTLING_PENALTY = 22;
 // ===================================================
 inline int32_t INIT_BONUS_MG = 3;
 inline int32_t INIT_BONUS_EG = 0;
-inline int32_t EARLY_ROOK_PENALTY = -24;
 inline int32_t DEVELOPMENT_BONUS = 6;
 
 // ===================================================
@@ -95,8 +93,6 @@ inline int32_t HANGING_HOOK_PAWN_PENALTY = -16;
 inline int32_t HANGING_MINOR_PENALTY = -25;
 inline int32_t HANGING_ROOK_PENALTY = -35;
 inline int32_t HANGING_QUEEN_PENALTY = -50;
-inline int32_t UNDEFENDED_PAWN_PENALTY = -10;
-inline int32_t ATTACKED_PAWN_PENALTY = -5;
 
 // ===================================================
 // EXPLICIT THREATS
@@ -152,10 +148,6 @@ inline int32_t ROOK_BEHIND_ENEMY_PASSER_BONUS = 11;
 inline int32_t ROOK_EG_EDGE_BONUS = 26;
 inline int32_t ROOK_EG_PRESSURE_BONUS = 17;
 
-// ===================================================
-// QUEEN EVALUATION
-// ===================================================
-inline int32_t ATTACKED_QUEEN_PENALTY = -40;
 
 // ===================================================
 // KING SAFETY & ACTIVITY
@@ -178,8 +170,6 @@ inline int32_t KING_SEMI_OPEN_FILE_PENALTY = 17;
 inline int32_t KING_OPEN_FILE_PENALTY = 10;
 inline int32_t KING_FILE_PRESSURE_PENALTY = 8;
 inline int32_t KING_OPEN_DIAGONAL_PENALTY = 10;
-inline int32_t KING_EXPOSED_PENALTY = -20;
-inline int32_t EARLY_KING_PENALTY = -16;
 inline int32_t KING_SAFETY_SIDE_CAP = 150;
 inline int32_t KING_ATTACK_MATERIAL_MIN_SCALE = 40;
 inline int32_t KING_ATTACK_MATERIAL_MAX_SCALE = 139;

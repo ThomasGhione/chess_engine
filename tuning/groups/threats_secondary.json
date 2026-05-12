@@ -3,8 +3,7 @@
     "THREAT_PAWN_PUSH_MINOR_PENALTY": "Integer(-24, -6)",
     "THREAT_PAWN_PUSH_ROOK_PENALTY": "Integer(-45, -14)",
     "THREAT_PAWN_PUSH_QUEEN_PENALTY": "Integer(-70, -25)",
-    "THREAT_LOOSE_QUEEN_PENALTY": "Integer(-65, -25)",
-    "ATTACKED_QUEEN_PENALTY": "Integer(-65, -22)"
+    "THREAT_LOOSE_QUEEN_PENALTY": "Integer(-65, -25)"
   },
   "data_path": "threats_secondary_data.npz",
   "model_path": "threats_secondary_model.pkl"

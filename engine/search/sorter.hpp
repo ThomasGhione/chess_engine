@@ -129,7 +129,7 @@ private:
         int ply;
         const chess::Board::Move* previousMove;
         int usSide;
-        uint8_t oppKingSq;
+        int oppKingSq;
         uint64_t occ;
         bool usIsWhite;
         bool isEndgameOrdering;
@@ -142,14 +142,14 @@ private:
     };
 
     static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
-    static constexpr bool sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept;
+    static constexpr bool sameFromTo(const chess::Board::Move& m, int from, int to) noexcept;
 
     static bool givesCheckAfterQuietMoveFast(
         const chess::Board& b,
         const chess::Board::Move& m,
-        uint8_t fromPieceType,
+        int fromPieceType,
         int usSide,
-        uint8_t oppKingSq,
+        int oppKingSq,
         uint64_t occ) noexcept;
 
     static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept;
@@ -157,17 +157,17 @@ private:
     static int32_t scoreMoveOrderingPriorityInline(
         const MoveOrderingContext& ctx,
         const chess::Board::Move& m,
-        uint8_t fromPieceType,
+        int fromPieceType,
         bool isCapture,
-        uint8_t victimType,
+        int victimType,
         int32_t see,
         bool isPromotionCandidate,
         int moveIndex,
         bool isHashMove) noexcept;
 
-    static uint8_t getLeastValuableAttackerTo(
+    static int getLeastValuableAttackerTo(
         const chess::Board& b,
-        uint8_t sq,
+        int sq,
         uint64_t occLocal,
         int sideLocal) noexcept;
 

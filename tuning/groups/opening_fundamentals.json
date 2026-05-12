@@ -1,11 +1,9 @@
 {
   "parameter_ranges": {
-    "CASTLING_BONUS": "Integer(10, 28)",
     "KING_NON_CASTLING_PENALTY": "Integer(2, 14)",
     "KING_LOST_CASTLING_RIGHTS_PENALTY": "Integer(8, 28)",
     "LOSS_OF_CASTLING_PENALTY": "Integer(12, 34)",
     "INIT_BONUS_MG": "Integer(0, 8)",
-    "EARLY_ROOK_PENALTY": "Integer(-36, -12)",
     "DEVELOPMENT_BONUS": "Integer(2, 12)",
     "BISHOP_PAIR_BONUS": "Integer(22, 44)"
   },

@@ -26,12 +26,12 @@ constexpr bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Boar
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
 
-constexpr bool Sorter::sameFromTo(const chess::Board::Move& m, uint8_t from, uint8_t to) noexcept {
+constexpr bool Sorter::sameFromTo(const chess::Board::Move& m, int from, int to) noexcept {
     return m.from.index == from && m.to.index == to;
 }
 
-bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m, 
-        uint8_t fromPieceType, int usSide, uint8_t oppKingSq, uint64_t occ) noexcept {
+bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m,
+        int fromPieceType, int usSide, int oppKingSq, uint64_t occ) noexcept {
     const uint64_t fromBit = chess::Board::bitMask(m.from.index);
     const uint64_t toBit   = chess::Board::bitMask(m.to.index);
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
@@ -64,7 +64,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 }
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
-        uint8_t fromPieceType, bool isCapture, uint8_t victimType, int32_t see, 
+        int fromPieceType, bool isCapture, int victimType, int32_t see,
         bool isPromotionCandidate, int moveIndex, bool isHashMove) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
@@ -125,7 +125,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     return clampToInt32(score);
 }
 
-uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, uint64_t occLocal, int sideLocal) noexcept {
+int Sorter::getLeastValuableAttackerTo(const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
     uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
     if (mask) return __builtin_ctzll(mask);
 
@@ -150,21 +150,21 @@ uint8_t Sorter::getLeastValuableAttackerTo(const chess::Board& b, uint8_t sq, ui
 }
 
 int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept {
-    const uint8_t toSq   = m.to.index;
-    const uint8_t fromSq = m.from.index;
+    const int toSq   = m.to.index;
+    const int fromSq = m.from.index;
 
     const int sideActive  = chess::Board::colorToIndex(b.getActiveColor());
     const int sidePassive = sideActive ^ 1;
 
-    uint8_t capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
+    int capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
     const bool isEp = (capturedType == chess::Board::EMPTY);
     if (isEp) capturedType = chess::Board::PAWN;
 
     int32_t initialGain = PIECE_VALUES[capturedType];
-    uint8_t capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+    int capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
 
     if (m.promotionPiece != '\0') {
-        const uint8_t promoType = promotionPieceType(m.promotionPiece);
+        const int promoType = promotionPieceType(m.promotionPiece);
         initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
         capturedOnTargetType = promoType;
     }
@@ -184,12 +184,12 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int side  = sidePassive;
 
     while (depth < MAX_SEE_DEPTH) {
-        const uint8_t attacker = getLeastValuableAttackerTo(b, toSq, occ, side);
+        const int attacker = getLeastValuableAttackerTo(b, toSq, occ, side);
         if (attacker == 64) break;
 
         const uint64_t attackerBit = occ & chess::Board::bitMask(attacker);
 
-        const uint8_t currentAttackerType =
+        const int currentAttackerType =
             (b.pawns_bb[side]   & attackerBit) ? chess::Board::PAWN   :
             (b.knights_bb[side] & attackerBit) ? chess::Board::KNIGHT :
             (b.bishops_bb[side] & attackerBit) ? chess::Board::BISHOP :
@@ -237,8 +237,8 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const int oppSide = usSide ^ 1;
     const uint64_t occ       = b.getPiecesBitMap();
     const uint64_t oppKingBB = b.kings_bb[oppSide];
-    const uint8_t  oppKingSq = oppKingBB ? __builtin_ctzll(oppKingBB) : 64;
-    const uint8_t  promotionRank = chess::Board::promotionRank(usIsWhite);
+    const int oppKingSq = oppKingBB ? __builtin_ctzll(oppKingBB) : 64;
+    const int promotionRank = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant   = b.getEnPassant();
     const bool          hasEnPassant = chess::Coords::isInBounds(enPassant);
     const int fullMoveClock  = b.getFullMoveClock();
@@ -267,17 +267,17 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
         const auto& m = picker.moves[moveIndex];
 
-        const uint8_t fromPiece    = b.get(m.from);
-        const uint8_t fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        const uint8_t toPieceType  = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+        const int fromPiece    = b.get(m.from);
+        const int fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        const int toPieceType  = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
 
         const bool isEpCapture = hasEnPassant
             && fromPieceType == chess::Board::PAWN
             && toPieceType   == chess::Board::EMPTY
             && (m.to == enPassant)
             && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture         = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t victimType     = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const bool isCapture    = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const int victimType    = isEpCapture ? chess::Board::PAWN : toPieceType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         const bool isHashMove = isHashMoveProbed
@@ -322,7 +322,7 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     MovePickerData picker;
     if (tacticalMoves.is_empty()) return picker;
 
-    const uint8_t promotionRank  = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank  = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant      = chess::Coords::isInBounds(enPassant);
     const int32_t seeThreshold   = (ply < 10) ? SEE_THRESHOLD_SHALLOW
@@ -333,16 +333,16 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     for (int i = 0; i < tacticalMoves.size; ++i) {
         const auto& m = tacticalMoves[i];
 
-        const uint8_t fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-        const uint8_t toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
+        const int fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
+        const int toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
         const bool isEpCapture = hasEnPassant
             && fromPieceType == chess::Board::PAWN
             && toPieceType   == chess::Board::EMPTY
             && (m.to == enPassant)
             && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture    = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const bool isCapture  = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+        const int victimType  = isEpCapture ? chess::Board::PAWN : toPieceType;
         const bool isPromotion  = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         int32_t score;
@@ -375,11 +375,11 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
 }
 
 bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant, bool hasEnPassant) noexcept {
-    const uint8_t toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
+    const int toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
     if (toPieceType != chess::Board::EMPTY) return true;
 
-    const uint8_t fromPiece = b.get(m.from);
-    const uint8_t fromType  = fromPiece & chess::Board::MASK_PIECE_TYPE;
+    const int fromPiece = b.get(m.from);
+    const int fromType  = fromPiece & chess::Board::MASK_PIECE_TYPE;
     if (fromType != chess::Board::PAWN) return false;
 
     if (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from.index) == chess::Board::WHITE)) return true;

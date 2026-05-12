@@ -256,7 +256,7 @@ private:
     static void updateKillerAndHistoryOnBetaCutoff(
         const chess::Board::Move& m,
         bool isCapture,
-        uint8_t victimType,
+        int victimType,
         int32_t depth,
         int ply,
         uint8_t us,

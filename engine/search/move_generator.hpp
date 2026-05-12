@@ -48,7 +48,7 @@ private:
     static void addPawnMovesFromMask(
         const chess::Board& b,
         MoveList<chess::Board::Move>& moves,
-        uint8_t from,
+        int from,
         uint64_t mask,
         bool inCheck,
         bool inDoubleCheck,

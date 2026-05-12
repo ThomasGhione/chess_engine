@@ -2,9 +2,7 @@
   "parameter_ranges": {
     "HANGING_PAWN_PENALTY": "Integer(-18, -8)",
     "HANGING_PAWN_NEAR_KING_PENALTY": "Integer(-38, -20)",
-    "HANGING_HOOK_PAWN_PENALTY": "Integer(-24, -10)",
-    "UNDEFENDED_PAWN_PENALTY": "Integer(-16, -6)",
-    "ATTACKED_PAWN_PENALTY": "Integer(-8, -2)"
+    "HANGING_HOOK_PAWN_PENALTY": "Integer(-24, -10)"
   },
   "data_path": "hanging_pawns_data.npz",
   "model_path": "hanging_pawns_model.pkl"

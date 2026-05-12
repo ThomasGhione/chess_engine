@@ -216,7 +216,7 @@ private:
     static inline int32_t evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept;
-    static inline uint8_t popLSB(uint64_t& bb) noexcept;
+    static inline int popLSB(uint64_t& bb) noexcept;
 #ifdef DEBUG
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
 #endif

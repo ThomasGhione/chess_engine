@@ -4,8 +4,6 @@
     "KING_ACTIVITY_BONUS": "Integer(2, 12)",
     "KING_SHELTER_ADVANCE_ONE_PENALTY": "Integer(1, 7)",
     "KING_SHELTER_ADVANCE_TWO_PENALTY": "Integer(3, 13)",
-    "KING_EXPOSED_PENALTY": "Integer(-34, -10)",
-    "EARLY_KING_PENALTY": "Integer(-28, -6)",
     "KING_SAFETY_SIDE_CAP": "Integer(110, 190)",
     "KING_ATTACK_MATERIAL_MIN_SCALE": "Integer(25, 60)"
   },

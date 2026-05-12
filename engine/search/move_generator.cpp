@@ -8,7 +8,7 @@ namespace engine {
 namespace {
 
 __attribute__((always_inline))
-inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to) noexcept {
+inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, int from, int to) noexcept {
     moves.emplace_back();
     auto& m = moves[moves.size - 1];
     m.from.index = from;
@@ -17,7 +17,7 @@ inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, uint8_t from,
 }
 
 __attribute__((always_inline))
-inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to) noexcept {
+inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, int from, int to) noexcept {
     constexpr char promos[4] = {'q', 'r', 'b', 'n'};
     for (char p : promos) {
         moves.emplace_back();
@@ -28,7 +28,7 @@ inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, uint8
     }
 }
 
-constexpr uint64_t computeBetweenExclusiveConstexpr(uint8_t from, uint8_t to) noexcept {
+constexpr uint64_t computeBetweenExclusiveConstexpr(int from, int to) noexcept {
     if (from == to) return 0ULL;
 
     const int fromFile = chess::file(from);
@@ -55,7 +55,7 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(uint8_t from, uint8_t to) no
     int f = fromFile + stepFile;
     int r = fromRank + stepRank;
     while (f != toFile || r != toRank) {
-        const uint8_t sq = static_cast<uint8_t>((r << 3) | f);
+        const int sq = (r << 3) | f;
         mask |= chess::Board::bitMask(sq);
         f += stepFile;
         r += stepRank;
@@ -66,8 +66,8 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(uint8_t from, uint8_t to) no
 
 inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT = [] {
     std::array<std::array<uint64_t, 64>, 64> lut{};
-    for (uint8_t from = 0; from < 64; ++from) {
-        for (uint8_t to = 0; to < 64; ++to) {
+    for (int from = 0; from < 64; ++from) {
+        for (int to = 0; to < 64; ++to) {
             lut[from][to] = computeBetweenExclusiveConstexpr(from, to);
         }
     }
@@ -89,7 +89,7 @@ inline void appendNonPawnTacticalNoChecks(
     }
 
     while (pieceBB) {
-        const uint8_t from = engine::popLSB(pieceBB);
+        const int from = engine::popLSB(pieceBB);
 
         uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
         if constexpr (HasPins) {
@@ -114,24 +114,24 @@ inline void appendPawnTacticalNoChecks(
     uint64_t occ,
     uint64_t oppOcc,
     uint64_t enPassantBit,
-    uint8_t enPassantIndex,
+    int enPassantIndex,
     uint64_t pinnedMask,
     const uint64_t pinRayBySquare[64],
     uint8_t pawnPiece) noexcept {
     constexpr int Side = IsWhite ? 0 : 1;
-    constexpr uint8_t promotionRank = IsWhite ? 0 : 7;
-    constexpr uint8_t prePromotionRank = IsWhite ? 1 : 6;
+    constexpr int promotionRank = IsWhite ? 0 : 7;
+    constexpr int prePromotionRank = IsWhite ? 1 : 6;
     constexpr int pawnPushDelta = IsWhite ? -8 : 8;
 
     while (pawnBB) {
-        const uint8_t from = engine::popLSB(pawnBB);
+        const int from = engine::popLSB(pawnBB);
         const uint64_t fromBit = chess::Board::bitMask(from);
         const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[Side][from];
         uint64_t attacks = pawnAttacks & (oppOcc | enPassantBit);
 
         // Add forward push moves for promotion
         if (chess::Board::rank(from) == prePromotionRank) {
-            const uint8_t frontSq = static_cast<uint8_t>(static_cast<int>(from) + pawnPushDelta);
+            const int frontSq = from + pawnPushDelta;
             if ((chess::Board::bitMask(frontSq) & occ) == 0) {
                 attacks |= chess::Board::bitMask(frontSq);
             }
@@ -142,7 +142,7 @@ inline void appendPawnTacticalNoChecks(
         }
 
         while (attacks) {
-            const uint8_t to = engine::popLSB(attacks);
+            const int to = engine::popLSB(attacks);
             const bool isEnPassant = (to == enPassantIndex) && (enPassantBit != 0ULL);
 
             if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, false)) continue;
@@ -204,26 +204,26 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
 
     if (!kings) [[unlikely]] return moves;
 
-    const uint8_t kingFrom = __builtin_ctzll(kings);
-    const chess::Coords kingFromC{kingFrom};
+    const int kingFrom = __builtin_ctzll(kings);
+    const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
 
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (mask) {
-        const uint8_t to = engine::popLSB(mask);
+        const int to = engine::popLSB(mask);
         if (b.isLegalPseudoMove(kingFrom, to, kingPiece, inCheck, inDoubleCheck)) {
-            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{to}});
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(to)}});
         }
     }
 
     if (!inCheck) { // castling: illegal when in check.
-        const uint8_t f = chess::Board::file(kingFrom);
+        const int f = chess::Board::file(kingFrom);
         if (f <= 5 && b.isLegalPseudoMove(kingFrom, kingFrom + 2, kingPiece)) {
-            const uint8_t castleTo = kingFrom + 2;
-            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{castleTo}});
+            const int castleTo = kingFrom + 2;
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(castleTo)}});
         }
         if (f >= 2 && b.isLegalPseudoMove(kingFrom, kingFrom - 2, kingPiece)) {
-            const uint8_t castleTo = kingFrom - 2;
-            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{castleTo}});
+            const int castleTo = kingFrom - 2;
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(castleTo)}});
         }
     }
     // In double-check only king moves are legal.
@@ -241,7 +241,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     }
 
     while (pawns) {
-        const uint8_t from = engine::popLSB(pawns);
+        const int from = engine::popLSB(pawns);
         const uint64_t fromBit = chess::Board::bitMask(from);
         uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
         const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
@@ -344,13 +344,13 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
         computeCheckEvasionMasks<IsWhite>(b, evasionMask);
     }
 
-    const uint8_t kingFrom = __builtin_ctzll(kings);
-    const chess::Coords kingFromC{kingFrom};
+    const int kingFrom = __builtin_ctzll(kings);
+    const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
     uint64_t kingTargets = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (kingTargets) {
-        const uint8_t to = engine::popLSB(kingTargets);
+        const int to = engine::popLSB(kingTargets);
         if (b.isLegalPseudoMove(kingFrom, to, kingPiece, true, inDoubleCheck)) {
-            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{to}});
+            moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(to)}});
         }
     }
 
@@ -363,7 +363,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
     }
 
     while (pawns) {
-        const uint8_t from = engine::popLSB(pawns);
+        const int from = engine::popLSB(pawns);
         const uint64_t fromBit = chess::Board::bitMask(from);
         uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
         const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
@@ -430,16 +430,16 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess
     const uint8_t pawnPiece = chess::Board::PAWN | color;
 
     if (!kings) [[unlikely]] return moves;
-    const uint8_t kingIndex = __builtin_ctzll(kings);
+    const int kingIndex = __builtin_ctzll(kings);
 
     uint64_t pinnedMask = 0ULL;
     // NOTE: per performance, don't zero-initialize this array.
     std::array<uint64_t, 64> pinRayBySquare;
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays<IsWhite>(b, chess::Coords{kingIndex}, pinnedMask, pinRayBySquare.data());
+        computePinRays<IsWhite>(b, chess::Coords{static_cast<uint8_t>(kingIndex)}, pinnedMask, pinRayBySquare.data());
     }
 
-    const uint8_t enPassantIndex = hasEnPassant ? enPassant.index : 0;
+    const int enPassantIndex = hasEnPassant ? enPassant.index : 0;
     appendPawnTacticalNoChecks<IsWhite>(
         b, moves, pawns, occ, oppOcc, enPassantBit, enPassantIndex,
         pinnedMask, pinRayBySquare.data(), pawnPiece);
@@ -491,16 +491,16 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
 
 template<bool IsWhite>
 void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves,
-                                         uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck,
+                                         int from, uint64_t mask, bool inCheck, bool inDoubleCheck,
                                          uint8_t pawnPiece,
                                          chess::Coords enPassant, bool hasEnPassant) noexcept {
     if (!mask) [[unlikely]] return;
 
-    constexpr uint8_t promotionRank = IsWhite ? 0 : 7;
-    const uint8_t fromFile = chess::Board::file(from);
+    constexpr int promotionRank = IsWhite ? 0 : 7;
+    const int fromFile = chess::Board::file(from);
 
     while (mask) {
-        const uint8_t to = engine::popLSB(mask);
+        const int to = engine::popLSB(mask);
         const bool isEnPassant = hasEnPassant
             && (to == enPassant.index)
             && (chess::Board::file(to) != fromFile);
@@ -527,7 +527,7 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
     pinnedMask = 0ULL;
     constexpr int us = IsWhite ? 0 : 1;
     constexpr int them = us ^ 1;
-    const uint8_t kingSq = kingPos.index;
+    const int kingSq = kingPos.index;
 
     const uint64_t ownOcc = b.pawns_bb[us] | b.knights_bb[us] | b.bishops_bb[us] | b.rooks_bb[us] | b.queens_bb[us];
     if (!ownOcc) {
@@ -552,22 +552,22 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
     uint64_t bishopPinners = pieces::getBishopAttacks(kingSq, occWithoutOwn) & bishopLikeEnemy;
 
     while (rookPinners) {
-        const uint8_t pinnerSq = engine::popLSB(rookPinners);
+        const int pinnerSq = engine::popLSB(rookPinners);
         const uint64_t between = BETWEEN_EXCLUSIVE_LUT[kingSq][pinnerSq];
         const uint64_t blockers = between & ownOcc;
         if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
-            const uint8_t pinnedSq = static_cast<uint8_t>(__builtin_ctzll(blockers));
+            const int pinnedSq = __builtin_ctzll(blockers);
             pinnedMask |= blockers;
             pinRays[pinnedSq] = between | chess::Board::bitMask(pinnerSq);
         }
     }
 
     while (bishopPinners) {
-        const uint8_t pinnerSq = engine::popLSB(bishopPinners);
+        const int pinnerSq = engine::popLSB(bishopPinners);
         const uint64_t between = BETWEEN_EXCLUSIVE_LUT[kingSq][pinnerSq];
         const uint64_t blockers = between & ownOcc;
         if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
-            const uint8_t pinnedSq = static_cast<uint8_t>(__builtin_ctzll(blockers));
+            const int pinnedSq = __builtin_ctzll(blockers);
             pinnedMask |= blockers;
             pinRays[pinnedSq] = between | chess::Board::bitMask(pinnerSq);
         }
@@ -587,7 +587,7 @@ void MoveGenerator::computeCheckEvasionMasks(
         return;
     }
   
-    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    const int kingSq = __builtin_ctzll(kingBB);
     const uint64_t occ = b.getPiecesBitMap();
 
     const uint64_t rookCheckers = pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
@@ -608,7 +608,7 @@ void MoveGenerator::computeCheckEvasionMasks(
         return;
     }
 
-    const uint8_t checkerSq = __builtin_ctzll(checkersMask);
+    const int checkerSq = __builtin_ctzll(checkersMask);
     const uint64_t checkerBit = chess::Board::bitMask(checkerSq);
     evasionMask = checkerBit;
     if ((rookCheckers | bishopCheckers) & checkerBit) {
@@ -636,7 +636,7 @@ void MoveGenerator::generateNonPawnLegalMoves(
     }
 
     while (bb) {
-        const uint8_t from = engine::popLSB(bb);
+        const int from = engine::popLSB(bb);
         uint64_t mask = pieces::generateMovesByType<PieceType>(from, occ) & ~ownOcc;
         if constexpr (InCheck) {
             mask &= evasionMask;

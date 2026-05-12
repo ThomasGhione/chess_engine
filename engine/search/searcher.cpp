@@ -398,7 +398,7 @@ bool Searcher::tryReverseFutilityPruning(
 void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const chess::Board::Move& m,
     bool isCapture,
-    uint8_t victimType,
+    int victimType,
     int32_t depth,
     int ply,
     uint8_t us,
@@ -406,8 +406,8 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const chess::Board::Move* previousMove) noexcept {
     if (ply < 0 || ply >= MAX_PLY) return;
 
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex = m.to.index;
+    const int fromIndex = m.from.index;
+    const int toIndex = m.to.index;
 
     // CAPTURE HISTORY: bonus for captures that cause cutoffs.
     if (isCapture) {
@@ -518,7 +518,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.kings_bb[oppSide];
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
-    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank = chess::Board::promotionRank(usIsWhite);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
 
@@ -534,10 +534,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isFirstMove = (moveIndex == 0);
 
-        const uint8_t fromIndex = m.from.index;
-        const uint8_t toIndex = m.to.index;
-        const uint8_t fromPieceType = b.get(fromIndex) & chess::Board::MASK_PIECE_TYPE;
-        const uint8_t toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
+        const int fromIndex = m.from.index;
+        const int toIndex = m.to.index;
+        const int fromPieceType = b.get(fromIndex) & chess::Board::MASK_PIECE_TYPE;
+        const int toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
         const bool isPawnMove = (fromPieceType == chess::Board::PAWN);
         const bool isSameFileMove = chess::Board::file(fromIndex) == chess::Board::file(toIndex);
         const bool isEpCapture = isPawnMove
@@ -546,7 +546,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && hasEnPassant
             && (m.to == enPassant);
         const bool wasCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const uint8_t victimType = isEpCapture ? static_cast<uint8_t>(chess::Board::PAWN) : toPieceType;
+        const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
         const bool isPromotionCandidate = isPawnMove && (m.to.rank() == promotionRank);
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
         const bool isQuietPawnPush = isQuietMove && isPawnMove && isSameFileMove;
@@ -964,17 +964,17 @@ int32_t Searcher::quiescenceSearch(
     }
 
     // Macro-step 4: Unified child visiting loop for both tactical and evasions
-    const uint8_t promotionRank = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank = chess::Board::promotionRank(usIsWhite);
     while (movePicker.hasNext()) {
         const auto m = movePicker.nextMove();
-        
+
         if (shouldAbortSearch(runtime)) {
             markInterrupted(runtime);
             return Evaluator::evaluate(b);
         }
 
-        const uint8_t fromPiece = b.get(m.from.index);
-        const uint8_t pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        const int fromPiece = b.get(m.from.index);
+        const int pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
         if (!inCheck) {
             if (pieceType == chess::Board::KING) {
                 if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece, false, false)) {

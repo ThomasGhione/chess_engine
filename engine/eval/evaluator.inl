@@ -92,8 +92,8 @@ inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noex
     return phase;
 }
 
-inline uint8_t Evaluator::popLSB(uint64_t& bb) noexcept{
-    const uint8_t index = __builtin_ctzll(bb);
+inline int Evaluator::popLSB(uint64_t& bb) noexcept{
+    const int index = __builtin_ctzll(bb);
     bb &= (bb - 1);
     return index;
 }
@@ -102,7 +102,7 @@ inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap
                                          int32_t safeBonus, int32_t forcingBonus,
                                          int32_t& attackUnits) noexcept {
     while (checkers) {
-        const uint8_t checkerSq = popLSB(checkers);
+        const int checkerSq = popLSB(checkers);
         const bool isSafe = (defenderMap & chess::Board::bitMask(checkerSq)) == 0ULL;
         attackUnits += isSafe ? safeBonus : forcingBonus;
     }
