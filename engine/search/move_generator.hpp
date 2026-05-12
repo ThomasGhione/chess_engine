@@ -44,11 +44,6 @@ public:
 
 private:
 
-    static void addPromotionMoves(
-        MoveList<chess::Board::Move>& moves,
-        const chess::Coords& fromC,
-        const chess::Coords& toC) noexcept;
-
     template<bool IsWhite>
     static void addPawnMovesFromMask(
         const chess::Board& b,

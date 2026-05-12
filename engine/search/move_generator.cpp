@@ -18,29 +18,14 @@ inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, uint8_t from,
 
 __attribute__((always_inline))
 inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, uint8_t from, uint8_t to) noexcept {
-    moves.emplace_back();
-    chess::Board::Move& q = moves[moves.size - 1];
-    q.from.index = from;
-    q.to.index = to;
-    q.promotionPiece = 'q';
-
-    moves.emplace_back();
-    chess::Board::Move& r = moves[moves.size - 1];
-    r.from.index = from;
-    r.to.index = to;
-    r.promotionPiece = 'r';
-
-    moves.emplace_back();
-    chess::Board::Move& b = moves[moves.size - 1];
-    b.from.index = from;
-    b.to.index = to;
-    b.promotionPiece = 'b';
-
-    moves.emplace_back();
-    chess::Board::Move& n = moves[moves.size - 1];
-    n.from.index = from;
-    n.to.index = to;
-    n.promotionPiece = 'n';
+    constexpr char promos[4] = {'q', 'r', 'b', 'n'};
+    for (char p : promos) {
+        moves.emplace_back();
+        auto& m = moves[moves.size - 1];
+        m.from.index = from;
+        m.to.index   = to;
+        m.promotionPiece = p;
+    }
 }
 
 constexpr uint64_t computeBetweenExclusiveConstexpr(uint8_t from, uint8_t to) noexcept {
@@ -189,7 +174,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     constexpr uint8_t color = IsWhite ? chess::Board::WHITE : chess::Board::BLACK;
     constexpr int side = IsWhite ? 0 : 1;
     
-    //FIXME: modificare Board per non dover avere queste variabili qui
     const uint64_t occ = b.getPiecesBitMap();
 
     uint64_t pawns   = b.pawns_bb[side];
@@ -218,17 +202,11 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
         computeCheckEvasionMasks<IsWhite>(b, evasionMask);
     }
 
-    //FIXME: Mettere precodizione per eliminare codizione
-    // Macro-step 3: Generate king moves and castling moves first.
-    // ================= KING =================
-    if (!kings) [[unlikely]] return moves; // No king found, return empty move list
+    if (!kings) [[unlikely]] return moves;
 
     const uint8_t kingFrom = __builtin_ctzll(kings);
     const chess::Coords kingFromC{kingFrom};
 
-    //FIXME: Rendere codice tra "---" una funzione helper AKA: generateKingMoves
-    //---
-    // King moves MUST always check legality (can't move to attacked squares)
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (mask) {
         const uint8_t to = engine::popLSB(mask);
@@ -248,8 +226,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
             moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{castleTo}});
         }
     }
-    //---
-
     // In double-check only king moves are legal.
     if (inDoubleCheck) return moves;
 
@@ -260,12 +236,10 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     // NOTE: per performance, don't zero-initialize this array.
     // It's only ever read where pinnedMask has a bit set.
     std::array<uint64_t, 64> pinRayBySquare;
-    //FIXME: Rendere piu' leggibile codizione. Creare funzione helper
     if (pawns | knights | bishops | rooks | queens) [[likely]] {
         computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
     }
 
-    // Macro-step 5: Generate all non-king moves applying check/pin filtering.
     while (pawns) {
         const uint8_t from = engine::popLSB(pawns);
         const uint64_t fromBit = chess::Board::bitMask(from);
@@ -425,19 +399,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
     return moves;
 }
 
-// ============================================================================
-// GENERATE TACTICAL MOVES - Helper for quiescence search
-// ============================================================================
-// Generates only tactical qsearch moves:
-// 1. Captures (including en passant)
-// 2. Pawn promotions (also non-capturing)
-//
-// Assumptions fixed by the only call-site (generateQSearchTacticalMoves):
-// - includeChecks = false
-// - inCheckKnown = true
-// - inCheckValue = false
-// - inDoubleCheckValue = false
-// So this path is specialized for "side to move is NOT in check".
 MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::Board& b) noexcept {
     return (b.getActiveColor() == chess::Board::WHITE)
         ? generateTacticalMovesFor<true>(b)
@@ -506,21 +467,12 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(
     const chess::Board& b,
     bool inDoubleCheckKnown,
     bool inDoubleCheckValue) noexcept {
-    // Macro-step 1: Generate only legal check evasions from the current board.
-    MoveList<chess::Board::Move> evasions = generateLegalEvasions(
-        b, inDoubleCheckKnown, inDoubleCheckValue);
+    MoveList<chess::Board::Move> evasions = generateLegalEvasions(b, inDoubleCheckKnown, inDoubleCheckValue);
+    if (evasions.is_empty()) return engine::Sorter::MovePickerData{};
 
-    // Macro-step 2: Fast-return for checkmate/stalemate nodes.
-    if (evasions.is_empty()) {
-        return engine::Sorter::MovePickerData{};
-    }
-
-    // Macro-step 3: Reorder evasions with forcing moves first using Sorter policy.
-    MoveList<chess::Board::Move> sorted = engine::Sorter::sortEvasionsForcingFirst(evasions, b);
-    
     engine::Sorter::MovePickerData data;
-    data.moves = sorted;
-    data.size = sorted.size;
+    data.moves = engine::Sorter::sortEvasionsForcingFirst(evasions, b);
+    data.size = data.moves.size;
     data.currentIndex = 0;
     return data;
 }
@@ -532,71 +484,43 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
     int32_t beta,
     int ply,
     bool usIsWhite) noexcept {
-    // Macro-step 1: Generate tactical candidate moves for qsearch.
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
-
-    // Macro-step 2: Return early when no tactical continuation exists.
-    if (tacticalMoves.is_empty()) {
-        return engine::Sorter::MovePickerData{};
-    }
-
-    // Macro-step 3: Apply qsearch tactical ordering/pruning policy via Sorter.
-    return engine::Sorter::sortTacticalMoves(
-        tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite);
+    if (tacticalMoves.is_empty()) return engine::Sorter::MovePickerData{};
+    return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite);
 }
 
-void MoveGenerator::addPromotionMoves(
-    MoveList<chess::Board::Move>& moves,
-    const chess::Coords& fromC,
-    const chess::Coords& toC) noexcept {
-    // Macro-step 1: Expand one promotion square into 4 promotion piece choices.
-    appendPromotionSetByIndex(moves, fromC.index, toC.index);
-}
-
-// ============================================================================
-// addPawnMovesFromMask
-// ============================================================================
 template<bool IsWhite>
 void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves,
                                          uint8_t from, uint64_t mask, bool inCheck, bool inDoubleCheck,
                                          uint8_t pawnPiece,
                                          chess::Coords enPassant, bool hasEnPassant) noexcept {
-    //FIXME: Creare pre codizione
-    // Macro-step 1: Guard empty mask and precompute pawn metadata.
     if (!mask) [[unlikely]] return;
 
     constexpr uint8_t promotionRank = IsWhite ? 0 : 7;
-    const chess::Coords fromC{from};
     const uint8_t fromFile = chess::Board::file(from);
 
-    // Macro-step 2: Iterate destinations and enforce EP legality checks.
     while (mask) {
-        const uint8_t to = __builtin_ctzll(mask);
-        mask &= (mask - 1);
-        const chess::Coords toC{to};
+        const uint8_t to = engine::popLSB(mask);
         const bool isEnPassant = hasEnPassant
-            && (toC == enPassant)
+            && (to == enPassant.index)
             && (chess::Board::file(to) != fromFile);
 
-        // Always check legality for en passant (changes occupancy), otherwise it's already filtered
         if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
             continue;
         }
-	
-        // Macro-step 3: Emit promotion set or regular pawn move.
+
         if (chess::Board::rank(to) == promotionRank) {
-            addPromotionMoves(moves, fromC, toC);
+            appendPromotionSetByIndex(moves, from, to);
         } else {
-            moves.emplace_back(chess::Board::Move{fromC, toC});
+            moves.emplace_back();
+            auto& m = moves[moves.size - 1];
+            m.from.index = from;
+            m.to.index   = to;
+            m.promotionPiece = '\0';
         }
     }
 }
 
-// ============================================================================
-// computePinRays
-// ============================================================================
-// Returns a mask with bits for pieces pinned to the king (pinnedMask)
-// and an array that stores the pin-ray mask for each square (pinRayBySquare).
 template<bool IsWhite>
 void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
                                    uint64_t& pinnedMask, uint64_t pinRays[64]) noexcept {
@@ -650,16 +574,10 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
     }
 }
 
-// ============================================================================
-// computeCheckEvasionMasks
-// ============================================================================
-// Returns a mask with bits for squares where pieces can move or interpose
-// to evade check (evasionMask).
 template<bool IsWhite>
 void MoveGenerator::computeCheckEvasionMasks(
     const chess::Board& b,
     uint64_t& evasionMask) noexcept {
-    // This helper is called only from single-check paths.
     evasionMask = 0ULL;
 
     constexpr int us = IsWhite ? 0 : 1;
@@ -681,7 +599,6 @@ void MoveGenerator::computeCheckEvasionMasks(
         | rookCheckers
         | bishopCheckers;
 
-    // single-check expected; fallback to king-only evasions on inconsistent data
     if ((checkersMask & (checkersMask - 1)) != 0ULL) {
         return;
     }
