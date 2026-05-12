@@ -11,7 +11,7 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
     const int targetRank = (color == 0) ? 6 : 1;
 
     while (rooks) {
-        const int sq = __builtin_ctzll(rooks);
+        const int sq = popLSB(rooks);
         const int file = chess::Board::file(sq);
         const int rank = chess::Board::rank(sq);
         const uint64_t fm = FILE_MASKS[file];
@@ -59,7 +59,6 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
             } while (pawnsLoop);
         }
         
-        rooks &= rooks - 1;
     }
 
     return score;
@@ -135,9 +134,8 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     int32_t score = sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
 
     uint64_t rooksBB = b.rooks_bb[side];
-    if (((rooksBB & (rooksBB - 1)) != 0ULL)) {
-        const int rook1 = __builtin_ctzll(rooksBB);
-        rooksBB &= (rooksBB - 1);
+    if ((rooksBB & (rooksBB - 1)) != 0ULL) {
+        const int rook1 = popLSB(rooksBB);
         const int rook2 = __builtin_ctzll(rooksBB);
 
         const int r1_rank = chess::Board::rank(rook1);
@@ -172,34 +170,21 @@ int32_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t 
 }
 
 int32_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
-    int32_t score = 0;
-
     const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
     const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
 
-    const bool whiteHasRookAdvantage = (whiteRooks > blackRooks);
-    const bool blackHasRookAdvantage = (blackRooks > whiteRooks);
+    if (whiteRooks == blackRooks) return 0;
 
-    if (!whiteHasRookAdvantage && !blackHasRookAdvantage) {
-        return 0;
-    }
-
-    score += evalRookEndgamePressureSide(b, 0, whiteRooks, blackRooks);
-    score += evalRookEndgamePressureSide(b, 1, whiteRooks, blackRooks);
-
-    return score;
+    return evalRookEndgamePressureSide(b, 0, whiteRooks, blackRooks)
+         + evalRookEndgamePressureSide(b, 1, whiteRooks, blackRooks);
 }
 
 int32_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
-    int32_t score = 0;
-
     const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
     const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
 
-    score += evalDoubleRookEndgameSide(b, 0, whiteRooks, blackRooks);
-    score += evalDoubleRookEndgameSide(b, 1, whiteRooks, blackRooks);
-
-    return score;
+    return evalDoubleRookEndgameSide(b, 0, whiteRooks, blackRooks)
+         + evalDoubleRookEndgameSide(b, 1, whiteRooks, blackRooks);
 }
 
 } // namespace engine

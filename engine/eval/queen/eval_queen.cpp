@@ -57,9 +57,7 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
         uint64_t tempQueens = queenBB;
         int bestQueenDist = 100;
         while (tempQueens) {
-            const int qSq = __builtin_ctzll(tempQueens);
-            tempQueens &= tempQueens - 1;
-            bestQueenDist = std::min(bestQueenDist, manhattan(qSq, enemyKingSq));
+            bestQueenDist = std::min(bestQueenDist, manhattan(popLSB(tempQueens), enemyKingSq));
         }
 
         if (bestQueenDist >= 2 && bestQueenDist <= 5) {
@@ -77,19 +75,13 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
 }
 
 int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
-    int32_t score = 0;
-
     const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
     const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
 
-    if (whiteQueens == 0 && blackQueens == 0) {
-        return 0;
-    }
+    if (whiteQueens == 0 && blackQueens == 0) return 0;
 
-    score += evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens);
-    score += evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
-
-    return score;
+    return evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens)
+         + evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
 }
 
 } // namespace engine

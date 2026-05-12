@@ -43,11 +43,7 @@ inline int32_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
 }
 
 int32_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
-    int32_t score = 0;
-    for (int side = 0; side < 2; ++side) {
-        score += evalTrappedPiecesSide(b, occ, side, (side == 0) ? 1 : -1);
-    }
-    return score;
+    return evalTrappedPiecesSide(b, occ, 0, 1) + evalTrappedPiecesSide(b, occ, 1, -1);
 }
 
 } // namespace engine

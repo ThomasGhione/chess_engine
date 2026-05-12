@@ -11,10 +11,8 @@ static inline int32_t evalPawnForksSide(const chess::Board& b, int side) noexcep
     uint64_t pawns = ownPawns;
 
     while (pawns) {
-        const uint8_t sq = __builtin_ctzll(pawns);
-        pawns &= pawns - 1;
+        const uint8_t sq = popLSB(pawns);
 
-        // Only consider pawns defended by another friendly pawn
         if (!(pieces::PAWN_ATTACKERS_TO[side][sq] & ownPawns))
             continue;
 

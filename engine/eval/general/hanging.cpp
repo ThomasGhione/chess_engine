@@ -43,23 +43,24 @@ int32_t Evaluator::evalHangingPieces(const chess::Board& b, const AttackData dat
 }
 
 inline uint64_t Evaluator::collectPawnAttacks(uint64_t pawns, int side) noexcept {
-    uint64_t attacks = 0ULL;
-    while (pawns) {
-        attacks |= pieces::PAWN_ATTACKS[side][popLSB(pawns)];
+    if (side == 0) {
+        // White attacks: rank decreases → shift right; file±1
+        return ((pawns >> 7) & ~FILE_MASKS[0]) | ((pawns >> 9) & ~FILE_MASKS[7]);
     }
-    return attacks;
+    // Black attacks: rank increases → shift left; file±1
+    return ((pawns << 9) & ~FILE_MASKS[0]) | ((pawns << 7) & ~FILE_MASKS[7]);
 }
 
 inline uint64_t Evaluator::collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept {
-    uint64_t attacks = 0ULL;
-    while (pawns) {
-        const int sq = popLSB(pawns);
-        const uint64_t push = pieces::PAWN_SINGLE_PUSH_TARGETS[side][sq];
-        if (push != 0ULL && (push & occ) == 0ULL) {
-            attacks |= pieces::PAWN_ATTACKS[side][__builtin_ctzll(push)];
-        }
+    const uint64_t empty = ~occ;
+    if (side == 0) {
+        // White: push decreases rank (>> 8), then attack
+        const uint64_t pushed = (pawns >> 8) & empty;
+        return ((pushed >> 7) & ~FILE_MASKS[0]) | ((pushed >> 9) & ~FILE_MASKS[7]);
     }
-    return attacks;
+    // Black: push increases rank (<< 8), then attack
+    const uint64_t pushed = (pawns << 8) & empty;
+    return ((pushed << 9) & ~FILE_MASKS[0]) | ((pushed << 7) & ~FILE_MASKS[7]);
 }
 
 template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
