@@ -749,7 +749,7 @@ int32_t Searcher::searchPosition(
     }
 
     // Macro-step 2: Terminal/repetition/mate-distance pruning and TT prelude.
-    const bool isPVNode = (beta - alpha > 1);
+    const bool isPVNode = (static_cast<int64_t>(beta) - static_cast<int64_t>(alpha) > 1);
 
     if (ply > 0) {
         const int32_t matingAlpha = NEG_INF + ply;
