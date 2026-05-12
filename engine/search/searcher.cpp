@@ -1,6 +1,5 @@
 #include "searcher.hpp"
 
-#include <cmath>
 #include <algorithm>
 #include <numeric>
 
@@ -17,6 +16,29 @@ const int32_t DRAW_SCORE_MATERIAL_WEIGHT_PERCENT = 40;
 const int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT = 60;
 const int32_t DRAW_SCORE_WEIGHT_DENOMINATOR = 100;
 const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
+
+// Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
+// Avoids two std::log() calls per LMR candidate in the hot search loop.
+constexpr double LMR_C = 2.87;
+constexpr int LMR_MAX_DEPTH = 20; // engine never exceeds depth 13 in practice
+constexpr int LMR_MAX_MOVES = 218; // theoretical maximum legal moves in any chess position
+struct LMRTable {
+    int8_t data[LMR_MAX_DEPTH][LMR_MAX_MOVES]{};
+    constexpr LMRTable() noexcept {
+        for (int d = 0; d < LMR_MAX_DEPTH; ++d) {
+            for (int m = 0; m < LMR_MAX_MOVES; ++m) {
+                if (d == 0 || m == 0) { data[d][m] = 1; continue; }
+                const double raw = __builtin_log(static_cast<double>(d))
+                                 * __builtin_log(static_cast<double>(m))
+                                 / LMR_C;
+                const int r = static_cast<int>(raw);
+                const int capped = r < 1 ? 1 : (r > d - 3 ? d - 3 : r);
+                data[d][m] = static_cast<int8_t>(capped < 1 ? 1 : capped);
+            }
+        }
+    }
+};
+static constexpr LMRTable LMR_REDUCTION_TABLE;
 
 } // namespace
 
@@ -54,10 +76,8 @@ constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, in
 }
 
 void Searcher::toTTProbeBounds(int32_t alpha, int32_t beta, int32_t& ttAlpha, int32_t& ttBeta) noexcept {
-    const int64_t expandedAlpha = static_cast<int64_t>(alpha);
-    const int64_t expandedBeta = static_cast<int64_t>(beta);
-    ttAlpha = clampToInt32(expandedAlpha);
-    ttBeta = clampToInt32(expandedBeta);
+    ttAlpha = alpha;
+    ttBeta  = beta;
 }
 
 constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
@@ -447,12 +467,12 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
         auto& chPrimary = runtime.captureHistory[colorIndex][toIndex][victimType][0];
         auto& chSecondary = runtime.captureHistory[colorIndex][toIndex][victimType][1];
         int32_t primaryScore = chPrimary;
-        primaryScore += bonus - primaryScore * std::abs(bonus) / MAX_CAPTURE_HISTORY;
+        primaryScore += bonus - primaryScore * bonus / MAX_CAPTURE_HISTORY;
         chPrimary = clampHeuristic16(primaryScore);
 
         const int32_t secondaryBonus = (bonus >> 1);
         int32_t secondaryScore = chSecondary;
-        secondaryScore += secondaryBonus - secondaryScore * std::abs(secondaryBonus) / MAX_CAPTURE_HISTORY;
+        secondaryScore += secondaryBonus - secondaryScore * secondaryBonus / MAX_CAPTURE_HISTORY;
         chSecondary = clampHeuristic16(secondaryScore);
         if (chSecondary > chPrimary) {
             std::swap(chPrimary, chSecondary);
@@ -484,7 +504,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     constexpr int32_t MAX_HISTORY = 16384;
     auto& h = runtime.history[colorIndex][fromIndex][toIndex];
     int32_t historyScore = h;
-    historyScore += bonus - historyScore * std::abs(bonus) / MAX_HISTORY;
+    historyScore += bonus - historyScore * bonus / MAX_HISTORY;
     h = clampHeuristic16(historyScore);
 }
 
@@ -638,14 +658,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (canReduce) {
             int32_t reduction = 1;
             if (lmrStructuralCandidate) {
-                constexpr double LMR_C = 2.87;
-                reduction = static_cast<int32_t>(std::log(static_cast<double>(ctx.depth))
-                                               * std::log(static_cast<double>(moveIndex))
-                                               / LMR_C);
-                reduction = std::clamp(reduction, 1, ctx.depth - 3);
+                const int di = ctx.depth < LMR_MAX_DEPTH ? ctx.depth : LMR_MAX_DEPTH - 1;
+                const int mi = moveIndex < LMR_MAX_MOVES ? moveIndex : LMR_MAX_MOVES - 1;
+                reduction = LMR_REDUCTION_TABLE.data[di][mi];
 
                 if (inConservativeEndgameLMR) {
-                    reduction = std::min<int32_t>(reduction, 1);
+                    reduction = 1;
                 }
             }
 
@@ -698,12 +716,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
                 if (isQuietMove) {
                     const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
-                    const int malus = -((ctx.depth + 1) * (ctx.depth + 1));
+                    const int32_t absMalus = (ctx.depth + 1) * (ctx.depth + 1);
+                    const int32_t malus = -absMalus;
                     constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
                         int16_t& h = runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
                         int32_t hScore = h;
-                        hScore += malus - hScore * std::abs(malus) / MAX_HISTORY;
+                        hScore += malus - hScore * absMalus / MAX_HISTORY;
                         h = clampHeuristic16(hScore);
                     }
                 }
