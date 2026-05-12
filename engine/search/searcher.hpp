@@ -185,15 +185,6 @@ private:
         const chess::Board& b,
         int32_t& outScore) noexcept;
 
-    static bool isKillerMove(
-        const chess::Board::Move& m,
-        const chess::Board::Move killerMoves[2][MAX_PLY],
-        int ply) noexcept;
-
-    static bool isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
-    static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept;
-    static bool doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state,
-                                    bool isPromotion) noexcept;
 
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
     static int32_t drawAdvantageScore(const chess::Board& b) noexcept;

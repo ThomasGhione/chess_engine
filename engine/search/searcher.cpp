@@ -165,43 +165,6 @@ bool Searcher::checkDrawTerminalConditions(
     return false;
 }
 
-bool Searcher::isKillerMove(
-    const chess::Board::Move& m,
-    const chess::Board::Move killerMoves[2][MAX_PLY],
-    int ply) noexcept {
-    if (ply < 0 || ply >= MAX_PLY) [[unlikely]] return false;
-
-    const auto& km0 = killerMoves[0][ply];
-    const auto& km1 = killerMoves[1][ply];
-    return (m.from.index == km0.from.index && m.to.index == km0.to.index)
-        || (m.from.index == km1.from.index && m.to.index == km1.to.index);
-}
-
-bool Searcher::isPromotionMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
-    const uint8_t toRank = move.to.rank();
-    if (toRank != 0 && toRank != 7) return false;
-
-    const uint8_t piece = board.get(move.from);
-    const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
-    if (pieceType != chess::Board::PAWN) return false;
-
-    return toRank == chess::Board::promotionRank(board.getColor(move.from.index) == chess::Board::WHITE);
-}
-
-bool Searcher::doMoveWithPromotion(chess::Board& b, const chess::Board::Move& m, chess::Board::MoveState& state) noexcept {
-    const bool isPromo = isPromotionMove(b, m);
-    return doMoveWithPromotion(b, m, state, isPromo);
-}
-
-bool Searcher::doMoveWithPromotion(
-    chess::Board& b,
-    const chess::Board::Move& m,
-    chess::Board::MoveState& state,
-    bool isPromotion) noexcept {
-    const char promoChoice = isPromotion ? m.promotionPiece : '\0';
-    b.doMove(m, state, promoChoice);
-    return isPromotion;
-}
 
 int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
     if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
@@ -324,7 +287,7 @@ int32_t Searcher::searchRootMoveScore(
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter) noexcept {
     chess::Board::MoveState state;
-    doMoveWithPromotion(b, m, state);
+    b.doMove(m, state, m.promotionPiece);
     const int32_t score = searchPosition(
         b, runtime, runtime.depth - 1, alpha, beta, currPly,
         useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
@@ -606,13 +569,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         chess::Board::MoveState state;
-        const bool isPromo = doMoveWithPromotion(b, m, state, isPromotionCandidate);
+        b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
         const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 12;
         const bool lmrStructuralCandidate = (ctx.depth > 6)
             && (moveIndex >= lmrMinMoveIndex)
-            && !isPromo
+            && !isPromotionCandidate
             && (!wasCapture)
             && !createsPawnForkThreat
             && !isDelicateEndgame;
@@ -622,11 +585,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && !ctx.inCheck
             && (ctx.depth >= 10)
             && (moveIndex >= 30)
-            && !isPromo
+            && !isPromotionCandidate
             && (!wasCapture)
             && !createsPawnForkThreat;
 
-        const bool forcingCandidate = (wasCapture || isPromo || moveIndex < 3 || createsPawnForkThreat);
+        const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3 || createsPawnForkThreat);
         const bool needsCheckInfo =
             (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate || lmrDelicateCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
@@ -634,9 +597,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool isForcingCheck = givesCheck && forcingCandidate;
         const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
         const int32_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0);
+        const auto& km0 = runtime.killerMoves[0][ctx.ply];
+        const auto& km1 = runtime.killerMoves[1][ctx.ply];
+        const bool isKiller = (m.from.index == km0.from.index && m.to.index == km0.to.index)
+                           || (m.from.index == km1.from.index && m.to.index == km1.to.index);
         const bool canReduce = (lmrStructuralCandidate || lmrDelicateCandidate)
             && !givesCheck
-            && !isKillerMove(m, runtime.killerMoves, ctx.ply);
+            && !isKiller;
 
         const int32_t searchAlpha = isFirstMove ? bounds.alpha : (usIsWhite ? bounds.alpha : saturatingSub32(bounds.beta, 1));
         const int32_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? saturatingAdd32(bounds.alpha, 1) : bounds.beta);
@@ -1019,7 +986,7 @@ int32_t Searcher::quiescenceSearch(
         chess::Board::MoveState state;
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
-        doMoveWithPromotion(b, m, state, isPromotionCandidate);
+        b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
         const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
 

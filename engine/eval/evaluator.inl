@@ -81,9 +81,6 @@ inline int32_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
     return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
 }
 
-inline void Evaluator::ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
-    computeAttackData(data, b, occ);
-}
 
 inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noexcept {
     PhaseInfo phase{};

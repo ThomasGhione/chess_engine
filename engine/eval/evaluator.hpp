@@ -26,8 +26,6 @@ public:
 #endif
     static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
 
-    static int32_t getMaterialDelta(const chess::Board& b) noexcept;
-
     static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
     static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
@@ -143,7 +141,6 @@ private:
     static inline void processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>
     static inline void processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
-    static inline void ensureAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
     static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
     static int32_t evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
 
@@ -223,7 +220,6 @@ private:
 #ifdef DEBUG
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
 #endif
-    static int32_t getMaterialDeltaCached(const chess::Board& b) noexcept;
     static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
     static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
     static int32_t evalCastlingBonusCached(const chess::Board& b) noexcept;
