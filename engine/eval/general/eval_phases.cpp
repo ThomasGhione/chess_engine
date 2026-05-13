@@ -70,6 +70,7 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
     eval += evalKingActivity(b, true);
     eval += evalEndgameKingActivity(b);
+    eval += evalMopUp(b);
     eval += evalMobility(data);
     eval += evalTrappedPieces(b, occ);
     eval += evalRooksCached(b, whitePawns, blackPawns);
@@ -99,6 +100,7 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t e
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
     eval += evalKingActivity(b, true);
     eval += evalEndgameKingActivity(b);
+    eval += evalMopUp(b);
     eval += evalInitiative(b, true);
 
     return eval;

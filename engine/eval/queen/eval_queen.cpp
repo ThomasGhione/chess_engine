@@ -28,7 +28,8 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
 
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
                             oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
-    if (oppMaterial > 700) return 0;
+    // Activate for any clearly losing position (up to ~Q+minor vs Q situations).
+    if (oppMaterial > 1300) return 0;
 
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
     if (!enemyKingBB) return 0;
