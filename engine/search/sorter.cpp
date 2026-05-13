@@ -103,9 +103,8 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 
     int32_t score = 0;
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        score = std::min(HISTORY_SCORE_MAX,
-                         std::max(HISTORY_SCORE_MIN,
-                                  static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index])));
+        score = std::clamp(static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index]),
+                           HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
     }
 
     if (fromPieceType == chess::Board::PAWN && ctx.isEndgameOrdering) {
@@ -390,18 +389,13 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m
 }
 
 MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Board::Move> evasions, const chess::Board& b) noexcept {
-    MoveList<chess::Board::Move> orderedEvasions;
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
 
-    for (int i = 0; i < evasions.size; ++i)
-        if (isForcingEvasion(b, evasions[i], enPassant, hasEnPassant))
-            orderedEvasions.push_back(evasions[i]);
-    for (int i = 0; i < evasions.size; ++i)
-        if (!isForcingEvasion(b, evasions[i], enPassant, hasEnPassant))
-            orderedEvasions.push_back(evasions[i]);
+    std::stable_partition(evasions.begin(), evasions.end(),
+        [&](const chess::Board::Move& m) { return isForcingEvasion(b, m, enPassant, hasEnPassant); });
 
-    return orderedEvasions;
+    return evasions;
 }
 
 bool Sorter::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {

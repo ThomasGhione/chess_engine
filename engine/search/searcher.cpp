@@ -32,8 +32,7 @@ struct LMRTable {
                                  * __builtin_log(static_cast<double>(m))
                                  / LMR_C;
                 const int r = static_cast<int>(raw);
-                const int capped = r < 1 ? 1 : (r > d - 3 ? d - 3 : r);
-                data[d][m] = static_cast<int8_t>(capped < 1 ? 1 : capped);
+                data[d][m] = static_cast<int8_t>(std::max(1, std::min(r, d - 3)));
             }
         }
     }
