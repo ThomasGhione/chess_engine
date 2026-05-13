@@ -26,8 +26,8 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
             score += sign * engine::ROOK_ON_SEVENTH_BONUS;
         }
 
-        const uint64_t rankAboveMask = rank == 7 ? 0ULL : (~0ULL << ((rank + 1) * 8));
-        const uint64_t rankBelowMask = (1ULL << (rank * 8)) - 1;
+        const uint64_t rankAboveMask = RANK_ABOVE_MASKS[rank];
+        const uint64_t rankBelowMask = RANK_BELOW_MASKS[rank];
 
         const uint64_t ownPasserCandidates = ownFilePawns & (isWhite ? rankBelowMask : rankAboveMask);
         if (ownPasserCandidates) {

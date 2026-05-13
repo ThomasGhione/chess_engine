@@ -108,6 +108,20 @@ private:
     static constexpr uint64_t DARK_SQUARES = 0xAA55AA55AA55AA55ULL;
     static constexpr uint64_t LIGHT_SQUARES = ~DARK_SQUARES;
 
+    static constexpr std::array<uint64_t, 8> RANK_BELOW_MASKS = []() constexpr {
+        std::array<uint64_t, 8> t{};
+        for (int r = 0; r < 8; ++r)
+            t[r] = (r == 0) ? 0ULL : ((1ULL << (r * 8)) - 1ULL);
+        return t;
+    }();
+
+    static constexpr std::array<uint64_t, 8> RANK_ABOVE_MASKS = []() constexpr {
+        std::array<uint64_t, 8> t{};
+        for (int r = 0; r < 8; ++r)
+            t[r] = (r == 7) ? 0ULL : (~0ULL << ((r + 1) * 8));
+        return t;
+    }();
+
     static const std::array<uint64_t, 64> WHITE_FORWARD_FILL;
     static const std::array<uint64_t, 64> BLACK_FORWARD_FILL;
 

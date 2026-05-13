@@ -128,8 +128,8 @@ inline void Evaluator::applyHookPawnPenalty(const chess::Board&, int side, int k
 inline void Evaluator::applyShelterAndStorm(const chess::Board&, int side, int kingFile, int kingRank,
                                             uint64_t ownPawns, uint64_t enemyPawns, bool kingOnWing,
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept {
-    const uint64_t rankBelowMask = (1ULL << (kingRank * 8)) - 1;
-    const uint64_t rankAboveMask = kingRank == 7 ? 0ULL : (~0ULL << ((kingRank + 1) * 8));
+    const uint64_t rankBelowMask = RANK_BELOW_MASKS[kingRank];
+    const uint64_t rankAboveMask = RANK_ABOVE_MASKS[kingRank];
     const uint64_t inFrontMask = side == 0 ? rankBelowMask : rankAboveMask;
 
     for (int f = std::max(0, kingFile - 1); f <= std::min(7, kingFile + 1); ++f) {

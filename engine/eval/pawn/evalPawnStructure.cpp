@@ -175,8 +175,8 @@ int32_t Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemy
         (pieces::PAWN_ATTACKERS_TO[pawnAttackerIndex][frontSq] & enemyPawns) != 0ULL;
 
     const uint64_t helperRankMask = isWhite
-        ? (~0ULL << (rank * 8))
-        : (rank == 7 ? ~0ULL : ((1ULL << ((rank + 1) * 8)) - 1));
+        ? ~RANK_BELOW_MASKS[rank]
+        : ~RANK_ABOVE_MASKS[rank];
     const bool hasAdjacentHelper = (ownPawns & ADJACENT_FILES_ONLY[file] & helperRankMask) != 0ULL;
 
     if (frontControlledByEnemyPawn && !hasAdjacentHelper) {
