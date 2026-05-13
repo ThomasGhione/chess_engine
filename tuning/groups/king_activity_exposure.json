@@ -1,11 +1,11 @@
 {
   "parameter_ranges": {
-    "KING_SAFETY_PENALTY": "Integer(-18, -4)",
-    "KING_ACTIVITY_BONUS": "Integer(2, 12)",
+    "KING_SAFETY_PENALTY": "Integer(-14, 0)",
+    "KING_ACTIVITY_BONUS": "Integer(2, 11)",
     "KING_SHELTER_ADVANCE_ONE_PENALTY": "Integer(1, 7)",
-    "KING_SHELTER_ADVANCE_TWO_PENALTY": "Integer(3, 13)",
-    "KING_SAFETY_SIDE_CAP": "Integer(110, 190)",
-    "KING_ATTACK_MATERIAL_MIN_SCALE": "Integer(25, 60)"
+    "KING_SHELTER_ADVANCE_TWO_PENALTY": "Integer(3, 12)",
+    "KING_SAFETY_SIDE_CAP": "Integer(115, 180)",
+    "KING_ATTACK_MATERIAL_MIN_SCALE": "Integer(25, 55)"
   },
   "data_path": "king_activity_exposure_data.npz",
   "model_path": "king_activity_exposure_model.pkl"
