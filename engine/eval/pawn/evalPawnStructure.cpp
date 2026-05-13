@@ -276,11 +276,7 @@ void Evaluator::storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, boo
     const uint16_t currentStamp = ++pawnCacheStamp;
 
     PawnEvalCacheEntry* replaceEntry = &cacheBucket[0];
-    if (!cacheBucket[0].valid) {
-        replaceEntry = &cacheBucket[0];
-    } else if (!cacheBucket[1].valid) {
-        replaceEntry = &cacheBucket[1];
-    } else if (cacheBucket[1].stamp < cacheBucket[0].stamp) {
+    if (!cacheBucket[1].valid || cacheBucket[1].stamp < cacheBucket[0].stamp) {
         replaceEntry = &cacheBucket[1];
     }
 

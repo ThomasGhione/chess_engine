@@ -11,8 +11,8 @@ constexpr std::array<int8_t, 64> initMinCenterDist() noexcept {
         int best = 99;
         for (int c : CENTER) {
             const int cr = c >> 3, cf = c & 7;
-            const int dist = (r > cr ? r - cr : cr - r) + (f > cf ? f - cf : cf - f);
-            if (dist < best) best = dist;
+            const int dist = std::abs(r - cr) + std::abs(f - cf);
+            best = std::min(best, dist);
         }
         d[sq] = static_cast<int8_t>(best);
     }

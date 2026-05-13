@@ -101,11 +101,8 @@ inline int Evaluator::popLSB(uint64_t& bb) noexcept{
 inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
                                          int32_t safeBonus, int32_t forcingBonus,
                                          int32_t& attackUnits) noexcept {
-    while (checkers) {
-        const int checkerSq = popLSB(checkers);
-        const bool isSafe = (defenderMap & chess::Board::bitMask(checkerSq)) == 0ULL;
-        attackUnits += isSafe ? safeBonus : forcingBonus;
-    }
+    attackUnits += __builtin_popcountll(checkers & ~defenderMap) * safeBonus
+                 + __builtin_popcountll(checkers &  defenderMap) * forcingBonus;
 }
 
 inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {

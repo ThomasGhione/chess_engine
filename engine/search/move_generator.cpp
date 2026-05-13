@@ -44,7 +44,7 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(int from, int to) noexcept {
         stepRank = (dr > 0) ? 1 : -1;
     } else if (dr == 0) {
         stepFile = (df > 0) ? 1 : -1;
-    } else if ((df > 0 ? df : -df) == (dr > 0 ? dr : -dr)) {
+    } else if (std::abs(df) == std::abs(dr)) {
         stepFile = (df > 0) ? 1 : -1;
         stepRank = (dr > 0) ? 1 : -1;
     } else {
