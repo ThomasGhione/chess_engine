@@ -2,6 +2,44 @@
 
 namespace engine {
 
+// Opposite-color bishop endgame scaling.
+// When each side has exactly one bishop on opposite colors and little other
+// material, the position is drawish even with a pawn advantage. Scale the
+// result toward zero; the more pawns the winning side has, the less we scale.
+int32_t Evaluator::applyOppColorBishopScaling(const chess::Board& b, int32_t score) noexcept {
+    if (score == 0) return 0;
+
+    const uint64_t wb = b.bishops_bb[0];
+    const uint64_t bb = b.bishops_bb[1];
+    if (__builtin_popcountll(wb) != 1 || __builtin_popcountll(bb) != 1) return score;
+
+    const bool whiteOnDark = (wb & DARK_SQUARES) != 0ULL;
+    const bool blackOnDark = (bb & DARK_SQUARES) != 0ULL;
+    if (whiteOnDark == blackOnDark) return score;
+
+    const int wMajors = __builtin_popcountll(b.queens_bb[0])  * 900
+                      + __builtin_popcountll(b.rooks_bb[0])   * 500
+                      + __builtin_popcountll(b.knights_bb[0]) * 320;
+    const int bMajors = __builtin_popcountll(b.queens_bb[1])  * 900
+                      + __builtin_popcountll(b.rooks_bb[1])   * 500
+                      + __builtin_popcountll(b.knights_bb[1]) * 320;
+
+    if (std::abs(wMajors - bMajors) > 400) return score;
+
+    const int pawnImbalance = std::abs(
+        static_cast<int>(__builtin_popcountll(b.pawns_bb[0])) -
+        static_cast<int>(__builtin_popcountll(b.pawns_bb[1]))
+    );
+
+    // Scale factor out of 64: base 32 (half eval), +8 per extra pawn, cap 64.
+    constexpr int SCALE_BASE     = 32;
+    constexpr int SCALE_PER_PAWN =  8;
+    constexpr int SCALE_MAX      = 64;
+    const int scaleFactor = std::min(SCALE_MAX, SCALE_BASE + pawnImbalance * SCALE_PER_PAWN);
+
+    return (score * scaleFactor) / SCALE_MAX;
+}
+
 template<int Side>
 inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
     static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");

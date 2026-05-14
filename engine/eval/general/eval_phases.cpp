@@ -53,6 +53,8 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalPieceCoordinationCached(b);
     eval += evalOutpostsCached(b);
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
+    eval += evalWeakSquares(b, whitePawns, blackPawns);
+    eval += evalBishopVsKnight(b, whitePawns, blackPawns);
     eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalKingActivity(b, false);
     eval += evalCastlingBonusCached(b);
@@ -71,6 +73,9 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
     eval += evalKingActivity(b, true);
     eval += evalEndgameKingActivity(b);
     eval += evalMopUp(b);
+    eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+    eval += evalWeakSquares(b, whitePawns, blackPawns);
+    eval += evalBishopVsKnight(b, whitePawns, blackPawns);
     eval += evalMobility(data);
     eval += evalTrappedPieces(b, occ);
     eval += evalRooksCached(b, whitePawns, blackPawns);
@@ -101,6 +106,7 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t e
     eval += evalKingActivity(b, true);
     eval += evalEndgameKingActivity(b);
     eval += evalMopUp(b);
+    eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
     eval += evalInitiative(b, true);
 
     return eval;

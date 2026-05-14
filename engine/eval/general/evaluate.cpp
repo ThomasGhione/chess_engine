@@ -64,6 +64,10 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
         }
     }
 
+    if (phase.isEndgame) {
+        result = applyOppColorBishopScaling(board, result);
+    }
+
     cacheEntry.key = evalCacheKey;
     cacheEntry.score = result;
     cacheEntry.valid = 1;
