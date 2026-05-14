@@ -82,8 +82,6 @@ inline int32_t OUTPOST_KEY_SQUARE_BONUS = 1;
 inline int32_t COORDINATION_PENALTY = 9;
 inline int32_t OUTPOST_BISHOP_BONUS = 11;
 inline int32_t OUTPOST_KNIGHT_BONUS = 17;
-inline int32_t ORDERING_PENALTY_SAME_PAWN_OPENING = -15;
-
 // ===================================================
 // HANGING PIECES
 // ===================================================

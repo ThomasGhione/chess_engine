@@ -19,8 +19,8 @@ const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
-constexpr double LMR_C = 2.87;
-constexpr int LMR_MAX_DEPTH = 20; // engine never exceeds depth 13 in practice
+constexpr double LMR_C = 3.80;
+constexpr int LMR_MAX_DEPTH = 20; // engine never exceeds depth 14 in practice
 constexpr int LMR_MAX_MOVES = 218; // theoretical maximum legal moves in any chess position
 struct LMRTable {
     int8_t data[LMR_MAX_DEPTH][LMR_MAX_MOVES]{};
@@ -571,8 +571,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 12;
-        const bool lmrStructuralCandidate = (ctx.depth > 6)
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 10;
+        const bool lmrStructuralCandidate = (ctx.depth >= 4)
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromotionCandidate
             && (!wasCapture)
@@ -767,8 +767,8 @@ int32_t Searcher::searchPosition(
         && !node.isPVNode
         && !node.inCheck
         && ply > 0
-        && depth >= 6
-        && nonPawnMajors >= 3
+        && depth >= 4
+        && nonPawnMajors >= 2
         && isBetaCutoff(nmpEvalGate, alpha, beta, node.usIsWhite);
 
     if (canNullMove
@@ -815,8 +815,7 @@ int32_t Searcher::searchPosition(
         runtime.captureHistory,
         canUseTT ? runtime.transpositionTable : nullptr,
         ctx.previousMove,
-        &hasHashMove,
-        runtime.orderingPenaltySamePawnOpening);
+        &hasHashMove);
 
     if (!hasHashMove && depth >= 6 && ply > 0) {
         ctx.depth -= 1;
@@ -1043,8 +1042,7 @@ chess::Board::Move Searcher::getBestMove(
         runtime.captureHistory,
         runtime.transpositionTable,
         nullptr,
-        nullptr,
-        runtime.orderingPenaltySamePawnOpening);
+        nullptr);
     
     // YBWC and Root iterations require fully sorted list upfront.
     Sorter::insertionSort(orderedRootMoves.moves, orderedRootMoves.scores);

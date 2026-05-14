@@ -67,8 +67,6 @@ public:
         std::atomic<bool>* ponderingStopRequested = nullptr;
         std::atomic<bool>* searchInterrupted = nullptr;
 
-        // Tunable ordering penalty kept for compatibility with Engine policy.
-        int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING;
     };
 
     struct IterativeSearchResult {

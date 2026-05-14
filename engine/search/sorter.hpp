@@ -24,7 +24,7 @@ public:
     static constexpr int32_t COUNTER_MOVE_SCORE = 8200;
     static constexpr int32_t CHECK_QUIET_SCORE = 8000;
     static constexpr int32_t PROMOTION_BASE_SCORE = 7000;
-    static constexpr int32_t HISTORY_SCORE_MAX = 4000;
+    static constexpr int32_t HISTORY_SCORE_MAX = 7500;
     static constexpr int32_t HISTORY_SCORE_MIN = -2000;
     
     // King move ordering penalties/bonuses (opening phase)
@@ -107,8 +107,7 @@ public:
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
         const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
-        bool* outHashMoveIsLegal = nullptr,
-        int32_t orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING) noexcept;
+        bool* outHashMoveIsLegal = nullptr) noexcept;
 
     static MovePickerData sortTacticalMoves(
         const MoveList<chess::Board::Move>& tacticalMoves,
@@ -138,7 +137,6 @@ private:
         const chess::Board::Move (&killerMoves)[2][MAX_PLY];
         const uint16_t (&counterMoves)[64][64];
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS];
-        int32_t orderingPenaltySamePawnOpening;
     };
 
     static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
@@ -162,7 +160,6 @@ private:
         int victimType,
         int32_t see,
         bool isPromotionCandidate,
-        int moveIndex,
         bool isHashMove) noexcept;
 
     static int getLeastValuableAttackerTo(

@@ -65,7 +65,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         int fromPieceType, bool isCapture, int victimType, int32_t see,
-        bool isPromotionCandidate, int moveIndex, bool isHashMove) noexcept {
+        bool isPromotionCandidate, bool isHashMove) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
@@ -96,7 +96,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
     }
 
-    if (moveIndex < 8 && ctx.oppKingSq < 64 && fromPieceType != chess::Board::KING
+    if (ctx.oppKingSq < 64 && fromPieceType != chess::Board::KING
         && givesCheckAfterQuietMoveFast(ctx.b, m, fromPieceType, ctx.usSide, ctx.oppKingSq, ctx.occ)) {
         return CHECK_QUIET_SCORE;
     }
@@ -117,7 +117,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     } else if (fromPieceType == chess::Board::PAWN && ctx.fullMoveClock < 8) {
         const int pawnStartRank = ctx.usIsWhite ? 6 : 1;
         if (chess::Board::rank(m.from.index) != pawnStartRank) {
-            score += ctx.orderingPenaltySamePawnOpening;
+            score -= 15;
         }
     }
 
@@ -241,8 +241,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
     const TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
-    bool* outHashMoveIsLegal,
-    int32_t orderingPenaltySamePawnOpening) noexcept {
+    bool* outHashMoveIsLegal) noexcept {
 
     MovePickerData picker;
     picker.size  = moves.size;
@@ -267,8 +266,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const MoveOrderingContext orderingCtx{
         b, ply, previousMove, usSide, oppKingSq, occ,
         usIsWhite, nonPawnMajors <= 5, fullMoveClock,
-        history, killerMoves, counterMoves, captureHistory,
-        orderingPenaltySamePawnOpening
+        history, killerMoves, counterMoves, captureHistory
     };
 
     // Probe TT for hash move.
@@ -308,7 +306,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
 
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, fromPieceType, isCapture, victimType, see,
-            isPromotionCandidate, moveIndex, isHashMove);
+            isPromotionCandidate, isHashMove);
 
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));

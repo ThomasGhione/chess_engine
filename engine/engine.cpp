@@ -54,7 +54,6 @@ namespace {
     const Searcher::SearchRuntime& sourceRuntime) noexcept {
     Searcher::SearchRuntime runtime{};
     runtime.maxThreads = sourceRuntime.maxThreads;
-    runtime.orderingPenaltySamePawnOpening = sourceRuntime.orderingPenaltySamePawnOpening;
     return Searcher::searchBestMove(board, runtime, 1);
 }
 
@@ -84,7 +83,6 @@ void Engine::bindSearchRuntime() noexcept {
     searchRuntime.stopSearchRequested = &stopSearchRequested;
     searchRuntime.ponderingStopRequested = &ponderingStopRequested;
     searchRuntime.searchInterrupted = &searchInterrupted;
-    searchRuntime.orderingPenaltySamePawnOpening = ORDERING_PENALTY_SAME_PAWN_OPENING;
 }
 
 void Engine::ensureMagicTablesInitialized() noexcept {
