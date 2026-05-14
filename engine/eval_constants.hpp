@@ -198,6 +198,11 @@ inline int32_t KING_SHELTER_MIN_ADVANCE_CHECK = 2;            // Min distance fo
 inline int32_t KING_SHELTER_ADVANCE_PAWN_MULTIPLIER = 2;      // Storm advance penalty multiplier
 
 // ===================================================
+// SPACE ADVANTAGE
+// ===================================================
+inline int32_t SPACE_BONUS = 1;   // cp per square of space advantage
+
+// ===================================================
 // STALEMATE HANDLING
 // ===================================================
 inline int32_t STALEMATE_DRAW_PENALTY_MAJOR = 450;
