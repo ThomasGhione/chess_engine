@@ -510,19 +510,24 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const bool canFutilityPruneRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
     // Delicate endgames: keep futility nearly off, but allow a tiny depth-1 gate.
     const bool canFutilityPruneDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
-    const bool canFutilityPrune = canFutilityPruneRegular || canFutilityPruneDelicate;
+    const bool canFutilityPrune = (canFutilityPruneRegular || canFutilityPruneDelicate) && !ctx.improving;
     const int32_t futilityMargin = canFutilityPruneRegular
         ? (isLateEndgame ? FUTILITY_MARGINS_EG[ctx.depth] : FUTILITY_MARGINS_MG[ctx.depth])
         : (canFutilityPruneDelicate ? 180 : 0);
 
-    static constexpr int LMP_THRESHOLDS_MG[] = {0, 12, 20, 30};
-    static constexpr int LMP_THRESHOLDS_EG[] = {0, 16, 26, 38};
+    // LMP thresholds: higher (more permissive) when improving, lower when not.
+    static constexpr int LMP_THRESHOLDS_MG[]          = {0, 12, 20, 30};
+    static constexpr int LMP_THRESHOLDS_EG[]          = {0, 16, 26, 38};
+    static constexpr int LMP_THRESHOLDS_MG_IMPROVING[] = {0, 16, 26, 38};
+    static constexpr int LMP_THRESHOLDS_EG_IMPROVING[] = {0, 20, 32, 46};
     const bool canLMPRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
     // Delicate endgames: prune only very-late quiets at depth-1.
     const bool canLMPDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
     const bool canLMP = canLMPRegular || canLMPDelicate;
     const int lmpThreshold = canLMPRegular
-        ? (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth] : LMP_THRESHOLDS_MG[ctx.depth])
+        ? (ctx.improving
+            ? (isLateEndgame ? LMP_THRESHOLDS_EG_IMPROVING[ctx.depth] : LMP_THRESHOLDS_MG_IMPROVING[ctx.depth])
+            : (isLateEndgame ? LMP_THRESHOLDS_EG[ctx.depth]           : LMP_THRESHOLDS_MG[ctx.depth]))
         : (canLMPDelicate ? 48 : 999);
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
@@ -831,6 +836,11 @@ int32_t Searcher::searchPosition(
         }
     }
 
+    // Store staticEval in ply stack and compute improving flag.
+    if (ply > 0 && ply < MAX_PLY) runtime.evalStack[ply] = node.staticEval;
+    const bool improving = !node.inCheck && ply >= 2
+        && node.staticEval > runtime.evalStack[ply - 2];
+
     const int side = chess::Board::colorToIndex(node.activeColor);
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
@@ -848,7 +858,11 @@ int32_t Searcher::searchPosition(
             const int32_t seScore = searchPosition(b, runtime, depth / 2, seBeta - 1, seBeta,
                 ply + 1, useTT, false, false, previousMove, counter, false);
             if (node.usIsWhite ? (seScore < seBeta) : (seScore > seBeta)) {
-                singularExtension = 1;
+                // Double extension if well below seBeta, single otherwise.
+                const bool doubleExt = node.usIsWhite
+                    ? (seScore < seBeta - 20)
+                    : (seScore > seBeta + 20);
+                singularExtension = doubleExt ? 2 : 1;
             }
         }
     }
@@ -927,7 +941,7 @@ int32_t Searcher::searchPosition(
     SearchContext ctx{
         depth, ply, node.activeColor,
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter,
-        singularExtension, contHistEntry
+        singularExtension, contHistEntry, false, improving
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);

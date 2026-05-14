@@ -61,6 +61,7 @@ public:
         uint16_t counterMoves[64][64] {};
         int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
         int16_t contHist[2][64][64] {};
+        int32_t evalStack[MAX_PLY] {};  // staticEval per ply, for improving flag
 
         // External coordination hooks.
         TranspositionTable* transpositionTable = nullptr;
@@ -146,6 +147,7 @@ private:
         int singularExtension = 0;
         int16_t* contHistEntry = nullptr;
         bool iirActive = false;
+        bool improving = false;
     };
 
     struct AlphaBeta {
