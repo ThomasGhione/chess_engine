@@ -105,6 +105,10 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
         score = std::clamp(static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index]),
                            HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
+        if (ctx.contHistEntry != nullptr) {
+            score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[m.to.index]),
+                                HISTORY_SCORE_MIN, HISTORY_SCORE_MAX) / 2;
+        }
     }
 
     if (fromPieceType == chess::Board::PAWN && ctx.isEndgameOrdering) {
@@ -241,7 +245,8 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
     const TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
-    bool* outHashMoveIsLegal) noexcept {
+    bool* outHashMoveIsLegal,
+    const int16_t* contHistEntry) noexcept {
 
     MovePickerData picker;
     picker.size  = moves.size;
@@ -266,7 +271,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const MoveOrderingContext orderingCtx{
         b, ply, previousMove, usSide, oppKingSq, occ,
         usIsWhite, nonPawnMajors <= 5, fullMoveClock,
-        history, killerMoves, counterMoves, captureHistory
+        history, killerMoves, counterMoves, captureHistory, contHistEntry
     };
 
     // Probe TT for hash move.

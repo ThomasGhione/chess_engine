@@ -107,7 +107,8 @@ public:
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
         const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
-        bool* outHashMoveIsLegal = nullptr) noexcept;
+        bool* outHashMoveIsLegal = nullptr,
+        const int16_t* contHistEntry = nullptr) noexcept;
 
     static MovePickerData sortTacticalMoves(
         const MoveList<chess::Board::Move>& tacticalMoves,
@@ -137,6 +138,7 @@ private:
         const chess::Board::Move (&killerMoves)[2][MAX_PLY];
         const uint16_t (&counterMoves)[64][64];
         const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS];
+        const int16_t* contHistEntry;
     };
 
     static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;

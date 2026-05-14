@@ -402,7 +402,8 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     int ply,
     uint8_t us,
     SearchRuntime& runtime,
-    const chess::Board::Move* previousMove) noexcept {
+    const chess::Board::Move* previousMove,
+    int16_t* contHistEntry) noexcept {
     if (ply < 0 || ply >= MAX_PLY) return;
 
     const int fromIndex = m.from.index;
@@ -457,6 +458,13 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     int32_t historyScore = h;
     historyScore += bonus - historyScore * bonus / MAX_HISTORY;
     h = clampHeuristic16(historyScore);
+
+    // CONTINUATION HISTORY: bonus for this move given the previous move.
+    if (contHistEntry != nullptr) {
+        int32_t chScore = contHistEntry[toIndex];
+        chScore += bonus - chScore * bonus / MAX_HISTORY;
+        contHistEntry[toIndex] = clampHeuristic16(chScore);
+    }
 }
 
 Searcher::SearchMoveResult Searcher::searchMoves(
@@ -665,7 +673,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
-                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove);
+                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry);
 
                 if (isQuietMove) {
                     const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
@@ -677,6 +685,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                         int32_t hScore = h;
                         hScore += malus - hScore * absMalus / MAX_HISTORY;
                         h = clampHeuristic16(hScore);
+
+                        if (ctx.contHistEntry != nullptr) {
+                            int32_t chScore = ctx.contHistEntry[searchedQuiets[i].to];
+                            chScore += malus - chScore * absMalus / MAX_HISTORY;
+                            ctx.contHistEntry[searchedQuiets[i].to] = clampHeuristic16(chScore);
+                        }
                     }
                 }
             }
@@ -805,10 +819,15 @@ int32_t Searcher::searchPosition(
     }
 
     // Macro-step 4: Generate/sort moves, recurse through searchMoves, and write TT.
+    const int prevSide = chess::Board::colorToIndex(node.activeColor) ^ 1;
+    int16_t* contHistEntry = (previousMove != nullptr && previousMove->from.index < 64 && previousMove->to.index < 64)
+        ? &runtime.contHist[prevSide][previousMove->from.index][previousMove->to.index][0]
+        : nullptr;
+
     SearchContext ctx{
         depth, ply, node.activeColor,
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter,
-        singularExtension
+        singularExtension, contHistEntry
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
@@ -835,7 +854,8 @@ int32_t Searcher::searchPosition(
         runtime.captureHistory,
         canUseTT ? runtime.transpositionTable : nullptr,
         ctx.previousMove,
-        &hasHashMove);
+        &hasHashMove,
+        ctx.contHistEntry);
 
     if (!hasHashMove && depth >= 6 && ply > 0) {
         ctx.depth -= 1;
