@@ -220,15 +220,20 @@ void Searcher::updateMinMax(
 }
 
 void Searcher::softResetHistory(SearchRuntime& runtime) noexcept {
-    // Macro-step 1: Flatten history tensor in contiguous memory.
-    int16_t* historyFlat = &runtime.history[0][0][0];
-    constexpr int HISTORY_CELLS = 2 * 64 * 64;
+    constexpr int HISTORY_CELLS      = 2 * 64 * 64;
+    constexpr int CONT_HIST_CELLS    = 2 * 64 * 64;
+    constexpr int CAP_HIST_CELLS     = 2 * 64 * 7 * CAPTURE_HISTORY_SLOTS;
 
-    // Macro-step 2: Apply age decay by halving every entry.
+    int16_t* historyFlat  = &runtime.history[0][0][0];
+    int16_t* contHistFlat = &runtime.contHist[0][0][0];
+    int16_t* capHistFlat  = &runtime.captureHistory[0][0][0][0];
+
     #pragma omp simd
-    for (int i = 0; i < HISTORY_CELLS; ++i) {
-        historyFlat[i] >>= 1;
-    }
+    for (int i = 0; i < HISTORY_CELLS; ++i)   historyFlat[i]  >>= 1;
+    #pragma omp simd
+    for (int i = 0; i < CONT_HIST_CELLS; ++i) contHistFlat[i] >>= 1;
+    #pragma omp simd
+    for (int i = 0; i < CAP_HIST_CELLS; ++i)  capHistFlat[i]  >>= 1;
 }
 
 chess::Board::Move Searcher::searchBestMove(
@@ -793,6 +798,22 @@ int32_t Searcher::searchPosition(
             if (node.usIsWhite ? (seScore < seBeta) : (seScore > seBeta)) {
                 singularExtension = 1;
             }
+        }
+    }
+
+    // Razoring: at depth 1-2, if static eval is well below alpha, drop into qsearch directly.
+    static constexpr int32_t RAZOR_MARGIN_D1 = 300;
+    static constexpr int32_t RAZOR_MARGIN_D2 = 600;
+    if (!node.isPVNode && !node.inCheck && ply > 0 && depth <= 2) {
+        const int32_t margin = (depth == 1) ? RAZOR_MARGIN_D1 : RAZOR_MARGIN_D2;
+        const bool razorGate = node.usIsWhite
+            ? (node.staticEval + margin < alpha)
+            : (node.staticEval - margin > beta);
+        if (razorGate) {
+            const int32_t qScore = quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
+            if (shouldAbortSearch(runtime)) return 0;
+            const bool stillBad = node.usIsWhite ? (qScore < alpha) : (qScore > beta);
+            if (stillBad) return qScore;
         }
     }
 
@@ -1415,7 +1436,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(prevPrevScore);
             const int64_t scoreSwing64 = (scoreDiff64 >= 0) ? scoreDiff64 : -scoreDiff64;
             const int32_t scoreSwing = std::min<int64_t>(scoreSwing64, POS_INF);
-            int32_t windowDelta = std::clamp<int32_t>(40 + (scoreSwing / 2), 60, 220);
+            int32_t windowDelta = std::clamp<int32_t>(15 + (scoreSwing / 4), 25, 100);
             constexpr int32_t WINDOW_HARD_CAP = 1500;
             constexpr int MAX_ASP_RESEARCHES = 6;
             int aspirationResearches = 0;
@@ -1449,7 +1470,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                     centerScore = std::max(centerScore, score);
                 }
 
-                windowDelta = std::min<int32_t>(WINDOW_HARD_CAP, windowDelta * 2 + 20);
+                windowDelta = std::min<int32_t>(WINDOW_HARD_CAP, windowDelta * 2 + 10);
                 if (aspirationResearches >= MAX_ASP_RESEARCHES || windowDelta >= WINDOW_HARD_CAP) {
                     iterationAlpha = NEG_INF;
                     iterationBeta = POS_INF;
@@ -1462,9 +1483,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
                 if (failLow) {
                     aspAlpha = std::max<int32_t>(NEG_INF, saturatingSub32(centerScore, windowDelta));
-                    aspBeta = std::min<int32_t>(POS_INF, saturatingAdd32(centerScore, std::max<int32_t>(40, windowDelta / 2)));
+                    aspBeta = std::min<int32_t>(POS_INF, saturatingAdd32(centerScore, std::max<int32_t>(25, windowDelta / 2)));
                 } else {
-                    aspAlpha = std::max<int32_t>(NEG_INF, saturatingSub32(centerScore, std::max<int32_t>(40, windowDelta / 2)));
+                    aspAlpha = std::max<int32_t>(NEG_INF, saturatingSub32(centerScore, std::max<int32_t>(25, windowDelta / 2)));
                     aspBeta = std::min<int32_t>(POS_INF, saturatingAdd32(centerScore, windowDelta));
                 }
             }
