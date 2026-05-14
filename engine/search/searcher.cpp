@@ -332,7 +332,7 @@ bool Searcher::tryNullMovePruning(
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter,
     int32_t& outScore) noexcept {
-    const int32_t reduction = 3 + depth / 8;
+    const int32_t reduction = 3 + depth / 3;
 
     chess::Board::MoveState nullState;
     b.doNullMove(nullState);
@@ -614,10 +614,16 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && !isPromotionCandidate
             && (!wasCapture)
             && !createsPawnForkThreat;
+        // Losing captures (SEE < 0): reduce like late quiets regardless of move index.
+        const bool lmrLosingCapture = wasCapture
+            && !isPromotionCandidate
+            && !ctx.inCheck
+            && (ctx.depth >= 4)
+            && (Sorter::staticExchangeEvaluationPublic(b, m) < 0);
 
         const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3 || createsPawnForkThreat);
         const bool needsCheckInfo =
-            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate || lmrDelicateCandidate;
+            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate || lmrDelicateCandidate || lmrLosingCapture;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
         const bool isForcingCheck = givesCheck && forcingCandidate;
@@ -628,7 +634,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const auto& km1 = runtime.killerMoves[1][ctx.ply];
         const bool isKiller = (m.from.index == km0.from.index && m.to.index == km0.to.index)
                            || (m.from.index == km1.from.index && m.to.index == km1.to.index);
-        const bool canReduce = (lmrStructuralCandidate || lmrDelicateCandidate)
+        const bool canReduce = (lmrStructuralCandidate || lmrDelicateCandidate || lmrLosingCapture)
             && !givesCheck
             && !isKiller;
 
@@ -871,7 +877,7 @@ int32_t Searcher::searchPosition(
         && !node.inCheck
         && ply > 0
         && depth >= 4
-        && nonPawnMajors >= 3
+        && nonPawnMajors >= 2
         && isBetaCutoff(nmpEvalGate, alpha, beta, node.usIsWhite);
 
     if (canNullMove
