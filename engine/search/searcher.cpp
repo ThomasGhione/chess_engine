@@ -492,6 +492,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
 
+    struct CaptureEntry { uint8_t to; uint8_t victimType; };
+    constexpr int MAX_CAPTURES_TRACKED = 32;
+    CaptureEntry searchedCaptures[MAX_CAPTURES_TRACKED];
+    int numSearchedCaptures = 0;
+
     // Macro-step 2: Precompute pruning buckets and loop invariants.
     const int nonPawnMajorsForLMR = b.getIncrementalNonPawnMajorCount();
     const bool isDelicateEndgame = (nonPawnMajorsForLMR <= 2);
@@ -522,6 +527,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppSide = usSide ^ 1;
+    const uint64_t oppKingBBForFutility = b.kings_bb[oppSide];
+    const int oppKingSq = oppKingBBForFutility ? __builtin_ctzll(oppKingBBForFutility) : 64;
     const uint64_t enemyMajorOrKingTargets =
         b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
     const uint64_t enemyForkTargets =
@@ -574,8 +581,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
+        // Pre-move check detection for futility: use sorter's fast bitboard check approximation.
+        const bool preMoveGivesCheck = (canFutilityPrune || (canLMP && isQuietMove))
+            && isQuietMove && fromPieceType != chess::Board::KING
+            && oppKingSq < 64
+            && Sorter::givesCheckFast(b, m, fromPieceType, usSide, oppKingSq,
+                                      b.getPiecesBitMap());
+
         const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
-        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && moveIndex > 0
+        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && !preMoveGivesCheck && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
             continue;
         }
@@ -584,7 +598,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
         const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 14 : 10;
+        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 10 : 8;
         const bool lmrStructuralCandidate = (ctx.depth >= 4)
             && (moveIndex >= lmrMinMoveIndex)
             && !isPromotionCandidate
@@ -632,6 +646,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 if (inConservativeEndgameLMR) {
                     reduction = 1;
                 }
+                if (ctx.isPVNode) {
+                    reduction = std::max(1, reduction - 1);
+                }
                 if (ctx.iirActive) {
                     reduction = std::min(reduction + 1, childDepth - 1);
                 }
@@ -675,6 +692,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
             searchedQuiets[numSearchedQuiets++] = {m.from.index, m.to.index};
         }
+        if (wasCapture && numSearchedCaptures < MAX_CAPTURES_TRACKED) {
+            searchedCaptures[numSearchedCaptures++] = {m.to.index, static_cast<uint8_t>(victimType)};
+        }
 
         updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
 
@@ -683,11 +703,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 updateKillerAndHistoryOnBetaCutoff(
                     m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry);
 
+                const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
+                const int32_t absMalus = (ctx.depth + 1) * (ctx.depth + 1);
+                const int32_t malus = -absMalus;
+                constexpr int32_t MAX_HISTORY = 16384;
+                constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
+
                 if (isQuietMove) {
-                    const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
-                    const int32_t absMalus = (ctx.depth + 1) * (ctx.depth + 1);
-                    const int32_t malus = -absMalus;
-                    constexpr int32_t MAX_HISTORY = 16384;
                     for (int i = 0; i < numSearchedQuiets - 1; ++i) {
                         int16_t& h = runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to];
                         int32_t hScore = h;
@@ -700,6 +722,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                             ctx.contHistEntry[searchedQuiets[i].to] = clampHeuristic16(chScore);
                         }
                     }
+                }
+
+                // Capture history malus: penalize captures searched before the cutoff move.
+                const int capMalusEnd = wasCapture ? numSearchedCaptures - 1 : numSearchedCaptures;
+                for (int i = 0; i < capMalusEnd; ++i) {
+                    auto& chP = runtime.captureHistory[colorIndex][searchedCaptures[i].to][searchedCaptures[i].victimType][0];
+                    auto& chS = runtime.captureHistory[colorIndex][searchedCaptures[i].to][searchedCaptures[i].victimType][1];
+                    int32_t p = chP; p += malus - p * absMalus / MAX_CAPTURE_HISTORY; chP = clampHeuristic16(p);
+                    int32_t s = chS; s += malus - s * absMalus / MAX_CAPTURE_HISTORY; chS = clampHeuristic16(s);
                 }
             }
             break;
@@ -1421,11 +1452,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
         const bool canUseAspiration =
             hasPrevScore
-            && hasPrevPrevScore
             && result.completedAnyDepth
             && currentDepth >= 5
-            && absScore(prevScore) < MATE_SCORE_THRESHOLD
-            && absScore(prevPrevScore) < MATE_SCORE_THRESHOLD;
+            && absScore(prevScore) < MATE_SCORE_THRESHOLD;
 
         if (!canUseAspiration) {
             candidateBestMove = getBestMove(rootBoard, moves, searchBestMoveForWhite, runtime);
@@ -1433,7 +1462,8 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 iterationCompleted = false;
             }
         } else {
-            const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(prevPrevScore);
+            const int32_t swingBase = hasPrevPrevScore ? prevPrevScore : prevScore;
+            const int64_t scoreDiff64 = static_cast<int64_t>(prevScore) - static_cast<int64_t>(swingBase);
             const int64_t scoreSwing64 = (scoreDiff64 >= 0) ? scoreDiff64 : -scoreDiff64;
             const int32_t scoreSwing = std::min<int64_t>(scoreSwing64, POS_INF);
             int32_t windowDelta = std::clamp<int32_t>(15 + (scoreSwing / 4), 25, 100);

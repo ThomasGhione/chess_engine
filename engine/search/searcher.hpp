@@ -18,7 +18,7 @@ public:
 
     static constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
     static constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
-    static constexpr int32_t DEFAULT_DEPTH = 10;
+    static constexpr int32_t DEFAULT_DEPTH = 11;
     static constexpr int32_t MAX_PLY = 64;
     static constexpr int32_t CAPTURE_HISTORY_SLOTS = 2;
 

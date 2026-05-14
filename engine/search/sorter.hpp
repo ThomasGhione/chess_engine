@@ -114,6 +114,11 @@ public:
         return staticExchangeEvaluation(b, m);
     }
 
+    static bool givesCheckFast(const chess::Board& b, const chess::Board::Move& m,
+            int fromPieceType, int usSide, int oppKingSq, uint64_t occ) noexcept {
+        return givesCheckAfterQuietMoveFast(b, m, fromPieceType, usSide, oppKingSq, occ);
+    }
+
     static MovePickerData sortTacticalMoves(
         const MoveList<chess::Board::Move>& tacticalMoves,
         const chess::Board& b,
