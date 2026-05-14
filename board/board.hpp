@@ -68,7 +68,9 @@ public:
         EVAL_CACHE_OUTPOSTS                 = 10,
         EVAL_CACHE_PIECE_COORDINATION       = 11,
         EVAL_CACHE_CENTRAL_CONTROL          = 12,
-        EVAL_CACHE_COUNT                    = 13
+        EVAL_CACHE_WEAK_SQUARES             = 13,
+        EVAL_CACHE_BISHOP_VS_KNIGHT         = 14,
+        EVAL_CACHE_COUNT                    = 15
     };
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
@@ -142,7 +144,7 @@ public:
         MoveKind moveKind{MoveKind::Quiet};
     };
 
-    static_assert(sizeof(MoveState) <= 80, "MoveState layout regressed; keep it compact for search stack usage.");
+    static_assert(sizeof(MoveState) <= 96, "MoveState layout regressed; keep it compact for search stack usage.");
     // Structs and enums end
     
     // Constructors start

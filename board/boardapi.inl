@@ -57,6 +57,17 @@ constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept 
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
         mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
         mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
+        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
+    }
+
+    if constexpr (((MoveFlags & MOVE_CHANGE_BISHOP_MOVE) != 0) || captureOrPromotion) {
+        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
+    }
+
+    if constexpr ((MoveFlags & MOVE_CHANGE_KNIGHT_MOVE) != 0) {
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
     }
 
     if constexpr (((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {

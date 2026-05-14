@@ -251,6 +251,9 @@ private:
     static int32_t evalOutpostsCached(const chess::Board& b) noexcept;
     static int32_t evalPieceCoordinationCached(const chess::Board& b) noexcept;
     static int32_t evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalWeakSquaresCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    static int32_t evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
+    static int32_t evalBishopVsKnightCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
     __attribute__((noinline))
     static int32_t evaluateOpeningPhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;

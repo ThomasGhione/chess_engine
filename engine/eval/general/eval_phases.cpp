@@ -17,7 +17,7 @@ int32_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int32_t eval, uin
     eval += evalMobility(data);
     eval += (evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
@@ -38,7 +38,7 @@ int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t e
     eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
@@ -55,8 +55,8 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalPieceCoordinationCached(b);
     eval += evalOutpostsCached(b);
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
-    eval += evalWeakSquares(b, whitePawns, blackPawns);
-    eval += evalBishopVsKnight(b, whitePawns, blackPawns);
+    eval += evalWeakSquaresCached(b, whitePawns, blackPawns);
+    eval += evalBishopVsKnightCached(b, whitePawns, blackPawns);
     eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
     eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalKingActivity(b, false);
@@ -64,7 +64,7 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalKingAttackZone(b, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
-    eval += evalBlockedPawnByBishops(b);
+    eval += evalBlockedPawnByBishopsCached(b);
 
     return eval;
 }
@@ -78,8 +78,8 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
     eval += evalMopUp(b);
     eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
     eval += evalRuleOfSquare(b, whitePawns, blackPawns);
-    eval += evalWeakSquares(b, whitePawns, blackPawns);
-    eval += evalBishopVsKnight(b, whitePawns, blackPawns);
+    eval += evalWeakSquaresCached(b, whitePawns, blackPawns);
+    eval += evalBishopVsKnightCached(b, whitePawns, blackPawns);
     eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
     eval += evalMobility(data);
     eval += evalTrappedPieces(b, occ);

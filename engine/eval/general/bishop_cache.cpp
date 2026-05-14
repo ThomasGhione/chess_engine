@@ -26,4 +26,15 @@ int32_t Evaluator::evalBadBishopCached(const chess::Board& b, uint64_t whitePawn
     return score;
 }
 
+int32_t Evaluator::evalBishopVsKnightCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_BISHOP_VS_KNIGHT;
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
+    }
+    const int32_t score = evalBishopVsKnight(b, whitePawns, blackPawns);
+    b.setEvalCacheTerm<TERM>(score);
+    return score;
+}
+
+
 } // namespace engine

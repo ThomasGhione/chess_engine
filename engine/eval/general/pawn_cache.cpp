@@ -32,4 +32,25 @@ int32_t Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whit
     return score;
 }
 
+int32_t Evaluator::evalWeakSquaresCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_WEAK_SQUARES;
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
+    }
+    const int32_t score = evalWeakSquares(b, whitePawns, blackPawns);
+    b.setEvalCacheTerm<TERM>(score);
+    return score;
+}
+
+// evalBlockedPawnByBishops uses the existing board-level eval cache slot.
+int32_t Evaluator::evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept {
+    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS;
+    if (b.hasEvalCacheTerm<TERM>()) {
+        return b.getEvalCacheTerm<TERM>();
+    }
+    const int32_t score = evalBlockedPawnByBishops(b);
+    b.setEvalCacheTerm<TERM>(score);
+    return score;
+}
+
 } // namespace engine
