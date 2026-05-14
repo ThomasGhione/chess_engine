@@ -60,7 +60,7 @@ public:
         int16_t history[2][64][64] {};
         uint16_t counterMoves[64][64] {};
         int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
-        int16_t contHist[2][64][64][64] {};
+        int16_t contHist[2][64][64] {};
 
         // External coordination hooks.
         TranspositionTable* transpositionTable = nullptr;
@@ -144,7 +144,8 @@ private:
         bool isPVNode = false;
         uint64_t* nodeCounter = nullptr;
         int singularExtension = 0;
-        int16_t* contHistEntry = nullptr;  // pointer into contHist[color][prevFrom][prevTo]
+        int16_t* contHistEntry = nullptr;
+        bool iirActive = false;
     };
 
     struct AlphaBeta {

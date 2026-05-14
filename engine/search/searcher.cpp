@@ -627,6 +627,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 if (inConservativeEndgameLMR) {
                     reduction = 1;
                 }
+                if (ctx.iirActive) {
+                    reduction = std::min(reduction + 1, childDepth - 1);
+                }
             }
 
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
@@ -826,11 +829,9 @@ int32_t Searcher::searchPosition(
         const int32_t probcutBeta = node.usIsWhite
             ? saturatingAdd32(beta, PROBCUT_MARGIN)
             : saturatingSub32(beta, PROBCUT_MARGIN);
-        MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateLegalMoves(b, true, false, false);
+        MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
-            const int toPT = b.get(mc.to) & chess::Board::MASK_PIECE_TYPE;
-            if (toPT == chess::Board::EMPTY) continue;
             const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
             const bool seeOk = node.usIsWhite ? (see >= PROBCUT_MARGIN) : (see <= -PROBCUT_MARGIN);
             if (!seeOk) continue;
@@ -846,8 +847,8 @@ int32_t Searcher::searchPosition(
 
     // Macro-step 4: Generate/sort moves, recurse through searchMoves, and write TT.
     const int prevSide = chess::Board::colorToIndex(node.activeColor) ^ 1;
-    int16_t* contHistEntry = (previousMove != nullptr && previousMove->from.index < 64 && previousMove->to.index < 64)
-        ? &runtime.contHist[prevSide][previousMove->from.index][previousMove->to.index][0]
+    int16_t* contHistEntry = (previousMove != nullptr && previousMove->to.index < 64)
+        ? &runtime.contHist[prevSide][previousMove->to.index][0]
         : nullptr;
 
     SearchContext ctx{
@@ -884,7 +885,7 @@ int32_t Searcher::searchPosition(
         ctx.contHistEntry);
 
     if (!hasHashMove && depth >= 6 && ply > 0) {
-        ctx.depth -= 1;
+        ctx.iirActive = true;
     }
 
     const int32_t alphaOrig = bounds.alpha;
