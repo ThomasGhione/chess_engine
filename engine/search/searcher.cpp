@@ -808,7 +808,22 @@ int32_t Searcher::searchPosition(
     node.isPawnEndgameForPruning =
         ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
 
-    node.staticEval = (ply > 0 && !node.inCheck) ? Evaluator::evaluate(b) : 0;
+    if (ply > 0 && !node.inCheck) {
+        node.staticEval = Evaluator::evaluate(b);
+        if (canUseTT) {
+            int32_t ttStaticScore = 0;
+            uint8_t ttStaticFlag = 0;
+            if (runtime.transpositionTable->probeSE(hashKey, 0, ttStaticScore, ttStaticFlag)) {
+                if (ttStaticFlag == TranspositionTable::Entry::EXACT
+                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && node.usIsWhite  && ttStaticScore > node.staticEval)
+                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && !node.usIsWhite && ttStaticScore < node.staticEval)
+                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && node.usIsWhite  && ttStaticScore < node.staticEval)
+                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && !node.usIsWhite && ttStaticScore > node.staticEval)) {
+                    node.staticEval = ttStaticScore;
+                }
+            }
+        }
+    }
 
     const int side = chess::Board::colorToIndex(node.activeColor);
     const int nonPawnMajors = __builtin_popcountll(
