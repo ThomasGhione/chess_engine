@@ -149,6 +149,23 @@ int Sorter::getLeastValuableAttackerTo(const chess::Board& b, int sq, uint64_t o
 }
 
 int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept {
+    struct SEECacheEntry { 
+        uint64_t key; 
+        int32_t score; 
+        uint8_t valid; 
+    };
+    static constexpr size_t SEE_CACHE_SIZE = 1u << 12;
+    static constexpr uint64_t SEE_CACHE_MASK = SEE_CACHE_SIZE - 1u;
+    thread_local std::array<SEECacheEntry, SEE_CACHE_SIZE> seeCache{};
+
+    const uint64_t cacheKey = b.getHash()
+        ^ (static_cast<uint64_t>(m.from.index) * 0xBF58476D1CE4E5B9ULL)
+        ^ (static_cast<uint64_t>(m.to.index)   * 0x94D049BB133111EBULL)
+        ^ (static_cast<uint64_t>(m.promotionPiece) * 0x6C62272E07BB0142ULL);
+    const uint64_t slot = cacheKey & SEE_CACHE_MASK;
+    SEECacheEntry& entry = seeCache[slot];
+    if (entry.valid && entry.key == cacheKey) return entry.score;
+
     const int toSq   = m.to.index;
     const int fromSq = m.from.index;
 
@@ -206,6 +223,9 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
     }
 
+    entry.key   = cacheKey;
+    entry.score = gain[0];
+    entry.valid = 1;
     return gain[0];
 }
 
