@@ -165,6 +165,7 @@ public:
     inline void prefetch(uint64_t key) noexcept;
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
     inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
+    inline bool probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
 
@@ -458,6 +459,25 @@ inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
             return true;
         }
         return false;
+    }
+    return false;
+}
+
+inline bool TranspositionTable::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept {
+    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+    const BucketSeq& bucketSeq = seqData()[bucketIndex];
+    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
+    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+        const EntrySnapshot& entry = snapshot[i];
+        if (entry.key != key) continue;
+        const uint8_t flag = Entry::flagFromPayload(entry.payload);
+        if (flag == Entry::INVALID) continue;
+        if (Entry::depthFromPayload(entry.payload) < minDepth) return false;
+        outScore = Entry::scoreFromPayload(entry.payload);
+        outFlag  = flag;
+        return true;
     }
     return false;
 }

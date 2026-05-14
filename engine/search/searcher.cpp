@@ -595,7 +595,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isForcingCheck = givesCheck && forcingCandidate;
         const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
-        const int32_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0);
+        const int32_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
+                                 + (isFirstMove ? ctx.singularExtension : 0);
         const auto& km0 = runtime.killerMoves[0][ctx.ply];
         const auto& km1 = runtime.killerMoves[1][ctx.ply];
         const bool isKiller = (m.from.index == km0.from.index && m.to.index == km0.to.index)
@@ -760,6 +761,24 @@ int32_t Searcher::searchPosition(
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
+    // Singular extension: if TT has a LOWERBOUND at depth/2, check if hash move is uniquely best.
+    int singularExtension = 0;
+    if (canUseTT && !isPVNode && !node.inCheck && depth >= 6 && ply > 0 && ply < MAX_PLY - 2) {
+        int32_t ttSEScore = 0;
+        uint8_t ttSEFlag = 0;
+        if (runtime.transpositionTable->probeSE(hashKey, static_cast<uint8_t>(depth / 2), ttSEScore, ttSEFlag)
+            && ttSEFlag == TranspositionTable::Entry::LOWERBOUND) {
+            const int32_t seBeta = node.usIsWhite
+                ? saturatingSub32(ttSEScore, 60)
+                : saturatingAdd32(ttSEScore, 60);
+            const int32_t seScore = searchPosition(b, runtime, depth / 2, seBeta - 1, seBeta,
+                ply + 1, useTT, false, false, previousMove, counter, false);
+            if (node.usIsWhite ? (seScore < seBeta) : (seScore > seBeta)) {
+                singularExtension = 1;
+            }
+        }
+    }
+
     const int32_t nmpEvalGate = node.usIsWhite
         ? (node.staticEval + 100)
         : (node.staticEval - 100);
@@ -768,7 +787,7 @@ int32_t Searcher::searchPosition(
         && !node.inCheck
         && ply > 0
         && depth >= 4
-        && nonPawnMajors >= 2
+        && nonPawnMajors >= 3
         && isBetaCutoff(nmpEvalGate, alpha, beta, node.usIsWhite);
 
     if (canNullMove
@@ -788,7 +807,8 @@ int32_t Searcher::searchPosition(
     // Macro-step 4: Generate/sort moves, recurse through searchMoves, and write TT.
     SearchContext ctx{
         depth, ply, node.activeColor,
-        previousMove, node.staticEval, node.inCheck, node.isPVNode, counter
+        previousMove, node.staticEval, node.inCheck, node.isPVNode, counter,
+        singularExtension
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);

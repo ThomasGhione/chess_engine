@@ -142,6 +142,7 @@ private:
         bool inCheck = false;
         bool isPVNode = false;
         uint64_t* nodeCounter = nullptr;
+        int singularExtension = 0;
     };
 
     struct AlphaBeta {
