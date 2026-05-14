@@ -77,6 +77,7 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
     eval += evalEndgameKingActivity(b);
     eval += evalMopUp(b);
     eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+    eval += evalRuleOfSquare(b, whitePawns, blackPawns);
     eval += evalWeakSquares(b, whitePawns, blackPawns);
     eval += evalBishopVsKnight(b, whitePawns, blackPawns);
     eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
@@ -111,6 +112,7 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t e
     eval += evalEndgameKingActivity(b);
     eval += evalMopUp(b);
     eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+    eval += evalRuleOfSquare(b, whitePawns, blackPawns);
     eval += evalInitiative(b, true);
 
     return eval;

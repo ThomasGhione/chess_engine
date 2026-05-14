@@ -231,6 +231,7 @@ private:
     static int32_t evalBishopVsKnight(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalPassedPawnKeySquares(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ) noexcept;
+    static int32_t evalRuleOfSquare(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static inline int32_t evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept;
     static int32_t evalDoubleRookEndgame(const chess::Board& b) noexcept;
     static inline int32_t evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept;
