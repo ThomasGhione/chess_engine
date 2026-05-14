@@ -191,11 +191,10 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
         return 0;
     }
 
+    // Scale contempt aggressively so winning positions never accept repetition.
+    // No upper cap: a rook-up position gets ~800cp contempt, discouraging any draw.
     const int32_t advantage = std::abs(drawDelta);
-    const int32_t scaledPenalty =
-        STALEMATE_DRAW_PENALTY_MINOR + (advantage - REPETITION_DRAW_ADVANTAGE_THRESHOLD) / 2;
-    const int32_t contempt = std::clamp<int32_t>(
-        scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
+    const int32_t contempt = STALEMATE_DRAW_PENALTY_MINOR + advantage * 2;
     return (drawDelta > 0) ? -contempt : contempt;
 }
 
