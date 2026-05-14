@@ -110,6 +110,10 @@ public:
         bool* outHashMoveIsLegal = nullptr,
         const int16_t* contHistEntry = nullptr) noexcept;
 
+    static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Board::Move& m) noexcept {
+        return staticExchangeEvaluation(b, m);
+    }
+
     static MovePickerData sortTacticalMoves(
         const MoveList<chess::Board::Move>& tacticalMoves,
         const chess::Board& b,

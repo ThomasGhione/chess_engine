@@ -307,11 +307,16 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
             && m.promotionPiece == hashPromo;
         if (isHashMove) hashMoveFound = true;
 
-        const int32_t see = (isCapture && !isHashMove) ? staticExchangeEvaluation(b, m) : 0;
+        const bool needsSee = !isHashMove && (isCapture || (!isPromotionCandidate && fromPieceType != chess::Board::KING));
+        const int32_t see = needsSee ? staticExchangeEvaluation(b, m) : 0;
 
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, fromPieceType, isCapture, victimType, see,
             isPromotionCandidate, isHashMove);
+
+        if (!isHashMove && !isCapture && !isPromotionCandidate && see < 0) {
+            score = std::min(score, KILLER_2_SCORE - 1) + see;
+        }
 
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));

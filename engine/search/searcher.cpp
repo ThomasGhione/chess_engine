@@ -818,6 +818,32 @@ int32_t Searcher::searchPosition(
         return score;
     }
 
+    // Probcut: if a capture has SEE >= beta + margin at shallow depth, it likely exceeds beta.
+    static constexpr int32_t PROBCUT_MARGIN = 100;
+    static constexpr int32_t PROBCUT_MIN_DEPTH = 5;
+    if (!node.isPVNode && !node.inCheck && depth >= PROBCUT_MIN_DEPTH && ply > 0
+        && std::abs(beta) < POS_INF - 1000) {
+        const int32_t probcutBeta = node.usIsWhite
+            ? saturatingAdd32(beta, PROBCUT_MARGIN)
+            : saturatingSub32(beta, PROBCUT_MARGIN);
+        MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateLegalMoves(b, true, false, false);
+        for (int i = 0; i < captures.size; ++i) {
+            const auto& mc = captures[i];
+            const int toPT = b.get(mc.to) & chess::Board::MASK_PIECE_TYPE;
+            if (toPT == chess::Board::EMPTY) continue;
+            const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
+            const bool seeOk = node.usIsWhite ? (see >= PROBCUT_MARGIN) : (see <= -PROBCUT_MARGIN);
+            if (!seeOk) continue;
+            chess::Board::MoveState pcState;
+            b.doMove(mc, pcState, mc.promotionPiece);
+            const int32_t pcScore = searchPosition(b, runtime, depth - 4, probcutBeta - 1, probcutBeta,
+                ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
+            b.undoMove(mc, pcState);
+            const bool cutoff = node.usIsWhite ? (pcScore >= probcutBeta) : (pcScore <= probcutBeta);
+            if (cutoff) return cutoffValue(alpha, beta, node.usIsWhite);
+        }
+    }
+
     // Macro-step 4: Generate/sort moves, recurse through searchMoves, and write TT.
     const int prevSide = chess::Board::colorToIndex(node.activeColor) ^ 1;
     int16_t* contHistEntry = (previousMove != nullptr && previousMove->from.index < 64 && previousMove->to.index < 64)
