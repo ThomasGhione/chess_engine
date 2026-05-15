@@ -13,7 +13,7 @@ int32_t Evaluator::evaluateOpeningPhase(const chess::Board& b, int32_t eval, uin
     eval += evalPieceCoordinationCached(b);
     eval += evalOutpostsCached(b);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
-    eval += evalSpaceAdvantage(b, whitePawns, blackPawns, b.getPiecesBitMap());
+    eval += evalSpaceAdvantage(b, whitePawns, blackPawns);
     eval += evalMobility(data);
     eval += (evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100;
     eval += evalInitiative(b, false);
@@ -31,7 +31,7 @@ int32_t Evaluator::evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t e
     eval += evalTrappedPieces(b, occ);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, false);
     eval += evalCentralControlCached(b, whitePawns, blackPawns);
-    eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
+    eval += evalSpaceAdvantage(b, whitePawns, blackPawns);
     eval += evalMobility(data);
     eval += evalOutpostsCached(b);
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
@@ -57,7 +57,7 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalBadBishopCached(b, whitePawns, blackPawns);
     eval += evalWeakSquaresCached(b, whitePawns, blackPawns);
     eval += evalBishopVsKnightCached(b, whitePawns, blackPawns);
-    eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
+    eval += evalSpaceAdvantage(b, whitePawns, blackPawns);
     eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
     eval += evalKingActivity(b, false);
     eval += evalCastlingBonusCached(b);
@@ -80,7 +80,7 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
     eval += evalRuleOfSquare(b, whitePawns, blackPawns);
     eval += evalWeakSquaresCached(b, whitePawns, blackPawns);
     eval += evalBishopVsKnightCached(b, whitePawns, blackPawns);
-    eval += evalSpaceAdvantage(b, whitePawns, blackPawns, occ);
+    eval += evalSpaceAdvantage(b, whitePawns, blackPawns);
     eval += evalMobility(data);
     eval += evalTrappedPieces(b, occ);
     eval += evalRooksCached(b, whitePawns, blackPawns);

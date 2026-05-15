@@ -15,7 +15,7 @@ int32_t Evaluator::evalWeakSquares(const chess::Board& b,
 
     // Build attack spans for each side's pawns (squares their pawns can
     // ever defend going forward), then complement = pawn holes.
-    auto buildHoles = [](uint64_t ownPawns, bool isWhite,
+    auto buildHoles = [](uint64_t ownPawns,
                          const std::array<uint64_t, 64>& fwd) -> uint64_t {
         uint64_t attacks = 0ULL;
         uint64_t p = ownPawns;
@@ -24,15 +24,14 @@ int32_t Evaluator::evalWeakSquares(const chess::Board& b,
             p &= p - 1;
             const int file = chess::Board::file(sq);
             const uint64_t fileFwd = fwd[sq];
-            (void)isWhite;
             if (file > 0) attacks |= (fileFwd >> 1) & ~FILE_MASKS[7];
             if (file < 7) attacks |= (fileFwd << 1) & ~FILE_MASKS[0];
         }
         return ~attacks;
     };
 
-    const uint64_t whiteHoles = buildHoles(whitePawns, true,  WHITE_FORWARD_FILL) & CENTER_EXTENDED;
-    const uint64_t blackHoles = buildHoles(blackPawns, false, BLACK_FORWARD_FILL) & CENTER_EXTENDED;
+    const uint64_t whiteHoles = buildHoles(whitePawns, WHITE_FORWARD_FILL) & CENTER_EXTENDED;
+    const uint64_t blackHoles = buildHoles(blackPawns, BLACK_FORWARD_FILL) & CENTER_EXTENDED;
 
     const int whiteHoleCount = __builtin_popcountll(whiteHoles);
     const int blackHoleCount = __builtin_popcountll(blackHoles);

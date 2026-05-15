@@ -26,38 +26,24 @@ constexpr uint64_t BLACK_SPACE_MASK = 0x000000FFFFFF0000ULL;
 
 int32_t Evaluator::evalSpaceAdvantage(const chess::Board& b,
                                       uint64_t whitePawns,
-                                      uint64_t blackPawns,
-                                      uint64_t occ) noexcept {
-    // White space: forward-fill white pawns (toward rank 0), intersect with
-    // space mask, exclude squares occupied by own pieces.
-    uint64_t whiteFill = 0ULL;
-    {
-        uint64_t p = whitePawns;
-        while (p) {
-            const int sq = __builtin_ctzll(p);
-            p &= p - 1;
-            whiteFill |= WHITE_FORWARD_FILL[sq];
+                                      uint64_t blackPawns) noexcept {
+    auto forwardFill = [](uint64_t pawns, const std::array<uint64_t, 64>& fills) -> uint64_t {
+        uint64_t result = 0ULL;
+        while (pawns) {
+            result |= fills[__builtin_ctzll(pawns)];
+            pawns &= pawns - 1;
         }
-    }
-    const uint64_t whiteOwn = b.knights_bb[0] | b.bishops_bb[0] | b.rooks_bb[0]
-                            | b.queens_bb[0]  | b.kings_bb[0];
-    const int whiteSpace = __builtin_popcountll(whiteFill & WHITE_SPACE_MASK & ~whiteOwn);
+        return result;
+    };
 
-    // Black space: forward-fill black pawns (toward rank 7).
-    uint64_t blackFill = 0ULL;
-    {
-        uint64_t p = blackPawns;
-        while (p) {
-            const int sq = __builtin_ctzll(p);
-            p &= p - 1;
-            blackFill |= BLACK_FORWARD_FILL[sq];
-        }
-    }
-    const uint64_t blackOwn = b.knights_bb[1] | b.bishops_bb[1] | b.rooks_bb[1]
-                            | b.queens_bb[1]  | b.kings_bb[1];
-    const int blackSpace = __builtin_popcountll(blackFill & BLACK_SPACE_MASK & ~blackOwn);
+    auto ownPieces = [&](int side) -> uint64_t {
+        return b.knights_bb[side] | b.bishops_bb[side] | b.rooks_bb[side]
+             | b.queens_bb[side]  | b.kings_bb[side];
+    };
 
-    (void)occ;
+    const int whiteSpace = __builtin_popcountll(forwardFill(whitePawns, WHITE_FORWARD_FILL) & WHITE_SPACE_MASK & ~ownPieces(0));
+    const int blackSpace = __builtin_popcountll(forwardFill(blackPawns, BLACK_FORWARD_FILL) & BLACK_SPACE_MASK & ~ownPieces(1));
+
     return (whiteSpace - blackSpace) * engine::SPACE_BONUS;
 }
 

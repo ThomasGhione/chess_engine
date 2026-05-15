@@ -6,13 +6,7 @@ static constexpr size_t ATTACK_CACHE_SIZE = 1u << 9; // 512 entries (~32 KiB), t
 static constexpr uint64_t ATTACK_CACHE_MASK = ATTACK_CACHE_SIZE - 1u;
 
 inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept {
-    if (isWhite) {
-        // White attacks: rank decreases → shift right; file±1
-        data.allAttacks |= ((pawns >> 7) & ~FILE_MASKS[0]) | ((pawns >> 9) & ~FILE_MASKS[7]);
-    } else {
-        // Black attacks: rank increases → shift left; file±1
-        data.allAttacks |= ((pawns << 9) & ~FILE_MASKS[0]) | ((pawns << 7) & ~FILE_MASKS[7]);
-    }
+    data.allAttacks |= collectPawnAttacks(pawns, isWhite ? 0 : 1);
 }
 
 template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>

@@ -195,16 +195,16 @@ private:
     static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile,
                                               uint64_t targetPawns) noexcept;
     static inline int32_t scaleKingDanger(int32_t value, int32_t scalePercent) noexcept;
-    static inline void applyNonCastledPenalties(const chess::Board& b, int side, bool rightsLost, bool kingOnWing,
+    static inline void applyNonCastledPenalties(int side, bool rightsLost, bool kingOnWing,
                                                 bool canCastleKingside, bool canCastleQueenside,
                                                 uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
     static inline void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyHookPawnPenalty(const chess::Board& b, int side, int kingFile, uint64_t ownPawns,
+    static inline void applyHookPawnPenalty(int side, int kingFile, uint64_t ownPawns,
                                             uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
-    static inline void applyShelterAndStorm(const chess::Board& b, int side, int kingFile, int kingRank,
+    static inline void applyShelterAndStorm(int side, int kingFile, int kingRank,
                                             uint64_t ownPawns, uint64_t enemyPawns, bool kingOnWing,
                                             const uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
-    static inline void applyOpenDiagonalPenalty(const chess::Board& b, int side, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
+    static inline void applyOpenDiagonalPenalty(const chess::Board& b, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
 
     static inline int32_t evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     static inline int32_t evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
@@ -231,7 +231,7 @@ private:
     static int32_t evalWeakSquares(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalBishopVsKnight(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalPassedPawnKeySquares(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static int32_t evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ) noexcept;
+    static int32_t evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalRuleOfSquare(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static inline int32_t evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept;
     static int32_t evalDoubleRookEndgame(const chess::Board& b) noexcept;

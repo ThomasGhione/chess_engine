@@ -129,8 +129,8 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsSide(const chess::Board& b, in
 int32_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
     const int fullMoves = b.getFullMoveClock();
 
-    const int32_t evalBlack = evalBlockedPawnByBishopsSide(b, 0, fullMoves);
-    const int32_t evalWhite = evalBlockedPawnByBishopsSide(b, 1, fullMoves);
+    const int32_t evalWhite = evalBlockedPawnByBishopsSide(b, 0, fullMoves);
+    const int32_t evalBlack = evalBlockedPawnByBishopsSide(b, 1, fullMoves);
 
     return evalBlack + evalWhite;
 }

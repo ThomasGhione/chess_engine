@@ -73,7 +73,7 @@ inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval - prev) << ")\n";
 
     AttackData attackData[2] = {};
-    ensureAttackData(attackData, board, occ);
+    computeAttackData(attackData, board, occ);
 
     if (phase.isOpening) {
         traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
