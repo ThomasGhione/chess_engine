@@ -145,7 +145,7 @@ inline void appendPawnTacticalNoChecks(
             const int to = engine::popLSB(attacks);
             const bool isEnPassant = (to == enPassantIndex) && (enPassantBit != 0ULL);
 
-            if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, false)) continue;
+            if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece)) continue;
 
             if (chess::Board::rank(to) == promotionRank) {
                 appendPromotionSetByIndex(moves, from, to);
@@ -210,7 +210,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (mask) {
         const int to = engine::popLSB(mask);
-        if (b.isLegalPseudoMove(kingFrom, to, kingPiece, inCheck, inDoubleCheck)) {
+        if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) {
             moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(to)}});
         }
     }
@@ -251,9 +251,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, inCheck, inDoubleCheck, pawnPiece,
+            b, moves, from, mask, pawnPiece,
             enPassant, hasEnPassant);
-    }    
+    }
     
     if (singleCheck) {
         if (pinnedMask)
@@ -319,7 +319,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
     uint64_t kingTargets = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (kingTargets) {
         const int to = engine::popLSB(kingTargets);
-        if (b.isLegalPseudoMove(kingFrom, to, kingPiece, true, inDoubleCheck)) {
+        if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) {
             moves.emplace_back(chess::Board::Move{kingFromC, chess::Coords{static_cast<uint8_t>(to)}});
         }
     }
@@ -342,7 +342,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
         if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, true, false, pawnPiece,
+            b, moves, from, mask, pawnPiece,
             enPassant, hasEnPassant);
     }
 
@@ -439,7 +439,7 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
 
 template<bool IsWhite>
 void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves,
-                                         int from, uint64_t mask, bool inCheck, bool inDoubleCheck,
+                                         int from, uint64_t mask,
                                          uint8_t pawnPiece,
                                          chess::Coords enPassant, bool hasEnPassant) noexcept {
     if (!mask) [[unlikely]] return;
@@ -453,7 +453,7 @@ void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::
             && (to == enPassant.index)
             && (chess::Board::file(to) != fromFile);
 
-        if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece, inCheck, inDoubleCheck)) {
+        if (isEnPassant && !b.isLegalPseudoMove(from, to, pawnPiece)) {
             continue;
         }
 

@@ -204,7 +204,7 @@ public:
     void undoNullMove(const MoveState& state) noexcept;
     
     bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
-    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inCheck = false, bool inDoubleCheck = false) const noexcept;
+    bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
     bool isDoubleCheck(uint8_t color) const noexcept;

@@ -9,7 +9,7 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
     if (moving == EMPTY || (moving & MASK_COLOR) != activeColor) [[unlikely]]
         return false;
 
-    if (!isLegalPseudoMove(from.index, to.index, moving, inCheck(moving & MASK_COLOR), false)) [[unlikely]]
+    if (!isLegalPseudoMove(from.index, to.index, moving)) [[unlikely]]
         return false;
 
     MoveState st{};
@@ -17,16 +17,13 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
     return true;
 }
 
-bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece, bool inChk, bool inDoubleChk) const noexcept {
+bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept {
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
     const uint8_t destPiece = get(toIndex);
 
     if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]]
-        return false;
-
-    if (inChk && inDoubleChk && fromType != KING) [[unlikely]]
         return false;
 
     const uint64_t toBit = Board::bitMask(toIndex);

@@ -1133,7 +1133,7 @@ int32_t Searcher::quiescenceSearch(
         const int pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
         if (!inCheck) {
             if (pieceType == chess::Board::KING) {
-                if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece, false, false)) {
+                if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece)) {
                     continue;
                 }
             }

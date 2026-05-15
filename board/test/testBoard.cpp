@@ -206,9 +206,7 @@ ut::suite boardSuite = [] {
     expect(b.isLegalPseudoMove(
       kingFrom.index,
       escapeSq.index,
-      b.get(kingFrom.index),
-      true,
-      false
+      b.get(kingFrom.index)
     )) << "White can answer the knight check with Kd1\n";
   };
 

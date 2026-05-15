@@ -50,8 +50,6 @@ private:
         MoveList<chess::Board::Move>& moves,
         int from,
         uint64_t mask,
-        bool inCheck,
-        bool inDoubleCheck,
         uint8_t pawnPiece,
         chess::Coords enPassant,
         bool hasEnPassant) noexcept;
