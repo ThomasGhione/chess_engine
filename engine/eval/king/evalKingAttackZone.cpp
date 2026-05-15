@@ -17,8 +17,8 @@ inline void Evaluator::accumulateKingZoneAttackersAll(const chess::Board& b, int
 
 inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept {
     static constexpr int ATTACKER_SCALE_PERCENT[9] = {0, 0, 32, 52, 68, 80, 90, 97, 100};
-    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL;
-    constexpr uint64_t BLACK_MINOR_START = 0x000000000000FFFFULL;
+    constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 7 (White's 1st rank)
+    constexpr uint64_t BLACK_MINOR_START = 0x00000000000000FFULL; // rank 0 (Black's 8th rank)
 
     const int oppSide = side ^ 1;
     const int sign = (side == 0) ? 1 : -1;
