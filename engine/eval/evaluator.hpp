@@ -142,6 +142,7 @@ private:
     // Methods
     static int32_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static constexpr int manhattan(int a, int b) noexcept;
+    static constexpr int chebyshev(int a, int b) noexcept;
 
     template<bool IsEndgame>
     static int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;

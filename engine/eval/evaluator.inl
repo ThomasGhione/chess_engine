@@ -6,6 +6,12 @@ inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
     return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
+inline constexpr int Evaluator::chebyshev(int a, int b) noexcept {
+    const int df = std::abs(chess::Board::file(a) - chess::Board::file(b));
+    const int dr = std::abs(chess::Board::rank(a) - chess::Board::rank(b));
+    return std::max(df, dr);
+}
+
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
