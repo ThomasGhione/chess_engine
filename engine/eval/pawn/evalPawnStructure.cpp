@@ -2,46 +2,6 @@
 
 namespace engine {
 
-static constexpr auto WHITE_SUPPORT_MASKS = [] {
-    std::array<uint64_t, 64> masks{};
-    for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::file(sq);
-        uint64_t mask = 0ULL;
-        if (file > 0 && sq <= 56) mask |= chess::Board::bitMask(sq + 7);
-        if (file < 7 && sq <= 54) mask |= chess::Board::bitMask(sq + 9);
-        masks[sq] = mask;
-    }
-    return masks;
-}();
-
-static constexpr auto BLACK_SUPPORT_MASKS = [] {
-    std::array<uint64_t, 64> masks{};
-    for (int sq = 0; sq < 64; ++sq) {
-        const int file = chess::Board::file(sq);
-        uint64_t mask = 0ULL;
-        if (file > 0 && sq >= 7) mask |= chess::Board::bitMask(sq - 7);
-        if (file < 7 && sq >= 9) mask |= chess::Board::bitMask(sq - 9);
-        masks[sq] = mask;
-    }
-    return masks;
-}();
-
-static constexpr auto WHITE_ONE_STEP_MASKS = [] {
-    std::array<uint64_t, 64> masks{};
-    for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq >= 8) ? chess::Board::bitMask(sq - 8) : 0ULL;
-    }
-    return masks;
-}();
-
-static constexpr auto BLACK_ONE_STEP_MASKS = [] {
-    std::array<uint64_t, 64> masks{};
-    for (int sq = 0; sq < 64; ++sq) {
-        masks[sq] = (sq <= 55) ? chess::Board::bitMask(sq + 8) : 0ULL;
-    }
-    return masks;
-}();
-
 struct PawnEvalCacheEntry {
     uint64_t whitePawns = 0ULL;
     uint64_t blackPawns = 0ULL;
@@ -58,11 +18,13 @@ thread_local std::array<std::array<PawnEvalCacheEntry, PAWN_CACHE_WAYS>, PAWN_CA
 thread_local uint16_t pawnCacheStamp = 0;
 
 inline const std::array<uint64_t, 64>& Evaluator::getPawnSupportMasks(bool isWhite) noexcept {
-    return isWhite ? WHITE_SUPPORT_MASKS : BLACK_SUPPORT_MASKS;
+    // Friendly pawns that defend a pawn on sq == enemy-perspective pawn
+    // attackers to sq for the same color. Reuses the engine-wide table.
+    return pieces::PAWN_ATTACKERS_TO[isWhite ? 0 : 1];
 }
 
 inline const std::array<uint64_t, 64>& Evaluator::getPawnOneStepMasks(bool isWhite) noexcept {
-    return isWhite ? WHITE_ONE_STEP_MASKS : BLACK_ONE_STEP_MASKS;
+    return pieces::PAWN_SINGLE_PUSH_TARGETS[isWhite ? 0 : 1];
 }
 
 inline uint8_t pawnFileMask(uint64_t pawns) noexcept {
