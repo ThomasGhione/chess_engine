@@ -35,23 +35,10 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
     if (!enemyKingBB) return 0;
 
     const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rank(enemyKingSq);
-    const int file = chess::Board::file(enemyKingSq);
-
-    const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
-    const int edgeProximity = 7 - distToEdge;
 
     constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
-    int32_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
-
-    const uint64_t ourKingBB = b.kings_bb[side];
-    if (ourKingBB) {
-        const int ourKingSq = __builtin_ctzll(ourKingBB);
-        const int kingDist = manhattan(ourKingSq, enemyKingSq);
-
-        const int proximityBonus = std::max(0, 14 - kingDist);
-        sideScore += proximityBonus * 14;
-    }
+    int32_t sideScore = edgeProximity(enemyKingSq) * QUEEN_EG_EDGE_BONUS;
+    sideScore += ownKingProximity(b.kings_bb[side], enemyKingSq) * 14;
 
     const uint64_t queenBB = b.queens_bb[side];
     if (queenBB) {

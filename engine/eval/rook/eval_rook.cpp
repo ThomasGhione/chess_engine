@@ -82,25 +82,12 @@ inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int
     if (!enemyKingBB) return 0;
 
     const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rank(enemyKingSq);
-    const int file = chess::Board::file(enemyKingSq);
-
-    const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
-    const int edgeProximity = 7 - distToEdge;
 
     const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
     if (ourRooks >= 2) return 0;
 
-    int32_t score = sign * edgeProximity * engine::ROOK_EG_EDGE_BONUS;
-
-    const uint64_t ourKingBB = b.kings_bb[side];
-    if (ourKingBB) {
-        const int ourKingSq = __builtin_ctzll(ourKingBB);
-        const int kingDist = manhattan(ourKingSq, enemyKingSq);
-
-        const int proximityBonus = std::max(0, 14 - kingDist);
-        score += sign * proximityBonus * engine::ROOK_EG_PRESSURE_BONUS / 14;
-    }
+    int32_t score = sign * edgeProximity(enemyKingSq) * engine::ROOK_EG_EDGE_BONUS;
+    score += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * engine::ROOK_EG_PRESSURE_BONUS / 14;
 
     return score;
 }
@@ -127,11 +114,8 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     const int rank = chess::Board::rank(enemyKingSq);
     const int file = chess::Board::file(enemyKingSq);
 
-    const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
-    const int edgeProximity = 7 - distToEdge;
-
     constexpr int32_t DOUBLE_ROOK_EDGE_BONUS = 55;
-    int32_t score = sign * edgeProximity * DOUBLE_ROOK_EDGE_BONUS;
+    int32_t score = sign * edgeProximity(enemyKingSq) * DOUBLE_ROOK_EDGE_BONUS;
 
     uint64_t rooksBB = b.rooks_bb[side];
     if ((rooksBB & (rooksBB - 1)) != 0ULL) {
@@ -152,14 +136,7 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
         }
     }
 
-    const uint64_t ourKingBB = b.kings_bb[side];
-    if (ourKingBB) {
-        const int ourKingSq = __builtin_ctzll(ourKingBB);
-        const int kingDist = manhattan(ourKingSq, enemyKingSq);
-
-        const int proximityBonus = std::max(0, 14 - kingDist);
-        score += sign * proximityBonus * 4;
-    }
+    score += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * 4;
 
     return score;
 }

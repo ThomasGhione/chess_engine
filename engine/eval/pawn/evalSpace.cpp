@@ -17,10 +17,10 @@ namespace {
 // Ranks 3-6 for white's space territory (ranks are 0-indexed from black's
 // side: rank 0 = black's back rank, rank 7 = white's back rank).
 // White advances toward rank 0, so white's "space" is ranks 2-5.
-constexpr uint64_t WHITE_SPACE_MASK = 0x000000FFFFFF0000ULL; // ranks 2-5 (indices 2..5)
-// Black advances toward rank 7, so black's "space" is ranks 2-5 as well
-// (symmetric — both sides fight for the same central territory).
-constexpr uint64_t BLACK_SPACE_MASK = 0x000000FFFFFF0000ULL;
+constexpr uint64_t WHITE_SPACE_MASK = 0x000000FFFFFF0000ULL; // ranks 2,3,4
+// Black advances toward rank 7, so black's space is the vertical mirror of
+// white's: ranks 3,4,5. (Was incorrectly identical to WHITE_SPACE_MASK.)
+constexpr uint64_t BLACK_SPACE_MASK = 0x0000FFFFFF000000ULL; // ranks 3,4,5
 
 } // namespace
 

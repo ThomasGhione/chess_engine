@@ -218,8 +218,10 @@ int32_t Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint
 
         if (hasSupport) {
             score += sign * engine::PAWN_SUPPORT_BONUS;
-        } else if (frontBlockedByPawn) {
-	        // Suppose that !hasSuppport == true 
+        } else if (frontBlockedByPawn && (ownIsolatedFiles & (1 << file)) == 0) {
+            // Blocked & unsupported (and not already penalized as isolated):
+            // half the isolated penalty. Guard prevents 1.5x double-counting
+            // on pawns that are both isolated and blocked.
             score += sign * (engine::ISOLATED_PAWN_PENALTY / 2);
         }
 

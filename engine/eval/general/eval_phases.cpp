@@ -95,16 +95,8 @@ int32_t Evaluator::evaluateEndgamePhase(const chess::Board& b, int32_t eval, uin
 
 int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     AttackData pawnAttacks[2]{};
-
-    uint64_t pawns = whitePawns;
-    while (pawns) {
-        pawnAttacks[0].allAttacks |= pieces::PAWN_ATTACKS[0][popLSB(pawns)];
-    }
-
-    pawns = blackPawns;
-    while (pawns) {
-        pawnAttacks[1].allAttacks |= pieces::PAWN_ATTACKS[1][popLSB(pawns)];
-    }
+    pawnAttacks[0].allAttacks = collectPawnAttacks(whitePawns, 0);
+    pawnAttacks[1].allAttacks = collectPawnAttacks(blackPawns, 1);
 
     eval += evalHangingPieces(b, pawnAttacks);
     eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);

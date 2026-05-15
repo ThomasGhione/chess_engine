@@ -836,8 +836,13 @@ int32_t Searcher::searchPosition(
     }
 
     // Store staticEval in ply stack and compute improving flag.
-    if (ply > 0 && ply < MAX_PLY) runtime.evalStack[ply] = node.staticEval;
+    // In-check nodes have no meaningful static eval (it was not computed
+    // above), so store a sentinel instead of the stale default 0, which
+    // would otherwise corrupt the improving comparison two plies deeper.
+    if (ply > 0 && ply < MAX_PLY)
+        runtime.evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
     const bool improving = !node.inCheck && ply >= 2
+        && runtime.evalStack[ply - 2] != NEG_INF
         && node.staticEval > runtime.evalStack[ply - 2];
 
     const int side = chess::Board::colorToIndex(node.activeColor);
@@ -876,7 +881,7 @@ int32_t Searcher::searchPosition(
             : (node.staticEval - margin > beta);
         if (razorGate) {
             const int32_t qScore = quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
-            if (shouldAbortSearch(runtime)) return 0;
+            if (shouldAbortSearch(runtime)) return Evaluator::evaluate(b);
             const bool stillBad = node.usIsWhite ? (qScore < alpha) : (qScore > beta);
             if (stillBad) return qScore;
         }
@@ -1150,10 +1155,13 @@ int32_t Searcher::quiescenceSearch(
             if (!inCheck && canUseTT && allowTTWrite) {
                 const uint64_t hashKey = b.getHash();
                 const auto flag = determineFlag(best, alphaOrig, betaOrig);
+                // Store `best` so the stored score matches the flag derived
+                // from it (consistent with the fall-through store below);
+                // storing the raw cutoff bound was looser and inconsistent.
                 runtime.transpositionTable->store(
                     hashKey,
                     0,
-                    clampToInt32(cutoffValue(alpha, beta, usIsWhite)),
+                    clampToInt32(best),
                     static_cast<uint8_t>(flag));
             }
             return cutoffValue(alpha, beta, usIsWhite);

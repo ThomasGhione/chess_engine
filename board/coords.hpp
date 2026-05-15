@@ -35,7 +35,7 @@ struct Coords {
     {
         if (input.length() != 2) [[unlikely]] return;
 
-        const char fileChar = std::tolower(input[0]);
+        const char fileChar = static_cast<char>(std::tolower(static_cast<unsigned char>(input[0])));
         const char rankChar = input[1];
 
         if (!isLetter(fileChar) || !isNumber(rankChar)) [[unlikely]] return;

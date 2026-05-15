@@ -12,6 +12,17 @@ inline constexpr int Evaluator::chebyshev(int a, int b) noexcept {
     return std::max(df, dr);
 }
 
+inline constexpr int Evaluator::edgeProximity(int sq) noexcept {
+    const int r = chess::Board::rank(sq);
+    const int f = chess::Board::file(sq);
+    return 7 - std::min({r, 7 - r, f, 7 - f});
+}
+
+inline int Evaluator::ownKingProximity(uint64_t ourKingBB, int enemyKingSq) noexcept {
+    if (!ourKingBB) return 0;
+    return std::max(0, 14 - manhattan(__builtin_ctzll(ourKingBB), enemyKingSq));
+}
+
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
     std::array<uint64_t, 8> masks{};
     for (int f = 0; f < 8; ++f) {
@@ -98,10 +109,12 @@ inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noex
     return phase;
 }
 
-inline int Evaluator::popLSB(uint64_t& bb) noexcept{
-    const int index = __builtin_ctzll(bb);
-    bb &= (bb - 1);
-    return index;
+template<uint32_t Term, class Compute>
+inline int32_t Evaluator::cachedTerm(const chess::Board& b, Compute compute) noexcept {
+    if (b.hasEvalCacheTerm<Term>()) return b.getEvalCacheTerm<Term>();
+    const int32_t score = compute();
+    b.setEvalCacheTerm<Term>(score);
+    return score;
 }
 
 inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,

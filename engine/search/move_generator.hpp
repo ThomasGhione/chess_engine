@@ -95,6 +95,20 @@ private:
         uint64_t pinnedMask,
         const uint64_t pinRayBySquare[64]) noexcept;
 
+    template<bool HasPins, bool InCheck>
+    static void emitAllNonPawnLegal(
+        MoveList<chess::Board::Move>& moves,
+        uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
+        uint64_t occ, uint64_t ownOcc, uint64_t evasionMask,
+        uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept;
+
+    template<bool HasPins>
+    static void emitAllNonPawnTactical(
+        MoveList<chess::Board::Move>& moves,
+        uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
+        uint64_t occ, uint64_t oppOcc,
+        uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept;
+
 };
 
 } // namespace engine

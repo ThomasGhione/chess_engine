@@ -143,6 +143,8 @@ private:
     static int32_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static constexpr int manhattan(int a, int b) noexcept;
     static constexpr int chebyshev(int a, int b) noexcept;
+    static constexpr int edgeProximity(int sq) noexcept;
+    static inline int ownKingProximity(uint64_t ourKingBB, int enemyKingSq) noexcept;
 
     template<bool IsEndgame>
     static int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;
@@ -238,10 +240,12 @@ private:
     static inline int32_t evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept;
     static inline int32_t evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept;
-    static inline int popLSB(uint64_t& bb) noexcept;
 #ifdef DEBUG
     static void traceTerm(int32_t& eval, int32_t delta, const char* label) noexcept;
 #endif
+    template<uint32_t Term, class Compute>
+    __attribute__((always_inline))
+    static inline int32_t cachedTerm(const chess::Board& b, Compute compute) noexcept;
     static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
     static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
     static int32_t evalCastlingBonusCached(const chess::Board& b) noexcept;
