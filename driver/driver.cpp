@@ -94,7 +94,6 @@ void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Pleas
 
     while (true) {
         engine.reset();
-        uciMoves.clear();
         switch (mainMenu()) {
             case '1': {
                 switch (playWithEngineMenu()) {
@@ -322,9 +321,6 @@ void Driver::playerTurn() noexcept {
         
         DBG_TIMER_US(moveTimer, "move executed");
 
-        if (uciMoves.empty()) uciMoves = playerInput;
-        else uciMoves += " " + playerInput;
-
         std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
         return;
     }
@@ -336,10 +332,6 @@ void Driver::engineTurn() noexcept {
     DBG_TIMER_START(engineSearchTimer);
     
     engine.search(engine.DEFAULTDEPTH);
-    const std::string engineMove = engine.bestMove.toUCIString();
-    
-    if (uciMoves.empty()) uciMoves = engineMove;
-    else uciMoves += " " + engineMove;
 
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
     DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");

@@ -1,9 +1,7 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
-#include <string_view>
 
 #include "../uci/uci.hpp"
 
@@ -16,16 +14,6 @@ class Driver {
 
 public:
 
-    struct Metadata {
-        std::string_view id = "1.1.0";
-        std::string_view license = "MIT License";
-        std::string_view name = "HydraY! 1.1.0";
-        std::array<std::string_view, 3> authors = {"Thomas Ghione", "Daniele Ferretti", "Simone Tomasella"};
-        std::array<std::string_view, 1> platforms = {"Linux x86_64"}; // supported platforms
-    };
-
-    const Metadata metadata{};
-
     engine::Engine& engine;
     uci::UCI uciInterface;
 
@@ -37,7 +25,6 @@ public:
 private:
 
     bool vsBot = false;
-    std::string uciMoves = "";
 
     void parse(int argc, char* argv[]) noexcept;
     static void printInvalidOption() noexcept;

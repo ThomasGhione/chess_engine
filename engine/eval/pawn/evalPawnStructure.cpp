@@ -131,9 +131,6 @@ int32_t Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t 
     uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file] & pieces::KING_ATTACKS[sq];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        //const int adjRank = chess::Board::rank(adjSq);
-        //if (std::abs(adjRank - rank) > 1) continue;
-
         const int adjFile = chess::Board::file(adjSq);
         const bool adjPassed = ((enemyPawns & ADJACENT_AND_FILE_MASKS[adjFile] & forwardFill) == 0ULL);
         if (adjPassed) {

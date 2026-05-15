@@ -409,7 +409,6 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     const uint64_t targetDepth = (requestedDepth == 0)
         ? Engine::DEFAULTDEPTH
         : requestedDepth;
-    if (targetDepth == 0) return chess::Board::Move{};
 
     chess::Board::Move ponderMove{};
     if (this->tryUsePonderResult(targetDepth, ponderMove)) {
@@ -443,7 +442,6 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     const uint64_t targetDepth = (requestedDepth == 0)
         ? Engine::DEFAULTDEPTH
         : requestedDepth;
-    if (targetDepth == 0) return;
 
     chess::Board::Move candidate{};
     if (!this->tryUsePonderResult(targetDepth, candidate)) {

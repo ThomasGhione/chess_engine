@@ -312,16 +312,18 @@ namespace uci {
         finishSearch(true, false);
     }
 
+    void UCI::emitBestMove(std::string_view move) noexcept {
+        std::cout << "bestmove " << move << '\n';
+        std::cout.flush();
+        searchPrinted = true;
+    }
+
     void UCI::finishSearch(bool requestStop, bool printBestMove) noexcept {
         if (requestStop) engine.stopThinking();
         if (searchThread.joinable()) searchThread.join();
 
         std::lock_guard<std::mutex> lock(searchMutex);
-        if (printBestMove && !searchPrinted) {
-            std::cout << "bestmove " << searchBestMove << '\n';
-            std::cout.flush();
-            searchPrinted = true;
-        }
+        if (printBestMove && !searchPrinted) emitBestMove(searchBestMove);
     }
 
     [[noreturn]] void UCI::mainLoop() noexcept {
@@ -524,20 +526,12 @@ namespace uci {
                 std::lock_guard<std::mutex> lock(searchMutex);
                 searchBestMove = bestMove;
                 searchDone = true;
-                if (!searchPonder && !searchPrinted) {
-                    std::cout << "bestmove " << searchBestMove << '\n';
-                    std::cout.flush();
-                    searchPrinted = true;
-                }
+                if (!searchPonder && !searchPrinted) emitBestMove(searchBestMove);
             });
         } catch (...) {
             std::lock_guard<std::mutex> lock(searchMutex);
             searchDone = true;
-            if (!ponder) {
-                std::cout << "bestmove 0000\n";
-                std::cout.flush();
-                searchPrinted = true;
-            }
+            if (!ponder) emitBestMove("0000");
         }
     }
     
@@ -548,11 +542,7 @@ namespace uci {
     void UCI::ponderhit() noexcept {
         std::lock_guard<std::mutex> lock(searchMutex);
         searchPonder = false;
-        if (searchDone && !searchPrinted) {
-            std::cout << "bestmove " << searchBestMove << '\n';
-            std::cout.flush();
-            searchPrinted = true;
-        }
+        if (searchDone && !searchPrinted) emitBestMove(searchBestMove);
     }
 
     void UCI::parseMoves(std::string_view moves) noexcept {

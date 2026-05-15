@@ -243,7 +243,6 @@ chess::Board::Move Searcher::searchBestMove(
     const uint64_t targetDepth = (requestedDepth == 0)
         ? DEFAULT_DEPTH
         : requestedDepth;
-    if (targetDepth == 0) return chess::Board::Move{};
 
     clearInterrupted(runtime);
 
