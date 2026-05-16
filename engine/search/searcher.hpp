@@ -61,7 +61,9 @@ public:
         uint16_t counterMoves[64][64] {};
         int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
         int16_t contHist[2][64][64] {};
-        int32_t evalStack[MAX_PLY] {};  // staticEval per ply, for improving flag
+        // evalStack is per-thread (thread_local in searchPosition), NOT here:
+        // it feeds a hard prune (`improving`) so a Lazy-SMP race on a shared
+        // array could corrupt pruning and change the chosen move.
 
         // External coordination hooks.
         TranspositionTable* transpositionTable = nullptr;
@@ -173,6 +175,13 @@ private:
     static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
+    // Mate scores are ±INF∓ply (ply = distance from root); the TT is keyed by
+    // position only, so they must be made node-relative on store and re-based
+    // to the probing node's ply on read, else mate distances are wrong across
+    // transpositions.
+    static constexpr int32_t MATE_BOUND = POS_INF - 2048;
+    static constexpr int32_t scoreToTT(int32_t score, int ply) noexcept;
+    static constexpr int32_t scoreFromTT(int32_t score, int ply) noexcept;
     static constexpr int16_t clampHeuristic16(int32_t value) noexcept;
 
     static bool shouldAbortSearch(const SearchRuntime& runtime) noexcept;
@@ -221,7 +230,8 @@ private:
         int32_t depth,
         const AlphaBeta& bounds,
         int32_t& score,
-        uint64_t hashKey) noexcept;
+        uint64_t hashKey,
+        int ply) noexcept;
 
     static bool tryNullMovePruning(
         chess::Board& b,

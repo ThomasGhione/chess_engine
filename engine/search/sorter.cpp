@@ -177,11 +177,16 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     const int sidePassive = sideActive ^ 1;
 
     int capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
-    const bool isEp = (capturedType == chess::Board::EMPTY);
+    int capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
+    // Genuine en-passant only: pawn moving diagonally onto an empty square.
+    // (A plain quiet move also has an empty destination — must NOT be treated
+    // as EP, or it gets a phantom +PAWN gain and corrupted occupancy.)
+    const bool isEp = (capturedType == chess::Board::EMPTY)
+        && (capturedOnTargetType == chess::Board::PAWN)
+        && (chess::Board::file(fromSq) != chess::Board::file(toSq));
     if (isEp) capturedType = chess::Board::PAWN;
 
     int32_t initialGain = PIECE_VALUES[capturedType];
-    int capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
 
     if (m.promotionPiece != '\0') {
         const int promoType = promotionPieceType(m.promotionPiece);

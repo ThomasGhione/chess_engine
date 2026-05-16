@@ -81,6 +81,18 @@ constexpr int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     return clampToInt32(diff);
 }
 
+constexpr int32_t Searcher::scoreToTT(int32_t score, int ply) noexcept {
+    if (score >= MATE_BOUND)  return saturatingAdd32(score, ply);
+    if (score <= -MATE_BOUND) return saturatingSub32(score, ply);
+    return score;
+}
+
+constexpr int32_t Searcher::scoreFromTT(int32_t score, int ply) noexcept {
+    if (score >= MATE_BOUND)  return saturatingSub32(score, ply);
+    if (score <= -MATE_BOUND) return saturatingAdd32(score, ply);
+    return score;
+}
+
 constexpr int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
     constexpr int32_t MIN_I16 = -32768;
     constexpr int32_t MAX_I16 = 32767;
@@ -302,7 +314,8 @@ bool Searcher::handleSearchPrelude(
     int32_t depth,
     const AlphaBeta& bounds,
     int32_t& score,
-    uint64_t hashKey) noexcept {
+    uint64_t hashKey,
+    int ply) noexcept {
     if (runtime.transpositionTable == nullptr) {
         return false;
     }
@@ -311,7 +324,7 @@ bool Searcher::handleSearchPrelude(
 
     int32_t ttScore = 0;
     if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, ttScore)) {
-        score = ttScore;
+        score = scoreFromTT(ttScore, ply); // re-base mate scores to this node's ply
         return true;
     }
     return false;
@@ -619,6 +632,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && !createsPawnForkThreat;
         // Losing captures (SEE < 0): reduce like late quiets regardless of move index.
         const bool lmrLosingCapture = wasCapture
+            && !isFirstMove          // never reduce the PV/first move without full re-search
             && !isPromotionCandidate
             && !ctx.inCheck
             && (ctx.depth >= 4)
@@ -803,7 +817,7 @@ int32_t Searcher::searchPosition(
     AlphaBeta bounds{alpha, beta};
     int32_t score = 0;
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
-    if (canUseTT && handleSearchPrelude(runtime, depth, bounds, score, hashKey)) {
+    if (canUseTT && handleSearchPrelude(runtime, depth, bounds, score, hashKey, ply)) {
         return score;
     }
 
@@ -823,6 +837,7 @@ int32_t Searcher::searchPosition(
             int32_t ttStaticScore = 0;
             uint8_t ttStaticFlag = 0;
             if (runtime.transpositionTable->probeSE(hashKey, 0, ttStaticScore, ttStaticFlag)) {
+                ttStaticScore = scoreFromTT(ttStaticScore, ply); // re-base mate scores
                 if (ttStaticFlag == TranspositionTable::Entry::EXACT
                     || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && node.usIsWhite  && ttStaticScore > node.staticEval)
                     || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && !node.usIsWhite && ttStaticScore < node.staticEval)
@@ -834,41 +849,36 @@ int32_t Searcher::searchPosition(
         }
     }
 
+    // Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
+    // `improving` prune. Each ancestor writes evalStack[ply] (line below)
+    // before its grandchild 2 plies down reads it on the same thread's stack,
+    // so a thread_local array (no per-search reset needed) is correct.
+    static thread_local int32_t evalStack[MAX_PLY] = {};
+
     // Store staticEval in ply stack and compute improving flag.
     // In-check nodes have no meaningful static eval (it was not computed
     // above), so store a sentinel instead of the stale default 0, which
     // would otherwise corrupt the improving comparison two plies deeper.
     if (ply > 0 && ply < MAX_PLY)
-        runtime.evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
+        evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
+    // staticEval is white-centric (not negamax), so "improving" is
+    // side-relative: White improves when eval rises, Black when it falls.
     const bool improving = !node.inCheck && ply >= 2
-        && runtime.evalStack[ply - 2] != NEG_INF
-        && node.staticEval > runtime.evalStack[ply - 2];
+        && evalStack[ply - 2] != NEG_INF
+        && (node.usIsWhite ? (node.staticEval > evalStack[ply - 2])
+                           : (node.staticEval < evalStack[ply - 2]));
 
     const int side = chess::Board::colorToIndex(node.activeColor);
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
-    // Singular extension: if TT has a LOWERBOUND at depth/2, check if hash move is uniquely best.
-    int singularExtension = 0;
-    if (canUseTT && !isPVNode && !node.inCheck && depth >= 6 && ply > 0 && ply < MAX_PLY - 2) {
-        int32_t ttSEScore = 0;
-        uint8_t ttSEFlag = 0;
-        if (runtime.transpositionTable->probeSE(hashKey, static_cast<uint8_t>(depth / 2), ttSEScore, ttSEFlag)
-            && ttSEFlag == TranspositionTable::Entry::LOWERBOUND) {
-            const int32_t seBeta = node.usIsWhite
-                ? saturatingSub32(ttSEScore, 60)
-                : saturatingAdd32(ttSEScore, 60);
-            const int32_t seScore = searchPosition(b, runtime, depth / 2, seBeta - 1, seBeta,
-                ply + 1, useTT, false, false, previousMove, counter, false);
-            if (node.usIsWhite ? (seScore < seBeta) : (seScore > seBeta)) {
-                // Double extension if well below seBeta, single otherwise.
-                const bool doubleExt = node.usIsWhite
-                    ? (seScore < seBeta - 20)
-                    : (seScore > seBeta + 20);
-                singularExtension = doubleExt ? 2 : 1;
-            }
-        }
-    }
+    // Singular extension is DISABLED: a correct implementation must re-search
+    // the position with the TT/hash move EXCLUDED and verify all other moves
+    // fail below seBeta. searchPosition has no excluded-move mechanism, so the
+    // old code re-searched WITH the hash move included — it could never detect
+    // a genuinely singular node and only fired on TT/search noise, extending
+    // the wrong nodes. Left at 0 until an excluded-move search is plumbed in.
+    const int singularExtension = 0;
 
     // Razoring: at depth 1-2, if static eval is well below alpha, drop into qsearch directly.
     static constexpr int32_t RAZOR_MARGIN_D1 = 300;
@@ -914,23 +924,29 @@ int32_t Searcher::searchPosition(
     // Probcut: if a capture has SEE >= beta + margin at shallow depth, it likely exceeds beta.
     static constexpr int32_t PROBCUT_MARGIN = 100;
     static constexpr int32_t PROBCUT_MIN_DEPTH = 5;
+    // White (maximizer) cuts at score>=beta → probe around beta+margin.
+    // Black (minimizer) cuts at score<=alpha → probe around alpha-margin.
+    // SEE is side-to-move-relative, so the "winning capture" filter is the
+    // same (see >= margin) for both colors.
     if (!node.isPVNode && !node.inCheck && depth >= PROBCUT_MIN_DEPTH && ply > 0
-        && std::abs(beta) < POS_INF - 1000) {
-        const int32_t probcutBeta = node.usIsWhite
+        && (node.usIsWhite ? (std::abs(beta) < POS_INF - 1000)
+                           : (std::abs(alpha) < POS_INF - 1000))) {
+        const int32_t probcutBound = node.usIsWhite
             ? saturatingAdd32(beta, PROBCUT_MARGIN)
-            : saturatingSub32(beta, PROBCUT_MARGIN);
+            : saturatingSub32(alpha, PROBCUT_MARGIN);
+        const int32_t pcAlpha = node.usIsWhite ? (probcutBound - 1) : probcutBound;
+        const int32_t pcBeta  = node.usIsWhite ? probcutBound : (probcutBound + 1);
         MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
             const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
-            const bool seeOk = node.usIsWhite ? (see >= PROBCUT_MARGIN) : (see <= -PROBCUT_MARGIN);
-            if (!seeOk) continue;
+            if (see < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
             b.doMove(mc, pcState, mc.promotionPiece);
-            const int32_t pcScore = searchPosition(b, runtime, depth - 4, probcutBeta - 1, probcutBeta,
+            const int32_t pcScore = searchPosition(b, runtime, depth - 4, pcAlpha, pcBeta,
                 ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
             b.undoMove(mc, pcState);
-            const bool cutoff = node.usIsWhite ? (pcScore >= probcutBeta) : (pcScore <= probcutBeta);
+            const bool cutoff = node.usIsWhite ? (pcScore >= probcutBound) : (pcScore <= probcutBound);
             if (cutoff) return cutoffValue(alpha, beta, node.usIsWhite);
         }
     }
@@ -997,7 +1013,7 @@ int32_t Searcher::searchPosition(
         runtime.transpositionTable->store(
             hashKey,
             static_cast<uint8_t>(ctx.depth),
-            clampToInt32(best),
+            clampToInt32(scoreToTT(best, ctx.ply)),
             static_cast<uint8_t>(flag),
             encodedMove);
     }
@@ -1033,7 +1049,7 @@ int32_t Searcher::quiescenceSearch(
         const uint64_t hashKey = b.getHash();
         int32_t ttScore = 0;
         if (runtime.transpositionTable->probe(hashKey, 0, alpha, beta, ttScore)) {
-            return ttScore;
+            return scoreFromTT(ttScore, ply);
         }
     }
 
@@ -1160,7 +1176,7 @@ int32_t Searcher::quiescenceSearch(
                 runtime.transpositionTable->store(
                     hashKey,
                     0,
-                    clampToInt32(best),
+                    clampToInt32(scoreToTT(best, ply)),
                     static_cast<uint8_t>(flag));
             }
             return cutoffValue(alpha, beta, usIsWhite);
@@ -1170,7 +1186,7 @@ int32_t Searcher::quiescenceSearch(
     if (!inCheck && canUseTT && allowTTWrite) {
         const uint64_t hashKey = b.getHash();
         const auto flag = determineFlag(best, alphaOrig, betaOrig);
-        runtime.transpositionTable->store(hashKey, 0, clampToInt32(best), static_cast<uint8_t>(flag));
+        runtime.transpositionTable->store(hashKey, 0, clampToInt32(scoreToTT(best, ply)), static_cast<uint8_t>(flag));
     }
 
     return best;
@@ -1400,7 +1416,7 @@ void Searcher::storeRootHashMove(
 
     const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    runtime.transpositionTable->store(rootBoard.getHash(), depth, clampToInt32(score), flag, encodedMove);
+    runtime.transpositionTable->store(rootBoard.getHash(), depth, clampToInt32(scoreToTT(score, 0)), flag, encodedMove);
 }
 
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
