@@ -26,14 +26,12 @@ int32_t Evaluator::evalBishopVsKnight(const chess::Board& b,
 
     const int totalPawns = __builtin_popcountll(whitePawns | blackPawns);
 
-    // Openness: 0 (16 pawns, very closed) → 16 (0 pawns, fully open).
-    // Bishop advantage peaks at ~4-8 pawns total (open middlegame/endgame).
-    // Knight advantage peaks at 14-16 pawns (blocked center).
-    // Map to a signed bonus: positive = bishop side benefits.
-    // At 8 pawns: neutral. Above 8: bishop +. Below 8: knight +.
+    // Signed bonus: positive = bishop side benefits. At 8 pawns: neutral.
+    // Below 8 pawns (open): bishop +. Above 8 (closed): knight +.
     constexpr int NEUTRAL_PAWNS = 8;
     constexpr int32_t SCALE = 4; // cp per pawn away from neutral
-    const int openness = totalPawns - NEUTRAL_PAWNS; // negative = closed, positive = open
+    // Fewer pawns => more open => favors the bishop side.
+    const int openness = NEUTRAL_PAWNS - totalPawns; // positive = open (few pawns), negative = closed
 
     int32_t score = 0;
     if (whiteBishopSide) {

@@ -8,7 +8,7 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
 
     const int sign = (color == 0) ? 1 : -1;
     const bool isWhite = (color == 0);
-    const int targetRank = (color == 0) ? 6 : 1;
+    const int targetRank = (color == 0) ? 1 : 6; // rank index of each side's 7th rank
 
     while (rooks) {
         const int sq = popLSB(rooks);

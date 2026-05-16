@@ -20,11 +20,10 @@ inline int32_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
     int32_t sideScore = 0;
     const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                             b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
-    const uint64_t mobilityMask = ~occ;
     const uint64_t mobilityOwnMask = ~ownOcc;
 
     sideScore += evalTrappedPiecesGeneric<knightAttacksLookup>(
-        b.knights_bb[side], occ, mobilityMask, sign, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY);
+        b.knights_bb[side], occ, mobilityOwnMask, sign, PINNED_KNIGHT_PENALTY, LOW_MOBILITY_KNIGHT_PENALTY);
 
     if ((b.bishops_bb[side] | b.rooks_bb[side] | b.queens_bb[side]) == 0ULL) {
       return sideScore;
