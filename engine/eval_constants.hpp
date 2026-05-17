@@ -55,7 +55,7 @@ inline int32_t LOSS_OF_CASTLING_PENALTY = 22;
 // ===================================================
 // DEVELOPMENT & INITIATIVE
 // ===================================================
-inline int32_t INIT_BONUS_MG = 3;
+inline int32_t INIT_BONUS_MG = 14;
 inline int32_t INIT_BONUS_EG = 0;
 inline int32_t DEVELOPMENT_BONUS = 6;
 
