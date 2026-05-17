@@ -95,17 +95,17 @@ inline int32_t HANGING_QUEEN_PENALTY = -50;
 // ===================================================
 // EXPLICIT THREATS
 // ===================================================
-inline int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -29;
+inline int32_t THREAT_PAWN_ATTACK_MINOR_PENALTY = -30;
 inline int32_t THREAT_PAWN_ATTACK_ROOK_PENALTY = -58;
 inline int32_t THREAT_PAWN_ATTACK_QUEEN_PENALTY = -104;
-inline int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -40;
-inline int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -58;
-inline int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -49;
+inline int32_t THREAT_MINOR_ATTACK_ROOK_PENALTY = -39;
+inline int32_t THREAT_MINOR_ATTACK_QUEEN_PENALTY = -60;
+inline int32_t THREAT_ROOK_ATTACK_QUEEN_PENALTY = -48;
 inline int32_t THREAT_PAWN_PUSH_MINOR_PENALTY = -14;
 inline int32_t THREAT_PAWN_PUSH_ROOK_PENALTY = -28;
 inline int32_t THREAT_PAWN_PUSH_QUEEN_PENALTY = -45;
-inline int32_t THREAT_LOOSE_MINOR_PENALTY = -11;
-inline int32_t THREAT_LOOSE_ROOK_PENALTY = -32;
+inline int32_t THREAT_LOOSE_MINOR_PENALTY = -12;
+inline int32_t THREAT_LOOSE_ROOK_PENALTY = -31;
 inline int32_t THREAT_LOOSE_QUEEN_PENALTY = -42;
 
 // Magic number constant for threat scaling (tunable)
