@@ -33,7 +33,7 @@ mtg       = movestogo            if provided
             max(MIN_MOVESTOGO, DEFAULT_MOVESTOGO - movesPlayed)   otherwise
 
 base      = timeLeft / mtg + myInc * INC_FRACTION
-base     *= openingRamp                         (only for the first moves)
+base     *= openingRamp        (first moves, ONLY when myInc == 0)
 
 softCap   = max(MIN_THINK_MS, timeLeft * OPT_MAX_FRACTION)
 baseMs    = clamp(base, MIN_THINK_MS, softCap)
@@ -45,9 +45,12 @@ soft      = clamp(baseMs * stabilityFactor, MIN_THINK_MS, softCap)
 soft      = min(soft, hard)                      (recomputed on feedback)
 ```
 
-- **Opening ramp**: for the first `OPENING_MOVES` full moves the base is
+- **Opening ramp**: applied **only in games without an increment**
+  (`myInc == 0`). For the first `OPENING_MOVES` full moves the base is
   scaled by `OPENING_MIN_SCALE + (1 - OPENING_MIN_SCALE) * (movesPlayed /
-  OPENING_MOVES)`, so early/book-ish moves do not burn the clock.
+  OPENING_MOVES)`, so early moves do not burn a clock that only shrinks.
+  With an increment the clock is replenished every move and the engine
+  (which has no opening book) is not throttled in the opening at all.
 - **`movetime` mode**: `soft = hard = max(MIN_THINK_MS, movetime - overhead)`.
   No clock estimation is performed.
 
@@ -97,8 +100,8 @@ is to expose them as UCI spin options like the evaluation constants):
 | `HARD_MAX_FRACTION`   | 0.35  | Hard ceiling as a fraction of `timeLeft` |
 | `HARD_MULT`           | 2.5   | Hard ceiling as a multiple of the base target |
 | `START_NEXT_FRACTION` | 0.60  | Do not open a new depth past this share of `soft` |
-| `OPENING_MOVES`       | 10    | Length of the opening budget ramp |
-| `OPENING_MIN_SCALE`   | 0.30  | Base fraction on the very first move |
+| `OPENING_MOVES`       | 6     | Length of the opening budget ramp |
+| `OPENING_MIN_SCALE`   | 0.50  | Base fraction on the very first move |
 | `STABILITY_MIN/MAX`   | 0.5 / 2.0 | Bounds of the stability multiplier |
 
 ## Bypass modes

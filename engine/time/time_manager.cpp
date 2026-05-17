@@ -67,9 +67,12 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
     double base = static_cast<double>(timeLeft) / static_cast<double>(mtg)
                 + static_cast<double>(myInc) * INC_FRACTION;
 
-    // Opening ramp: the first moves are book-ish / cheap, do not burn the
-    // clock there even though the formula would allow it.
-    if (movesPlayed < OPENING_MOVES) {
+    // Opening ramp: spend less on the first moves. Only applied WITHOUT an
+    // increment: with an increment the clock is replenished every move, so
+    // there is no reason to under-think the opening (the engine has no
+    // opening book and plays it weakly when rushed). No increment => the
+    // clock only ever shrinks, so the early-game discount still protects it.
+    if (myInc <= 0 && movesPlayed < OPENING_MOVES) {
         const double r = OPENING_MIN_SCALE +
             (1.0 - OPENING_MIN_SCALE) * (static_cast<double>(movesPlayed) /
                                          static_cast<double>(OPENING_MOVES));

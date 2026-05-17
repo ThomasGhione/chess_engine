@@ -62,9 +62,9 @@ public:
     // Do not start depth d+1 once this fraction of the soft budget is gone.
     static constexpr double  START_NEXT_FRACTION = 0.60;
     // First moves are cheap; ramp the budget in over this many full moves.
-    static constexpr int     OPENING_MOVES      = 10;
+    static constexpr int     OPENING_MOVES      = 6;
     // Opening ramp starts here (fraction of base on the very first move).
-    static constexpr double  OPENING_MIN_SCALE  = 0.30;
+    static constexpr double  OPENING_MIN_SCALE  = 0.50;
     // Stability multiplier bounds applied to the soft budget.
     static constexpr double  STABILITY_MIN      = 0.50;
     static constexpr double  STABILITY_MAX      = 2.00;
