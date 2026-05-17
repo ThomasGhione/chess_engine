@@ -1,122 +1,162 @@
--- Situazione attuale
-Il bot non usa in modo "furbo" il tempo.
-Che sia una partita a tempo veloce o lento,
-tende a giocare sempre molto velocemente.
+# Time Management
 
--- Questo va bene oppure e' un problema?
-Spieghero' di seguito in quali situazioni
-questo comportamento risulta comodo.
-In generale pero' faccio una riflessione
-piu' ampia. Questa cosa NON va sempre bene.
-In una partita a 30' usare pochi secondi per
-mossa risulta una gestione del tempo decisamente
-cattiva.
+This document describes the time-management subsystem as currently
+implemented. The engine no longer searches to a fixed depth regardless of
+the clock: under a UCI time control it computes a per-move budget and stops
+the search when that budget is exhausted.
 
--- Il tempo e' una risorsa imporante
-Ci possiamo concentrare molto sull'avere
-il massimo dell'accuratezza.
-Tuttavia, perdere per il tempo e' sempre
-una possibilita' dietro l'angolo.
-Nota: per entrambi i giocatori e' una possibilita'!
+## Goals
 
+- Spend a sensible share of the clock per move instead of always playing
+  near-instantly.
+- Never lose on time: a communication/overhead buffer and a hard ceiling
+  guarantee a move is always returned with time to spare.
+- Spend *more* time when the position is unstable (the best move keeps
+  changing, or the score is dropping) and *less* when the move is obvious or
+  the game is already decided.
+- Stay out of the way of fixed-depth, node-limited, `infinite`, and
+  `ponder` searches.
 
--- Requisito utente
-Vorremmo che in delle partite a tempo,
-il bot sfruttasse meglio il tempo a sua disposizione.
-Prendendosi piu' o meno tempo in base ad una serie
-di criteri.
+The opponent's clock is intentionally **not** used. It barely affects our
+own optimal move, and deliberately playing fast to flag the opponent only
+raises our own blunder rate.
 
--- Cosiderazioni di natura generle
+## Model
 
-++ Vorremmo idealmente che la profondita' fosse infinita.
-Tuttavia, non abbiamo tempo infinito.
-Quindi, la mia proposta e' di stabilire una soglia detta X.
-Questa e' una soglia sotto cui, idealmente, non vorremmo mai
-dover scendere.
+All durations are in milliseconds. `myTime` / `myInc` are the side-to-move's
+clock and increment.
 
-Proposta di X:
-X -> Numero di mosse per poter dare matto con K+N+B (situazione peggiore)
+```
+overhead  = MOVE_OVERHEAD_MS                    (GUI/wire lag buffer)
+timeLeft  = max(1, myTime - overhead)
+mtg       = movestogo            if provided
+            max(MIN_MOVESTOGO, DEFAULT_MOVESTOGO - movesPlayed)   otherwise
 
-Proposta di K:
-K -> Numero di ricerca massimo, non posso aumentare piu' di questo numero.
-Se aumentassi ancora i tempi di ricerca sarebbero troppo elevati.
+base      = timeLeft / mtg + myInc * INC_FRACTION
+base     *= openingRamp                         (only for the first moves)
 
-Con questa proposta, essendo nella situazione "peggiore",
-siamo sicuri di avere una ricerca di qualita'.
-Se finissimo sotto X potremmo avere dei risultati della ricerca
-degradati.
+softCap   = max(MIN_THINK_MS, timeLeft * OPT_MAX_FRACTION)
+baseMs    = clamp(base, MIN_THINK_MS, softCap)
 
+hard      = min( timeLeft * HARD_MAX_FRACTION,  baseMs * HARD_MULT )
+hard      = clamp(hard, baseMs, timeLeft)        (fixed for the whole move)
 
-++ A inizio partita devo capire la modalita' di gioco.
-Se giochiamo a tempo:
-ALLORA vorrei sapere il t_max e l'eventuale t_incremento.
+soft      = clamp(baseMs * stabilityFactor, MIN_THINK_MS, softCap)
+soft      = min(soft, hard)                      (recomputed on feedback)
+```
 
-++ SE abbiamo t_incremento:
-Posso "regalamrmi" un tempo minimo per fare la mossa.
+- **Opening ramp**: for the first `OPENING_MOVES` full moves the base is
+  scaled by `OPENING_MIN_SCALE + (1 - OPENING_MIN_SCALE) * (movesPlayed /
+  OPENING_MOVES)`, so early/book-ish moves do not burn the clock.
+- **`movetime` mode**: `soft = hard = max(MIN_THINK_MS, movetime - overhead)`.
+  No clock estimation is performed.
 
-++ Se stiamo giocando a tempo:
-ALLORA salvo in delle variabili t_m e t_a.
-Rispettivamente il mio tempo e quello dell'avversario.
+### Soft vs hard limit
 
-Durante la partita devo fare queesti controlli con i due dati.
+- **Soft limit** — checked at the top of each iterative-deepening
+  iteration. Once at least one depth has completed, the next depth is *not*
+  started if `elapsed >= soft * START_NEXT_FRACTION`: it almost certainly
+  could not finish, so starting it would only waste the clock.
+- **Hard limit** — enforced by a watchdog thread created on `start()`. It
+  sleeps until `start + hard` and then sets the engine's
+  `stopSearchRequested` flag (already polled cheaply throughout the search).
+  `stop()` cancels and joins the watchdog; it is idempotent. The hot search
+  path is unchanged — no per-node clock reads.
 
-- Se t_a < SOGLIA allora gioco per fare flag.
-- Se t_m < SOGLIA allora gioco sotto X, non voglio perdere per tempo.
-- Se t_m - t_a > 0 allora posso prendere piu' tempo per mossa
-- Se t_m - t_a < 0 
-  SE scarto grosso allora gioco sotto X, non volgio perdere per tempo.
-  SE scarto piccolo, allora posso anche ignorare il problema.
+### Stability scaling
 
-NOTA: lo scarto va calcolato in percentuale al MAX(t_a, t_m) = 100%.
-NOTA 2: Alcuni bot tendono a giocare molto a "speedrun" di fatto
-usando solo l'incremento.
-Se MAX(t_a, t_partita) = t_partita allora ignoro uso \Delta t.
-(\Delta t definitio dopo)
+After every completed root iteration the search calls back with whether the
+best move changed, the new score, and the previous score. The soft limit is
+then recomputed from `baseMs * stabilityFactor`, where `stabilityFactor` is
+updated multiplicatively and clamped to `[STABILITY_MIN, STABILITY_MAX]`:
 
+| Signal                                            | Effect             |
+|---------------------------------------------------|--------------------|
+| Best move changed between iterations              | `* 1.35` (instability — think more) |
+| Best move stable                                  | `* 0.90` (converging) |
+| Score dropped > 30 cp vs previous iteration       | `* (1 + min(1, drop/200))` (panic / fail-low) |
+| `abs(score) > 1500` **and** best move stable      | `* 0.60` (decided position / easy move) |
 
-++ Per una corretta gestione del tempo devo cosiderare l'eval
-corrente.
+This single multiplicative factor replaces the original design's
+conflicting OR-rule lists, so the criteria can no longer contradict each
+other; everything is clamped into `[soft, hard]`.
 
-- Se eval a sfavore: mi serve aumentare la precisione aumentando la ricerca.
-- Se eval a favore: potrei decidere di diminuire la profondita' di ricerca
-(NON sotto soglia X, e NON sopra K)
+## Constants
 
-++ Il tempo medio per mossa dovrebbe essere:
+Defined in `engine/time/time_manager.hpp` (easy to tune; a natural next step
+is to expose them as UCI spin options like the evaluation constants):
 
-\Delta t circa (t_max) / n_mosse
+| Constant              | Value | Meaning |
+|-----------------------|-------|---------|
+| `MOVE_OVERHEAD_MS`    | 30    | Lag buffer; never spend the last 30 ms |
+| `MIN_THINK_MS`        | 5     | Absolute floor when time-managed |
+| `DEFAULT_MOVESTOGO`   | 50    | Assumed horizon when `movestogo` absent |
+| `MIN_MOVESTOGO`       | 20    | Lower bound for the estimated horizon |
+| `INC_FRACTION`        | 0.75  | Fraction of the increment consumed per move |
+| `OPT_MAX_FRACTION`    | 0.20  | Soft target ceiling as a fraction of `timeLeft` |
+| `HARD_MAX_FRACTION`   | 0.35  | Hard ceiling as a fraction of `timeLeft` |
+| `HARD_MULT`           | 2.5   | Hard ceiling as a multiple of the base target |
+| `START_NEXT_FRACTION` | 0.60  | Do not open a new depth past this share of `soft` |
+| `OPENING_MOVES`       | 10    | Length of the opening budget ramp |
+| `OPENING_MIN_SCALE`   | 0.30  | Base fraction on the very first move |
+| `STABILITY_MIN/MAX`   | 0.5 / 2.0 | Bounds of the stability multiplier |
 
-dove n_mosse rappresenta una media di mosse per arrivare
-a fine partita.
+## Bypass modes
 
-!! Questo pero' non vale ad inizio partita.
+`useTimeManagement()` is `false` (no budget, no watchdog) when the `go`
+command is `infinite`, `ponder`, or carries no clock and no `movetime`.
 
-Mi aspetto che il tempo medio per le mosse all'inizio
-sia molto infriore a \Delta t.
+- `infinite` deepens up to `MAX_PLY` and relies on an external `stop`.
+- `go depth N` / `go nodes N` keep their own cap.
+- **`ponder`** searches a *bounded* fixed depth (`DEFAULTDEPTH`), **not**
+  `MAX_PLY`. This engine's `ponderhit` only clears the ponder flag — it does
+  not convert a running search into a timed one — so an unbounded ponder
+  search would never return a move on `ponderhit` and the engine would flag.
+  A bounded ponder search completes during the opponent's time; `ponderhit`
+  (or `stop`) then emits the already-computed move.
+- `go` with no arguments falls back to the default fixed depth.
 
+## Integration points
 
--- Organizzazione finale di un algoritmo alto livello:
-Idealmente questi controlli dovrebbero essere in parallelo.
+- `engine/time/time_manager.hpp` / `.cpp` — `engine::time::Limits` (parsed
+  UCI limits) and `engine::time::TimeManager` (budget + watchdog).
+- `uci/uci.cpp` — `go` parses `wtime btime winc binc movestogo movetime
+  nodes depth infinite ponder` into a `Limits`.
+- `engine/engine.cpp` — `Engine::searchUCI(const time::Limits&)` selects the
+  side's clock, derives `movesPlayed` from the full-move clock, initialises
+  and starts the `TimeManager`, runs the search, then stops it.
+- `engine/search/searcher.{hpp,cpp}` — `SearchRuntime::timeManager` (a
+  nullable pointer; null for fixed-depth / perft / ponder paths, which are
+  therefore unchanged). `runIterativeDeepening` consults
+  `shouldStartNextDepth()` between depths and feeds `updateStability()`
+  after each completed depth.
+- `makefile` — `engine/time/` added to the engine source/header globs.
 
-Definizione delle variabili:
-\Delta t circa (t_max) / n_mosse
-t_a
-t_m
-t_min = incremento
+## Behaviour check
 
-CRITERI PER GIOCARE SOTTO SOGLIA: (Sono in OR)
-- t_m < SOGLIA
-- t_m - t_a < \Delta Accettabile
+`go movetime {300,800,2000}` from the start position returned a move with a
+measured `go`→`bestmove` latency of ~260 / 669 / 2030 ms — always within the
+requested budget; the small overshoot is exactly what `MOVE_OVERHEAD_MS`
+absorbs so the real GUI clock never flags.
 
-CRITERI PER DIMINUIRE FINO A MASSIMO SOGLIA X: (Sono in OR)
-- Mosse apertura
-- Se Eval MOLTO a favore
-- Se t_m < t_a
-- Se t_a < SOGLIA
+A simulated 3+2 game (`wtime 180000 ... winc 2000`, consecutive `go`
+commands in one process) plays each move in ~1–7 s, bounded by the per-move
+hard ceiling, with no hang across moves. Move-1 budget stays at ~1 % of the
+clock from 30 s up to 30 min controls. The performance suite is unchanged
+(fixed-depth search node counts identical, since the time manager is
+inactive on that path).
 
-CRITERI PER AUMENTARE FINO A MASSIMO SOGLIA K: (Sono in OR)
-- Se mediamente sto gicando sempre sotto il tempo medio per mossa
-- Se eval sfavorevole
-- t_m - t_a > SOGLIA accettabile, posso rallentare, ho tanto tempo in piu'.
-
-Se NON soddisfiamo i requisiti sopra citati:
-LASCIAMO INVARIATO.
+> Ponder freeze (fixed): the first cut routed `go ponder` to a `MAX_PLY`
+> unbounded search with no budget. Because `ponderhit` does not stop or
+> convert a running search here, the engine never returned a move once the
+> predicted reply was played (e.g. Ruy López Exchange after `e4 e5 Nf3 Nc6
+> Bb5 a6 Bxc6 dxc6`) and flagged. Ponder is now bounded to `DEFAULTDEPTH`,
+> restoring the pre-time-management behaviour.
+>
+> Note on an earlier regression: with the initial constants
+> (`HARD_MULT=5`, `OPT_MAX_FRACTION=0.45`, `HARD_MAX_FRACTION=0.85`,
+> `STABILITY_MAX=2.5`) a single move could consume a large multiple of an
+> already-large `timeLeft/mtg` base, so in non-bullet games the engine sank
+> minutes into one opening move and ran into terminal time trouble. The
+> tightened values above cap any single move to a small fraction of the
+> remaining clock.

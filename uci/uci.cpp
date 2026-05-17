@@ -256,6 +256,13 @@ namespace {
         return err == std::errc{} && ptr == token.data() + token.size();
     }
 
+    static bool parseI64(string_view token, int64_t& out) noexcept {
+        if (token.starts_with('+')) token.remove_prefix(1);
+        if (token.empty()) return false;
+        const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
+        return err == std::errc{} && ptr == token.data() + token.size();
+    }
+
     static bool splitCommand(string_view command, string_view name, string_view& args) noexcept {
         if (!command.starts_with(name)) return false;
         if (command.size() == name.size()) {
@@ -485,32 +492,43 @@ namespace uci {
     
     void UCI::go(std::string_view args) noexcept {
         finishSearch(true, false);
-        uint64_t requestedDepth = engine::Engine::DEFAULTDEPTH;
-        bool ponder = false;
+        engine::time::Limits limits;
 
         while (!args.empty()) {
             const string_view token = nextToken(args);
             if (token.empty()) break;
 
-            if (token == "ponder") {
-                ponder = true;
-                continue;
-            }
+            if (token == "ponder")   { limits.ponder = true;   continue; }
+            if (token == "infinite") { limits.infinite = true; continue; }
 
             if (token == "depth") {
-                int depth = 0;
-                if (parseInt(nextToken(args), depth) && depth >= 0) {
-                    requestedDepth = static_cast<uint64_t>(depth);
+                int v = 0;
+                if (parseInt(nextToken(args), v) && v > 0) limits.maxDepth = v;
+                continue;
+            }
+            if (token == "nodes") {
+                int64_t v = 0;
+                if (parseI64(nextToken(args), v) && v > 0) {
+                    limits.maxNodes = static_cast<uint64_t>(v);
                 }
                 continue;
             }
-
-            if (token == "wtime" || token == "btime" || token == "winc" || token == "binc" || 
-                token == "movetime" || token == "movestogo" || token == "mate" || token == "nodes") {
-                (void)nextToken(args);
+            if (token == "movestogo") {
+                int v = 0;
+                if (parseInt(nextToken(args), v) && v > 0) limits.movestogo = v;
+                continue;
             }
+
+            int64_t v = 0;
+            if (token == "wtime"    && parseI64(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
+            if (token == "btime"    && parseI64(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
+            if (token == "winc"     && parseI64(nextToken(args), v)) { limits.winc = v;  continue; }
+            if (token == "binc"     && parseI64(nextToken(args), v)) { limits.binc = v;  continue; }
+            if (token == "movetime" && parseI64(nextToken(args), v)) { limits.movetime = v; continue; }
+            if (token == "mate")    { (void)nextToken(args); continue; }
         }
 
+        const bool ponder = limits.ponder;
         {
             std::lock_guard<std::mutex> lock(searchMutex);
             searchBestMove = "0000";
@@ -519,8 +537,8 @@ namespace uci {
             searchPrinted = false;
         }
         try {
-            searchThread = std::thread([this, requestedDepth, ponder] {
-                const chess::Board::Move move = engine.searchUCI(requestedDepth);
+            searchThread = std::thread([this, limits, ponder] {
+                const chess::Board::Move move = engine.searchUCI(limits);
                 std::string bestMove = move.toUCIString();
                 if (!ponder) bestMove += ponderSuffix(engine, move);
                 std::lock_guard<std::mutex> lock(searchMutex);

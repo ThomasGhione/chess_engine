@@ -12,6 +12,8 @@
 
 namespace engine {
 
+namespace time { class TimeManager; }
+
 class Searcher final {
 public:
     Searcher() = delete;
@@ -70,6 +72,10 @@ public:
         std::atomic<bool>* stopSearchRequested = nullptr;
         std::atomic<bool>* ponderingStopRequested = nullptr;
         std::atomic<bool>* searchInterrupted = nullptr;
+
+        // Optional: drives soft-limit / stability decisions in iterative
+        // deepening. Null for fixed-depth / ponder / perft-style searches.
+        time::TimeManager* timeManager = nullptr;
 
     };
 

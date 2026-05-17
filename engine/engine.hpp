@@ -13,6 +13,7 @@
 #include "../tt/tt.hpp"
 
 #include "search/searcher.hpp"
+#include "time/time_manager.hpp"
 
 namespace engine {
 
@@ -54,6 +55,7 @@ public:
     // Search API
     void search(uint64_t depth) noexcept;
     chess::Board::Move searchUCI(uint64_t depth) noexcept;
+    chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;
@@ -99,6 +101,9 @@ public:
 
     // Transposition table (shared by normal search and pondering)
     TranspositionTable tt;
+
+    // Per-move time budget + hard-deadline watchdog (UCI clock searches).
+    time::TimeManager timeManager;
 
 private:
 

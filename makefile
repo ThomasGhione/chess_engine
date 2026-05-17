@@ -58,7 +58,7 @@ GENERATED_BINS = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BEN
 
 # File paths by module
 MAIN_SRC = $(ROOT_DIR)/main.cpp
-ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp)
+ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/time/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp)
 DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
 BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
 UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
@@ -67,7 +67,7 @@ UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
 ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
-ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp)
+ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/time/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp)
 DRIVER_HDRS = $(wildcard $(ROOT_DIR)/driver/*.hpp)
 BOARD_HDRS = $(wildcard $(ROOT_DIR)/board/*.hpp)
 UCI_HDRS = $(wildcard $(ROOT_DIR)/uci/*.hpp)

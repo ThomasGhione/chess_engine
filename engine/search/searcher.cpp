@@ -5,6 +5,7 @@
 
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
+#include "../time/time_manager.hpp"
 #include "move_generator.hpp"
 #include "sorter.hpp"
 
@@ -1490,6 +1491,13 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             break;
         }
 
+        // Soft limit: once a move is in hand, do not open a depth we almost
+        // certainly cannot finish within the time budget.
+        if (result.completedAnyDepth && runtime.timeManager != nullptr
+            && !runtime.timeManager->shouldStartNextDepth()) {
+            break;
+        }
+
         runtime.depth = currentDepth;
 
         if (result.completedAnyDepth) {
@@ -1583,6 +1591,11 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             break;
         }
 
+        const bool hadPrevScore = hasPrevScore;
+        const int32_t prevScoreBefore = prevScore;
+        const bool bestMoveChanged =
+            result.completedAnyDepth && !(bestMove == candidateBestMove);
+
         if (hasPrevScore) {
             prevPrevScore = prevScore;
             hasPrevPrevScore = true;
@@ -1592,6 +1605,11 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         prevScore = runtime.eval;
         hasPrevScore = true;
         result.completedAnyDepth = true;
+
+        if (runtime.timeManager != nullptr) {
+            runtime.timeManager->updateStability(
+                bestMoveChanged, runtime.eval, prevScoreBefore, hadPrevScore);
+        }
         ++result.completedIterations;
         result.completedDepth = currentDepth;
         if ((currentDepth & 1ULL) == 0ULL) {

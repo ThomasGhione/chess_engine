@@ -431,6 +431,69 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     return this->bestMove;
 }
 
+chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
+    std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
+    if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
+        searchApiGuard.lock();
+    }
+
+    this->stopPondering();
+
+    const bool sideIsWhite =
+        this->board.getActiveColor() == chess::Board::WHITE;
+    const int movesPlayed = static_cast<int>(
+        this->board.getFullMoveClock() > 0 ? this->board.getFullMoveClock() - 1 : 0);
+
+    this->stopSearchRequested.store(false, std::memory_order_relaxed);
+    this->searchInterrupted.store(false, std::memory_order_relaxed);
+
+    this->timeManager.init(limits, sideIsWhite, movesPlayed,
+                           &this->stopSearchRequested);
+
+    // Depth-bounded request keeps its cap; a time-managed search deepens
+    // until the budget runs out (the watchdog trips the stop flag).
+    uint64_t targetDepth;
+    if (limits.maxDepth > 0) {
+        targetDepth = static_cast<uint64_t>(limits.maxDepth);
+    } else if (this->timeManager.useTimeManagement() || limits.infinite) {
+        // Time-managed / infinite: deepen until the watchdog or an external
+        // stop interrupts the search.
+        targetDepth = static_cast<uint64_t>(Searcher::MAX_PLY);
+    } else {
+        // Ponder (or a bare `go`): this engine's `ponderhit` does not convert
+        // a running search into a timed one, so a ponder search MUST be
+        // bounded or it never returns a move on ponderhit and the engine
+        // flags. Keep the pre-time-management fixed-depth behaviour.
+        targetDepth = Engine::DEFAULTDEPTH;
+    }
+
+    chess::Board::Move ponderMove{};
+    if (this->tryUsePonderResult(targetDepth, ponderMove)) {
+        this->bestMove = ponderMove;
+        return this->bestMove;
+    }
+
+    this->clearPonderResult();
+
+    this->searchRuntime.timeManager = &this->timeManager;
+    this->timeManager.start();
+
+    chess::Board searchBoard = this->board;
+    const chess::Board::Move candidate =
+        Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth);
+
+    this->timeManager.stop();
+    this->searchRuntime.timeManager = nullptr;
+
+    if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
+        this->bestMove = chess::Board::Move{};
+        return this->bestMove;
+    }
+
+    this->bestMove = candidate;
+    return this->bestMove;
+}
+
 void Engine::search(uint64_t requestedDepth) noexcept {
     std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
     if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
