@@ -134,8 +134,9 @@ private:
     static inline constexpr int PIECE_ENDGAME_THRESHOLD = 5;
 
     // Full int32 range for score bounds/mate scores.
-    static inline constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
+    // Negamax-safe: NEG_INF == -POS_INF (negating int32 min is UB).
     static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
+    static inline constexpr int32_t NEG_INF = -POS_INF;
     static inline constexpr int32_t TRAPPED_EXTRA_SEVERITY = 10; // in centipawns
     // Variables end
 

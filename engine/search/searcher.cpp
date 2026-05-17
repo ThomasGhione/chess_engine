@@ -42,33 +42,36 @@ static constexpr LMRTable LMR_REDUCTION_TABLE;
 
 } // namespace
 
-constexpr int32_t Searcher::initialBest(bool isWhite) noexcept {
-    return isWhite ? NEG_INF : POS_INF;
+// --- Negamax helpers ---
+// The engine is now pure negamax: every node maximises a side-to-move
+// relative score. The `isWhite` parameter is retained only to avoid
+// touching ~90 call sites and is deliberately ignored.
+constexpr int32_t Searcher::initialBest(bool /*isWhite*/) noexcept {
+    return NEG_INF;
 }
 
-constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest, bool isWhite) noexcept {
-    return isWhite ? (newScore > currentBest) : (newScore < currentBest);
+constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest, bool /*isWhite*/) noexcept {
+    return newScore > currentBest;
 }
 
-constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept {
-    return isWhite ? (score >= beta) : (score <= alpha);
+constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t /*alpha*/, int32_t beta, bool /*isWhite*/) noexcept {
+    return score >= beta;
 }
 
-void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept {
-    alpha = (isWhite && score > alpha) ? score : alpha;
-    beta = (!isWhite && score < beta) ? score : beta;
+void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& /*beta*/, bool /*isWhite*/) noexcept {
+    if (score > alpha) alpha = score;
 }
 
-constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
-    return isWhite ? (standPat + margin < alpha) : (standPat - margin > beta);
+constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t /*beta*/, bool /*isWhite*/) noexcept {
+    return standPat + margin <= alpha;
 }
 
-constexpr int32_t Searcher::cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept {
-    return isWhite ? beta : alpha;
+constexpr int32_t Searcher::cutoffValue(int32_t /*alpha*/, int32_t beta, bool /*isWhite*/) noexcept {
+    return beta;
 }
 
-constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept {
-    return isWhite ? (score > alphaBound) : (score < betaBound);
+constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t /*betaBound*/, bool /*isWhite*/) noexcept {
+    return score > alphaBound;
 }
 
 
@@ -143,13 +146,12 @@ bool Searcher::checkEarlyTerminalConditions(
     }
 
     // Terminal king-capture states are possible in this codebase's move model.
-    // Resolve them immediately to avoid evaluating undefined tactical positions.
-    if (b.kings_bb[0] == 0ULL) {
-        outScore = NEG_INF + ply;
-        return true;
-    }
-    if (b.kings_bb[1] == 0ULL) {
-        outScore = POS_INF - ply;
+    // Negamax / side-to-move relative: losing our own king is a mated score
+    // (NEG_INF + ply); capturing the opponent's king is a winning score.
+    if (b.kings_bb[0] == 0ULL || b.kings_bb[1] == 0ULL) {
+        const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
+        const bool ourKingGone = (b.kings_bb[0] == 0ULL) ? whiteToMove : !whiteToMove;
+        outScore = ourKingGone ? (NEG_INF + ply) : (POS_INF - ply);
         return true;
     }
 
@@ -189,7 +191,11 @@ int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
 }
 
 int32_t Searcher::drawAdvantageScore(const chess::Board& b) noexcept {
-    const int32_t materialDelta = b.getIncrementalMaterialDelta();
+    // Negamax: make the white-centric material delta side-to-move relative;
+    // Evaluator::evaluate() is already STM-relative.
+    const int32_t mdWhite = b.getIncrementalMaterialDelta();
+    const int32_t materialDelta =
+        (b.getActiveColor() == chess::Board::WHITE) ? mdWhite : -mdWhite;
     const int32_t staticEval = Evaluator::evaluate(b);
     const int64_t blendedScore =
         static_cast<int64_t>(materialDelta) * DRAW_SCORE_MATERIAL_WEIGHT_PERCENT
@@ -211,9 +217,10 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
     return (drawDelta > 0) ? -contempt : contempt;
 }
 
-void Searcher::rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept {
-    outAlpha = usIsWhite ? alpha : saturatingSub32(beta, 1);
-    outBeta = usIsWhite ? saturatingAdd32(alpha, 1) : beta;
+void Searcher::rootNullWindow(bool /*usIsWhite*/, int32_t alpha, int32_t /*beta*/, int32_t& outAlpha, int32_t& outBeta) noexcept {
+    // Negamax PVS scout window: [alpha, alpha+1].
+    outAlpha = alpha;
+    outBeta = saturatingAdd32(alpha, 1);
 }
 
 void Searcher::updateMinMax(
@@ -303,8 +310,9 @@ int32_t Searcher::searchRootMoveScore(
     uint64_t* nodeCounter) noexcept {
     chess::Board::MoveState state;
     b.doMove(m, state, m.promotionPiece);
-    const int32_t score = searchPosition(
-        b, runtime, runtime.depth - 1, alpha, beta, currPly,
+    // Negamax: child is the opponent to move -> negate and swap/negate bounds.
+    const int32_t score = -searchPosition(
+        b, runtime, runtime.depth - 1, -beta, -alpha, currPly,
         useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
@@ -349,8 +357,9 @@ bool Searcher::tryNullMovePruning(
     chess::Board::MoveState nullState;
     b.doNullMove(nullState);
 
-    const int32_t nullScore = searchPosition(
-        b, runtime, depth - reduction, alpha, beta, ply + 1,
+    // Negamax: after the null move it is the opponent to move.
+    const int32_t nullScore = -searchPosition(
+        b, runtime, depth - reduction, -beta, -alpha, ply + 1,
         useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
 
     b.undoNullMove(nullState);
@@ -361,6 +370,7 @@ bool Searcher::tryNullMovePruning(
 
     bool confirmedCutoff = true;
     if (depth >= NULL_MOVE_VERIFICATION_DEPTH) {
+        // Verification re-search of THIS node (same side to move): no negation.
         const int32_t verifyScore = searchPosition(
             b, runtime, depth - reduction, alpha, beta, ply,
             useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
@@ -372,7 +382,8 @@ bool Searcher::tryNullMovePruning(
     }
 
     if (!b.hasAnyLegalMove(node.activeColor)) {
-        outScore = stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
+        const int32_t md = b.getIncrementalMaterialDelta();
+        outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
         return true;
     }
 
@@ -394,16 +405,17 @@ bool Searcher::tryReverseFutilityPruning(
         return false;
     }
 
+    // Negamax: staticEval is side-to-move relative; fail high if it beats
+    // beta even after subtracting the margin.
     const int32_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
-    const int32_t rfpScore = node.usIsWhite
-        ? (node.staticEval - rfpMargin)
-        : (node.staticEval + rfpMargin);
+    const int32_t rfpScore = node.staticEval - rfpMargin;
     if (!isBetaCutoff(rfpScore, alpha, beta, node.usIsWhite)) {
         return false;
     }
 
     if (!b.hasAnyLegalMove(node.activeColor)) {
-        outScore = stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
+        const int32_t md = b.getIncrementalMaterialDelta();
+        outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
         return true;
     }
 
@@ -656,8 +668,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && !givesCheck
             && !isKiller;
 
-        const int32_t searchAlpha = isFirstMove ? bounds.alpha : (usIsWhite ? bounds.alpha : saturatingSub32(bounds.beta, 1));
-        const int32_t searchBeta  = isFirstMove ? bounds.beta  : (usIsWhite ? saturatingAdd32(bounds.alpha, 1) : bounds.beta);
+        // Negamax PVS scout window: full [alpha,beta] for the first move,
+        // null window [alpha, alpha+1] for the rest.
+        const int32_t scoutAlpha = bounds.alpha;
+        const int32_t scoutBeta  = isFirstMove ? bounds.beta
+                                               : saturatingAdd32(bounds.alpha, 1);
 
         int32_t score = 0;
         if (canReduce) {
@@ -679,29 +694,29 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             }
 
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
-            score = searchPosition(b, runtime, reducedDepth, searchAlpha, searchBeta, ctx.ply + 1,
-                                   useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+            score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
+                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
-            const bool reducedFailed = shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
+            const bool reducedFailed = shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
             if (reducedFailed && reducedDepth < childDepth) {
-                score = searchPosition(b, runtime, childDepth, searchAlpha, searchBeta, ctx.ply + 1,
-                                       useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
+                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
 
-            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
+            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
             if (shouldResearch) {
-                score = searchPosition(b, runtime, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1,
-                                       useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
+                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
         } else {
-            score = searchPosition(b, runtime, childDepth, searchAlpha, searchBeta, ctx.ply + 1,
-                                   useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+            score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
+                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
-                const bool shouldResearch = shouldResearchPVS(score, searchAlpha, searchBeta, usIsWhite);
+                const bool shouldResearch = shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
                 if (shouldResearch) {
-                    score = searchPosition(b, runtime, childDepth, bounds.alpha, bounds.beta, ctx.ply + 1,
-                                           useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                    score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
+                                            useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
                 }
             }
         }
@@ -839,11 +854,11 @@ int32_t Searcher::searchPosition(
             uint8_t ttStaticFlag = 0;
             if (runtime.transpositionTable->probeSE(hashKey, 0, ttStaticScore, ttStaticFlag)) {
                 ttStaticScore = scoreFromTT(ttStaticScore, ply); // re-base mate scores
+                // Negamax (STM-relative): a LOWERBOUND tightens upward, an
+                // UPPERBOUND tightens downward, EXACT always replaces.
                 if (ttStaticFlag == TranspositionTable::Entry::EXACT
-                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && node.usIsWhite  && ttStaticScore > node.staticEval)
-                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && !node.usIsWhite && ttStaticScore < node.staticEval)
-                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && node.usIsWhite  && ttStaticScore < node.staticEval)
-                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && !node.usIsWhite && ttStaticScore > node.staticEval)) {
+                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && ttStaticScore > node.staticEval)
+                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && ttStaticScore < node.staticEval)) {
                     node.staticEval = ttStaticScore;
                 }
             }
@@ -862,12 +877,11 @@ int32_t Searcher::searchPosition(
     // would otherwise corrupt the improving comparison two plies deeper.
     if (ply > 0 && ply < MAX_PLY)
         evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
-    // staticEval is white-centric (not negamax), so "improving" is
-    // side-relative: White improves when eval rises, Black when it falls.
+    // Negamax: staticEval is side-to-move relative and ply-2 is the same
+    // side, so "improving" is simply eval rising versus two plies ago.
     const bool improving = !node.inCheck && ply >= 2
         && evalStack[ply - 2] != NEG_INF
-        && (node.usIsWhite ? (node.staticEval > evalStack[ply - 2])
-                           : (node.staticEval < evalStack[ply - 2]));
+        && (node.staticEval > evalStack[ply - 2]);
 
     const int side = chess::Board::colorToIndex(node.activeColor);
     const int nonPawnMajors = __builtin_popcountll(
@@ -886,20 +900,19 @@ int32_t Searcher::searchPosition(
     static constexpr int32_t RAZOR_MARGIN_D2 = 600;
     if (!node.isPVNode && !node.inCheck && ply > 0 && depth <= 2) {
         const int32_t margin = (depth == 1) ? RAZOR_MARGIN_D1 : RAZOR_MARGIN_D2;
-        const bool razorGate = node.usIsWhite
-            ? (node.staticEval + margin < alpha)
-            : (node.staticEval - margin > beta);
+        // Negamax: even adding the margin cannot reach alpha -> verify via qsearch.
+        const bool razorGate = (node.staticEval + margin <= alpha);
         if (razorGate) {
+            // qsearch of THIS node (same side to move): no negation.
             const int32_t qScore = quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
             if (shouldAbortSearch(runtime)) return Evaluator::evaluate(b);
-            const bool stillBad = node.usIsWhite ? (qScore < alpha) : (qScore > beta);
-            if (stillBad) return qScore;
+            if (qScore <= alpha) return qScore;
         }
     }
 
-    const int32_t nmpEvalGate = node.usIsWhite
-        ? (node.staticEval + 100)
-        : (node.staticEval - 100);
+    // Negamax NMP gate: allow a null move when the static eval is within
+    // ~100cp of beta (giving the opponent a free move likely still fails high).
+    const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove
         && !node.isPVNode
         && !node.inCheck
@@ -922,21 +935,16 @@ int32_t Searcher::searchPosition(
         return score;
     }
 
-    // Probcut: if a capture has SEE >= beta + margin at shallow depth, it likely exceeds beta.
+    // Probcut (negamax): if a winning capture, searched shallow with a null
+    // window above beta+margin, still beats beta+margin, this node likely
+    // fails high. SEE is side-to-move relative so the filter is one-sided.
     static constexpr int32_t PROBCUT_MARGIN = 100;
     static constexpr int32_t PROBCUT_MIN_DEPTH = 5;
-    // White (maximizer) cuts at score>=beta → probe around beta+margin.
-    // Black (minimizer) cuts at score<=alpha → probe around alpha-margin.
-    // SEE is side-to-move-relative, so the "winning capture" filter is the
-    // same (see >= margin) for both colors.
     if (!node.isPVNode && !node.inCheck && depth >= PROBCUT_MIN_DEPTH && ply > 0
-        && (node.usIsWhite ? (std::abs(beta) < POS_INF - 1000)
-                           : (std::abs(alpha) < POS_INF - 1000))) {
-        const int32_t probcutBound = node.usIsWhite
-            ? saturatingAdd32(beta, PROBCUT_MARGIN)
-            : saturatingSub32(alpha, PROBCUT_MARGIN);
-        const int32_t pcAlpha = node.usIsWhite ? (probcutBound - 1) : probcutBound;
-        const int32_t pcBeta  = node.usIsWhite ? probcutBound : (probcutBound + 1);
+        && std::abs(beta) < POS_INF - 1000) {
+        const int32_t probcutBound = saturatingAdd32(beta, PROBCUT_MARGIN);
+        const int32_t pcAlpha = probcutBound - 1;
+        const int32_t pcBeta  = probcutBound;
         MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
@@ -944,11 +952,11 @@ int32_t Searcher::searchPosition(
             if (see < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
             b.doMove(mc, pcState, mc.promotionPiece);
-            const int32_t pcScore = searchPosition(b, runtime, depth - 4, pcAlpha, pcBeta,
+            // Negamax child: negate result and swap/negate the scout window.
+            const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
                 ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
             b.undoMove(mc, pcState);
-            const bool cutoff = node.usIsWhite ? (pcScore >= probcutBound) : (pcScore <= probcutBound);
-            if (cutoff) return cutoffValue(alpha, beta, node.usIsWhite);
+            if (pcScore >= probcutBound) return cutoffValue(alpha, beta, node.usIsWhite);
         }
     }
 
@@ -969,9 +977,10 @@ int32_t Searcher::searchPosition(
         ? engine::MoveGenerator::generateLegalEvasions(b, true, nodeInDoubleCheck)
         : engine::MoveGenerator::generateLegalMoves(b, true, false, false);
     if (moves.is_empty()) {
+        const int32_t mdW = b.getIncrementalMaterialDelta();
         return node.inCheck
-            ? (node.usIsWhite ? (NEG_INF + ply) : (POS_INF - ply))
-            : stalemateScoreFromMaterialDelta(b.getIncrementalMaterialDelta());
+            ? (NEG_INF + ply)  // side to move is checkmated (negamax)
+            : stalemateScoreFromMaterialDelta(node.usIsWhite ? mdW : -mdW);
     }
 
     bool hasHashMove = false;
@@ -1065,7 +1074,7 @@ int32_t Searcher::quiescenceSearch(
             MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalEvasions(
                 b, true, inDoubleCheck);
             if (evasions.is_empty()) {
-                return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
+                return NEG_INF + ply; // side to move is checkmated (negamax)
             }
         }
         return Evaluator::evaluate(b);
@@ -1092,7 +1101,7 @@ int32_t Searcher::quiescenceSearch(
 
         const int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
         if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
-            return usIsWhite ? alpha : beta;
+            return alpha; // negamax delta-prune fail-low
         }
 
         int32_t deltaMargin = QUEEN_VALUE;
@@ -1106,9 +1115,8 @@ int32_t Searcher::quiescenceSearch(
             deltaMargin += QSEARCH_PAWN_PROMO_DELTA;
         }
 
-        const int32_t materialBalance = usIsWhite
-            ? standPat
-            : (standPat == NEG_INF ? POS_INF : -standPat);
+        // standPat is already side-to-move relative (negamax eval).
+        const int32_t materialBalance = standPat;
         
         if (materialBalance < QSEARCH_MATERIAL_BAD) {
             deltaMargin += QSEARCH_MATERIAL_BAD_DELTA;
@@ -1124,7 +1132,7 @@ int32_t Searcher::quiescenceSearch(
         }
 
         if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
-            return usIsWhite ? alpha : beta;
+            return alpha; // negamax delta-prune fail-low
         }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
@@ -1159,7 +1167,8 @@ int32_t Searcher::quiescenceSearch(
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
-        const int32_t score = quiescenceSearch(b, runtime, alpha, beta, ply + 1, canUseTT, counter, allowTTWrite);
+        // Negamax: child is opponent to move -> negate + swap/negate window.
+        const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
 
         if (isBetter(score, best, usIsWhite)) {
@@ -1433,19 +1442,22 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     result.startDepth = firstDepth;
     result.targetDepth = maxDepth;
 
-    if (rootBoard.kings_bb[0] == 0) {
-        result.terminalRoot = true;
-        result.completedAnyDepth = true;
-        result.bestScore = NEG_INF;
-        runtime.eval = result.bestScore;
-        return result;
-    }
-    if (rootBoard.kings_bb[1] == 0) {
-        result.terminalRoot = true;
-        result.completedAnyDepth = true;
-        result.bestScore = POS_INF;
-        runtime.eval = result.bestScore;
-        return result;
+    {
+        const bool rootWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
+        if (rootBoard.kings_bb[0] == 0) {            // white king gone
+            result.terminalRoot = true;
+            result.completedAnyDepth = true;
+            result.bestScore = rootWhite ? NEG_INF : POS_INF; // STM-relative
+            runtime.eval = result.bestScore;
+            return result;
+        }
+        if (rootBoard.kings_bb[1] == 0) {            // black king gone
+            result.terminalRoot = true;
+            result.completedAnyDepth = true;
+            result.bestScore = rootWhite ? POS_INF : NEG_INF; // STM-relative
+            runtime.eval = result.bestScore;
+            return result;
+        }
     }
 
     int32_t rootDrawScore = 0;
@@ -1461,7 +1473,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
         if (rootBoard.isCheckmate(toMove)) {
-            result.bestScore = (toMove == chess::Board::WHITE) ? NEG_INF : POS_INF;
+            result.bestScore = NEG_INF; // side to move is mated (negamax/STM)
         } else if (rootBoard.isDraw(toMove)) {
             result.bestScore = 0;
         } else {

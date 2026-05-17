@@ -17,13 +17,21 @@ static constexpr uint64_t FULLMOVE_CACHE_SALT = 0x9E3779B97F4A7C15ULL;
 } // namespace
 
 int32_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
-    return (board.getActiveColor() == chess::Board::BLACK) ? POS_INF : NEG_INF;
+    // Negamax / side-to-move relative: on a checkmated board the side to move
+    // is the one mated. -POS_INF (not NEG_INF=INT32_MIN, which cannot be
+    // safely negated by the negamax recursion).
+    (void)board;
+    return -POS_INF;
 }
 
 int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
+    const bool whiteToMove = (activeColor == chess::Board::WHITE);
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
-        return (activeColor == chess::Board::BLACK) ? POS_INF : NEG_INF;
+        // Side-to-move relative: losing our king is -POS_INF, capturing the
+        // opponent's is +POS_INF.
+        if (board.kings_bb[0] == 0) return whiteToMove ? -POS_INF : POS_INF;
+        return whiteToMove ? POS_INF : -POS_INF;
     }
 
     thread_local std::array<EvalCacheEntry, EVAL_CACHE_SIZE> evalCache{};
@@ -66,6 +74,12 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     if (phase.isEndgame) {
         result = applyOppColorBishopScaling(board, result);
     }
+
+    // Contract: evaluate() returns a SIDE-TO-MOVE relative score (negamax).
+    // Terms are computed white-centric internally; negate once at the boundary
+    // for Black. (Cache stores the STM-relative value; the zobrist key already
+    // encodes side to move, so W/B-to-move map to different cache slots.)
+    if (!whiteToMove) result = -result;
 
     cacheEntry.key = evalCacheKey;
     cacheEntry.score = result;
