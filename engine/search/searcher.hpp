@@ -131,7 +131,8 @@ public:
         bool allowHeuristicUpdates = true,
         const chess::Board::Move* previousMove = nullptr,
         uint64_t* nodeCounter = nullptr,
-        bool allowNullMove = true) noexcept;
+        bool allowNullMove = true,
+        chess::Board::Move excludedMove = {}) noexcept;
 
     static int32_t quiescenceSearch(
         chess::Board& b,
@@ -157,6 +158,7 @@ private:
         int16_t* contHistEntry = nullptr;
         bool iirActive = false;
         bool improving = false;
+        chess::Board::Move excludedMove = {};
     };
 
     struct AlphaBeta {

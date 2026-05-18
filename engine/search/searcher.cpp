@@ -573,6 +573,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             break;
         }
 
+        if (ctx.excludedMove.from.isValid()
+            && m.from.index == ctx.excludedMove.from.index
+            && m.to.index   == ctx.excludedMove.to.index) {
+            continue;
+        }
+
         const bool isFirstMove = (moveIndex == 0);
 
         const int fromIndex = m.from.index;
@@ -789,7 +795,10 @@ int32_t Searcher::searchPosition(
     bool allowHeuristicUpdates,
     const chess::Board::Move* previousMove,
     uint64_t* nodeCounter,
-    bool allowNullMove) noexcept {
+    bool allowNullMove,
+    chess::Board::Move excludedMove) noexcept {
+
+    const bool hasExcludedMove = excludedMove.from.isValid();
 
     // Macro-step 1: Node accounting and early terminal condition checks.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
@@ -826,9 +835,10 @@ int32_t Searcher::searchPosition(
     AlphaBeta bounds{alpha, beta};
     int32_t score = 0;
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
-    if (canUseTT && handleSearchPrelude(runtime, depth, bounds, score, hashKey, ply)) {
+    if (canUseTT && !hasExcludedMove && handleSearchPrelude(runtime, depth, bounds, score, hashKey, ply)) {
         return score;
     }
+    if (hasExcludedMove) allowTTWrite = false;
 
     // Macro-step 3: Build node state and apply null-move / reverse-futility pruning.
     SearchNodeState node{};
@@ -880,13 +890,47 @@ int32_t Searcher::searchPosition(
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
-    // Singular extension is DISABLED: a correct implementation must re-search
-    // the position with the TT/hash move EXCLUDED and verify all other moves
-    // fail below seBeta. searchPosition has no excluded-move mechanism, so the
-    // old code re-searched WITH the hash move included — it could never detect
-    // a genuinely singular node and only fired on TT/search noise, extending
-    // the wrong nodes. Left at 0 until an excluded-move search is plumbed in.
-    const int singularExtension = 0;
+    static constexpr int SE_MIN_DEPTH   = 6;
+    static constexpr int SE_DEPTH_MARGIN = 3;
+    static constexpr int SE_BETA_MARGIN  = 2; // seBeta = ttScore - margin*depth
+
+    int singularExtension = 0;
+    if (!hasExcludedMove && !node.inCheck && depth >= SE_MIN_DEPTH && ply > 0) {
+        int32_t ttSeScore = 0;
+        uint8_t ttSeFlag  = 0;
+        uint16_t encodedHashMove = 0;
+        if (canUseTT
+            && runtime.transpositionTable->probeSE(hashKey, static_cast<uint8_t>(depth - SE_DEPTH_MARGIN), ttSeScore, ttSeFlag)
+            && (ttSeFlag == TranspositionTable::Entry::LOWERBOUND || ttSeFlag == TranspositionTable::Entry::EXACT)
+            && std::abs(ttSeScore) < MATE_BOUND
+            && runtime.transpositionTable->probeMove(hashKey, encodedHashMove)) {
+
+            uint8_t hashFrom = 64, hashTo = 64;
+            char hashPromo = '\0';
+            TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
+
+            if (hashFrom < 64 && hashTo < 64) {
+                chess::Board::Move seExcluded;
+                seExcluded.from = chess::Coords{hashFrom};
+                seExcluded.to   = chess::Coords{hashTo};
+                seExcluded.promotionPiece = hashPromo;
+
+                ttSeScore = scoreFromTT(ttSeScore, ply);
+                const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
+
+                const int32_t seScore = searchPosition(
+                    b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
+                    canUseTT, false, allowHeuristicUpdates,
+                    previousMove, counter, false, seExcluded);
+
+                if (seScore < seBeta) {
+                    singularExtension = 1;
+                } else if (seScore >= beta) {
+                    return seScore; // multi-cut: every move beats beta, prune
+                }
+            }
+        }
+    }
 
     // Razoring: at depth 1-2, if static eval is well below alpha, drop into qsearch directly.
     static constexpr int32_t RAZOR_MARGIN_D1 = 300;
@@ -962,7 +1006,7 @@ int32_t Searcher::searchPosition(
     SearchContext ctx{
         depth, ply, node.activeColor,
         previousMove, node.staticEval, node.inCheck, node.isPVNode, counter,
-        singularExtension, contHistEntry, false, improving
+        singularExtension, contHistEntry, false, improving, excludedMove
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
@@ -993,8 +1037,9 @@ int32_t Searcher::searchPosition(
         &hasHashMove,
         ctx.contHistEntry);
 
-    if (!hasHashMove && depth >= 6 && ply > 0) {
-        ctx.iirActive = true;
+    if (!hasHashMove) {
+        ctx.singularExtension = 0;  // SE requires a verified TT hash move
+        if (depth >= 6 && ply > 0) ctx.iirActive = true;
     }
 
     const int32_t alphaOrig = bounds.alpha;
