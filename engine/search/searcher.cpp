@@ -43,34 +43,31 @@ static constexpr LMRTable LMR_REDUCTION_TABLE;
 } // namespace
 
 // --- Negamax helpers ---
-// The engine is now pure negamax: every node maximises a side-to-move
-// relative score. The `isWhite` parameter is retained only to avoid
-// touching ~90 call sites and is deliberately ignored.
-constexpr int32_t Searcher::initialBest(bool /*isWhite*/) noexcept {
+constexpr int32_t Searcher::initialBest() noexcept {
     return NEG_INF;
 }
 
-constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest, bool /*isWhite*/) noexcept {
+constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest) noexcept {
     return newScore > currentBest;
 }
 
-constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t /*alpha*/, int32_t beta, bool /*isWhite*/) noexcept {
+constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t beta) noexcept {
     return score >= beta;
 }
 
-void Searcher::updateBound(int32_t score, int32_t& alpha, int32_t& /*beta*/, bool /*isWhite*/) noexcept {
+void Searcher::updateBound(int32_t score, int32_t& alpha) noexcept {
     if (score > alpha) alpha = score;
 }
 
-constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t /*beta*/, bool /*isWhite*/) noexcept {
+constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
     return standPat + margin <= alpha;
 }
 
-constexpr int32_t Searcher::cutoffValue(int32_t /*alpha*/, int32_t beta, bool /*isWhite*/) noexcept {
+constexpr int32_t Searcher::cutoffValue(int32_t beta) noexcept {
     return beta;
 }
 
-constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t /*betaBound*/, bool /*isWhite*/) noexcept {
+constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept {
     return score > alphaBound;
 }
 
@@ -217,25 +214,22 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
     return (drawDelta > 0) ? -contempt : contempt;
 }
 
-void Searcher::rootNullWindow(bool /*usIsWhite*/, int32_t alpha, int32_t /*beta*/, int32_t& outAlpha, int32_t& outBeta) noexcept {
-    // Negamax PVS scout window: [alpha, alpha+1].
+void Searcher::rootNullWindow(int32_t alpha, int32_t& outAlpha, int32_t& outBeta) noexcept {
     outAlpha = alpha;
     outBeta = saturatingAdd32(alpha, 1);
 }
 
 void Searcher::updateMinMax(
-    bool usIsWhite,
     int32_t score,
     int32_t& alpha,
-    int32_t& beta,
     int32_t& bestScore,
     chess::Board::Move& bestMove,
     const chess::Board::Move& m) noexcept {
-    const bool better = isBetter(score, bestScore, usIsWhite);
+    const bool better = isBetter(score, bestScore);
     bestScore = better ? score : bestScore;
     bestMove = better ? m : bestMove;
 
-    updateBound(score, alpha, beta, usIsWhite);
+    updateBound(score, alpha);
 }
 
 void Searcher::softResetHistory(SearchRuntime& runtime) noexcept {
@@ -364,7 +358,7 @@ bool Searcher::tryNullMovePruning(
 
     b.undoNullMove(nullState);
 
-    if (!isBetaCutoff(nullScore, alpha, beta, node.usIsWhite)) {
+    if (!isBetaCutoff(nullScore, beta)) {
         return false;
     }
 
@@ -374,7 +368,7 @@ bool Searcher::tryNullMovePruning(
         const int32_t verifyScore = searchPosition(
             b, runtime, depth - reduction, alpha, beta, ply,
             useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
-        confirmedCutoff = isBetaCutoff(verifyScore, alpha, beta, node.usIsWhite);
+        confirmedCutoff = isBetaCutoff(verifyScore, beta);
     }
 
     if (!confirmedCutoff) {
@@ -387,7 +381,7 @@ bool Searcher::tryNullMovePruning(
         return true;
     }
 
-    outScore = cutoffValue(alpha, beta, node.usIsWhite);
+    outScore = cutoffValue(beta);
     return true;
 }
 
@@ -395,7 +389,7 @@ bool Searcher::tryReverseFutilityPruning(
     const chess::Board& b,
     const SearchNodeState& node,
     int32_t depth,
-    int32_t alpha,
+    int32_t /*alpha*/,
     int32_t beta,
     int ply,
     int32_t& outScore) noexcept {
@@ -409,7 +403,7 @@ bool Searcher::tryReverseFutilityPruning(
     // beta even after subtracting the margin.
     const int32_t rfpMargin = RFP_MARGIN_PER_DEPTH * depth;
     const int32_t rfpScore = node.staticEval - rfpMargin;
-    if (!isBetaCutoff(rfpScore, alpha, beta, node.usIsWhite)) {
+    if (!isBetaCutoff(rfpScore, beta)) {
         return false;
     }
 
@@ -499,15 +493,15 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board& b,
     Sorter::MovePickerData& movePicker,
-    bool usIsWhite,
     const SearchContext& ctx,
     AlphaBeta& bounds,
     SearchRuntime& runtime,
     bool useTT,
     bool allowHeuristicUpdates,
     bool allowTTWrite) noexcept {
+    const bool usIsWhite = (ctx.activeColor == chess::Board::WHITE);
     // Macro-step 1: Initialize best-score tracking and quiet-move malus buffers.
-    int32_t best = initialBest(usIsWhite);
+    int32_t best = initialBest();
     chess::Board::Move bestMove{};
     bool searchedAnyMove = false;
 
@@ -619,7 +613,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
         if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && !preMoveGivesCheck && moveIndex > 0
-            && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha, bounds.beta, usIsWhite)) {
+            && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha)) {
             continue;
         }
 
@@ -697,13 +691,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
-            const bool reducedFailed = shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
+            const bool reducedFailed = shouldResearchPVS(score, scoutAlpha);
             if (reducedFailed && reducedDepth < childDepth) {
                 score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
 
-            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
+            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, scoutAlpha);
             if (shouldResearch) {
                 score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
@@ -713,7 +707,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
-                const bool shouldResearch = shouldResearchPVS(score, scoutAlpha, scoutBeta, usIsWhite);
+                const bool shouldResearch = shouldResearchPVS(score, scoutAlpha);
                 if (shouldResearch) {
                     score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
                                             useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
@@ -735,9 +729,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             searchedCaptures[numSearchedCaptures++] = {m.to.index, static_cast<uint8_t>(victimType)};
         }
 
-        updateMinMax(usIsWhite, score, bounds.alpha, bounds.beta, best, bestMove, m);
+        updateMinMax(score, bounds.alpha, best, bestMove, m);
 
-        if (isBetaCutoff(best, bounds.alpha, bounds.beta, usIsWhite)) {
+        if (isBetaCutoff(best, bounds.beta)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
                     m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry);
@@ -919,7 +913,7 @@ int32_t Searcher::searchPosition(
         && ply > 0
         && depth >= 4
         && nonPawnMajors >= 2
-        && isBetaCutoff(nmpEvalGate, alpha, beta, node.usIsWhite);
+        && isBetaCutoff(nmpEvalGate, beta);
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
@@ -956,7 +950,7 @@ int32_t Searcher::searchPosition(
             const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
                 ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
             b.undoMove(mc, pcState);
-            if (pcScore >= probcutBound) return cutoffValue(alpha, beta, node.usIsWhite);
+            if (pcScore >= probcutBound) return cutoffValue(beta);
         }
     }
 
@@ -1008,7 +1002,7 @@ int32_t Searcher::searchPosition(
     const int32_t betaOrig = bounds.beta;
 
     SearchMoveResult result = searchMoves(
-        b, movePicker, node.usIsWhite, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
+        b, movePicker, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
     if (isInterrupted(runtime)) {
@@ -1089,18 +1083,18 @@ int32_t Searcher::quiescenceSearch(
     if (inCheck) {
         movePicker = engine::MoveGenerator::generateQSearchEvasions(b, true, inDoubleCheck);
         if (!movePicker.hasNext()) {
-            return usIsWhite ? (NEG_INF + ply) : (POS_INF - ply);
+            return NEG_INF + ply; // side to move is checkmated (negamax)
         }
-        best = initialBest(usIsWhite);
+        best = initialBest();
     } else {
         const int32_t standPat = Evaluator::evaluate(b);
-        if (isBetaCutoff(standPat, alpha, beta, usIsWhite)) {
-            return cutoffValue(alpha, beta, usIsWhite);
+        if (isBetaCutoff(standPat, beta)) {
+            return cutoffValue(beta);
         }
-        updateBound(standPat, alpha, beta, usIsWhite);
+        updateBound(standPat, alpha);
 
         const int32_t EARLY_DELTA_MARGIN = QUEEN_VALUE + 50;
-        if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha, beta, usIsWhite)) {
+        if (shouldDeltaPrune(standPat, EARLY_DELTA_MARGIN, alpha)) {
             return alpha; // negamax delta-prune fail-low
         }
 
@@ -1131,12 +1125,12 @@ int32_t Searcher::quiescenceSearch(
             deltaMargin = std::max(deltaMargin, QSEARCH_DELTAMARGIN_MIN);
         }
 
-        if (shouldDeltaPrune(standPat, deltaMargin, alpha, beta, usIsWhite)) {
+        if (shouldDeltaPrune(standPat, deltaMargin, alpha)) {
             return alpha; // negamax delta-prune fail-low
         }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
-            b, standPat, alpha, beta, ply, usIsWhite);
+            b, standPat, alpha, ply, usIsWhite);
         if (!movePicker.hasNext()) {
             return standPat;
         }
@@ -1171,12 +1165,12 @@ int32_t Searcher::quiescenceSearch(
         const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
 
-        if (isBetter(score, best, usIsWhite)) {
+        if (isBetter(score, best)) {
             best = score;
         }
 
-        updateBound(score, alpha, beta, usIsWhite);
-        if (isBetaCutoff(score, alpha, beta, usIsWhite)) {
+        updateBound(score, alpha);
+        if (isBetaCutoff(score, beta)) {
             if (!inCheck && canUseTT && allowTTWrite) {
                 const uint64_t hashKey = b.getHash();
                 const auto flag = determineFlag(best, alphaOrig, betaOrig);
@@ -1189,7 +1183,7 @@ int32_t Searcher::quiescenceSearch(
                     clampToInt32(scoreToTT(best, ply)),
                     static_cast<uint8_t>(flag));
             }
-            return cutoffValue(alpha, beta, usIsWhite);
+            return cutoffValue(beta);
         }
     }
 
@@ -1205,12 +1199,12 @@ int32_t Searcher::quiescenceSearch(
 chess::Board::Move Searcher::getBestMove(
     chess::Board& rootBoard,
     const MoveList<chess::Board::Move>& moves,
-    bool usIsWhite,
     SearchRuntime& runtime,
     int32_t alpha,
     int32_t beta) noexcept {
+    const bool usIsWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     // Macro-step 1: Initialize root state, order root moves, and decide YBWC mode.
-    int32_t bestScore = initialBest(usIsWhite);
+    int32_t bestScore = initialBest();
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
@@ -1245,7 +1239,7 @@ chess::Board::Move Searcher::getBestMove(
             const auto& m = rootMoves[0];
             const int32_t score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
             searchedAnyMove = true;
-            updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
+            updateMinMax(score, alpha, bestScore, bestMove, m);
         }
 
         // Process remaining moves starting from index 1
@@ -1258,10 +1252,10 @@ chess::Board::Move Searcher::getBestMove(
             const auto& m = rootMoves[i];
             int32_t nullAlpha = 0;
             int32_t nullBeta = 0;
-            rootNullWindow(usIsWhite, alpha, beta, nullAlpha, nullBeta);
+            rootNullWindow(alpha, nullAlpha, nullBeta);
 
             int32_t score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
-            const bool shouldResearch = shouldResearchPVS(score, alpha, beta, usIsWhite);
+            const bool shouldResearch = shouldResearchPVS(score, alpha);
             if (shouldResearch) {
                 score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
             }
@@ -1271,8 +1265,8 @@ chess::Board::Move Searcher::getBestMove(
                 break;
             }
 
-            updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
-            if (isBetaCutoff(bestScore, alpha, beta, usIsWhite)) break;
+            updateMinMax(score, alpha, bestScore, bestMove, m);
+            if (isBetaCutoff(bestScore, beta)) break;
         }
 
         runtime.nodesSearched += localNodes;
@@ -1284,7 +1278,7 @@ chess::Board::Move Searcher::getBestMove(
         const auto& firstMove = rootMoves[0];
         const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, currPly, true, true, true, &localNodes);
         searchedAnyMove = true;
-        updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, firstMove);
+        updateMinMax(score, alpha, bestScore, bestMove, firstMove);
     }
 
     if (isInterrupted(runtime)) {
@@ -1300,7 +1294,7 @@ chess::Board::Move Searcher::getBestMove(
     }
 
     std::array<int32_t, MAX_MOVES> threadScores;
-    threadScores.fill(initialBest(usIsWhite));
+    threadScores.fill(initialBest());
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
     std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
 
@@ -1311,16 +1305,15 @@ chess::Board::Move Searcher::getBestMove(
         const auto m = rootMoves[i];
         uint64_t workerNodes = 0;
         int32_t localAlpha = alpha;
-        int32_t localBeta = beta;
         int32_t nullAlpha = 0;
         int32_t nullBeta = 0;
-        rootNullWindow(usIsWhite, localAlpha, localBeta, nullAlpha, nullBeta);
+        rootNullWindow(localAlpha, nullAlpha, nullBeta);
         const int32_t score = searchRootMoveScore(
             threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;
-        threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha, localBeta, usIsWhite);
+        threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha);
     };
 
     if (threadsToUse <= 1) {
@@ -1389,10 +1382,10 @@ chess::Board::Move Searcher::getBestMove(
             }
         }
 
-        updateMinMax(usIsWhite, score, alpha, beta, bestScore, bestMove, m);
+        updateMinMax(score, alpha, bestScore, bestMove, m);
         searchedAnyMove = true;
 
-        if (isBetaCutoff(bestScore, alpha, beta, usIsWhite)) {
+        if (isBetaCutoff(bestScore, beta)) {
             break;
         }
     }
@@ -1485,7 +1478,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     result.hasLegalMoves = true;
     uint64_t interruptedDepth = 0;
-    const bool searchBestMoveForWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     chess::Board::Move bestMove = moves[0];
     int32_t prevPrevScore = 0;
     int32_t prevScore = 0;
@@ -1534,7 +1526,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             && absScore(prevScore) < MATE_SCORE_THRESHOLD;
 
         if (!canUseAspiration) {
-            candidateBestMove = getBestMove(rootBoard, moves, searchBestMoveForWhite, runtime);
+            candidateBestMove = getBestMove(rootBoard, moves, runtime);
             if (isInterrupted(runtime)) {
                 iterationCompleted = false;
             }
@@ -1554,7 +1546,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             while (true) {
                 iterationAlpha = aspAlpha;
                 iterationBeta = aspBeta;
-                candidateBestMove = getBestMove(rootBoard, moves, searchBestMoveForWhite, runtime, aspAlpha, aspBeta);
+                candidateBestMove = getBestMove(rootBoard, moves, runtime, aspAlpha, aspBeta);
                 if (isInterrupted(runtime)) {
                     iterationCompleted = false;
                     break;
@@ -1581,7 +1573,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 if (aspirationResearches >= MAX_ASP_RESEARCHES || windowDelta >= WINDOW_HARD_CAP) {
                     iterationAlpha = NEG_INF;
                     iterationBeta = POS_INF;
-                    candidateBestMove = getBestMove(rootBoard, moves, searchBestMoveForWhite, runtime);
+                    candidateBestMove = getBestMove(rootBoard, moves, runtime);
                     if (isInterrupted(runtime)) {
                         iterationCompleted = false;
                     }

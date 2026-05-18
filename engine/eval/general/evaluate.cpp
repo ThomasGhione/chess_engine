@@ -16,11 +16,7 @@ static constexpr uint64_t FULLMOVE_CACHE_SALT = 0x9E3779B97F4A7C15ULL;
 
 } // namespace
 
-int32_t Evaluator::evaluateCheckmate(const chess::Board& board) noexcept {
-    // Negamax / side-to-move relative: on a checkmated board the side to move
-    // is the one mated. -POS_INF (not NEG_INF=INT32_MIN, which cannot be
-    // safely negated by the negamax recursion).
-    (void)board;
+int32_t Evaluator::evaluateCheckmate() noexcept {
     return -POS_INF;
 }
 

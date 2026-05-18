@@ -115,7 +115,6 @@ public:
     static chess::Board::Move getBestMove(
         chess::Board& rootBoard,
         const MoveList<chess::Board::Move>& moves,
-        bool searchBestMoveForWhite,
         SearchRuntime& runtime,
         int32_t alpha = NEG_INF,
         int32_t beta = POS_INF) noexcept;
@@ -174,13 +173,13 @@ private:
         int32_t staticEval = 0;
     };
 
-    static constexpr int32_t initialBest(bool isWhite) noexcept;
-    static constexpr bool isBetter(int32_t newScore, int32_t currentBest, bool isWhite) noexcept;
-    static constexpr bool isBetaCutoff(int32_t score, int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    static void updateBound(int32_t score, int32_t& alpha, int32_t& beta, bool isWhite) noexcept;
-    static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    static constexpr int32_t cutoffValue(int32_t alpha, int32_t beta, bool isWhite) noexcept;
-    static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound, int32_t betaBound, bool isWhite) noexcept;
+    static constexpr int32_t initialBest() noexcept;
+    static constexpr bool isBetter(int32_t newScore, int32_t currentBest) noexcept;
+    static constexpr bool isBetaCutoff(int32_t score, int32_t beta) noexcept;
+    static void updateBound(int32_t score, int32_t& alpha) noexcept;
+    static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept;
+    static constexpr int32_t cutoffValue(int32_t beta) noexcept;
+    static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept;
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
     // Mate scores are ±INF∓ply (ply = distance from root); the TT is keyed by
@@ -211,12 +210,10 @@ private:
     static int32_t drawAdvantageScore(const chess::Board& b) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
 
-    static void rootNullWindow(bool usIsWhite, int32_t alpha, int32_t beta, int32_t& outAlpha, int32_t& outBeta) noexcept;
+    static void rootNullWindow(int32_t alpha, int32_t& outAlpha, int32_t& outBeta) noexcept;
     static void updateMinMax(
-        bool usIsWhite,
         int32_t score,
         int32_t& alpha,
-        int32_t& beta,
         int32_t& bestScore,
         chess::Board::Move& bestMove,
         const chess::Board::Move& m) noexcept;
@@ -267,7 +264,6 @@ private:
     static SearchMoveResult searchMoves(
         chess::Board& b,
         Sorter::MovePickerData& movePicker,
-        bool usIsWhite,
         const SearchContext& ctx,
         AlphaBeta& bounds,
         SearchRuntime& runtime,

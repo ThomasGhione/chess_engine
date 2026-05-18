@@ -124,7 +124,6 @@ public:
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
-        int32_t beta,
         int ply,
         bool usIsWhite) noexcept;
 
@@ -182,9 +181,7 @@ private:
     static bool shouldDeltaPrune(
         int32_t standPat,
         int32_t margin,
-        int32_t alpha,
-        int32_t beta,
-        bool isWhite) noexcept;
+        int32_t alpha) noexcept;
 
     static bool isForcingEvasion(
         const chess::Board& b,

@@ -38,7 +38,6 @@ public:
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
-        int32_t beta,
         int ply,
         bool usIsWhite) noexcept;
 

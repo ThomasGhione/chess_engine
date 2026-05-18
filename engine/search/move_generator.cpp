@@ -429,12 +429,11 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
-    int32_t beta,
     int ply,
     bool usIsWhite) noexcept {
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
     if (tacticalMoves.is_empty()) return engine::Sorter::MovePickerData{};
-    return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, beta, ply, usIsWhite);
+    return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply, usIsWhite);
 }
 
 template<bool IsWhite>

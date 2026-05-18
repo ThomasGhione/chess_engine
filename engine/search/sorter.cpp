@@ -347,7 +347,6 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
-    int32_t beta,
     int ply,
     bool usIsWhite) noexcept {
 
@@ -384,11 +383,11 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             if (isPromotion) capturedValue += getPromotionValueDelta(m.promotionPiece);
 
             // Delta prune: capture can't improve standPat enough to matter.
-            if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha, beta, usIsWhite)) continue;
+            if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha)) continue;
 
             const int32_t see = staticExchangeEvaluation(b, m);
             if (see < seeThreshold) continue;
-            if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha, beta, usIsWhite)) continue;
+            if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha)) continue;
 
             score = clampToInt32(CAPTURE_BASE_SCORE + see + MVV_TABLE[victimType]);
         } else {
@@ -431,8 +430,8 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Bo
     return evasions;
 }
 
-bool Sorter::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha, int32_t beta, bool isWhite) noexcept {
-    return isWhite ? (standPat + margin < alpha) : (standPat - margin > beta);
+bool Sorter::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
+    return standPat + margin < alpha;
 }
 
 template void Sorter::insertionSort<chess::Board::Move>(MoveList<chess::Board::Move>&, int32_t*) noexcept;

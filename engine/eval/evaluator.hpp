@@ -24,7 +24,7 @@ public:
 #ifdef DEBUG
     static int32_t evaluateTrace(const chess::Board& board) noexcept;
 #endif
-    static int32_t evaluateCheckmate(const chess::Board& board) noexcept;
+    static int32_t evaluateCheckmate() noexcept;
 
     static int32_t evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
     static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;

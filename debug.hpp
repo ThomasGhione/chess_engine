@@ -48,7 +48,7 @@ inline void Evaluator::traceTerm(int32_t& eval, int32_t delta, const char* label
 
 inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
-        return evaluateCheckmate(board);
+        return evaluateCheckmate();
     }
 
     int32_t eval = board.getIncrementalMaterialDelta();
