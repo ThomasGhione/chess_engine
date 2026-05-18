@@ -223,6 +223,7 @@ public:
     bool isFiftyMoveRule() const noexcept;
     bool isDraw(uint8_t color) const noexcept;
     bool isThreefoldRepetition() const noexcept;
+    int  countRepetitions() const noexcept;
     bool hasInsufficientMaterialDraw() const noexcept;
     void fromFenToBoard(const std::string& fen);
     std::string fromBoardToFen() const;

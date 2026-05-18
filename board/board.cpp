@@ -376,11 +376,18 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
 bool Board::isThreefoldRepetition() const noexcept {
     if (historySize < 3) return false;
     int count = 0;
-    //FIXME Usare for each
     for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
         if (*p == currentHash && ++count >= 3) return true;
     }
     return false;
+}
+
+int Board::countRepetitions() const noexcept {
+    int count = 0;
+    for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
+        if (*p == currentHash) ++count;
+    }
+    return count;
 }
 
 bool Board::hasInsufficientMaterialDraw() const noexcept {

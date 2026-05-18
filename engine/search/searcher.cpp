@@ -158,8 +158,19 @@ bool Searcher::checkEarlyTerminalConditions(
 bool Searcher::checkDrawTerminalConditions(
     const chess::Board& b,
     int32_t& outScore) noexcept {
-    if (b.isThreefoldRepetition()) {
+    const int repCount = b.countRepetitions();
+
+    // Third repetition: forced draw — apply full contempt penalty.
+    if (repCount >= 3) {
         outScore = repetitionDrawScore(b);
+        return true;
+    }
+
+    // Second repetition: not yet a forced draw, but scores as 0.
+    // This prevents the engine from "chasing" draws when winning (alpha > 0
+    // won't be improved by a 0 score, so the engine is forced to find real moves).
+    if (repCount >= 2) {
+        outScore = 0;
         return true;
     }
 
