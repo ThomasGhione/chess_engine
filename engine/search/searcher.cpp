@@ -890,9 +890,10 @@ int32_t Searcher::searchPosition(
     const int nonPawnMajors = __builtin_popcountll(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
-    static constexpr int SE_MIN_DEPTH   = 6;
+    static constexpr int SE_MIN_DEPTH    = 6;
     static constexpr int SE_DEPTH_MARGIN = 3;
     static constexpr int SE_BETA_MARGIN  = 2; // seBeta = ttScore - margin*depth
+    static constexpr int SE_DOUBLE_MARGIN = 24; // double-extend when seScore < seBeta - 24
 
     int singularExtension = 0;
     if (!hasExcludedMove && !node.inCheck && depth >= SE_MIN_DEPTH && ply > 0) {
@@ -923,7 +924,9 @@ int32_t Searcher::searchPosition(
                     canUseTT, false, allowHeuristicUpdates,
                     previousMove, counter, false, seExcluded);
 
-                if (seScore < seBeta) {
+                if (seScore < seBeta - SE_DOUBLE_MARGIN) {
+                    singularExtension = 2;
+                } else if (seScore < seBeta) {
                     singularExtension = 1;
                 } else if (seScore >= beta) {
                     return seScore; // multi-cut: every move beats beta, prune
