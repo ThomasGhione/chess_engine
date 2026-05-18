@@ -690,6 +690,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 if (ctx.iirActive) {
                     reduction = std::min(reduction + 1, childDepth - 1);
                 }
+                // History adjustment: reward historically good quiet moves with less reduction.
+                const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+                const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+                reduction -= histScore / 8192;
+                reduction = std::clamp(reduction, 1, childDepth - 1);
             }
 
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
