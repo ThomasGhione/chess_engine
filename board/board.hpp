@@ -19,6 +19,7 @@ using board = std::array<uint32_t, 8>;
 class Board {
 public:
 
+    //FIXME Spostare enum in classi enum
     // Structs and enums start
     enum CastlingBits : uint8_t {
         WHITE_KINGSIDE  = 0,  // Bit 0 in castle bitmask
@@ -97,6 +98,7 @@ public:
                                 | MOVE_CHANGE_CASTLING
     };
 
+    //FIXME Spostare struct in file appositi
     struct EvalCache {
         std::array<int32_t, EVAL_CACHE_COUNT> terms{};
         uint32_t validMask = 0;
@@ -157,6 +159,7 @@ public:
     // Constructors end
 
     // Methods start
+    //FIXME Controllare di non star esponendo metodi pubblici non chiamati esternamente, se possiamo renderli privati e' meglio
     static constexpr uint8_t oppositeColor(uint8_t color) noexcept;
     static constexpr uint8_t colorToIndex(uint8_t color) noexcept;
     static constexpr uint8_t promotionRank(bool isWhite) noexcept;
@@ -203,6 +206,7 @@ public:
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
     
+    //FIXME Abbiamo la struttura dati Move, usiamola invece di passare parametri separati
     bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
@@ -290,6 +294,7 @@ public:
     // Variables end
 private:
     // Methods start
+    //FIXME Stessa questione citata prima per sostituire con struct Move
     [[nodiscard]] inline bool isKingSafeAfterEnPassant(
         uint8_t movingColor,
         uint8_t fromIndex,
@@ -382,10 +387,13 @@ private:
     
     // Variables start
 
+    //FIXME Dentro board abbiamo board?
     board chessboard; // 8 * 32 bit = 256 bit = 32 byte
     uint64_t currentHash = 0ULL;            // Zobrist hash of current position
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{}; // Recent reversible-position hashes
     uint64_t occupancy = 0ULL;              // Combined occupancy bitboard
+    
+    //FIXME trovare nome piu' significativo per queste varibili
     int32_t incrementalMaterialDelta = 0;
     int32_t incrementalNonPawnMajorCount = 0;
     int32_t incrementalPsqtPawnsMg = 0;
@@ -393,6 +401,7 @@ private:
     int32_t incrementalPsqtPieces = 0;
     int32_t incrementalPsqtKingsMg = 0;
     int32_t incrementalPsqtKingsEg = 0;
+
     mutable EvalCache evalCache{};
     uint16_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
     uint8_t halfMoveClock = 0;             // 50-move rule counter

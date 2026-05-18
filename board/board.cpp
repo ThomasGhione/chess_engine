@@ -5,7 +5,9 @@ namespace chess {
 
 
 bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
+    //FIXME Da aggiungere i this
     const uint8_t moving = get(from.index);
+    //FIXME Fare helper inline privato per fare unico if di precodizione
     if (moving == EMPTY || (moving & MASK_COLOR) != activeColor) [[unlikely]]
         return false;
 
@@ -13,6 +15,7 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
         return false;
 
     MoveState st{};
+    //FIXME Cambiare funzione per far ritornare MoveState, evitiamo di passare un paraemtro e rendiamo espicito il comportamento.
     doMove(Move{from, to, promotionChoice}, st, promotionChoice);
     return true;
 }
@@ -21,11 +24,14 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint8_t fromType = fromPiece & MASK_PIECE_TYPE;
     const uint8_t movingColor = fromPiece & MASK_COLOR;
 
+    //FIXME Aggiungere this
     const uint8_t destPiece = get(toIndex);
 
+    //FIXME convertire codizione in funzione helper private inline bool per avere piu' leggibilita' sulla codizione
     if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]]
         return false;
 
+    //FIXME Convertire switch in funzione helper
     const uint64_t toBit = Board::bitMask(toIndex);
     switch (fromType) {
         case PAWN: {
@@ -78,6 +84,8 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
 [[nodiscard]] bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
     const uint8_t side = colorToIndex(movingColor);
     if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
+
+    //FIXME Usare funzione helper chiamata a esempio 'calculateAttackersKingMask'
     const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
@@ -95,6 +103,9 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
         attackers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
     }
 
+    //FIXME Se ha bisogno di un commento significa che quel codice cosi' non e' chiaro. 
+    // Fare una funzione helper chiamata ad esempio 'hasMoreThenOneAttacckers'
+
     // A double check means at least 2 distinct pieces are attacking the king.
     // If the bitboard has more than 1 bit set, clearing the LSB will leave a non-zero value.
     return (attackers & (attackers - 1)) != 0ULL;
@@ -109,6 +120,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     const uint8_t oppColor = oppositeColor(movingColor);
     const int diff = (int)toIndex - (int)fromIndex;
 
+    //FIXME Eliminare numeri magici
     // Castling moves are uniquely identified by a destination offset of +2 or -2.
     // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
     if (diff == 2 || diff == -2) [[unlikely]] {
@@ -132,24 +144,30 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     uint8_t fromIndex,
     bool isKingside
 ) const noexcept {
+    //FIXME Eliminare numeri magici
+    //FIXME Aggiungere this alle chiamate
     const uint8_t side = isWhite ^ 1; // 0 for White, 1 for Black
     const uint8_t oppColor = isWhite ? BLACK : WHITE;
     
     // Check castling rights
     const uint8_t rightBit = (!isWhite << 1) | !isKingside;
     
+    //FIXME Rendere funzione helper per la codizione
     if ((castle & (1u << rightBit)) == 0u) return false;
     
     // Setup indices based on direction
     const int8_t direction = isKingside ? 1 : -1;
+    //FIXME Dare nomi piu' significativi di sq1/2
     const uint8_t sq1 = fromIndex + direction;
     const uint8_t sq2 = fromIndex + 2 * direction;
     const uint8_t rookIdx = isKingside ? (fromIndex + 3) : (fromIndex - 4);
     
+    //FIXME i controlli IF vero -> return false possono andare dentro una funzione helper
     // Check empty squares (always check 2, for queenside check 3rd)
     if (get(sq1) != EMPTY || get(sq2) != EMPTY)
         return false;
     
+    //FIXME Fare helper per codizione con nome significativo
     if (!isKingside && get(fromIndex - 3) != EMPTY)
         return false;
     
@@ -160,6 +178,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (isSquareAttacked(fromIndex, oppColor)) return false;
     if (isSquareAttacked(sq1, oppColor)) return false;
     if (isSquareAttacked(sq2, oppColor)) return false;
+
     return true;
 }
 
@@ -186,12 +205,13 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
                                 rooks_bb[side], queens_bb[side], kings_bb[side]);
 }
 
-
+//FIXME Controllare questa funzione, ha tanti parametri
 // Helper: check if king at kingSq is attacked using custom bitboards
 // Used internally to avoid code duplication when simulating moves
 bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
                                  uint64_t rooks, uint64_t queens, uint64_t kings) noexcept {
+    //FIXME i controlli IF vero -> return vero possono andare dentro una funzione helper
     if (pieces::PAWN_ATTACKERS_TO[bySide][kingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
@@ -246,6 +266,7 @@ template<uint8_t PieceType>
 
 
 bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
+    //FIXME Funzione troppo alta, usare helper per ridurre blocchi di logica.
     const int side = colorToIndex(color);
     const int oppSide = side ^ 1;
     const uint8_t oppColor = oppositeColor(color);
@@ -258,6 +279,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
                                rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
+    //FIXME Di fatto rappresenta un controllo inutile
     // --- KING MOVES (always exists, cheap to test) ---
     const uint64_t kings = kings_bb[side];
     if (kings) [[likely]] {
@@ -308,6 +330,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         }
     }
 
+    //FIXME Scrivere funzione post codizione per unica uscita
     if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, enemyOcc, occupancy, color))
         return true;
 
@@ -322,12 +345,15 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
 static void recomputeHashAndEp(Board& b, uint64_t& hash, uint8_t& epFile) noexcept {
     hash = zobrist::computeHashKey(b);
+    //FIXME Eliminare numero magico
     epFile = 0xFF;
+    //FIXME Creare funzione heleper per la codizione
     if (Coords::isInBounds(b.getEnPassant()) && zobrist::hasPseudoLegalEnPassantCapture(b, b.getEnPassant()))
         epFile = b.getEnPassant().file();
 }
 
 void Board::rebuildRepetitionHistory() noexcept {
+    //FIXME aggiungere this
     recomputeHashAndEp(*this, currentHash, epHashFile);
     historySize = 0;
     repetitionHistory[historySize++] = currentHash;
@@ -350,6 +376,7 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
 bool Board::isThreefoldRepetition() const noexcept {
     if (historySize < 3) return false;
     int count = 0;
+    //FIXME Usare for each
     for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
         if (*p == currentHash && ++count >= 3) return true;
     }
@@ -357,6 +384,7 @@ bool Board::isThreefoldRepetition() const noexcept {
 }
 
 bool Board::hasInsufficientMaterialDraw() const noexcept {
+    //FIXME Scrivere delle funzioni helper per le codizioni in if e return
     if (pawns_bb[0] || pawns_bb[1] || rooks_bb[0] || rooks_bb[1] || queens_bb[0] || queens_bb[1]) return false;
     const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
     const uint64_t bMinors = knights_bb[1] | bishops_bb[1];

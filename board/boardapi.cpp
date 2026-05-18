@@ -3,13 +3,13 @@
 
 
 namespace chess {
-
-
 // ------------------------------------------------------------
 // INCREMENTAL DO/UNDO MOVE (NO LEGALITY CHECKS)
 // ------------------------------------------------------------
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept {
+    //FIXME Funzione troppo alata
+    //FIXME Eliminare costati magiche
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex   = m.to.index;
 
@@ -151,6 +151,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
 
 __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
+    //FIXME Eliminare costati magiche
     prepareNullMoveState(st);
     lastMoveChangeFlags = MOVE_CHANGE_NONE;
     uint64_t newHash = currentHash;
@@ -178,6 +179,4 @@ __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
     restoreState(st);
 }
-
-
-}
+} // namespace chess {

@@ -4,6 +4,8 @@
 #include <sstream>
 
 namespace chess {
+
+//FIXME Evitare namespace anonimo
 namespace {
 
 constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
@@ -15,6 +17,7 @@ constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
 bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
     int rank = 7, file = 0;
     for (char c : boardSection) {
+	//FIXME Creare funzione heleper per gestire questa logica
         if (c == '/') { --rank; file = 0; }
         else if (std::isdigit(static_cast<unsigned char>(c))) file += c - '0';
         else {
@@ -28,10 +31,12 @@ bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32
 }
 
 uint8_t Board::parseActiveColor(const std::string& activeSection) {
+    //FIXME Mettere codizione in variabile costante booleana per aumentare la leggibilita' dell'operatore ternario
     return (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) ? BLACK : WHITE;
 }
 
 Coords Board::parseEnPassant(const std::string& ep) {
+    //FIXME Creare funzione helper per codizione
     if (ep.size() != 2 || ep == "-" || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return Coords{};
     return Coords(ep[0] - 'a', '8' - ep[1]);
 }
@@ -54,6 +59,8 @@ void Board::fromFenToBoard(const std::string& fen) {
     chessboard = parsedBoard;
     activeColor = parseActiveColor(active);
     
+    //FIXME Elimina costati magiche
+    //FIXME Aggiungere this
     castle = 0;
     for (char c : castling) {
         if (c == 'K') castle |= 1;
@@ -89,6 +96,7 @@ std::string Board::boardToFenPieces() const {
     return fen;
 }
 
+//FIXME Rendere constexpr 
 std::string Board::castlingToFen() const {
     std::string s;
     if (castle & 1) s += 'K';
@@ -98,11 +106,14 @@ std::string Board::castlingToFen() const {
     return s.empty() ? "-" : s;
 }
 
+//FIXME Rendere constexpr 
 std::string Board::enPassantToFen() const {
     if (!Coords::isInBounds(enPassant)) return "-";
     return std::string(1, 'a' + enPassant.file()) + static_cast<char>('8' - enPassant.rank());
 }
 
+//FIXME Rendere constexpr 
+//FIXME Evitare monoriga per aumentare leggibilita'
 std::string Board::fromBoardToFen() const {
     return boardToFenPieces() + " " + (activeColor == WHITE ? "w " : "b ") + castlingToFen() + " " + enPassantToFen() + " " + std::to_string(halfMoveClock) + " " + std::to_string(fullMoveClock);
 }

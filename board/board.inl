@@ -1,7 +1,10 @@
+//FIXME Usare i this in chiamate
+
 // ==============================
 // Compile-Time Basic Utilities
 // ==============================
 
+//FIXME Eliminare costati magiche
 inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
 
 inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
@@ -44,6 +47,7 @@ inline Board& Board::operator=(Board&& other) noexcept {
 }
 
 inline void Board::copyFromBoard(const Board& other) noexcept {
+    //FIXME Creare 3 funzioni helper per racchiudere i blocchi di logica.
     pawns_bb = other.pawns_bb;
     knights_bb = other.knights_bb;
     bishops_bb = other.bishops_bb;
@@ -117,6 +121,7 @@ inline std::string Board::Move::toUCIString() const noexcept {
 // ==============================
 __attribute__((hot, always_inline))
 inline constexpr uint8_t Board::get(uint8_t index) const noexcept {
+    //FIXME Eliminare costati magiche
     const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
     const uint8_t file = index & 7;   // index % 8
     // Convert from Coords convention to Board storage
@@ -130,6 +135,7 @@ inline constexpr uint8_t Board::get(Coords coords) const noexcept {
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
+    //FIXME Eliminare costati magiche
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
 
@@ -223,6 +229,7 @@ inline void Board::updateOccupancyBB() noexcept {
     incrementalPsqtKingsMg = 0;
     incrementalPsqtKingsEg = 0;
 
+    //FIXME Contollare se non esiste qualche sistema per evitare il ciclo
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
     for (uint8_t index = 0; index < 64; ++index) {
@@ -261,6 +268,7 @@ inline bool Board::isKingSafeAfterMove(
     occNew &= ~bitMask(fromIndex);
     occNew |= bitMask(toIndex);
 
+    //FIXME Di difficile lettura con tutti sti parametri.
     if (capturedEnemyMask == 0ULL) {
         return !isKingAttackedCustom(kingSq, oppSide, occNew,
                                      pawns_bb[oppSide],
@@ -330,6 +338,7 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index)
         else kings_bb[color] &= ~bit;
     }
 
+    //FIXME Usare this
     updateIncrementalEvalForPiece<PieceType, Add>(color, index);
 }
 
