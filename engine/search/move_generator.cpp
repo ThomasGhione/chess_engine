@@ -81,12 +81,8 @@ inline void appendNonPawnTacticalNoChecks(
     uint64_t pieceBB,
     uint64_t occ,
     uint64_t oppOcc,
-    uint64_t pinnedMask,
-    const uint64_t pinRayBySquare[64]) noexcept {
-    if constexpr (!HasPins) {
-        (void)pinnedMask;
-        (void)pinRayBySquare;
-    }
+    [[maybe_unused]] uint64_t pinnedMask,
+    [[maybe_unused]] const uint64_t pinRayBySquare[64]) noexcept {
 
     while (pieceBB) {
         const int from = engine::popLSB(pieceBB);
@@ -564,16 +560,9 @@ void MoveGenerator::generateNonPawnLegalMoves(
     uint64_t bb,
     uint64_t occ,
     uint64_t ownOcc,
-    uint64_t evasionMask,
-    uint64_t pinnedMask,
-    const uint64_t pinRayBySquare[64]) noexcept {
-    if constexpr (!HasPins) {
-        (void)pinnedMask;
-        (void)pinRayBySquare;
-    }
-    if constexpr (!InCheck) {
-        (void)evasionMask;
-    }
+    [[maybe_unused]] uint64_t evasionMask,
+    [[maybe_unused]] uint64_t pinnedMask,
+    [[maybe_unused]] const uint64_t pinRayBySquare[64]) noexcept {
 
     while (bb) {
         const int from = engine::popLSB(bb);

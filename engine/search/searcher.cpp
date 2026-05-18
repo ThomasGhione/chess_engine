@@ -389,7 +389,6 @@ bool Searcher::tryReverseFutilityPruning(
     const chess::Board& b,
     const SearchNodeState& node,
     int32_t depth,
-    int32_t /*alpha*/,
     int32_t beta,
     int ply,
     int32_t& outScore) noexcept {
@@ -925,7 +924,7 @@ int32_t Searcher::searchPosition(
     const bool canReverseFutilityPrune =
         !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
     if (canReverseFutilityPrune
-        && tryReverseFutilityPruning(b, node, depth, alpha, beta, ply, score)) {
+        && tryReverseFutilityPruning(b, node, depth, beta, ply, score)) {
         return score;
     }
 

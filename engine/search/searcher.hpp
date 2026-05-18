@@ -256,7 +256,6 @@ private:
         const chess::Board& b,
         const SearchNodeState& node,
         int32_t depth,
-        int32_t alpha,
         int32_t beta,
         int ply,
         int32_t& outScore) noexcept;

@@ -176,10 +176,10 @@ private:
     static inline int32_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                   int sign, int penalty) noexcept;
     static inline int32_t evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
-    static inline uint64_t collectPawnAttacks(uint64_t pawns, int side) noexcept;
-    static inline uint64_t collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept;
+    static uint64_t collectPawnAttacks(uint64_t pawns, int side) noexcept;
+    static uint64_t collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
-    static inline uint64_t collectPieceAttacks(uint64_t piecesBb, uint64_t occ) noexcept;
+    static uint64_t collectPieceAttacks(uint64_t piecesBb, uint64_t occ) noexcept;
     static inline int32_t evalThreatsSide(const chess::Board& b, const AttackData data[2], int side,
                                           int sign, uint64_t occ) noexcept;
     static inline int32_t evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
