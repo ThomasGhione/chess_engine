@@ -295,6 +295,12 @@ public:
     // Variables end
 private:
     // Methods start
+    template<uint8_t PieceType>
+    [[nodiscard]] bool hasLegalMovesForPieceType(
+        uint64_t pieceBB,
+        uint64_t ownOcc,
+        uint64_t enemyOcc,
+        uint8_t movingColor) const noexcept;
     [[nodiscard]] inline bool isKingMoveLegal(
         uint8_t fromIndex,
         uint8_t toIndex,
@@ -375,6 +381,7 @@ private:
     std::string castlingToFen() const;
     std::string enPassantToFen() const;
     inline void copyFromBoard(const Board& other) noexcept;
+    void recomputeHashAndEp() noexcept;
     void rebuildRepetitionHistory() noexcept;
     void updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
     // Methods end

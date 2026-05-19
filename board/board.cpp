@@ -240,25 +240,23 @@ bool Board::inCheck(uint8_t color) const noexcept {
 
 
 template<uint8_t PieceType>
-[[nodiscard]] static inline bool hasLegalMovesForPieceType(
-    const Board* board,
+bool Board::hasLegalMovesForPieceType(
     uint64_t pieceBB,
     uint64_t ownOcc,
     uint64_t enemyOcc,
-    uint64_t occupancy,
     uint8_t movingColor
-) noexcept {
+) const noexcept {
     while (pieceBB) {
         const uint8_t from = __builtin_ctzll(pieceBB);
         pieceBB &= pieceBB - 1;
-        
+
         uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
         while (movesMask) {
             const uint8_t to = __builtin_ctzll(movesMask);
             movesMask &= movesMask - 1;
             const uint64_t toBit = Board::bitMask(to);
             const uint64_t capturedMask = toBit & enemyOcc;
-            if (board->isKingSafeAfterMove(movingColor, from, to, capturedMask)) return true;
+            if (isKingSafeAfterMove(movingColor, from, to, capturedMask)) return true;
         }
     }
     return false;
@@ -306,7 +304,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
     // --- NON-KING PIECES: skip isLegalPseudoMove, call isKingSafeAfterMove directly ---
 
-    if (hasLegalMovesForPieceType<KNIGHT>(this, knights_bb[side], ownOcc, enemyOcc, occupancy, color))
+    if (hasLegalMovesForPieceType<KNIGHT>(knights_bb[side], ownOcc, enemyOcc, color))
         return true;
 
     const bool isWhite = (side == 0);
@@ -331,37 +329,36 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     }
 
     //FIXME Scrivere funzione post codizione per unica uscita
-    if (hasLegalMovesForPieceType<BISHOP>(this, bishops_bb[side], ownOcc, enemyOcc, occupancy, color))
+    if (hasLegalMovesForPieceType<BISHOP>(bishops_bb[side], ownOcc, enemyOcc, color))
         return true;
 
-    if (hasLegalMovesForPieceType<ROOK>(this, rooks_bb[side], ownOcc, enemyOcc, occupancy, color))
+    if (hasLegalMovesForPieceType<ROOK>(rooks_bb[side], ownOcc, enemyOcc, color))
         return true;
 
-    if (hasLegalMovesForPieceType<QUEEN>(this, queens_bb[side], ownOcc, enemyOcc, occupancy, color))
+    if (hasLegalMovesForPieceType<QUEEN>(queens_bb[side], ownOcc, enemyOcc, color))
         return true;
 
     return false;
 }
 
-static void recomputeHashAndEp(Board& b, uint64_t& hash, uint8_t& epFile) noexcept {
-    hash = zobrist::computeHashKey(b);
+void Board::recomputeHashAndEp() noexcept {
+    currentHash = zobrist::computeHashKey(*this);
     //FIXME Eliminare numero magico
-    epFile = 0xFF;
+    epHashFile = 0xFF;
     //FIXME Creare funzione heleper per la codizione
-    if (Coords::isInBounds(b.getEnPassant()) && zobrist::hasPseudoLegalEnPassantCapture(b, b.getEnPassant()))
-        epFile = b.getEnPassant().file();
+    if (Coords::isInBounds(getEnPassant()) && zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
+        epHashFile = getEnPassant().file();
 }
 
 void Board::rebuildRepetitionHistory() noexcept {
-    //FIXME aggiungere this
-    recomputeHashAndEp(*this, currentHash, epHashFile);
+    recomputeHashAndEp();
     historySize = 0;
     repetitionHistory[historySize++] = currentHash;
 }
 
 void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
     if (recomputeHash)
-        recomputeHashAndEp(*this, currentHash, epHashFile);
+        recomputeHashAndEp();
 
     if (resetHistory)
         historySize = 0;
