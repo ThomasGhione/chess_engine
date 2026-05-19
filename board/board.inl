@@ -255,7 +255,7 @@ inline bool Board::isKingSafeAfterMove(
     uint8_t movingColor,
     uint8_t fromIndex,
     uint8_t toIndex,
-    uint64_t capturedEnemyMask
+    uint64_t capturedMask
 ) const noexcept {
     const uint8_t side = colorToIndex(movingColor);
     const uint64_t kingBB = kings_bb[side];
@@ -264,56 +264,17 @@ inline bool Board::isKingSafeAfterMove(
     const uint8_t oppSide = side ^ 1;
     const uint8_t kingSq = __builtin_ctzll(kingBB);
 
-    uint64_t occNew = occupancy;
-    occNew &= ~bitMask(fromIndex);
-    occNew |= bitMask(toIndex);
-
-    //FIXME Di difficile lettura con tutti sti parametri.
-    if (capturedEnemyMask == 0ULL) {
-        return !isKingAttackedCustom(kingSq, oppSide, occNew,
-                                     pawns_bb[oppSide],
-                                     knights_bb[oppSide],
-                                     bishops_bb[oppSide],
-                                     rooks_bb[oppSide],
-                                     queens_bb[oppSide],
-                                     kings_bb[oppSide]);
-    }
+    const uint64_t occNew =
+        (occupancy & ~bitMask(fromIndex) & ~capturedMask) | bitMask(toIndex);
+    const uint64_t keep = ~capturedMask;
 
     return !isKingAttackedCustom(kingSq, oppSide, occNew,
-                                 pawns_bb[oppSide] & ~capturedEnemyMask,
-                                 knights_bb[oppSide] & ~capturedEnemyMask,
-                                 bishops_bb[oppSide] & ~capturedEnemyMask,
-                                 rooks_bb[oppSide] & ~capturedEnemyMask,
-                                 queens_bb[oppSide] & ~capturedEnemyMask,
-                                 kings_bb[oppSide] & ~capturedEnemyMask);
-}
-
-inline bool Board::isKingSafeAfterEnPassant(
-    uint8_t movingColor,
-    uint8_t fromIndex,
-    uint8_t toIndex,
-    uint8_t capturedPawnIndex
-) const noexcept {
-    const uint8_t side = colorToIndex(movingColor);
-    const uint64_t kingBB = kings_bb[side];
-    if (!kingBB) [[unlikely]] return false;
-
-    const uint8_t oppSide = side ^ 1;
-    const uint8_t kingSq = __builtin_ctzll(kingBB);
-    const uint64_t capturedPawnMask = bitMask(capturedPawnIndex);
-
-    uint64_t occNew = occupancy;
-    occNew &= ~bitMask(fromIndex);
-    occNew &= ~capturedPawnMask;
-    occNew |= bitMask(toIndex);
-
-    return !isKingAttackedCustom(kingSq, oppSide, occNew,
-                                 pawns_bb[oppSide] & ~capturedPawnMask,
-                                 knights_bb[oppSide],
-                                 bishops_bb[oppSide],
-                                 rooks_bb[oppSide],
-                                 queens_bb[oppSide],
-                                 kings_bb[oppSide]);
+                                 pawns_bb[oppSide]   & keep,
+                                 knights_bb[oppSide] & keep,
+                                 bishops_bb[oppSide] & keep,
+                                 rooks_bb[oppSide]   & keep,
+                                 queens_bb[oppSide]  & keep,
+                                 kings_bb[oppSide]   & keep);
 }
 
 template<uint8_t PieceType, bool Add>

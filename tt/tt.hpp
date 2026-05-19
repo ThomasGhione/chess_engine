@@ -269,6 +269,27 @@ private:
         return false;
     }
 
+    // Shared probe scaffolding: snapshot the bucket and return the first valid
+    // entry whose key matches (the only entry any probe ever inspects, since
+    // they all stop at the first key match). Returns false if the lock-free
+    // snapshot read failed or no matching valid entry exists.
+    [[nodiscard]] __attribute__((always_inline)) inline bool findEntrySnapshot(
+        uint64_t key, EntrySnapshot& out) const noexcept {
+        const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+        const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+        const BucketSeq& bucketSeq = seqData()[bucketIndex];
+        EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
+        if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
+        for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
+            const EntrySnapshot& entry = snapshot[i];
+            if (entry.key != key) continue;
+            if (Entry::flagFromPayload(entry.payload) == Entry::INVALID) continue;
+            out = entry;
+            return true;
+        }
+        return false;
+    }
+
     [[nodiscard]] static constexpr bool isEquals(std::string_view lhs, std::string_view rhs) noexcept {
         if (lhs.size() != rhs.size()) return false;
         for (size_t i = 0; i < lhs.size(); ++i) {
@@ -390,75 +411,39 @@ static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::e
 static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).promo == 'n', "move decode promotion mismatch");
 
 inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
-    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-    const BucketSeq& bucketSeq = seqData()[bucketIndex];
-    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
-    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) {
+    EntrySnapshot entry;
+    if (!findEntrySnapshot(key, entry)) {
         outBestMove = 0;
         return false;
     }
-
-    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const EntrySnapshot& entry = snapshot[i];
-        if (entry.key != key) continue;
-
-        const uint8_t flag = Entry::flagFromPayload(entry.payload);
-        if (flag == Entry::INVALID) continue;
-
-        outBestMove = Entry::bestMoveFromPayload(entry.payload);
-        return outBestMove != 0;
-    }
-    outBestMove = 0;
-    return false;
+    outBestMove = Entry::bestMoveFromPayload(entry.payload);
+    return outBestMove != 0;
 }
 
 inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
                                       int32_t alpha, int32_t beta, int32_t& outScore) noexcept {
-    const uint8_t neededDepth = clampDepth(depth);
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
-    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-    const BucketSeq& bucketSeq = seqData()[bucketIndex];
-    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
-    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
+    EntrySnapshot entry;
+    if (!findEntrySnapshot(key, entry)) return false;
+    if (Entry::depthFromPayload(entry.payload) < clampDepth(depth)) return false;
 
-    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const EntrySnapshot& entry = snapshot[i];
-        if (entry.key != key) continue;
-
-        const uint8_t flag = Entry::flagFromPayload(entry.payload);
-        if (flag == Entry::INVALID) continue;
-        if (Entry::depthFromPayload(entry.payload) < neededDepth) return false;
-
-        const int32_t score = Entry::scoreFromPayload(entry.payload);
-        if (flag == Entry::EXACT
-            || (flag == Entry::LOWERBOUND && score >= beta)
-            || (flag == Entry::UPPERBOUND && score <= alpha)) {
-            outScore = score;
-            return true;
-        }
-        return false;
+    const uint8_t flag = Entry::flagFromPayload(entry.payload);
+    const int32_t score = Entry::scoreFromPayload(entry.payload);
+    if (flag == Entry::EXACT
+        || (flag == Entry::LOWERBOUND && score >= beta)
+        || (flag == Entry::UPPERBOUND && score <= alpha)) {
+        outScore = score;
+        return true;
     }
     return false;
 }
 
 inline bool TranspositionTable::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept {
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
-    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-    const BucketSeq& bucketSeq = seqData()[bucketIndex];
-    EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
-    if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
-    for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-        const EntrySnapshot& entry = snapshot[i];
-        if (entry.key != key) continue;
-        const uint8_t flag = Entry::flagFromPayload(entry.payload);
-        if (flag == Entry::INVALID) continue;
-        if (Entry::depthFromPayload(entry.payload) < minDepth) return false;
-        outScore = Entry::scoreFromPayload(entry.payload);
-        outFlag  = flag;
-        return true;
-    }
-    return false;
+    EntrySnapshot entry;
+    if (!findEntrySnapshot(key, entry)) return false;
+    if (Entry::depthFromPayload(entry.payload) < minDepth) return false;
+    outScore = Entry::scoreFromPayload(entry.payload);
+    outFlag  = Entry::flagFromPayload(entry.payload);
+    return true;
 }
 
 inline void TranspositionTable::storeImpl(

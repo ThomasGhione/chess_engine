@@ -217,7 +217,7 @@ public:
         uint8_t movingColor,
         uint8_t fromIndex,
         uint8_t toIndex,
-        uint64_t capturedEnemyMask
+        uint64_t capturedMask
     ) const noexcept;
     bool isStalemate(uint8_t color) const noexcept;
     bool isFiftyMoveRule() const noexcept;
@@ -295,13 +295,6 @@ public:
     // Variables end
 private:
     // Methods start
-    //FIXME Stessa questione citata prima per sostituire con struct Move
-    [[nodiscard]] inline bool isKingSafeAfterEnPassant(
-        uint8_t movingColor,
-        uint8_t fromIndex,
-        uint8_t toIndex,
-        uint8_t capturedPawnIndex
-    ) const noexcept;
     [[nodiscard]] inline bool isKingMoveLegal(
         uint8_t fromIndex,
         uint8_t toIndex,

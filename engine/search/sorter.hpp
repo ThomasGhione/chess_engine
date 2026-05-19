@@ -186,7 +186,14 @@ private:
         bool isPromotionCandidate,
         bool isHashMove) noexcept;
 
-    static int getLeastValuableAttackerTo(
+    // square == 64 means "no attacker" (type is then unspecified). The type
+    // is the piece type of the returned attacker, derived for free from the
+    // bitboard it was found in (avoids a re-classification in the SEE loop).
+    struct LeastValuableAttacker {
+        int square;
+        int type;
+    };
+    static LeastValuableAttacker getLeastValuableAttackerTo(
         const chess::Board& b,
         int sq,
         uint64_t occLocal,

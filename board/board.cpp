@@ -45,7 +45,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
                     if (Coords::isInBounds(enPassant) && toIndex == enPassant.index) {
                         const int8_t epDir = isWhite ? 8 : -8;
                         const uint8_t capturedPawnIdx = toIndex + epDir;
-                        return isKingSafeAfterEnPassant(movingColor, fromIndex, toIndex, capturedPawnIdx);
+                        return isKingSafeAfterMove(movingColor, fromIndex, toIndex, bitMask(capturedPawnIdx));
                     }
                     return false; // diagonal to empty square but not en-passant
                 }

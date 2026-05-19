@@ -141,28 +141,30 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     return clampToInt32(score);
 }
 
-int Sorter::getLeastValuableAttackerTo(const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
+Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
+        const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
     uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
-    if (mask) return __builtin_ctzll(mask);
+    if (mask) return {__builtin_ctzll(mask), chess::Board::PAWN};
 
     mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
-    if (mask) return __builtin_ctzll(mask);
+    if (mask) return {__builtin_ctzll(mask), chess::Board::KNIGHT};
 
     // Cache sliding attack rays — shared by bishop/queen and rook/queen lookups.
     const uint64_t bishopRays = pieces::getBishopAttacks(sq, occLocal);
     const uint64_t rookRays   = pieces::getRookAttacks(sq, occLocal);
 
     mask = b.bishops_bb[sideLocal] & occLocal & bishopRays;
-    if (mask) return __builtin_ctzll(mask);
+    if (mask) return {__builtin_ctzll(mask), chess::Board::BISHOP};
 
     mask = b.rooks_bb[sideLocal] & occLocal & rookRays;
-    if (mask) return __builtin_ctzll(mask);
+    if (mask) return {__builtin_ctzll(mask), chess::Board::ROOK};
 
     mask = b.queens_bb[sideLocal] & occLocal & (bishopRays | rookRays);
-    if (mask) return __builtin_ctzll(mask);
+    if (mask) return {__builtin_ctzll(mask), chess::Board::QUEEN};
 
     mask = b.kings_bb[sideLocal] & occLocal & pieces::KING_ATTACKS[sq];
-    return mask ? __builtin_ctzll(mask) : 64;
+    return mask ? LeastValuableAttacker{__builtin_ctzll(mask), chess::Board::KING}
+                : LeastValuableAttacker{64, 0};
 }
 
 int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept {
@@ -222,21 +224,14 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     int side  = sidePassive;
 
     while (depth < MAX_SEE_DEPTH) {
-        const int attacker = getLeastValuableAttackerTo(b, toSq, occ, side);
-        if (attacker == 64) break;
+        const auto lva = getLeastValuableAttackerTo(b, toSq, occ, side);
+        if (lva.square == 64) break;
 
-        const uint64_t attackerBit = occ & chess::Board::bitMask(attacker);
-
-        const int currentAttackerType =
-            (b.pawns_bb[side]   & attackerBit) ? chess::Board::PAWN   :
-            (b.knights_bb[side] & attackerBit) ? chess::Board::KNIGHT :
-            (b.bishops_bb[side] & attackerBit) ? chess::Board::BISHOP :
-            (b.rooks_bb[side]   & attackerBit) ? chess::Board::ROOK   :
-            (b.queens_bb[side]  & attackerBit) ? chess::Board::QUEEN  : chess::Board::KING;
+        const uint64_t attackerBit = occ & chess::Board::bitMask(lva.square);
 
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
         occ ^= attackerBit;
-        capturedOnTargetType = currentAttackerType;
+        capturedOnTargetType = lva.type;
         side ^= 1;
         ++depth;
     }
