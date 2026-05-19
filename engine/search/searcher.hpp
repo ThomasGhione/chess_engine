@@ -79,6 +79,13 @@ public:
         // deepening. Null for fixed-depth / ponder / perft-style searches.
         time::TimeManager* timeManager = nullptr;
 
+        // Abort/interrupt protocol and heuristic decay: these act only on
+        // this struct's own state, so they live here rather than on Searcher.
+        [[nodiscard]] bool shouldAbort() const noexcept;
+        void markInterrupted() noexcept;
+        [[nodiscard]] bool isInterrupted() const noexcept;
+        void clearInterrupted() noexcept;
+        void softResetHistory() noexcept;
     };
 
     struct IterativeSearchResult {
@@ -98,8 +105,6 @@ public:
         chess::Board::Move bestMove{};
         int32_t bestScore = 0;
     };
-
-    static void softResetHistory(SearchRuntime& runtime) noexcept;
 
     static chess::Board::Move searchBestMove(
         chess::Board& board,
@@ -202,10 +207,6 @@ private:
                         int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply,
                         const chess::Board::Move& bestMove) noexcept;
 
-    static bool shouldAbortSearch(const SearchRuntime& runtime) noexcept;
-    static void markInterrupted(SearchRuntime& runtime) noexcept;
-    static bool isInterrupted(const SearchRuntime& runtime) noexcept;
-    static void clearInterrupted(SearchRuntime& runtime) noexcept;
     // Helper: check early terminal conditions (abort, MAX_PLY, king-capture)
     static bool checkEarlyTerminalConditions(
         const chess::Board& b,

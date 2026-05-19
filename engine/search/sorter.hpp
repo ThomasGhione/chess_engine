@@ -90,10 +90,26 @@ public:
 
             return moves[currentIndex++];
         }
-    };
 
-    template <typename MoveType>
-    static void insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept;
+        // Full descending insertion sort over [0, size). Used by the root
+        // search which needs the whole list ordered upfront (YBWC), unlike
+        // nextMove()'s incremental selection. Owns both parallel arrays, so
+        // the moves/scores invariant stays encapsulated here.
+        inline void fullSort() noexcept {
+            for (int i = 1; i < size; ++i) {
+                const chess::Board::Move keyMove = moves[i];
+                const int32_t keyScore = scores[i];
+                int j = i - 1;
+                while (j >= 0 && scores[j] < keyScore) {
+                    scores[j + 1] = scores[j];
+                    moves[j + 1] = moves[j];
+                    --j;
+                }
+                scores[j + 1] = keyScore;
+                moves[j + 1] = keyMove;
+            }
+        }
+    };
 
     static MovePickerData sortLegalMoves(
         MoveList<chess::Board::Move> moves,

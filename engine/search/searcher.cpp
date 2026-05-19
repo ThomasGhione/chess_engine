@@ -118,28 +118,28 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
         clampToInt32(scoreToTT(best, ply)), static_cast<uint8_t>(flag), encodedMove);
 }
 
-bool Searcher::shouldAbortSearch(const SearchRuntime& runtime) noexcept {
-    const bool stopRequested = runtime.stopSearchRequested != nullptr
-        && runtime.stopSearchRequested->load(std::memory_order_acquire);
-    const bool ponderingStopRequested = runtime.ponderingStopRequested != nullptr
-        && runtime.ponderingStopRequested->load(std::memory_order_acquire);
+bool Searcher::SearchRuntime::shouldAbort() const noexcept {
+    const bool stopRequested = stopSearchRequested != nullptr
+        && stopSearchRequested->load(std::memory_order_acquire);
+    const bool ponderingStopRequested = this->ponderingStopRequested != nullptr
+        && this->ponderingStopRequested->load(std::memory_order_acquire);
     return stopRequested || ponderingStopRequested;
 }
 
-void Searcher::markInterrupted(SearchRuntime& runtime) noexcept {
-    if (runtime.searchInterrupted != nullptr) {
-        runtime.searchInterrupted->store(true, std::memory_order_relaxed);
+void Searcher::SearchRuntime::markInterrupted() noexcept {
+    if (searchInterrupted != nullptr) {
+        searchInterrupted->store(true, std::memory_order_relaxed);
     }
 }
 
-bool Searcher::isInterrupted(const SearchRuntime& runtime) noexcept {
-    return runtime.searchInterrupted != nullptr
-        && runtime.searchInterrupted->load(std::memory_order_relaxed);
+bool Searcher::SearchRuntime::isInterrupted() const noexcept {
+    return searchInterrupted != nullptr
+        && searchInterrupted->load(std::memory_order_relaxed);
 }
 
-void Searcher::clearInterrupted(SearchRuntime& runtime) noexcept {
-    if (runtime.searchInterrupted != nullptr) {
-        runtime.searchInterrupted->store(false, std::memory_order_relaxed);
+void Searcher::SearchRuntime::clearInterrupted() noexcept {
+    if (searchInterrupted != nullptr) {
+        searchInterrupted->store(false, std::memory_order_relaxed);
     }
 }
 
@@ -149,8 +149,8 @@ bool Searcher::checkEarlyTerminalConditions(
     int ply,
     int32_t& outScore) noexcept {
     
-    if (shouldAbortSearch(runtime)) {
-        markInterrupted(runtime);
+    if (runtime.shouldAbort()) {
+        runtime.markInterrupted();
         outScore = Evaluator::evaluate(b);
         return true;
     }
@@ -261,14 +261,14 @@ void Searcher::updateMinMax(
     updateBound(score, alpha);
 }
 
-void Searcher::softResetHistory(SearchRuntime& runtime) noexcept {
+void Searcher::SearchRuntime::softResetHistory() noexcept {
     constexpr int HISTORY_CELLS      = 2 * 64 * 64;
     constexpr int CONT_HIST_CELLS    = 2 * 64 * 64;
     constexpr int CAP_HIST_CELLS     = 2 * 64 * 7 * CAPTURE_HISTORY_SLOTS;
 
-    int16_t* historyFlat  = &runtime.history[0][0][0];
-    int16_t* contHistFlat = &runtime.contHist[0][0][0];
-    int16_t* capHistFlat  = &runtime.captureHistory[0][0][0][0];
+    int16_t* historyFlat  = &history[0][0][0];
+    int16_t* contHistFlat = &contHist[0][0][0];
+    int16_t* capHistFlat  = &captureHistory[0][0][0][0];
 
     #pragma omp simd
     for (int i = 0; i < HISTORY_CELLS; ++i)   historyFlat[i]  >>= 1;
@@ -287,14 +287,14 @@ chess::Board::Move Searcher::searchBestMove(
         ? DEFAULT_DEPTH
         : requestedDepth;
 
-    clearInterrupted(runtime);
+    runtime.clearInterrupted();
 
     // Macro-step 2: Prepare TT generation, node counter, and heuristic decay.
     if (runtime.transpositionTable != nullptr) {
         runtime.transpositionTable->incrementGeneration();
     }
     runtime.nodesSearched = 0;
-    softResetHistory(runtime);
+    runtime.softResetHistory();
 
     // Macro-step 3: Run iterative deepening on the provided board.
     IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth);
@@ -578,8 +578,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const int moveIndex = movePicker.currentIndex;
         const chess::Board::Move m = movePicker.nextMove();
         
-        if (shouldAbortSearch(runtime)) {
-            markInterrupted(runtime);
+        if (runtime.shouldAbort()) {
+            runtime.markInterrupted();
             break;
         }
 
@@ -734,7 +734,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.undoMove(m, state);
         searchedAnyMove = true;
 
-        if (isInterrupted(runtime)) {
+        if (runtime.isInterrupted()) {
             break;
         }
 
@@ -782,7 +782,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     }
 
     // Macro-step 4: Return best-score package with interruption-safe fallback.
-    if (!searchedAnyMove && isInterrupted(runtime)) {
+    if (!searchedAnyMove && runtime.isInterrupted()) {
         return SearchMoveResult{bestMove, ctx.staticEval};
     }
 
@@ -949,7 +949,7 @@ int32_t Searcher::searchPosition(
         if (razorGate) {
             // qsearch of THIS node (same side to move): no negation.
             const int32_t qScore = quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
-            if (shouldAbortSearch(runtime)) return Evaluator::evaluate(b);
+            if (runtime.shouldAbort()) return Evaluator::evaluate(b);
             if (qScore <= alpha) return qScore;
         }
     }
@@ -1056,7 +1056,7 @@ int32_t Searcher::searchPosition(
         b, movePicker, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
-    if (isInterrupted(runtime)) {
+    if (runtime.isInterrupted()) {
         return Evaluator::evaluate(b);
     }
 
@@ -1184,8 +1184,8 @@ int32_t Searcher::quiescenceSearch(
     while (movePicker.hasNext()) {
         const auto m = movePicker.nextMove();
 
-        if (shouldAbortSearch(runtime)) {
-            markInterrupted(runtime);
+        if (runtime.shouldAbort()) {
+            runtime.markInterrupted();
             return Evaluator::evaluate(b);
         }
 
@@ -1259,7 +1259,7 @@ chess::Board::Move Searcher::getBestMove(
         nullptr);
     
     // YBWC and Root iterations require fully sorted list upfront.
-    Sorter::insertionSort(orderedRootMoves.moves, orderedRootMoves.scores);
+    orderedRootMoves.fullSort();
     
     const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.moves;
 
@@ -1273,8 +1273,8 @@ chess::Board::Move Searcher::getBestMove(
         // the first move deliberately skips the interrupt/beta-cutoff break so
         // search-tree shape (and node count) is unchanged from the prior split.
         for (int i = 0; i < rootMoves.size; ++i) {
-            if (shouldAbortSearch(runtime)) {
-                markInterrupted(runtime);
+            if (runtime.shouldAbort()) {
+                runtime.markInterrupted();
                 break;
             }
 
@@ -1295,7 +1295,7 @@ chess::Board::Move Searcher::getBestMove(
             }
 
             searchedAnyMove = true;
-            if (!isFirst && isInterrupted(runtime)) {
+            if (!isFirst && runtime.isInterrupted()) {
                 break;
             }
 
@@ -1315,7 +1315,7 @@ chess::Board::Move Searcher::getBestMove(
         updateMinMax(score, alpha, bestScore, bestMove, firstMove);
     }
 
-    if (isInterrupted(runtime) || rootMoves.size <= 1) [[unlikely]] {
+    if (runtime.isInterrupted() || rootMoves.size <= 1) [[unlikely]] {
         runtime.nodesSearched += localNodes;
         runtime.eval = bestScore;
         return bestMove;
@@ -1345,14 +1345,14 @@ chess::Board::Move Searcher::getBestMove(
 
     if (threadsToUse <= 1) {
         for (int i = 1; i < rootMoves.size; ++i) {
-            if (shouldAbortSearch(runtime)) {
-                markInterrupted(runtime);
+            if (runtime.shouldAbort()) {
+                runtime.markInterrupted();
                 break;
             }
 
             chess::Board threadBoard = rootBoard;
             searchDeferredRootMove(i, threadBoard);
-            if (isInterrupted(runtime)) {
+            if (runtime.isInterrupted()) {
                 break;
             }
         }
@@ -1371,15 +1371,15 @@ chess::Board::Move Searcher::getBestMove(
                         const int end = std::min(start + chunk, rootMoves.size);
                         #pragma omp task firstprivate(start, end)
                         {
-                            if (!shouldAbortSearch(runtime)) {
+                            if (!runtime.shouldAbort()) {
                                 chess::Board threadBoard = rootBoard;
                                 for (int i = start; i < end; ++i) {
-                                    if (shouldAbortSearch(runtime)) {
+                                    if (runtime.shouldAbort()) {
                                         break;
                                     }
 
                                     searchDeferredRootMove(i, threadBoard);
-                                    if (isInterrupted(runtime)) {
+                                    if (runtime.isInterrupted()) {
                                         break;
                                     }
                                 }
@@ -1393,7 +1393,7 @@ chess::Board::Move Searcher::getBestMove(
 
     // Macro-step 4: Deterministic merge of parallel root results and final counters.
     for (int i = 1; i < rootMoves.size; ++i) {
-        if (isInterrupted(runtime)) {
+        if (runtime.isInterrupted()) {
             break;
         }
         if (threadNodeCounts[i] == 0) continue;
@@ -1404,7 +1404,7 @@ chess::Board::Move Searcher::getBestMove(
             uint64_t researchNodes = 0;
             score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &researchNodes);
             localNodes += researchNodes;
-            if (isInterrupted(runtime)) {
+            if (runtime.isInterrupted()) {
                 break;
             }
         }
@@ -1517,7 +1517,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     };
 
     for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
-        if (shouldAbortSearch(runtime)) {
+        if (runtime.shouldAbort()) {
             interruptedDepth = currentDepth;
             break;
         }
@@ -1540,7 +1540,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             }
         }
 
-        clearInterrupted(runtime);
+        runtime.clearInterrupted();
         bool iterationCompleted = true;
         int32_t iterationAlpha = NEG_INF;
         int32_t iterationBeta = POS_INF;
@@ -1554,7 +1554,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
         if (!canUseAspiration) {
             candidateBestMove = getBestMove(rootBoard, moves, runtime);
-            if (isInterrupted(runtime)) {
+            if (runtime.isInterrupted()) {
                 iterationCompleted = false;
             }
         } else {
@@ -1574,7 +1574,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 iterationAlpha = aspAlpha;
                 iterationBeta = aspBeta;
                 candidateBestMove = getBestMove(rootBoard, moves, runtime, aspAlpha, aspBeta);
-                if (isInterrupted(runtime)) {
+                if (runtime.isInterrupted()) {
                     iterationCompleted = false;
                     break;
                 }
@@ -1601,7 +1601,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                     iterationAlpha = NEG_INF;
                     iterationBeta = POS_INF;
                     candidateBestMove = getBestMove(rootBoard, moves, runtime);
-                    if (isInterrupted(runtime)) {
+                    if (runtime.isInterrupted()) {
                         iterationCompleted = false;
                     }
                     break;

@@ -6,22 +6,6 @@
 
 namespace engine {
 
-template <typename MoveType>
-void Sorter::insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept {
-    for (int i = 1; i < moves.size; ++i) {
-        const MoveType keyMove = moves[i];
-        const int32_t keyScore = scores[i];
-        int j = i - 1;
-        while (j >= 0 && scores[j] < keyScore) {
-            scores[j + 1] = scores[j];
-            moves[j + 1] = moves[j];
-            --j;
-        }
-        scores[j + 1] = keyScore;
-        moves[j + 1] = keyMove;
-    }
-}
-
 Sorter::CaptureInfo Sorter::classifyCapture(
         const chess::Board::Move& m, int fromPieceType, int toPieceType,
         const chess::Coords& enPassant, bool hasEnPassant) noexcept {
@@ -431,7 +415,5 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Bo
 bool Sorter::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
     return standPat + margin < alpha;
 }
-
-template void Sorter::insertionSort<chess::Board::Move>(MoveList<chess::Board::Move>&, int32_t*) noexcept;
 
 } // namespace engine

@@ -23,15 +23,15 @@
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "KING_SHELTER_STRONG_BONUS": "Integer(5, 13)",
-    "KING_SHELTER_WEAK_BONUS": "Integer(11, 22)",
-    "KING_SHELTER_MISSING_PENALTY": "Integer(20, 48)",
-    "KING_PAWN_STORM_NEAR_PENALTY": "Integer(12, 22)",
-    "KING_PAWN_STORM_FAR_PENALTY": "Integer(9, 19)",
-    "KING_SEMI_OPEN_FILE_PENALTY": "Integer(10, 24)",
-    "KING_OPEN_FILE_PENALTY": "Integer(8, 18)",
-    "KING_FILE_PRESSURE_PENALTY": "Integer(7, 20)"
+    "CASTLE_PAWN_SUPPORT_BONUS": "Integer(2, 11)",
+    "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(4, 14)",
+    "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(10, 26)",
+    "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(16, 34)",
+    "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
+    "KING_OPEN_DIAGONAL_PENALTY": "Integer(7, 17)",
+    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(110, 155)",
+    "KING_ATTACK_DANGER_CAP": "Integer(100, 155)"
   },
-  "data_path": "king_shelter_files_data.npz",
-  "model_path": "king_shelter_files_model.pkl"
+  "data_path": "king_safety_residual_data.npz",
+  "model_path": "king_safety_residual_model.pkl"
 }
