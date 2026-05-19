@@ -43,10 +43,6 @@ static constexpr LMRTable LMR_REDUCTION_TABLE;
 } // namespace
 
 // --- Negamax helpers ---
-constexpr int32_t Searcher::initialBest() noexcept {
-    return NEG_INF;
-}
-
 constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest) noexcept {
     return newScore > currentBest;
 }
@@ -61,10 +57,6 @@ void Searcher::updateBound(int32_t score, int32_t& alpha) noexcept {
 
 constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
     return standPat + margin <= alpha;
-}
-
-constexpr int32_t Searcher::cutoffValue(int32_t beta) noexcept {
-    return beta;
 }
 
 constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept {
@@ -308,24 +300,17 @@ chess::Board::Move Searcher::searchBestMove(
     IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth);
     runtime.depth = targetDepth;
 
-    // Macro-step 4: Return terminal/completed search result, or deterministic fallback when interrupted/empty.
+    // Macro-step 4: Return the completed/terminal result, else a deterministic
+    // fallback. Past this first return, completedAnyDepth is necessarily false,
+    // so the old second guard was a tautology and the trailing return dead.
     if (result.terminalRoot || result.completedAnyDepth) {
         runtime.eval = result.bestScore;
         return result.bestMove;
     }
 
-    if (!result.hasLegalMoves || !result.completedAnyDepth) {
-        MoveList<chess::Board::Move> fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
-        if (fallbackMoves.is_empty()) {
-            runtime.eval = Evaluator::evaluate(board);
-            return chess::Board::Move{};
-        }
-        runtime.eval = Evaluator::evaluate(board);
-        return fallbackMoves[0];
-    }
-
-    runtime.eval = result.bestScore;
-    return result.bestMove;
+    MoveList<chess::Board::Move> fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
+    runtime.eval = Evaluator::evaluate(board);
+    return fallbackMoves.is_empty() ? chess::Board::Move{} : fallbackMoves[0];
 }
 
 int32_t Searcher::searchRootMoveScore(
@@ -418,7 +403,7 @@ bool Searcher::tryNullMovePruning(
         return true;
     }
 
-    outScore = cutoffValue(beta);
+    outScore = beta;
     return true;
 }
 
@@ -526,7 +511,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     bool allowTTWrite) noexcept {
     const bool usIsWhite = (ctx.activeColor == chess::Board::WHITE);
     // Macro-step 1: Initialize best-score tracking and quiet-move malus buffers.
-    int32_t best = initialBest();
+    int32_t best = NEG_INF;
     chess::Board::Move bestMove{};
     bool searchedAnyMove = false;
 
@@ -1015,7 +1000,7 @@ int32_t Searcher::searchPosition(
             const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
                 ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
             b.undoMove(mc, pcState);
-            if (pcScore >= probcutBound) return cutoffValue(beta);
+            if (pcScore >= probcutBound) return beta;
         }
     }
 
@@ -1142,11 +1127,11 @@ int32_t Searcher::quiescenceSearch(
         if (!movePicker.hasNext()) {
             return NEG_INF + ply; // side to move is checkmated (negamax)
         }
-        best = initialBest();
+        best = NEG_INF;
     } else {
         const int32_t standPat = Evaluator::evaluate(b);
         if (isBetaCutoff(standPat, beta)) {
-            return cutoffValue(beta);
+            return beta;
         }
         updateBound(standPat, alpha);
 
@@ -1234,7 +1219,7 @@ int32_t Searcher::quiescenceSearch(
                 // storing the raw cutoff bound was looser and inconsistent.
                 writeTT(runtime, b.getHash(), 0, best, alphaOrig, betaOrig, ply);
             }
-            return cutoffValue(beta);
+            return beta;
         }
     }
 
@@ -1253,7 +1238,7 @@ chess::Board::Move Searcher::getBestMove(
     int32_t beta) noexcept {
     const bool usIsWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     // Macro-step 1: Initialize root state, order root moves, and decide YBWC mode.
-    int32_t bestScore = initialBest();
+    int32_t bestScore = NEG_INF;
     chess::Board::Move bestMove = moves[0];
     constexpr int currPly = 1;
     uint64_t localNodes = 0;
@@ -1330,20 +1315,14 @@ chess::Board::Move Searcher::getBestMove(
         updateMinMax(score, alpha, bestScore, bestMove, firstMove);
     }
 
-    if (isInterrupted(runtime)) {
-        runtime.nodesSearched += localNodes;
-        runtime.eval = bestScore;
-        return bestMove;
-    }
-
-    if (rootMoves.size <= 1) [[unlikely]] {
+    if (isInterrupted(runtime) || rootMoves.size <= 1) [[unlikely]] {
         runtime.nodesSearched += localNodes;
         runtime.eval = bestScore;
         return bestMove;
     }
 
     std::array<int32_t, MAX_MOVES> threadScores;
-    threadScores.fill(initialBest());
+    threadScores.fill(NEG_INF);
     std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
     std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
 
@@ -1353,16 +1332,15 @@ chess::Board::Move Searcher::getBestMove(
     auto searchDeferredRootMove = [&](int i, chess::Board& threadBoard) noexcept {
         const auto m = rootMoves[i];
         uint64_t workerNodes = 0;
-        int32_t localAlpha = alpha;
         int32_t nullAlpha = 0;
         int32_t nullBeta = 0;
-        rootNullWindow(localAlpha, nullAlpha, nullBeta);
+        rootNullWindow(alpha, nullAlpha, nullBeta);
         const int32_t score = searchRootMoveScore(
             threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;
-        threadNeedsResearch[i] = shouldResearchPVS(score, localAlpha);
+        threadNeedsResearch[i] = shouldResearchPVS(score, alpha);
     };
 
     if (threadsToUse <= 1) {

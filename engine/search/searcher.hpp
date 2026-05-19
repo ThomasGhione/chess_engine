@@ -175,12 +175,10 @@ private:
         int32_t staticEval = 0;
     };
 
-    static constexpr int32_t initialBest() noexcept;
     static constexpr bool isBetter(int32_t newScore, int32_t currentBest) noexcept;
     static constexpr bool isBetaCutoff(int32_t score, int32_t beta) noexcept;
     static void updateBound(int32_t score, int32_t& alpha) noexcept;
     static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept;
-    static constexpr int32_t cutoffValue(int32_t beta) noexcept;
     static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept;
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;

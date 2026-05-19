@@ -374,12 +374,7 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
 }
 
 bool Board::isThreefoldRepetition() const noexcept {
-    if (historySize < 3) return false;
-    int count = 0;
-    for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
-        if (*p == currentHash && ++count >= 3) return true;
-    }
-    return false;
+    return countRepetitions() >= 3;
 }
 
 int Board::countRepetitions() const noexcept {
@@ -395,8 +390,8 @@ bool Board::hasInsufficientMaterialDraw() const noexcept {
     if (pawns_bb[0] || pawns_bb[1] || rooks_bb[0] || rooks_bb[1] || queens_bb[0] || queens_bb[1]) return false;
     const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
     const uint64_t bMinors = knights_bb[1] | bishops_bb[1];
-    return (wMinors == 0ULL && bMinors == 0ULL)
-        || (__builtin_popcountll(wMinors) <= 1 && bMinors == 0ULL)
+    // (wMinors==0 && bMinors==0) is subsumed by either clause below.
+    return (__builtin_popcountll(wMinors) <= 1 && bMinors == 0ULL)
         || (__builtin_popcountll(bMinors) <= 1 && wMinors == 0ULL);
 }
 

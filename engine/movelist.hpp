@@ -3,17 +3,8 @@
 #include <cstdint>
 #include <cstring>
 #include <utility>  // for std::forward
-#include <concepts>
-#include <algorithm> // for std::partial_sort
 #include <new>
 #include <type_traits>
-
-// Concept: T must expose a .score member convertible to int32_t
-template<typename T>
-concept HasScore = requires(T a, T b) {
-    { a.score } -> std::convertible_to<int32_t>;
-    { b.score } -> std::convertible_to<int32_t>;
-};
 
 inline constexpr size_t MAX_MOVES = 218;
 
@@ -84,47 +75,6 @@ struct MoveList {
         }
         size = 0;
     }
-
-    // ---------------------------------
-    // Sorting (only available if T has .score member)
-    // Insertion sort optimized for small/partially sorted arrays
-    // ---------------------------------
-
-    // Full insertion sort - O(n^2) but cache-friendly and fast for small n
-    inline void sort() noexcept requires HasScore<T> {
-        if (size <= 1) return; // nothing to sort
-        
-        for (int i = 1; i < size; ++i) {
-            T key = (*this)[i];
-            int j = i - 1;
-
-            while (j >= 0 && ((*this)[j].score < key.score )) {
-                (*this)[j + 1] = (*this)[j];
-                --j;
-            }
-            (*this)[j + 1] = key;
-        }
-    }
-
-    // Partial insertion sort - sorts only first LIMIT elements
-    // Useful for move ordering where only top moves matter
-    template<int LIMIT = 14>
-    inline void partial_sort() noexcept requires HasScore<T> {
-        const int n = (size < LIMIT) ? size : LIMIT;
-
-        for (int i = 1; i < n; ++i) {
-            T key = (*this)[i];
-            int j = i - 1;
-            
-            // Descending order (highest score first)
-            while (j >= 0 && (*this)[j].score < key.score) {
-                (*this)[j + 1] = (*this)[j];
-                --j;
-            }
-            (*this)[j + 1] = key;
-        }
-    }
-
 
 private:
 
