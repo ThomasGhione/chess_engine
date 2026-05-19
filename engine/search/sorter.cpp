@@ -22,6 +22,19 @@ void Sorter::insertionSort(MoveList<MoveType>& moves, int32_t* scores) noexcept 
     }
 }
 
+Sorter::CaptureInfo Sorter::classifyCapture(
+        const chess::Board::Move& m, int fromPieceType, int toPieceType,
+        const chess::Coords& enPassant, bool hasEnPassant) noexcept {
+    const bool isEpCapture = hasEnPassant
+        && fromPieceType == chess::Board::PAWN
+        && toPieceType   == chess::Board::EMPTY
+        && (m.to == enPassant)
+        && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+    const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
+    const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
+    return {isCapture, isEpCapture, victimType};
+}
+
 constexpr bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
     return a.from.index == b.from.index && a.to.index == b.to.index;
 }
@@ -281,13 +294,11 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
 
     // Probe TT for hash move.
     uint16_t encodedHashMove = 0;
-    uint8_t hashFrom = 64, hashTo = 64;
-    char hashPromo = '\0';
     const bool isHashMoveProbed = transpositionTable != nullptr
         && transpositionTable->probeMove(hashKey, encodedHashMove);
-    if (isHashMoveProbed) {
-        TranspositionTable::Entry::decodeMove(encodedHashMove, hashFrom, hashTo, hashPromo);
-    }
+    const auto hashMove = isHashMoveProbed
+        ? TranspositionTable::Entry::decodeMove(encodedHashMove)
+        : TranspositionTable::Entry::DecodedMove{64, 64, '\0'};
 
     bool hashMoveFound = false;
 
@@ -298,18 +309,14 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
         const int fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
         const int toPieceType  = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
 
-        const bool isEpCapture = hasEnPassant
-            && fromPieceType == chess::Board::PAWN
-            && toPieceType   == chess::Board::EMPTY
-            && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture    = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const int victimType    = isEpCapture ? chess::Board::PAWN : toPieceType;
+        const auto cap = classifyCapture(m, fromPieceType, toPieceType, enPassant, hasEnPassant);
+        const bool isCapture = cap.isCapture;
+        const int victimType = cap.victimType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         const bool isHashMove = isHashMoveProbed
-            && sameFromTo(m, hashFrom, hashTo)
-            && m.promotionPiece == hashPromo;
+            && sameFromTo(m, hashMove.from, hashMove.to)
+            && m.promotionPiece == hashMove.promo;
         if (isHashMove) hashMoveFound = true;
 
         const bool needsSee = !isHashMove && (isCapture || (!isPromotionCandidate && fromPieceType != chess::Board::KING));
@@ -367,13 +374,9 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
         const int fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const int toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
-        const bool isEpCapture = hasEnPassant
-            && fromPieceType == chess::Board::PAWN
-            && toPieceType   == chess::Board::EMPTY
-            && (m.to == enPassant)
-            && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
-        const bool isCapture  = (toPieceType != chess::Board::EMPTY) || isEpCapture;
-        const int victimType  = isEpCapture ? chess::Board::PAWN : toPieceType;
+        const auto cap = classifyCapture(m, fromPieceType, toPieceType, enPassant, hasEnPassant);
+        const bool isCapture = cap.isCapture;
+        const int victimType = cap.victimType;
         const bool isPromotion  = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         int32_t score;

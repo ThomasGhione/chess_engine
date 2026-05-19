@@ -134,13 +134,6 @@ public:
                 promoCharFromCode(static_cast<uint8_t>((encoded >> 12) & 0xF))
             };
         }
-
-        static constexpr void decodeMove(uint16_t encoded, uint8_t& from, uint8_t& to, char& promo) noexcept {
-            const DecodedMove move = decodeMove(encoded);
-            from = move.from;
-            to = move.to;
-            promo = move.promo;
-        }
     };
 
     static constexpr size_t BUCKET_COUNT = 1u << 20; // 1M buckets = 4M entries = 64 MiB, tests/perf tuned.
@@ -226,22 +219,8 @@ private:
         uint64_t payload = 0ULL;
     };
 
-    [[nodiscard]] static inline uint64_t loadEntryKeyAtomic(const Entry& entry) noexcept {
-        auto& keyRef = const_cast<uint64_t&>(entry.key);
-        return std::atomic_ref<uint64_t>(keyRef).load(std::memory_order_relaxed);
-    }
-
-    [[nodiscard]] static inline uint64_t loadEntryPayloadAtomic(const Entry& entry) noexcept {
-        auto& payloadRef = const_cast<uint64_t&>(entry.payload);
-        return std::atomic_ref<uint64_t>(payloadRef).load(std::memory_order_relaxed);
-    }
-
-    static inline void storeEntryKeyAtomic(Entry& entry, uint64_t key) noexcept {
-        std::atomic_ref<uint64_t>(entry.key).store(key, std::memory_order_relaxed);
-    }
-
-    static inline void storeEntryPayloadAtomic(Entry& entry, uint64_t payload) noexcept {
-        std::atomic_ref<uint64_t>(entry.payload).store(payload, std::memory_order_relaxed);
+    [[nodiscard]] static inline std::atomic_ref<uint64_t> atomicWord(const uint64_t& word) noexcept {
+        return std::atomic_ref<uint64_t>(const_cast<uint64_t&>(word));
     }
 
     [[nodiscard]] static inline uint32_t lockBucket(BucketSeq& bucketSeq) noexcept {
@@ -278,8 +257,8 @@ private:
             }
 
             for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
-                snapshot[i].key = loadEntryKeyAtomic(bucket[i]);
-                snapshot[i].payload = loadEntryPayloadAtomic(bucket[i]);
+                snapshot[i].key = atomicWord(bucket[i].key).load(std::memory_order_relaxed);
+                snapshot[i].payload = atomicWord(bucket[i].payload).load(std::memory_order_relaxed);
             }
 
             const uint32_t seqEnd = bucketSeq.value.load(std::memory_order_acquire);
@@ -501,8 +480,8 @@ inline void TranspositionTable::storeImpl(
 
     for (size_t i = 0; i < ENTRIES_PER_BUCKET; ++i) {
         Entry& entry = bucket[i];
-        const uint64_t entryKey = loadEntryKeyAtomic(entry);
-        const uint64_t entryPayload = loadEntryPayloadAtomic(entry);
+        const uint64_t entryKey = atomicWord(entry.key).load(std::memory_order_relaxed);
+        const uint64_t entryPayload = atomicWord(entry.payload).load(std::memory_order_relaxed);
         const uint8_t entryFlag = Entry::flagFromPayload(entryPayload);
 
         if (entryFlag == Entry::INVALID) {
@@ -514,7 +493,7 @@ inline void TranspositionTable::storeImpl(
             if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
                 const uint16_t moveToStore = replaceBestMove ? bestMove : Entry::bestMoveFromPayload(entryPayload);
                 const uint64_t newPayload = Entry::encodePayload(score, moveToStore, storedDepth, generation_, flag);
-                storeEntryPayloadAtomic(entry, newPayload);
+                atomicWord(entry.payload).store(newPayload, std::memory_order_relaxed);
             }
             unlockBucket(bucketSeq, lockBase);
             return;
@@ -530,8 +509,8 @@ inline void TranspositionTable::storeImpl(
 
     Entry* const target = (emptyEntry != nullptr) ? emptyEntry : replaceEntry;
     const uint64_t newPayload = Entry::encodePayload(score, bestMove, storedDepth, generation_, flag);
-    storeEntryPayloadAtomic(*target, newPayload);
-    storeEntryKeyAtomic(*target, key);
+    atomicWord(target->payload).store(newPayload, std::memory_order_relaxed);
+    atomicWord(target->key).store(key, std::memory_order_relaxed);
     unlockBucket(bucketSeq, lockBase);
 }
 

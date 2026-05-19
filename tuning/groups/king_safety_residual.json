@@ -1,13 +1,13 @@
 {
   "parameter_ranges": {
-    "CASTLE_PAWN_SUPPORT_BONUS": "Integer(3, 9)",
-    "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(5, 12)",
-    "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(12, 24)",
-    "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(18, 32)",
+    "CASTLE_PAWN_SUPPORT_BONUS": "Integer(2, 11)",
+    "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(4, 14)",
+    "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(10, 26)",
+    "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(16, 34)",
     "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
-    "KING_OPEN_DIAGONAL_PENALTY": "Integer(8, 16)",
-    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(115, 145)",
-    "KING_ATTACK_DANGER_CAP": "Integer(105, 145)"
+    "KING_OPEN_DIAGONAL_PENALTY": "Integer(7, 17)",
+    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(110, 155)",
+    "KING_ATTACK_DANGER_CAP": "Integer(100, 155)"
   },
   "data_path": "king_safety_residual_data.npz",
   "model_path": "king_safety_residual_model.pkl"

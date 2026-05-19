@@ -110,6 +110,20 @@ public:
         bool* outHashMoveIsLegal = nullptr,
         const int16_t* contHistEntry = nullptr) noexcept;
 
+    struct CaptureInfo {
+        bool isCapture;
+        bool isEpCapture;
+        int victimType;
+    };
+
+    // Shared capture/en-passant/victim classification (sorter + searcher).
+    static CaptureInfo classifyCapture(
+        const chess::Board::Move& m,
+        int fromPieceType,
+        int toPieceType,
+        const chess::Coords& enPassant,
+        bool hasEnPassant) noexcept;
+
     static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Board::Move& m) noexcept {
         return staticExchangeEvaluation(b, m);
     }

@@ -77,66 +77,34 @@ inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint
     return occupancy;
 }
 
-// Compute rook attacks in the classic way (ground truth)
-inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
+// Generic ray-walk used to build the magic lookup tables (compile-time only).
+// Walks each direction until the board edge or the first occupied square.
+inline constexpr uint64_t calculateSlidingAttacks(
+        int8_t square, uint64_t occupancy, const int8_t dirs[4][2]) noexcept {
     uint64_t attacks = 0ULL;
     const int8_t file = chess::file(square);
     const int8_t rank = chess::rank(square);
-
-    //FIXME Fare helper per evitare duplicazione di codice.
-    // North (rank decreases)
-    for (int8_t r = rank - 1; r >= 0; --r) {
-        attacks |= (1ULL << (r * 8 + file));
-        if (occupancy & (1ULL << (r * 8 + file))) break;
+    for (int d = 0; d < 4; ++d) {
+        const int8_t df = dirs[d][0];
+        const int8_t dr = dirs[d][1];
+        for (int8_t f = file + df, r = rank + dr;
+             f >= 0 && f < 8 && r >= 0 && r < 8; f += df, r += dr) {
+            attacks |= (1ULL << (r * 8 + f));
+            if (occupancy & (1ULL << (r * 8 + f))) break;
+        }
     }
-    // South (rank increases)
-    for (int8_t r = rank + 1; r < 8; ++r) {
-        attacks |= (1ULL << (r * 8 + file));
-        if (occupancy & (1ULL << (r * 8 + file))) break;
-    }
-    // East (file increases)
-    for (int8_t f = file + 1; f < 8; ++f) {
-        attacks |= (1ULL << (rank * 8 + f));
-        if (occupancy & (1ULL << (rank * 8 + f))) break;
-    }
-    // West (file decreases)
-    for (int8_t f = file - 1; f >= 0; --f) {
-        attacks |= (1ULL << (rank * 8 + f));
-        if (occupancy & (1ULL << (rank * 8 + f))) break;
-    }
-
     return attacks;
 }
 
-// Compute bishop attacks in the classic way (ground truth)
+inline constexpr int8_t ROOK_DIRS[4][2]   = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
+inline constexpr int8_t BISHOP_DIRS[4][2] = {{1, -1}, {-1, -1}, {1, 1}, {-1, 1}};
+
+inline constexpr uint64_t calculateRookAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
+    return calculateSlidingAttacks(square, occupancy, ROOK_DIRS);
+}
+
 inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_t occupancy) noexcept {
-    uint64_t attacks = 0ULL;
-    const int8_t file = chess::file(square);
-    const int8_t rank = chess::rank(square);
-
-    //FIXME Vedi sopra
-    // NE (file increases, rank decreases)
-    for (int8_t f = file + 1, r = rank - 1; f < 8 && r >= 0; ++f, --r) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (occupancy & (1ULL << (r * 8 + f))) break;
-    }
-    // NW (file decreases, rank decreases)
-    for (int8_t f = file - 1, r = rank - 1; f >= 0 && r >= 0; --f, --r) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (occupancy & (1ULL << (r * 8 + f))) break;
-    }
-    // SE (file increases, rank increases)
-    for (int8_t f = file + 1, r = rank + 1; f < 8 && r < 8; ++f, ++r) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (occupancy & (1ULL << (r * 8 + f))) break;
-    }
-    // SW (file decreases, rank increases)
-    for (int8_t f = file - 1, r = rank + 1; f >= 0 && r < 8; --f, ++r) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (occupancy & (1ULL << (r * 8 + f))) break;
-    }
-
-    return attacks;
+    return calculateSlidingAttacks(square, occupancy, BISHOP_DIRS);
 }
 
 //FIXME Troppi parametri
@@ -321,31 +289,26 @@ inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexce
 	return attackers;
 }
 
-inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
-    int8_t file = chess::file(squareIndex), rank = chess::rank(squareIndex);
-
+// Shared step-attack generator for knight/king (compile-time table builders).
+inline constexpr U64 attacksFromOffsets(int8_t squareIndex, const int8_t offsets[8][2]) noexcept {
+    const int8_t file = chess::file(squareIndex);
+    const int8_t rank = chess::rank(squareIndex);
     U64 attackBitboard = 0ULL;
-	
-    for (const auto *offset : KNIGHT_OFFSET) {
-	int8_t newFile = file + offset[0], newRank = rank + offset[1];
-	if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
-	    attackBitboard |= ONE << (newRank * 8 + newFile);
+    for (int i = 0; i < 8; ++i) {
+        const int8_t newFile = file + offsets[i][0];
+        const int8_t newRank = rank + offsets[i][1];
+        if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8)
+            attackBitboard |= ONE << (newRank * 8 + newFile);
     }
-	return attackBitboard;
+    return attackBitboard;
+}
+
+inline constexpr U64 getKnightAttacks(int8_t squareIndex) noexcept {
+    return attacksFromOffsets(squareIndex, KNIGHT_OFFSET);
 }
 
 inline constexpr U64 getKingAttacks(int8_t squareIndex) noexcept {
-	int8_t file = chess::file(squareIndex), rank = chess::rank(squareIndex);
-
-	U64 attackBitboard = 0ULL;
-
-	for (const auto *offset : KING_OFFSET) {
-		int8_t newFile = file + offset[0], newRank = rank + offset[1];
-		if( (newFile >= 0 && newFile < 8) && (newRank >= 0 && newRank < 8))
-			attackBitboard |= ONE << (newRank * 8 + newFile);
-	}
-
-	return attackBitboard;
+    return attacksFromOffsets(squareIndex, KING_OFFSET);
 }
 
 inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = []{

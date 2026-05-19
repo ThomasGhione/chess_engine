@@ -192,6 +192,17 @@ private:
     static constexpr int32_t scoreToTT(int32_t score, int ply) noexcept;
     static constexpr int32_t scoreFromTT(int32_t score, int ply) noexcept;
     static constexpr int16_t clampHeuristic16(int32_t value) noexcept;
+    // Gravity update shared by history / continuation / capture history.
+    // delta > 0 is a bonus, delta < 0 a malus; decay uses |delta|.
+    static void applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValue) noexcept;
+    // TT store wrappers: flag derivation + mate-score rebasing + clamping.
+    // The move-less overload must NOT forward a 0 move (that would clobber an
+    // existing stored move via replaceBestMove=true).
+    static void writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
+                        int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply) noexcept;
+    static void writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
+                        int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply,
+                        const chess::Board::Move& bestMove) noexcept;
 
     static bool shouldAbortSearch(const SearchRuntime& runtime) noexcept;
     static void markInterrupted(SearchRuntime& runtime) noexcept;
