@@ -57,6 +57,11 @@ public:
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};
+        // Per-move quiet "gives check" memo from the ordering pass:
+        // -1 = not computed (ordering short-circuited before the test),
+        //  0 = false, 1 = true. Lets searchMoves reuse it instead of
+        // recomputing givesCheckAfterQuietMoveFast (uncached, ~6% self-time).
+        int8_t givesCheckFlag[MAX_MOVES];
         int size = 0;
         int currentIndex = 0;
         bool hashMoveIsLegal = false;
@@ -86,6 +91,10 @@ public:
                 const auto tempScore = scores[currentIndex];
                 scores[currentIndex] = scores[bestIdx];
                 scores[bestIdx] = tempScore;
+
+                const auto tempGc = givesCheckFlag[currentIndex];
+                givesCheckFlag[currentIndex] = givesCheckFlag[bestIdx];
+                givesCheckFlag[bestIdx] = tempGc;
             }
 
             return moves[currentIndex++];
@@ -99,14 +108,17 @@ public:
             for (int i = 1; i < size; ++i) {
                 const chess::Board::Move keyMove = moves[i];
                 const int32_t keyScore = scores[i];
+                const int8_t keyGc = givesCheckFlag[i];
                 int j = i - 1;
                 while (j >= 0 && scores[j] < keyScore) {
                     scores[j + 1] = scores[j];
                     moves[j + 1] = moves[j];
+                    givesCheckFlag[j + 1] = givesCheckFlag[j];
                     --j;
                 }
                 scores[j + 1] = keyScore;
                 moves[j + 1] = keyMove;
+                givesCheckFlag[j + 1] = keyGc;
             }
         }
     };
@@ -200,7 +212,8 @@ private:
         int victimType,
         int32_t see,
         bool isPromotionCandidate,
-        bool isHashMove) noexcept;
+        bool isHashMove,
+        int8_t& outGivesCheck) noexcept;
 
     // square == 64 means "no attacker" (type is then unspecified). The type
     // is the piece type of the returned attacker, derived for free from the

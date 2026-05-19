@@ -62,7 +62,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         int fromPieceType, bool isCapture, int victimType, int32_t see,
-        bool isPromotionCandidate, bool isHashMove) noexcept {
+        bool isPromotionCandidate, bool isHashMove, int8_t& outGivesCheck) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
@@ -93,9 +93,11 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
     }
 
-    if (ctx.oppKingSq < 64 && fromPieceType != chess::Board::KING
-        && givesCheckAfterQuietMoveFast(ctx.b, m, fromPieceType, ctx.usSide, ctx.oppKingSq, ctx.occ)) {
-        return CHECK_QUIET_SCORE;
+    if (ctx.oppKingSq < 64 && fromPieceType != chess::Board::KING) {
+        const bool gc = givesCheckAfterQuietMoveFast(
+            ctx.b, m, fromPieceType, ctx.usSide, ctx.oppKingSq, ctx.occ);
+        outGivesCheck = gc ? 1 : 0;
+        if (gc) return CHECK_QUIET_SCORE;
     }
 
     int32_t score = 0;
@@ -301,9 +303,10 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
         const bool needsSee = !isHashMove && (isCapture || (!isPromotionCandidate && fromPieceType != chess::Board::KING));
         const int32_t see = needsSee ? staticExchangeEvaluation(b, m) : 0;
 
+        int8_t gcFlag = -1; // -1 = ordering did not compute the quiet check
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, fromPieceType, isCapture, victimType, see,
-            isPromotionCandidate, isHashMove);
+            isPromotionCandidate, isHashMove, gcFlag);
 
         if (!isHashMove && !isCapture && !isPromotionCandidate && see < 0) {
             score = std::min(score, KILLER_2_SCORE - 1) + see;
@@ -320,6 +323,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
         }
 
         picker.scores[moveIndex] = score;
+        picker.givesCheckFlag[moveIndex] = gcFlag;
     }
 
     picker.hashMoveIsLegal = hashMoveFound;

@@ -17,21 +17,16 @@
   ],
   "engine1_depth": 8,
   "engine2_depth": 8,
-  "rounds": 20,
+  "rounds": 16,
   "opening_file": "books/openings.pgn",
   "timemargin": 1000,
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "CASTLE_PAWN_SUPPORT_BONUS": "Integer(2, 11)",
-    "KING_CASTLED_SHIELD_BREAK_PENALTY": "Integer(4, 14)",
-    "KING_HOOK_PAWN_ATTACKED_PENALTY": "Integer(10, 26)",
-    "KING_HOOK_PAWN_HANGING_PENALTY": "Integer(16, 34)",
-    "KING_SAFETY_OPENING_SCALE_PERCENT": "Integer(20, 40)",
-    "KING_OPEN_DIAGONAL_PENALTY": "Integer(7, 17)",
-    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(110, 155)",
-    "KING_ATTACK_DANGER_CAP": "Integer(100, 155)"
+    "HANGING_MINOR_PENALTY": "Integer(-34, -16)",
+    "HANGING_ROOK_PENALTY": "Integer(-52, -26)",
+    "HANGING_QUEEN_PENALTY": "Integer(-75, -38)"
   },
-  "data_path": "king_safety_residual_data.npz",
-  "model_path": "king_safety_residual_model.pkl"
+  "data_path": "hanging_pieces_only_data.npz",
+  "model_path": "hanging_pieces_only_model.pkl"
 }

@@ -17,7 +17,7 @@
   ],
   "engine1_depth": 8,
   "engine2_depth": 8,
-  "rounds": 20,
+  "rounds": 16,
   "opening_file": "books/openings.pgn",
   "timemargin": 1000,
   "plot_every": 0,
