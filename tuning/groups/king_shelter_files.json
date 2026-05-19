@@ -1,13 +1,13 @@
 {
   "parameter_ranges": {
     "KING_SHELTER_STRONG_BONUS": "Integer(5, 13)",
-    "KING_SHELTER_WEAK_BONUS": "Integer(5, 20)",
-    "KING_SHELTER_MISSING_PENALTY": "Integer(14, 32)",
-    "KING_PAWN_STORM_NEAR_PENALTY": "Integer(11, 22)",
-    "KING_PAWN_STORM_FAR_PENALTY": "Integer(7, 17)",
+    "KING_SHELTER_WEAK_BONUS": "Integer(11, 22)",
+    "KING_SHELTER_MISSING_PENALTY": "Integer(20, 48)",
+    "KING_PAWN_STORM_NEAR_PENALTY": "Integer(12, 22)",
+    "KING_PAWN_STORM_FAR_PENALTY": "Integer(9, 19)",
     "KING_SEMI_OPEN_FILE_PENALTY": "Integer(10, 24)",
-    "KING_OPEN_FILE_PENALTY": "Integer(8, 17)",
-    "KING_FILE_PRESSURE_PENALTY": "Integer(6, 14)"
+    "KING_OPEN_FILE_PENALTY": "Integer(8, 18)",
+    "KING_FILE_PRESSURE_PENALTY": "Integer(7, 20)"
   },
   "data_path": "king_shelter_files_data.npz",
   "model_path": "king_shelter_files_model.pkl"
