@@ -121,9 +121,9 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
 bool Searcher::SearchRuntime::shouldAbort() const noexcept {
     const bool stopRequested = stopSearchRequested != nullptr
         && stopSearchRequested->load(std::memory_order_acquire);
-    const bool ponderingStopRequested = this->ponderingStopRequested != nullptr
-        && this->ponderingStopRequested->load(std::memory_order_acquire);
-    return stopRequested || ponderingStopRequested;
+    const bool ponderStopRequested = ponderingStopRequested != nullptr
+        && ponderingStopRequested->load(std::memory_order_acquire);
+    return stopRequested || ponderStopRequested;
 }
 
 void Searcher::SearchRuntime::markInterrupted() noexcept {
@@ -320,7 +320,6 @@ int32_t Searcher::searchRootMoveScore(
     int32_t alpha,
     int32_t beta,
     int currPly,
-    bool useTT,
     bool allowTTWrite,
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter) noexcept {
@@ -329,7 +328,7 @@ int32_t Searcher::searchRootMoveScore(
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
     const int32_t score = -searchPosition(
         b, runtime, runtime.depth - 1, -beta, -alpha, currPly,
-        useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
+        true, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
 }
@@ -341,10 +340,7 @@ bool Searcher::handleSearchPrelude(
     int32_t& score,
     uint64_t hashKey,
     int ply) noexcept {
-    if (runtime.transpositionTable == nullptr) {
-        return false;
-    }
-
+    // Precondition (guaranteed by the only caller's canUseTT): transpositionTable != nullptr.
     if (depth >= 2) runtime.transpositionTable->prefetch(hashKey);
 
     int32_t ttScore = 0;
@@ -412,13 +408,10 @@ bool Searcher::tryReverseFutilityPruning(
     const SearchNodeState& node,
     int32_t depth,
     int32_t beta,
-    int ply,
     int32_t& outScore) noexcept {
     constexpr int32_t RFP_MARGIN_PER_DEPTH = 110;
-
-    if (node.isPVNode || node.inCheck || node.isPawnEndgameForPruning || ply <= 0 || depth > 3) {
-        return false;
-    }
+    // Precondition (guaranteed by the only caller's canReverseFutilityPrune):
+    // !isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3.
 
     // Negamax: staticEval is side-to-move relative; fail high if it beats
     // beta even after subtracting the margin.
@@ -975,7 +968,7 @@ int32_t Searcher::searchPosition(
     const bool canReverseFutilityPrune =
         !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
     if (canReverseFutilityPrune
-        && tryReverseFutilityPruning(b, node, depth, beta, ply, score)) {
+        && tryReverseFutilityPruning(b, node, depth, beta, score)) {
         return score;
     }
 
@@ -1283,14 +1276,14 @@ chess::Board::Move Searcher::getBestMove(
 
             int32_t score;
             if (isFirst) {
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
+                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &localNodes);
             } else {
                 int32_t nullAlpha = 0;
                 int32_t nullBeta = 0;
                 rootNullWindow(alpha, nullAlpha, nullBeta);
-                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, true, &localNodes);
+                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, &localNodes);
                 if (shouldResearchPVS(score, alpha)) {
-                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &localNodes);
+                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &localNodes);
                 }
             }
 
@@ -1310,7 +1303,7 @@ chess::Board::Move Searcher::getBestMove(
     // Macro-step 3: YBWC root search (first move serial, remaining moves task-parallel).
     {
         const auto& firstMove = rootMoves[0];
-        const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, currPly, true, true, true, &localNodes);
+        const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, currPly, true, true, &localNodes);
         searchedAnyMove = true;
         updateMinMax(score, alpha, bestScore, bestMove, firstMove);
     }
@@ -1336,7 +1329,7 @@ chess::Board::Move Searcher::getBestMove(
         int32_t nullBeta = 0;
         rootNullWindow(alpha, nullAlpha, nullBeta);
         const int32_t score = searchRootMoveScore(
-            threadBoard, m, runtime, nullAlpha, nullBeta, currPly, true, false, false, &workerNodes);
+            threadBoard, m, runtime, nullAlpha, nullBeta, currPly, false, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;
@@ -1402,7 +1395,7 @@ chess::Board::Move Searcher::getBestMove(
         int32_t score = threadScores[i];
         if (threadNeedsResearch[i] != 0U) {
             uint64_t researchNodes = 0;
-            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, true, &researchNodes);
+            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &researchNodes);
             localNodes += researchNodes;
             if (runtime.isInterrupted()) {
                 break;

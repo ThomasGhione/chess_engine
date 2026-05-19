@@ -237,7 +237,6 @@ private:
         int32_t alpha,
         int32_t beta,
         int currPly,
-        bool useTT,
         bool allowTTWrite,
         bool allowHeuristicUpdates,
         uint64_t* nodeCounter) noexcept;
@@ -269,7 +268,6 @@ private:
         const SearchNodeState& node,
         int32_t depth,
         int32_t beta,
-        int ply,
         int32_t& outScore) noexcept;
 
     static SearchMoveResult searchMoves(
