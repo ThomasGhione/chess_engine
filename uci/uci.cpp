@@ -368,6 +368,8 @@ namespace uci {
         std::cout
             << "id name HydraY 1.1.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
+            << "option name BookFile type string default engine/komodo.bin\n"
+            << "option name Opening type check default true\n"
             << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n";
         for (const auto& option : kEvalOptions) {
@@ -399,7 +401,17 @@ namespace uci {
 
         if (optionName.empty()) return;
         const std::string normalizedName = normalizedOptionName(optionName);
-        if (normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") {
+        if (normalizedName == "bookfile") {
+            const std::string path(optionValue);
+            if (engine.openingBook.load(path)) {
+                std::cout << "info string BookFile loaded: " << path << "\n";
+            } else {
+                std::cout << "info string BookFile error: could not load '" << path << "'\n";
+            }
+            return;
+        }
+
+        if (normalizedName != "opening" && normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") {
             for (auto& option : kEvalOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
@@ -434,6 +446,13 @@ namespace uci {
         if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
             std::cout << "info string invalid value for " << optionName << ": '" << optionValue
                       << "' (use true/false)\n";
+            return;
+        }
+
+        if (normalizedName == "opening") {
+            engine.openingEnabled.store(enabled, std::memory_order_relaxed);
+            std::cout << "info string Opening "
+                      << (enabled ? "enabled" : "disabled") << '\n';
             return;
         }
 

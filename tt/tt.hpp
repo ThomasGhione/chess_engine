@@ -401,8 +401,8 @@ private:
 
 inline void TranspositionTable::prefetch(uint64_t key) noexcept {
     const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
-    const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
-    __builtin_prefetch(bucket, 0, 3);
+    __builtin_prefetch(data() + (bucketIndex * ENTRIES_PER_BUCKET), 0, 3);
+    __builtin_prefetch(seqData() + bucketIndex, 0, 3);
 }
 
 static_assert(TranspositionTable::Entry::encodeMove(12, 28, 'q') == TranspositionTable::Entry::encodeMove(12, 28, 'Q'), "promotion encoding should be case-insensitive");

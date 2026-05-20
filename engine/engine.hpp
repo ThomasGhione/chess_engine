@@ -14,6 +14,7 @@
 
 #include "search/searcher.hpp"
 #include "time/time_manager.hpp"
+#include "opening/opening_book.hpp"
 
 namespace engine {
 
@@ -99,6 +100,10 @@ public:
     static constexpr size_t MOVE_HISTORY_ENTRY_MAX_LEN = 6; // "e7e8q\n"
     static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
     std::string moveHistory {};
+
+    // Opening book
+    opening::OpeningBook openingBook;
+    std::atomic<bool> openingEnabled {true};
 
     // Transposition table (shared by normal search and pondering)
     TranspositionTable tt;

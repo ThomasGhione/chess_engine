@@ -104,6 +104,7 @@ Engine::Engine()
     searchRuntime.maxThreads = omp_get_max_threads();
     bindSearchRuntime();
     this->tt.clear();
+    this->openingBook.load("engine/komodo.bin");
     this->ponderingThread = std::thread([this] { this->ponderWorkerLoop(); });
 }
 
@@ -416,6 +417,13 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
         return this->bestMove;
     }
 
+    if (this->openingEnabled.load(std::memory_order_relaxed)) {
+        if (auto bookMove = this->openingBook.probe(this->board)) {
+            this->bestMove = *bookMove;
+            return this->bestMove;
+        }
+    }
+
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
     this->searchInterrupted.store(false, std::memory_order_relaxed);
     this->clearPonderResult();
@@ -473,6 +481,13 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
         return this->bestMove;
     }
 
+    if (this->openingEnabled.load(std::memory_order_relaxed)) {
+        if (auto bookMove = this->openingBook.probe(this->board)) {
+            this->bestMove = *bookMove;
+            return this->bestMove;
+        }
+    }
+
     this->clearPonderResult();
 
     this->searchRuntime.timeManager = &this->timeManager;
@@ -512,7 +527,14 @@ void Engine::search(uint64_t requestedDepth) noexcept {
         this->searchInterrupted.store(false, std::memory_order_relaxed);
         this->clearPonderResult();
 
-        candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
+        if (this->openingEnabled.load(std::memory_order_relaxed)) {
+            if (auto bookMove = this->openingBook.probe(this->board)) {
+                candidate = *bookMove;
+            }
+        }
+        if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
+            candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
+        }
     }
 
     if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
