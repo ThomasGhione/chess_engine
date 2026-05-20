@@ -1470,9 +1470,11 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     int32_t rootDrawScore = 0;
     if (checkDrawTerminalConditions(rootBoard, rootDrawScore)) {
+        MoveList<chess::Board::Move> drawMoves = engine::MoveGenerator::generateLegalMoves(rootBoard);
         result.terminalRoot = true;
         result.completedAnyDepth = true;
         result.bestScore = rootDrawScore;
+        result.bestMove = drawMoves.is_empty() ? chess::Board::Move{} : drawMoves[0];
         runtime.eval = rootDrawScore;
         return result;
     }
