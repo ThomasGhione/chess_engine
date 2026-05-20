@@ -159,7 +159,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         int32_t score; 
         uint8_t valid; 
     };
-    static constexpr size_t SEE_CACHE_SIZE = 1u << 12;
+    static constexpr size_t SEE_CACHE_SIZE = 1u << 16;
     static constexpr uint64_t SEE_CACHE_MASK = SEE_CACHE_SIZE - 1u;
     thread_local std::array<SEECacheEntry, SEE_CACHE_SIZE> seeCache{};
 
