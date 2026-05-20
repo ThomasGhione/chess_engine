@@ -8,6 +8,13 @@
 
 namespace engine {
 
+// Forward decl: SearchRuntime owns history/killer/counter/capture-history and
+// the TT pointer, all of which sortLegalMoves reads. Taking it by const-ref
+// replaces 5 separate (&)[...] / pointer parameters at the call sites.
+// Full definition lives in searcher.hpp (engine.hpp transitively includes it
+// from sorter.cpp where the function body needs the members).
+struct SearchRuntime;
+
 class Sorter final {
 public:
     Sorter() = delete;
@@ -129,10 +136,7 @@ public:
         const chess::Board& b,
         bool usIsWhite,
         uint64_t hashKey,
-        const int16_t (&history)[2][64][64],
-        const chess::Board::Move (&killerMoves)[2][MAX_PLY],
-        const uint16_t (&counterMoves)[64][64],
-        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
+        const SearchRuntime& runtime,
         const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
         bool* outHashMoveIsLegal = nullptr,
@@ -184,10 +188,9 @@ private:
         bool usIsWhite;
         bool isEndgameOrdering;
         int fullMoveClock;
-        const int16_t (&history)[2][64][64];
-        const chess::Board::Move (&killerMoves)[2][MAX_PLY];
-        const uint16_t (&counterMoves)[64][64];
-        const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS];
+        // One ref instead of four (&)[...] tables: smaller struct (~24 B
+        // less) and accesses go through ctx.runtime.<table>[...].
+        const SearchRuntime& runtime;
         const int16_t* contHistEntry;
     };
 

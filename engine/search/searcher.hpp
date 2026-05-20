@@ -14,6 +14,50 @@ namespace engine {
 
 namespace time { class TimeManager; }
 
+// Hoisted to namespace scope so SearchRuntime (also at namespace scope) and
+// other TUs (sorter) can forward-declare/use them without depending on the
+// full Searcher class definition. Aliased back inside Searcher below to
+// preserve all existing Searcher::MAX_PLY / Searcher::SearchRuntime call sites.
+inline constexpr int32_t MAX_PLY = 64;
+inline constexpr int32_t CAPTURE_HISTORY_SLOTS = 2;
+inline constexpr uint64_t DEFAULT_DEPTH = 11;
+
+struct SearchRuntime {
+    // Search state
+    uint64_t nodesSearched = 0;
+    uint64_t depth = DEFAULT_DEPTH;
+    int32_t eval = 0;
+    int maxThreads = 1;
+
+    // Heuristics state (same layout used by Engine search path).
+    chess::Board::Move killerMoves[2][MAX_PLY] {};
+    int16_t history[2][64][64] {};
+    uint16_t counterMoves[64][64] {};
+    int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
+    int16_t contHist[2][64][64] {};
+    // evalStack is per-thread (thread_local in searchPosition), NOT here:
+    // it feeds a hard prune (`improving`) so a Lazy-SMP race on a shared
+    // array could corrupt pruning and change the chosen move.
+
+    // External coordination hooks.
+    TranspositionTable* transpositionTable = nullptr;
+    std::atomic<bool>* stopSearchRequested = nullptr;
+    std::atomic<bool>* ponderingStopRequested = nullptr;
+    std::atomic<bool>* searchInterrupted = nullptr;
+
+    // Optional: drives soft-limit / stability decisions in iterative
+    // deepening. Null for fixed-depth / ponder / perft-style searches.
+    time::TimeManager* timeManager = nullptr;
+
+    // Abort/interrupt protocol and heuristic decay: act only on this
+    // struct's own state, so they live here rather than on Searcher.
+    [[nodiscard]] bool shouldAbort() const noexcept;
+    void markInterrupted() noexcept;
+    [[nodiscard]] bool isInterrupted() const noexcept;
+    void clearInterrupted() noexcept;
+    void softResetHistory() noexcept;
+};
+
 class Searcher final {
 public:
     Searcher() = delete;
@@ -22,9 +66,12 @@ public:
     // Negamax-safe: NEG_INF == -POS_INF so -(NEG_INF) == POS_INF is valid
     // (negating std::numeric_limits<int32_t>::min() is undefined behaviour).
     static constexpr int32_t NEG_INF = -POS_INF;
-    static constexpr int32_t DEFAULT_DEPTH = 11;
-    static constexpr int32_t MAX_PLY = 64;
-    static constexpr int32_t CAPTURE_HISTORY_SLOTS = 2;
+    // Backward-compat aliases so Searcher::DEFAULT_DEPTH / ::MAX_PLY /
+    // ::CAPTURE_HISTORY_SLOTS / ::SearchRuntime call sites keep working.
+    static constexpr uint64_t DEFAULT_DEPTH = ::engine::DEFAULT_DEPTH;
+    static constexpr int32_t MAX_PLY = ::engine::MAX_PLY;
+    static constexpr int32_t CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
+    using SearchRuntime = ::engine::SearchRuntime;
 
     // Null move pruning thresholds
     static constexpr int NULL_MOVE_VERIFICATION_DEPTH = 10;  // Verify null move if depth >= 10
@@ -50,42 +97,6 @@ public:
     struct SearchMoveResult {
         chess::Board::Move move;
         int32_t score;
-    };
-
-    struct SearchRuntime {
-        // Search state
-        uint64_t nodesSearched = 0;
-        uint64_t depth = DEFAULT_DEPTH;
-        int32_t eval = 0;
-        int maxThreads = 1;
-
-        // Heuristics state (same layout used by Engine search path).
-        chess::Board::Move killerMoves[2][MAX_PLY] {};
-        int16_t history[2][64][64] {};
-        uint16_t counterMoves[64][64] {};
-        int16_t captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
-        int16_t contHist[2][64][64] {};
-        // evalStack is per-thread (thread_local in searchPosition), NOT here:
-        // it feeds a hard prune (`improving`) so a Lazy-SMP race on a shared
-        // array could corrupt pruning and change the chosen move.
-
-        // External coordination hooks.
-        TranspositionTable* transpositionTable = nullptr;
-        std::atomic<bool>* stopSearchRequested = nullptr;
-        std::atomic<bool>* ponderingStopRequested = nullptr;
-        std::atomic<bool>* searchInterrupted = nullptr;
-
-        // Optional: drives soft-limit / stability decisions in iterative
-        // deepening. Null for fixed-depth / ponder / perft-style searches.
-        time::TimeManager* timeManager = nullptr;
-
-        // Abort/interrupt protocol and heuristic decay: these act only on
-        // this struct's own state, so they live here rather than on Searcher.
-        [[nodiscard]] bool shouldAbort() const noexcept;
-        void markInterrupted() noexcept;
-        [[nodiscard]] bool isInterrupted() const noexcept;
-        void clearInterrupted() noexcept;
-        void softResetHistory() noexcept;
     };
 
     struct IterativeSearchResult {

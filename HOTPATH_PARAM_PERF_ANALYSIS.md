@@ -2,224 +2,151 @@
 
 Profile-driven analysis of the hot code (searcher, sorter, evaluator, move
 generator, board, tt). Goal: less complexity / fewer LOC, **and above all
-more performance**. Per the agreed methodology, real performance wins are
-kept strictly separate from perf-neutral ergonomic/LOC refactors.
+more performance**. Real performance wins are kept strictly separate from
+perf-neutral ergonomic/LOC refactors.
 
-> **Premise correction (agreed upfront).** Reducing parameters or turning
-> static utility classes into stateful objects does **not** generically make
-> code faster. `const Board&` is already a pointer passed in a register;
-> precomputed bitboard/scalar arguments are register-resident — the fastest
-> calling convention. Replacing them with member loads is usually
-> perf-neutral or a small regression. The static→stateful idea was therefore
-> **dropped**. Real speedups here come from **not recomputing the same thing
-> twice per node**, which is what P0 targets.
+> **Premise correction.** Reducing parameters or turning static utility
+> classes into stateful objects does **not** generically make code faster.
+> `const Board&` is already a pointer in a register; precomputed
+> bitboard/scalar arguments are register-resident. Replacing them with
+> member loads is usually perf-neutral or a small regression. Real
+> speedups come from **not recomputing the same thing twice per node**.
 
 ---
 
-## 1. Methodology & measurement
+## 1. Methodology & measurement (current)
 
-* **Profiler:** `perf` is blocked on this host (`perf_event_paranoid=4`,
-  non-interactive `sudo` needs a password/TTY); `valgrind`/`callgrind` is not
-  installed. Fallback is the project's own path: `make debug` (`-pg`) + gprof.
-* **Workload:** `position startpos` + `go depth 11`, run with
-  `OMP_NUM_THREADS=1` so the profile is **single-thread and deterministic**.
-  Node count is the correctness anchor: **2 171 395** (unchanged across the
-  whole cleanup series; identical at 1 and 8 threads).
-* **Caveat:** the debug build is `-O1` (+ LTO), so functions inlined at `-O3`
-  show separately and self-time is approximate. gprof's call-graph counts are
-  unusable here (LTO + `-pg` breaks attribution); **flat self-time %** is the
-  reliable signal and is what the ranking below uses. Call frequency is
-  derived by reading call sites against the node count, not from gprof.
-* **Validation protocol for any change from this doc:**
-  1. `make perf` → node count **must stay 2 171 395** (bit-identical search;
-     these are pure dedup/recompute-elimination, not heuristic changes).
-  2. UCI `go depth 11` from startpos → bestmove **must stay `e2e4 / g8f6`**.
-  3. Re-profile with the same `make debug` + gprof single-thread run; compare
-     **self-time %** of the targeted function before/after (deterministic
-     enough for a clear delta on a 15%/7% bucket).
-  4. nps over ≥10 prod runs as a secondary signal (noisy band 152–217 ms;
-     only large moves are trustworthy here).
+* **Profiling tools:** `perf` is blocked on this host
+  (`perf_event_paranoid=4`); **`valgrind`/`callgrind` is now installed**
+  and is the primary deterministic profiler. gprof (`make debug`) is the
+  secondary, for self-time % cross-checks. gprof's call-graph counts are
+  unusable here (LTO + `-pg` breaks attribution); **callgrind
+  `--separate-callers=2` is what splits work by caller**, which is
+  essential to distinguish "function is hot" from "the *recompute* of
+  this function is hot".
+* **Workload:** `position startpos` + `go depth 11`, `OMP_NUM_THREADS=1`
+  for deterministic single-thread profiles.
+* **Correctness anchor:** **node count A/B equality** via `git stash` of
+  the changed files — any "behaviour-identical" claim must show the
+  *same* node count with and without the change, on the *same* working
+  tree (so user-side eval-constant tuning doesn't contaminate the
+  comparison). The current node count happens to be **7 524 212**
+  (depending on `eval_constants.hpp` state), bestmove `e2e4 / g8f6`; but
+  the absolute number isn't the invariant — equality across the A/B is.
+* **Wall-clock perf:** noisy band; use ≥3 `./tests/perf` runs and
+  compare **minimums** vs the A/B baseline (also from `git stash`),
+  never against a stale absolute number.
 
 ---
 
-## 2. Hot-path ranking (gprof flat, single-thread, depth 11)
+## 2. What's already done (for context)
 
-| % self | Function | Category |
+| Done | What | Outcome |
+|---|---|---|
+| ✅ | **P0.2** Carry quiet "gives-check" bit from ordering into `searchMoves` | Committed. Behaviour bit-identical (A/B at equal nodes). Measured: gprof `givesCheckAfterQuietMoveFast` 7.38% → 6.27% (-1.11 pp), wall-clock ~3–6% on the perf harness. The single concrete perf win from this analysis. |
+| ✅ | **P0.1** (re-scoped) Remove `lmrLosingCapture` branch | **Not a perf win** (see §3). It was a bug: SEE was called *after* `doMove`, so it computed `PIECE_VALUES[mover_piece]` on a corrupted occupancy and was empirically false 0/7490 times across 5 positions. Removed as dead code, behaviour bit-identical. Saves ~0.004% Ir. Awaiting commit. |
+
+The earlier ranking that claimed P0.1 would save the 14.8% SEE bucket was
+**wrong** — see §3 for the corrected callgrind breakdown.
+
+---
+
+## 3. Hot-path ranking — corrected with callgrind `--separate-callers`
+
+Total instructions per depth-11 single-thread run: **33.9 G Ir**. Top
+buckets attributed by caller (not just function self-time):
+
+| Ir % | Caller chain | Note |
 |--:|---|---|
-| 16.3 | `Searcher::searchPosition` | node driver (much inlined work attributed here) |
-| **14.8** | `Sorter::staticExchangeEvaluation` (SEE) | **P0 — recomputed** |
-| **6.6** | `Sorter::givesCheckAfterQuietMoveFast` | **P0 — recomputed, uncached** |
-| 6.1 | `Sorter::sortLegalMoves` | move ordering / node |
-| 5.6 | `Evaluator::evalKingSafetySide` | eval pipeline |
-| 5.1 | `Searcher::quiescenceSearch` | node driver |
-| 4.6 | `Evaluator::evalPawnsByColor` | eval pipeline |
-| 4.6 | `Board::inCheck` | per-node/per-move check test |
-| 4.1 | `Evaluator::computeAttackData` | eval pipeline (already 1×/eval) |
-| 3.6 | `Evaluator::evaluateOpeningPhase` | eval pipeline |
-| 3.1 | `MoveGenerator::generateLegalMovesFor<false>` | move generation |
-| 3.1 | `Evaluator::evalPawnForks` | eval pipeline |
-| 2.0 | `emitAllNonPawnLegal` / `evalPawnStructure` | movegen / eval |
-| 1.5 | `Board::undoMove` / `writeTT` / `Evaluator::evaluate` | make/unmake, TT |
+| **14.23** | `staticExchangeEvaluation` ← **`sortLegalMoves`** ← `searchPosition` | **Legitimate** ordering cost. Cannot be removed by carry-forward (it *is* the originating computation). To reduce: skip more moves from SEE in ordering, lighter cache key, or different ordering scheme — all behaviour-changing. |
+| 6.34 | `evalKingSafetySide` ← `evaluateOpeningPhase` ← `evaluate` | Inherent eval cost. |
+| 6.19 | `givesCheckAfterQuietMoveFast` ← `sortLegalMoves` ← `searchPosition` | Legitimate ordering cost (the *recompute* in `searchMoves` was already eliminated by P0.2). |
+| 4.00 | `evalPawnsByColor` ← `evalPawnStructure` ← `evalPawnStructureCached` | Inherent eval cost; `Cached` suggests EvalCache memo already applied. |
+| 3.10 | `doMove` ← `searchPosition` ← `searchRootMoveScore` | Inherent make-move cost. |
+| 3.08 | `evaluateOpeningPhase` ← `evaluate` ← `quiescenceSearch` | qsearch stand-pat. |
+| 2.30 | `computeAttackData` ← `evaluate` ← `quiescenceSearch` | qsearch stand-pat's attack-data build. |
+| 2.00 | `evaluateOpeningPhase` ← `evaluate` ← `searchPosition` | interior node staticEval. |
+| 1.92 | `evalPawnForks` ← `evaluateOpeningPhase` ← `evaluate` | inherent. |
+| 1.79 | `quiescenceSearch` ← `searchPosition` | inherent. |
+| 1.54 | `undoMove` ← `searchPosition` ← `searchRootMoveScore` | inherent. |
+| 1.46 | `computeAttackData` ← `evaluate` ← `searchPosition` | interior node attack-data. |
+| 0.71 | `staticExchangeEvaluation` ← `quiescenceSearch` ← `searchPosition` | qsearch SEE (separate use). |
+| **0.004** | `staticExchangeEvaluation` ← `searchPosition` ← `searchRootMoveScore` | (this was the `lmrLosingCapture` recompute — removed.) |
 
-The eval sub-functions together (~26% cumulative) are the largest aggregate,
-but they are already structured well (single `computeAttackData` per
-`evaluate`, `AttackData*` threaded to sub-evaluators, `EvalCache` on `Board`
-memoising terms across do/undo). The clearest **recomputation** waste is SEE
-and the quiet-check predicate.
-
----
-
-## 3. P0 — real performance (recomputation elimination)
-
-These remove work that is provably done twice for the same move at the same
-node. Highest priority; measurable on the 15%/7% buckets.
-
-### P0.1 — Carry SEE from move ordering into the search loop  ★ highest value
-
-**Evidence.** `staticExchangeEvaluation` is **14.8%** self-time (#2).
-
-**Recomputation (verified by reading call sites):**
-* `sorter.cpp:302` (`sortLegalMoves`): `see = needsSee ? staticExchangeEvaluation(b,m) : 0`, where
-  `needsSee = !isHashMove && (isCapture || (!isPromotionCandidate && fromPieceType != KING))`.
-  → SEE is computed during ordering for **every non-hash capture** (and most
-  quiets).
-* `searcher.cpp:650` (`searchMoves`, `lmrLosingCapture`):
-  `Sorter::staticExchangeEvaluationPublic(b,m) < 0` for moves that are
-  `wasCapture && !isFirstMove && !isPromotion && !inCheck && depth>=4`.
-  Every such capture **already had SEE computed in ordering** (hash move is
-  `moveIndex 0` = `isFirstMove`, which `lmrLosingCapture` excludes). The
-  thread-local SEE cache turns this into a *hit*, but a hit still costs the
-  3-multiply/xor key hash + mask + array load + key compare, per qualifying
-  capture, per node.
-
-**Fix.** `MovePickerData` already owns the parallel `scores[MAX_MOVES]`
-array. Add `int16_t see[MAX_MOVES]` (SEE fits int16; clamp). `sortLegalMoves`
-writes it where it already computes `see`. `nextMove()`'s selection-sort swap
-gains one paired line (it already swaps `moves`/`scores`). `searchMoves`
-reads `movePicker.seeAt(idx)` instead of calling SEE again — eliminating the
-redundant call (and its cache traffic) for every late capture.
-
-**Expected gain.** Removes the entire second SEE path for capture moves at
-depth ≥ 4 (a large fraction of interior nodes). Even as cache hits, this is
-inside the 14.8% bucket; eliminating it should move that bucket measurably.
-
-**Risk / correctness.** None to search semantics: the value is identical
-(same `b`, same `m`, same position — ordering runs before any `doMove`).
-Verify node count stays 2 171 395. Low risk.
-
-**LOC/complexity.** Roughly neutral (one array + 2–3 lines in picker, minus
-the recompute site). The win is cycles, not lines — this is a **P0 perf**
-item, not an LOC item.
-
-### P0.2 — Carry the quiet "gives-check" bit forward  ★ high value, medium complexity
-
-**Evidence.** `givesCheckAfterQuietMoveFast` is **6.6%** self-time (#3), and
-unlike SEE it has **no cache** — every recompute is the full bitboard test.
-
-**Recomputation:**
-* `sorter.cpp:97` (`scoreMoveOrderingPriorityInline`): for a quiet,
-  non-hash, non-capture, non-killer, non-counter, non-promo move it calls
-  `givesCheckAfterQuietMoveFast(...)` to assign `CHECK_QUIET_SCORE`, then
-  **throws the boolean away**.
-* `searcher.cpp:615` (`searchMoves`, `preMoveGivesCheck`): recomputes
-  `Sorter::givesCheckFast(b,m,...)` for quiet non-king moves to gate
-  futility/LMP.
-
-**Design caveat (must be respected).** Ordering short-circuits on
-killer/counter **before** the check test (lines 80–90), so the bit is *not*
-computed there for killer/counter quiets, while `preMoveGivesCheck` applies
-to those too. Options:
-* (a) Store the bit in `MovePickerData` only when ordering computed it; in
-  `searchMoves` fall back to `givesCheckFast` only when "unknown". Net win
-  without extra ordering work. **Recommended.**
-* (b) Compute it unconditionally for all quiet non-king moves in ordering and
-  store it — simpler, but adds work for killer/counter moves that often never
-  reach the futility/LMP gate → could regress. **Not recommended without
-  measurement.**
-
-**Expected gain.** Removes an uncached 6.6%-bucket recompute for the common
-case (non-killer quiets). Option (a) is strictly ≤ current work.
-
-**Risk.** Behavioural-neutral if the stored bit is exactly
-`givesCheckAfterQuietMoveFast` of the same pre-move position (it is). Verify
-node count + bestmove. Medium *implementation* complexity (the
-known/unknown plumbing), low correctness risk.
-
-### P0.3 — SEE internals (micro, measure first)
-
-`getLeastValuableAttackerTo` recomputes `getRookAttacks`/`getBishopAttacks`
-for the target square as occupancy is peeled — inherent to the swap loop.
-Cheaper, lower-confidence ideas (only if P0.1/P0.2 don't suffice, and only
-with before/after self-time evidence):
-* Reduce the SEE cache-key cost (three 64-bit multiplies + xors per call):
-  the key is rebuilt even on the ordering pass. A lighter key (e.g.
-  `hash ^ (from<<6 ^ to ^ promoCode<<12)`) keeps adequate dispersion at lower
-  cost. **Speculative — must be measured; do not ship on reasoning alone.**
-* The cache is 4096 entries thread-local; collision rate at depth 11 is
-  unknown. Sizing/associativity changes are pure speculation without a
-  hit-rate counter. **Out of scope until instrumented.**
+**The big buckets that remain are all "legitimate work", not
+recomputation.** Further behaviour-identical perf wins of the P0.2 kind
+(recompute elimination) are not visible in the current callgrind: the
+two obvious ones have been done.
 
 ---
 
-## 4. P1 — parameter / LOC reduction (perf-neutral — labelled honestly)
+## 4. What's still on the table
 
-These reduce complexity and line count. They are **not** performance wins;
-several pass register-resident precomputed values, so collapsing them into
-context structs is at best perf-neutral and can cost a memory load. Include
-them for maintainability, not speed.
+Honestly: little remains in the "behaviour-identical, measurable perf
+win" category. The remaining ideas are speculative, perf-neutral, or
+behaviour-changing.
+
+### 4.1 P0.3 — SEE internals (speculative, **measure first**)
+
+Inside the 14.23% ordering SEE bucket:
+
+* **Lighter cache key.** Three 64-bit multiplies + xors per `staticExchangeEvaluation` call to compute `cacheKey`. A cheaper key (e.g.
+  `hash ^ (from<<6) ^ (to<<12) ^ (promoCode<<18)`) would cut a few %
+  off SEE's self-time *if* dispersion stays adequate (cache is 4096
+  entries). Currently **unmeasured**: needs a hit-rate counter A/B
+  before any decision. Behaviour-identical (cache value, not policy).
+* **Cache sizing.** 4096 entries thread-local; collision rate at depth
+  11 unknown. Resizing changes hit rate → could affect call count of
+  SEE internals (but not SEE result), so behaviour-identical but
+  measurable only with an A/B instrumented build.
+* **Hoist initial-attacker masks.** The first `getLeastValuableAttackerTo`
+  call computes bishop/rook rays already used inside the swap loop's
+  first iteration — minor.
+
+**Status:** worth attempting only with a temporary hit-rate counter to
+measure cache effectiveness first. Without that, it's pure speculation.
+
+### 4.2 P1 — parameter / LOC reduction (perf-neutral, labelled honestly)
+
+These reduce complexity and LOC. They are **not** performance wins —
+several pass register-resident precomputed values, so bundling them
+into context structs is at best perf-neutral.
 
 | Function | Params | Note |
 |---|--:|---|
-| `Evaluator::evalKingSafetySide` | 9 | `(b, wPawns, bPawns, AttackData*, 4×bool, side)` — bools/scalars are register args; bundling into a small `EvalSideCtx` is clarity-only, **perf-neutral**. |
-| `Evaluator::evalPawnsByColor` | 9 | all scalar/bitboard, register-passed. Same: clarity-only. |
-| `Evaluator::evaluateOpeningPhase` | 5 | `(b, phase, wPawns, bPawns, AttackData*)` — already lean; not worth touching. |
-| `Sorter::scoreMoveOrderingPriorityInline` | 8 | already takes a `MoveOrderingContext&`; remaining args are per-move facts (cannot be hoisted without recomputation). Leave. |
-| `Sorter::sortLegalMoves` | 13 | the history/killer/counter/captureHistory `(&)[…]` refs are pointer-passes (cheap). They could be bundled by passing `SearchRuntime&` (it owns them) — **LOC/clarity win, perf-neutral**, and consistent with the earlier intrinsic-move work. Medium blast radius (signature + call sites). |
+| `Sorter::sortLegalMoves` | 13 | history/killer/counter/captureHistory `(&)[…]` are pointer-passes (cheap). Could bundle by passing `SearchRuntime&` (it owns them) — **LOC/cohesion win, perf-neutral**, consistent with prior intrinsic-move refactors. Medium blast radius. **Recommended if you want clean closure on the P1 line.** |
+| `Evaluator::evalKingSafetySide` | 9 | bools/scalars are register args; bundling = clarity-only. Optional. |
+| `Evaluator::evalPawnsByColor` | 9 | same. Optional. |
 
-**Recommendation:** do P1 only after P0, and only the `sortLegalMoves` →
-`SearchRuntime&` bundling (real cohesion/LOC value, matches prior refactors).
-Treat the eval-param bundling as optional cosmetic; explicitly **not** a
-perf item.
+### 4.3 Out of scope here (would require strength testing)
 
----
-
-## 5. P2 — complexity / LOC only (minor)
-
-* Dead/constant-parameter elimination is largely done already (initialBest,
-  cutoffValue, SearchRuntime methods, Board methods, C1–C3, fullSort move).
-* Residual: the `MoveOrderingContext` and `SearchContext` structs duplicate a
-  few fields derivable from `SearchRuntime`/`Board`; consolidating is
-  LOC-only, perf-neutral, and risks churn. Low priority.
+* **Restore `lmrLosingCapture` as a real feature** (compute SEE
+  pre-move via P0.2-style carry from ordering). This is the "fix the
+  intent" path. Node count *will* change (the feature would now actually
+  fire); strength impact unknown → cutechess SPRT required, not
+  node-count A/B.
+* **SEE cache resize / heuristic simplification / different ordering.**
 
 ---
 
-## 6. Explicitly rejected (with reasons)
+## 5. Recommendation: how to proceed
 
-* **static → stateful Evaluator/Sorter/Searcher** — dropped by decision:
-  member loads replace register args; with YBWC/OpenMP a shared instance
-  races (this is *why* `SearchRuntime` exists and `evalStack` is
-  `thread_local`). Per-thread instances would add construction/indirection
-  for no cycle benefit.
-* **"Fewer parameters = faster"** — false for register-resident args; tracked
-  as P1 perf-neutral, not perf.
-* **Folding MoveGenerator/Evaluator into Board** — God-class; `const Board&`
-  there is a genuine input, not a hidden receiver.
-* **SEE cache resize / heuristic simplification** — would change node count
-  (behaviour); out of scope for "behaviour-identical perf cleanup" and needs
-  strength testing, not node-count verification.
+1. **Commit current state** — P0.1-B dead-code removal sits uncommitted
+   in `engine/search/searcher.cpp`. Bit-identical A/B verified; ready.
+2. Then **pick one**:
+   * **(α) Close the P1 line** — implement `sortLegalMoves(SearchRuntime&)`
+     bundling. Clean LOC win, perf-neutral, matches prior refactor style.
+     Honest: not a perf gain.
+   * **(β) Re-profile post-P0.2 + P0.1-B for a v2 perf hunt** — the
+     current callgrind was on P0.2-applied only; a fresh callgrind on
+     the cleaned-up state may surface different opportunities (probably
+     in the eval pipeline — `EvalCache` reuse, `computeAttackData`
+     redundancy across qsearch+search). Will probably show that the
+     easy wins are done; expect speculative P0.3-style ideas at best.
+   * **(γ) Park perf, move on** — your `eval_constants.hpp` tuning is
+     likely a bigger Elo lever than further code-level optimization.
 
----
-
-## 7. Recommended order of execution
-
-1. **P0.1** (SEE carry-forward) — highest value, lowest risk, behaviour-
-   identical, clear measurement on the 14.8% bucket.
-2. **P0.2 option (a)** (quiet gives-check carry-forward, known/unknown
-   plumbing) — high value, no cache to hide the win, medium implementation
-   care.
-3. Re-profile; decide if **P0.3** is worth instrumenting.
-4. **P1** `sortLegalMoves(SearchRuntime&)` bundling — LOC/cohesion, perf-
-   neutral, do last.
-
-Every step gated by: node count `2 171 395` + bestmove `e2e4/g8f6` + gprof
-self-time delta on the targeted function.
+My honest take: **(α) for tidy closure**, then (γ). The behaviour-
+identical perf-win well is essentially dry; further significant Elo
+comes from tuning (your area) or from algorithm changes (separate task
+with cutechess validation).

@@ -71,18 +71,18 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         int32_t score = CAPTURE_BASE_SCORE + MVV_TABLE[victimType];
         if (isPromotionCandidate) score += getPromotionValueDelta(m.promotionPiece);
         score += std::min<int32_t>(500,
-            (ctx.captureHistory[ctx.usSide][m.to.index][victimType][0]
-             + (ctx.captureHistory[ctx.usSide][m.to.index][victimType][1] >> 1)) / 20);
+            (ctx.runtime.captureHistory[ctx.usSide][m.to.index][victimType][0]
+             + (ctx.runtime.captureHistory[ctx.usSide][m.to.index][victimType][1] >> 1)) / 20);
         return clampToInt32(score);
     }
 
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        if (sameFromTo(m, ctx.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
-        if (sameFromTo(m, ctx.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
+        if (sameFromTo(m, ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
+        if (sameFromTo(m, ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
     }
 
     if (ctx.previousMove != nullptr && ctx.previousMove->from.index < 64) {
-        const uint16_t counter = ctx.counterMoves[ctx.previousMove->from.index][ctx.previousMove->to.index];
+        const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from.index][ctx.previousMove->to.index];
         if (counter != 0
             && counter == TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
             return COUNTER_MOVE_SCORE;
@@ -102,7 +102,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 
     int32_t score = 0;
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        score = std::clamp(static_cast<int32_t>(ctx.history[ctx.usSide][m.from.index][m.to.index]),
+        score = std::clamp(static_cast<int32_t>(ctx.runtime.history[ctx.usSide][m.from.index][m.to.index]),
                            HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
         if (ctx.contHistEntry != nullptr) {
             score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[m.to.index]),
@@ -238,10 +238,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const chess::Board& b,
     bool usIsWhite,
     uint64_t hashKey,
-    const int16_t (&history)[2][64][64],
-    const chess::Board::Move (&killerMoves)[2][MAX_PLY],
-    const uint16_t (&counterMoves)[64][64],
-    const int16_t (&captureHistory)[2][64][7][CAPTURE_HISTORY_SLOTS],
+    const SearchRuntime& runtime,
     const TranspositionTable* transpositionTable,
     const chess::Board::Move* previousMove,
     bool* outHashMoveIsLegal,
@@ -270,7 +267,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const MoveOrderingContext orderingCtx{
         b, ply, previousMove, usSide, oppKingSq, occ,
         usIsWhite, nonPawnMajors <= 5, fullMoveClock,
-        history, killerMoves, counterMoves, captureHistory, contHistEntry
+        runtime, contHistEntry
     };
 
     // Probe TT for hash move.

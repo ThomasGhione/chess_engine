@@ -118,7 +118,7 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
         clampToInt32(scoreToTT(best, ply)), static_cast<uint8_t>(flag), encodedMove);
 }
 
-bool Searcher::SearchRuntime::shouldAbort() const noexcept {
+bool SearchRuntime::shouldAbort() const noexcept {
     const bool stopRequested = stopSearchRequested != nullptr
         && stopSearchRequested->load(std::memory_order_acquire);
     const bool ponderStopRequested = ponderingStopRequested != nullptr
@@ -126,18 +126,18 @@ bool Searcher::SearchRuntime::shouldAbort() const noexcept {
     return stopRequested || ponderStopRequested;
 }
 
-void Searcher::SearchRuntime::markInterrupted() noexcept {
+void SearchRuntime::markInterrupted() noexcept {
     if (searchInterrupted != nullptr) {
         searchInterrupted->store(true, std::memory_order_relaxed);
     }
 }
 
-bool Searcher::SearchRuntime::isInterrupted() const noexcept {
+bool SearchRuntime::isInterrupted() const noexcept {
     return searchInterrupted != nullptr
         && searchInterrupted->load(std::memory_order_relaxed);
 }
 
-void Searcher::SearchRuntime::clearInterrupted() noexcept {
+void SearchRuntime::clearInterrupted() noexcept {
     if (searchInterrupted != nullptr) {
         searchInterrupted->store(false, std::memory_order_relaxed);
     }
@@ -261,7 +261,7 @@ void Searcher::updateMinMax(
     updateBound(score, alpha);
 }
 
-void Searcher::SearchRuntime::softResetHistory() noexcept {
+void SearchRuntime::softResetHistory() noexcept {
     constexpr int HISTORY_CELLS      = 2 * 64 * 64;
     constexpr int CONT_HIST_CELLS    = 2 * 64 * 64;
     constexpr int CAP_HIST_CELLS     = 2 * 64 * 7 * CAPTURE_HISTORY_SLOTS;
@@ -1029,10 +1029,7 @@ int32_t Searcher::searchPosition(
         b,
         node.usIsWhite,
         hashKey,
-        runtime.history,
-        runtime.killerMoves,
-        runtime.counterMoves,
-        runtime.captureHistory,
+        runtime,
         canUseTT ? runtime.transpositionTable : nullptr,
         ctx.previousMove,
         &hasHashMove,
@@ -1244,10 +1241,7 @@ chess::Board::Move Searcher::getBestMove(
         rootBoard,
         usIsWhite,
         rootBoard.getHash(),
-        runtime.history,
-        runtime.killerMoves,
-        runtime.counterMoves,
-        runtime.captureHistory,
+        runtime,
         runtime.transpositionTable,
         nullptr,
         nullptr);
