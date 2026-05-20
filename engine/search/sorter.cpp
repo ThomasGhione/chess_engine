@@ -163,10 +163,13 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     static constexpr uint64_t SEE_CACHE_MASK = SEE_CACHE_SIZE - 1u;
     thread_local std::array<SEECacheEntry, SEE_CACHE_SIZE> seeCache{};
 
+    // Cheap key: 0 multiplies. from/to/promo land in distinct bit regions
+    // (0..5, 6..11, 12..) so within the same position they disperse cleanly;
+    // the zobrist hash provides cross-position dispersion in the high bits.
     const uint64_t cacheKey = b.getHash()
-        ^ (static_cast<uint64_t>(m.from.index) * 0xBF58476D1CE4E5B9ULL)
-        ^ (static_cast<uint64_t>(m.to.index)   * 0x94D049BB133111EBULL)
-        ^ (static_cast<uint64_t>(m.promotionPiece) * 0x6C62272E07BB0142ULL);
+        ^ static_cast<uint64_t>(m.from.index)
+        ^ (static_cast<uint64_t>(m.to.index) << 6)
+        ^ (static_cast<uint64_t>(static_cast<unsigned char>(m.promotionPiece)) << 12);
     const uint64_t slot = cacheKey & SEE_CACHE_MASK;
     SEECacheEntry& entry = seeCache[slot];
     if (entry.valid && entry.key == cacheKey) return entry.score;
