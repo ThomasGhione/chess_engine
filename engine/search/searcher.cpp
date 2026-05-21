@@ -86,17 +86,13 @@ constexpr int32_t Searcher::scoreFromTT(int32_t score, int ply) noexcept {
     return score;
 }
 
-constexpr int16_t Searcher::clampHeuristic16(int32_t value) noexcept {
-    constexpr int32_t MIN_I16 = -32768;
-    constexpr int32_t MAX_I16 = 32767;
-    return std::clamp(value, MIN_I16, MAX_I16);
-}
-
 void Searcher::applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValue) noexcept {
     const int32_t magnitude = (delta < 0) ? -delta : delta;
     int32_t value = cell;
     value += delta - value * magnitude / maxValue;
-    cell = clampHeuristic16(value);
+    constexpr int32_t MAX_I16 = 32767; // fits in int16_t after clamping
+    constexpr int32_t MIN_I16 = -32768; // fits in int16_t after clamping
+    cell = static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
 }
 
 void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,

@@ -200,7 +200,6 @@ private:
     // stay correct across transpositions.
     static constexpr int32_t scoreToTT(int32_t score, int ply) noexcept;
     static constexpr int32_t scoreFromTT(int32_t score, int ply) noexcept;
-    static constexpr int16_t clampHeuristic16(int32_t value) noexcept;
     // delta > 0 is a bonus, delta < 0 a malus; decay uses |delta|.
     static void applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValue) noexcept;
 
