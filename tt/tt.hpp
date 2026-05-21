@@ -277,6 +277,7 @@ private:
         uint64_t key, EntrySnapshot& out) const noexcept {
         const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
         const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+
         const BucketSeq& bucketSeq = seqData()[bucketIndex];
         EntrySnapshot snapshot[ENTRIES_PER_BUCKET];
         if (!readBucketSnapshot(bucket, bucketSeq, snapshot)) return false;
@@ -456,6 +457,7 @@ inline void TranspositionTable::storeImpl(
     const uint8_t storedDepth = clampDepth(depth);
     const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
     Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
+
     BucketSeq& bucketSeq = seqData()[bucketIndex];
     const uint32_t lockBase = lockBucket(bucketSeq);
 
