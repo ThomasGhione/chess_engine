@@ -10,16 +10,14 @@
 namespace engine {
 
 class MoveGenerator final {
-
 public:
-
     MoveGenerator() = delete;
 
-        static MoveList<chess::Board::Move> generateLegalMoves(
-            const chess::Board& b,
-            bool inCheckKnown = false,
-            bool inCheckValue = false,
-            bool inDoubleCheckValue = false) noexcept;
+    static MoveList<chess::Board::Move> generateLegalMoves(
+        const chess::Board& b,
+        bool inCheckKnown      = false,
+        bool inCheckValue      = false,
+        bool inDoubleCheckValue = false) noexcept;
 
     static MoveList<chess::Board::Move> generateLegalEvasions(
         const chess::Board& b,
@@ -42,7 +40,6 @@ public:
         bool usIsWhite) noexcept;
 
 private:
-
     template<bool IsWhite>
     static void addPawnMovesFromMask(
         const chess::Board& b,
@@ -105,7 +102,6 @@ private:
         uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
         uint64_t occ, uint64_t oppOcc,
         uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept;
-
 };
 
 } // namespace engine

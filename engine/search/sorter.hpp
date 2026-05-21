@@ -8,11 +8,7 @@
 
 namespace engine {
 
-// Forward decl: SearchRuntime owns history/killer/counter/capture-history and
-// the TT pointer, all of which sortLegalMoves reads. Taking it by const-ref
-// replaces 5 separate (&)[...] / pointer parameters at the call sites.
-// Full definition lives in searcher.hpp (engine.hpp transitively includes it
-// from sorter.cpp where the function body needs the members).
+// Full definition lives in searcher.hpp; sorter.cpp only needs the members.
 struct SearchRuntime;
 
 class Sorter final {
@@ -23,37 +19,37 @@ public:
     static constexpr int MAX_PLY = 64;
     static constexpr int CAPTURE_HISTORY_SLOTS = 2;
 
-    // Move ordering score thresholds
-    static constexpr int32_t HASH_MOVE_SCORE = 100000;
-    static constexpr int32_t CAPTURE_BASE_SCORE = 10000;
-    static constexpr int32_t KILLER_1_SCORE = 9000;
-    static constexpr int32_t KILLER_2_SCORE = 8500;
-    static constexpr int32_t COUNTER_MOVE_SCORE = 8200;
-    static constexpr int32_t CHECK_QUIET_SCORE = 8000;
+    // --- Move ordering score thresholds ---
+    static constexpr int32_t HASH_MOVE_SCORE      = 100000;
+    static constexpr int32_t CAPTURE_BASE_SCORE   = 10000;
+    static constexpr int32_t KILLER_1_SCORE       = 9000;
+    static constexpr int32_t KILLER_2_SCORE       = 8500;
+    static constexpr int32_t COUNTER_MOVE_SCORE   = 8200;
+    static constexpr int32_t CHECK_QUIET_SCORE    = 8000;
     static constexpr int32_t PROMOTION_BASE_SCORE = 7000;
-    static constexpr int32_t HISTORY_SCORE_MAX = 7500;
-    static constexpr int32_t HISTORY_SCORE_MIN = -2000;
-    
-    // King move ordering penalties/bonuses (opening phase)
-    static constexpr int32_t OPENING_KING_MOVE_PENALTY = 220;
-    static constexpr int32_t CASTLING_BONUS = 550;
-    static constexpr int OPENING_FULLMOVE_THRESHOLD = 10;
-    
-    // Tactical move scoring (qsearch)
-    static constexpr int32_t TACTICAL_PROMOTION_SCORE = 9000;
-    static constexpr int32_t FUTILITY_MARGIN = 100;
-    static constexpr int32_t MOVE_DELTA_MARGIN = 140;
-    static constexpr int32_t SEE_THRESHOLD_SHALLOW = -24;  // ply < 10
-    static constexpr int32_t SEE_THRESHOLD_MID = -12;      // 10 <= ply < 20
-    static constexpr int32_t SEE_THRESHOLD_DEEP = -4;      // ply >= 20
+    static constexpr int32_t HISTORY_SCORE_MAX    = 7500;
+    static constexpr int32_t HISTORY_SCORE_MIN    = -2000;
 
-    // Helper functions for promotion piece handling (inlined in header for guaranteed inlining)
+    // --- Opening king ordering ---
+    static constexpr int32_t OPENING_KING_MOVE_PENALTY  = 220;
+    static constexpr int32_t CASTLING_BONUS             = 550;
+    static constexpr int     OPENING_FULLMOVE_THRESHOLD = 10;
+
+    // --- Qsearch tactical scoring ---
+    static constexpr int32_t TACTICAL_PROMOTION_SCORE    = 9000;
+    static constexpr int32_t FUTILITY_MARGIN             = 100;
+    static constexpr int32_t MOVE_DELTA_MARGIN           = 140;
+    static constexpr int32_t SEE_THRESHOLD_SHALLOW       = -24;  // ply < 10
+    static constexpr int32_t SEE_THRESHOLD_MID           = -12;  // 10 <= ply < 20
+    static constexpr int32_t SEE_THRESHOLD_DEEP          = -4;   // ply >= 20
+
+    // Inlined here so callers (in header-included contexts) get guaranteed inlining.
     static inline constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
         switch (promotionPiece) {
             case 'r': case 'R': return chess::Board::ROOK;
             case 'b': case 'B': return chess::Board::BISHOP;
             case 'n': case 'N': return chess::Board::KNIGHT;
-            default: return chess::Board::QUEEN;
+            default:            return chess::Board::QUEEN;
         }
     }
 
@@ -61,21 +57,19 @@ public:
         return PIECE_VALUES[promotionPieceType(promotionPiece)] - PIECE_VALUES[chess::Board::PAWN];
     }
 
+    // Incremental lazy-selection picker. Parallel arrays (moves/scores/givesCheckFlag)
+    // are kept in sync by nextMove() and fullSort(); never manipulate them separately.
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};
-        // Per-move quiet "gives check" memo from the ordering pass:
-        // -1 = not computed (ordering short-circuited before the test),
-        //  0 = false, 1 = true. Lets searchMoves reuse it instead of
-        // recomputing givesCheckAfterQuietMoveFast (uncached, ~6% self-time).
+        // -1 = not computed, 0 = false, 1 = true.
+        // Memoises givesCheckAfterQuietMoveFast so searchMoves avoids a ~6%-self-time recompute.
         int8_t givesCheckFlag[MAX_MOVES];
-        int size = 0;
-        int currentIndex = 0;
+        int  size         = 0;
+        int  currentIndex = 0;
         bool hashMoveIsLegal = false;
 
-        inline bool hasNext() const noexcept {
-            return currentIndex < size;
-        }
+        inline bool hasNext() const noexcept { return currentIndex < size; }
 
         inline chess::Board::Move nextMove() noexcept {
             if (currentIndex >= size) return chess::Board::Move{};
@@ -83,39 +77,27 @@ public:
             int bestIdx = currentIndex;
             int32_t bestScore = scores[currentIndex];
             for (int i = currentIndex + 1; i < size; ++i) {
-                if (scores[i] > bestScore) {
-                    bestScore = scores[i];
-                    bestIdx = i;
+                if (scores[i] > bestScore) { 
+                    bestScore = scores[i]; 
+                    bestIdx = i; 
                 }
             }
 
-            // Swap
             if (bestIdx != currentIndex) {
-                const auto tempMove = moves[currentIndex];
-                moves[currentIndex] = moves[bestIdx];
-                moves[bestIdx] = tempMove;
-
-                const auto tempScore = scores[currentIndex];
-                scores[currentIndex] = scores[bestIdx];
-                scores[bestIdx] = tempScore;
-
-                const auto tempGc = givesCheckFlag[currentIndex];
-                givesCheckFlag[currentIndex] = givesCheckFlag[bestIdx];
-                givesCheckFlag[bestIdx] = tempGc;
+                std::swap(moves[currentIndex],         moves[bestIdx]);
+                std::swap(scores[currentIndex],        scores[bestIdx]);
+                std::swap(givesCheckFlag[currentIndex], givesCheckFlag[bestIdx]);
             }
 
             return moves[currentIndex++];
         }
 
-        // Full descending insertion sort over [0, size). Used by the root
-        // search which needs the whole list ordered upfront (YBWC), unlike
-        // nextMove()'s incremental selection. Owns both parallel arrays, so
-        // the moves/scores invariant stays encapsulated here.
+        // Full descending insertion sort over [0, size). Used by root search (YBWC).
         inline void fullSort() noexcept {
             for (int i = 1; i < size; ++i) {
-                const chess::Board::Move keyMove = moves[i];
-                const int32_t keyScore = scores[i];
-                const int8_t keyGc = givesCheckFlag[i];
+                const chess::Board::Move keyMove  = moves[i];
+                const int32_t            keyScore = scores[i];
+                const int8_t             keyGc    = givesCheckFlag[i];
                 int j = i - 1;
                 while (j >= 0 && scores[j] < keyScore) {
                     scores[j + 1] = scores[j];
@@ -145,10 +127,9 @@ public:
     struct CaptureInfo {
         bool isCapture;
         bool isEpCapture;
-        int victimType;
+        int  victimType;
     };
 
-    // Shared capture/en-passant/victim classification (sorter + searcher).
     static CaptureInfo classifyCapture(
         const chess::Board::Move& m,
         int fromPieceType,
@@ -182,16 +163,20 @@ private:
         const chess::Board& b;
         int ply;
         const chess::Board::Move* previousMove;
-        int usSide;
-        int oppKingSq;
+        int     usSide;
+        int     oppKingSq;
         uint64_t occ;
-        bool usIsWhite;
-        bool isEndgameOrdering;
-        int fullMoveClock;
-        // One ref instead of four (&)[...] tables: smaller struct (~24 B
-        // less) and accesses go through ctx.runtime.<table>[...].
+        bool    usIsWhite;
+        bool    isEndgameOrdering;
+        int     fullMoveClock;
         const SearchRuntime& runtime;
         const int16_t* contHistEntry;
+    };
+
+    // square == 64 means "no attacker" (type then unspecified).
+    struct LeastValuableAttacker {
+        int square;
+        int type;
     };
 
     static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
@@ -218,23 +203,13 @@ private:
         bool isHashMove,
         int8_t& outGivesCheck) noexcept;
 
-    // square == 64 means "no attacker" (type is then unspecified). The type
-    // is the piece type of the returned attacker, derived for free from the
-    // bitboard it was found in (avoids a re-classification in the SEE loop).
-    struct LeastValuableAttacker {
-        int square;
-        int type;
-    };
     static LeastValuableAttacker getLeastValuableAttackerTo(
         const chess::Board& b,
         int sq,
         uint64_t occLocal,
         int sideLocal) noexcept;
 
-    static bool shouldDeltaPrune(
-        int32_t standPat,
-        int32_t margin,
-        int32_t alpha) noexcept;
+    static bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept;
 
     static bool isForcingEvasion(
         const chess::Board& b,
