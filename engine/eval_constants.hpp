@@ -85,9 +85,9 @@ inline int32_t OUTPOST_KNIGHT_BONUS = 17;
 // ===================================================
 // HANGING PIECES
 // ===================================================
-inline int32_t HANGING_PAWN_PENALTY = -12;
-inline int32_t HANGING_PAWN_NEAR_KING_PENALTY = -28;
-inline int32_t HANGING_HOOK_PAWN_PENALTY = -16;
+inline int32_t HANGING_PAWN_PENALTY = -11;
+inline int32_t HANGING_PAWN_NEAR_KING_PENALTY = -36;
+inline int32_t HANGING_HOOK_PAWN_PENALTY = -15;
 inline int32_t HANGING_MINOR_PENALTY = -25;
 inline int32_t HANGING_ROOK_PENALTY = -35;
 inline int32_t HANGING_QUEEN_PENALTY = -50;
