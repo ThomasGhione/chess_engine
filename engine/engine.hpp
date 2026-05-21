@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
@@ -23,12 +24,6 @@ namespace engine {
 static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
 // Negamax-safe: NEG_INF == -POS_INF so it can be negated without UB.
 static inline constexpr int32_t NEG_INF = -POS_INF;
-
-static inline constexpr int32_t clampToInt32(int64_t value) noexcept {
-    if (value > static_cast<int64_t>(POS_INF)) return POS_INF;
-    if (value < static_cast<int64_t>(NEG_INF)) return NEG_INF;
-    return static_cast<int32_t>(value);
-}
 
 
 

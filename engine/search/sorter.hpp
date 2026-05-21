@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 #include "../../board/board.hpp"
 #include "../../tt/tt.hpp"
@@ -62,12 +63,17 @@ public:
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};
-        // -1 = not computed, 0 = false, 1 = true.
-        // Memoises givesCheckAfterQuietMoveFast so searchMoves avoids a ~6%-self-time recompute.
+        // -1 = not computed, 0 = false, 1 = true. Must be -1 for all slots:
+        // nextMove() swaps entries including unscored ones, so an uninitialized
+        // slot read as 0 would be misinterpreted as "does not give check".
         int8_t givesCheckFlag[MAX_MOVES];
         int  size         = 0;
         int  currentIndex = 0;
         bool hashMoveIsLegal = false;
+
+        MovePickerData() noexcept {
+            std::memset(givesCheckFlag, 0xFF, sizeof(givesCheckFlag)); // 0xFF == -1 for int8_t
+        }
 
         inline bool hasNext() const noexcept { return currentIndex < size; }
 

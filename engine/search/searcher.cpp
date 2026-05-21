@@ -66,12 +66,12 @@ constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound) no
 
 constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
-    return clampToInt32(sum);
+    return static_cast<int32_t>(std::clamp<int64_t>(sum, NEG_INF, POS_INF));
 }
 
 constexpr int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t diff = static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs);
-    return clampToInt32(diff);
+    return static_cast<int32_t>(std::clamp<int64_t>(diff, NEG_INF, POS_INF));
 }
 
 constexpr int32_t Searcher::scoreToTT(int32_t score, int ply) noexcept {
@@ -104,7 +104,7 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
     const auto flag = determineFlag(best, alphaOrig, betaOrig);
     runtime.transpositionTable->store(
         hashKey, static_cast<uint8_t>(depth),
-        clampToInt32(scoreToTT(best, ply)), static_cast<uint8_t>(flag));
+        static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(best, ply), NEG_INF, POS_INF)), static_cast<uint8_t>(flag));
 }
 
 void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
@@ -115,7 +115,7 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
         bestMove.from.index, bestMove.to.index, bestMove.promotionPiece);
     runtime.transpositionTable->store(
         hashKey, static_cast<uint8_t>(depth),
-        clampToInt32(scoreToTT(best, ply)), static_cast<uint8_t>(flag), encodedMove);
+        static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(best, ply), NEG_INF, POS_INF)), static_cast<uint8_t>(flag), encodedMove);
 }
 
 bool SearchRuntime::shouldAbort() const noexcept {
@@ -227,7 +227,7 @@ int32_t Searcher::drawAdvantageScore(const chess::Board& b) noexcept {
         static_cast<int64_t>(materialDelta) * DRAW_SCORE_MATERIAL_WEIGHT_PERCENT
         + static_cast<int64_t>(staticEval) * DRAW_SCORE_EVAL_WEIGHT_PERCENT;
 
-    return clampToInt32(blendedScore / DRAW_SCORE_WEIGHT_DENOMINATOR);
+    return static_cast<int32_t>(std::clamp<int64_t>(blendedScore / DRAW_SCORE_WEIGHT_DENOMINATOR, NEG_INF, POS_INF));
 }
 
 int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
@@ -1434,7 +1434,7 @@ void Searcher::storeRootHashMove(
 
     const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    runtime.transpositionTable->store(rootBoard.getHash(), depth, clampToInt32(scoreToTT(score, 0)), flag, encodedMove);
+    runtime.transpositionTable->store(rootBoard.getHash(), depth, static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(score, 0), NEG_INF, POS_INF)), flag, encodedMove);
 }
 
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
