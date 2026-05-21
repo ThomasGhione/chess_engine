@@ -61,7 +61,7 @@ public:
     // are kept in sync by nextMove() and fullSort(); never manipulate them separately.
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
-        int32_t scores[MAX_MOVES]; // safe not to initialize scores for all MAX_MOVES since size tracks how many are valid.
+        int32_t scores[MAX_MOVES] {};
         // -1 = not computed, 0 = false, 1 = true.
         // Memoises givesCheckAfterQuietMoveFast so searchMoves avoids a ~6%-self-time recompute.
         int8_t givesCheckFlag[MAX_MOVES];
