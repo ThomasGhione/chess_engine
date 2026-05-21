@@ -3,7 +3,8 @@
 namespace engine {
 
 inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                             bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side) noexcept {
+                                             bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side,
+                                             int32_t materialScale) noexcept {
     const uint64_t kingBB = b.kings_bb[side];
     if (!kingBB) [[unlikely]] return 0;
 
@@ -37,7 +38,7 @@ inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whi
     applyShelterAndStorm(side, kingFile, kingRank, ownPawns, enemyPawns, kingOnWing, enemyHeavyPieces, sideSafety);
     applyOpenDiagonalPenalty(b, kingFile, kingRank, sideColor, sideSafety);
 
-    sideSafety = scaleKingDanger(sideSafety, attackMaterialScalePercent(b, opp, kingFile, ownPawns));
+    sideSafety = scaleKingDanger(sideSafety, materialScale);
     sideSafety = std::clamp(sideSafety, -KING_SAFETY_SIDE_CAP, KING_SAFETY_SIDE_CAP);
 
     return sign * sideSafety;
@@ -220,8 +221,36 @@ int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
     const bool blackCastleKs = b.getCastle(2);
     const bool blackCastleQs = b.getCastle(3);
 
-    return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0)
-         + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1);
+    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
+    const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
+
+    return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0, scaleBlackAttackingWhite)
+         + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1, scaleWhiteAttackingBlack);
+}
+
+int32_t Evaluator::evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    const bool whiteCastleKs = b.getCastle(0);
+    const bool whiteCastleQs = b.getCastle(1);
+    const bool blackCastleKs = b.getCastle(2);
+    const bool blackCastleQs = b.getCastle(3);
+
+    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
+    const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
+
+    const int32_t safety =
+        evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0, scaleBlackAttackingWhite)
+      + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1, scaleWhiteAttackingBlack);
+
+    const uint64_t occ = b.getPiecesBitMap();
+    const int32_t attackZone =
+        evalKingAttackZoneSide(b, data, 0, occ, scaleWhiteAttackingBlack)
+      + evalKingAttackZoneSide(b, data, 1, occ, scaleBlackAttackingWhite);
+
+    return safety + attackZone;
 }
 
 int32_t Evaluator::evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {

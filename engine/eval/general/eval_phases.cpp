@@ -58,10 +58,9 @@ int32_t Evaluator::evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, 
     eval += evalWeakSquaresCached(b, whitePawns, blackPawns);
     eval += evalBishopVsKnightCached(b, whitePawns, blackPawns);
     eval += evalSpaceAdvantage(b, whitePawns, blackPawns);
-    eval += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
+    eval += evalKingMiddlegame(b, whitePawns, blackPawns, data);
     eval += evalKingActivity(b, false);
     eval += evalCastlingBonusCached(b);
-    eval += evalKingAttackZone(b, data);
     eval += evalRooksCached(b, whitePawns, blackPawns);
     eval += evalInitiative(b, false);
     eval += evalBlockedPawnByBishopsCached(b);

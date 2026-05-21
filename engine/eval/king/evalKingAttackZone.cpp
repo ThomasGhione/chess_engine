@@ -15,7 +15,7 @@ inline void Evaluator::accumulateKingZoneAttackersAll(const chess::Board& b, int
         b.queens_bb[side], kingZone, occ, engine::KING_ATTACK_WEIGHT_QUEEN, attackerCount, attackWeight);
 }
 
-inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept {
+int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ, int32_t materialScale) noexcept {
     static constexpr int ATTACKER_SCALE_PERCENT[9] = {0, 0, 32, 52, 68, 80, 90, 97, 100};
     constexpr uint64_t WHITE_MINOR_START = 0xFF00000000000000ULL; // rank 7 (White's 1st rank)
     constexpr uint64_t BLACK_MINOR_START = 0x00000000000000FFULL; // rank 0 (Black's 8th rank)
@@ -55,7 +55,6 @@ inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const At
 
     const int scaleIndex = std::min(attackerCount, 8);
     int32_t attackDanger = (attackUnits * ATTACKER_SCALE_PERCENT[scaleIndex]) / 100;
-    const int32_t materialScale = attackMaterialScalePercent(b, side, chess::Board::file(enemyKingSq), b.pawns_bb[oppSide]);
     attackDanger = (attackDanger * materialScale) / 100;
     attackDanger = std::min<int32_t>(attackDanger, engine::KING_ATTACK_DANGER_CAP);
 
@@ -64,7 +63,10 @@ inline int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const At
 
 int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
     const uint64_t occ = b.getPiecesBitMap();
-    return evalKingAttackZoneSide(b, data, 0, occ) + evalKingAttackZoneSide(b, data, 1, occ);
+    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    return evalKingAttackZoneSide(b, data, 0, occ, attackMaterialScalePercent(b, 0, blackKingFile, b.pawns_bb[1]))
+         + evalKingAttackZoneSide(b, data, 1, occ, attackMaterialScalePercent(b, 1, whiteKingFile, b.pawns_bb[0]));
 }
 
 inline void Evaluator::addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept {

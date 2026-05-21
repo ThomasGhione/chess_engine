@@ -16,10 +16,6 @@ static constexpr uint64_t FULLMOVE_CACHE_SALT = 0x9E3779B97F4A7C15ULL;
 
 } // namespace
 
-int32_t Evaluator::evaluateCheckmate() noexcept {
-    return -POS_INF;
-}
-
 int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
     const bool whiteToMove = (activeColor == chess::Board::WHITE);
