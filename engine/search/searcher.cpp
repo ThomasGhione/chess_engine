@@ -315,7 +315,6 @@ int32_t Searcher::searchRootMoveScore(
     SearchRuntime& runtime,
     int32_t alpha,
     int32_t beta,
-    int currPly,
     bool allowTTWrite,
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter) noexcept {
@@ -323,7 +322,7 @@ int32_t Searcher::searchRootMoveScore(
     b.doMove(m, state, m.promotionPiece);
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
     const int32_t score = -searchPosition(
-        b, runtime, runtime.depth - 1, -beta, -alpha, currPly,
+        b, runtime, runtime.depth - 1, -beta, -alpha, 1,
         true, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
@@ -557,7 +556,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         b.rooks_bb[oppSide]   | b.queens_bb[oppSide] |
         b.kings_bb[oppSide];
     const chess::Coords enPassant = b.getEnPassant();
-    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
@@ -586,7 +584,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const int toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
         const bool isPawnMove = (fromPieceType == chess::Board::PAWN);
         const bool isSameFileMove = chess::Board::file(fromIndex) == chess::Board::file(toIndex);
-        const auto cap = Sorter::classifyCapture(m, fromPieceType, toPieceType, enPassant, hasEnPassant);
+        const auto cap = Sorter::classifyCapture(m, fromPieceType, toPieceType, enPassant);
         const bool wasCapture = cap.isCapture;
         const int victimType = cap.victimType;
         const bool isPromotionCandidate = isPawnMove && (m.to.rank() == promotionRank);
@@ -615,7 +613,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             const int8_t gc = movePicker.givesCheckFlag[moveIndex];
             preMoveGivesCheck = (gc >= 0)
                 ? (gc != 0)
-                : Sorter::givesCheckFast(b, m, fromPieceType, usSide, oppKingSq,
+                : Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
                                          b.getPiecesBitMap());
         }
 
@@ -1023,8 +1021,6 @@ int32_t Searcher::searchPosition(
         std::move(moves),
         ply,
         b,
-        node.usIsWhite,
-        hashKey,
         runtime,
         canUseTT ? runtime.transpositionTable : nullptr,
         ctx.previousMove,
@@ -1159,7 +1155,7 @@ int32_t Searcher::quiescenceSearch(
         }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
-            b, standPat, alpha, ply, usIsWhite);
+            b, standPat, alpha, ply);
         if (!movePicker.hasNext()) {
             return standPat;
         }
@@ -1223,11 +1219,9 @@ chess::Board::Move Searcher::getBestMove(
     SearchRuntime& runtime,
     int32_t alpha,
     int32_t beta) noexcept {
-    const bool usIsWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
     // Macro-step 1: Initialize root state, order root moves, and decide YBWC mode.
     int32_t bestScore = NEG_INF;
     chess::Board::Move bestMove = moves[0];
-    constexpr int currPly = 1;
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
@@ -1235,8 +1229,6 @@ chess::Board::Move Searcher::getBestMove(
         moves,
         0,
         rootBoard,
-        usIsWhite,
-        rootBoard.getHash(),
         runtime,
         runtime.transpositionTable,
         nullptr,
@@ -1267,14 +1259,14 @@ chess::Board::Move Searcher::getBestMove(
 
             int32_t score;
             if (isFirst) {
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &localNodes);
+                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
             } else {
                 int32_t nullAlpha = 0;
                 int32_t nullBeta = 0;
                 rootNullWindow(alpha, nullAlpha, nullBeta);
-                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, currPly, true, true, &localNodes);
+                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, true, true, &localNodes);
                 if (shouldResearchPVS(score, alpha)) {
-                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &localNodes);
+                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
                 }
             }
 
@@ -1294,7 +1286,7 @@ chess::Board::Move Searcher::getBestMove(
     // Macro-step 3: YBWC root search (first move serial, remaining moves task-parallel).
     {
         const auto& firstMove = rootMoves[0];
-        const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, currPly, true, true, &localNodes);
+        const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, true, true, &localNodes);
         searchedAnyMove = true;
         updateMinMax(score, alpha, bestScore, bestMove, firstMove);
     }
@@ -1320,7 +1312,7 @@ chess::Board::Move Searcher::getBestMove(
         int32_t nullBeta = 0;
         rootNullWindow(alpha, nullAlpha, nullBeta);
         const int32_t score = searchRootMoveScore(
-            threadBoard, m, runtime, nullAlpha, nullBeta, currPly, false, false, &workerNodes);
+            threadBoard, m, runtime, nullAlpha, nullBeta, false, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;
@@ -1386,7 +1378,7 @@ chess::Board::Move Searcher::getBestMove(
         int32_t score = threadScores[i];
         if (threadNeedsResearch[i] != 0U) {
             uint64_t researchNodes = 0;
-            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, currPly, true, true, &researchNodes);
+            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &researchNodes);
             localNodes += researchNodes;
             if (runtime.isInterrupted()) {
                 break;

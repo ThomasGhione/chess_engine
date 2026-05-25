@@ -231,7 +231,6 @@ private:
         const chess::Board::Move& m,
         SearchRuntime& runtime,
         int32_t alpha, int32_t beta,
-        int currPly,
         bool allowTTWrite,
         bool allowHeuristicUpdates,
         uint64_t* nodeCounter) noexcept;

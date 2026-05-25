@@ -122,8 +122,6 @@ public:
         MoveList<chess::Board::Move> moves,
         int ply,
         const chess::Board& b,
-        bool usIsWhite,
-        uint64_t hashKey,
         const SearchRuntime& runtime,
         const TranspositionTable* transpositionTable,
         const chess::Board::Move* previousMove = nullptr,
@@ -140,16 +138,15 @@ public:
         const chess::Board::Move& m,
         int fromPieceType,
         int toPieceType,
-        const chess::Coords& enPassant,
-        bool hasEnPassant) noexcept;
+        const chess::Coords& enPassant) noexcept;
 
     static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Board::Move& m) noexcept {
         return staticExchangeEvaluation(b, m);
     }
 
     static bool givesCheckFast(const chess::Board& b, const chess::Board::Move& m,
-            int fromPieceType, int usSide, int oppKingSq, uint64_t occ) noexcept {
-        return givesCheckAfterQuietMoveFast(b, m, fromPieceType, usSide, oppKingSq, occ);
+            int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
+        return givesCheckAfterQuietMoveFast(b, m, fromPieceType, oppKingSq, occ);
     }
 
     static MovePickerData sortTacticalMoves(
@@ -157,8 +154,7 @@ public:
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
-        int ply,
-        bool usIsWhite) noexcept;
+        int ply) noexcept;
 
     static MoveList<chess::Board::Move> sortEvasionsForcingFirst(
         MoveList<chess::Board::Move> evasions,
@@ -192,7 +188,6 @@ private:
         const chess::Board& b,
         const chess::Board::Move& m,
         int fromPieceType,
-        int usSide,
         int oppKingSq,
         uint64_t occ) noexcept;
 
@@ -201,7 +196,6 @@ private:
     static int32_t scoreMoveOrderingPriorityInline(
         const MoveOrderingContext& ctx,
         const chess::Board::Move& m,
-        int fromPieceType,
         bool isCapture,
         int victimType,
         int32_t see,
@@ -220,8 +214,7 @@ private:
     static bool isForcingEvasion(
         const chess::Board& b,
         const chess::Board::Move& m,
-        const chess::Coords& enPassant,
-        bool hasEnPassant) noexcept;
+        const chess::Coords& enPassant) noexcept;
 };
 
 } // namespace engine

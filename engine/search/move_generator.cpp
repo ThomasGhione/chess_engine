@@ -189,7 +189,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
         ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
         : false;
     const bool singleCheck = inCheck && !inDoubleCheck;
-    const uint8_t pawnPiece = chess::Board::PAWN | color;
     const uint8_t kingPiece = chess::Board::KING | color;
 
     // Macro-step 2: Compute check-evasion mask when in single-check.
@@ -247,10 +246,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, pawnPiece,
-            enPassant, hasEnPassant);
+            b, moves, from, mask, enPassant);
     }
-    
+
     if (singleCheck) {
         if (pinnedMask)
             emitAllNonPawnLegal<true, true>(moves, knights, bishops, rooks, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
@@ -302,7 +300,6 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
     const bool inDoubleCheck = inDoubleCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color);
     const bool singleCheck = !inDoubleCheck;
-    const uint8_t pawnPiece = chess::Board::PAWN | color;
     const uint8_t kingPiece = chess::Board::KING | color;
 
     uint64_t evasionMask = ~0ULL;
@@ -338,8 +335,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
         if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, pawnPiece,
-            enPassant, hasEnPassant);
+            b, moves, from, mask, enPassant);
     }
 
     if (pinnedMask)
@@ -425,26 +421,25 @@ engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
-    int ply,
-    bool usIsWhite) noexcept {
+    int ply) noexcept {
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
     if (tacticalMoves.is_empty()) return engine::Sorter::MovePickerData{};
-    return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply, usIsWhite);
+    return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply);
 }
 
 template<bool IsWhite>
 void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves,
                                          int from, uint64_t mask,
-                                         uint8_t pawnPiece,
-                                         chess::Coords enPassant, bool hasEnPassant) noexcept {
+                                         chess::Coords enPassant) noexcept {
     if (!mask) [[unlikely]] return;
 
+    constexpr uint8_t pawnPiece = chess::Board::PAWN | (IsWhite ? chess::Board::WHITE : chess::Board::BLACK);
     constexpr int promotionRank = IsWhite ? 0 : 7;
     const int fromFile = chess::Board::file(from);
 
     while (mask) {
         const int to = engine::popLSB(mask);
-        const bool isEnPassant = hasEnPassant
+        const bool isEnPassant = chess::Coords::isInBounds(enPassant)
             && (to == enPassant.index)
             && (chess::Board::file(to) != fromFile);
 

@@ -36,8 +36,7 @@ public:
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
-        int ply,
-        bool usIsWhite) noexcept;
+        int ply) noexcept;
 
 private:
     template<bool IsWhite>
@@ -46,9 +45,7 @@ private:
         MoveList<chess::Board::Move>& moves,
         int from,
         uint64_t mask,
-        uint8_t pawnPiece,
-        chess::Coords enPassant,
-        bool hasEnPassant) noexcept;
+        chess::Coords enPassant) noexcept;
 
     template<bool IsWhite>
     static MoveList<chess::Board::Move> generateLegalMovesFor(
