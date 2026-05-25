@@ -229,6 +229,7 @@ public:
     constexpr uint8_t  getActiveColor() const noexcept   { return activeColor; }
     constexpr bool     getCastle(uint8_t index) const noexcept { return (castle & (1u << index)); }
     constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
+    constexpr uint8_t  getHalfMoveClock() const noexcept { return halfMoveClock; }
     Coords             getEnPassant() const noexcept     { return enPassant; }
     constexpr uint64_t getHash() const noexcept          { return currentHash; }
     uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }

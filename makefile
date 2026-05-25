@@ -58,7 +58,9 @@ GENERATED_BINS = $(NAME_APP) $(NAME_APP_WIN) $(TEST_APP) $(PERF_APP) $(TT_HP_BEN
 
 # File paths by module
 MAIN_SRC = $(ROOT_DIR)/main.cpp
-ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/time/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp) $(wildcard $(ROOT_DIR)/engine/opening/*.cpp)
+ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/time/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp) $(wildcard $(ROOT_DIR)/engine/opening/*.cpp) $(wildcard $(ROOT_DIR)/engine/syzygy/*.cpp)
+SYZYGY_C_SRC = $(ROOT_DIR)/engine/syzygy/tbprobe.c
+SYZYGY_C_OBJ = $(OUTPUT_DIR)/engine/syzygy/tbprobe.o
 DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
 BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
 UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
@@ -83,7 +85,7 @@ ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) \
 # Helper to generate .o paths inside output/
 MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(MAIN_SRC))
 MODULE_OBJS = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(ALL_MODULE_SRCS))
-ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS)
+ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS) $(SYZYGY_C_OBJ)
 
 # Test file paths
 TEST_MAIN_SRC = $(TESTS_DIR)/mainTest.cpp
@@ -181,6 +183,12 @@ $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
+
+# tbprobe.c compiled as C (not C++) to avoid name mangling issues
+$(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
+	@printf "\nCompiling $<..."
+	@mkdir -p $(dir $@)
+	gcc -O3 -march=native -std=c11 -Wall -c $< -o $@
 
 # Final executable generation: 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
