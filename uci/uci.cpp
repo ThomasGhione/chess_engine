@@ -370,6 +370,8 @@ namespace uci {
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name BookFile type string default engine/komodo.bin\n"
             << "option name Opening type check default true\n"
+            << "option name SyzygyPath type string default <empty>\n"
+            << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n";
         for (const auto& option : kEvalOptions) {
@@ -407,6 +409,29 @@ namespace uci {
                 std::cout << "info string BookFile loaded: " << path << "\n";
             } else {
                 std::cout << "info string BookFile error: could not load '" << path << "'\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "syzygypath") {
+            const std::string path(optionValue);
+            if (engine.syzygyProber.load(path)) {
+                std::cout << "info string SyzygyPath loaded: " << path
+                          << " (max pieces: " << engine.syzygyProber.maxPieces() << ")\n";
+            } else {
+                std::cout << "info string SyzygyPath error: could not load '" << path << "'\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "syzygyprobedepth") {
+            int v = 0;
+            string_view tok = optionValue;
+            if (parseInt(nextToken(tok), v) && v >= 1 && v <= 100) {
+                engine.syzygyProber.probeDepth = v;
+                std::cout << "info string SyzygyProbeDepth set to " << v << "\n";
+            } else {
+                std::cout << "info string invalid value for SyzygyProbeDepth\n";
             }
             return;
         }

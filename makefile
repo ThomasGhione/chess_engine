@@ -191,14 +191,14 @@ $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
 	gcc -O3 -march=native -std=c11 -Wall -c $< -o $@
 
 # Final executable generation: 'outputTest'
-$(TEST_APP): $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ)
+$(TEST_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	@printf "\nLinking test $(TEST_APP)..."
-	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
+	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
 
 # Final executable generation: 'outputPerformance'
-$(PERF_APP): $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ)
+$(PERF_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
-	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
+	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
 
 # Final executable generation: TT huge-page benchmark
 $(TT_HP_BENCH_APP): $(MODULE_OBJS) $(TT_HP_BENCH_OBJ)

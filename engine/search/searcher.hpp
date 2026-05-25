@@ -8,6 +8,7 @@
 #include "../../tt/tt.hpp"
 #include "../eval_constants.hpp"
 #include "../movelist.hpp"
+#include "../syzygy/syzygy.hpp"
 #include "sorter.hpp"
 
 namespace engine {
@@ -43,7 +44,8 @@ struct SearchRuntime {
     std::atomic<bool>*   ponderingStopRequested = nullptr;
     std::atomic<bool>*   searchInterrupted     = nullptr;
     // Null when running fixed-depth / ponder / perft-style searches.
-    time::TimeManager*   timeManager           = nullptr;
+    time::TimeManager*        timeManager      = nullptr;
+    syzygy::SyzygyProber*     syzygyProber     = nullptr;
 
     [[nodiscard]] bool shouldAbort() const noexcept;
     void markInterrupted() noexcept;

@@ -1,6 +1,7 @@
 #include "searcher.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 #include "../engine.hpp"
@@ -825,6 +826,26 @@ int32_t Searcher::searchPosition(
         return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
 
+    // TB WDL probe: treat TB result as a terminal score when piece count is in
+    // range and depth >= probeDepth. Skip if halfMoveClock > 0 to avoid false
+    // draws when the 50-move rule is a factor (DTZ handles that at the root).
+    if (runtime.syzygyProber != nullptr
+        && runtime.syzygyProber->isLoaded()
+        && depth >= runtime.syzygyProber->probeDepth
+        && b.getHalfMoveClock() == 0
+        && runtime.syzygyProber->inTBRange(b)) {
+        if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
+            const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
+            // Store as exact in TT so siblings can reuse without re-probing.
+            if (runtime.transpositionTable != nullptr) {
+                runtime.transpositionTable->store(
+                    b.getHash(), static_cast<uint8_t>(depth),
+                    tbScore, TranspositionTable::Entry::EXACT);
+            }
+            return tbScore;
+        }
+    }
+
     const uint64_t hashKey = b.getHash();
     AlphaBeta bounds{alpha, beta};
     int32_t score = 0;
@@ -1482,6 +1503,32 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     }
 
     result.hasLegalMoves = true;
+
+    // TB root probe: if the position is in the tablebases, reorder moves by
+    // tbRank (higher = better) and return immediately — no normal search needed.
+    if (runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
+        && runtime.syzygyProber->inTBRange(rootBoard)) {
+        const std::vector<syzygy::RootMove> tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
+        if (!tbMoves.empty()) {
+            // Find the legal move with the highest tbRank.
+            chess::Board::Move tbBest = tbMoves[0].move;
+            int32_t bestRank = tbMoves[0].tbRank;
+            for (const auto& tm : tbMoves) {
+                if (tm.tbRank > bestRank) { bestRank = tm.tbRank; tbBest = tm.move; }
+            }
+            // Score: positive rank = win, 0 = draw, negative = loss.
+            const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(
+                bestRank > 0 ? syzygy::WDL::Win : bestRank < 0 ? syzygy::WDL::Loss : syzygy::WDL::Draw, 0);
+            result.completedAnyDepth = true;
+            result.bestMove  = tbBest;
+            result.bestScore = tbScore;
+            runtime.eval     = tbScore;
+            std::cout << "info depth 1 score cp " << tbScore
+                      << " tbrank " << bestRank << " pv " << tbBest.toUCIString() << "\n";
+            return result;
+        }
+    }
+
     uint64_t interruptedDepth = 0;
     chess::Board::Move bestMove = moves[0];
     int32_t prevPrevScore = 0;

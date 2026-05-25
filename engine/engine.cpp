@@ -83,6 +83,7 @@ void Engine::bindSearchRuntime() noexcept {
     searchRuntime.stopSearchRequested = &stopSearchRequested;
     searchRuntime.ponderingStopRequested = &ponderingStopRequested;
     searchRuntime.searchInterrupted = &searchInterrupted;
+    searchRuntime.syzygyProber = &syzygyProber;
 }
 
 void Engine::ensureMagicTablesInitialized() noexcept {

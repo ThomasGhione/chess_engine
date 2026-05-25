@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -17,27 +18,32 @@ struct RootMove {
 
 class SyzygyProber {
 public:
-    // Load tablebases from a directory path. Returns false if no tables found.
     bool load(const std::string& path);
     bool isLoaded() const noexcept { return loaded_; }
-
-    // Maximum pieces (including kings) supported by the loaded tables.
-    int maxPieces() const noexcept;
+    int  maxPieces() const noexcept;
 
     // WDL probe for use inside search (no 50-move rule consideration).
-    // Returns nullopt when the position has too many pieces or probe fails.
+    // Returns nullopt when position has too many pieces or probe fails.
     std::optional<WDL> probeWDL(const chess::Board& board) const;
 
-    // Root probe: returns a ranked list of moves with DTZ info for the best
-    // endgame play. Returns empty when probe fails or position not in TB.
+    // Root probe: returns a ranked list of moves with DTZ info.
+    // Returns empty when probe fails or position not in TB.
     std::vector<RootMove> probeRoot(const chess::Board& board) const;
+
+    // Convert a WDL result to a search score (side-to-move relative).
+    // Uses MATE_SCORE to encode wins/losses, 0/1 for draws.
+    // probeDepth: passed to skip expensive WDL probes at shallow nodes.
+    static int32_t wdlToScore(WDL wdl, int ply) noexcept;
+
+    // Returns true if the position's piece count is within TB range.
+    bool inTBRange(const chess::Board& board) const noexcept;
+
+    // Minimum search depth for WDL probing (set via UCI SyzygyProbeDepth).
+    int probeDepth = 1;
 
 private:
     bool loaded_ = false;
 
-    // Pack the board's bitboards into the Pyrrhic-convention form.
-    // Pyrrhic squares: a1=0..h8=63; HydraY squares: a8=0..h1=63.
-    // Conversion: pyrrhic_sq = 63 ^ hydrY_sq  →  bswap64 mirrors the board.
     static uint64_t toPyrrhicBB(uint64_t bb) noexcept;
     static unsigned toPyrrhicEP(chess::Coords ep) noexcept;
 };

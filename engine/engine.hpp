@@ -16,6 +16,7 @@
 #include "search/searcher.hpp"
 #include "time/time_manager.hpp"
 #include "opening/opening_book.hpp"
+#include "syzygy/syzygy.hpp"
 
 namespace engine {
 
@@ -99,6 +100,9 @@ public:
     // Opening book
     opening::OpeningBook openingBook;
     std::atomic<bool> openingEnabled {true};
+
+    // Syzygy tablebases
+    syzygy::SyzygyProber syzygyProber;
 
     // Transposition table (shared by normal search and pondering)
     TranspositionTable tt;
