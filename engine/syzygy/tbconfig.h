@@ -30,12 +30,26 @@ static inline unsigned pyrrhic_poplsb(uint64_t *b) {
 
 /* ── helper: Hyperbola Quintessence slider attacks ───────────────────────── */
 
+/* Full 64-bit bit reversal: byte swap + per-byte bit swap. Required by the
+ * HQ "negative direction" trick on lines that live inside a single byte
+ * (ranks): bswap64 alone only reorders bytes, so for rank attacks the
+ * slider stays at the same intra-byte position and the subtraction trick
+ * computes the wrong ray. True bit reversal mirrors the line correctly. */
+static inline uint64_t tb_reverse64(uint64_t x) {
+    x = __builtin_bswap64(x);
+    x = ((x & UINT64_C(0xF0F0F0F0F0F0F0F0)) >> 4) | ((x & UINT64_C(0x0F0F0F0F0F0F0F0F)) << 4);
+    x = ((x & UINT64_C(0xCCCCCCCCCCCCCCCC)) >> 2) | ((x & UINT64_C(0x3333333333333333)) << 2);
+    x = ((x & UINT64_C(0xAAAAAAAAAAAAAAAA)) >> 1) | ((x & UINT64_C(0x5555555555555555)) << 1);
+    return x;
+}
+
 static inline uint64_t tb_hq(uint64_t occ, uint64_t mask, uint64_t slider) {
-    uint64_t forward  = (occ & mask) - 2 * slider;
-    uint64_t backward = __builtin_bswap64(
-                            __builtin_bswap64(occ & mask) -
-                            2 * __builtin_bswap64(slider));
-    return (forward ^ backward) & mask;
+    const uint64_t o = occ & mask;
+    const uint64_t positive = (o - 2 * slider) ^ o;
+    const uint64_t o_rev = tb_reverse64(o);
+    const uint64_t s_rev = tb_reverse64(slider);
+    const uint64_t negative = tb_reverse64((o_rev - 2 * s_rev) ^ o_rev);
+    return (positive | negative) & mask;
 }
 
 /* ── file / rank / diagonal masks (computed once inline) ─────────────────── */
@@ -55,7 +69,10 @@ static inline uint64_t tb_diag_mask(int sq) {
         0x0000804020100804ULL, 0x0000008040201008ULL, 0x0000000080402010ULL,
         0x0000000000804020ULL, 0x0000000000008040ULL, 0x0000000000000080ULL,
     };
-    return d[(sq >> 3) - (sq & 7) + 7];
+    /* d[i] is the diagonal with rank-file == 7-i (verified by inspection of
+     * the table above). For a square with rank-file == k we want index 7-k,
+     * i.e. file - rank + 7. */
+    return d[(sq & 7) - (sq >> 3) + 7];
 }
 static inline uint64_t tb_anti_mask(int sq) {
     /* anti-diagonal (a8-h1 direction) */

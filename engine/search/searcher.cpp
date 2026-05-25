@@ -826,15 +826,19 @@ int32_t Searcher::searchPosition(
         return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
 
-    // TB WDL probe: use the theoretical game result to prune the tree.
-    //   Draw: exact 0 — prevents choosing drawn moves when winning.
-    //   Loss (not in check): prune immediately — guaranteed loss with legal moves.
-    //     In check, skip — the position might be checkmate; the search then
-    //     returns NEG_INF+ply which the parent correctly interprets as a mate.
-    //   Win: only cut when tbScore >= beta; never raise alpha — raising alpha to
-    //     TB_WIN_SCORE causes every opponent-loss node (scored TB_WIN_SCORE-ply)
-    //     to fail-low relative to that bound, collapsing all moves to the same
-    //     score and letting the evaluation guide the search naturally instead.
+    // TB WDL probe: use the theoretical game result as a SOFT BOUND on this
+    // subtree, never as a forced return (except for Draw, which is exact).
+    //
+    // Returning tbScore unconditionally for Win or Loss collapses every move
+    // to the same TB-derived score (Pyrrhic ranks all guaranteed wins/losses
+    // equally), leaving the engine to pick moves[0] from the move generator
+    // — visible as the king wandering instead of pushing pawns in KPPvK. By
+    // only cutting on actual fail-high/fail-low, the search proceeds normally
+    // for the in-window case and the static evaluation differentiates moves.
+    //
+    // In-check losses still fall through fully: the position might be mate,
+    // and we want the search to return NEG_INF+ply so the parent sees a real
+    // mate distance rather than a TB-derived "generic loss" bound.
     if (runtime.syzygyProber != nullptr
         && runtime.syzygyProber->isLoaded()
         && depth >= runtime.syzygyProber->probeDepth
@@ -850,17 +854,17 @@ int32_t Searcher::searchPosition(
                 }
                 return tbScore;
             }
-            if (tbScore < 0 && !b.inCheck(b.getActiveColor())) {
-                // Loss, not in check: prune this branch.
+            if (tbScore < 0 && tbScore <= alpha && !b.inCheck(b.getActiveColor())) {
+                // Loss bound already at or below alpha: fail-low cutoff.
                 if (runtime.transpositionTable != nullptr) {
                     runtime.transpositionTable->store(
                         b.getHash(), static_cast<uint8_t>(depth),
-                        tbScore, TranspositionTable::Entry::EXACT);
+                        tbScore, TranspositionTable::Entry::UPPERBOUND);
                 }
                 return tbScore;
             }
             if (tbScore > 0 && tbScore >= beta) {
-                // Win that already exceeds beta: soft cutoff (lower bound).
+                // Win bound already at or above beta: fail-high cutoff.
                 if (runtime.transpositionTable != nullptr) {
                     runtime.transpositionTable->store(
                         b.getHash(), static_cast<uint8_t>(depth),
@@ -868,8 +872,12 @@ int32_t Searcher::searchPosition(
                 }
                 return tbScore;
             }
-            // All other cases (Win with tbScore < beta, Loss in check):
-            // fall through — let evaluation and checkmate detection guide the search.
+            // Otherwise (TB win inside window, TB loss inside window or in
+            // check): fall through and let the search differentiate moves
+            // via the evaluator. Don't tighten alpha/beta here either — the
+            // resulting window would still be wider than the TB-collapsed
+            // score band, so move ordering by eval remains the deciding
+            // factor.
         }
     }
 
