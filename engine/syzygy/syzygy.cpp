@@ -53,7 +53,7 @@ uint64_t SyzygyProber::toPyrrhicBB(uint64_t bb) noexcept {
 
 unsigned SyzygyProber::toPyrrhicEP(chess::Coords ep) noexcept {
     if (!ep.isValid()) return 0;
-    return static_cast<unsigned>(63 ^ ep.index);
+    return static_cast<unsigned>(56 ^ ep.index);
 }
 
 // HydraY convention: bb[0] = White, bb[1] = Black (colorToIndex(WHITE) == 0).
@@ -121,8 +121,8 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
     out.reserve(results.size);
     for (unsigned i = 0; i < results.size; ++i) {
         const PyrrhicMove pm = results.moves[i].move;
-        const uint8_t from = static_cast<uint8_t>(63 ^ PYRRHIC_MOVE_FROM(pm));
-        const uint8_t to   = static_cast<uint8_t>(63 ^ PYRRHIC_MOVE_TO(pm));
+        const uint8_t from = static_cast<uint8_t>(56 ^ PYRRHIC_MOVE_FROM(pm));
+        const uint8_t to   = static_cast<uint8_t>(56 ^ PYRRHIC_MOVE_TO(pm));
 
         char promo = '\0';
         if      (PYRRHIC_MOVE_IS_QPROMO(pm)) promo = 'q';
