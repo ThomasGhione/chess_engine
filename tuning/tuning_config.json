@@ -23,10 +23,15 @@
   "plot_every": 0,
   "result_every": 1,
   "parameter_ranges": {
-    "HANGING_PAWN_PENALTY": "Integer(-18, -8)",
-    "HANGING_PAWN_NEAR_KING_PENALTY": "Integer(-38, -20)",
-    "HANGING_HOOK_PAWN_PENALTY": "Integer(-24, -10)"
+    "KING_ATTACK_WEIGHT_KNIGHT": "Integer(3, 12)",
+    "KING_ATTACK_WEIGHT_BISHOP": "Integer(3, 12)",
+    "KING_ATTACK_WEIGHT_ROOK": "Integer(7, 18)",
+    "KING_ATTACK_WEIGHT_QUEEN": "Integer(14, 30)",
+    "KING_SAFE_CONTACT_BONUS": "Integer(2, 10)",
+    "KING_FORCING_CONTACT_BONUS": "Integer(2, 12)",
+    "KING_SAFE_CHECK_BONUS": "Integer(6, 18)",
+    "KING_FORCING_CHECK_BONUS": "Integer(2, 12)"
   },
-  "data_path": "hanging_pawns_data.npz",
-  "model_path": "hanging_pawns_model.pkl"
+  "data_path": "king_attack_units_data.npz",
+  "model_path": "king_attack_units_model.pkl"
 }
