@@ -216,27 +216,27 @@ public:
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
 
     // --- Game state queries ---
-    __attribute__((hot)) bool isCheckmate(uint8_t color) const noexcept;
+    __attribute__((hot)) bool isCheckmate(uint8_t color) const noexcept { return inCheck(color) && !hasAnyLegalMove(color); }
     bool hasAnyLegalMove(uint8_t color) const noexcept;
-    bool isStalemate(uint8_t color) const noexcept;
-    bool isFiftyMoveRule() const noexcept;
+    bool isStalemate(uint8_t color) const noexcept    { return !inCheck(color) && !hasAnyLegalMove(color); }
+    bool isFiftyMoveRule() const noexcept             { return halfMoveClock >= 100; }
     bool isDraw(uint8_t color) const noexcept;
     bool isThreefoldRepetition() const noexcept;
     int  countRepetitions() const noexcept;
     bool hasInsufficientMaterialDraw() const noexcept;
 
     // --- State accessors ---
-    constexpr uint8_t  getActiveColor() const noexcept;
-    constexpr bool     getCastle(uint8_t index) const noexcept;
-    constexpr uint16_t getFullMoveClock() const noexcept;
-    Coords             getEnPassant() const noexcept;
-    constexpr uint64_t getHash() const noexcept { return currentHash; }
-    uint64_t           getPiecesBitMap() const noexcept;
+    constexpr uint8_t  getActiveColor() const noexcept   { return activeColor; }
+    constexpr bool     getCastle(uint8_t index) const noexcept { return (castle & (1u << index)); }
+    constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
+    Coords             getEnPassant() const noexcept     { return enPassant; }
+    constexpr uint64_t getHash() const noexcept          { return currentHash; }
+    uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }
     void               updateOccupancyBB() noexcept;
 
     // --- Incremental eval accessors ---
-    constexpr int32_t getIncrementalMaterialDelta() const noexcept;
-    constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept;
+    constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
+    constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
     int32_t           getIncrementalPsqtDelta(bool isEndgame) const noexcept;
 
     // --- Eval cache ---

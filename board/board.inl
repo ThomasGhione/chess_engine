@@ -139,18 +139,6 @@ inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
 
-inline constexpr uint8_t Board::getActiveColor() const noexcept { return activeColor; }
-
-inline Coords Board::getEnPassant() const noexcept { return enPassant; }
-
-inline constexpr int32_t Board::getIncrementalMaterialDelta() const noexcept {
-    return incrementalMaterialDelta;
-}
-
-inline constexpr int32_t Board::getIncrementalNonPawnMajorCount() const noexcept {
-    return incrementalNonPawnMajorCount;
-}
-
 inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
     const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
     const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
@@ -187,16 +175,12 @@ inline void Board::clearEvalCache() noexcept {
     evalCache.validMask = 0;
 }
 
-inline constexpr bool Board::getCastle(uint8_t index) const noexcept {
-    return (castle & (1u << index));
-}
+
 
 __attribute__((always_inline))
 inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
     return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
-
-inline constexpr uint16_t Board::getFullMoveClock() const noexcept { return fullMoveClock; }
 
 __attribute__((hot, always_inline))
 inline void Board::set(uint8_t index, piece_id value) noexcept {
@@ -209,8 +193,6 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
 // ==============================
 // Board Internals
 // ==============================
-
-inline uint64_t Board::getPiecesBitMap() const noexcept { return occupancy; }
 
 inline void Board::updateOccupancyBB() noexcept {
     // Reset all bitboards
@@ -364,12 +346,6 @@ inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
 // ==============================
 // High-Level Game State API
 // ==============================
-__attribute__((hot))
-inline bool Board::isCheckmate(uint8_t color) const noexcept {return inCheck(color) && !hasAnyLegalMove(color);}
-
-inline bool Board::isStalemate(uint8_t color) const noexcept {return !inCheck(color) && !hasAnyLegalMove(color);}
-
-inline bool Board::isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
 
 inline bool Board::isDraw(uint8_t color) const noexcept {
     return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw();
