@@ -8,7 +8,6 @@ namespace chess {
 // ------------------------------------------------------------
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept {
-    //FIXME Funzione troppo alata
     //FIXME Eliminare costati magiche
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex   = m.to.index;
@@ -67,9 +66,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         case MoveKind::PromotionCapture:
             doMoveByKind<MoveKind::PromotionCapture>(st, moving, movingType, movingColor, destBefore,
                                                      fromIndex, toIndex, promotionChoice);
-            if (destBefore != EMPTY) {
-                newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
-            }
+            newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
                 newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];

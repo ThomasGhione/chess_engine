@@ -27,7 +27,6 @@ inline uint16_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
         flags |= MOVE_CHANGE_ROOK_MOVE;
     }
 
-    //FIXME Non e' meglio tramite un if constexpr?
     switch (st.fromPiece & MASK_PIECE_TYPE) {
         case PAWN:   flags |= MOVE_CHANGE_PAWN_MOVE; break;
         case KNIGHT: flags |= MOVE_CHANGE_KNIGHT_MOVE; break;
