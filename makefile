@@ -188,7 +188,7 @@ $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
 $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
-	gcc -O3 -march=native -std=c11 -Wall -c $< -o $@
+	gcc -O3 -march=native -std=c11 -Wall -MMD -MP -c $< -o $@
 
 # Final executable generation: 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ)
