@@ -16,7 +16,17 @@
 
 #define PYRRHIC_POPCOUNT(x)         (__builtin_popcountll(x))
 #define PYRRHIC_LSB(x)              (__builtin_ctzll(x))
-#define PYRRHIC_POPLSB(p)           (*(p) &= *(p) - 1)
+
+/* PYRRHIC_POPLSB(p): clear the LSB of *p and return its bit INDEX (0-63).
+ * tbprobe.c::fill_squares uses the return value as a square index into
+ * tables like Triangle[64], so returning the post-clear bitboard value
+ * (as a plain expression macro would do) causes out-of-bounds crashes. */
+static inline unsigned pyrrhic_poplsb(uint64_t *b) {
+    unsigned s = (unsigned)__builtin_ctzll(*b);
+    *b &= *b - 1;
+    return s;
+}
+#define PYRRHIC_POPLSB(p)           pyrrhic_poplsb(p)
 
 /* ── helper: Hyperbola Quintessence slider attacks ───────────────────────── */
 
