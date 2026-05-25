@@ -826,23 +826,50 @@ int32_t Searcher::searchPosition(
         return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
     }
 
-    // TB WDL probe: treat TB result as a terminal score when piece count is in
-    // range and depth >= probeDepth. Skip if halfMoveClock > 0 to avoid false
-    // draws when the 50-move rule is a factor (DTZ handles that at the root).
+    // TB WDL probe: use the theoretical game result to prune the tree.
+    //   Draw: exact 0 — prevents choosing drawn moves when winning.
+    //   Loss (not in check): prune immediately — guaranteed loss with legal moves.
+    //     In check, skip — the position might be checkmate; the search then
+    //     returns NEG_INF+ply which the parent correctly interprets as a mate.
+    //   Win: only cut when tbScore >= beta; never raise alpha — raising alpha to
+    //     TB_WIN_SCORE causes every opponent-loss node (scored TB_WIN_SCORE-ply)
+    //     to fail-low relative to that bound, collapsing all moves to the same
+    //     score and letting the evaluation guide the search naturally instead.
     if (runtime.syzygyProber != nullptr
         && runtime.syzygyProber->isLoaded()
         && depth >= runtime.syzygyProber->probeDepth
-        && b.getHalfMoveClock() == 0
         && runtime.syzygyProber->inTBRange(b)) {
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
-            // Store as exact in TT so siblings can reuse without re-probing.
-            if (runtime.transpositionTable != nullptr) {
-                runtime.transpositionTable->store(
-                    b.getHash(), static_cast<uint8_t>(depth),
-                    tbScore, TranspositionTable::Entry::EXACT);
+            if (tbScore == 0) {
+                // Draw: exact terminal.
+                if (runtime.transpositionTable != nullptr) {
+                    runtime.transpositionTable->store(
+                        b.getHash(), static_cast<uint8_t>(depth),
+                        tbScore, TranspositionTable::Entry::EXACT);
+                }
+                return tbScore;
             }
-            return tbScore;
+            if (tbScore < 0 && !b.inCheck(b.getActiveColor())) {
+                // Loss, not in check: prune this branch.
+                if (runtime.transpositionTable != nullptr) {
+                    runtime.transpositionTable->store(
+                        b.getHash(), static_cast<uint8_t>(depth),
+                        tbScore, TranspositionTable::Entry::EXACT);
+                }
+                return tbScore;
+            }
+            if (tbScore > 0 && tbScore >= beta) {
+                // Win that already exceeds beta: soft cutoff (lower bound).
+                if (runtime.transpositionTable != nullptr) {
+                    runtime.transpositionTable->store(
+                        b.getHash(), static_cast<uint8_t>(depth),
+                        tbScore, TranspositionTable::Entry::LOWERBOUND);
+                }
+                return tbScore;
+            }
+            // All other cases (Win with tbScore < beta, Loss in check):
+            // fall through — let evaluation and checkmate detection guide the search.
         }
     }
 
@@ -1504,28 +1531,55 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     result.hasLegalMoves = true;
 
-    // TB root probe: if the position is in the tablebases, reorder moves by
-    // tbRank (higher = better) and return immediately — no normal search needed.
+    // TB root probe: use DTZ-ranked moves to guide play.
+    //   Draws/losses: the rank differentiates moves by DTZ — return immediately.
+    //   Wins: Pyrrhic ranks all winning moves equally (TB_MAX_DTZ) when rule50==0,
+    //     so filter to winning moves only and fall through to normal iterative
+    //     deepening. The in-search WDL probe (lower bound for wins) then lets the
+    //     search find the fastest actual mate rather than cycling among equal ranks.
     if (runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
         && runtime.syzygyProber->inTBRange(rootBoard)) {
         const std::vector<syzygy::RootMove> tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
-            // Find the legal move with the highest tbRank.
-            chess::Board::Move tbBest = tbMoves[0].move;
             int32_t bestRank = tbMoves[0].tbRank;
+            chess::Board::Move tbBest = tbMoves[0].move;
             for (const auto& tm : tbMoves) {
                 if (tm.tbRank > bestRank) { bestRank = tm.tbRank; tbBest = tm.move; }
             }
-            // Score: positive rank = win, 0 = draw, negative = loss.
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(
                 bestRank > 0 ? syzygy::WDL::Win : bestRank < 0 ? syzygy::WDL::Loss : syzygy::WDL::Draw, 0);
-            result.completedAnyDepth = true;
+
+            if (bestRank <= 0) {
+                // Draw or loss: DTZ rank already differentiates — return immediately.
+                result.completedAnyDepth = true;
+                result.bestMove  = tbBest;
+                result.bestScore = tbScore;
+                runtime.eval     = tbScore;
+                std::cout << "info depth 1 score cp " << tbScore
+                          << " tbrank " << bestRank << " pv " << tbBest.toUCIString() << "\n";
+                return result;
+            }
+
+            // Win: filter legal moves to only winning TB moves, then search.
+            {
+                MoveList<chess::Board::Move> winMoves;
+                for (int i = 0; i < moves.size; ++i) {
+                    for (const auto& tm : tbMoves) {
+                        if (tm.tbRank > 0 && moves[i] == tm.move) {
+                            winMoves.push_back(moves[i]);
+                            break;
+                        }
+                    }
+                }
+                if (!winMoves.is_empty()) moves = winMoves;
+            }
+            // Publish depth-1 info and set TB best as fallback (overwritten by search).
             result.bestMove  = tbBest;
             result.bestScore = tbScore;
             runtime.eval     = tbScore;
             std::cout << "info depth 1 score cp " << tbScore
                       << " tbrank " << bestRank << " pv " << tbBest.toUCIString() << "\n";
-            return result;
+            // Fall through to iterative deepening with filtered winning-moves list.
         }
     }
 
