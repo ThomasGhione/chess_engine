@@ -233,11 +233,14 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
         return 0;
     }
 
-    // Scale contempt aggressively so winning positions never accept repetition.
-    // No upper cap: a rook-up position gets ~800cp contempt, discouraging any draw.
-    const int32_t advantage = std::abs(drawDelta);
-    const int32_t contempt = STALEMATE_DRAW_PENALTY_MINOR + advantage * 2;
-    return (drawDelta > 0) ? -contempt : contempt;
+    // Modest fixed contempt: enough that the engine prefers to keep playing
+    // when winning, but smaller than any meaningful material amount so it
+    // won't trade a piece just to avoid the repetition.
+    // The previous "STALEMATE_DRAW_PENALTY_MINOR + advantage * 2" formula had
+    // no cap and easily exceeded 1000cp in good positions, which made the
+    // search rationally sacrifice material rather than allow the draw.
+    constexpr int32_t REPETITION_CONTEMPT = 50; // 1/2 pawn
+    return (drawDelta > 0) ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT;
 }
 
 void Searcher::rootNullWindow(int32_t alpha, int32_t& outAlpha, int32_t& outBeta) noexcept {
