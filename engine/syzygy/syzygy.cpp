@@ -100,8 +100,14 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
 
     const bool turn = (board.getActiveColor() == chess::Board::WHITE);
 
-    TbRootMoves results{};
-    const int ok = tb_probe_root_dtz(
+    // Use tb_probe_root (not tb_probe_root_dtz) because we need per-move DTZ.
+    // tb_probe_root_dtz collapses every "guaranteed win" to TB_MAX_DTZ when
+    // cnt50 + dtz <= 99, which is the common case — that erases the
+    // distinction between "promote in 1" and "shuffle the king for 30 plies".
+    // The probe_root results[] array carries the actual DTZ per move, which
+    // lets the search pick the fastest conversion.
+    unsigned results[TB_MAX_MOVES + 1] = {0};
+    const unsigned r = tb_probe_root(
         allW, allB,
         toPyrrhicBB(board.kings_bb[0]   | board.kings_bb[1]),
         toPyrrhicBB(board.queens_bb[0]  | board.queens_bb[1]),
@@ -112,26 +118,51 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
         static_cast<unsigned>(board.getHalfMoveClock()),
         toPyrrhicEP(board.getEnPassant()),
         turn,
-        /*hasRepeated=*/false,
-        &results);
+        results);
 
-    if (!ok) return {};
+    if (r == TB_RESULT_FAILED) return {};
+    if (r == TB_RESULT_CHECKMATE || r == TB_RESULT_STALEMATE) return {};
+
+    // Rank scale: large enough that Win > 0 > Loss with room for DTZ
+    // tiebreaks. INT32 headroom is comfortable.
+    constexpr int32_t WIN_BASE  =  1'000'000'000;
+    constexpr int32_t LOSS_BASE = -1'000'000'000;
 
     std::vector<RootMove> out;
-    out.reserve(results.size);
-    for (unsigned i = 0; i < results.size; ++i) {
-        const PyrrhicMove pm = results.moves[i].move;
-        const uint8_t from = static_cast<uint8_t>(56 ^ PYRRHIC_MOVE_FROM(pm));
-        const uint8_t to   = static_cast<uint8_t>(56 ^ PYRRHIC_MOVE_TO(pm));
+    out.reserve(TB_MAX_MOVES);
+    for (unsigned i = 0; i < TB_MAX_MOVES + 1 && results[i] != TB_RESULT_FAILED; ++i) {
+        const unsigned res  = results[i];
+        const unsigned wdl  = TB_GET_WDL(res);
+        const unsigned dtz  = TB_GET_DTZ(res);
+        const unsigned from = TB_GET_FROM(res);
+        const unsigned to   = TB_GET_TO(res);
+        const unsigned promotes = TB_GET_PROMOTES(res);
 
         char promo = '\0';
-        if      (PYRRHIC_MOVE_IS_QPROMO(pm)) promo = 'q';
-        else if (PYRRHIC_MOVE_IS_RPROMO(pm)) promo = 'r';
-        else if (PYRRHIC_MOVE_IS_BPROMO(pm)) promo = 'b';
-        else if (PYRRHIC_MOVE_IS_NPROMO(pm)) promo = 'n';
+        switch (promotes) {
+            case PYRRHIC_FLAG_QPROMO: promo = 'q'; break;
+            case PYRRHIC_FLAG_RPROMO: promo = 'r'; break;
+            case PYRRHIC_FLAG_BPROMO: promo = 'b'; break;
+            case PYRRHIC_FLAG_NPROMO: promo = 'n'; break;
+            default: break;
+        }
 
-        out.push_back({chess::Board::Move{chess::Coords{from}, chess::Coords{to}, promo},
-                       results.moves[i].tbRank});
+        // tbRank: higher is better. Smaller DTZ beats larger DTZ on the
+        // winning side; larger DTZ (slower loss) beats smaller DTZ on the
+        // losing side. Cursed Win (WDL=3) and Blessed Loss (WDL=1) are
+        // 50-move-rule draws — score them as draws to avoid trading a
+        // real win for one.
+        int32_t rank = 0;
+        if (wdl == TB_WIN)        rank = WIN_BASE  - static_cast<int32_t>(dtz);
+        else if (wdl == TB_LOSS)  rank = LOSS_BASE + static_cast<int32_t>(dtz);
+        // TB_DRAW, TB_CURSED_WIN, TB_BLESSED_LOSS → rank 0.
+
+        out.push_back({
+            chess::Board::Move{
+                chess::Coords{static_cast<uint8_t>(56 ^ from)},
+                chess::Coords{static_cast<uint8_t>(56 ^ to)},
+                promo},
+            rank});
     }
     return out;
 }
