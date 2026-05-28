@@ -10,6 +10,9 @@ namespace engine { class Engine; }
 
 namespace driver {
 
+//FIXME per errori usare cerr e non cout.
+//FIXME Usare this in chiamate funzioni interne alla classe
+//FIXME Evitiamo di usare le stringhe stile C.
 class Driver {
 
 public:
@@ -30,6 +33,7 @@ private:
     static void printInvalidOption() noexcept;
 
     bool loadGame() noexcept;
+    //FIXME Il commento serve ancora?
     void saveGame() noexcept; // botColor: true = bot is white, false = bot is black
     void endGame() noexcept;
     void printGameOnFile() noexcept;
@@ -43,6 +47,7 @@ private:
     bool playOneTurn(bool playerTurn) noexcept;
     void playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept;
 
+    //FIXME Ci sono tanti parametri per questa funzione
     static uint32_t showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoice, bool clearBefore = true) noexcept;
     static uint32_t mainMenu() noexcept;
     static uint32_t extraMenu() noexcept;
