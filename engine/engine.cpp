@@ -492,6 +492,7 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
     this->clearPonderResult();
 
     this->searchRuntime.timeManager = &this->timeManager;
+    this->searchRuntime.maxNodes    = limits.maxNodes;
     this->timeManager.start();
 
     chess::Board searchBoard = this->board;
@@ -500,6 +501,7 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 
     this->timeManager.stop();
     this->searchRuntime.timeManager = nullptr;
+    this->searchRuntime.maxNodes    = 0;
 
     if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
         this->bestMove = chess::Board::Move{};

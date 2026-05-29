@@ -62,6 +62,8 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
 }
 
 int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
+    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
+
     const uint64_t occ = b.getPiecesBitMap();
     const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
     const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));

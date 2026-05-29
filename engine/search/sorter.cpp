@@ -196,8 +196,12 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 
     if (m.promotionPiece != '\0') {
         const int promoType = promotionPieceType(m.promotionPiece);
-        initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
-        capturedOnTargetType = promoType;
+        // Defensive: an unrecognised promo char (sentinel EMPTY) used to fall
+        // through to QUEEN, applying a phantom +Q-P gain in SEE. Skip cleanly.
+        if (promoType != chess::Board::EMPTY) {
+            initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
+            capturedOnTargetType = promoType;
+        }
     }
 
     constexpr int MAX_SEE_DEPTH = 16;

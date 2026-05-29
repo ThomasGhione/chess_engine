@@ -45,17 +45,23 @@ public:
     static constexpr int32_t SEE_THRESHOLD_DEEP          = -4;   // ply >= 20
 
     // Inlined here so callers (in header-included contexts) get guaranteed inlining.
+    // Returns EMPTY (0) as a sentinel for unrecognised input so SEE / move-ordering
+    // can detect garbage instead of silently treating it as QUEEN. Legitimate move
+    // sources (MoveGenerator, TT decode) only ever produce q/r/b/n.
     static inline constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
         switch (promotionPiece) {
+            case 'q': case 'Q': return chess::Board::QUEEN;
             case 'r': case 'R': return chess::Board::ROOK;
             case 'b': case 'B': return chess::Board::BISHOP;
             case 'n': case 'N': return chess::Board::KNIGHT;
-            default:            return chess::Board::QUEEN;
+            default:            return chess::Board::EMPTY;
         }
     }
 
     static inline constexpr int32_t getPromotionValueDelta(char promotionPiece) noexcept {
-        return PIECE_VALUES[promotionPieceType(promotionPiece)] - PIECE_VALUES[chess::Board::PAWN];
+        const uint8_t pt = promotionPieceType(promotionPiece);
+        return (pt == chess::Board::EMPTY) ? 0
+                                           : PIECE_VALUES[pt] - PIECE_VALUES[chess::Board::PAWN];
     }
 
     // Incremental lazy-selection picker. Parallel arrays (moves/scores/givesCheckFlag)

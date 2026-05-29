@@ -802,6 +802,13 @@ int32_t Searcher::searchPosition(
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
 
+    // UCI `go nodes` hard cap. runtime.nodesSearched holds prior IDS iterations;
+    // *counter is the current iteration / worker. Sum is the total node budget used.
+    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
+        runtime.markInterrupted();
+        return Evaluator::evaluate(b);
+    }
+
     int32_t earlyScore = 0;
     if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
         return earlyScore;
@@ -1099,6 +1106,12 @@ int32_t Searcher::quiescenceSearch(
     // Macro-step 1: Node accounting and early terminal condition checks.
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
     ++(*counter);
+
+    // UCI `go nodes` hard cap (same accounting as searchPosition).
+    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
+        runtime.markInterrupted();
+        return Evaluator::evaluate(b);
+    }
 
     int32_t earlyScore = 0;
     if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {

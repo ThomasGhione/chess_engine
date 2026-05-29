@@ -46,6 +46,8 @@ inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whi
 
 int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile,
                                               uint64_t targetPawns) noexcept {
+    if (targetKingFile < 0 || targetKingFile > 7) [[unlikely]] return KING_ATTACK_MATERIAL_MIN_SCALE;
+    
     const int queenCount = __builtin_popcountll(b.queens_bb[attackingSide]);
     const int rookCount = __builtin_popcountll(b.rooks_bb[attackingSide]);
     const int minorCount = __builtin_popcountll(b.knights_bb[attackingSide] | b.bishops_bb[attackingSide]);
@@ -216,6 +218,8 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int kingF
 }
 
 int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
+
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
     const bool blackCastleKs = b.getCastle(2);
@@ -231,6 +235,8 @@ int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
 }
 
 int32_t Evaluator::evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
+
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
     const bool blackCastleKs = b.getCastle(2);
