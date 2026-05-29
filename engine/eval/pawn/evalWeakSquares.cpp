@@ -3,19 +3,11 @@
 
 namespace engine {
 
-// Weak squares / color complex weakness.
-//
-// A square is "weak" for a side if no own pawn can ever defend it
-// (pawn hole), especially in the center. We also penalize color complex
-// weakness: when the opponent's pawns dominate the color of our bishop.
+PhaseValue Evaluator::evalWeakSquares(const chess::Board& b,
+                                       uint64_t whitePawns,
+                                       uint64_t blackPawns) noexcept {
+    constexpr uint64_t CENTER_EXTENDED = 0x00003C3C3C3C0000ULL;
 
-int32_t Evaluator::evalWeakSquares(const chess::Board& b,
-                                   uint64_t whitePawns,
-                                   uint64_t blackPawns) noexcept {
-    constexpr uint64_t CENTER_EXTENDED = 0x00003C3C3C3C0000ULL; // ranks 3-6, files c-f
-
-    // Build attack spans for each side's pawns (squares their pawns can
-    // ever defend going forward), then complement = pawn holes.
     auto buildHoles = [](uint64_t ownPawns,
                          const std::array<uint64_t, 64>& fwd) -> uint64_t {
         uint64_t attacks = 0ULL;
@@ -40,7 +32,6 @@ int32_t Evaluator::evalWeakSquares(const chess::Board& b,
     constexpr int32_t HOLE_PENALTY = 4;
     int32_t score = (blackHoleCount - whiteHoleCount) * HOLE_PENALTY;
 
-    // Color complex: penalize if the enemy's pawns lock out our bishop's color.
     const bool whiteBishopOnDark  = (b.bishops_bb[0] & DARK_SQUARES)  != 0ULL;
     const bool whiteBishopOnLight = (b.bishops_bb[0] & LIGHT_SQUARES) != 0ULL;
     const bool blackBishopOnDark  = (b.bishops_bb[1] & DARK_SQUARES)  != 0ULL;
@@ -57,7 +48,7 @@ int32_t Evaluator::evalWeakSquares(const chess::Board& b,
     if (blackBishopOnLight)
         score += std::popcount(whitePawns & LIGHT_SQUARES) * COLOR_COMPLEX_PENALTY;
 
-    return score;
+    return PhaseValue{score, score};
 }
 
 } // namespace engine

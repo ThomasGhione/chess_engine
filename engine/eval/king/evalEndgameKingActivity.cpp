@@ -23,16 +23,17 @@ static constexpr auto MIN_CENTER_DIST = initMinCenterDist();
 } // namespace
 
 template<int Side>
-inline int32_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noexcept {
+inline PhaseValue Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noexcept {
     const uint64_t kbb = b.kings_bb[Side];
-    if (!kbb) [[unlikely]] return 0;
+    if (!kbb) [[unlikely]] return {};
 
     const int sq = std::countr_zero(kbb);
     constexpr int sign = (Side == 0) ? 1 : -1;
-    return sign * (7 - MIN_CENTER_DIST[sq]) * 10;
+    // Pure endgame contribution (mg = 0).
+    return PhaseValue{0, sign * (7 - MIN_CENTER_DIST[sq]) * 10};
 }
 
-int32_t Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {
     return evalEndgameKingActivitySide<0>(b) + evalEndgameKingActivitySide<1>(b);
 }
 

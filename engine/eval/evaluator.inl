@@ -92,13 +92,6 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     return result;
 }
 
-template<bool IsEndgame>
-inline int32_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    const int32_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
-    return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-}
-
-
 inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noexcept {
     PhaseInfo phase{};
     phase.phaseWeight = b.getIncrementalPhaseWeight();
@@ -121,9 +114,9 @@ inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noex
 }
 
 template<uint32_t Term, class Compute>
-inline int32_t Evaluator::cachedTerm(const chess::Board& b, Compute compute) noexcept {
+inline PhaseValue Evaluator::cachedTerm(const chess::Board& b, Compute compute) noexcept {
     if (b.hasEvalCacheTerm<Term>()) return b.getEvalCacheTerm<Term>();
-    const int32_t score = compute();
+    const PhaseValue score = compute();
     b.setEvalCacheTerm<Term>(score);
     return score;
 }

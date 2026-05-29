@@ -46,6 +46,12 @@ inline void Evaluator::traceTerm(int32_t& eval, int32_t delta, const char* label
     std::cout << "  [TRACE] +" << label << ": " << eval << " (delta=" << delta << ")\n";
 }
 
+inline void traceTermPV(int32_t& eval, engine::PhaseValue delta, const char* label, bool eg) noexcept {
+    const int32_t v = eg ? delta.eg : delta.mg;
+    eval += v;
+    std::cout << "  [TRACE] +" << label << ": " << eval << " (delta=" << v << " from PhaseValue{mg=" << delta.mg << ",eg=" << delta.eg << "})\n";
+}
+
 inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         return -POS_INF; // terminal position (negamax/side-to-move relative)
@@ -74,14 +80,14 @@ inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         AttackData pawnAttacks[2]{};
         pawnAttacks[0].allAttacks = collectPawnAttacks(whitePawns, 0);
         pawnAttacks[1].allAttacks = collectPawnAttacks(blackPawns, 1);
-        traceTerm(eval, evalHangingPieces(board, pawnAttacks), "hangingPieces");
-        traceTerm(eval, evalPawnStructureCached(board, whitePawns, blackPawns, true), "pawnStructure(eg)");
-        traceTerm(eval, evalKingActivity(board, true), "kingActivity(eg)");
-        traceTerm(eval, evalEndgameKingActivity(board), "endgameKingActivity");
-        traceTerm(eval, evalMopUp(board), "mopUp");
-        traceTerm(eval, evalPassedPawnKeySquares(board, whitePawns, blackPawns), "passedKeySq");
-        traceTerm(eval, evalRuleOfSquare(board, whitePawns, blackPawns), "ruleOfSquare");
-        traceTerm(eval, evalInitiative(board, true), "initiative(eg)");
+        traceTermPV(eval, evalHangingPieces(board, pawnAttacks), "hangingPieces", true);
+        traceTermPV(eval, evalPawnStructureCached(board, whitePawns, blackPawns, true), "pawnStructure(eg)", true);
+        traceTermPV(eval, evalKingActivity(board, true), "kingActivity(eg)", true);
+        traceTermPV(eval, evalEndgameKingActivity(board), "endgameKingActivity", true);
+        traceTermPV(eval, evalMopUp(board), "mopUp", true);
+        traceTermPV(eval, evalPassedPawnKeySquares(board, whitePawns, blackPawns), "passedKeySq", true);
+        traceTermPV(eval, evalRuleOfSquare(board, whitePawns, blackPawns), "ruleOfSquare", true);
+        traceTermPV(eval, evalInitiative(board, true), "initiative(eg)", true);
         std::cout << "  [TRACE] TOTAL (pawnOnlyEG): " << eval << '\n';
         return eval;
     }
@@ -92,17 +98,17 @@ inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
     int32_t mgAcc = material + psqtMg;
     int32_t egAcc = material + psqtEg;
 
-    auto bothTerm = [&](int32_t v, const char* label) {
-        mgAcc += v; egAcc += v;
-        std::cout << "  [TRACE] +" << label << " (both): mg=" << mgAcc << " eg=" << egAcc << " (delta=" << v << ")\n";
+    auto bothTerm = [&](PhaseValue v, const char* label) {
+        mgAcc += v.mg; egAcc += v.eg;
+        std::cout << "  [TRACE] +" << label << " (both): mg=" << mgAcc << " eg=" << egAcc << " (delta=" << v.mg << "/" << v.eg << ")\n";
     };
-    auto mgTerm = [&](int32_t v, const char* label) {
-        mgAcc += v;
-        std::cout << "  [TRACE] +" << label << " (mg): mg=" << mgAcc << " (delta=" << v << ")\n";
+    auto mgTerm = [&](PhaseValue v, const char* label) {
+        mgAcc += v.mg;
+        std::cout << "  [TRACE] +" << label << " (mg): mg=" << mgAcc << " (delta=" << v.mg << ")\n";
     };
-    auto egTerm = [&](int32_t v, const char* label) {
-        egAcc += v;
-        std::cout << "  [TRACE] +" << label << " (eg): eg=" << egAcc << " (delta=" << v << ")\n";
+    auto egTerm = [&](PhaseValue v, const char* label) {
+        egAcc += v.eg;
+        std::cout << "  [TRACE] +" << label << " (eg): eg=" << egAcc << " (delta=" << v.eg << ")\n";
     };
     auto pairTerm = [&](PhaseValue pv, const char* label) {
         mgAcc += pv.mg; egAcc += pv.eg;

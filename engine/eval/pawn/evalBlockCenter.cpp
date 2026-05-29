@@ -10,7 +10,7 @@ constexpr uint8_t algebraicSquare(char file, int rank) noexcept {
 
 } // namespace
 
-int32_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
+PhaseValue Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
     static constexpr uint64_t WHITE_D4_PAWN = chess::Board::bitMask(algebraicSquare('d', 4));
     static constexpr uint64_t BLACK_D5_PIECE = chess::Board::bitMask(algebraicSquare('d', 5));
     static constexpr uint64_t WHITE_BLOCKED_KNIGHTS =
@@ -40,7 +40,8 @@ int32_t Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t o
     score += blackBlocked * ((b.knights_bb[1] & BLACK_BLOCKED_KNIGHTS) != 0ULL) * BLOCKED_PIECE_PENALTY;
     score += blackBlocked * ((b.bishops_bb[1] & BLACK_BLOCKED_BISHOPS) != 0ULL) * BLOCKED_PIECE_PENALTY;
 
-    return score;
+    // MG-only feature.
+    return PhaseValue{score, 0};
 }
 
 } // namespace engine

@@ -91,8 +91,12 @@ public:
     // --- Public structs ---
 
     //FIXME Spostare struct in file appositi
+    // Compact PhaseValue storage: int16 each so the whole struct stays within
+    // MoveState's 96-byte budget. Sub-eval term values comfortably fit
+    // [-32768, 32767]; mate-scored positions skip the cache entirely.
     struct EvalCache {
-        std::array<int32_t, EVAL_CACHE_COUNT> terms{};
+        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms{};
+        std::array<int16_t, EVAL_CACHE_COUNT> egTerms{};
         uint32_t validMask = 0;
     };
 
@@ -247,9 +251,9 @@ public:
     void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
 
     // --- Eval cache ---
-    template<uint32_t Term> bool     hasEvalCacheTerm() const noexcept;
-    template<uint32_t Term> int32_t  getEvalCacheTerm() const noexcept;
-    template<uint32_t Term> void     setEvalCacheTerm(int32_t value) const noexcept;
+    template<uint32_t Term> bool             hasEvalCacheTerm() const noexcept;
+    template<uint32_t Term> engine::PhaseValue getEvalCacheTerm() const noexcept;
+    template<uint32_t Term> void             setEvalCacheTerm(engine::PhaseValue value) const noexcept;
     void invalidateEvalCacheTerms(uint32_t terms) noexcept;
     void clearEvalCache() noexcept;
 
@@ -309,7 +313,7 @@ private:
     inline void updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept;
 
     // --- Private helpers: eval cache ---
-    template<uint32_t Term> inline int32_t& evalCacheTermRef() const noexcept;
+    // (evalCacheTermRef removed: storage is split between mgTerms/egTerms arrays.)
     [[nodiscard]] static inline uint16_t computeMoveChangeFlags(const MoveState& st) noexcept;
     [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
     template<uint16_t MoveFlags>

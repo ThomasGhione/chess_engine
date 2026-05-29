@@ -157,19 +157,19 @@ inline bool Board::hasEvalCacheTerm() const noexcept {
 }
 
 template<uint32_t Term>
-inline int32_t& Board::evalCacheTermRef() const noexcept {
+inline engine::PhaseValue Board::getEvalCacheTerm() const noexcept {
     static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
-    return evalCache.terms[Term];
+    return engine::PhaseValue{
+        static_cast<int32_t>(evalCache.mgTerms[Term]),
+        static_cast<int32_t>(evalCache.egTerms[Term])
+    };
 }
 
 template<uint32_t Term>
-inline int32_t Board::getEvalCacheTerm() const noexcept {
-    return evalCacheTermRef<Term>();
-}
-
-template<uint32_t Term>
-inline void Board::setEvalCacheTerm(int32_t value) const noexcept {
-    evalCacheTermRef<Term>() = value;
+inline void Board::setEvalCacheTerm(engine::PhaseValue value) const noexcept {
+    static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
+    evalCache.mgTerms[Term] = static_cast<int16_t>(value.mg);
+    evalCache.egTerms[Term] = static_cast<int16_t>(value.eg);
     evalCache.validMask |= evalCacheBit(Term);
 }
 

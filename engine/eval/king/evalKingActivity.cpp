@@ -4,9 +4,9 @@
 namespace engine {
 
 template<bool IsEndgame>
-inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) noexcept {
+inline PhaseValue Evaluator::evalKingActivitySide(const chess::Board& b, int side) noexcept {
     const uint64_t kingBB = b.kings_bb[side];
-    if (!kingBB) [[unlikely]] return 0;
+    if (!kingBB) [[unlikely]] return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const int ksq = std::countr_zero(kingBB);
@@ -20,7 +20,7 @@ inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
             b.rooks_bb[side]   |
             b.queens_bb[side];
         const int friendsNearKing = std::popcount(friends & proximityMask);
-        return sign * friendsNearKing * engine::KING_ACTIVITY_BONUS;
+        return (sign * friendsNearKing) * engine::KING_ACTIVITY_BONUS;
     }
 
     const int opp = side ^ 1;
@@ -31,19 +31,20 @@ inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
         b.rooks_bb[opp]   |
         b.queens_bb[opp];
     const int enemiesNearKing = std::popcount(enemies & proximityMask);
-    return sign * enemiesNearKing * engine::KING_SAFETY_PENALTY;
+    return (sign * enemiesNearKing) * engine::KING_SAFETY_PENALTY;
 }
 
-int32_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
+PhaseValue Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
     return isEndgame
         ? (evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1))
         : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
 }
 
 PhaseValue Evaluator::evalKingActivityPair(const chess::Board& b) noexcept {
-    const int32_t mg = evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
-    const int32_t eg = evalKingActivitySide<true>(b, 0)  + evalKingActivitySide<true>(b, 1);
-    return PhaseValue{mg, eg};
+    const PhaseValue mgPart = evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
+    const PhaseValue egPart = evalKingActivitySide<true>(b, 0)  + evalKingActivitySide<true>(b, 1);
+    // Composite: mg-branch contributes only to mg side, eg-branch only to eg.
+    return PhaseValue{mgPart.mg, egPart.eg};
 }
 
 } // namespace engine

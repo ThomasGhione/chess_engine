@@ -4,21 +4,20 @@
 
 namespace engine {
 
-int32_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59);
     static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);
     static constexpr int32_t EARLY_QUEEN_DEV_PENALTY = 20;
 
     int32_t score = 0;
-
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
-    return score;
+    return PhaseValue{score, 0};
 }
 
-inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
-    if (ourQueens == 0) return 0;
+inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
+    if (ourQueens == 0) return {};
 
     const int oppSide = side ^ 1;
 
@@ -29,11 +28,10 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
 
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
                             oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
-    // Activate for any clearly losing position (up to ~Q+minor vs Q situations).
-    if (oppMaterial > 1300) return 0;
+    if (oppMaterial > 1300) return {};
 
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
-    if (!enemyKingBB) return 0;
+    if (!enemyKingBB) return {};
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
 
@@ -60,14 +58,14 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
     sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
 
     const int sign = (side == 0) ? 1 : -1;
-    return sign * sideScore;
+    return PhaseValue{0, sign * sideScore};
 }
 
-int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
     const int whiteQueens = std::popcount(b.queens_bb[0]);
     const int blackQueens = std::popcount(b.queens_bb[1]);
 
-    if (whiteQueens == 0 && blackQueens == 0) return 0;
+    if (whiteQueens == 0 && blackQueens == 0) return {};
 
     return evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens)
          + evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);

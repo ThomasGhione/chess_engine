@@ -10,7 +10,7 @@ struct EvalCacheEntry {
     uint8_t valid = 0;
 };
 
-static constexpr size_t EVAL_CACHE_SIZE = 1u << 11; // 2048 entries (~32 KiB), tests/perf tuned.
+static constexpr size_t EVAL_CACHE_SIZE = 1u << 11;
 static constexpr uint64_t EVAL_CACHE_MASK = EVAL_CACHE_SIZE - 1u;
 
 } // namespace
@@ -19,8 +19,6 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     const uint8_t activeColor = board.getActiveColor();
     const bool whiteToMove = (activeColor == chess::Board::WHITE);
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
-        // Side-to-move relative: losing our king is -POS_INF, capturing the
-        // opponent's is +POS_INF.
         if (board.kings_bb[0] == 0) return whiteToMove ? -POS_INF : POS_INF;
         return whiteToMove ? POS_INF : -POS_INF;
     }
@@ -46,7 +44,6 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     int32_t result;
     if (phase.pawnOnlyEndgame) [[unlikely]] {
-        // No minor/major pieces left: skip full attack-data computation.
         const int32_t evalBase = material + psqtEg;
         result = evaluatePawnOnlyEndgamePhase(board, evalBase, whitePawns, blackPawns);
     } else {
@@ -56,16 +53,10 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
                                       whitePawns, blackPawns, occ, attackData, phase.w1024);
     }
 
-    // Opposite-color bishop draw scaling: only meaningful when the smooth
-    // phase weight is firmly on the endgame side of the curve.
     if (phase.w1024 <= 128) {
         result = applyOppColorBishopScaling(board, result);
     }
 
-    // Contract: evaluate() returns a SIDE-TO-MOVE relative score (negamax).
-    // Terms are computed white-centric internally; negate once at the boundary
-    // for Black. (Cache stores the STM-relative value; the zobrist key already
-    // encodes side to move, so W/B-to-move map to different cache slots.)
     if (!whiteToMove) result = -result;
 
     cacheEntry.key = evalCacheKey;
@@ -78,76 +69,59 @@ int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialE
                                          int32_t psqtMg, int32_t psqtEg,
                                          uint64_t whitePawns, uint64_t blackPawns, uint64_t occ,
                                          const AttackData data[2], int32_t w1024) noexcept {
-    // Each feature contributes to mg, eg, or both, mirroring where it was
-    // active in the old discrete phase model. The smooth phase weight w1024
-    // (1024 = opening/MG, 0 = endgame) blends the two accumulators at the end.
-    int32_t mgAcc = materialEval + psqtMg;
-    int32_t egAcc = materialEval + psqtEg;
+    // PhaseValue accumulator: each sub-eval returns PhaseValue, summed in
+    // both mg and eg simultaneously, blended at the end.
+    PhaseValue acc{materialEval + psqtMg, materialEval + psqtEg};
 
-    // Bishop pair: always-on.
-    const int32_t bishopPair = evalBishopPairBonusCached(b);
-    mgAcc += bishopPair;
-    egAcc += bishopPair;
+    // Always-on terms.
+    acc += evalBishopPairBonusCached(b);
+    acc += evalHangingPieces(b, data);
+    acc += evalMobility(data);
+    acc += evalSpaceAdvantage(b, whitePawns, blackPawns);
 
-    // Always-on scalar features.
-    const int32_t hanging  = evalHangingPieces(b, data);
-    const int32_t mobility = evalMobility(data);
-    const int32_t space    = evalSpaceAdvantage(b, whitePawns, blackPawns);
-    mgAcc += hanging + mobility + space;
-    egAcc += hanging + mobility + space;
+    // Phase-aware features (mg/eg split baked in by the helper).
+    acc += evalThreatsPair(b, data, occ);
+    acc += evalPawnStructureCachedPair(b, whitePawns, blackPawns);
+    acc += evalKingActivityPair(b);
+    acc += evalInitiativePair(b);
 
-    // Phase-aware pair-returning features (mg/eg split already computed).
-    const PhaseValue threats    = evalThreatsPair(b, data, occ);
-    const PhaseValue pawnStruct = evalPawnStructureCachedPair(b, whitePawns, blackPawns);
-    const PhaseValue kingAct    = evalKingActivityPair(b);
-    const PhaseValue initiative = evalInitiativePair(b);
-    mgAcc += threats.mg + pawnStruct.mg + kingAct.mg + initiative.mg;
-    egAcc += threats.eg + pawnStruct.eg + kingAct.eg + initiative.eg;
+    constexpr int32_t W_DROP_EG = 870;
+    constexpr int32_t W_DROP_MG = 154;
 
-    // Lazy-eval cutoffs: features whose phase membership is on one side only
-    // get skipped when the smooth blend would weight their contribution below
-    // ~15%. Past this point the dropped value is dominated by tuning noise.
-    constexpr int32_t W_DROP_EG = 870; // skip eg-only when (1024-w)/1024 < ~15%
-    constexpr int32_t W_DROP_MG = 154; // skip mg-only when w/1024 < ~15%
-
-    // MG-side-only features (faded out toward the endgame; skipped when the
-    // position is firmly an endgame).
+    // MG-side-only features (faded out toward endgame).
     if (w1024 > W_DROP_MG) {
-        mgAcc += evalMinorPieceDevelopmentCached(b);
-        mgAcc += evalEarlyQueenCached(b);
-        mgAcc += evalCastlingBonusCached(b);
-        mgAcc += evalCentralControlCached(b, whitePawns, blackPawns);
-        mgAcc += evalPieceCoordinationCached(b);
-        mgAcc += evalOutpostsCached(b);
-        mgAcc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
-        mgAcc += evalBlockedPawnByBishopsCached(b);
-        mgAcc += evalPawnForks(b);
-        mgAcc += evalBlockedCenterWithPieces(b, occ);
-        mgAcc += evalKingMiddlegame(b, whitePawns, blackPawns, data);
+        acc += evalMinorPieceDevelopmentCached(b);
+        acc += evalEarlyQueenCached(b);
+        acc += evalCastlingBonusCached(b);
+        acc += evalCentralControlCached(b, whitePawns, blackPawns);
+        acc += evalPieceCoordinationCached(b);
+        acc += evalOutpostsCached(b);
+        acc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
+        acc += evalBlockedPawnByBishopsCached(b);
+        acc += evalPawnForks(b);
+        acc += evalBlockedCenterWithPieces(b, occ);
+        acc += evalKingMiddlegame(b, whitePawns, blackPawns, data);
     }
 
-    // Mid+endgame features (absent in pure opening, present from EMG onward).
-    const int32_t trapped      = evalTrappedPieces(b, occ);
-    const int32_t badBishop    = evalBadBishopCached(b, whitePawns, blackPawns);
-    const int32_t rooks        = evalRooksCached(b, whitePawns, blackPawns);
-    const int32_t weakSquares  = evalWeakSquaresCached(b, whitePawns, blackPawns);
-    const int32_t bishopKnight = evalBishopVsKnightCached(b, whitePawns, blackPawns);
-    mgAcc += trapped + badBishop + rooks + weakSquares + bishopKnight;
-    egAcc += trapped + badBishop + rooks + weakSquares + bishopKnight;
+    // Mid+endgame features (always computed when not in pure opening).
+    acc += evalTrappedPieces(b, occ);
+    acc += evalBadBishopCached(b, whitePawns, blackPawns);
+    acc += evalRooksCached(b, whitePawns, blackPawns);
+    acc += evalWeakSquaresCached(b, whitePawns, blackPawns);
+    acc += evalBishopVsKnightCached(b, whitePawns, blackPawns);
 
-    // EG-side-only features (faded in toward the endgame; skipped when the
-    // position is firmly an opening/middlegame).
+    // EG-side-only features (faded in toward endgame).
     if (w1024 < W_DROP_EG) {
-        egAcc += evalEndgameKingActivity(b);
-        egAcc += evalMopUp(b);
-        egAcc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
-        egAcc += evalRuleOfSquare(b, whitePawns, blackPawns);
-        egAcc += evalRookEndgamePressure(b);
-        egAcc += evalQueenEndgamePressure(b);
-        egAcc += evalDoubleRookEndgame(b);
+        acc += evalEndgameKingActivity(b);
+        acc += evalMopUp(b);
+        acc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+        acc += evalRuleOfSquare(b, whitePawns, blackPawns);
+        acc += evalRookEndgamePressure(b);
+        acc += evalQueenEndgamePressure(b);
+        acc += evalDoubleRookEndgame(b);
     }
 
-    return PhaseValue{mgAcc, egAcc}.blend(w1024);
+    return acc.blend(w1024);
 }
 
 int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t materialAndEgPsqt,
@@ -156,17 +130,18 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t m
     pawnAttacks[0].allAttacks = collectPawnAttacks(whitePawns, 0);
     pawnAttacks[1].allAttacks = collectPawnAttacks(blackPawns, 1);
 
-    int32_t eval = materialAndEgPsqt;
-    eval += evalHangingPieces(b, pawnAttacks);
-    eval += evalPawnStructureCached(b, whitePawns, blackPawns, true);
-    eval += evalKingActivity(b, true);
-    eval += evalEndgameKingActivity(b);
-    eval += evalMopUp(b);
-    eval += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
-    eval += evalRuleOfSquare(b, whitePawns, blackPawns);
-    eval += evalInitiative(b, true);
-
-    return eval;
+    // Each sub-eval returns PhaseValue; we sink to .eg since this is the
+    // pawn-only endgame fast path.
+    PhaseValue acc{0, materialAndEgPsqt};
+    acc += evalHangingPieces(b, pawnAttacks);
+    acc += evalPawnStructureCached(b, whitePawns, blackPawns, true);
+    acc += evalKingActivity(b, true);
+    acc += evalEndgameKingActivity(b);
+    acc += evalMopUp(b);
+    acc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+    acc += evalRuleOfSquare(b, whitePawns, blackPawns);
+    acc += evalInitiative(b, true);
+    return acc.eg;
 }
 
 } // namespace engine

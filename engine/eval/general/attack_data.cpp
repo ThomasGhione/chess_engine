@@ -61,9 +61,11 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
     cacheEntry.valid = 1;
 }
 
-int32_t Evaluator::evalMobility(const AttackData data[2]) noexcept {
-    return (data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
-          - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility) / 2;
+PhaseValue Evaluator::evalMobility(const AttackData data[2]) noexcept {
+    const int32_t diff = data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
+                       - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility;
+    // Mobility is phase-agnostic in raw form; expose as mg=eg pair.
+    return PhaseValue{diff / 2, diff / 2};
 }
 
 } // namespace engine

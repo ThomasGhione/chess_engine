@@ -4,21 +4,24 @@
 namespace engine {
 
 template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
-inline int32_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask,
-                                                   int sign, int32_t pinnedPenalty, int32_t lowMobPenalty) noexcept {
-    int32_t score = 0;
+inline PhaseValue Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask,
+                                                       int sign, PhaseValue pinnedPenalty, PhaseValue lowMobPenalty) noexcept {
+    PhaseValue score{};
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         const uint64_t attacks = AttackFn(sq, occ);
         const int mobility = std::popcount(attacks & mobilityMask);
-        score -= sign * ((mobility == 0) * (pinnedPenalty + TRAPPED_EXTRA_SEVERITY) + 
-                         (mobility > 0 && mobility <= 3) * lowMobPenalty);
+        if (mobility == 0) {
+            score -= sign * (pinnedPenalty + PhaseValue{TRAPPED_EXTRA_SEVERITY});
+        } else if (mobility <= 3) {
+            score -= sign * lowMobPenalty;
+        }
     }
     return score;
 }
 
-inline int32_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
-    int32_t sideScore = 0;
+inline PhaseValue Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept {
+    PhaseValue sideScore{};
     const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                             b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
     const uint64_t mobilityOwnMask = ~ownOcc;
@@ -42,7 +45,7 @@ inline int32_t Evaluator::evalTrappedPiecesSide(const chess::Board& b, uint64_t 
     return sideScore;
 }
 
-int32_t Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
+PhaseValue Evaluator::evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept {
     return evalTrappedPiecesSide(b, occ, 0, 1) + evalTrappedPiecesSide(b, occ, 1, -1);
 }
 
