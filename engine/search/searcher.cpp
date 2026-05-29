@@ -325,8 +325,15 @@ int32_t Searcher::searchRootMoveScore(
     chess::Board::MoveState state;
     b.doMove(m, state, m.promotionPiece);
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
+    // runtime.depth is uint64_t; guard the subtraction so an unexpected depth
+    // of 0 cannot underflow to UINT64_MAX and reinterpret as a negative int32_t.
+    // In normal IDS flow runtime.depth is always >= 1, but tests/direct callers
+    // could pass through with 0.
+    const int32_t childDepth = (runtime.depth > 0)
+        ? static_cast<int32_t>(runtime.depth - 1)
+        : 0;
     const int32_t score = -searchPosition(
-        b, runtime, runtime.depth - 1, -beta, -alpha, 1,
+        b, runtime, childDepth, -beta, -alpha, 1,
         true, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;

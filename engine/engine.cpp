@@ -121,6 +121,10 @@ Engine::~Engine() noexcept {
 }
 
 void Engine::reset() noexcept {
+    // Stop the watchdog first: if reset arrives mid-search, a still-running
+    // watchdog would set stopSearchRequested *after* this reset returns and
+    // abort whatever search starts next.
+    this->timeManager.stop();
     this->stopPondering();
     this->clearPonderResult();
     board = chess::Board();

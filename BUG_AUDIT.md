@@ -28,11 +28,6 @@ Severità:
 - **Impatto**: posizioni di analisi/test con full-move count alto perdono informazione.
 - **Fix**: allargare `halfMoveClock`/`fullMoveClock` a `uint16_t` (il bilancio sizeof Board cambia di 2 byte).
 
-### M2 — `Engine::reset()` non ferma il watchdog del TimeManager
-- **File**: [engine/engine.cpp:123-144](engine/engine.cpp#L123-L144)
-- **Cosa**: il `timeManager` non viene fermato. Se `reset` arriva durante una search timed, il watchdog può scattare *dopo* il reset, settando `stopSearchRequested` su una search successiva.
-- **Fix**: in `reset()` aggiungere `this->timeManager.stop();` prima della logica di reset.
-
 ### M3 — `TimeManager::stop()` non perfettamente idempotente sotto race
 - **File**: [engine/time/time_manager.cpp:155-165](engine/time/time_manager.cpp#L155-L165)
 - **Cosa**: il primo lock check `if (!running_ && !watchdog_.joinable()) return` poi sblocca, segnala, ri-locka per `running_=false`. Due chiamate concorrenti possono entrambe procedere oltre la prima guardia e una delle due fare `join()` su un thread già joinato.
@@ -54,31 +49,6 @@ Severità:
 - **File**: [driver/driver.cpp:217-222](driver/driver.cpp#L217-L222)
 - **Cosa**: `std::ofstream saveFile("saves/save.txt")` senza check su `.is_open()` né su `saveFile.good()` dopo write. Errori silenziosi.
 - **Fix**: check `if (!saveFile) { std::cerr << "Error: cannot write save file\n"; return; }`.
-
-### M7 — `MoveList::moveFrom` per trivially-copyable non distrugge i sorgenti
-- **File**: [engine/movelist.hpp:96-105](engine/movelist.hpp#L96-L105)
-- **Cosa**: per trivially-copyable T, `moveFrom` fa memcpy e setta `other.size = 0`. I "vecchi" oggetti restano nella storage sorgente ma non sono più referenziabili.
-- **Impatto**: per `Board::Move` (trivialmente distruttibile) è innocuo. Se T cambia tipo in futuro, potenziale leak.
-- **Fix**: documentare la precondizione o aggiungere `static_assert(std::is_trivially_destructible_v<T>)`.
-
-### M8 — `std::aligned_storage_t` deprecato in C++23
-- **File**: [engine/movelist.hpp:13](engine/movelist.hpp#L13)
-- **Cosa**: `using Storage = std::aligned_storage_t<sizeof(T), alignof(T)>;` deprecato in C++23. Genera warning con `-std=c++23 -Wdeprecated`.
-- **Fix**:
-  ```cpp
-  struct alignas(T) Storage { std::byte data[sizeof(T)]; };
-  ```
-
-### M9 — `Searcher::shouldDeltaPrune` vs `Sorter::shouldDeltaPrune` semantica diversa
-- **File**: [engine/search/searcher.hpp:197](engine/search/searcher.hpp#L197), [engine/search/sorter.cpp:417-419](engine/search/sorter.cpp#L417-L419)
-- **Cosa**: `Searcher::shouldDeltaPrune` usa `<=` (`standPat + margin <= alpha`); `Sorter::shouldDeltaPrune` usa `<` (`standPat + margin < alpha`). Naming identico, semantica diversa.
-- **Impatto**: confusione, possibile bug futuro per chi rinomina/refactora.
-- **Fix**: dare nomi distinti (`deltaPruneStrict` / `deltaPruneInclusive`) o uniformare.
-
-### M10 — `runIterativeDeepening`: cast `runtime.depth - 1` su `uint64`
-- **File**: [engine/search/searcher.cpp:328-330](engine/search/searcher.cpp#L328-L330)
-- **Cosa**: `runtime.depth` è `uint64_t`. `runtime.depth - 1` con depth=0 underflows a `UINT64_MAX`, poi cast a `int32_t` → `-1` → quiescenza. Il flusso normale ha `runtime.depth >= 1` garantito da `firstDepth = max(1, startDepth)`, ma è fragile.
-- **Fix**: `if (runtime.depth == 0) return /* qsearch */;` o assertion.
 
 ---
 
@@ -151,7 +121,7 @@ Severità:
 | Severità | # voci |
 |---|---|
 | ALTO | 1 (A4) |
-| MEDIO | 10 (M1–M10) |
+| MEDIO | 5 (M1, M3, M4, M5, M6) |
 | BASSO | 12 (B1–B12) |
 
 ## Top da fixare per impatto/effort

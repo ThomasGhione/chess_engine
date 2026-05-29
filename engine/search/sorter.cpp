@@ -371,12 +371,13 @@ Sorter::MovePickerData Sorter::sortTacticalMoves(
             int32_t capturedValue = PIECE_VALUES[victimType];
             if (isPromotion) capturedValue += getPromotionValueDelta(m.promotionPiece);
 
-            // Delta prune: capture can't improve standPat enough to matter.
-            if (shouldDeltaPrune(standPat, capturedValue + FUTILITY_MARGIN, alpha)) continue;
+            // Delta prune: capture cannot improve standPat past alpha. Matches
+            // Searcher::shouldDeltaPrune semantics (<=, fails low on equal too).
+            if (standPat + capturedValue + FUTILITY_MARGIN <= alpha) continue;
 
             const int32_t see = staticExchangeEvaluation(b, m);
             if (see < seeThreshold) continue;
-            if (shouldDeltaPrune(standPat, see + MOVE_DELTA_MARGIN, alpha)) continue;
+            if (standPat + see + MOVE_DELTA_MARGIN <= alpha) continue;
 
             score = std::clamp<int32_t>(CAPTURE_BASE_SCORE + see + MVV_TABLE[victimType], NEG_INF, POS_INF);
         } else {
@@ -416,10 +417,6 @@ MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Bo
         [&](const chess::Board::Move& m) { return isForcingEvasion(b, m, enPassant); });
 
     return evasions;
-}
-
-bool Sorter::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
-    return standPat + margin < alpha;
 }
 
 } // namespace engine

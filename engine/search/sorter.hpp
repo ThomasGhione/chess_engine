@@ -215,8 +215,6 @@ private:
         uint64_t occLocal,
         int sideLocal) noexcept;
 
-    static bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept;
-
     static bool isForcingEvasion(
         const chess::Board& b,
         const chess::Board::Move& m,

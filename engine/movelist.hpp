@@ -10,7 +10,17 @@ inline constexpr size_t MAX_MOVES = 218;
 
 template<typename T, size_t MAX_SIZE = MAX_MOVES>
 struct MoveList {
-    using Storage = std::aligned_storage_t<sizeof(T), alignof(T)>;
+    // moveFrom() / copyFrom() take the trivially-copyable fast path and rely on
+    // T being trivially destructible (sources left in their old slots are not
+    // ~T()'d before the destination is overwritten). Hold the invariant
+    // explicitly so future T changes can't silently leak resources.
+    static_assert(std::is_trivially_destructible_v<T>,
+                  "MoveList requires trivially-destructible T (memcpy fast path).");
+
+    // alignas(T) std::byte[sizeof(T)] replaces std::aligned_storage_t, which is
+    // deprecated in C++23. Layout is byte-identical: sizeof == sizeof(T),
+    // alignof == alignof(T).
+    struct alignas(T) Storage { std::byte bytes[sizeof(T)]; };
     Storage data[MAX_SIZE];
     int size = 0;
 
