@@ -10,16 +10,6 @@ Severità:
 
 ---
 
-## ALTO
-
-### A4 — Polyglot side-to-move XOR: chiave potrebbe non matchare i .bin polyglot standard
-- **File**: [engine/opening/opening_book.cpp:117-121](engine/opening/opening_book.cpp#L117-L121)
-- **Cosa**: lo standard polyglot prevede `XOR Random64[780]` quando WHITE è a muovere. Il codice fa `key ^= POLYGLOT_KEYS[0]` per WHITE, con commento "cutechess convention, equivalent". Funziona solo se `POLYGLOT_KEYS[]` è stato generato in modo che `[0]` sia la chiave side-to-move.
-- **Impatto**: se il file caricato è polyglot standard ma la tabella interna è cutechess-style (o viceversa), nessuna entry matcha mai e il book è muto.
-- **Fix**: verificare empiricamente che `probe(startpos)` con `komodo.bin` ritorni una mossa non-nullopt. Se no, allineare l'offset o la tabella allo standard polyglot (`Random64[780]`).
-
----
-
 ## MEDIO
 
 ### M1 — `safeParseInt` ritorna `uint8_t` e clampa silenziosamente
@@ -39,16 +29,6 @@ Severità:
 - **Cosa**: scritti dal worker pondering, letti dal main thread in `tryUsePonderResult`. Sincronizzati solo tramite il `join()` in `stopPondering()` (happens-before via thread completion).
 - **Impatto**: in pratica safe perché `tryUsePonderResult` viene chiamato dopo `stopPondering`. Se mai il flusso cambia, race silenziosa.
 - **Fix**: rendere `ponderResultReady`, `ponderResultDepth`, `ponderResultScore`, `ponderResultMove`, `ponderRootHash` atomici o proteggerli con `ponderingMutex`.
-
-### M5 — `Engine` hard-codes path "engine/komodo.bin" relativo
-- **File**: [engine/engine.cpp:108](engine/engine.cpp#L108)
-- **Cosa**: se l'eseguibile è lanciato da una working directory diversa dalla root del repo, il book non si carica e l'errore non è visibile (silenzioso fino a `info string BookFile` via UCI).
-- **Fix**: o risolvere il path rispetto a `argv[0]` / `std::filesystem::current_path()`, o emettere `info string BookFile error: ...` quando il load iniziale fallisce.
-
-### M6 — `Driver::saveGame()` non controlla errori I/O
-- **File**: [driver/driver.cpp:217-222](driver/driver.cpp#L217-L222)
-- **Cosa**: `std::ofstream saveFile("saves/save.txt")` senza check su `.is_open()` né su `saveFile.good()` dopo write. Errori silenziosi.
-- **Fix**: check `if (!saveFile) { std::cerr << "Error: cannot write save file\n"; return; }`.
 
 ---
 
@@ -120,13 +100,14 @@ Severità:
 
 | Severità | # voci |
 |---|---|
-| ALTO | 1 (A4) |
-| MEDIO | 5 (M1, M3, M4, M5, M6) |
+| MEDIO | 3 (M1, M3, M4) |
 | BASSO | 12 (B1–B12) |
 
-## Top da fixare per impatto/effort
+## Note
 
-1. **A4** (polyglot side-to-move XOR) — da verificare empiricamente con `komodo.bin`.
+I bug ad alta priorità (CRITICO e ALTO) sono tutti risolti. Quello che resta è
+polish: M1 saturazione `uint8` per partite >255 fullmoves (rarissime), M3/M4
+hardening del threading senza bug osservato, e i BASSO sono code smell.
 
 ## Aree non analizzate
 

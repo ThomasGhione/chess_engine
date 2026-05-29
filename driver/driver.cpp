@@ -213,13 +213,21 @@ void Driver::saveGame() noexcept {
         std::filesystem::remove("saves/save.txt");
     }
 
-    //FIXME Manca la chiusura del file!
     std::ofstream saveFile("saves/save.txt");
+    if (!saveFile.is_open()) {
+        std::cerr << "Error: cannot open 'saves/save.txt' for writing.\n";
+        return;
+    }
     saveFile << engine.board.fromBoardToFen();
 
     // If playing against bot, then saveGame() is called by the player, so it saves the opposite active color to indicate
     // the color of the bot
     if (vsBot) saveFile << '\n' << (engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
+
+    saveFile.flush();
+    if (!saveFile) {
+        std::cerr << "Error: failed to write 'saves/save.txt' (state corrupted, partial write).\n";
+    }
 }
 
 void Driver::endGame() noexcept {

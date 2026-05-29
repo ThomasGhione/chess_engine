@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <iostream>
 #include <string_view>
 #include <utility>
 
@@ -105,7 +106,12 @@ Engine::Engine()
     searchRuntime.maxThreads = omp_get_max_threads();
     bindSearchRuntime();
     this->tt.clear();
-    this->openingBook.load("engine/komodo.bin");
+    // The path is relative to the working directory; UCI clients can still
+    // override at runtime via `setoption name BookFile value <path>`.
+    if (!this->openingBook.load("engine/komodo.bin")) {
+        std::cerr << "info string BookFile error: could not load 'engine/komodo.bin'"
+                     " at startup (cwd-relative). Use 'setoption name BookFile value <path>' to override.\n";
+    }
     this->ponderingThread = std::thread([this] { this->ponderWorkerLoop(); });
 }
 
