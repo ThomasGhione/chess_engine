@@ -104,18 +104,27 @@ int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialE
     mgAcc += threats.mg + pawnStruct.mg + kingAct.mg + initiative.mg;
     egAcc += threats.eg + pawnStruct.eg + kingAct.eg + initiative.eg;
 
-    // MG-side-only features (faded out toward the endgame).
-    mgAcc += evalMinorPieceDevelopmentCached(b);
-    mgAcc += evalEarlyQueenCached(b);
-    mgAcc += evalCastlingBonusCached(b);
-    mgAcc += evalCentralControlCached(b, whitePawns, blackPawns);
-    mgAcc += evalPieceCoordinationCached(b);
-    mgAcc += evalOutpostsCached(b);
-    mgAcc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
-    mgAcc += evalBlockedPawnByBishopsCached(b);
-    mgAcc += evalPawnForks(b);
-    mgAcc += evalBlockedCenterWithPieces(b, occ);
-    mgAcc += evalKingMiddlegame(b, whitePawns, blackPawns, data);
+    // Lazy-eval cutoffs: features whose phase membership is on one side only
+    // get skipped when the smooth blend would weight their contribution below
+    // ~15%. Past this point the dropped value is dominated by tuning noise.
+    constexpr int32_t W_DROP_EG = 870; // skip eg-only when (1024-w)/1024 < ~15%
+    constexpr int32_t W_DROP_MG = 154; // skip mg-only when w/1024 < ~15%
+
+    // MG-side-only features (faded out toward the endgame; skipped when the
+    // position is firmly an endgame).
+    if (w1024 > W_DROP_MG) {
+        mgAcc += evalMinorPieceDevelopmentCached(b);
+        mgAcc += evalEarlyQueenCached(b);
+        mgAcc += evalCastlingBonusCached(b);
+        mgAcc += evalCentralControlCached(b, whitePawns, blackPawns);
+        mgAcc += evalPieceCoordinationCached(b);
+        mgAcc += evalOutpostsCached(b);
+        mgAcc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
+        mgAcc += evalBlockedPawnByBishopsCached(b);
+        mgAcc += evalPawnForks(b);
+        mgAcc += evalBlockedCenterWithPieces(b, occ);
+        mgAcc += evalKingMiddlegame(b, whitePawns, blackPawns, data);
+    }
 
     // Mid+endgame features (absent in pure opening, present from EMG onward).
     const int32_t trapped      = evalTrappedPieces(b, occ);
@@ -126,14 +135,17 @@ int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialE
     mgAcc += trapped + badBishop + rooks + weakSquares + bishopKnight;
     egAcc += trapped + badBishop + rooks + weakSquares + bishopKnight;
 
-    // EG-side-only features (faded in toward the endgame).
-    egAcc += evalEndgameKingActivity(b);
-    egAcc += evalMopUp(b);
-    egAcc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
-    egAcc += evalRuleOfSquare(b, whitePawns, blackPawns);
-    egAcc += evalRookEndgamePressure(b);
-    egAcc += evalQueenEndgamePressure(b);
-    egAcc += evalDoubleRookEndgame(b);
+    // EG-side-only features (faded in toward the endgame; skipped when the
+    // position is firmly an opening/middlegame).
+    if (w1024 < W_DROP_EG) {
+        egAcc += evalEndgameKingActivity(b);
+        egAcc += evalMopUp(b);
+        egAcc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
+        egAcc += evalRuleOfSquare(b, whitePawns, blackPawns);
+        egAcc += evalRookEndgamePressure(b);
+        egAcc += evalQueenEndgamePressure(b);
+        egAcc += evalDoubleRookEndgame(b);
+    }
 
     return PhaseValue{mgAcc, egAcc}.blend(w1024);
 }
