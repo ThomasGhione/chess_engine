@@ -10,6 +10,7 @@
 #include "../../board/board.hpp"
 #include "../eval_constants.hpp"
 #include "../inl/bitboard_helpers.inl"
+#include "phase_value.hpp"
 
 namespace engine {
 
@@ -28,6 +29,7 @@ public:
     static int32_t evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static PhaseValue evalKingActivityPair(const chess::Board& b) noexcept;
     static int32_t evalEndgameKingActivity(const chess::Board& b) noexcept;
     static int32_t evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
     static int32_t evalRookEndgamePressureSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept;
@@ -82,12 +84,15 @@ private:
         int16_t queenMobility = 0;
     };
 
+    // Continuous phase descriptor. `w1024` is a fixed-point phase weight in
+    // [0, 1024], where 1024 = full opening/middlegame material and 0 = bare
+    // endgame. `phaseWeight` is the weighted material count (N=B=1, R=2, Q=4)
+    // across both sides; `pawnOnlyEndgame` enables the no-AttackData fast path.
     struct PhaseInfo {
-        int  fullMoves      = 0;
-        int  nonPawnMajors  = 0;
-        bool isEndgame      = false;
-        bool isOpening      = false;
-        bool isEarlyMiddlegame = false;
+        int32_t phaseWeight     = 0;
+        int32_t totalPawns      = 0;
+        int32_t w1024           = 0;
+        bool    pawnOnlyEndgame = false;
     };
 
     // --- Static data initializers ---
@@ -123,10 +128,7 @@ private:
     static const std::array<uint64_t, 8>  ADJACENT_AND_FILE_MASKS;
     static const std::array<uint64_t, 64> KING_PROXIMITY_MASKS;
 
-    // --- Phase thresholds & score limits ---
-    static inline constexpr int     OPENING_MOVES            = 8;
-    static inline constexpr int     EARLY_MG_MOVES           = 15;
-    static inline constexpr int     PIECE_ENDGAME_THRESHOLD  = 5;
+    // --- Score limits ---
     // Negamax-safe: NEG_INF == -POS_INF (negating int32_min is UB).
     static inline constexpr int32_t POS_INF                  = std::numeric_limits<int32_t>::max();
     static inline constexpr int32_t NEG_INF                  = -POS_INF;
@@ -141,11 +143,8 @@ private:
     // --- Phase detection & orchestration ---
     static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
 
-    __attribute__((noinline)) static int32_t evaluateOpeningPhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
-    __attribute__((noinline)) static int32_t evaluateEarlyMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
-    __attribute__((noinline)) static int32_t evaluateMiddlegamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
-    __attribute__((noinline)) static int32_t evaluateEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2]) noexcept;
-    __attribute__((noinline)) static int32_t evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t eval, uint64_t whitePawns, uint64_t blackPawns) noexcept;
+    __attribute__((noinline)) static int32_t evaluateUnifiedPhase(const chess::Board& b, int32_t materialEval, int32_t psqtMg, int32_t psqtEg, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2], int32_t w1024) noexcept;
+    __attribute__((noinline)) static int32_t evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t materialAndEgPsqt, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
     // --- Attack data ---
     __attribute__((noinline))
@@ -207,6 +206,7 @@ private:
     static inline int32_t evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                   int sign, int penalty) noexcept;
     static int32_t evalThreats(const chess::Board& b, const AttackData data[2], uint64_t occ, bool isEndgame) noexcept;
+    static PhaseValue evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
     static inline int32_t evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, int sign, uint64_t occ) noexcept;
     static int32_t evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
     static inline int32_t evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
@@ -218,6 +218,7 @@ private:
     static int32_t evalPawnForks(const chess::Board& b) noexcept;
     static int32_t evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
+    static PhaseValue evalInitiativePair(const chess::Board& b) noexcept;
     template<bool IsEndgame>
     static int32_t evalInitiativeImpl(uint8_t activeColor) noexcept;
 
@@ -258,6 +259,7 @@ private:
     __attribute__((always_inline))
     static inline int32_t cachedTerm(const chess::Board& b, Compute compute) noexcept;
     static int32_t evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
+    static PhaseValue evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static int32_t evalBishopPairBonusCached(const chess::Board& b) noexcept;
     static int32_t evalCastlingBonusCached(const chess::Board& b) noexcept;
     static int32_t evalRooksCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;

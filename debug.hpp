@@ -51,103 +51,104 @@ inline int32_t Evaluator::evaluateTrace(const chess::Board& board) noexcept {
         return -POS_INF; // terminal position (negamax/side-to-move relative)
     }
 
-    int32_t eval = board.getIncrementalMaterialDelta();
-    int32_t prev = eval;
-    std::cout << "  [TRACE] material: " << eval << '\n';
+    const int32_t material = board.getIncrementalMaterialDelta();
+    std::cout << "  [TRACE] material: " << material << '\n';
 
     const uint64_t occ = board.getPiecesBitMap();
     const uint64_t whitePawns = board.pawns_bb[0];
     const uint64_t blackPawns = board.pawns_bb[1];
     const PhaseInfo phase = classifyPhase(board);
-    const bool isMiddlegame = !phase.isEndgame && !phase.isOpening && !phase.isEarlyMiddlegame;
-    const char* phaseLabel = phase.isEndgame ? "ENDGAME" : phase.isOpening ? "OPENING" : phase.isEarlyMiddlegame ? "EARLY_MG" : "MIDDLEGAME";
-    std::cout << "  [TRACE] phase: " << phaseLabel << " (nonPawnMajors=" << phase.nonPawnMajors
-              << ", fullMoves=" << phase.fullMoves << ")\n";
 
-    eval += board.getIncrementalPsqtDelta(phase.isEndgame);
-    std::cout << "  [TRACE] +PSQT: " << eval << " (delta=" << (eval - prev) << ")\n";
-    prev = eval;
+    std::cout << "  [TRACE] phase: w1024=" << phase.w1024
+              << " (phaseWeight=" << phase.phaseWeight
+              << ", totalPawns=" << phase.totalPawns
+              << ", pawnOnlyEG=" << phase.pawnOnlyEndgame << ")\n";
 
-    if (((board.bishops_bb[0] & (board.bishops_bb[0] - 1)) != 0ULL)) eval += engine::BISHOP_PAIR_BONUS;
-    if (((board.bishops_bb[1] & (board.bishops_bb[1] - 1)) != 0ULL)) eval -= engine::BISHOP_PAIR_BONUS;
-    std::cout << "  [TRACE] +bishopPair: " << eval << " (delta=" << (eval - prev) << ")\n";
+    int32_t psqtMg = 0;
+    int32_t psqtEg = 0;
+    board.getIncrementalPsqtMgEg(psqtMg, psqtEg);
+    std::cout << "  [TRACE] PSQT mg=" << psqtMg << " eg=" << psqtEg << '\n';
 
-    AttackData attackData[2] = {};
-    computeAttackData(attackData, board, occ);
-
-    if (phase.isOpening) {
-        traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
-        traceTerm(eval, evalEarlyQueen(board), "earlyQueen");
-        traceTerm(eval, evalCastlingBonus(board), "castling");
-        traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
-        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
-        traceTerm(eval, evalPawnForks(board), "pawnForks");
-        traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
-        traceTerm(eval, evalPieceCoordination(board), "coordination");
-        traceTerm(eval, evalOutposts(board), "outposts");
-        traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, false), "pawnStructure");
-        traceTerm(eval, evalMobility(attackData), "mobility");
-        traceTerm(eval,
-                  (evalKingSafety(board, whitePawns, blackPawns) * engine::KING_SAFETY_OPENING_SCALE_PERCENT) / 100,
-                  "kingSafetyOpening");
-        traceTerm(eval, evalInitiative(board, false), "initiative");
-        traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
-    } else if (phase.isEarlyMiddlegame) {
-        traceTerm(eval, evalMinorPieceDevelopment(board), "minorDev");
-        traceTerm(eval, evalCastlingBonus(board), "castling");
-        traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
-        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
-        traceTerm(eval, evalPawnForks(board), "pawnForks");
-        traceTerm(eval, evalTrappedPieces(board, occ), "trappedPieces");
-        traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, false), "pawnStructure");
-        traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
-        traceTerm(eval, evalMobility(attackData), "mobility");
-        traceTerm(eval, evalOutposts(board), "outposts");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[0], whitePawns, 0), "badBishopW");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[1], blackPawns, 1), "badBishopB");
-        traceTerm(eval, evalKingSafety(board, whitePawns, blackPawns), "kingSafety");
-        traceTerm(eval, evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns), "rooks");
-        traceTerm(eval, evalInitiative(board, false), "initiative");
-        traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
-    } else if (isMiddlegame) {
-        traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
-        traceTerm(eval, evalThreats(board, attackData, occ, false), "threats");
-        traceTerm(eval, evalPawnForks(board), "pawnForks");
-        traceTerm(eval, evalTrappedPieces(board, occ), "trappedPieces");
-        traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, false), "pawnStructure");
-        traceTerm(eval, evalCentralControl(whitePawns, blackPawns), "centralControl");
-        traceTerm(eval, evalBlockedCenterWithPieces(board, occ), "blockedCenter");
-        traceTerm(eval, evalMobility(attackData), "mobility");
-        traceTerm(eval, evalPieceCoordination(board), "coordination");
-        traceTerm(eval, evalOutposts(board), "outposts");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[0], whitePawns, 0), "badBishopW");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[1], blackPawns, 1), "badBishopB");
-        traceTerm(eval, evalKingSafety(board, whitePawns, blackPawns), "kingSafety");
-        traceTerm(eval, evalKingActivity(board, false), "kingActivity");
-        traceTerm(eval, evalCastlingBonus(board), "castling");
-        traceTerm(eval, evalKingAttackZone(board, attackData), "kingAttackZone");
-        traceTerm(eval, evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns), "rooks");
-        traceTerm(eval, evalInitiative(board, false), "initiative");
-        traceTerm(eval, evalBlockedPawnByBishops(board), "blockedPawnBishops");
-    } else {
-        traceTerm(eval, evalHangingPieces(board, attackData), "hangingPieces");
-        traceTerm(eval, evalThreats(board, attackData, occ, true), "threats");
-        traceTerm(eval, evalPawnStructure(whitePawns, blackPawns, true), "pawnStructure");
-        traceTerm(eval, evalKingActivity(board, true), "kingActivity");
+    if (phase.pawnOnlyEndgame) {
+        int32_t eval = material + psqtEg;
+        AttackData pawnAttacks[2]{};
+        pawnAttacks[0].allAttacks = collectPawnAttacks(whitePawns, 0);
+        pawnAttacks[1].allAttacks = collectPawnAttacks(blackPawns, 1);
+        traceTerm(eval, evalHangingPieces(board, pawnAttacks), "hangingPieces");
+        traceTerm(eval, evalPawnStructureCached(board, whitePawns, blackPawns, true), "pawnStructure(eg)");
+        traceTerm(eval, evalKingActivity(board, true), "kingActivity(eg)");
         traceTerm(eval, evalEndgameKingActivity(board), "endgameKingActivity");
-        traceTerm(eval, evalMobility(attackData), "mobility");
-        traceTerm(eval, evalTrappedPieces(board, occ), "trappedPieces");
-        traceTerm(eval, evalRooks(board.rooks_bb[0], board.rooks_bb[1], whitePawns, blackPawns), "rooks");
-        traceTerm(eval, evalRookEndgamePressure(board), "rookEgPressure");
-        traceTerm(eval, evalQueenEndgamePressure(board), "queenEgPressure");
-        traceTerm(eval, evalDoubleRookEndgame(board), "doubleRookEg");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[0], whitePawns, 0), "badBishopW");
-        traceTerm(eval, evalBadBishop(board.bishops_bb[1], blackPawns, 1), "badBishopB");
-        traceTerm(eval, evalInitiative(board, true), "initiative");
+        traceTerm(eval, evalMopUp(board), "mopUp");
+        traceTerm(eval, evalPassedPawnKeySquares(board, whitePawns, blackPawns), "passedKeySq");
+        traceTerm(eval, evalRuleOfSquare(board, whitePawns, blackPawns), "ruleOfSquare");
+        traceTerm(eval, evalInitiative(board, true), "initiative(eg)");
+        std::cout << "  [TRACE] TOTAL (pawnOnlyEG): " << eval << '\n';
+        return eval;
     }
 
-    std::cout << "  [TRACE] TOTAL: " << eval << '\n';
-    return eval;
+    AttackData attackData[2]{};
+    computeAttackData(attackData, board, occ);
+
+    int32_t mgAcc = material + psqtMg;
+    int32_t egAcc = material + psqtEg;
+
+    auto bothTerm = [&](int32_t v, const char* label) {
+        mgAcc += v; egAcc += v;
+        std::cout << "  [TRACE] +" << label << " (both): mg=" << mgAcc << " eg=" << egAcc << " (delta=" << v << ")\n";
+    };
+    auto mgTerm = [&](int32_t v, const char* label) {
+        mgAcc += v;
+        std::cout << "  [TRACE] +" << label << " (mg): mg=" << mgAcc << " (delta=" << v << ")\n";
+    };
+    auto egTerm = [&](int32_t v, const char* label) {
+        egAcc += v;
+        std::cout << "  [TRACE] +" << label << " (eg): eg=" << egAcc << " (delta=" << v << ")\n";
+    };
+    auto pairTerm = [&](PhaseValue pv, const char* label) {
+        mgAcc += pv.mg; egAcc += pv.eg;
+        std::cout << "  [TRACE] +" << label << " (pair): mg+=" << pv.mg << " eg+=" << pv.eg << '\n';
+    };
+
+    bothTerm(evalBishopPairBonusCached(board), "bishopPair");
+    bothTerm(evalHangingPieces(board, attackData), "hangingPieces");
+    bothTerm(evalMobility(attackData), "mobility");
+    bothTerm(evalSpaceAdvantage(board, whitePawns, blackPawns), "space");
+
+    pairTerm(evalThreatsPair(board, attackData, occ), "threats");
+    pairTerm(evalPawnStructureCachedPair(board, whitePawns, blackPawns), "pawnStructure");
+    pairTerm(evalKingActivityPair(board), "kingActivity");
+    pairTerm(evalInitiativePair(board), "initiative");
+
+    mgTerm(evalMinorPieceDevelopmentCached(board), "minorDev");
+    mgTerm(evalEarlyQueenCached(board), "earlyQueen");
+    mgTerm(evalCastlingBonusCached(board), "castling");
+    mgTerm(evalCentralControlCached(board, whitePawns, blackPawns), "centralControl");
+    mgTerm(evalPieceCoordinationCached(board), "coordination");
+    mgTerm(evalOutpostsCached(board), "outposts");
+    mgTerm(evalKingSafetyWithAttackData(board, whitePawns, blackPawns, attackData), "kingSafety");
+    mgTerm(evalBlockedPawnByBishopsCached(board), "blockedPawnBishops");
+    mgTerm(evalPawnForks(board), "pawnForks");
+    mgTerm(evalBlockedCenterWithPieces(board, occ), "blockedCenter");
+    mgTerm(evalKingMiddlegame(board, whitePawns, blackPawns, attackData), "kingMiddlegame");
+
+    bothTerm(evalTrappedPieces(board, occ), "trappedPieces");
+    bothTerm(evalBadBishopCached(board, whitePawns, blackPawns), "badBishop");
+    bothTerm(evalRooksCached(board, whitePawns, blackPawns), "rooks");
+    bothTerm(evalWeakSquaresCached(board, whitePawns, blackPawns), "weakSquares");
+    bothTerm(evalBishopVsKnightCached(board, whitePawns, blackPawns), "bishopVsKnight");
+
+    egTerm(evalEndgameKingActivity(board), "endgameKingActivity");
+    egTerm(evalMopUp(board), "mopUp");
+    egTerm(evalPassedPawnKeySquares(board, whitePawns, blackPawns), "passedKeySq");
+    egTerm(evalRuleOfSquare(board, whitePawns, blackPawns), "ruleOfSquare");
+    egTerm(evalRookEndgamePressure(board), "rookEgPressure");
+    egTerm(evalQueenEndgamePressure(board), "queenEgPressure");
+    egTerm(evalDoubleRookEndgame(board), "doubleRookEg");
+
+    const int32_t blended = PhaseValue{mgAcc, egAcc}.blend(phase.w1024);
+    std::cout << "  [TRACE] TOTAL: mg=" << mgAcc << " eg=" << egAcc
+              << " w1024=" << phase.w1024 << " blended=" << blended << '\n';
+    return blended;
 }
 
 } // namespace engine

@@ -40,4 +40,10 @@ int32_t Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexc
         : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
 }
 
+PhaseValue Evaluator::evalKingActivityPair(const chess::Board& b) noexcept {
+    const int32_t mg = evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
+    const int32_t eg = evalKingActivitySide<true>(b, 0)  + evalKingActivitySide<true>(b, 1);
+    return PhaseValue{mg, eg};
+}
+
 } // namespace engine

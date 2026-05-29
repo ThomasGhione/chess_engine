@@ -13,6 +13,12 @@ int32_t Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t white
     });
 }
 
+PhaseValue Evaluator::evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    const int32_t mg = evalPawnStructureCached(b, whitePawns, blackPawns, /*isEndgame=*/false);
+    const int32_t eg = evalPawnStructureCached(b, whitePawns, blackPawns, /*isEndgame=*/true);
+    return PhaseValue{mg, eg};
+}
+
 int32_t Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     return cachedTerm<chess::Board::EVAL_CACHE_CENTRAL_CONTROL>(b, [&] {
         return evalCentralControl(whitePawns, blackPawns);

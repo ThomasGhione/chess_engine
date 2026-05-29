@@ -238,8 +238,13 @@ public:
 
     // --- Incremental eval accessors ---
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
+    // Unweighted count of {N, B, R, Q} across both sides (used by search heuristics).
     constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
+    // Weighted phase units across both sides (N=B=1, R=2, Q=4). 0 = no
+    // non-pawn pieces (pawn-only endgame), 24 = full opening material.
+    constexpr int32_t getIncrementalPhaseWeight() const noexcept       { return incrementalPhaseWeight; }
     int32_t           getIncrementalPsqtDelta(bool isEndgame) const noexcept;
+    void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
 
     // --- Eval cache ---
     template<uint32_t Term> bool     hasEvalCacheTerm() const noexcept;
@@ -345,6 +350,7 @@ private:
     //FIXME trovare nome piu' significativo per queste variabili
     int32_t incrementalMaterialDelta    = 0;
     int32_t incrementalNonPawnMajorCount = 0;
+    int32_t incrementalPhaseWeight      = 0;
     int32_t incrementalPsqtPawnsMg      = 0;
     int32_t incrementalPsqtPawnsEg      = 0;
     int32_t incrementalPsqtPieces       = 0;

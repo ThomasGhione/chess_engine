@@ -124,4 +124,11 @@ int32_t Evaluator::evalThreats(const chess::Board& b, const AttackData data[2], 
     return score;
 }
 
+PhaseValue Evaluator::evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept {
+    const int32_t mg = evalThreatsSide(b, data, 0, 1, occ)
+                     + evalThreatsSide(b, data, 1, -1, occ);
+    const int32_t eg = (mg * engine::ENDGAME_THREAT_SCALE_PERCENT) / 100;
+    return PhaseValue{mg, eg};
+}
+
 } // namespace engine

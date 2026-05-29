@@ -66,6 +66,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     occupancy = other.occupancy;
     incrementalMaterialDelta = other.incrementalMaterialDelta;
     incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
+    incrementalPhaseWeight = other.incrementalPhaseWeight;
     incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
     incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
     incrementalPsqtPieces = other.incrementalPsqtPieces;
@@ -145,6 +146,11 @@ inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
     return incrementalPsqtPieces + pawns + kings;
 }
 
+inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
+    outMg = incrementalPsqtPieces + incrementalPsqtPawnsMg + incrementalPsqtKingsMg;
+    outEg = incrementalPsqtPieces + incrementalPsqtPawnsEg + incrementalPsqtKingsEg;
+}
+
 template<uint32_t Term>
 inline bool Board::hasEvalCacheTerm() const noexcept {
     return (evalCache.validMask & evalCacheBit(Term)) != 0;
@@ -205,6 +211,7 @@ inline void Board::updateOccupancyBB() noexcept {
     kings_bb[0]     = kings_bb[1]     = 0ULL;
     incrementalMaterialDelta = 0;
     incrementalNonPawnMajorCount = 0;
+    incrementalPhaseWeight = 0;
     incrementalPsqtPawnsMg = 0;
     incrementalPsqtPawnsEg = 0;
     incrementalPsqtPieces = 0;
@@ -295,6 +302,14 @@ inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) n
     
     if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
         incrementalNonPawnMajorCount += (Add ? 1 : -1);
+    }
+    // PeSTO-style weighted phase units: N=B=1, R=2, Q=4 (max 24 across both sides).
+    if constexpr (PieceType == KNIGHT || PieceType == BISHOP) {
+        incrementalPhaseWeight += (Add ? 1 : -1);
+    } else if constexpr (PieceType == ROOK) {
+        incrementalPhaseWeight += (Add ? 2 : -2);
+    } else if constexpr (PieceType == QUEEN) {
+        incrementalPhaseWeight += (Add ? 4 : -4);
     }
 
     if constexpr (PieceType == PAWN) {
