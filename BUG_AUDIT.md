@@ -12,24 +12,6 @@ Severità:
 
 ## ALTO
 
-### A1 — `evalStack[0]` mai inizializzato → euristica `improving` falsata a ply 2
-- **File**: [engine/search/searcher.cpp:906-918](engine/search/searcher.cpp#L906-L918)
-- **Cosa**: `static thread_local int32_t evalStack[MAX_PLY] = {}`. La scrittura avviene solo `if (ply > 0 && ply < MAX_PLY)`. Quindi `evalStack[0]` resta `0` per tutta la vita del thread (nessuno la scrive mai). A ply==2:
-  ```cpp
-  const bool improving = !node.inCheck && ply >= 2
-      && evalStack[ply - 2] != NEG_INF       // sempre vero (0 != NEG_INF)
-      && (node.staticEval > evalStack[ply - 2]);  // diventa staticEval > 0
-  ```
-- **Impatto**: a ply 2 `improving` è sistematicamente `staticEval > 0`. Bias persistente su futility threshold, LMP threshold, RFP.
-- **Fix**: nel root inizializzare `evalStack[0]`:
-  ```cpp
-  if (ply == 0) {
-      const int32_t rootStaticEval = node.inCheck ? NEG_INF : Evaluator::evaluate(b);
-      evalStack[0] = rootStaticEval;
-  }
-  ```
-  Va calcolato anche al root (oggi al root `node.staticEval` non viene mai computato perché la guardia è `ply > 0`).
-
 ### A2 — `generateTacticalMoves`: cattura del re senza check di legalità → mosse illegali in Probcut
 - **File**: [engine/search/move_generator.cpp:399-402](engine/search/move_generator.cpp#L399-L402), uso in [engine/search/searcher.cpp:1017-1029](engine/search/searcher.cpp#L1017-L1029)
 - **Cosa**: il loop king-attacks aggiunge `KING_ATTACKS[kingIndex] & oppOcc` senza `isLegalPseudoMove`. La qsearch ha un filtro esplicito per re ([searcher.cpp:1214-1220](engine/search/searcher.cpp#L1214-L1220)), ma il loop Probcut **no**.
@@ -42,15 +24,6 @@ Severità:
   if (fromPieceType == Board::KING && !b.isLegalPseudoMove(mc.from.index, mc.to.index, b.get(mc.from.index))) continue;
   ```
   In alternativa filtrare a monte in `generateTacticalMovesFor` (più pulito, costo costante).
-
-### A3 — `setoption` durante search → race su `engine::*` globali (e su `Board::MATERIAL_VALUES`)
-- **File**: [uci/uci.cpp:392-496](uci/uci.cpp#L392), confronto con [uci/uci.cpp:498-525](uci/uci.cpp#L498) (position) e [uci/uci.cpp:537](uci/uci.cpp#L537) (go)
-- **Cosa**: `position` e `go` chiamano `finishSearch(true, false)` per fermare il thread prima di modificare lo stato; `setOption` **non lo fa**. I valori `engine::PAWN_VALUE`, `engine::*_PENALTY`, `PIECE_VALUES[]`, `MVV_TABLE[]`, `Board::MATERIAL_VALUES[]` sono `int32_t` non-atomici, modificati live mentre il search thread legge.
-- **Impatto**: race su int32 → tearing improbabile su x86 ma comportamento indefinito formale; eval inconsistente per centinaia di nodi.
-- **Sotto-bug correlato** (era A3 originale): `refreshPieceTables()` aggiorna `Board::MATERIAL_VALUES` ma `incrementalMaterialDelta` accumulato sul Board attuale resta calcolato sui vecchi valori. Mismatch tra delta e tabella corrente finché `position` non re-parsa il FEN (che rifà `updateOccupancyBB()`).
-- **Fix**:
-  1. In `setOption`, prima di qualunque scrittura: `finishSearch(true, false);`.
-  2. Dopo `refreshPieceTables()`: chiamare `engine.board.updateOccupancyBB()` per ricostruire i delta incrementali coerenti con la nuova tabella.
 
 ### A4 — Polyglot side-to-move XOR: chiave potrebbe non matchare i .bin polyglot standard
 - **File**: [engine/opening/opening_book.cpp:117-121](engine/opening/opening_book.cpp#L117-L121)
@@ -190,16 +163,14 @@ Severità:
 
 | Severità | # voci |
 |---|---|
-| ALTO | 4 (A1, A2, A3, A4) |
+| ALTO | 2 (A2, A4) |
 | MEDIO | 10 (M1–M10) |
 | BASSO | 12 (B1–B12) |
 
 ## Top da fixare per impatto/effort
 
-1. **A1** (`evalStack[0]`) — 1 riga al root, possibile guadagno ELO misurabile.
-2. **A2** (Probcut king-capture) — 3 righe nel loop probcut, evita contaminazione TT.
-3. **A3** (setoption race + MATERIAL_VALUES stale) — 2 righe in `setOption`, robustezza.
-4. **A4** (polyglot side-to-move XOR) — da verificare empiricamente con `komodo.bin`.
+1. **A2** (Probcut king-capture) — 3 righe nel loop probcut, evita contaminazione TT.
+2. **A4** (polyglot side-to-move XOR) — da verificare empiricamente con `komodo.bin`.
 
 ## Aree non analizzate
 

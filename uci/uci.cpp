@@ -392,6 +392,14 @@ namespace uci {
     void UCI::setOption(std::string_view args) noexcept {
         if (args.empty()) return;
 
+        // Stop any in-flight search before mutating shared engine state. The
+        // option backing storage is plain `int32_t` (engine::* globals,
+        // PIECE_VALUES, MVV_TABLE, Board::MATERIAL_VALUES); writing them while
+        // a worker reads is a data race and `refreshPieceTables` would also
+        // leave the incremental material/PSQT deltas out of sync with the new
+        // table until the next FEN re-parse.
+        finishSearch(true, false);
+
         string_view rest = args;
         if (nextToken(rest) != "name") return;
 
@@ -459,6 +467,16 @@ namespace uci {
                 *option.value = parsedValue;
                 if (option.refreshPieceTables) {
                     refreshPieceTables();
+                    // Rebuild the board's incremental material / PSQT deltas
+                    // against the freshly-written MATERIAL_VALUES table. Without
+                    // this, deltas accumulated under the old values keep being
+                    // used by Evaluator::evaluate() until the next `position`
+                    // command re-parses a FEN.
+                    engine.board.updateOccupancyBB();
+                    // updateOccupancyBB() repopulates the incremental fields but
+                    // leaves any cached eval terms valid against the *old* table;
+                    // drop them so the next evaluate() recomputes from scratch.
+                    engine.board.clearEvalCache();
                 }
                 std::cout << "info string " << optionDisplayName(option.key)
                           << " set to " << *option.value << "\n";

@@ -888,7 +888,11 @@ int32_t Searcher::searchPosition(
     node.isPawnEndgameForPruning =
         ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
 
-    if (ply > 0 && !node.inCheck) {
+    // Compute static eval at every ply (including the root) so that the
+    // `improving` heuristic can compare evalStack[ply-2] vs current eval
+    // starting from ply >= 2. Previously the root left evalStack[0] at its
+    // zero-initialised value, biasing `improving` to (staticEval > 0) at ply 2.
+    if (!node.inCheck) {
         node.staticEval = Evaluator::evaluate(b);
         if (canUseTT) {
             int32_t ttStaticScore = 0;
@@ -913,10 +917,10 @@ int32_t Searcher::searchPosition(
     static thread_local int32_t evalStack[MAX_PLY] = {};
 
     // Store staticEval in ply stack and compute improving flag.
-    // In-check nodes have no meaningful static eval (it was not computed
-    // above), so store a sentinel instead of the stale default 0, which
-    // would otherwise corrupt the improving comparison two plies deeper.
-    if (ply > 0 && ply < MAX_PLY)
+    // In-check nodes have no meaningful static eval, so store a sentinel
+    // instead of the stale default 0, which would otherwise corrupt the
+    // improving comparison two plies deeper.
+    if (ply >= 0 && ply < MAX_PLY)
         evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
     // Negamax: staticEval is side-to-move relative and ply-2 is the same
     // side, so "improving" is simply eval rising versus two plies ago.
