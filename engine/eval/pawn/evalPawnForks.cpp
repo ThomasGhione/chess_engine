@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -18,7 +19,7 @@ static inline int32_t evalPawnForksSide(const chess::Board& b, int side) noexcep
 
         const uint64_t attacks = pieces::PAWN_ATTACKS[side][sq];
         const uint64_t forked  = attacks & enemyPieces;
-        const int forkedCount  = __builtin_popcountll(forked);
+        const int forkedCount  = std::popcount(forked);
 
         if (forkedCount < 2)
             continue;

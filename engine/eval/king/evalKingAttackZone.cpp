@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -26,7 +27,7 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
     if (!enemyKingBB) [[unlikely]] return 0;
 
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
     const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::bitMask(enemyKingSq);
 
     const uint64_t developedKnights = (side == 0)
@@ -44,8 +45,8 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
 
     const uint64_t defenderMap = data[oppSide].allAttacks | pieces::KING_ATTACKS[enemyKingSq];
     const uint64_t zoneAttacks = data[side].allAttacks & kingZone;
-    const int safeContacts = __builtin_popcountll(zoneAttacks & ~defenderMap);
-    const int forcingContacts = __builtin_popcountll(zoneAttacks & defenderMap);
+    const int safeContacts = std::popcount(zoneAttacks & ~defenderMap);
+    const int forcingContacts = std::popcount(zoneAttacks & defenderMap);
 
     int32_t attackUnits = attackWeight
         + safeContacts * engine::KING_SAFE_CONTACT_BONUS
@@ -65,8 +66,8 @@ int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData da
     if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
 
     const uint64_t occ = b.getPiecesBitMap();
-    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
     return evalKingAttackZoneSide(b, data, 0, occ, attackMaterialScalePercent(b, 0, blackKingFile, b.pawns_bb[1]))
          + evalKingAttackZoneSide(b, data, 1, occ, attackMaterialScalePercent(b, 1, whiteKingFile, b.pawns_bb[0]));
 }

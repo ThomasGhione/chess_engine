@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -10,7 +11,7 @@ inline int32_t Evaluator::evalCastlingBonusSide(const chess::Board& b, int side)
     const bool castleQs = b.getCastle(side == 0 ? 1 : 3);
     const bool hasAnyRight = castleKs || castleQs;
 
-    const int kingSq   = __builtin_ctzll(kingBB);
+    const int kingSq   = std::countr_zero(kingBB);
     const int kingFile = chess::Board::file(kingSq);
     const int kingRank = chess::Board::rank(kingSq);
     const int backRank = (side == 0) ? 7 : 0;   // own first rank (a1=56 => rank 7)

@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -30,7 +31,7 @@ int32_t Evaluator::evalSpaceAdvantage(const chess::Board& b,
     auto forwardFill = [](uint64_t pawns, const std::array<uint64_t, 64>& fills) -> uint64_t {
         uint64_t result = 0ULL;
         while (pawns) {
-            result |= fills[__builtin_ctzll(pawns)];
+            result |= fills[std::countr_zero(pawns)];
             pawns &= pawns - 1;
         }
         return result;
@@ -41,8 +42,8 @@ int32_t Evaluator::evalSpaceAdvantage(const chess::Board& b,
              | b.queens_bb[side]  | b.kings_bb[side];
     };
 
-    const int whiteSpace = __builtin_popcountll(forwardFill(whitePawns, WHITE_FORWARD_FILL) & WHITE_SPACE_MASK & ~ownPieces(0));
-    const int blackSpace = __builtin_popcountll(forwardFill(blackPawns, BLACK_FORWARD_FILL) & BLACK_SPACE_MASK & ~ownPieces(1));
+    const int whiteSpace = std::popcount(forwardFill(whitePawns, WHITE_FORWARD_FILL) & WHITE_SPACE_MASK & ~ownPieces(0));
+    const int blackSpace = std::popcount(forwardFill(blackPawns, BLACK_FORWARD_FILL) & BLACK_SPACE_MASK & ~ownPieces(1));
 
     return (whiteSpace - blackSpace) * engine::SPACE_BONUS;
 }

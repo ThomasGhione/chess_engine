@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -43,8 +44,8 @@ int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
         const uint64_t enemyKingBB = b.kings_bb[oppSide];
         if (!ourKingBB || !enemyKingBB) return 0;
 
-        const int ourKingSq   = __builtin_ctzll(ourKingBB);
-        const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+        const int ourKingSq   = std::countr_zero(ourKingBB);
+        const int enemyKingSq = std::countr_zero(enemyKingBB);
         const auto& fwd = isWhite ? WHITE_FORWARD_FILL : BLACK_FORWARD_FILL;
 
         // Enemy to move relative to the pawn's advancing side.
@@ -54,7 +55,7 @@ int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
         int32_t score = 0;
         uint64_t pawns = ownPawns;
         while (pawns) {
-            const int sq = __builtin_ctzll(pawns);
+            const int sq = std::countr_zero(pawns);
             pawns &= pawns - 1;
 
             const int file = chess::Board::file(sq);

@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -14,7 +15,7 @@ inline void Evaluator::processPieces(uint64_t piecesBb, AttackData& data, uint64
     while (piecesBb) {
         const uint64_t attacks = AttackFn(popLSB(piecesBb), occ);
         data.allAttacks |= attacks;
-        data.*MobilityField += __builtin_popcountll(attacks & mobilityMask);
+        data.*MobilityField += std::popcount(attacks & mobilityMask);
     }
 }
 

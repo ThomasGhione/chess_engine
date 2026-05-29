@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -9,7 +10,7 @@ inline int32_t Evaluator::evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t o
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         const uint64_t attacks = AttackFn(sq, occ);
-        const int mobility = __builtin_popcountll(attacks & mobilityMask);
+        const int mobility = std::popcount(attacks & mobilityMask);
         score -= sign * ((mobility == 0) * (pinnedPenalty + TRAPPED_EXTRA_SEVERITY) + 
                          (mobility > 0 && mobility <= 3) * lowMobPenalty);
     }

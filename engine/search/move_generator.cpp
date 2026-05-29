@@ -1,3 +1,4 @@
+#include <bit>
 #include "move_generator.hpp"
 
 #include "../inl/bitboard_helpers.inl"
@@ -199,7 +200,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
 
     if (!kings) [[unlikely]] return moves;
 
-    const int kingFrom = __builtin_ctzll(kings);
+    const int kingFrom = std::countr_zero(kings);
     const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
 
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
@@ -307,7 +308,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
         computeCheckEvasionMasks<IsWhite>(b, evasionMask);
     }
 
-    const int kingFrom = __builtin_ctzll(kings);
+    const int kingFrom = std::countr_zero(kings);
     const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
     uint64_t kingTargets = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (kingTargets) {
@@ -377,7 +378,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess
     const uint8_t pawnPiece = chess::Board::PAWN | color;
 
     if (!kings) [[unlikely]] return moves;
-    const int kingIndex = __builtin_ctzll(kings);
+    const int kingIndex = std::countr_zero(kings);
 
     uint64_t pinnedMask = 0ULL;
     // NOTE: per performance, don't zero-initialize this array.
@@ -509,7 +510,7 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
             const uint64_t between = BETWEEN_EXCLUSIVE_LUT[kingSq][pinnerSq];
             const uint64_t blockers = between & ownOcc;
             if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
-                const int pinnedSq = __builtin_ctzll(blockers);
+                const int pinnedSq = std::countr_zero(blockers);
                 pinnedMask |= blockers;
                 pinRays[pinnedSq] = between | chess::Board::bitMask(pinnerSq);
             }
@@ -532,7 +533,7 @@ void MoveGenerator::computeCheckEvasionMasks(
         return;
     }
   
-    const int kingSq = __builtin_ctzll(kingBB);
+    const int kingSq = std::countr_zero(kingBB);
     const uint64_t occ = b.getPiecesBitMap();
 
     const uint64_t rookCheckers = pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
@@ -553,7 +554,7 @@ void MoveGenerator::computeCheckEvasionMasks(
         return;
     }
 
-    const int checkerSq = __builtin_ctzll(checkersMask);
+    const int checkerSq = std::countr_zero(checkersMask);
     const uint64_t checkerBit = chess::Board::bitMask(checkerSq);
     evasionMask = checkerBit;
     if ((rookCheckers | bishopCheckers) & checkerBit) {

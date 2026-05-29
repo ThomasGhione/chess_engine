@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <cstdint>
 #include <array>
 #include "coords.hpp"
@@ -49,7 +50,7 @@ inline constexpr std::array<MagicParams, 64> buildMagicParams(const MaskArray& m
     for (int sq = 0; sq < 64; ++sq) {
         table[sq].mask = masks[sq];
         table[sq].magic = magics[sq];
-        int bits = __builtin_popcountll(masks[sq]);
+        int bits = std::popcount(masks[sq]);
         table[sq].shift = 64 - bits;
         table[sq].offset = runningOffset;
         runningOffset += (1 << bits);
@@ -68,7 +69,7 @@ inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = buildMagicParams(BI
 inline constexpr uint64_t generateOccupancyPattern(int index, int bitCount, uint64_t mask) noexcept {
     uint64_t occupancy = 0ULL;
     for (int i = 0; i < bitCount; ++i) {
-        int bitPos = __builtin_ctzll(mask);
+        int bitPos = std::countr_zero(mask);
         mask &= mask - 1; // Clear LSB
         if (index & (1 << i)) {
             occupancy |= (1ULL << bitPos);
@@ -113,7 +114,7 @@ template<size_t N, typename AttackFunc>
 inline void populateAttackTable(int square, const MagicParams& p,
                                 std::array<uint64_t, N>& lookup,
                                 AttackFunc attackFunc) noexcept {
-    const int bitCount = __builtin_popcountll(p.mask);
+    const int bitCount = std::popcount(p.mask);
     const int numPatterns = 1 << bitCount;
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);

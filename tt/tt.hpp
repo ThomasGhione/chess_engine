@@ -15,6 +15,7 @@
 #endif
 
 #include "zobrist.hpp"
+#include "../ascii_utils.hpp"
 
 class TranspositionTable {
 
@@ -291,27 +292,15 @@ private:
         return false;
     }
 
-    [[nodiscard]] static constexpr bool isEquals(std::string_view lhs, std::string_view rhs) noexcept {
-        if (lhs.size() != rhs.size()) return false;
-        for (size_t i = 0; i < lhs.size(); ++i) {
-            char a = lhs[i];
-            char b = rhs[i];
-            if (a >= 'A' && a <= 'Z') a = static_cast<char>(a - 'A' + 'a');
-            if (b >= 'A' && b <= 'Z') b = static_cast<char>(b - 'A' + 'a');
-            if (a != b) return false;
-        }
-        return true;
-    }
-
     [[nodiscard]] static inline HugePageMode hugePageModeFromEnv() noexcept {
         const char* envValue = std::getenv("CHESS_TT_HUGEPAGE");
         if (envValue == nullptr || *envValue == '\0') return HugePageMode::Auto;
 
         const std::string_view value(envValue);
-        if (isEquals(value, "on") || isEquals(value, "1") || isEquals(value, "true") || isEquals(value, "force")) {
+        if (ascii::iequals(value, "on") || ascii::iequals(value, "1") || ascii::iequals(value, "true") || ascii::iequals(value, "force")) {
             return HugePageMode::On;
         }
-        if (isEquals(value, "off") || isEquals(value, "0") || isEquals(value, "false")) {
+        if (ascii::iequals(value, "off") || ascii::iequals(value, "0") || ascii::iequals(value, "false")) {
             return HugePageMode::Off;
         }
         return HugePageMode::Auto;

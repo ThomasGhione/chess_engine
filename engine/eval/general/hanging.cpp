@@ -1,10 +1,11 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
 
 inline int32_t Evaluator::evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef, int sign, int penalty) noexcept {
     const uint64_t hanging = pieces & enemyAttacks & ~friendlyDef;
-    return sign * __builtin_popcountll(hanging) * penalty;
+    return sign * std::popcount(hanging) * penalty;
 }
 
 inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept {
@@ -15,18 +16,18 @@ inline int32_t Evaluator::evalHangingPiecesSide(const chess::Board& b, const Att
     const uint64_t friendlyDef = data[side].allAttacks;
     const uint64_t hangingPawns = b.pawns_bb[side] & enemyAttacks & ~friendlyDef;
 
-    score += sign * __builtin_popcountll(hangingPawns) * engine::HANGING_PAWN_PENALTY;
+    score += sign * std::popcount(hangingPawns) * engine::HANGING_PAWN_PENALTY;
 
     const uint64_t kingBB = b.kings_bb[side];
     if (kingBB) [[likely]] {
-        const int kingSq = __builtin_ctzll(kingBB);
+        const int kingSq = std::countr_zero(kingBB);
         const uint64_t kingProximity = KING_PROXIMITY_MASKS[kingSq];
         const uint64_t criticalHangingPawns = hangingPawns & kingProximity;
-        score += sign * __builtin_popcountll(criticalHangingPawns) * engine::HANGING_PAWN_NEAR_KING_PENALTY;
+        score += sign * std::popcount(criticalHangingPawns) * engine::HANGING_PAWN_NEAR_KING_PENALTY;
 
         const uint64_t hookFiles = FILE_MASKS[1] | FILE_MASKS[6];
         const uint64_t hangingHookPawns = criticalHangingPawns & hookFiles;
-        score += sign * __builtin_popcountll(hangingHookPawns) * engine::HANGING_HOOK_PAWN_PENALTY;
+        score += sign * std::popcount(hangingHookPawns) * engine::HANGING_HOOK_PAWN_PENALTY;
     }
 
     score += evalHangingPiecePenalty(b.knights_bb[side] | b.bishops_bb[side], enemyAttacks, friendlyDef, sign, engine::HANGING_MINOR_PENALTY);
@@ -94,21 +95,21 @@ inline int32_t Evaluator::evalThreatsSide(const chess::Board& b, const AttackDat
     const uint64_t queenByRook = ownQueens & rookThreats & ~(queenByPawn | queenByMinor);
 
     int32_t score = 0;
-    score += sign * __builtin_popcountll(ownMinors & pawnThreats) * engine::THREAT_PAWN_ATTACK_MINOR_PENALTY;
-    score += sign * __builtin_popcountll(rookByPawn) * engine::THREAT_PAWN_ATTACK_ROOK_PENALTY;
-    score += sign * __builtin_popcountll(rookByMinor) * engine::THREAT_MINOR_ATTACK_ROOK_PENALTY;
-    score += sign * __builtin_popcountll(queenByPawn) * engine::THREAT_PAWN_ATTACK_QUEEN_PENALTY;
-    score += sign * __builtin_popcountll(queenByMinor) * engine::THREAT_MINOR_ATTACK_QUEEN_PENALTY;
-    score += sign * __builtin_popcountll(queenByRook) * engine::THREAT_ROOK_ATTACK_QUEEN_PENALTY;
+    score += sign * std::popcount(ownMinors & pawnThreats) * engine::THREAT_PAWN_ATTACK_MINOR_PENALTY;
+    score += sign * std::popcount(rookByPawn) * engine::THREAT_PAWN_ATTACK_ROOK_PENALTY;
+    score += sign * std::popcount(rookByMinor) * engine::THREAT_MINOR_ATTACK_ROOK_PENALTY;
+    score += sign * std::popcount(queenByPawn) * engine::THREAT_PAWN_ATTACK_QUEEN_PENALTY;
+    score += sign * std::popcount(queenByMinor) * engine::THREAT_MINOR_ATTACK_QUEEN_PENALTY;
+    score += sign * std::popcount(queenByRook) * engine::THREAT_ROOK_ATTACK_QUEEN_PENALTY;
 
-    score += sign * __builtin_popcountll(ownMinors & pawnPushThreats) * engine::THREAT_PAWN_PUSH_MINOR_PENALTY;
-    score += sign * __builtin_popcountll(ownRooks & pawnPushThreats) * engine::THREAT_PAWN_PUSH_ROOK_PENALTY;
-    score += sign * __builtin_popcountll(ownQueens & pawnPushThreats) * engine::THREAT_PAWN_PUSH_QUEEN_PENALTY;
+    score += sign * std::popcount(ownMinors & pawnPushThreats) * engine::THREAT_PAWN_PUSH_MINOR_PENALTY;
+    score += sign * std::popcount(ownRooks & pawnPushThreats) * engine::THREAT_PAWN_PUSH_ROOK_PENALTY;
+    score += sign * std::popcount(ownQueens & pawnPushThreats) * engine::THREAT_PAWN_PUSH_QUEEN_PENALTY;
 
     const uint64_t looseValuable = ownValuable & data[opp].allAttacks & ~data[side].allAttacks;
-    score += sign * __builtin_popcountll(looseValuable & ownMinors) * engine::THREAT_LOOSE_MINOR_PENALTY;
-    score += sign * __builtin_popcountll(looseValuable & ownRooks) * engine::THREAT_LOOSE_ROOK_PENALTY;
-    score += sign * __builtin_popcountll(looseValuable & ownQueens) * engine::THREAT_LOOSE_QUEEN_PENALTY;
+    score += sign * std::popcount(looseValuable & ownMinors) * engine::THREAT_LOOSE_MINOR_PENALTY;
+    score += sign * std::popcount(looseValuable & ownRooks) * engine::THREAT_LOOSE_ROOK_PENALTY;
+    score += sign * std::popcount(looseValuable & ownQueens) * engine::THREAT_LOOSE_QUEEN_PENALTY;
 
     return score;
 }

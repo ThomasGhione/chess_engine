@@ -3,6 +3,7 @@
 #include "../board/board.hpp"
 #include "../engine/engine.hpp"
 #include "../engine/eval_constants.hpp"
+#include "../ascii_utils.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -32,14 +33,6 @@ namespace {
     static string_view trimRight(string_view s) noexcept {
         while (!s.empty() && isSpace(s.back())) s.remove_suffix(1);
         return s;
-    }
-
-    static bool iequalsAscii(string_view lhs, string_view rhs) noexcept {
-        if (lhs.size() != rhs.size()) return false;
-        for (std::size_t i = 0; i < lhs.size(); ++i) {
-            if (asciiLower(lhs[i]) != asciiLower(rhs[i])) return false;
-        }
-        return true;
     }
 
     static std::string normalizedOptionName(string_view optionName) {
@@ -160,7 +153,7 @@ namespace {
         {"COORDINATION_PENALTY", &engine::COORDINATION_PENALTY, false, false, 0, 0},
         {"OUTPOST_BISHOP_BONUS", &engine::OUTPOST_BISHOP_BONUS, false, false, 0, 0},
         {"OUTPOST_KNIGHT_BONUS", &engine::OUTPOST_KNIGHT_BONUS, false, false, 0, 0},
-{"HANGING_PAWN_PENALTY", &engine::HANGING_PAWN_PENALTY, false, false, 0, 0},
+        {"HANGING_PAWN_PENALTY", &engine::HANGING_PAWN_PENALTY, false, false, 0, 0},
         {"HANGING_PAWN_NEAR_KING_PENALTY", &engine::HANGING_PAWN_NEAR_KING_PENALTY, false, false, 0, 0},
         {"HANGING_HOOK_PAWN_PENALTY", &engine::HANGING_HOOK_PAWN_PENALTY, false, false, 0, 0},
         {"HANGING_MINOR_PENALTY", &engine::HANGING_MINOR_PENALTY, false, false, 0, 0},
@@ -228,11 +221,11 @@ namespace {
 
     static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {
         const string_view value = trimLeft(rawValue);
-        if (iequalsAscii(value, "true") || value == "1" || iequalsAscii(value, "on")) {
+        if (ascii::iequals(value, "true") || value == "1" || ascii::iequals(value, "on")) {
             outValue = true;
             return true;
         }
-        if (iequalsAscii(value, "false") || value == "0" || iequalsAscii(value, "off")) {
+        if (ascii::iequals(value, "false") || value == "0" || ascii::iequals(value, "off")) {
             outValue = false;
             return true;
         }

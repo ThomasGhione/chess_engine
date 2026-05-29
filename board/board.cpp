@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <bit>
 #include "board.hpp"
 #include "../tt/zobrist.hpp"
 
@@ -86,7 +88,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
 
     //FIXME Usare funzione helper chiamata a esempio 'calculateAttackersKingMask'
-    const uint8_t kingIndex = __builtin_ctzll(kings_bb[side]);
+    const uint8_t kingIndex = std::countr_zero(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
     // Accumulate all attackers in a single bitboard
@@ -231,7 +233,7 @@ bool Board::inCheck(uint8_t color) const noexcept {
     const uint64_t kingBB = kings_bb[side];
 
     if (!kingBB) [[unlikely]] return false;
-    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    const uint8_t kingSq = std::countr_zero(kingBB);
     const uint8_t bySide = side ^ 1;
     return isKingAttackedCustom(kingSq, bySide, occupancy,
                                 pawns_bb[bySide], knights_bb[bySide], bishops_bb[bySide],
@@ -247,12 +249,12 @@ bool Board::hasLegalMovesForPieceType(
     uint8_t movingColor
 ) const noexcept {
     while (pieceBB) {
-        const uint8_t from = __builtin_ctzll(pieceBB);
+        const uint8_t from = std::countr_zero(pieceBB);
         pieceBB &= pieceBB - 1;
 
         uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
         while (movesMask) {
-            const uint8_t to = __builtin_ctzll(movesMask);
+            const uint8_t to = std::countr_zero(movesMask);
             movesMask &= movesMask - 1;
             const uint64_t toBit = Board::bitMask(to);
             const uint64_t capturedMask = toBit & enemyOcc;
@@ -281,10 +283,10 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     // --- KING MOVES (always exists, cheap to test) ---
     const uint64_t kings = kings_bb[side];
     if (kings) [[likely]] {
-        const uint8_t king = __builtin_ctzll(kings);
+        const uint8_t king = std::countr_zero(kings);
         uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
         while (moves) {
-            const uint8_t to = __builtin_ctzll(moves);
+            const uint8_t to = std::countr_zero(moves);
             moves &= moves - 1;
             if (!isSquareAttacked(to, oppColor, king)) return true;
         }
@@ -310,19 +312,19 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const bool isWhite = (side == 0);
     uint64_t pawns = pawns_bb[side];
     while (pawns) {
-        const uint8_t from = __builtin_ctzll(pawns);
+        const uint8_t from = std::countr_zero(pawns);
         pawns &= pawns - 1;
 
         uint64_t push = pieces::getPawnForwardPushes(from, isWhite, occupancy);
         while (push) {
-            const uint8_t to = __builtin_ctzll(push);
+            const uint8_t to = std::countr_zero(push);
             push &= push - 1;
             if (isKingSafeAfterMove(color, from, to, 0ULL)) return true;
         }
 
         uint64_t caps = pieces::PAWN_ATTACKS[side][from] & enemyOcc;
         while (caps) {
-            const uint8_t to = __builtin_ctzll(caps);
+            const uint8_t to = std::countr_zero(caps);
             caps &= caps - 1;
             if (isKingSafeAfterMove(color, from, to, bitMask(to))) return true;
         }
@@ -375,11 +377,8 @@ bool Board::isThreefoldRepetition() const noexcept {
 }
 
 int Board::countRepetitions() const noexcept {
-    int count = 0;
-    for (const uint64_t* p = repetitionHistory.data(), *end = p + historySize; p != end; ++p) {
-        if (*p == currentHash) ++count;
-    }
-    return count;
+    const uint64_t* const begin = repetitionHistory.data();
+    return static_cast<int>(std::count(begin, begin + historySize, currentHash));
 }
 
 bool Board::hasInsufficientMaterialDraw() const noexcept {
@@ -388,8 +387,8 @@ bool Board::hasInsufficientMaterialDraw() const noexcept {
     const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
     const uint64_t bMinors = knights_bb[1] | bishops_bb[1];
     // (wMinors==0 && bMinors==0) is subsumed by either clause below.
-    return (__builtin_popcountll(wMinors) <= 1 && bMinors == 0ULL)
-        || (__builtin_popcountll(bMinors) <= 1 && wMinors == 0ULL);
+    return (std::popcount(wMinors) <= 1 && bMinors == 0ULL)
+        || (std::popcount(bMinors) <= 1 && wMinors == 0ULL);
 }
 
 }; // namespace chess

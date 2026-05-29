@@ -11,20 +11,11 @@
 
 #include "../board/piece.hpp"
 #include "../debug.hpp"
+#include "../ascii_utils.hpp"
 
 namespace engine {
 
 namespace {
-
-[[nodiscard]] bool iequalsAscii(std::string_view lhs, std::string_view rhs) noexcept {
-    if (lhs.size() != rhs.size()) return false;
-    for (std::size_t i = 0; i < lhs.size(); ++i) {
-        const char a = std::tolower(static_cast<unsigned char>(lhs[i]));
-        const char b = std::tolower(static_cast<unsigned char>(rhs[i]));
-        if (a != b) return false;
-    }
-    return true;
-}
 
 [[nodiscard]] bool resolveSearchApiMutexGuardDefault() noexcept {
     const char* envValue = std::getenv("CHESS_ENGINE_SEARCH_MUTEX_GUARD");
@@ -33,10 +24,10 @@ namespace {
     }
 
     const std::string_view value(envValue);
-    if (iequalsAscii(value, "0") || iequalsAscii(value, "off") || iequalsAscii(value, "false")) {
+    if (ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false")) {
         return false;
     }
-    if (iequalsAscii(value, "1") || iequalsAscii(value, "on") || iequalsAscii(value, "true")) {
+    if (ascii::iequals(value, "1") || ascii::iequals(value, "on") || ascii::iequals(value, "true")) {
         return true;
     }
     return true;

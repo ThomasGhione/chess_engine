@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 #include <algorithm>
 
@@ -34,7 +35,7 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
             uint64_t pawnsLoop = ownPasserCandidates;
             const uint64_t enemyAdjAndFile = oppPawns & ADJACENT_AND_FILE_MASKS[file];
             do {
-                const int pawnSq = __builtin_ctzll(pawnsLoop);
+                const int pawnSq = std::countr_zero(pawnsLoop);
                 const uint64_t forwardFill = isWhite ? WHITE_FORWARD_FILL[pawnSq] : BLACK_FORWARD_FILL[pawnSq];
                 if ((enemyAdjAndFile & forwardFill) == 0ULL) {
                     score += sign * engine::ROOK_BEHIND_OWN_PASSER_BONUS;
@@ -49,7 +50,7 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
             uint64_t pawnsLoop = enemyPasserCandidates;
             const uint64_t ourAdjAndFile = ownPawns & ADJACENT_AND_FILE_MASKS[file];
             do {
-                const int pawnSq = __builtin_ctzll(pawnsLoop);
+                const int pawnSq = std::countr_zero(pawnsLoop);
                 const uint64_t forwardFill = isWhite ? BLACK_FORWARD_FILL[pawnSq] : WHITE_FORWARD_FILL[pawnSq];
                 if ((ourAdjAndFile & forwardFill) == 0ULL) {
                     score += sign * engine::ROOK_BEHIND_ENEMY_PASSER_BONUS;
@@ -69,9 +70,9 @@ inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int
     if (!sideHasAdvantage) return 0;
 
     const int oppSide = side ^ 1;
-    const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
-    const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
-    const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
+    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
+    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
     const int oppRooks2 = (side == 0) ? blackRooks : whiteRooks;
     const int oppMaterial = oppQueens * 900 + oppRooks2 * 500 + oppBishops * 330 + oppKnights * 320;
 
@@ -81,7 +82,7 @@ inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
     if (!enemyKingBB) return 0;
 
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
 
     const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
     if (ourRooks >= 2) return 0;
@@ -99,9 +100,9 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     if (ourRooks < 2 || ourRooks <= oppRooks) return 0;
 
     const int oppSide = side ^ 1;
-    const int oppQueens = __builtin_popcountll(b.queens_bb[oppSide]);
-    const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
-    const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
+    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
+    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
+    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 + oppBishops * 330 + oppKnights * 320;
 
     if (oppMaterial > 500) return 0;
@@ -110,7 +111,7 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
     if (!enemyKingBB) return 0;
 
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
     const int rank = chess::Board::rank(enemyKingSq);
     const int file = chess::Board::file(enemyKingSq);
 
@@ -120,7 +121,7 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     uint64_t rooksBB = b.rooks_bb[side];
     if ((rooksBB & (rooksBB - 1)) != 0ULL) {
         const int rook1 = popLSB(rooksBB);
-        const int rook2 = __builtin_ctzll(rooksBB);
+        const int rook2 = std::countr_zero(rooksBB);
 
         const int r1_rank = chess::Board::rank(rook1);
         const int r1_file = chess::Board::file(rook1);
@@ -147,8 +148,8 @@ int32_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t 
 }
 
 int32_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
-    const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
-    const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
+    const int whiteRooks = std::popcount(b.rooks_bb[0]);
+    const int blackRooks = std::popcount(b.rooks_bb[1]);
 
     if (whiteRooks == blackRooks) return 0;
 
@@ -157,8 +158,8 @@ int32_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
 }
 
 int32_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
-    const int whiteRooks = __builtin_popcountll(b.rooks_bb[0]);
-    const int blackRooks = __builtin_popcountll(b.rooks_bb[1]);
+    const int whiteRooks = std::popcount(b.rooks_bb[0]);
+    const int blackRooks = std::popcount(b.rooks_bb[1]);
 
     return evalDoubleRookEndgameSide(b, 0, whiteRooks, blackRooks)
          + evalDoubleRookEndgameSide(b, 1, whiteRooks, blackRooks);

@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 #include <algorithm>
 
@@ -21,10 +22,10 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
 
     const int oppSide = side ^ 1;
 
-    const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
-    const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
-    const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
-    const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
+    const int oppPawns = std::popcount(b.pawns_bb[oppSide]);
+    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
+    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
+    const int oppRooks = std::popcount(b.rooks_bb[oppSide]);
 
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
                             oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
@@ -34,7 +35,7 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
     if (!enemyKingBB) return 0;
 
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
 
     constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
     int32_t sideScore = edgeProximity(enemyKingSq) * QUEEN_EG_EDGE_BONUS;
@@ -63,8 +64,8 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
 }
 
 int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
-    const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
-    const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
+    const int whiteQueens = std::popcount(b.queens_bb[0]);
+    const int blackQueens = std::popcount(b.queens_bb[1]);
 
     if (whiteQueens == 0 && blackQueens == 0) return 0;
 

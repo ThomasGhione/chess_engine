@@ -1,3 +1,4 @@
+#include <bit>
 #include "searcher.hpp"
 
 #include <algorithm>
@@ -559,7 +560,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppSide = usSide ^ 1;
     const uint64_t oppKingBBForFutility = b.kings_bb[oppSide];
-    const int oppKingSq = oppKingBBForFutility ? __builtin_ctzll(oppKingBBForFutility) : 64;
+    const int oppKingSq = oppKingBBForFutility ? std::countr_zero(oppKingBBForFutility) : 64;
     const uint64_t enemyMajorOrKingTargets =
         b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
     const uint64_t enemyForkTargets =
@@ -606,7 +607,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][toIndex] & enemyForkTargets;
             createsPawnForkThreat =
                 ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
-                && (__builtin_popcountll(forkTargets) >= 2);
+                && (std::popcount(forkTargets) >= 2);
         }
 
         if (canLMP && isQuietMove && !createsPawnForkThreat && moveIndex >= lmpThreshold) {
@@ -936,7 +937,7 @@ int32_t Searcher::searchPosition(
         && (node.staticEval > evalStack[ply - 2]);
 
     const int side = chess::Board::colorToIndex(node.activeColor);
-    const int nonPawnMajors = __builtin_popcountll(
+    const int nonPawnMajors = std::popcount(
         b.knights_bb[side] | b.bishops_bb[side] |
         b.rooks_bb[side]   | b.queens_bb[side]);
     static constexpr int SE_MIN_DEPTH    = 6;

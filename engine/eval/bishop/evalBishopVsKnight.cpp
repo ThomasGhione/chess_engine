@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -14,17 +15,17 @@ namespace engine {
 int32_t Evaluator::evalBishopVsKnight(const chess::Board& b,
                                       uint64_t whitePawns,
                                       uint64_t blackPawns) noexcept {
-    const int whiteBishops = __builtin_popcountll(b.bishops_bb[0]);
-    const int blackBishops = __builtin_popcountll(b.bishops_bb[1]);
-    const int whiteKnights = __builtin_popcountll(b.knights_bb[0]);
-    const int blackKnights = __builtin_popcountll(b.knights_bb[1]);
+    const int whiteBishops = std::popcount(b.bishops_bb[0]);
+    const int blackBishops = std::popcount(b.bishops_bb[1]);
+    const int whiteKnights = std::popcount(b.knights_bb[0]);
+    const int blackKnights = std::popcount(b.knights_bb[1]);
 
     // Only meaningful when the imbalance exists.
     const bool whiteBishopSide  = (whiteBishops > 0 && blackKnights > 0 && whiteKnights == 0);
     const bool blackBishopSide  = (blackBishops > 0 && whiteKnights > 0 && blackKnights == 0);
     if (!whiteBishopSide && !blackBishopSide) return 0;
 
-    const int totalPawns = __builtin_popcountll(whitePawns | blackPawns);
+    const int totalPawns = std::popcount(whitePawns | blackPawns);
 
     // Signed bonus: positive = bishop side benefits. At 8 pawns: neutral.
     // Below 8 pawns (open): bishop +. Above 8 (closed): knight +.

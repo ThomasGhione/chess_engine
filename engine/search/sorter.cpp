@@ -1,3 +1,4 @@
+#include <bit>
 #include "sorter.hpp"
 
 #include <algorithm>
@@ -132,26 +133,26 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
         const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
     uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
-    if (mask) return {__builtin_ctzll(mask), chess::Board::PAWN};
+    if (mask) return {std::countr_zero(mask), chess::Board::PAWN};
 
     mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
-    if (mask) return {__builtin_ctzll(mask), chess::Board::KNIGHT};
+    if (mask) return {std::countr_zero(mask), chess::Board::KNIGHT};
 
     // Cache sliding attack rays — shared by bishop/queen and rook/queen lookups.
     const uint64_t bishopRays = pieces::getBishopAttacks(sq, occLocal);
     const uint64_t rookRays   = pieces::getRookAttacks(sq, occLocal);
 
     mask = b.bishops_bb[sideLocal] & occLocal & bishopRays;
-    if (mask) return {__builtin_ctzll(mask), chess::Board::BISHOP};
+    if (mask) return {std::countr_zero(mask), chess::Board::BISHOP};
 
     mask = b.rooks_bb[sideLocal] & occLocal & rookRays;
-    if (mask) return {__builtin_ctzll(mask), chess::Board::ROOK};
+    if (mask) return {std::countr_zero(mask), chess::Board::ROOK};
 
     mask = b.queens_bb[sideLocal] & occLocal & (bishopRays | rookRays);
-    if (mask) return {__builtin_ctzll(mask), chess::Board::QUEEN};
+    if (mask) return {std::countr_zero(mask), chess::Board::QUEEN};
 
     mask = b.kings_bb[sideLocal] & occLocal & pieces::KING_ATTACKS[sq];
-    return mask ? LeastValuableAttacker{__builtin_ctzll(mask), chess::Board::KING}
+    return mask ? LeastValuableAttacker{std::countr_zero(mask), chess::Board::KING}
                 : LeastValuableAttacker{64, 0};
 }
 
@@ -264,7 +265,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     const int oppSide = usSide ^ 1;
     const uint64_t occ       = b.getPiecesBitMap();
     const uint64_t oppKingBB = b.kings_bb[oppSide];
-    const int oppKingSq = oppKingBB ? __builtin_ctzll(oppKingBB) : 64;
+    const int oppKingSq = oppKingBB ? std::countr_zero(oppKingBB) : 64;
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant   = b.getEnPassant();
     const int fullMoveClock  = b.getFullMoveClock();

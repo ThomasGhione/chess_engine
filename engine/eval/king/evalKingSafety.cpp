@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -8,7 +9,7 @@ inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whi
     const uint64_t kingBB = b.kings_bb[side];
     if (!kingBB) [[unlikely]] return 0;
 
-    const int sq = __builtin_ctzll(kingBB);
+    const int sq = std::countr_zero(kingBB);
     const int kingFile = chess::Board::file(sq);
     const int kingRank = chess::Board::rank(sq);
     const int sign = (side == 0) ? 1 : -1;
@@ -21,7 +22,7 @@ inline int32_t Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whi
     uint64_t ownAttacks = data[side].allAttacks | pieces::KING_ATTACKS[sq];
     uint64_t enemyAttacks = data[opp].allAttacks;
     if (oppKingBB) {
-        enemyAttacks |= pieces::KING_ATTACKS[__builtin_ctzll(oppKingBB)];
+        enemyAttacks |= pieces::KING_ATTACKS[std::countr_zero(oppKingBB)];
     }
     const uint64_t enemyHeavyPieces = b.rooks_bb[opp] | b.queens_bb[opp];
     const uint8_t sideColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
@@ -48,9 +49,9 @@ int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attacki
                                               uint64_t targetPawns) noexcept {
     if (targetKingFile < 0 || targetKingFile > 7) [[unlikely]] return KING_ATTACK_MATERIAL_MIN_SCALE;
     
-    const int queenCount = __builtin_popcountll(b.queens_bb[attackingSide]);
-    const int rookCount = __builtin_popcountll(b.rooks_bb[attackingSide]);
-    const int minorCount = __builtin_popcountll(b.knights_bb[attackingSide] | b.bishops_bb[attackingSide]);
+    const int queenCount = std::popcount(b.queens_bb[attackingSide]);
+    const int rookCount = std::popcount(b.rooks_bb[attackingSide]);
+    const int minorCount = std::popcount(b.knights_bb[attackingSide] | b.bishops_bb[attackingSide]);
 
     int32_t scale = KING_ATTACK_MATERIAL_MIN_SCALE
                   + queenCount * KING_ATTACK_QUEEN_WEIGHT
@@ -93,17 +94,17 @@ inline void Evaluator::applyNonCastledPenalties(int side, bool rightsLost, bool 
         }
     }
 
-    if (canCastleKingside) sideSafety -= __builtin_popcountll(KS_SHIELD & ~ownPawns) * KING_SHELTER_PAWN_MULTIPLIER;
-    if (canCastleQueenside) sideSafety -= __builtin_popcountll(QS_SHIELD & ~ownPawns) * KING_SHELTER_PAWN_MULTIPLIER;
+    if (canCastleKingside) sideSafety -= std::popcount(KS_SHIELD & ~ownPawns) * KING_SHELTER_PAWN_MULTIPLIER;
+    if (canCastleQueenside) sideSafety -= std::popcount(QS_SHIELD & ~ownPawns) * KING_SHELTER_PAWN_MULTIPLIER;
 }
 
 inline void Evaluator::applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept {
     if (side == 0) {
         const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & WHITE_FORWARD_FILL[sq];
-        sideSafety += __builtin_popcountll(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+        sideSafety += std::popcount(whitePawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
     } else {
         const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] & BLACK_FORWARD_FILL[sq];
-        sideSafety += __builtin_popcountll(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
+        sideSafety += std::popcount(blackPawns & shieldSquares) * CASTLE_PAWN_SUPPORT_BONUS;
     }
 }
 
@@ -145,8 +146,8 @@ inline void Evaluator::applyShelterAndStorm(int side, int kingFile, int kingRank
         uint64_t ownInFront = ownPawns & fileMask & inFrontMask;
         if (ownInFront) {
             int pawnSq = (side == 0) 
-                ? (63 - __builtin_clzll(ownInFront)) 
-                : __builtin_ctzll(ownInFront);
+                ? (63 - std::countl_zero(ownInFront)) 
+                : std::countr_zero(ownInFront);
             shelterDist = std::abs(kingRank - (pawnSq >> 3));
         }
 
@@ -174,8 +175,8 @@ inline void Evaluator::applyShelterAndStorm(int side, int kingFile, int kingRank
         uint64_t enemyInFront = enemyPawns & fileMask & inFrontMask;
         if (enemyInFront) {
             int pawnSq = (side == 0) 
-                ? (63 - __builtin_clzll(enemyInFront)) 
-                : __builtin_ctzll(enemyInFront);
+                ? (63 - std::countl_zero(enemyInFront)) 
+                : std::countr_zero(enemyInFront);
             stormDist = std::abs(kingRank - (pawnSq >> 3));
         }
 
@@ -210,10 +211,10 @@ inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board& b, int kingF
     uint64_t attacks = pieces::getBishopAttacks(sq, b.getPiecesBitMap()) & enemyBishopsQueens;
     if (!attacks) return;
 
-    int hits = __builtin_popcountll(attacks);
+    int hits = std::popcount(attacks);
     sideSafety -= hits * KING_OPEN_DIAGONAL_PENALTY;
 
-    int closeHits = __builtin_popcountll(attacks & KING_PROXIMITY_MASKS[sq]);
+    int closeHits = std::popcount(attacks & KING_PROXIMITY_MASKS[sq]);
     sideSafety -= closeHits * (KING_OPEN_DIAGONAL_PENALTY / 2);
 }
 
@@ -225,8 +226,8 @@ int32_t Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t 
     const bool blackCastleKs = b.getCastle(2);
     const bool blackCastleQs = b.getCastle(3);
 
-    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
     const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
     const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
 
@@ -242,8 +243,8 @@ int32_t Evaluator::evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns
     const bool blackCastleKs = b.getCastle(2);
     const bool blackCastleQs = b.getCastle(3);
 
-    const int whiteKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(__builtin_ctzll(b.kings_bb[1]));
+    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
+    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
     const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
     const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
 

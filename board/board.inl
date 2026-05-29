@@ -244,7 +244,7 @@ inline bool Board::isKingSafeAfterMove(
     if (!kingBB) [[unlikely]] return false;
 
     const uint8_t oppSide = side ^ 1;
-    const uint8_t kingSq = __builtin_ctzll(kingBB);
+    const uint8_t kingSq = std::countr_zero(kingBB);
 
     const uint64_t occNew =
         (occupancy & ~bitMask(fromIndex) & ~capturedMask) | bitMask(toIndex);

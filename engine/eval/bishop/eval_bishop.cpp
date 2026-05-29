@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -11,24 +12,24 @@ int32_t Evaluator::applyOppColorBishopScaling(const chess::Board& b, int32_t sco
 
     const uint64_t wb = b.bishops_bb[0];
     const uint64_t bb = b.bishops_bb[1];
-    if (__builtin_popcountll(wb) != 1 || __builtin_popcountll(bb) != 1) return score;
+    if (std::popcount(wb) != 1 || std::popcount(bb) != 1) return score;
 
     const bool whiteOnDark = (wb & DARK_SQUARES) != 0ULL;
     const bool blackOnDark = (bb & DARK_SQUARES) != 0ULL;
     if (whiteOnDark == blackOnDark) return score;
 
-    const int wMajors = __builtin_popcountll(b.queens_bb[0])  * 900
-                      + __builtin_popcountll(b.rooks_bb[0])   * 500
-                      + __builtin_popcountll(b.knights_bb[0]) * 320;
-    const int bMajors = __builtin_popcountll(b.queens_bb[1])  * 900
-                      + __builtin_popcountll(b.rooks_bb[1])   * 500
-                      + __builtin_popcountll(b.knights_bb[1]) * 320;
+    const int wMajors = std::popcount(b.queens_bb[0])  * 900
+                      + std::popcount(b.rooks_bb[0])   * 500
+                      + std::popcount(b.knights_bb[0]) * 320;
+    const int bMajors = std::popcount(b.queens_bb[1])  * 900
+                      + std::popcount(b.rooks_bb[1])   * 500
+                      + std::popcount(b.knights_bb[1]) * 320;
 
     if (std::abs(wMajors - bMajors) > 400) return score;
 
     const int pawnImbalance = std::abs(
-        static_cast<int>(__builtin_popcountll(b.pawns_bb[0])) -
-        static_cast<int>(__builtin_popcountll(b.pawns_bb[1]))
+        static_cast<int>(std::popcount(b.pawns_bb[0])) -
+        static_cast<int>(std::popcount(b.pawns_bb[1]))
     );
 
     // Scale factor out of 64: base 32 (half eval), +8 per extra pawn, cap 64.
@@ -44,11 +45,11 @@ template<int Side>
 inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
     static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
 
-    const int darkPawnCount = __builtin_popcountll(pawns & DARK_SQUARES);
-    const int lightPawnCount = __builtin_popcountll(pawns & LIGHT_SQUARES);
+    const int darkPawnCount = std::popcount(pawns & DARK_SQUARES);
+    const int lightPawnCount = std::popcount(pawns & LIGHT_SQUARES);
 
-    const int darkBishops = __builtin_popcountll(bishops & DARK_SQUARES);
-    const int lightBishops = __builtin_popcountll(bishops & LIGHT_SQUARES);
+    const int darkBishops = std::popcount(bishops & DARK_SQUARES);
+    const int lightBishops = std::popcount(bishops & LIGHT_SQUARES);
 
     const int32_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * BAD_BISHOP_PAWN_MULTIPLIER);
 

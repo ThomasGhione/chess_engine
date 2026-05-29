@@ -20,7 +20,7 @@ inline constexpr int Evaluator::edgeProximity(int sq) noexcept {
 
 inline int Evaluator::ownKingProximity(uint64_t ourKingBB, int enemyKingSq) noexcept {
     if (!ourKingBB) return 0;
-    return std::max(0, 14 - manhattan(__builtin_ctzll(ourKingBB), enemyKingSq));
+    return std::max(0, 14 - manhattan(std::countr_zero(ourKingBB), enemyKingSq));
 }
 
 inline constexpr std::array<uint64_t, 8> Evaluator::initFileMasks() noexcept {
@@ -120,8 +120,8 @@ inline int32_t Evaluator::cachedTerm(const chess::Board& b, Compute compute) noe
 inline void Evaluator::addKingCheckUnits(uint64_t checkers, uint64_t defenderMap,
                                          int32_t safeBonus, int32_t forcingBonus,
                                          int32_t& attackUnits) noexcept {
-    attackUnits += __builtin_popcountll(checkers & ~defenderMap) * safeBonus
-                 + __builtin_popcountll(checkers &  defenderMap) * forcingBonus;
+    attackUnits += std::popcount(checkers & ~defenderMap) * safeBonus
+                 + std::popcount(checkers &  defenderMap) * forcingBonus;
 }
 
 inline uint64_t Evaluator::knightAttacksLookup(uint8_t sq, uint64_t) noexcept {

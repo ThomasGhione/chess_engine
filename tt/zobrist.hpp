@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <cstdint>
 #include <cstddef>
 #include <array>
@@ -68,7 +69,7 @@ namespace zobrist {
     // Helper to XOR pieces from bitboards (more readable and reusable)
     inline void xorPiecesFromBB(uint64_t& hashKey, uint64_t bitboard, std::size_t pieceIndex) noexcept {
         while (bitboard) {
-            const uint8_t square = static_cast<uint8_t>(__builtin_ctzll(bitboard));
+            const uint8_t square = static_cast<uint8_t>(std::countr_zero(bitboard));
             bitboard &= (bitboard - 1);
             hashKey ^= TABLES.pieces[pieceIndex][square];
         }

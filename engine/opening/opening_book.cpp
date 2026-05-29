@@ -1,3 +1,4 @@
+#include <bit>
 #include "opening_book.hpp"
 #include "polyglot_keys.hpp"
 #include "../../board/piece.hpp"
@@ -36,17 +37,12 @@ bool OpeningBook::load(const std::string& path) {
             entries_.clear();
             return false;
         }
-        entries_[i].key =
-            (static_cast<uint64_t>(buf[0]) << 56) |
-            (static_cast<uint64_t>(buf[1]) << 48) |
-            (static_cast<uint64_t>(buf[2]) << 40) |
-            (static_cast<uint64_t>(buf[3]) << 32) |
-            (static_cast<uint64_t>(buf[4]) << 24) |
-            (static_cast<uint64_t>(buf[5]) << 16) |
-            (static_cast<uint64_t>(buf[6]) <<  8) |
-             static_cast<uint64_t>(buf[7]);
-        entries_[i].move   = static_cast<uint16_t>(buf[8]  << 8) | buf[9];
-        entries_[i].weight = static_cast<uint16_t>(buf[10] << 8) | buf[11];
+        uint64_t key;    std::memcpy(&key,    buf,      sizeof(key));
+        uint16_t move;   std::memcpy(&move,   buf + 8,  sizeof(move));
+        uint16_t weight; std::memcpy(&weight, buf + 10, sizeof(weight));
+        entries_[i].key    = std::byteswap(key);
+        entries_[i].move   = std::byteswap(move);
+        entries_[i].weight = std::byteswap(weight);
         // buf[12..15] = learn, ignored
     }
 
@@ -67,7 +63,7 @@ static constexpr uint32_t toCutechessInternal(uint8_t idx) noexcept {
 static uint64_t xorBB(uint64_t bb, int side, int ptype) noexcept {
     uint64_t h = 0;
     while (bb) {
-        const uint8_t sq = static_cast<uint8_t>(__builtin_ctzll(bb));
+        const uint8_t sq = static_cast<uint8_t>(std::countr_zero(bb));
         bb &= bb - 1;
         const uint32_t isq = toCutechessInternal(sq);
         h ^= POLYGLOT_KEYS[361 + 120 * 7 * side + ptype * 120 + isq];

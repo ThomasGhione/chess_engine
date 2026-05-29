@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -8,7 +9,7 @@ inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
     if (!kingBB) [[unlikely]] return 0;
 
     const int sign = (side == 0) ? 1 : -1;
-    const int ksq = __builtin_ctzll(kingBB);
+    const int ksq = std::countr_zero(kingBB);
     const uint64_t proximityMask = KING_PROXIMITY_MASKS[ksq];
 
     if constexpr (IsEndgame) {
@@ -18,7 +19,7 @@ inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
             b.bishops_bb[side] |
             b.rooks_bb[side]   |
             b.queens_bb[side];
-        const int friendsNearKing = __builtin_popcountll(friends & proximityMask);
+        const int friendsNearKing = std::popcount(friends & proximityMask);
         return sign * friendsNearKing * engine::KING_ACTIVITY_BONUS;
     }
 
@@ -29,7 +30,7 @@ inline int32_t Evaluator::evalKingActivitySide(const chess::Board& b, int side) 
         b.bishops_bb[opp] |
         b.rooks_bb[opp]   |
         b.queens_bb[opp];
-    const int enemiesNearKing = __builtin_popcountll(enemies & proximityMask);
+    const int enemiesNearKing = std::popcount(enemies & proximityMask);
     return sign * enemiesNearKing * engine::KING_SAFETY_PENALTY;
 }
 

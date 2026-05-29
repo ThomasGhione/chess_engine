@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 #include <algorithm>
 
@@ -36,8 +37,8 @@ int32_t Evaluator::evalMopUp(const chess::Board& b) noexcept {
     const uint64_t enemyKingBB = b.kings_bb[losingSide];
     if (!ourKingBB || !enemyKingBB) [[unlikely]] return 0;
 
-    const int ourKingSq   = __builtin_ctzll(ourKingBB);
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
+    const int ourKingSq   = std::countr_zero(ourKingBB);
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
 
     // Enemy king near corner: CORNER_DIST 0=corner, 6=centre. Max 6*40=240.
     constexpr int32_t CORNER_SCALE = 40;

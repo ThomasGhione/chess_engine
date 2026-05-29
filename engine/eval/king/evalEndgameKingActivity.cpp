@@ -1,3 +1,4 @@
+#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -26,7 +27,7 @@ inline int32_t Evaluator::evalEndgameKingActivitySide(const chess::Board& b) noe
     const uint64_t kbb = b.kings_bb[Side];
     if (!kbb) [[unlikely]] return 0;
 
-    const int sq = __builtin_ctzll(kbb);
+    const int sq = std::countr_zero(kbb);
     constexpr int sign = (Side == 0) ? 1 : -1;
     return sign * (7 - MIN_CENTER_DIST[sq]) * 10;
 }
