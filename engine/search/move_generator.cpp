@@ -396,9 +396,23 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess
     else
         emitAllNonPawnTactical<false>(moves, knights, bishops, rooks, queens, occ, oppOcc, pinnedMask, pinRayBySquare.data());
 
+    // King captures must be verified for legality. The non-king tactical paths
+    // above already filter pinned movers via pinRayBySquare, but king moves
+    // cannot be pinned — they are illegal when stepping into a square attacked
+    // by another enemy piece. Without this filter Probcut would happily search
+    // illegal "king captures own attacker" positions and contaminate the TT
+    // with mate-like scores derived from the opponent's immediate king
+    // capture. The cost is paid only for enemy pieces adjacent to our king
+    // (KING_ATTACKS[ksq] & oppOcc, typically 0–1 squares).
     uint64_t kingAttacks = pieces::KING_ATTACKS[kingIndex] & oppOcc;
-    while (kingAttacks) {
-        appendMoveByIndex(moves, kingIndex, engine::popLSB(kingAttacks));
+    if (kingAttacks) {
+        constexpr uint8_t kingPiece = chess::Board::KING | color;
+        do {
+            const int to = engine::popLSB(kingAttacks);
+            if (b.isLegalPseudoMove(kingIndex, to, kingPiece)) {
+                appendMoveByIndex(moves, kingIndex, to);
+            }
+        } while (kingAttacks);
     }
     return moves;
 }

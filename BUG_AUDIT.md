@@ -12,19 +12,6 @@ Severità:
 
 ## ALTO
 
-### A2 — `generateTacticalMoves`: cattura del re senza check di legalità → mosse illegali in Probcut
-- **File**: [engine/search/move_generator.cpp:399-402](engine/search/move_generator.cpp#L399-L402), uso in [engine/search/searcher.cpp:1017-1029](engine/search/searcher.cpp#L1017-L1029)
-- **Cosa**: il loop king-attacks aggiunge `KING_ATTACKS[kingIndex] & oppOcc` senza `isLegalPseudoMove`. La qsearch ha un filtro esplicito per re ([searcher.cpp:1214-1220](engine/search/searcher.cpp#L1214-L1220)), ma il loop Probcut **no**.
-- **Impatto**:
-  1. Spreca lavoro su posizioni illegali (re lasciato in scacco).
-  2. Il sottoramo del figlio computa score mate-like derivato dalla cattura di re, e quegli score possono entrare in TT (`allowTTWrite` viene ereditato dall'esterno nella chiamata probcut). Contaminazione TT.
-- **Fix**: nel loop probcut, filtrare:
-  ```cpp
-  const int fromPieceType = b.get(mc.from.index) & Board::MASK_PIECE_TYPE;
-  if (fromPieceType == Board::KING && !b.isLegalPseudoMove(mc.from.index, mc.to.index, b.get(mc.from.index))) continue;
-  ```
-  In alternativa filtrare a monte in `generateTacticalMovesFor` (più pulito, costo costante).
-
 ### A4 — Polyglot side-to-move XOR: chiave potrebbe non matchare i .bin polyglot standard
 - **File**: [engine/opening/opening_book.cpp:117-121](engine/opening/opening_book.cpp#L117-L121)
 - **Cosa**: lo standard polyglot prevede `XOR Random64[780]` quando WHITE è a muovere. Il codice fa `key ^= POLYGLOT_KEYS[0]` per WHITE, con commento "cutechess convention, equivalent". Funziona solo se `POLYGLOT_KEYS[]` è stato generato in modo che `[0]` sia la chiave side-to-move.
@@ -163,14 +150,13 @@ Severità:
 
 | Severità | # voci |
 |---|---|
-| ALTO | 2 (A2, A4) |
+| ALTO | 1 (A4) |
 | MEDIO | 10 (M1–M10) |
 | BASSO | 12 (B1–B12) |
 
 ## Top da fixare per impatto/effort
 
-1. **A2** (Probcut king-capture) — 3 righe nel loop probcut, evita contaminazione TT.
-2. **A4** (polyglot side-to-move XOR) — da verificare empiricamente con `komodo.bin`.
+1. **A4** (polyglot side-to-move XOR) — da verificare empiricamente con `komodo.bin`.
 
 ## Aree non analizzate
 
