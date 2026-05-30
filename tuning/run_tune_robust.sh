@@ -41,6 +41,10 @@ watchdog_killed=0  # set to 1 by watchdog so the main loop knows to restart
 
 stop() {
   [[ -n "${watchdog_pid}" ]] && kill "${watchdog_pid}" 2>/dev/null || true
+  if [[ -n "${child_pid}" ]]; then
+    kill -- "-${child_pid}" 2>/dev/null || kill "${child_pid}" 2>/dev/null || true
+  fi
+  pkill -TERM -f cutechess-cli 2>/dev/null || true
   echo "[robust] interrupted by user, stopping."
   exit 130
 }
