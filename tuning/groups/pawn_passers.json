@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "PASSED_PAWN_BONUS_Mg":           "Integer(15, 32)",
+    "PASSED_PAWN_BONUS_Eg":           "Integer(28, 55)",
+    "CANDIDATE_PASSER_BONUS_Mg":      "Integer(4, 16)",
+    "CANDIDATE_PASSER_BONUS_Eg":      "Integer(8, 22)",
+    "CONNECTED_PASSER_BONUS_Mg":      "Integer(12, 28)",
+    "CONNECTED_PASSER_BONUS_Eg":      "Integer(18, 40)",
+    "PASSED_PAWN_BLOCKED_PENALTY_Mg": "Integer(-26, -8)",
+    "PASSED_PAWN_BLOCKED_PENALTY_Eg": "Integer(-30, -8)"
+  },
+  "data_path": "pawn_passers_data.npz",
+  "model_path": "pawn_passers_model.pkl"
+}

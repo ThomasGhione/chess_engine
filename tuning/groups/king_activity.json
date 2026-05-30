@@ -1,0 +1,12 @@
+{
+  "parameter_ranges": {
+    "KING_SAFETY_PENALTY_Mg":              "Integer(-14, 0)",
+    "KING_SAFETY_PENALTY_Eg":              "Integer(-6, 0)",
+    "KING_ACTIVITY_BONUS_Mg":              "Integer(0, 6)",
+    "KING_ACTIVITY_BONUS_Eg":              "Integer(2, 14)",
+    "KING_SHELTER_ADVANCE_ONE_PENALTY_Mg": "Integer(1, 7)",
+    "KING_SHELTER_ADVANCE_ONE_PENALTY_Eg": "Integer(0, 4)"
+  },
+  "data_path": "king_activity_data.npz",
+  "model_path": "king_activity_model.pkl"
+}

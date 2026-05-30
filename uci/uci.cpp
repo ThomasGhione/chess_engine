@@ -109,6 +109,24 @@ namespace {
         chess::Board::MATERIAL_VALUES[5] = engine::QUEEN_VALUE;
         chess::Board::MATERIAL_VALUES[6] = engine::KING_VALUE;
         chess::Board::MATERIAL_VALUES[7] = 0;
+
+        chess::Board::MATERIAL_VALUES_MG[0] = 0;
+        chess::Board::MATERIAL_VALUES_MG[1] = engine::PAWN_VALUE_MG;
+        chess::Board::MATERIAL_VALUES_MG[2] = engine::KNIGHT_VALUE_MG;
+        chess::Board::MATERIAL_VALUES_MG[3] = engine::BISHOP_VALUE_MG;
+        chess::Board::MATERIAL_VALUES_MG[4] = engine::ROOK_VALUE_MG;
+        chess::Board::MATERIAL_VALUES_MG[5] = engine::QUEEN_VALUE_MG;
+        chess::Board::MATERIAL_VALUES_MG[6] = engine::KING_VALUE;
+        chess::Board::MATERIAL_VALUES_MG[7] = 0;
+
+        chess::Board::MATERIAL_VALUES_EG[0] = 0;
+        chess::Board::MATERIAL_VALUES_EG[1] = engine::PAWN_VALUE_EG;
+        chess::Board::MATERIAL_VALUES_EG[2] = engine::KNIGHT_VALUE_EG;
+        chess::Board::MATERIAL_VALUES_EG[3] = engine::BISHOP_VALUE_EG;
+        chess::Board::MATERIAL_VALUES_EG[4] = engine::ROOK_VALUE_EG;
+        chess::Board::MATERIAL_VALUES_EG[5] = engine::QUEEN_VALUE_EG;
+        chess::Board::MATERIAL_VALUES_EG[6] = engine::KING_VALUE;
+        chess::Board::MATERIAL_VALUES_EG[7] = 0;
     }
 
     // Macro to expand a PhaseValue constant into Mg + Eg UCI options. Tuners
@@ -118,11 +136,16 @@ namespace {
         {NAME "_Eg", &(REF).eg, false, false, 0, 0}
 
     static EvalOption kEvalOptions[] = {
-        {"PAWN_VALUE", &engine::PAWN_VALUE, true, false, 0, 0},
-        {"KNIGHT_VALUE", &engine::KNIGHT_VALUE, true, false, 0, 0},
-        {"BISHOP_VALUE", &engine::BISHOP_VALUE, true, false, 0, 0},
-        {"ROOK_VALUE", &engine::ROOK_VALUE, true, false, 0, 0},
-        {"QUEEN_VALUE", &engine::QUEEN_VALUE, true, false, 0, 0},
+        {"PAWN_VALUE_Mg",   &engine::PAWN_VALUE_MG,   true, false, 0, 0},
+        {"PAWN_VALUE_Eg",   &engine::PAWN_VALUE_EG,   true, false, 0, 0},
+        {"KNIGHT_VALUE_Mg", &engine::KNIGHT_VALUE_MG, true, false, 0, 0},
+        {"KNIGHT_VALUE_Eg", &engine::KNIGHT_VALUE_EG, true, false, 0, 0},
+        {"BISHOP_VALUE_Mg", &engine::BISHOP_VALUE_MG, true, false, 0, 0},
+        {"BISHOP_VALUE_Eg", &engine::BISHOP_VALUE_EG, true, false, 0, 0},
+        {"ROOK_VALUE_Mg",   &engine::ROOK_VALUE_MG,   true, false, 0, 0},
+        {"ROOK_VALUE_Eg",   &engine::ROOK_VALUE_EG,   true, false, 0, 0},
+        {"QUEEN_VALUE_Mg",  &engine::QUEEN_VALUE_MG,  true, false, 0, 0},
+        {"QUEEN_VALUE_Eg",  &engine::QUEEN_VALUE_EG,  true, false, 0, 0},
         {"KING_VALUE", &engine::KING_VALUE, true, false, 0, 0},
         {"MATE_SCORE", &engine::MATE_SCORE, false, true, 0, 2'147'483'647},
         PV_OPTS("DOUBLED_PAWN_PENALTY", engine::DOUBLED_PAWN_PENALTY),

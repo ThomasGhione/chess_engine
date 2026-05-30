@@ -18,6 +18,19 @@ inline int32_t QUEEN_VALUE  =       960;
 inline int32_t KING_VALUE   =    20'000;
 inline int32_t MATE_SCORE   = std::numeric_limits<int32_t>::max();
 
+// Phase-split material values used by the blended evaluator.
+// Scalars above remain unchanged (SEE, MVV, search heuristics).
+inline int32_t PAWN_VALUE_MG   =  100;
+inline int32_t PAWN_VALUE_EG   =  110;
+inline int32_t KNIGHT_VALUE_MG =  344;
+inline int32_t KNIGHT_VALUE_EG =  360;
+inline int32_t BISHOP_VALUE_MG =  359;
+inline int32_t BISHOP_VALUE_EG =  375;
+inline int32_t ROOK_VALUE_MG   =  502;
+inline int32_t ROOK_VALUE_EG   =  530;
+inline int32_t QUEEN_VALUE_MG  =  960;
+inline int32_t QUEEN_VALUE_EG  =  980;
+
 // Indexed by piece type (0=EMPTY, 1=PAWN, 2=KNIGHT, 3=BISHOP, 4=ROOK, 5=QUEEN, 6=KING, 7=unused)
 inline int32_t PIECE_VALUES[8] = {
     0, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE, 0

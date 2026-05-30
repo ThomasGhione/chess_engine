@@ -176,6 +176,18 @@ public:
         engine::ROOK_VALUE, engine::QUEEN_VALUE,  engine::KING_VALUE,
         0
     };
+    inline static std::array<int32_t, 8> MATERIAL_VALUES_MG = {
+        0,
+        engine::PAWN_VALUE_MG, engine::KNIGHT_VALUE_MG, engine::BISHOP_VALUE_MG,
+        engine::ROOK_VALUE_MG, engine::QUEEN_VALUE_MG,  engine::KING_VALUE,
+        0
+    };
+    inline static std::array<int32_t, 8> MATERIAL_VALUES_EG = {
+        0,
+        engine::PAWN_VALUE_EG, engine::KNIGHT_VALUE_EG, engine::BISHOP_VALUE_EG,
+        engine::ROOK_VALUE_EG, engine::QUEEN_VALUE_EG,  engine::KING_VALUE,
+        0
+    };
 
     // --- Constructors ---
     Board() noexcept;
@@ -242,6 +254,8 @@ public:
 
     // --- Incremental eval accessors ---
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
+    constexpr int32_t getIncrementalMaterialMg()    const noexcept     { return incrementalMaterialMg; }
+    constexpr int32_t getIncrementalMaterialEg()    const noexcept     { return incrementalMaterialEg; }
     // Unweighted count of {N, B, R, Q} across both sides (used by search heuristics).
     constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
     // Weighted phase units across both sides (N=B=1, R=2, Q=4). 0 = no
@@ -353,6 +367,8 @@ private:
 
     //FIXME trovare nome piu' significativo per queste variabili
     int32_t incrementalMaterialDelta    = 0;
+    int32_t incrementalMaterialMg       = 0;
+    int32_t incrementalMaterialEg       = 0;
     int32_t incrementalNonPawnMajorCount = 0;
     int32_t incrementalPhaseWeight      = 0;
     int32_t incrementalPsqtPawnsMg      = 0;

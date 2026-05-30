@@ -65,6 +65,8 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 
     occupancy = other.occupancy;
     incrementalMaterialDelta = other.incrementalMaterialDelta;
+    incrementalMaterialMg = other.incrementalMaterialMg;
+    incrementalMaterialEg = other.incrementalMaterialEg;
     incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
     incrementalPhaseWeight = other.incrementalPhaseWeight;
     incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
@@ -210,6 +212,8 @@ inline void Board::updateOccupancyBB() noexcept {
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
     incrementalMaterialDelta = 0;
+    incrementalMaterialMg = 0;
+    incrementalMaterialEg = 0;
     incrementalNonPawnMajorCount = 0;
     incrementalPhaseWeight = 0;
     incrementalPsqtPawnsMg = 0;
@@ -299,6 +303,8 @@ inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) n
     const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
 
     incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
+    incrementalMaterialMg    += signedDelta * MATERIAL_VALUES_MG[PieceType];
+    incrementalMaterialEg    += signedDelta * MATERIAL_VALUES_EG[PieceType];
     
     if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
         incrementalNonPawnMajorCount += (Add ? 1 : -1);

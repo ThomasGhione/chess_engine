@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "OPEN_FILE_ROOK_BONUS_Mg":           "Integer(14, 34)",
+    "OPEN_FILE_ROOK_BONUS_Eg":           "Integer(10, 28)",
+    "SEMI_OPEN_FILE_ROOK_BONUS_Mg":      "Integer(4, 16)",
+    "SEMI_OPEN_FILE_ROOK_BONUS_Eg":      "Integer(2, 12)",
+    "ROOK_ON_SEVENTH_BONUS_Mg":          "Integer(14, 34)",
+    "ROOK_ON_SEVENTH_BONUS_Eg":          "Integer(18, 44)",
+    "ROOK_BEHIND_OWN_PASSER_BONUS_Mg":   "Integer(4, 16)",
+    "ROOK_BEHIND_OWN_PASSER_BONUS_Eg":   "Integer(10, 28)"
+  },
+  "data_path": "rook_files_data.npz",
+  "model_path": "rook_files_model.pkl"
+}

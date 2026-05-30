@@ -145,7 +145,7 @@ private:
     // --- Phase detection & orchestration ---
     static inline PhaseInfo classifyPhase(const chess::Board& b) noexcept;
 
-    __attribute__((noinline)) static int32_t evaluateUnifiedPhase(const chess::Board& b, int32_t materialEval, int32_t psqtMg, int32_t psqtEg, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2], int32_t w1024) noexcept;
+    __attribute__((noinline)) static int32_t evaluateUnifiedPhase(const chess::Board& b, int32_t materialMg, int32_t materialEg, int32_t psqtMg, int32_t psqtEg, uint64_t whitePawns, uint64_t blackPawns, uint64_t occ, const AttackData data[2], int32_t w1024) noexcept;
     __attribute__((noinline)) static int32_t evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t materialAndEgPsqt, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
     // --- Attack data ---

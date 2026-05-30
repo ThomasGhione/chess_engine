@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "KING_PAWN_STORM_FAR_PENALTY_Mg":  "Integer(9, 20)",
+    "KING_PAWN_STORM_FAR_PENALTY_Eg":  "Integer(1, 10)",
+    "KING_SEMI_OPEN_FILE_PENALTY_Mg":  "Integer(10, 24)",
+    "KING_SEMI_OPEN_FILE_PENALTY_Eg":  "Integer(2, 12)",
+    "KING_OPEN_FILE_PENALTY_Mg":       "Integer(8, 20)",
+    "KING_OPEN_FILE_PENALTY_Eg":       "Integer(2, 12)",
+    "KING_FILE_PRESSURE_PENALTY_Mg":   "Integer(7, 22)",
+    "KING_FILE_PRESSURE_PENALTY_Eg":   "Integer(2, 12)"
+  },
+  "data_path": "king_file_exposure_data.npz",
+  "model_path": "king_file_exposure_model.pkl"
+}

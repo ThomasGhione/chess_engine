@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY_Mg": "Integer(1, 8)",
+    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY_Eg": "Integer(0, 6)",
+    "OUTPOST_BISHOP_BONUS_Mg":              "Integer(6, 18)",
+    "OUTPOST_BISHOP_BONUS_Eg":              "Integer(4, 14)",
+    "OUTPOST_KNIGHT_BONUS_Mg":              "Integer(10, 26)",
+    "OUTPOST_KNIGHT_BONUS_Eg":              "Integer(8, 22)",
+    "COORDINATION_PENALTY_Mg":              "Integer(4, 14)",
+    "COORDINATION_PENALTY_Eg":              "Integer(2, 12)"
+  },
+  "data_path": "mobility_coordination_data.npz",
+  "model_path": "mobility_coordination_model.pkl"
+}

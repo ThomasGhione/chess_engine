@@ -33,7 +33,8 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     const PhaseInfo phase = classifyPhase(board);
 
-    const int32_t material = board.getIncrementalMaterialDelta();
+    const int32_t materialMg = board.getIncrementalMaterialMg();
+    const int32_t materialEg = board.getIncrementalMaterialEg();
     int32_t psqtMg = 0;
     int32_t psqtEg = 0;
     board.getIncrementalPsqtMgEg(psqtMg, psqtEg);
@@ -44,12 +45,12 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
 
     int32_t result;
     if (phase.pawnOnlyEndgame) [[unlikely]] {
-        const int32_t evalBase = material + psqtEg;
+        const int32_t evalBase = materialEg + psqtEg;
         result = evaluatePawnOnlyEndgamePhase(board, evalBase, whitePawns, blackPawns);
     } else {
         AttackData attackData[2];
         computeAttackData(attackData, board, occ);
-        result = evaluateUnifiedPhase(board, material, psqtMg, psqtEg,
+        result = evaluateUnifiedPhase(board, materialMg, materialEg, psqtMg, psqtEg,
                                       whitePawns, blackPawns, occ, attackData, phase.w1024);
     }
 
@@ -65,13 +66,11 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     return result;
 }
 
-int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialEval,
+int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialMg, int32_t materialEg,
                                          int32_t psqtMg, int32_t psqtEg,
                                          uint64_t whitePawns, uint64_t blackPawns, uint64_t occ,
                                          const AttackData data[2], int32_t w1024) noexcept {
-    // PhaseValue accumulator: each sub-eval returns PhaseValue, summed in
-    // both mg and eg simultaneously, blended at the end.
-    PhaseValue acc{materialEval + psqtMg, materialEval + psqtEg};
+    PhaseValue acc{materialMg + psqtMg, materialEg + psqtEg};
 
     // Always-on terms.
     acc += evalBishopPairBonusCached(b);
