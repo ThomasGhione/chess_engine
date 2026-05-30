@@ -151,7 +151,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t pawnSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i);
-      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns, static_cast<bool>(i & 1));
+      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns, static_cast<bool>(i & 1)).mg;
     }
     auto end2 = std::chrono::high_resolution_clock::now();
     auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
@@ -163,7 +163,7 @@ ut::suite performanceEngineSuite = [] {
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i);
       const auto stats = engine::Evaluator::evalPawnFileStats(pos.whitePawns, pos.blackPawns);
-      pawnFileStatsSink += stats.doubledScore + stats.islandScore + stats.whiteIslands - stats.blackIslands;
+      pawnFileStatsSink += stats.doubledScore.mg + stats.islandScore.mg + stats.whiteIslands - stats.blackIslands;
     }
     auto endPawnFileStats = std::chrono::high_resolution_clock::now();
     auto durationPawnFileStats = std::chrono::duration_cast<std::chrono::milliseconds>(endPawnFileStats - startPawnFileStats).count();
@@ -174,7 +174,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t kingSafetySink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 1);
-      kingSafetySink += engine::Evaluator::evalKingSafety(pos.board, pos.whitePawns, pos.blackPawns);
+      kingSafetySink += engine::Evaluator::evalKingSafety(pos.board, pos.whitePawns, pos.blackPawns).mg;
     }
     auto end3 = std::chrono::high_resolution_clock::now();
     auto duration3 = std::chrono::duration_cast<std::chrono::milliseconds>(end3 - start3).count();
@@ -185,7 +185,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t rooksSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 2);
-      rooksSink += engine::Evaluator::evalRooks(pos.whiteRooks, pos.blackRooks, pos.whitePawns, pos.blackPawns);
+      rooksSink += engine::Evaluator::evalRooks(pos.whiteRooks, pos.blackRooks, pos.whitePawns, pos.blackPawns).mg;
     }
     auto end7 = std::chrono::high_resolution_clock::now();
     auto duration7 = std::chrono::duration_cast<std::chrono::milliseconds>(end7 - start7).count();
@@ -196,7 +196,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t kingActivitySink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 3);
-      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board, false);
+      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board, false).mg;
     }
     auto end8 = std::chrono::high_resolution_clock::now();
     auto duration8 = std::chrono::duration_cast<std::chrono::milliseconds>(end8 - start8).count();
@@ -207,7 +207,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t endgameKingActivitySink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 4);
-      endgameKingActivitySink += engine::Evaluator::evalEndgameKingActivity(pos.board);
+      endgameKingActivitySink += engine::Evaluator::evalEndgameKingActivity(pos.board).eg;
     }
     auto end10 = std::chrono::high_resolution_clock::now();
     auto duration10 = std::chrono::duration_cast<std::chrono::milliseconds>(end10 - start10).count();
@@ -220,7 +220,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t badBishopSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 5);
-      badBishopSink += engine::Evaluator::evalBadBishop(pos.whiteBishops, pos.whitePawns, 0);
+      badBishopSink += engine::Evaluator::evalBadBishop(pos.whiteBishops, pos.whitePawns, 0).mg;
     }
     auto end12 = std::chrono::high_resolution_clock::now();
     auto duration12 = std::chrono::duration_cast<std::chrono::milliseconds>(end12 - start12).count();
@@ -233,8 +233,8 @@ ut::suite performanceEngineSuite = [] {
       const auto& pos = benchPosAt(i + 6, true);
       int wR = std::popcount(pos.whiteRooks);
       int bR = std::popcount(pos.blackRooks);
-      doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 0, wR, bR);
-      doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 1, wR, bR);
+      doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 0, wR, bR).eg;
+      doubleRookSink += engine::Evaluator::evalDoubleRookEndgameSide(pos.board, 1, wR, bR).eg;
     }
     auto end13 = std::chrono::high_resolution_clock::now();
     auto duration13 = std::chrono::duration_cast<std::chrono::milliseconds>(end13 - start13).count();
@@ -247,8 +247,8 @@ ut::suite performanceEngineSuite = [] {
       const auto& pos = benchPosAt(i + 7, true);
       int wR = std::popcount(pos.whiteRooks);
       int bR = std::popcount(pos.blackRooks);
-      rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 0, wR, bR);
-      rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 1, wR, bR);
+      rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 0, wR, bR).eg;
+      rookPressureSink += engine::Evaluator::evalRookEndgamePressureSide(pos.board, 1, wR, bR).eg;
     }
     auto end14 = std::chrono::high_resolution_clock::now();
     auto duration14 = std::chrono::duration_cast<std::chrono::milliseconds>(end14 - start14).count();

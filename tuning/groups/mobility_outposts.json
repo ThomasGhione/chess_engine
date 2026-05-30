@@ -1,13 +1,21 @@
 {
   "parameter_ranges": {
-    "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(4, 14)",
-    "LOW_MOBILITY_BISHOP_PENALTY": "Integer(6, 18)",
-    "LOW_MOBILITY_ROOK_PENALTY": "Integer(18, 42)",
-    "LOW_MOBILITY_QUEEN_PENALTY": "Integer(22, 48)",
-    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY": "Integer(1, 8)",
-    "OUTPOST_BISHOP_BONUS": "Integer(6, 18)",
-    "OUTPOST_KNIGHT_BONUS": "Integer(10, 26)",
-    "COORDINATION_PENALTY": "Integer(4, 14)"
+    "LOW_MOBILITY_KNIGHT_PENALTY_Mg":       "Integer(4, 14)",
+    "LOW_MOBILITY_KNIGHT_PENALTY_Eg":       "Integer(3, 12)",
+    "LOW_MOBILITY_BISHOP_PENALTY_Mg":       "Integer(6, 18)",
+    "LOW_MOBILITY_BISHOP_PENALTY_Eg":       "Integer(5, 16)",
+    "LOW_MOBILITY_ROOK_PENALTY_Mg":         "Integer(18, 42)",
+    "LOW_MOBILITY_ROOK_PENALTY_Eg":         "Integer(16, 40)",
+    "LOW_MOBILITY_QUEEN_PENALTY_Mg":        "Integer(22, 48)",
+    "LOW_MOBILITY_QUEEN_PENALTY_Eg":        "Integer(20, 46)",
+    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY_Mg": "Integer(1, 8)",
+    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY_Eg": "Integer(0, 6)",
+    "OUTPOST_BISHOP_BONUS_Mg":              "Integer(6, 18)",
+    "OUTPOST_BISHOP_BONUS_Eg":              "Integer(4, 14)",
+    "OUTPOST_KNIGHT_BONUS_Mg":              "Integer(10, 26)",
+    "OUTPOST_KNIGHT_BONUS_Eg":              "Integer(8, 22)",
+    "COORDINATION_PENALTY_Mg":              "Integer(4, 14)",
+    "COORDINATION_PENALTY_Eg":              "Integer(2, 12)"
   },
   "data_path": "mobility_outposts_data.npz",
   "model_path": "mobility_outposts_model.pkl"

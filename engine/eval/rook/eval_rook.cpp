@@ -4,12 +4,12 @@
 
 namespace engine {
 
-inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
-    int32_t score = 0;
+inline PhaseValue Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
+    PhaseValue score{};
 
     const int sign = (color == 0) ? 1 : -1;
     const bool isWhite = (color == 0);
-    const int targetRank = (color == 0) ? 1 : 6; // rank index of each side's 7th rank
+    const int targetRank = (color == 0) ? 1 : 6;
 
     while (rooks) {
         const int sq = popLSB(rooks);
@@ -20,7 +20,7 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
         const uint64_t oppFilePawns = oppPawns & fm;
 
         if (!ownFilePawns) {
-            score += ((!oppFilePawns) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS) * sign;
+            score += sign * ((!oppFilePawns) ? engine::OPEN_FILE_ROOK_BONUS : engine::SEMI_OPEN_FILE_ROOK_BONUS);
         }
 
         if (rank == targetRank) {
@@ -59,15 +59,14 @@ inline int32_t Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t 
                 pawnsLoop &= pawnsLoop - 1;
             } while (pawnsLoop);
         }
-        
     }
 
     return score;
 }
 
-inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept {
+inline PhaseValue Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept {
     const bool sideHasAdvantage = (side == 0) ? (whiteRooks > blackRooks) : (blackRooks > whiteRooks);
-    if (!sideHasAdvantage) return 0;
+    if (!sideHasAdvantage) return {};
 
     const int oppSide = side ^ 1;
     const int oppQueens = std::popcount(b.queens_bb[oppSide]);
@@ -76,28 +75,31 @@ inline int32_t Evaluator::evalRookEndgamePressureSide(const chess::Board& b, int
     const int oppRooks2 = (side == 0) ? blackRooks : whiteRooks;
     const int oppMaterial = oppQueens * 900 + oppRooks2 * 500 + oppBishops * 330 + oppKnights * 320;
 
-    if (oppMaterial > 400) return 0;
+    if (oppMaterial > 400) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
-    if (!enemyKingBB) return 0;
+    if (!enemyKingBB) return {};
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
 
     const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
-    if (ourRooks >= 2) return 0;
+    if (ourRooks >= 2) return {};
 
-    int32_t score = sign * edgeProximity(enemyKingSq) * engine::ROOK_EG_EDGE_BONUS;
-    score += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * engine::ROOK_EG_PRESSURE_BONUS / 14;
+    PhaseValue score = (sign * edgeProximity(enemyKingSq)) * engine::ROOK_EG_EDGE_BONUS;
+    // Divide by 14 applied per-side (PhaseValue / int32 not defined → split).
+    const int32_t proxScale = sign * ownKingProximity(b.kings_bb[side], enemyKingSq);
+    score.mg += (proxScale * engine::ROOK_EG_PRESSURE_BONUS.mg) / 14;
+    score.eg += (proxScale * engine::ROOK_EG_PRESSURE_BONUS.eg) / 14;
 
     return score;
 }
 
-inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept {
+inline PhaseValue Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int side, int whiteRooks, int blackRooks) noexcept {
     const int ourRooks = (side == 0) ? whiteRooks : blackRooks;
     const int oppRooks = (side == 0) ? blackRooks : whiteRooks;
 
-    if (ourRooks < 2 || ourRooks <= oppRooks) return 0;
+    if (ourRooks < 2 || ourRooks <= oppRooks) return {};
 
     const int oppSide = side ^ 1;
     const int oppQueens = std::popcount(b.queens_bb[oppSide]);
@@ -105,18 +107,24 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
     const int oppKnights = std::popcount(b.knights_bb[oppSide]);
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 + oppBishops * 330 + oppKnights * 320;
 
-    if (oppMaterial > 500) return 0;
+    if (oppMaterial > 500) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
-    if (!enemyKingBB) return 0;
+    if (!enemyKingBB) return {};
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
     const int rank = chess::Board::rank(enemyKingSq);
     const int file = chess::Board::file(enemyKingSq);
 
-    constexpr int32_t DOUBLE_ROOK_EDGE_BONUS = 55;
-    int32_t score = sign * edgeProximity(enemyKingSq) * DOUBLE_ROOK_EDGE_BONUS;
+    // Local constants (kept scalar; eg-side bonus magnitudes baked into raw nums).
+    constexpr int32_t DOUBLE_ROOK_EDGE_BONUS    = 55;
+    constexpr int32_t DOUBLE_ROOK_RANKFILE_BONUS = 28;
+    constexpr int32_t DOUBLE_ROOK_ON_KING_LINE  = 22;
+    constexpr int32_t DOUBLE_ROOK_PROX_SCALE    = 4;
+
+    // These are pure-endgame contributions (mg=0).
+    PhaseValue score{0, sign * edgeProximity(enemyKingSq) * DOUBLE_ROOK_EDGE_BONUS};
 
     uint64_t rooksBB = b.rooks_bb[side];
     if ((rooksBB & (rooksBB - 1)) != 0ULL) {
@@ -129,35 +137,35 @@ inline int32_t Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, int s
         const int r2_file = chess::Board::file(rook2);
 
         if (r1_rank == r2_rank || r1_file == r2_file) {
-            score += sign * 28;
+            score.eg += sign * DOUBLE_ROOK_RANKFILE_BONUS;
         }
 
         if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
-            score += sign * 22;
+            score.eg += sign * DOUBLE_ROOK_ON_KING_LINE;
         }
     }
 
-    score += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * 4;
+    score.eg += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * DOUBLE_ROOK_PROX_SCALE;
 
     return score;
 }
 
-int32_t Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+PhaseValue Evaluator::evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     return evalRooksForColor(0, whiteRooks, whitePawns, blackPawns)
          + evalRooksForColor(1, blackRooks, blackPawns, whitePawns);
 }
 
-int32_t Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalRookEndgamePressure(const chess::Board& b) noexcept {
     const int whiteRooks = std::popcount(b.rooks_bb[0]);
     const int blackRooks = std::popcount(b.rooks_bb[1]);
 
-    if (whiteRooks == blackRooks) return 0;
+    if (whiteRooks == blackRooks) return {};
 
     return evalRookEndgamePressureSide(b, 0, whiteRooks, blackRooks)
          + evalRookEndgamePressureSide(b, 1, whiteRooks, blackRooks);
 }
 
-int32_t Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalDoubleRookEndgame(const chess::Board& b) noexcept {
     const int whiteRooks = std::popcount(b.rooks_bb[0]);
     const int blackRooks = std::popcount(b.rooks_bb[1]);
 

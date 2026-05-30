@@ -2,36 +2,39 @@
 
 namespace engine {
 
-inline int32_t Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
-                                             const chess::Board& b, int32_t bonus) noexcept {
-    int32_t score = 0;
+inline PhaseValue Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
+                                                 const chess::Board& b, PhaseValue bonus) noexcept {
+    PhaseValue score{};
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
         const bool supportedByPawn = (pieces::PAWN_ATTACKERS_TO[color][sq] & b.pawns_bb[color]) != 0;
         const bool attackedByEnemyPawn = (pieces::PAWN_ATTACKERS_TO[opp][sq] & b.pawns_bb[opp]) != 0;
-        
-        score += (supportedByPawn && !attackedByEnemyPawn) * sign * bonus;
+        if (supportedByPawn && !attackedByEnemyPawn) {
+            score += sign * bonus;
+        }
     }
     return score;
 }
 
-inline int32_t Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
-    int32_t score = 0;
+inline PhaseValue Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
+    PhaseValue score{};
     const int sign = (color == 0) ? 1 : -1;
     const int opp = color ^ 1;
 
     score += evalOutpostsPieces(b.knights_bb[color], color, opp, sign, b, engine::OUTPOST_KNIGHT_BONUS);
-    score += evalOutpostsPieces(b.bishops_bb[color], color, opp, sign, b, engine::OUTPOST_BISHOP_BONUS / 2);
+    // Bishop bonus halved (preserves prior division by 2).
+    score += evalOutpostsPieces(b.bishops_bb[color], color, opp, sign, b,
+                                 PhaseValue{engine::OUTPOST_BISHOP_BONUS.mg / 2, engine::OUTPOST_BISHOP_BONUS.eg / 2});
 
     return score;
 }
 
-int32_t Evaluator::evalOutposts(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalOutposts(const chess::Board& b) noexcept {
     return evalOutpostsForColor(b, 0) + evalOutpostsForColor(b, 1);
 }
 
-inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
-    int32_t score = 0;
+inline PhaseValue Evaluator::evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept {
+    PhaseValue score{};
     const int sign = (color == 0) ? -1 : 1;
 
     uint64_t minors = b.knights_bb[color] | b.bishops_bb[color];
@@ -39,12 +42,14 @@ inline int32_t Evaluator::evalPieceCoordinationForColor(const chess::Board& b, i
     while (minors) {
         const int sq = popLSB(minors);
         const uint64_t nearby = KING_PROXIMITY_MASKS[sq];
-        score += ((friends & nearby) == 0) * sign * engine::COORDINATION_PENALTY;
+        if ((friends & nearby) == 0) {
+            score += sign * engine::COORDINATION_PENALTY;
+        }
     }
     return score;
 }
 
-int32_t Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalPieceCoordination(const chess::Board& b) noexcept {
     return evalPieceCoordinationForColor(b, 0) + evalPieceCoordinationForColor(b, 1);
 }
 

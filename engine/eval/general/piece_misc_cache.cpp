@@ -2,26 +2,26 @@
 
 namespace engine {
 
-int32_t Evaluator::evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept {
-    return cachedTerm<chess::Board::EVAL_CACHE_MINOR_DEVELOPMENT>(b, [&] {
+PhaseValue Evaluator::evalMinorPieceDevelopmentCached(const chess::Board& b) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_MINOR_DEVELOPMENT>(b, [&] -> PhaseValue {
         return evalMinorPieceDevelopment(b);
     });
 }
 
-int32_t Evaluator::evalEarlyQueenCached(const chess::Board& b) noexcept {
-    return cachedTerm<chess::Board::EVAL_CACHE_EARLY_QUEEN>(b, [&] {
+PhaseValue Evaluator::evalEarlyQueenCached(const chess::Board& b) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_EARLY_QUEEN>(b, [&] -> PhaseValue {
         return evalEarlyQueen(b);
     });
 }
 
-int32_t Evaluator::evalOutpostsCached(const chess::Board& b) noexcept {
-    return cachedTerm<chess::Board::EVAL_CACHE_OUTPOSTS>(b, [&] {
+PhaseValue Evaluator::evalOutpostsCached(const chess::Board& b) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_OUTPOSTS>(b, [&] -> PhaseValue {
         return evalOutposts(b);
     });
 }
 
-int32_t Evaluator::evalPieceCoordinationCached(const chess::Board& b) noexcept {
-    return cachedTerm<chess::Board::EVAL_CACHE_PIECE_COORDINATION>(b, [&] {
+PhaseValue Evaluator::evalPieceCoordinationCached(const chess::Board& b) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_PIECE_COORDINATION>(b, [&] -> PhaseValue {
         return evalPieceCoordination(b);
     });
 }

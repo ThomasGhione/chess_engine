@@ -92,27 +92,31 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     return result;
 }
 
-template<bool IsEndgame>
-inline int32_t Evaluator::evalInitiativeImpl(uint8_t activeColor) noexcept {
-    const int32_t bonus = IsEndgame ? engine::INIT_BONUS_EG : engine::INIT_BONUS_MG;
-    return (activeColor == chess::Board::WHITE) ? bonus : -bonus;
-}
-
-
 inline Evaluator::PhaseInfo Evaluator::classifyPhase(const chess::Board& b) noexcept {
     PhaseInfo phase{};
-    phase.fullMoves = b.getFullMoveClock();
-    phase.nonPawnMajors = b.getIncrementalNonPawnMajorCount();
-    phase.isEndgame = (phase.nonPawnMajors <= PIECE_ENDGAME_THRESHOLD);
-    phase.isOpening = !phase.isEndgame && (phase.fullMoves < OPENING_MOVES);
-    phase.isEarlyMiddlegame = !phase.isEndgame && !phase.isOpening && (phase.fullMoves < EARLY_MG_MOVES);
+    phase.phaseWeight = b.getIncrementalPhaseWeight();
+    phase.totalPawns = std::popcount(b.pawns_bb[0] | b.pawns_bb[1]);
+    phase.pawnOnlyEndgame = (phase.phaseWeight == 0);
+
+    // Combined phase units in [0, 32]: weighted material (0..24, with
+    // N=B=1, R=2, Q=4) plus pawn contribution (0..8, half the pawn count).
+    const int32_t combined = std::min<int32_t>(32, phase.phaseWeight + (phase.totalPawns >> 1));
+    // Fixed-point smoothstep: t in [0, 1024], w = 3t^2 - 2t^3.
+    // combined * 32 maps 0..32 -> 0..1024.
+    const int64_t t  = static_cast<int64_t>(combined) * 32;
+    const int64_t t2 = t * t;
+    const int64_t t3 = t2 * t;
+    int64_t w = (3 * t2) / 1024 - (2 * t3) / (1024 * 1024);
+    if (w < 0) w = 0;
+    if (w > 1024) w = 1024;
+    phase.w1024 = static_cast<int32_t>(w);
     return phase;
 }
 
 template<uint32_t Term, class Compute>
-inline int32_t Evaluator::cachedTerm(const chess::Board& b, Compute compute) noexcept {
+inline PhaseValue Evaluator::cachedTerm(const chess::Board& b, Compute compute) noexcept {
     if (b.hasEvalCacheTerm<Term>()) return b.getEvalCacheTerm<Term>();
-    const int32_t score = compute();
+    const PhaseValue score = compute();
     b.setEvalCacheTerm<Term>(score);
     return score;
 }

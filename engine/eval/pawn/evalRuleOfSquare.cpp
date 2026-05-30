@@ -3,22 +3,11 @@
 
 namespace engine {
 
-// Rule of the square.
-//
-// A passed pawn promotes freely if the enemy king cannot enter its "square"
-// (Chebyshev distance to the promotion square ≤ moves left to promote).
-// Gives a large bonus when the pawn is winning the race and a partial bonus
-// when the race is very tight (encourages king support).
-//
-// Active in endgame and pawn-only endgame phases.
+PhaseValue Evaluator::evalRuleOfSquare(const chess::Board& b,
+                                       uint64_t whitePawns,
+                                       uint64_t blackPawns) noexcept {
+    if (!whitePawns && !blackPawns) return {};
 
-int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
-                                    uint64_t whitePawns,
-                                    uint64_t blackPawns) noexcept {
-    if (!whitePawns && !blackPawns) return 0;
-
-    // Returns true if kingSq can enter the square of a passer on pawnSq.
-    // enemyToMove: enemy king gets an extra tempo.
     auto kingInSquare = [](int kingSq, int pawnSq, bool isWhite,
                            bool enemyToMove) -> bool {
         const int pawnRank   = chess::Board::rank(pawnSq);
@@ -48,7 +37,6 @@ int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
         const int enemyKingSq = std::countr_zero(enemyKingBB);
         const auto& fwd = isWhite ? WHITE_FORWARD_FILL : BLACK_FORWARD_FILL;
 
-        // Enemy to move relative to the pawn's advancing side.
         const bool enemyToMove = (b.getActiveColor() != (isWhite ? chess::Board::WHITE
                                                                   : chess::Board::BLACK));
 
@@ -60,18 +48,14 @@ int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
 
             const int file = chess::Board::file(sq);
 
-            // Only passed pawns.
             if ((enemyPawns & ADJACENT_AND_FILE_MASKS[file] & fwd[sq]) != 0ULL) continue;
 
             if (!kingInSquare(enemyKingSq, sq, isWhite, enemyToMove)) {
-                // Pawn is outside the enemy king's square → free promotion.
                 constexpr int32_t FREE_PROMO_BONUS = 90;
                 score += sign * FREE_PROMO_BONUS;
                 continue;
             }
 
-            // Tight race: enemy is just barely inside the square.
-            // Reward our king being close to support the pawn.
             const int pawnRank    = chess::Board::rank(sq);
             const int movesToProm = isWhite ? pawnRank : (7 - pawnRank);
             const int promRank    = isWhite ? 0 : 7;
@@ -92,8 +76,10 @@ int32_t Evaluator::evalRuleOfSquare(const chess::Board& b,
         return score;
     };
 
-    return evalSide(whitePawns, blackPawns, true)
-         + evalSide(blackPawns, whitePawns, false);
+    const int32_t total = evalSide(whitePawns, blackPawns, true)
+                        + evalSide(blackPawns, whitePawns, false);
+    // EG-only feature.
+    return PhaseValue{0, total};
 }
 
 } // namespace engine

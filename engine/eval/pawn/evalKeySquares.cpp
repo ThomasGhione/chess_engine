@@ -3,16 +3,10 @@
 
 namespace engine {
 
-// Key squares for passed pawns.
-//
-// A passed pawn's key squares are the squares (2 ranks ahead, adjacent files)
-// the king must reach to guarantee promotion. We reward our king being close
-// to or on those squares, and penalize the enemy king controlling them.
-
-int32_t Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
-                                            uint64_t whitePawns,
-                                            uint64_t blackPawns) noexcept {
-    if (!whitePawns && !blackPawns) return 0;
+PhaseValue Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
+                                                uint64_t whitePawns,
+                                                uint64_t blackPawns) noexcept {
+    if (!whitePawns && !blackPawns) return {};
 
     auto evalSide = [&](uint64_t ownPawns, uint64_t enemyPawns,
                         bool isWhite) -> int32_t {
@@ -26,7 +20,6 @@ int32_t Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
 
         const int ourKingSq   = std::countr_zero(ourKingBB);
         const int enemyKingSq = std::countr_zero(enemyKingBB);
-
         const auto& fwd = isWhite ? WHITE_FORWARD_FILL : BLACK_FORWARD_FILL;
 
         int32_t score = 0;
@@ -38,10 +31,8 @@ int32_t Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
             const int file = chess::Board::file(sq);
             const int rank = chess::Board::rank(sq);
 
-            // Only passed pawns.
             if ((enemyPawns & ADJACENT_AND_FILE_MASKS[file] & fwd[sq]) != 0ULL) continue;
 
-            // Key squares: 1 and 2 ranks ahead (toward promotion), files f-1..f+1.
             const int step1 = isWhite ? rank - 1 : rank + 1;
             const int step2 = isWhite ? rank - 2 : rank + 2;
 
@@ -59,7 +50,6 @@ int32_t Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
             if (keySqs & ourKingBB)   score += sign * OUR_KING_ON_KEY;
             if (keySqs & enemyKingBB) score -= sign * ENEMY_KING_ON_KEY;
 
-            // Proximity bonus: reward our king being closer to key center than enemy.
             const int keyRank = isWhite ? std::max(0, rank - 2) : std::min(7, rank + 2);
             const int keyCenterSq = keyRank * 8 + file;
 
@@ -73,8 +63,9 @@ int32_t Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
         return score;
     };
 
-    return evalSide(whitePawns, blackPawns, true)
-         + evalSide(blackPawns, whitePawns, false);
+    const int32_t total = evalSide(whitePawns, blackPawns, true)
+                        + evalSide(blackPawns, whitePawns, false);
+    return PhaseValue{0, total};
 }
 
 } // namespace engine

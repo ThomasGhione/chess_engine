@@ -3,10 +3,6 @@
 
 namespace engine {
 
-// Opposite-color bishop endgame scaling.
-// When each side has exactly one bishop on opposite colors and little other
-// material, the position is drawish even with a pawn advantage. Scale the
-// result toward zero; the more pawns the winning side has, the less we scale.
 int32_t Evaluator::applyOppColorBishopScaling(const chess::Board& b, int32_t score) noexcept {
     if (score == 0) return 0;
 
@@ -32,7 +28,6 @@ int32_t Evaluator::applyOppColorBishopScaling(const chess::Board& b, int32_t sco
         static_cast<int>(std::popcount(b.pawns_bb[1]))
     );
 
-    // Scale factor out of 64: base 32 (half eval), +8 per extra pawn, cap 64.
     constexpr int SCALE_BASE     = 32;
     constexpr int SCALE_PER_PAWN =  8;
     constexpr int SCALE_MAX      = 64;
@@ -42,7 +37,7 @@ int32_t Evaluator::applyOppColorBishopScaling(const chess::Board& b, int32_t sco
 }
 
 template<int Side>
-inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
+inline constexpr PhaseValue Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t pawns) noexcept {
     static_assert(Side == 0 || Side == 1, "Side must be 0 or 1");
 
     const int darkPawnCount = std::popcount(pawns & DARK_SQUARES);
@@ -51,21 +46,21 @@ inline constexpr int32_t Evaluator::evalBadBishopImpl(uint64_t bishops, uint64_t
     const int darkBishops = std::popcount(bishops & DARK_SQUARES);
     const int lightBishops = std::popcount(bishops & LIGHT_SQUARES);
 
-    const int32_t score = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * BAD_BISHOP_PAWN_MULTIPLIER);
+    const int32_t raw = -((darkBishops * darkPawnCount + lightBishops * lightPawnCount) * BAD_BISHOP_PAWN_MULTIPLIER);
 
     if constexpr (Side == 0) {
-        return score;
+        return PhaseValue{raw, raw};
     } else {
-        return -score;
+        return PhaseValue{-raw, -raw};
     }
 }
 
-int32_t Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
+PhaseValue Evaluator::evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept {
     return (side == 0) ? Evaluator::evalBadBishopImpl<0>(bishops, pawns) : Evaluator::evalBadBishopImpl<1>(bishops, pawns);
 }
 
-inline int32_t Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept {
-    int penalty;
+inline PhaseValue Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fullMoves) noexcept {
+    PhaseValue penalty;
     switch (blockerType) {
         case chess::Board::BISHOP: penalty = BLOCK_PENALTY_BISHOP; break;
         case chess::Board::KNIGHT: penalty = BLOCK_PENALTY_KNIGHT; break;
@@ -83,14 +78,14 @@ inline int32_t Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fullM
     return penalty;
 }
 
-inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept {
+inline PhaseValue Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept {
     const int rank = chess::Board::rank(psq);
     const int file = chess::Board::file(psq);
     const bool pawnOnStart = rank == (side == 0 ? 6 : 1);
     const int forward = side == 0 ? (psq - 8) : (psq + 8);
-    if (forward < 0 || forward >= 64) return 0;
+    if (forward < 0 || forward >= 64) return {};
 
-    int32_t penalty = 0;
+    PhaseValue penalty{};
     const bool centralStart = pawnOnStart && (file == 3 || file == 4);
     const uint8_t blocker = b.get(forward);
     const uint8_t ownColor = (side == 0) ? chess::Board::WHITE : chess::Board::BLACK;
@@ -100,7 +95,7 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, in
     }
 
     if (bishops & chess::Board::bitMask(forward)) {
-        int blockPenalty = BLOCK_PAWN_BISHOP_PENALTY;
+        PhaseValue blockPenalty = BLOCK_PAWN_BISHOP_PENALTY;
         if (file == 3 || file == 4) {
             blockPenalty += BLOCK_PAWN_CENTER_FILE_BONUS;
         }
@@ -109,15 +104,15 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, in
     }
 
     const int sign = (side == 0) ? 1 : -1;
-    return sign * (-penalty);
+    return (-sign) * penalty;
 }
 
-inline int32_t Evaluator::evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept {
+inline PhaseValue Evaluator::evalBlockedPawnByBishopsSide(const chess::Board& b, int side, int fullMoves) noexcept {
     const uint64_t pawns = b.pawns_bb[side];
     const uint64_t bishops = b.bishops_bb[side];
-    if (!pawns || !bishops) return 0;
+    if (!pawns || !bishops) return {};
 
-    int32_t score = 0;
+    PhaseValue score{};
     uint64_t pawnsCopy = pawns;
     while (pawnsCopy) {
         const int psq = popLSB(pawnsCopy);
@@ -127,13 +122,9 @@ inline int32_t Evaluator::evalBlockedPawnByBishopsSide(const chess::Board& b, in
     return score;
 }
 
-int32_t Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalBlockedPawnByBishops(const chess::Board& b) noexcept {
     const int fullMoves = b.getFullMoveClock();
-
-    const int32_t evalWhite = evalBlockedPawnByBishopsSide(b, 0, fullMoves);
-    const int32_t evalBlack = evalBlockedPawnByBishopsSide(b, 1, fullMoves);
-
-    return evalBlack + evalWhite;
+    return evalBlockedPawnByBishopsSide(b, 0, fullMoves) + evalBlockedPawnByBishopsSide(b, 1, fullMoves);
 }
 
 } // namespace engine

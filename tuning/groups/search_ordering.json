@@ -1,7 +1,6 @@
 {
   "parameter_ranges": {
-    "ORDERING_PENALTY_SAME_PAWN_OPENING": "Integer(-28, -6)",
-    "CHECK_BONUS": "Integer(25, 90)",
+    "CHECK_BONUS":   "Integer(25, 90)",
     "KILLER1_BONUS": "Integer(1500, 2600)",
     "KILLER2_BONUS": "Integer(1400, 2500)"
   },

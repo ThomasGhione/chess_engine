@@ -1,13 +1,21 @@
 {
   "parameter_ranges": {
-    "KING_SHELTER_STRONG_BONUS": "Integer(5, 13)",
-    "KING_SHELTER_WEAK_BONUS": "Integer(11, 22)",
-    "KING_SHELTER_MISSING_PENALTY": "Integer(20, 48)",
-    "KING_PAWN_STORM_NEAR_PENALTY": "Integer(12, 22)",
-    "KING_PAWN_STORM_FAR_PENALTY": "Integer(9, 19)",
-    "KING_SEMI_OPEN_FILE_PENALTY": "Integer(10, 24)",
-    "KING_OPEN_FILE_PENALTY": "Integer(8, 18)",
-    "KING_FILE_PRESSURE_PENALTY": "Integer(7, 20)"
+    "KING_SHELTER_STRONG_BONUS_Mg":      "Integer(5, 16)",
+    "KING_SHELTER_STRONG_BONUS_Eg":      "Integer(0, 6)",
+    "KING_SHELTER_WEAK_BONUS_Mg":        "Integer(11, 24)",
+    "KING_SHELTER_WEAK_BONUS_Eg":        "Integer(0, 8)",
+    "KING_SHELTER_MISSING_PENALTY_Mg":   "Integer(20, 50)",
+    "KING_SHELTER_MISSING_PENALTY_Eg":   "Integer(0, 14)",
+    "KING_PAWN_STORM_NEAR_PENALTY_Mg":   "Integer(12, 26)",
+    "KING_PAWN_STORM_NEAR_PENALTY_Eg":   "Integer(2, 12)",
+    "KING_PAWN_STORM_FAR_PENALTY_Mg":    "Integer(9, 20)",
+    "KING_PAWN_STORM_FAR_PENALTY_Eg":    "Integer(1, 10)",
+    "KING_SEMI_OPEN_FILE_PENALTY_Mg":    "Integer(10, 24)",
+    "KING_SEMI_OPEN_FILE_PENALTY_Eg":    "Integer(2, 12)",
+    "KING_OPEN_FILE_PENALTY_Mg":         "Integer(8, 20)",
+    "KING_OPEN_FILE_PENALTY_Eg":         "Integer(2, 12)",
+    "KING_FILE_PRESSURE_PENALTY_Mg":     "Integer(7, 22)",
+    "KING_FILE_PRESSURE_PENALTY_Eg":     "Integer(2, 12)"
   },
   "data_path": "king_shelter_files_data.npz",
   "model_path": "king_shelter_files_model.pkl"

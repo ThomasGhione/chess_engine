@@ -3,12 +3,12 @@
 
 namespace engine {
 
-static inline int32_t evalPawnForksSide(const chess::Board& b, int side) noexcept {
+static inline PhaseValue evalPawnForksSide(const chess::Board& b, int side) noexcept {
     const int opp = 1 - side;
     const uint64_t ownPawns = b.pawns_bb[side];
     const uint64_t enemyPieces = b.knights_bb[opp] | b.bishops_bb[opp] | b.rooks_bb[opp] | b.queens_bb[opp] | b.kings_bb[opp];
 
-    int32_t score = 0;
+    PhaseValue score{};
     uint64_t pawns = ownPawns;
 
     while (pawns) {
@@ -36,8 +36,8 @@ static inline int32_t evalPawnForksSide(const chess::Board& b, int side) noexcep
     return score;
 }
 
-int32_t Evaluator::evalPawnForks(const chess::Board& b) noexcept {
-    return evalPawnForksSide(b, 0) - evalPawnForksSide(b, 1); // white - black
+PhaseValue Evaluator::evalPawnForks(const chess::Board& b) noexcept {
+    return evalPawnForksSide(b, 0) - evalPawnForksSide(b, 1);
 }
 
 } // namespace engine
