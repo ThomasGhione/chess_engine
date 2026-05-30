@@ -29,7 +29,11 @@ cd "${script_dir}"
 max_restarts="${MAX_RESTARTS:-1000}"
 backoff="${RESTART_BACKOFF:-10}"        # seconds between restarts
 watchdog_timeout="${WATCHDOG_TIMEOUT:-1800}"  # 30 min of log silence → freeze
-log_file="log.txt"
+
+# Resolve the log path from the group json (mirrors run_tune_local.sh logic).
+_config="${1:-tuning_config.json}"
+if [[ "${_config}" != */* && -f "groups/${_config}.json" ]]; then _config="groups/${_config}.json"; fi
+log_file="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("log_path","log.txt"))' "${_config}" 2>/dev/null || echo "log.txt")"
 restarts=0
 watchdog_pid=""
 child_pid=""
