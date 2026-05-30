@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -12,19 +14,17 @@
 #include "../tt/tt.hpp"
 
 #include "search/searcher.hpp"
+#include "time/time_manager.hpp"
+#include "opening/opening_book.hpp"
+#include "syzygy/syzygy.hpp"
 
 namespace engine {
 
 
 
-static inline constexpr int32_t NEG_INF = std::numeric_limits<int32_t>::min();
 static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
-
-static inline constexpr int32_t clampToInt32(int64_t value) noexcept {
-    if (value > static_cast<int64_t>(POS_INF)) return POS_INF;
-    if (value < static_cast<int64_t>(NEG_INF)) return NEG_INF;
-    return static_cast<int32_t>(value);
-}
+// Negamax-safe: NEG_INF == -POS_INF so it can be negated without UB.
+static inline constexpr int32_t NEG_INF = -POS_INF;
 
 
 
@@ -39,7 +39,6 @@ public:
 
     // Lifecycle
     Engine();
-    explicit Engine(const std::string& fen);
     ~Engine() noexcept;
 
     Engine(const Engine&) = delete;
@@ -54,6 +53,7 @@ public:
     // Search API
     void search(uint64_t depth) noexcept;
     chess::Board::Move searchUCI(uint64_t depth) noexcept;
+    chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;
@@ -63,17 +63,12 @@ public:
     uint64_t getPonderLastCompletedDepth() const noexcept;
     uint64_t getPonderInterruptedDepth() const noexcept;
 
-    // Evaluation API
-    int32_t evaluate(const chess::Board& board) noexcept;
-    int32_t evaluateTrace(const chess::Board& board) noexcept;
-    int32_t evaluateCheckmate(const chess::Board& board) noexcept;
-
     // Game state
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
+    bool isDraw() const noexcept;
     void updateGameResult() noexcept;
-    GameResult getGameResult() const noexcept;
     uint8_t getActiveColor() const noexcept;
 
     // Shared bitboard init (all Engine instances)
@@ -102,8 +97,18 @@ public:
     static constexpr size_t MOVE_HISTORY_MAX_BYTES = MOVE_HISTORY_MAX_PLIES * MOVE_HISTORY_ENTRY_MAX_LEN;
     std::string moveHistory {};
 
+    // Opening book
+    opening::OpeningBook openingBook;
+    std::atomic<bool> openingEnabled {true};
+
+    // Syzygy tablebases
+    syzygy::SyzygyProber syzygyProber;
+
     // Transposition table (shared by normal search and pondering)
     TranspositionTable tt;
+
+    // Per-move time budget + hard-deadline watchdog (UCI clock searches).
+    time::TimeManager timeManager;
 
 private:
 
@@ -111,6 +116,11 @@ private:
 
     // Search/pondering coordination
     std::thread ponderingThread;
+    std::mutex ponderingMutex;
+    std::condition_variable ponderingCv;
+    chess::Board ponderingBoard {};
+    bool ponderingWorkReady = false;
+    bool ponderingWorkerStopping = false;
     std::atomic<bool> ponderingStopRequested {false};
     std::atomic<bool> ponderingActive {false};
     std::atomic<bool> stopSearchRequested {false};
@@ -125,13 +135,22 @@ private:
     std::atomic<uint32_t> ponderAspirationResearches {0};
     std::atomic<uint32_t> ponderAspirationFailLow {0};
     std::atomic<uint32_t> ponderAspirationFailHigh {0};
+    uint64_t ponderRootHash = 0;
+    uint64_t ponderResultDepth = 0;
+    int32_t ponderResultScore = 0;
+    chess::Board::Move ponderResultMove {};
+    bool ponderResultReady = false;
 
     // Internal helpers
     static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
+    void clearPonderResult() noexcept;
+    void requestStopPondering() noexcept;
+    bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
+    void ponderWorkerLoop() noexcept;
     void ponderLoop(chess::Board&& rootBoard) noexcept;
 };
 

@@ -1,0 +1,14 @@
+{
+  "parameter_ranges": {
+    "KING_ATTACK_WEIGHT_KNIGHT":  "Integer(3, 12)",
+    "KING_ATTACK_WEIGHT_BISHOP":  "Integer(3, 12)",
+    "KING_ATTACK_WEIGHT_ROOK":    "Integer(7, 18)",
+    "KING_ATTACK_WEIGHT_QUEEN":   "Integer(14, 30)",
+    "KING_SAFE_CONTACT_BONUS":    "Integer(2, 10)",
+    "KING_FORCING_CONTACT_BONUS": "Integer(2, 12)",
+    "KING_SAFE_CHECK_BONUS":      "Integer(6, 18)",
+    "KING_FORCING_CHECK_BONUS":   "Integer(2, 12)"
+  },
+  "data_path": "king_attack_units_data.npz",
+  "model_path": "king_attack_units_model.pkl"
+}

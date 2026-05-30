@@ -21,6 +21,7 @@ struct Coords {
 
     constexpr Coords() noexcept = default;
 
+    //FIXME Mettere di base a INVALID_COORDS e poi effettuare i conti dentro
     constexpr explicit Coords(uint8_t idx) noexcept
         : index(idx < 64 ? idx : INVALID_COORDS) 
     {}
@@ -35,7 +36,7 @@ struct Coords {
     {
         if (input.length() != 2) [[unlikely]] return;
 
-        const char fileChar = std::tolower(input[0]);
+        const char fileChar = static_cast<char>(std::tolower(static_cast<unsigned char>(input[0])));
         const char rankChar = input[1];
 
         if (!isLetter(fileChar) || !isNumber(rankChar)) [[unlikely]] return;
@@ -50,6 +51,7 @@ struct Coords {
 
     // ============== ACCESS METHODS ==============
 
+    //FIXME Eliminare costati magiche
     constexpr uint8_t file() const noexcept { return this->index & 7; }
     constexpr uint8_t rank() const noexcept { return this->index >> 3; }
     constexpr bool isValid() const noexcept { return this->index < 64; }
@@ -64,6 +66,7 @@ struct Coords {
 
     // ============== UTILITY STATIC METHODS ==============
 
+    //FIXME Eliminare costati magiche
     static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
     static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
     static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }

@@ -2,23 +2,16 @@
 
 namespace engine {
 
-int32_t Evaluator::getMaterialDelta(const chess::Board& b) noexcept {
-    return (__builtin_popcountll(b.pawns_bb[0])   - __builtin_popcountll(b.pawns_bb[1]))   * PIECE_VALUES[chess::Board::PAWN]
-        + (__builtin_popcountll(b.knights_bb[0]) - __builtin_popcountll(b.knights_bb[1])) * PIECE_VALUES[chess::Board::KNIGHT]
-        + (__builtin_popcountll(b.bishops_bb[0]) - __builtin_popcountll(b.bishops_bb[1])) * PIECE_VALUES[chess::Board::BISHOP]
-        + (__builtin_popcountll(b.rooks_bb[0])   - __builtin_popcountll(b.rooks_bb[1]))   * PIECE_VALUES[chess::Board::ROOK]
-        + (__builtin_popcountll(b.queens_bb[0])  - __builtin_popcountll(b.queens_bb[1]))  * PIECE_VALUES[chess::Board::QUEEN]
-        + (__builtin_popcountll(b.kings_bb[0])   - __builtin_popcountll(b.kings_bb[1]))   * PIECE_VALUES[chess::Board::KING];
+PhaseValue Evaluator::evalInitiative(const chess::Board& b, bool /*isEndgame*/) noexcept {
+    // Returns the full (mg, eg) initiative pair. The deprecated isEndgame flag
+    // is preserved for compatibility with the perf benchmark suite; the unified
+    // evaluator uses evalInitiativePair directly.
+    return evalInitiativePair(b);
 }
 
-int32_t Evaluator::getMaterialDeltaCached(const chess::Board& b) noexcept {
-    return b.getIncrementalMaterialDelta();
-}
-
-int32_t Evaluator::evalInitiative(const chess::Board& b, bool isEndgame) noexcept {
-    return isEndgame
-        ? evalInitiativeImpl<true>(b.getActiveColor())
-        : evalInitiativeImpl<false>(b.getActiveColor());
+PhaseValue Evaluator::evalInitiativePair(const chess::Board& b) noexcept {
+    const int sign = (b.getActiveColor() == chess::Board::WHITE) ? 1 : -1;
+    return sign * engine::INIT_BONUS;
 }
 
 } // namespace engine

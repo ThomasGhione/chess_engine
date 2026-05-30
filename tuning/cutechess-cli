@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+args=()
+for arg in "$@"; do
+    if [[ "${arg}" == "-debug" ]]; then
+        continue
+    fi
+    args+=("${arg}")
+done
+
+script_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
+real_cutechess=""
+IFS=':' read -ra path_dirs <<< "${PATH}"
+for path_dir in "${path_dirs[@]}"; do
+    candidate="${path_dir}/cutechess-cli"
+    if [[ -x "${candidate}" && "$(readlink -f -- "${candidate}")" != "$(readlink -f -- "${script_path}")" ]]; then
+        real_cutechess="${candidate}"
+        break
+    fi
+done
+
+if [[ -z "${real_cutechess}" ]]; then
+    echo "cutechess-cli wrapper: real cutechess-cli not found in PATH" >&2
+    exit 127
+fi
+
+exec "${real_cutechess}" "${args[@]}"

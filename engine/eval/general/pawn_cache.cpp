@@ -2,34 +2,33 @@
 
 namespace engine {
 
-int32_t Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept {
-    if (isEndgame) {
-        constexpr uint32_t TERM = chess::Board::EVAL_CACHE_PAWN_STRUCTURE_EG;
-        if (b.hasEvalCacheTerm<TERM>()) {
-            return b.getEvalCacheTerm<TERM>();
-        }
-        const int32_t score = evalPawnStructure(whitePawns, blackPawns, true);
-        b.setEvalCacheTerm<TERM>(score);
-        return score;
-    }
-
-    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_PAWN_STRUCTURE_MG;
-    if (b.hasEvalCacheTerm<TERM>()) {
-        return b.getEvalCacheTerm<TERM>();
-    }
-    const int32_t score = evalPawnStructure(whitePawns, blackPawns, false);
-    b.setEvalCacheTerm<TERM>(score);
-    return score;
+PhaseValue Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool /*isEndgame*/) noexcept {
+    // PhaseValue cached: a single slot covers both mg and eg.
+    return cachedTerm<chess::Board::EVAL_CACHE_PAWN_STRUCTURE_MG>(b, [&] -> PhaseValue {
+        return evalPawnStructure(whitePawns, blackPawns, false);
+    });
 }
 
-int32_t Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    constexpr uint32_t TERM = chess::Board::EVAL_CACHE_CENTRAL_CONTROL;
-    if (b.hasEvalCacheTerm<TERM>()) {
-        return b.getEvalCacheTerm<TERM>();
-    }
-    const int32_t score = evalCentralControl(whitePawns, blackPawns);
-    b.setEvalCacheTerm<TERM>(score);
-    return score;
+PhaseValue Evaluator::evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    return evalPawnStructureCached(b, whitePawns, blackPawns, false);
+}
+
+PhaseValue Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_CENTRAL_CONTROL>(b, [&] -> PhaseValue {
+        return evalCentralControl(whitePawns, blackPawns);
+    });
+}
+
+PhaseValue Evaluator::evalWeakSquaresCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_WEAK_SQUARES>(b, [&] -> PhaseValue {
+        return evalWeakSquares(b, whitePawns, blackPawns);
+    });
+}
+
+PhaseValue Evaluator::evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept {
+    return cachedTerm<chess::Board::EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS>(b, [&] -> PhaseValue {
+        return evalBlockedPawnByBishops(b);
+    });
 }
 
 } // namespace engine

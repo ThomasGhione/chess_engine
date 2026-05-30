@@ -1,0 +1,37 @@
+{
+  "engines": [
+    {
+      "command": "./chess_uci.sh",
+      "fixed_parameters": {
+        "Threads": 1,
+        "Hash": 64
+      }
+    },
+    {
+      "command": "./chess_uci.sh",
+      "fixed_parameters": {
+        "Threads": 1,
+        "Hash": 64
+      }
+    }
+  ],
+  "engine1_depth": 8,
+  "engine2_depth": 8,
+  "rounds": 16,
+  "opening_file": "books/openings.pgn",
+  "timemargin": 1000,
+  "plot_every": 0,
+  "result_every": 1,
+  "parameter_ranges": {
+    "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(4, 14)",
+    "LOW_MOBILITY_BISHOP_PENALTY": "Integer(6, 18)",
+    "LOW_MOBILITY_ROOK_PENALTY": "Integer(18, 42)",
+    "LOW_MOBILITY_QUEEN_PENALTY": "Integer(22, 48)",
+    "MOBILITY_OWN_PAWN_BLOCKER_PENALTY": "Integer(1, 8)",
+    "OUTPOST_BISHOP_BONUS": "Integer(6, 18)",
+    "OUTPOST_KNIGHT_BONUS": "Integer(10, 26)",
+    "COORDINATION_PENALTY": "Integer(4, 14)"
+  },
+  "data_path": "mobility_outposts_data.npz",
+  "model_path": "mobility_outposts_model.pkl"
+}

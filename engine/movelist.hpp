@@ -1,24 +1,26 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <utility>  // for std::forward
-#include <concepts>
-#include <algorithm> // for std::partial_sort
 #include <new>
 #include <type_traits>
-
-// Concept: T must expose a .score member convertible to int32_t
-template<typename T>
-concept HasScore = requires(T a, T b) {
-    { a.score } -> std::convertible_to<int32_t>;
-    { b.score } -> std::convertible_to<int32_t>;
-};
 
 inline constexpr size_t MAX_MOVES = 218;
 
 template<typename T, size_t MAX_SIZE = MAX_MOVES>
 struct MoveList {
-    using Storage = std::aligned_storage_t<sizeof(T), alignof(T)>;
+    // moveFrom() / copyFrom() take the trivially-copyable fast path and rely on
+    // T being trivially destructible (sources left in their old slots are not
+    // ~T()'d before the destination is overwritten). Hold the invariant
+    // explicitly so future T changes can't silently leak resources.
+    static_assert(std::is_trivially_destructible_v<T>,
+                  "MoveList requires trivially-destructible T (memcpy fast path).");
+
+    // alignas(T) std::byte[sizeof(T)] replaces std::aligned_storage_t, which is
+    // deprecated in C++23. Layout is byte-identical: sizeof == sizeof(T),
+    // alignof == alignof(T).
+    struct alignas(T) Storage { std::byte bytes[sizeof(T)]; };
     Storage data[MAX_SIZE];
     int size = 0;
 
@@ -84,67 +86,32 @@ struct MoveList {
         size = 0;
     }
 
-    // ---------------------------------
-    // Sorting (only available if T has .score member)
-    // Insertion sort optimized for small/partially sorted arrays
-    // ---------------------------------
-
-    // Full insertion sort - O(n^2) but cache-friendly and fast for small n
-    inline void sort() noexcept requires HasScore<T> {
-        if (size <= 1) return; // nothing to sort
-        
-        for (int i = 1; i < size; ++i) {
-            T key = (*this)[i];
-            int j = i - 1;
-
-            while (j >= 0 && ((*this)[j].score < key.score )) {
-                (*this)[j + 1] = (*this)[j];
-                --j;
-            }
-            (*this)[j + 1] = key;
-        }
-    }
-
-    // Partial insertion sort - sorts only first LIMIT elements
-    // Useful for move ordering where only top moves matter
-    template<int LIMIT = 14>
-    inline void partial_sort() noexcept requires HasScore<T> {
-        const int n = (size < LIMIT) ? size : LIMIT;
-
-        for (int i = 1; i < n; ++i) {
-            T key = (*this)[i];
-            int j = i - 1;
-            
-            // Descending order (highest score first)
-            while (j >= 0 && (*this)[j].score < key.score) {
-                (*this)[j + 1] = (*this)[j];
-                --j;
-            }
-            (*this)[j + 1] = key;
-        }
-    }
-
-
 private:
 
     inline T* ptr(size_t i) noexcept { return reinterpret_cast<T*>(&data[i]); }
     inline const T* ptr(size_t i) const noexcept { return reinterpret_cast<const T*>(&data[i]); }
 
     inline void copyFrom(const MoveList& other) noexcept(std::is_nothrow_copy_constructible_v<T>) {
-        size = 0;
-        for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(*other.ptr(i));
-            ++size;
+        size = other.size;
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(data, other.data, static_cast<size_t>(size) * sizeof(T));
+        } else {
+            for (int i = 0; i < size; ++i) {
+                new (&data[i]) T(*other.ptr(i));
+            }
         }
     }
 
     inline void moveFrom(MoveList&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
-        size = 0;
-        for (int i = 0; i < other.size; ++i) {
-            new (&data[i]) T(std::move(*other.ptr(i)));
-            ++size;
+        size = other.size;
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(data, other.data, static_cast<size_t>(size) * sizeof(T));
+        } else {
+            for (int i = 0; i < size; ++i) {
+                new (&data[i]) T(std::move(*other.ptr(i)));
+            }
         }
-        other.clear();
+        other.size = 0;
     }
 
 };

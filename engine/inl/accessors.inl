@@ -9,11 +9,11 @@ inline bool Engine::isMate() const noexcept {
 }
 
 inline bool Engine::isStalemate() const noexcept {
-    return gameResult == DRAW;
+    return gameResult == DRAW && board.isStalemate(board.getActiveColor());
 }
 
-inline Engine::GameResult Engine::getGameResult() const noexcept {
-    return gameResult;
+inline bool Engine::isDraw() const noexcept {
+    return gameResult == DRAW;
 }
 
 inline uint8_t Engine::getActiveColor() const noexcept {

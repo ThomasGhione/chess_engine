@@ -104,9 +104,8 @@ inline constexpr std::array<int32_t, 64> KING_END_GAME_VALUES_TABLE{
     -50,-40,-30,-20,-20,-30,-40,-50
 };
 
-// --- BRANCHLESS mirror index ---
 [[nodiscard]] inline constexpr uint8_t mirrorIndex(uint8_t sq) noexcept {
-    return ((7 - (sq >> 3)) << 3) | (sq & 7);
+    return sq ^ 56u;
 }
 
 } // namespace engine

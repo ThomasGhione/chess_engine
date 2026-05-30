@@ -1,0 +1,9 @@
+{
+  "parameter_ranges": {
+    "CHECK_BONUS":   "Integer(25, 90)",
+    "KILLER1_BONUS": "Integer(1500, 2600)",
+    "KILLER2_BONUS": "Integer(1400, 2500)"
+  },
+  "data_path": "search_ordering_data.npz",
+  "model_path": "search_ordering_model.pkl"
+}

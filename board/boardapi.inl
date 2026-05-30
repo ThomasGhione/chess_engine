@@ -57,6 +57,17 @@ constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept 
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
         mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
         mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
+        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
+    }
+
+    if constexpr (((MoveFlags & MOVE_CHANGE_BISHOP_MOVE) != 0) || captureOrPromotion) {
+        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
+    }
+
+    if constexpr ((MoveFlags & MOVE_CHANGE_KNIGHT_MOVE) != 0) {
+        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
     }
 
     if constexpr (((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
@@ -120,6 +131,8 @@ inline Board::MoveKind Board::classifyMoveKind(
     const uint8_t fromRank = rank(fromIndex);
     const uint8_t toRank = rank(toIndex);
 
+    //FIXME Riduci numero indetazioni ci sono degli IF annidati
+    // In questo modo il secondo if diventa con una sola indentazione
     if (movingType == KING) {
         if (fromRank == toRank) {
             const int df = file(toIndex) - file(fromIndex);
@@ -136,6 +149,7 @@ inline Board::MoveKind Board::classifyMoveKind(
 
     const uint8_t fromFile = file(fromIndex);
     const uint8_t toFile = file(toIndex);
+    //FIXME Usa funzione helper
     if (fromFile != toFile
         && destBefore == EMPTY
         && Coords::isInBounds(prevEnPassant)
@@ -157,6 +171,7 @@ inline Board::MoveKind Board::classifyMoveKind(
 
 __attribute__((always_inline))
 inline uint8_t Board::normalizePromotionChoice(char choice) noexcept {
+    //FIXME Elimina costati magiche
     if (choice >= 'A' && choice <= 'Z')
         choice = choice | 0x20;
     
@@ -254,6 +269,7 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
 }
 
 inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {
+    //FIXME Elimina costati magiche
     static constexpr std::array<uint8_t, 4> ROOK_CASTLE_CLEAR_MASKS = {
         1u << WHITE_QUEENSIDE,
         1u << WHITE_KINGSIDE,
@@ -313,6 +329,8 @@ inline void Board::doMoveByKind(
     uint8_t toIndex,
     char promotionChoice
 ) noexcept {
+    //FIXME La funzione ha troppi parametri
+    //FIXME La funzione e' troppo alta
     if constexpr (Kind == MoveKind::EnPassant) {
         // Remove the captured pawn from board storage and bitboards before moving.
         const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
@@ -385,6 +403,7 @@ inline void Board::undoMoveByKind(
     uint8_t fromIndex,
     uint8_t toIndex
 ) noexcept {
+    //FIXME Aggiungere this
     if constexpr (isPromotionKind(Kind)) {
         // Rebuild the pawn on the destination square before rewinding the move.
         const uint8_t color = pieceOnTo & MASK_COLOR;

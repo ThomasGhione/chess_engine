@@ -1,65 +1,50 @@
+#include <bit>
 #include "../evaluator.hpp"
 #include <algorithm>
 
 namespace engine {
 
-int32_t Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
+PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59);
     static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);
     static constexpr int32_t EARLY_QUEEN_DEV_PENALTY = 20;
 
     int32_t score = 0;
-
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
-    return score;
+    return PhaseValue{score, 0};
 }
 
-inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
-    if (ourQueens == 0) return 0;
+inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
+    if (ourQueens == 0) return {};
 
     const int oppSide = side ^ 1;
 
-    const int oppPawns = __builtin_popcountll(b.pawns_bb[oppSide]);
-    const int oppKnights = __builtin_popcountll(b.knights_bb[oppSide]);
-    const int oppBishops = __builtin_popcountll(b.bishops_bb[oppSide]);
-    const int oppRooks = __builtin_popcountll(b.rooks_bb[oppSide]);
+    const int oppPawns = std::popcount(b.pawns_bb[oppSide]);
+    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
+    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
+    const int oppRooks = std::popcount(b.rooks_bb[oppSide]);
 
     const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
                             oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
-    if (oppMaterial > 700) return 0;
+    if (oppMaterial > 1300) return {};
 
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
-    if (!enemyKingBB) return 0;
+    if (!enemyKingBB) return {};
 
-    const int enemyKingSq = __builtin_ctzll(enemyKingBB);
-    const int rank = chess::Board::rank(enemyKingSq);
-    const int file = chess::Board::file(enemyKingSq);
-
-    const int distToEdge = std::min({rank, 7 - rank, file, 7 - file});
-    const int edgeProximity = 7 - distToEdge;
+    const int enemyKingSq = std::countr_zero(enemyKingBB);
 
     constexpr int32_t QUEEN_EG_EDGE_BONUS = 55;
-    int32_t sideScore = edgeProximity * QUEEN_EG_EDGE_BONUS;
-
-    const uint64_t ourKingBB = b.kings_bb[side];
-    if (ourKingBB) {
-        const int ourKingSq = __builtin_ctzll(ourKingBB);
-        const int kingDist = manhattan(ourKingSq, enemyKingSq);
-
-        const int proximityBonus = std::max(0, 14 - kingDist);
-        sideScore += proximityBonus * 14;
-    }
+    int32_t sideScore = edgeProximity(enemyKingSq) * QUEEN_EG_EDGE_BONUS;
+    sideScore += ownKingProximity(b.kings_bb[side], enemyKingSq) * 14;
 
     const uint64_t queenBB = b.queens_bb[side];
     if (queenBB) {
         uint64_t tempQueens = queenBB;
         int bestQueenDist = 100;
         while (tempQueens) {
-            const int qSq = __builtin_ctzll(tempQueens);
-            tempQueens &= tempQueens - 1;
-            bestQueenDist = std::min(bestQueenDist, manhattan(qSq, enemyKingSq));
+            bestQueenDist = std::min(bestQueenDist, manhattan(popLSB(tempQueens), enemyKingSq));
         }
 
         if (bestQueenDist >= 2 && bestQueenDist <= 5) {
@@ -73,23 +58,17 @@ inline int32_t Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, in
     sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
 
     const int sign = (side == 0) ? 1 : -1;
-    return sign * sideScore;
+    return PhaseValue{0, sign * sideScore};
 }
 
-int32_t Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
-    int32_t score = 0;
+PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
+    const int whiteQueens = std::popcount(b.queens_bb[0]);
+    const int blackQueens = std::popcount(b.queens_bb[1]);
 
-    const int whiteQueens = __builtin_popcountll(b.queens_bb[0]);
-    const int blackQueens = __builtin_popcountll(b.queens_bb[1]);
+    if (whiteQueens == 0 && blackQueens == 0) return {};
 
-    if (whiteQueens == 0 && blackQueens == 0) {
-        return 0;
-    }
-
-    score += evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens);
-    score += evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
-
-    return score;
+    return evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens)
+         + evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
 }
 
 } // namespace engine

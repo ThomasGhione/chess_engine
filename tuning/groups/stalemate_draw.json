@@ -1,0 +1,9 @@
+{
+  "parameter_ranges": {
+    "STALEMATE_DRAW_PENALTY_MAJOR": "Integer(300, 650)",
+    "STALEMATE_DRAW_PENALTY_MINOR": "Integer(60, 220)",
+    "STALEMATE_MATERIAL_THRESHOLD": "Integer(80, 220)"
+  },
+  "data_path": "stalemate_draw_data.npz",
+  "model_path": "stalemate_draw_model.pkl"
+}

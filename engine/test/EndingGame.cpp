@@ -1,3 +1,4 @@
+#include <bit>
 #include "../engine.hpp"
 #include "../../tests/ut.hpp"
 #include <random>
@@ -81,7 +82,7 @@ namespace {
     if (board.getActiveColor() == chess::Board::WHITE) {
       uint64_t blackKingBB = board.kings_bb[1];
       if (blackKingBB == 0) return false;
-      uint8_t blackKingPos = __builtin_ctzll(blackKingBB);
+      uint8_t blackKingPos = std::countr_zero(blackKingBB);
       return !board.isSquareAttacked(blackKingPos, chess::Board::WHITE);
     }
     return true;

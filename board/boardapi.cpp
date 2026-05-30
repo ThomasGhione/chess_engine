@@ -3,13 +3,12 @@
 
 
 namespace chess {
-
-
 // ------------------------------------------------------------
 // INCREMENTAL DO/UNDO MOVE (NO LEGALITY CHECKS)
 // ------------------------------------------------------------
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept {
+    //FIXME Eliminare costati magiche
     const uint8_t fromIndex = m.from.index;
     const uint8_t toIndex   = m.to.index;
 
@@ -67,9 +66,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         case MoveKind::PromotionCapture:
             doMoveByKind<MoveKind::PromotionCapture>(st, moving, movingType, movingColor, destBefore,
                                                      fromIndex, toIndex, promotionChoice);
-            if (destBefore != EMPTY) {
-                newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
-            }
+            newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
                 newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
@@ -151,6 +148,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
 
 __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
+    //FIXME Eliminare costati magiche
     prepareNullMoveState(st);
     lastMoveChangeFlags = MOVE_CHANGE_NONE;
     uint64_t newHash = currentHash;
@@ -171,13 +169,11 @@ void Board::doNullMove(MoveState& st) noexcept {
     newHash ^= zobrist::TABLES.sideToMove;
     currentHash = newHash;
     // Null move is a search artifact and must not enter repetition history.
-    // Otherwise twofold/threefold detection in subtree can be polluted.
+    // Otherwise threefold detection in subtree can be polluted.
 }
 
 __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
     restoreState(st);
 }
-
-
-}
+} // namespace chess {

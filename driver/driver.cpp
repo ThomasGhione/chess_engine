@@ -1,8 +1,9 @@
 #include "driver.hpp"
 
+//FIXME Spostare gli include dentro .hpp non qui
 #include "../engine/engine.hpp"
 #include "../uci/uci.hpp"
-#include "../debug_timer.hpp"
+#include "../debug.hpp"
 
 #include <cctype>
 #include <cstdlib>
@@ -16,19 +17,31 @@
 
 namespace driver {
 
+//FIXME Evitare namespace anonimi
 namespace {
 
 using chess::Board;
+//FIXME Mettere questi parametri dentro classe
+constexpr int32_t MAX_PARAM_LENGTH = 3;
+constexpr int32_t MODE = 1;
+constexpr int32_t COLOR = 2;
+constexpr int32_t NO_ARGS = 1;
 
 [[noreturn]] void exitGame() noexcept {
     std::cout << "Thank you for playing! See you next time." << std::endl;
     std::exit(EXIT_SUCCESS);
 }
 
+//FIXME Mettere graffe, evitare tutto inline
 void ensureDirectory(const char* path) noexcept {
     if (!std::filesystem::exists(path)) std::filesystem::create_directories(path);
 }
 
+//FIXME Tramutare da switch a:
+//Array dentro la classe.
+//Tramite una funzione convertiamo la lettera in indice
+//Da indice risaliamo a lettera.
+//Evitiamo tutti i brach prediction e possiamo farlo diventare constexpr
 char pieceToSymbol(uint8_t piece) noexcept {
     if (piece == Board::EMPTY) return '.';
     const bool isBlack = (piece & Board::MASK_COLOR) == Board::BLACK;
@@ -44,6 +57,7 @@ char pieceToSymbol(uint8_t piece) noexcept {
     }
 }
 
+//FIXME Nome traviante, se legge non dovrebbe stampare un prompt.
 uint8_t readMenuChoice(const char* prompt, uint8_t minChoice, uint8_t maxChoice) noexcept {
     std::cout << prompt;
 
@@ -56,6 +70,7 @@ uint8_t readMenuChoice(const char* prompt, uint8_t minChoice, uint8_t maxChoice)
     return choice;
 }
 
+//FIXME Invece che cambiare il parametro, ritorniamo un valore.
 bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
     if (colorArg == nullptr || colorArg[0] == '\0' || colorArg[1] != '\0') return false;
 
@@ -67,12 +82,12 @@ bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
 }
 
 bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
-    if (argc < Driver::MAX_PARAM_LENGTH) {
+    if (argc < MAX_PARAM_LENGTH) {
         std::cout << missingArgMessage << "\n";
         return false;
     }
 
-    if (!parseColorOption(argv[Driver::COLOR], outIsWhite)) {
+    if (!parseColorOption(argv[COLOR], outIsWhite)) {
         std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
         return false;
     }
@@ -81,13 +96,15 @@ bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage
 
 } // namespace
 
-Driver::Driver(engine::Engine& e) : engine(e) {}
+Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
 
 void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Please select a valid option.\n"; }
 
-void Driver::startGame(int argc, char* argv[]) noexcept {
+[[noreturn]] void Driver::startGame(int argc, char* argv[]) noexcept {
     parse(argc, argv);
 
+    //FIXME Evitare while true
+    //FIXME Fare una funzione helper per il corpo del ciclo
     while (true) {
         engine.reset();
         switch (mainMenu()) {
@@ -107,7 +124,6 @@ void Driver::startGame(int argc, char* argv[]) noexcept {
                 switch (extraMenu()) {
                     case '1': botVsBot(); break;
                     case '2': {
-                        uci::UCI uciInterface;
                         uciInterface.mainLoop();
                         break;
                     }
@@ -130,11 +146,13 @@ void Driver::parse(int argc, char* argv[]) noexcept {
         return static_cast<char>(std::tolower(c));
     });
 
+    //FIXME Evitare numeri magici
     if (mode == "-bvb" || mode == "41") { botVsBot(); return; }
     if (mode == "-pvp" || mode == "21") { playGameVsHuman(); return; }
 
     if (mode == "-pvb" || mode == "11") {
         bool isWhite = false;
+        //FIXME Condizione non leggibile
         if (!parseRequiredColorArg(
                 argc,
                 argv,
@@ -147,7 +165,6 @@ void Driver::parse(int argc, char* argv[]) noexcept {
     }
 
     if (mode == "uci" || mode == "-uci" || mode == "--uci" || mode == "42") {
-        uci::UCI uciInterface(engine);
         uciInterface.mainLoop();
         return;
     }
@@ -197,11 +214,20 @@ void Driver::saveGame() noexcept {
     }
 
     std::ofstream saveFile("saves/save.txt");
+    if (!saveFile.is_open()) {
+        std::cerr << "Error: cannot open 'saves/save.txt' for writing.\n";
+        return;
+    }
     saveFile << engine.board.fromBoardToFen();
 
     // If playing against bot, then saveGame() is called by the player, so it saves the opposite active color to indicate
     // the color of the bot
     if (vsBot) saveFile << '\n' << (engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
+
+    saveFile.flush();
+    if (!saveFile) {
+        std::cerr << "Error: failed to write 'saves/save.txt' (state corrupted, partial write).\n";
+    }
 }
 
 void Driver::endGame() noexcept {
@@ -212,6 +238,8 @@ void Driver::endGame() noexcept {
         std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
     } else if (engine.isStalemate()) {
         std::cout << "\nStalemate. Game drawn.\n";
+    } else if (engine.isDraw()) {
+        std::cout << "\nDraw.\n";
     }
 
     std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
@@ -259,9 +287,13 @@ void Driver::playGameVsEngine(bool isFirstTurnOfPlayer) noexcept { vsBot = true;
 void Driver::botVsBot() noexcept { playAlternatingTurns(false, false, true); }
 
 void Driver::playerTurn() noexcept {
+    //FIXME Usare if invece di costrutto ternario inline.
     std::cout << (engine.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
 
     std::string playerInput;
+
+    //FIXME Evitare while true
+    //FIXME Usare funzioni helper per il copro della funzione, troppo alto
     while (true) {
         std::cout << Driver::getBasicBoard(engine.board) << "\n";
         std::cout << "Enter your move (type 's' to save or 'q' to quit): ";
@@ -269,6 +301,16 @@ void Driver::playerTurn() noexcept {
 
         if (playerInput == "s") [[unlikely]] { saveGame(); continue; }
         if (playerInput == "q") [[unlikely]] exitGame();
+
+        // Optional promotion character (5th char): e7e8q, e2e1N, ...
+        char promoChar = '\0';
+        if (playerInput.length() == 5) {
+            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
+                std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
+                continue;
+            }
+        }
 
         if (playerInput.length() != 4 && playerInput.length() != 5) [[unlikely]] {
             std::cout << "Invalid move length. Please enter your move in the format 'e2e4' or 'e7e8q'.\n";
@@ -289,16 +331,6 @@ void Driver::playerTurn() noexcept {
         const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
         const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
-        // Optional promotion character (5th char): e7e8q, e2e1N, ...
-        char promoChar = '\0';
-        if (playerInput.length() == 5) {
-            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
-            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
-                std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
-                continue;
-            }
-        }
-
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) &&
             ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
@@ -306,14 +338,15 @@ void Driver::playerTurn() noexcept {
 
         if (isPromotionCandidate && playerInput.length() == 4) {
             // If user didn't specify, default to queen
-            promoChar = 'q';
+            playerInput += 'q';
         }
 
-        if (!engine.movePiece(fromCoords, toCoords, promoChar)) [[unlikely]] {
-            std::cout << "Invalid move. Please try again.\n";
+        const char movePromotion = (playerInput.length() == 5) ? playerInput[4] : '\0';
+        if (!engine.movePiece(fromCoords, toCoords, movePromotion)) {
+            std::cout << "Illegal move.\n";
             continue;
         }
-
+        
         DBG_TIMER_US(moveTimer, "move executed");
 
         std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
@@ -325,17 +358,21 @@ void Driver::engineTurn() noexcept {
     std::cout << "Engine's thinking... \n";
     DBG_TIMER_DECLARE(engineSearchTimer);
     DBG_TIMER_START(engineSearchTimer);
-    engine.search(engine::Engine::DEFAULTDEPTH);
+    
+    engine.search(engine.DEFAULTDEPTH);
+
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
     DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
 }
 
 std::string Driver::getBasicBoard(const Board& board) {
+    //FIXME Spostare in variabili dentro la classe
     static constexpr char FILES_ROW[] = "  a b c d e f g h\n";
     static constexpr std::size_t FILES_ROW_LEN = sizeof(FILES_ROW) - 1;
     static constexpr std::size_t RANK_ROW_LEN = 21;
     static constexpr std::size_t BOARD_STR_LEN = FILES_ROW_LEN + (8 * RANK_ROW_LEN) + FILES_ROW_LEN;
 
+    //FIXME Creare funzione helper per astrarre queste operazioni con nomi più chiari
     std::string result(BOARD_STR_LEN, '\0');
     char* out = result.data();
 
@@ -366,6 +403,7 @@ uint32_t Driver::showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoi
     return choice;
 }
 
+//FIXME Servono questi commenti?
 // It can return:
 // 1 -> One Player
 // 2 -> Two Players
@@ -373,6 +411,7 @@ uint32_t Driver::showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoi
 // 4 -> Extra modes
 // 5 -> Quit Game
 uint32_t Driver::mainMenu() noexcept {
+    //FIXME Spostare variabile dentro classe
     static constexpr const char* PROMPT =
         "\n\n==================== MAIN MENU ====================\n\n"
         "1. One Player\n"
@@ -389,6 +428,7 @@ uint32_t Driver::mainMenu() noexcept {
 // 2 -> UCI Mode
 // 3 -> Back to Main Menu
 uint32_t Driver::extraMenu() noexcept {
+    //FIXME Spostare variabile dentro classe
     static constexpr const char* PROMPT =
         "\n\n==================== EXTRA MODES MENU ====================\n\n"
         "1. Bot Vs Bot\n"
@@ -403,6 +443,7 @@ uint32_t Driver::extraMenu() noexcept {
 // 2 -> Play as Black
 // 3 -> Back to Main Menu
 uint32_t Driver::playWithEngineMenu() noexcept {
+    //FIXME Spostare variabile dentro classe
     static constexpr const char* PROMPT =
         "\n\n==================== ONE PLAYER MENU ====================\n\n"
         "1. Play as White\n"
@@ -413,6 +454,7 @@ uint32_t Driver::playWithEngineMenu() noexcept {
 }
 
 void Driver::clearScreen() noexcept { //! MIGHT NOT BE NOEXCEPT
+//FIXME Da aggiungere il controllo sul valore di ritorno
 #ifdef _WIN32
     [[maybe_unused]] const int result = std::system("cls");
 #else
