@@ -1,0 +1,8 @@
+{
+  "parameter_ranges": {
+    "SPACE_BONUS_Mg": "Integer(0, 4)",
+    "SPACE_BONUS_Eg": "Integer(0, 3)"
+  },
+  "data_path": "space_advantage_data.npz",
+  "model_path": "space_advantage_model.pkl"
+}

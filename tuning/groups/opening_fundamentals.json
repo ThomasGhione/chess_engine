@@ -1,11 +1,17 @@
 {
   "parameter_ranges": {
-    "KING_NON_CASTLING_PENALTY": "Integer(2, 14)",
-    "KING_LOST_CASTLING_RIGHTS_PENALTY": "Integer(8, 28)",
-    "LOSS_OF_CASTLING_PENALTY": "Integer(12, 34)",
-    "INIT_BONUS_MG": "Integer(0, 8)",
-    "DEVELOPMENT_BONUS": "Integer(2, 12)",
-    "BISHOP_PAIR_BONUS": "Integer(22, 44)"
+    "KING_NON_CASTLING_PENALTY_Mg":         "Integer(2, 14)",
+    "KING_NON_CASTLING_PENALTY_Eg":         "Integer(0, 4)",
+    "KING_LOST_CASTLING_RIGHTS_PENALTY_Mg": "Integer(8, 28)",
+    "KING_LOST_CASTLING_RIGHTS_PENALTY_Eg": "Integer(0, 6)",
+    "LOSS_OF_CASTLING_PENALTY_Mg":          "Integer(12, 34)",
+    "LOSS_OF_CASTLING_PENALTY_Eg":          "Integer(0, 8)",
+    "INIT_BONUS_Mg":                        "Integer(0, 16)",
+    "INIT_BONUS_Eg":                        "Integer(0, 6)",
+    "DEVELOPMENT_BONUS_Mg":                 "Integer(2, 12)",
+    "DEVELOPMENT_BONUS_Eg":                 "Integer(0, 4)",
+    "BISHOP_PAIR_BONUS_Mg":                 "Integer(18, 42)",
+    "BISHOP_PAIR_BONUS_Eg":                 "Integer(28, 60)"
   },
   "data_path": "opening_fundamentals_data.npz",
   "model_path": "opening_fundamentals_model.pkl"

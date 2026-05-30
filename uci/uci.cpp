@@ -71,8 +71,12 @@ namespace {
     };
 
     static void defaultRangeFor(int32_t value, int32_t& minValue, int32_t& maxValue) noexcept {
+        // Wide auto-range so the tuner's sampled values land inside the
+        // engine's accepted bounds without each option needing an explicit
+        // hasRange entry. ±200% of magnitude with a floor of 10 covers the
+        // typical chess-tuning-tools parameter ranges used by the JSON groups.
         const int64_t absValue = std::llabs(static_cast<int64_t>(value));
-        const int64_t delta = std::max<int64_t>(2, absValue / 10);
+        const int64_t delta = std::max<int64_t>(10, absValue * 2);
         const int64_t minCandidate = static_cast<int64_t>(value) - delta;
         const int64_t maxCandidate = static_cast<int64_t>(value) + delta;
         minValue = static_cast<int32_t>(std::clamp(minCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));

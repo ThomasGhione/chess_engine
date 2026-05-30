@@ -1,13 +1,21 @@
 {
   "parameter_ranges": {
-    "THREAT_PAWN_ATTACK_MINOR_PENALTY": "Integer(-34, -18)",
-    "THREAT_PAWN_ATTACK_ROOK_PENALTY": "Integer(-70, -40)",
-    "THREAT_PAWN_ATTACK_QUEEN_PENALTY": "Integer(-120, -75)",
-    "THREAT_MINOR_ATTACK_ROOK_PENALTY": "Integer(-44, -22)",
-    "THREAT_MINOR_ATTACK_QUEEN_PENALTY": "Integer(-65, -35)",
-    "THREAT_ROOK_ATTACK_QUEEN_PENALTY": "Integer(-50, -25)",
-    "THREAT_LOOSE_MINOR_PENALTY": "Integer(-18, -6)",
-    "THREAT_LOOSE_ROOK_PENALTY": "Integer(-34, -14)"
+    "THREAT_PAWN_ATTACK_MINOR_PENALTY_Mg":  "Integer(-34, -18)",
+    "THREAT_PAWN_ATTACK_MINOR_PENALTY_Eg":  "Integer(-26, -12)",
+    "THREAT_PAWN_ATTACK_ROOK_PENALTY_Mg":   "Integer(-70, -40)",
+    "THREAT_PAWN_ATTACK_ROOK_PENALTY_Eg":   "Integer(-55, -28)",
+    "THREAT_PAWN_ATTACK_QUEEN_PENALTY_Mg":  "Integer(-120, -75)",
+    "THREAT_PAWN_ATTACK_QUEEN_PENALTY_Eg":  "Integer(-95, -55)",
+    "THREAT_MINOR_ATTACK_ROOK_PENALTY_Mg":  "Integer(-44, -22)",
+    "THREAT_MINOR_ATTACK_ROOK_PENALTY_Eg":  "Integer(-34, -16)",
+    "THREAT_MINOR_ATTACK_QUEEN_PENALTY_Mg": "Integer(-65, -35)",
+    "THREAT_MINOR_ATTACK_QUEEN_PENALTY_Eg": "Integer(-50, -25)",
+    "THREAT_ROOK_ATTACK_QUEEN_PENALTY_Mg":  "Integer(-50, -25)",
+    "THREAT_ROOK_ATTACK_QUEEN_PENALTY_Eg":  "Integer(-38, -18)",
+    "THREAT_LOOSE_MINOR_PENALTY_Mg":        "Integer(-18, -6)",
+    "THREAT_LOOSE_MINOR_PENALTY_Eg":        "Integer(-14, -4)",
+    "THREAT_LOOSE_ROOK_PENALTY_Mg":         "Integer(-34, -14)",
+    "THREAT_LOOSE_ROOK_PENALTY_Eg":         "Integer(-26, -10)"
   },
   "data_path": "threats_direct_data.npz",
   "model_path": "threats_direct_model.pkl"

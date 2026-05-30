@@ -1,7 +1,9 @@
 {
   "parameter_ranges": {
-    "PAWN_SUPPORT_BONUS": "Integer(4, 18)",
-    "CENTER_CONTROL_BONUS": "Integer(3, 14)"
+    "PAWN_SUPPORT_BONUS_Mg":   "Integer(4, 18)",
+    "PAWN_SUPPORT_BONUS_Eg":   "Integer(2, 14)",
+    "CENTER_CONTROL_BONUS_Mg": "Integer(3, 14)",
+    "CENTER_CONTROL_BONUS_Eg": "Integer(0, 6)"
   },
   "data_path": "pawn_support_center_data.npz",
   "model_path": "pawn_support_center_model.pkl"
