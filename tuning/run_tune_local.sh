@@ -29,4 +29,6 @@ if [[ ! -f "${state_file}" || "$(cat "${state_file}")" != "${config_hash}" ]]; t
 fi
 printf '%s\n' "${config_hash}" > "${state_file}"
 
-exec tune local -c "${config}" -d "${data_path}" --model-path "${model_path}" "$@"
+log_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("log_path", "log.txt"))' "${config}")"
+
+exec tune local -c "${config}" -d "${data_path}" --model-path "${model_path}" -l "${log_path}" "$@"

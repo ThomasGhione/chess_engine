@@ -1,10 +1,11 @@
 {
   "parameter_ranges": {
-    "KING_OPEN_DIAGONAL_PENALTY_Mg":    "Integer(7, 17)",
-    "KING_OPEN_DIAGONAL_PENALTY_Eg":    "Integer(1, 8)",
-    "KING_ATTACK_MATERIAL_MAX_SCALE":   "Integer(110, 165)",
-    "KING_ATTACK_DANGER_CAP":           "Integer(100, 170)"
+    "KING_OPEN_DIAGONAL_PENALTY_Mg": "Integer(7, 17)",
+    "KING_OPEN_DIAGONAL_PENALTY_Eg": "Integer(1, 8)",
+    "KING_ATTACK_MATERIAL_MAX_SCALE": "Integer(110, 165)",
+    "KING_ATTACK_DANGER_CAP": "Integer(100, 170)"
   },
   "data_path": "king_attack_scaling_data.npz",
-  "model_path": "king_attack_scaling_model.pkl"
+  "model_path": "king_attack_scaling_model.pkl",
+  "log_path": "log_king_attack_scaling.txt"
 }

@@ -1,10 +1,11 @@
 {
   "parameter_ranges": {
-    "PASSED_ADVANCEMENT_SCALE_Mg":    "Integer(1, 6)",
-    "PASSED_ADVANCEMENT_SCALE_Eg":    "Integer(6, 18)",
+    "PASSED_ADVANCEMENT_SCALE_Mg": "Integer(1, 6)",
+    "PASSED_ADVANCEMENT_SCALE_Eg": "Integer(6, 18)",
     "PASSED_NEAR_PROMOTION_BONUS_Mg": "Integer(10, 35)",
     "PASSED_NEAR_PROMOTION_BONUS_Eg": "Integer(25, 70)"
   },
   "data_path": "phase_initiative_data.npz",
-  "model_path": "phase_initiative_model.pkl"
+  "model_path": "phase_initiative_model.pkl",
+  "log_path": "log_phase_initiative.txt"
 }

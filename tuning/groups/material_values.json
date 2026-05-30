@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "PAWN_VALUE_Mg":   "Integer(92, 108)",
-    "PAWN_VALUE_Eg":   "Integer(100, 120)",
+    "PAWN_VALUE_Mg": "Integer(92, 108)",
+    "PAWN_VALUE_Eg": "Integer(100, 120)",
     "KNIGHT_VALUE_Mg": "Integer(330, 360)",
     "KNIGHT_VALUE_Eg": "Integer(345, 378)",
     "BISHOP_VALUE_Mg": "Integer(344, 375)",
     "BISHOP_VALUE_Eg": "Integer(358, 392)",
-    "ROOK_VALUE_Mg":   "Integer(480, 525)",
-    "ROOK_VALUE_Eg":   "Integer(504, 556)"
+    "ROOK_VALUE_Mg": "Integer(480, 525)",
+    "ROOK_VALUE_Eg": "Integer(504, 556)"
   },
   "data_path": "material_values_data.npz",
-  "model_path": "material_values_model.pkl"
+  "model_path": "material_values_model.pkl",
+  "log_path": "log_material_values.txt"
 }

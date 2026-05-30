@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "LOW_MOBILITY_KNIGHT_PENALTY_Mg":       "Integer(4, 14)",
-    "LOW_MOBILITY_KNIGHT_PENALTY_Eg":       "Integer(3, 12)",
-    "LOW_MOBILITY_BISHOP_PENALTY_Mg":       "Integer(6, 18)",
-    "LOW_MOBILITY_BISHOP_PENALTY_Eg":       "Integer(5, 16)",
-    "LOW_MOBILITY_ROOK_PENALTY_Mg":         "Integer(18, 42)",
-    "LOW_MOBILITY_ROOK_PENALTY_Eg":         "Integer(16, 40)",
-    "LOW_MOBILITY_QUEEN_PENALTY_Mg":        "Integer(22, 48)",
-    "LOW_MOBILITY_QUEEN_PENALTY_Eg":        "Integer(20, 46)"
+    "LOW_MOBILITY_KNIGHT_PENALTY_Mg": "Integer(4, 14)",
+    "LOW_MOBILITY_KNIGHT_PENALTY_Eg": "Integer(3, 12)",
+    "LOW_MOBILITY_BISHOP_PENALTY_Mg": "Integer(6, 18)",
+    "LOW_MOBILITY_BISHOP_PENALTY_Eg": "Integer(5, 16)",
+    "LOW_MOBILITY_ROOK_PENALTY_Mg": "Integer(18, 42)",
+    "LOW_MOBILITY_ROOK_PENALTY_Eg": "Integer(16, 40)",
+    "LOW_MOBILITY_QUEEN_PENALTY_Mg": "Integer(22, 48)",
+    "LOW_MOBILITY_QUEEN_PENALTY_Eg": "Integer(20, 46)"
   },
   "data_path": "mobility_low_data.npz",
-  "model_path": "mobility_low_model.pkl"
+  "model_path": "mobility_low_model.pkl",
+  "log_path": "log_mobility_low.txt"
 }

@@ -2,11 +2,12 @@
   "parameter_ranges": {
     "ROOK_BEHIND_ENEMY_PASSER_BONUS_Mg": "Integer(3, 14)",
     "ROOK_BEHIND_ENEMY_PASSER_BONUS_Eg": "Integer(8, 24)",
-    "ROOK_EG_EDGE_BONUS_Mg":             "Integer(0, 0)",
-    "ROOK_EG_EDGE_BONUS_Eg":             "Integer(16, 40)",
-    "ROOK_EG_PRESSURE_BONUS_Mg":         "Integer(0, 0)",
-    "ROOK_EG_PRESSURE_BONUS_Eg":         "Integer(8, 28)"
+    "ROOK_EG_EDGE_BONUS_Mg": "Integer(0, 0)",
+    "ROOK_EG_EDGE_BONUS_Eg": "Integer(16, 40)",
+    "ROOK_EG_PRESSURE_BONUS_Mg": "Integer(0, 0)",
+    "ROOK_EG_PRESSURE_BONUS_Eg": "Integer(8, 28)"
   },
   "data_path": "rook_endgame_data.npz",
-  "model_path": "rook_endgame_model.pkl"
+  "model_path": "rook_endgame_model.pkl",
+  "log_path": "log_rook_endgame.txt"
 }

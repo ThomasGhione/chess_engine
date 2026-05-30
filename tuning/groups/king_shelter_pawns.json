@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "KING_SHELTER_STRONG_BONUS_Mg":    "Integer(5, 16)",
-    "KING_SHELTER_STRONG_BONUS_Eg":    "Integer(0, 6)",
-    "KING_SHELTER_WEAK_BONUS_Mg":      "Integer(11, 24)",
-    "KING_SHELTER_WEAK_BONUS_Eg":      "Integer(0, 8)",
+    "KING_SHELTER_STRONG_BONUS_Mg": "Integer(5, 16)",
+    "KING_SHELTER_STRONG_BONUS_Eg": "Integer(0, 6)",
+    "KING_SHELTER_WEAK_BONUS_Mg": "Integer(11, 24)",
+    "KING_SHELTER_WEAK_BONUS_Eg": "Integer(0, 8)",
     "KING_SHELTER_MISSING_PENALTY_Mg": "Integer(20, 50)",
     "KING_SHELTER_MISSING_PENALTY_Eg": "Integer(0, 14)",
     "KING_PAWN_STORM_NEAR_PENALTY_Mg": "Integer(12, 26)",
     "KING_PAWN_STORM_NEAR_PENALTY_Eg": "Integer(2, 12)"
   },
   "data_path": "king_shelter_pawns_data.npz",
-  "model_path": "king_shelter_pawns_model.pkl"
+  "model_path": "king_shelter_pawns_model.pkl",
+  "log_path": "log_king_shelter_pawns.txt"
 }

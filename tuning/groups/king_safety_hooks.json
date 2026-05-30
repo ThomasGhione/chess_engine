@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "CASTLE_PAWN_SUPPORT_BONUS_Mg":         "Integer(2, 14)",
-    "CASTLE_PAWN_SUPPORT_BONUS_Eg":         "Integer(0, 8)",
+    "CASTLE_PAWN_SUPPORT_BONUS_Mg": "Integer(2, 14)",
+    "CASTLE_PAWN_SUPPORT_BONUS_Eg": "Integer(0, 8)",
     "KING_CASTLED_SHIELD_BREAK_PENALTY_Mg": "Integer(4, 16)",
     "KING_CASTLED_SHIELD_BREAK_PENALTY_Eg": "Integer(0, 6)",
-    "KING_HOOK_PAWN_ATTACKED_PENALTY_Mg":   "Integer(10, 26)",
-    "KING_HOOK_PAWN_ATTACKED_PENALTY_Eg":   "Integer(2, 12)",
-    "KING_HOOK_PAWN_HANGING_PENALTY_Mg":    "Integer(16, 34)",
-    "KING_HOOK_PAWN_HANGING_PENALTY_Eg":    "Integer(4, 16)"
+    "KING_HOOK_PAWN_ATTACKED_PENALTY_Mg": "Integer(10, 26)",
+    "KING_HOOK_PAWN_ATTACKED_PENALTY_Eg": "Integer(2, 12)",
+    "KING_HOOK_PAWN_HANGING_PENALTY_Mg": "Integer(16, 34)",
+    "KING_HOOK_PAWN_HANGING_PENALTY_Eg": "Integer(4, 16)"
   },
   "data_path": "king_safety_hooks_data.npz",
-  "model_path": "king_safety_hooks_model.pkl"
+  "model_path": "king_safety_hooks_model.pkl",
+  "log_path": "log_king_safety_hooks.txt"
 }

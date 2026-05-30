@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "THREAT_PAWN_PUSH_MINOR_PENALTY_Mg":  "Integer(-24, -6)",
-    "THREAT_PAWN_PUSH_MINOR_PENALTY_Eg":  "Integer(-18, -4)",
-    "THREAT_PAWN_PUSH_ROOK_PENALTY_Mg":   "Integer(-45, -14)",
-    "THREAT_PAWN_PUSH_ROOK_PENALTY_Eg":   "Integer(-34, -10)",
-    "THREAT_PAWN_PUSH_QUEEN_PENALTY_Mg":  "Integer(-70, -25)",
-    "THREAT_PAWN_PUSH_QUEEN_PENALTY_Eg":  "Integer(-55, -18)",
-    "THREAT_LOOSE_QUEEN_PENALTY_Mg":      "Integer(-65, -25)",
-    "THREAT_LOOSE_QUEEN_PENALTY_Eg":      "Integer(-50, -18)"
+    "THREAT_PAWN_PUSH_MINOR_PENALTY_Mg": "Integer(-24, -6)",
+    "THREAT_PAWN_PUSH_MINOR_PENALTY_Eg": "Integer(-18, -4)",
+    "THREAT_PAWN_PUSH_ROOK_PENALTY_Mg": "Integer(-45, -14)",
+    "THREAT_PAWN_PUSH_ROOK_PENALTY_Eg": "Integer(-34, -10)",
+    "THREAT_PAWN_PUSH_QUEEN_PENALTY_Mg": "Integer(-70, -25)",
+    "THREAT_PAWN_PUSH_QUEEN_PENALTY_Eg": "Integer(-55, -18)",
+    "THREAT_LOOSE_QUEEN_PENALTY_Mg": "Integer(-65, -25)",
+    "THREAT_LOOSE_QUEEN_PENALTY_Eg": "Integer(-50, -18)"
   },
   "data_path": "threats_secondary_data.npz",
-  "model_path": "threats_secondary_model.pkl"
+  "model_path": "threats_secondary_model.pkl",
+  "log_path": "log_threats_secondary.txt"
 }

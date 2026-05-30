@@ -4,5 +4,6 @@
     "QUEEN_VALUE_Eg": "Integer(940, 1020)"
   },
   "data_path": "material_queen_data.npz",
-  "model_path": "material_queen_model.pkl"
+  "model_path": "material_queen_model.pkl",
+  "log_path": "log_material_queen.txt"
 }

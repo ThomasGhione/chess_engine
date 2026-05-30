@@ -1,14 +1,15 @@
 {
   "parameter_ranges": {
-    "MOBILITY_CENTER_BONUS_Mg":          "Integer(0, 4)",
-    "MOBILITY_CENTER_BONUS_Eg":          "Integer(0, 4)",
-    "QUEEN_EARLY_MOBILITY_THRESHOLD":    "Integer(5, 11)",
-    "QUEEN_EARLY_MOBILITY_PENALTY_Mg":   "Integer(2, 12)",
-    "QUEEN_EARLY_MOBILITY_PENALTY_Eg":   "Integer(0, 6)",
-    "OUTPOST_CENTER_FILE_BONUS_Mg":      "Integer(1, 8)",
-    "OUTPOST_CENTER_FILE_BONUS_Eg":      "Integer(0, 6)",
+    "MOBILITY_CENTER_BONUS_Mg": "Integer(0, 4)",
+    "MOBILITY_CENTER_BONUS_Eg": "Integer(0, 4)",
+    "QUEEN_EARLY_MOBILITY_THRESHOLD": "Integer(5, 11)",
+    "QUEEN_EARLY_MOBILITY_PENALTY_Mg": "Integer(2, 12)",
+    "QUEEN_EARLY_MOBILITY_PENALTY_Eg": "Integer(0, 6)",
+    "OUTPOST_CENTER_FILE_BONUS_Mg": "Integer(1, 8)",
+    "OUTPOST_CENTER_FILE_BONUS_Eg": "Integer(0, 6)",
     "OUTPOST_NEAR_CENTER_FILE_BONUS_Mg": "Integer(1, 7)"
   },
   "data_path": "mobility_queen_center_data.npz",
-  "model_path": "mobility_queen_center_model.pkl"
+  "model_path": "mobility_queen_center_model.pkl",
+  "log_path": "log_mobility_queen_center.txt"
 }

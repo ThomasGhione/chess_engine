@@ -4,11 +4,12 @@
     "PINNED_KNIGHT_PENALTY_Eg": "Integer(18, 46)",
     "PINNED_BISHOP_PENALTY_Mg": "Integer(24, 58)",
     "PINNED_BISHOP_PENALTY_Eg": "Integer(22, 54)",
-    "PINNED_ROOK_PENALTY_Mg":   "Integer(50, 105)",
-    "PINNED_ROOK_PENALTY_Eg":   "Integer(48, 100)",
-    "PINNED_QUEEN_PENALTY_Mg":  "Integer(95, 190)",
-    "PINNED_QUEEN_PENALTY_Eg":  "Integer(90, 180)"
+    "PINNED_ROOK_PENALTY_Mg": "Integer(50, 105)",
+    "PINNED_ROOK_PENALTY_Eg": "Integer(48, 100)",
+    "PINNED_QUEEN_PENALTY_Mg": "Integer(95, 190)",
+    "PINNED_QUEEN_PENALTY_Eg": "Integer(90, 180)"
   },
   "data_path": "pinned_pieces_data.npz",
-  "model_path": "pinned_pieces_model.pkl"
+  "model_path": "pinned_pieces_model.pkl",
+  "log_path": "log_pinned_pieces.txt"
 }
