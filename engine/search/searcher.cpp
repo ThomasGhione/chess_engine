@@ -173,7 +173,8 @@ bool Searcher::checkEarlyTerminalConditions(
 
 bool Searcher::checkDrawTerminalConditions(
     const chess::Board& b,
-    int32_t& outScore) noexcept {
+    int32_t& outScore,
+    bool atRoot) noexcept {
     const int repCount = b.countRepetitions();
 
     // Third repetition: forced draw — apply full contempt penalty.
@@ -185,7 +186,12 @@ bool Searcher::checkDrawTerminalConditions(
     // Second repetition: not yet a forced draw, but scores as 0.
     // This prevents the engine from "chasing" draws when winning (alpha > 0
     // won't be improved by a 0 score, so the engine is forced to find real moves).
-    if (repCount >= 2) {
+    //
+    // This is an INTERIOR-NODE heuristic only. At the root the current position
+    // is not a draw under FIDE rules until it actually occurs a third time, so
+    // returning here would abandon the search and play moves[0] — a random legal
+    // move that, as observed, can hang the queen. At the root we must search.
+    if (!atRoot && repCount >= 2) {
         outScore = 0;
         return true;
     }
@@ -1519,7 +1525,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     }
 
     int32_t rootDrawScore = 0;
-    if (checkDrawTerminalConditions(rootBoard, rootDrawScore)) {
+    if (checkDrawTerminalConditions(rootBoard, rootDrawScore, /*atRoot=*/true)) {
         MoveList<chess::Board::Move> drawMoves = engine::MoveGenerator::generateLegalMoves(rootBoard);
         result.terminalRoot = true;
         result.completedAnyDepth = true;

@@ -221,8 +221,12 @@ private:
     // --- Terminal condition checks ---
     static bool checkEarlyTerminalConditions(
         const chess::Board& b, SearchRuntime& runtime, int ply, int32_t& outScore) noexcept;
+    // atRoot=true restricts terminals to *forced* draws (3rd repetition,
+    // 50-move, insufficient material). The "2nd repetition scores as 0"
+    // pruning rule is an interior-node heuristic only: at the root it would
+    // abandon the search and play a random legal move, so it is suppressed.
     static bool checkDrawTerminalConditions(
-        const chess::Board& b, int32_t& outScore) noexcept;
+        const chess::Board& b, int32_t& outScore, bool atRoot = false) noexcept;
 
     // --- Draw scoring ---
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
