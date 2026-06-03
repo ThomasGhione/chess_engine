@@ -89,7 +89,12 @@ HASH="${HASH:-64}"
 THREADS="${THREADS:-1}"
 BOOK="${BOOK:-books/openings.pgn}"
 MAXGAMES="${MAXGAMES:-4000}"
-default_conc="$(( $(nproc 2>/dev/null || echo 2) / 2 ))"
+# Time-controlled games need 1 searcher per *physical* core (HT siblings sharing
+# a core distort the clock), leaving one core for the OS/cutechess. Fall back to
+# nproc/2 if lscpu is unavailable.
+phys_cores="$(lscpu -p=Core,Socket 2>/dev/null | grep -v '^#' | sort -u | wc -l)"
+[[ "${phys_cores}" =~ ^[0-9]+$ && "${phys_cores}" -ge 1 ]] || phys_cores="$(( $(nproc 2>/dev/null || echo 2) / 2 ))"
+default_conc="$(( phys_cores - 1 ))"
 [[ "${default_conc}" -ge 1 ]] || default_conc=1
 CONCURRENCY="${CONCURRENCY:-${default_conc}}"
 
