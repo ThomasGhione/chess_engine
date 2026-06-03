@@ -87,6 +87,10 @@ ALPHA="${ALPHA:-0.05}"
 BETA="${BETA:-0.05}"
 HASH="${HASH:-64}"
 THREADS="${THREADS:-1}"
+# The engine does NOT honour the UCI "Threads" option: it sizes its OpenMP YBWC
+# pool from omp_get_max_threads(). Pin it via the env so a single-threaded SPRT is
+# actually single-threaded (otherwise every engine grabs all cores and oversubscribes).
+export OMP_NUM_THREADS="${THREADS}"
 BOOK="${BOOK:-books/openings.pgn}"
 MAXGAMES="${MAXGAMES:-4000}"
 # Time-controlled games need 1 searcher per *physical* core (HT siblings sharing
