@@ -712,6 +712,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 if (ctx.iirActive) {
                     reduction = std::min(reduction + 1, childDepth - 1);
                 }
+                // Reduce more when the position is not improving: a late quiet move
+                // is less likely to help when our static eval is falling.
+                if (!ctx.improving) {
+                    reduction += 1;
+                }
                 // History adjustment: reward historically good quiet moves with less reduction.
                 const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
                 const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
