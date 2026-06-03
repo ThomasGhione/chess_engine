@@ -20,7 +20,7 @@
 #
 # ---------------------------------------------------------------------------
 # TUNABLE KNOBS (env vars; sensible defaults below)
-#   TC          time control "moves/sec+inc" or "sec+inc"   (default 8+0.08)
+#   TC          time control "moves/sec+inc" or "sec+inc"   (default 4+0.04)
 #   ELO0 ELO1   SPRT hypotheses, ELO                          (default 0 and 5)
 #   ALPHA BETA  SPRT error rates                              (default 0.05 0.05)
 #   CONCURRENCY parallel games                                (default: nproc/2)
@@ -80,7 +80,7 @@ done
 [[ -n "${real_cutechess}" ]] || { echo "error: real cutechess-cli not found in PATH." >&2; exit 127; }
 
 # --- knobs --------------------------------------------------------------------
-TC="${TC:-8+0.08}"
+TC="${TC:-4+0.04}"
 ELO0="${ELO0:-0}"
 ELO1="${ELO1:-5}"
 ALPHA="${ALPHA:-0.05}"

@@ -123,7 +123,7 @@ make prod && ./tuning/run_sprt.sh --snapshot   # freeze baseline BEFORE editing
 make prod && ./tuning/run_sprt.sh              # new vs baseline; H1 = keep, H0 = discard
 ```
 
-Knobs via env vars (defaults shown): `TC=8+0.08`, `ELO0=0 ELO1=5` (gain test; use
+Knobs via env vars (defaults shown): `TC=4+0.04`, `ELO0=0 ELO1=5` (gain test; use
 `ELO0=-3 ELO1=3` for non-regression of cleanups), `CONCURRENCY`, `HASH`, `THREADS`.
 
 Run Valgrind leak checks:
