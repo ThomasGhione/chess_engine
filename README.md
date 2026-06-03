@@ -110,6 +110,22 @@ Run both functional and performance tests:
 make all-tests
 ```
 
+### SPRT regression testing
+
+`tuning/run_sprt.sh` measures whether a search/eval change is a real ELO gain by
+playing the current build against a frozen baseline under a time control, using
+cutechess-cli's native SPRT (it stops automatically once an H0/H1 bound is hit).
+Search changes must be tested under a time control, never at fixed depth.
+
+```sh
+make prod && ./tuning/run_sprt.sh --snapshot   # freeze baseline BEFORE editing
+# ...make your change...
+make prod && ./tuning/run_sprt.sh              # new vs baseline; H1 = keep, H0 = discard
+```
+
+Knobs via env vars (defaults shown): `TC=8+0.08`, `ELO0=0 ELO1=5` (gain test; use
+`ELO0=-3 ELO1=3` for non-regression of cleanups), `CONCURRENCY`, `HASH`, `THREADS`.
+
 Run Valgrind leak checks:
 
 ```sh

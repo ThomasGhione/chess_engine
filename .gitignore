@@ -33,3 +33,5 @@ CLAUDE.md
 /tuning/.last_tuning_dataset
 /tuning/.tuning_state/
 /tuning/plots/
+/tuning/chess_baseline
+/tuning/sprt_*.pgn
