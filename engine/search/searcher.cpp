@@ -641,6 +641,16 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
+        // SEE pruning: skip clearly losing captures at shallow non-PV nodes.
+        // Move 0 (a winning or hash capture) is always searched; the margin
+        // scales with depth so deeper nodes tolerate slightly worse trades.
+        constexpr int32_t SEE_CAPTURE_MARGIN = 90;
+        if (wasCapture && !isPromotionCandidate && moveIndex > 0
+            && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3
+            && Sorter::staticExchangeEvaluationPublic(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
+            continue;
+        }
+
         chess::Board::MoveState state;
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
