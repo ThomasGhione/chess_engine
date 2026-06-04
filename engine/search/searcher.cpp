@@ -654,27 +654,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         chess::Board::MoveState state;
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
-        const bool inConservativeEndgameLMR = isLateEndgame && !isDelicateEndgame;
-        const int lmrMinMoveIndex = inConservativeEndgameLMR ? 10 : 8;
         const bool lmrStructuralCandidate = (ctx.depth >= 4)
-            && (moveIndex >= lmrMinMoveIndex)
-            && !isPromotionCandidate
-            && (!wasCapture)
-            && !createsPawnForkThreat
-            && !isDelicateEndgame;
-        // Delicate endgames: allow only minimal one-ply LMR on very-late quiet moves.
-        const bool lmrDelicateCandidate = isDelicateEndgame
-            && !ctx.isPVNode
-            && !ctx.inCheck
-            && (ctx.depth >= 10)
-            && (moveIndex >= 30)
+            && (moveIndex >= 8)
             && !isPromotionCandidate
             && (!wasCapture)
             && !createsPawnForkThreat;
 
         const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3 || createsPawnForkThreat);
         const bool needsCheckInfo =
-            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate || lmrDelicateCandidate;
+            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
         const bool isForcingCheck = givesCheck && forcingCandidate;
@@ -685,7 +673,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const auto& km1 = runtime.killerMoves[1][ctx.ply];
         const bool isKiller = (m.from.index == km0.from.index && m.to.index == km0.to.index)
                            || (m.from.index == km1.from.index && m.to.index == km1.to.index);
-        const bool canReduce = (lmrStructuralCandidate || lmrDelicateCandidate)
+        const bool canReduce = lmrStructuralCandidate
             && !givesCheck
             && !isKiller;
 
@@ -697,32 +685,26 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         int32_t score = 0;
         if (canReduce) {
-            int32_t reduction = 1;
-            if (lmrStructuralCandidate) {
-                const int di = ctx.depth < LMR_MAX_DEPTH ? ctx.depth : LMR_MAX_DEPTH - 1;
-                const int mi = moveIndex < LMR_MAX_MOVES ? moveIndex : LMR_MAX_MOVES - 1;
-                reduction = LMR_REDUCTION_TABLE.data[di][mi];
+            const int di = ctx.depth < LMR_MAX_DEPTH ? ctx.depth : LMR_MAX_DEPTH - 1;
+            const int mi = moveIndex < LMR_MAX_MOVES ? moveIndex : LMR_MAX_MOVES - 1;
+            int32_t reduction = LMR_REDUCTION_TABLE.data[di][mi];
 
-                if (inConservativeEndgameLMR) {
-                    reduction = 1;
-                }
-                if (ctx.isPVNode) {
-                    reduction = std::max(1, reduction - 1);
-                }
-                if (ctx.iirActive) {
-                    reduction = std::min(reduction + 1, childDepth - 1);
-                }
-                // Reduce more when the position is not improving: a late quiet move
-                // is less likely to help when our static eval is falling.
-                if (!ctx.improving) {
-                    reduction += 1;
-                }
-                // History adjustment: reward historically good quiet moves with less reduction.
-                const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
-                const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
-                reduction -= histScore / 8192;
-                reduction = std::clamp(reduction, 1, childDepth - 1);
+            if (ctx.isPVNode) {
+                reduction = std::max(1, reduction - 1);
             }
+            if (ctx.iirActive) {
+                reduction = std::min(reduction + 1, childDepth - 1);
+            }
+            // Reduce more when the position is not improving: a late quiet move
+            // is less likely to help when our static eval is falling.
+            if (!ctx.improving) {
+                reduction += 1;
+            }
+            // History adjustment: reward historically good quiet moves with less reduction.
+            const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+            const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+            reduction -= histScore / 8192;
+            reduction = std::clamp(reduction, 1, childDepth - 1);
 
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
