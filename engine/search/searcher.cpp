@@ -986,21 +986,6 @@ int32_t Searcher::searchPosition(
         }
     }
 
-    // Razoring: at depth 1-2, if static eval is well below alpha, drop into qsearch directly.
-    static constexpr int32_t RAZOR_MARGIN_D1 = 300;
-    static constexpr int32_t RAZOR_MARGIN_D2 = 600;
-    if (!node.isPVNode && !node.inCheck && ply > 0 && depth <= 2) {
-        const int32_t margin = (depth == 1) ? RAZOR_MARGIN_D1 : RAZOR_MARGIN_D2;
-        // Negamax: even adding the margin cannot reach alpha -> verify via qsearch.
-        const bool razorGate = (node.staticEval + margin <= alpha);
-        if (razorGate) {
-            // qsearch of THIS node (same side to move): no negation.
-            const int32_t qScore = quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
-            if (runtime.shouldAbort()) return Evaluator::evaluate(b);
-            if (qScore <= alpha) return qScore;
-        }
-    }
-
     // Negamax NMP gate: allow a null move when the static eval is within
     // ~100cp of beta (giving the opponent a free move likely still fails high).
     const int32_t nmpEvalGate = node.staticEval + 100;
