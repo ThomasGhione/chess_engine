@@ -12078,3 +12078,2284 @@ QUEEN_VALUE_Eg           940         1011
 2026-06-02 19:42:05,379 INFO     Got Elo: -0.0 +- 31.633478400488908
 2026-06-02 19:42:05,379 INFO     Estimated draw rate: 68.42%
 2026-06-02 19:42:05,379 INFO     Updating model
+2026-06-02 19:43:17,621 INFO     GP sampling finished (72.241116s)
+2026-06-02 19:43:18,002 INFO     Starting iteration 450
+2026-06-02 19:44:01,309 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 19:44:01,309 INFO     Estimated Elo: 7.2123 +- 4.2951
+2026-06-02 19:44:01,309 INFO     90.0% confidence interval of the Elo value: (0.1476, 14.2771)
+2026-06-02 19:44:01,562 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           925          995
+QUEEN_VALUE_Eg           944         1016
+
+2026-06-02 19:44:01,563 INFO     Testing {'PAWN_VALUE_Mg': 103, 'PAWN_VALUE_Eg': 117, 'KNIGHT_VALUE_Mg': 347, 'KNIGHT_VALUE_Eg': 366, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 492, 'ROOK_VALUE_Eg': 550, 'QUEEN_VALUE_Mg': 966, 'QUEEN_VALUE_Eg': 999}
+2026-06-02 19:44:01,564 INFO     Start experiment
+2026-06-02 19:50:46,964 INFO     Experiment finished (405.399644s elapsed).
+2026-06-02 19:50:47,310 INFO     Got Elo: -37.70796673673921 +- 30.77070169962114
+2026-06-02 19:50:47,310 INFO     Estimated draw rate: 57.89%
+2026-06-02 19:50:47,311 INFO     Updating model
+2026-06-02 19:51:30,997 INFO     GP sampling finished (43.686328s)
+2026-06-02 19:51:31,330 INFO     Starting iteration 451
+2026-06-02 19:52:15,005 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 19:52:15,006 INFO     Estimated Elo: 7.1285 +- 4.3064
+2026-06-02 19:52:15,006 INFO     90.0% confidence interval of the Elo value: (0.0451, 14.212)
+2026-06-02 19:52:15,234 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          348          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            470          522
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           940         1011
+
+2026-06-02 19:52:15,235 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 340, 'KNIGHT_VALUE_Eg': 352, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 365, 'ROOK_VALUE_Mg': 513, 'ROOK_VALUE_Eg': 541, 'QUEEN_VALUE_Mg': 961, 'QUEEN_VALUE_Eg': 991}
+2026-06-02 19:52:15,236 INFO     Start experiment
+2026-06-02 19:59:51,623 INFO     Experiment finished (456.386929s elapsed).
+2026-06-02 19:59:52,191 INFO     Got Elo: -9.392438339809123 +- 27.178419244812318
+2026-06-02 19:59:52,191 INFO     Estimated draw rate: 76.32%
+2026-06-02 19:59:52,192 INFO     Updating model
+2026-06-02 20:00:38,279 INFO     GP sampling finished (46.087179s)
+2026-06-02 20:00:38,672 INFO     Starting iteration 452
+2026-06-02 20:01:16,164 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 20:01:16,165 INFO     Estimated Elo: 7.0203 +- 4.1927
+2026-06-02 20:01:16,165 INFO     90.0% confidence interval of the Elo value: (0.1239, 13.9167)
+2026-06-02 20:01:16,488 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           944         1013
+
+2026-06-02 20:01:16,489 INFO     Testing {'PAWN_VALUE_Mg': 101, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 358, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 368, 'ROOK_VALUE_Mg': 489, 'ROOK_VALUE_Eg': 515, 'QUEEN_VALUE_Mg': 985, 'QUEEN_VALUE_Eg': 1011}
+2026-06-02 20:01:16,491 INFO     Start experiment
+2026-06-02 20:07:54,262 INFO     Experiment finished (397.770113s elapsed).
+2026-06-02 20:07:54,629 INFO     Got Elo: -0.0 +- 36.73027280074358
+2026-06-02 20:07:54,629 INFO     Estimated draw rate: 47.37%
+2026-06-02 20:07:54,629 INFO     Updating model
+2026-06-02 20:08:40,937 INFO     GP sampling finished (46.308023s)
+2026-06-02 20:08:41,261 INFO     Starting iteration 453
+2026-06-02 20:09:29,593 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 20:09:29,594 INFO     Estimated Elo: 6.9669 +- 4.1295
+2026-06-02 20:09:29,594 INFO     90.0% confidence interval of the Elo value: (0.1745, 13.7593)
+2026-06-02 20:09:29,848 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          349          384
+BISHOP_VALUE_Eg          363          399
+ROOK_VALUE_Mg            472          523
+ROOK_VALUE_Eg            513          567
+QUEEN_VALUE_Mg           926          996
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-02 20:09:29,848 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 100, 'KNIGHT_VALUE_Mg': 345, 'KNIGHT_VALUE_Eg': 361, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 496, 'ROOK_VALUE_Eg': 532, 'QUEEN_VALUE_Mg': 965, 'QUEEN_VALUE_Eg': 1001}
+2026-06-02 20:09:29,850 INFO     Start experiment
+2026-06-02 20:17:31,192 INFO     Experiment finished (481.342082s elapsed).
+2026-06-02 20:17:31,625 INFO     Got Elo: 37.707966736739216 +- 36.164428274322205
+2026-06-02 20:17:31,625 INFO     Estimated draw rate: 57.89%
+2026-06-02 20:17:31,625 INFO     Updating model
+2026-06-02 20:18:22,463 INFO     GP sampling finished (50.83813s)
+2026-06-02 20:18:22,874 INFO     Starting iteration 454
+2026-06-02 20:19:27,259 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 20:19:27,260 INFO     Estimated Elo: 6.9836 +- 4.0544
+2026-06-02 20:19:27,260 INFO     90.0% confidence interval of the Elo value: (0.3148, 13.6524)
+2026-06-02 20:19:27,835 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            517          569
+QUEEN_VALUE_Mg           922          991
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-02 20:19:27,845 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 343, 'KNIGHT_VALUE_Eg': 348, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 520, 'ROOK_VALUE_Eg': 547, 'QUEEN_VALUE_Mg': 985, 'QUEEN_VALUE_Eg': 1005}
+2026-06-02 20:19:27,847 INFO     Start experiment
+2026-06-02 20:26:57,149 INFO     Experiment finished (449.300771s elapsed).
+2026-06-02 20:26:57,465 INFO     Got Elo: 37.707966736739216 +- 36.167284894599774
+2026-06-02 20:26:57,465 INFO     Estimated draw rate: 57.89%
+2026-06-02 20:26:57,466 INFO     Updating model
+2026-06-02 20:27:41,210 INFO     GP sampling finished (43.744609s)
+2026-06-02 20:27:41,553 INFO     Starting iteration 455
+2026-06-02 20:28:23,665 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 20:28:23,665 INFO     Estimated Elo: 7.1181 +- 4.1004
+2026-06-02 20:28:23,666 INFO     90.0% confidence interval of the Elo value: (0.3736, 13.8626)
+2026-06-02 20:28:23,944 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          361          397
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            512          565
+QUEEN_VALUE_Mg           920          992
+QUEEN_VALUE_Eg           947         1018
+
+2026-06-02 20:28:23,944 INFO     Testing {'PAWN_VALUE_Mg': 104, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 346, 'KNIGHT_VALUE_Eg': 351, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 362, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 552, 'QUEEN_VALUE_Mg': 982, 'QUEEN_VALUE_Eg': 992}
+2026-06-02 20:28:23,945 INFO     Start experiment
+2026-06-02 20:35:42,411 INFO     Experiment finished (438.465272s elapsed).
+2026-06-02 20:35:42,948 INFO     Got Elo: 7.714619732426298e-14 +- 28.73185675435438
+2026-06-02 20:35:42,948 INFO     Estimated draw rate: 68.42%
+2026-06-02 20:35:42,948 INFO     Updating model
+2026-06-02 20:36:31,227 INFO     GP sampling finished (48.277957s)
+2026-06-02 20:36:31,643 INFO     Starting iteration 456
+2026-06-02 20:37:25,441 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 20:37:25,441 INFO     Estimated Elo: 7.0057 +- 3.9521
+2026-06-02 20:37:25,441 INFO     90.0% confidence interval of the Elo value: (0.505, 13.5063)
+2026-06-02 20:37:25,680 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          335          369
+KNIGHT_VALUE_Eg          345          381
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          358          394
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           924          996
+QUEEN_VALUE_Eg           942         1015
+
+2026-06-02 20:37:25,680 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 363, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 376, 'ROOK_VALUE_Mg': 502, 'ROOK_VALUE_Eg': 545, 'QUEEN_VALUE_Mg': 972, 'QUEEN_VALUE_Eg': 993}
+2026-06-02 20:37:25,682 INFO     Start experiment
+2026-06-02 20:44:32,836 INFO     Experiment finished (427.15359s elapsed).
+2026-06-02 20:44:33,217 INFO     Got Elo: 18.798625070489468 +- 38.9152666368975
+2026-06-02 20:44:33,218 INFO     Estimated draw rate: 57.89%
+2026-06-02 20:44:33,218 INFO     Updating model
+2026-06-02 20:45:16,217 INFO     GP sampling finished (42.998734s)
+2026-06-02 20:45:16,591 INFO     Starting iteration 457
+2026-06-02 20:45:52,666 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 20:45:52,666 INFO     Estimated Elo: 7.0644 +- 3.9921
+2026-06-02 20:45:52,666 INFO     90.0% confidence interval of the Elo value: (0.4979, 13.6309)
+2026-06-02 20:45:52,904 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          349          383
+BISHOP_VALUE_Mg          344          379
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            472          523
+ROOK_VALUE_Eg            515          566
+QUEEN_VALUE_Mg           921          993
+QUEEN_VALUE_Eg           943         1012
+
+2026-06-02 20:45:52,904 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 351, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 478, 'ROOK_VALUE_Eg': 535, 'QUEEN_VALUE_Mg': 990, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 20:45:52,906 INFO     Start experiment
+2026-06-02 20:52:20,022 INFO     Experiment finished (387.115837s elapsed).
+2026-06-02 20:52:20,361 INFO     Got Elo: -37.70796673673921 +- 38.511683944595084
+2026-06-02 20:52:20,361 INFO     Estimated draw rate: 57.89%
+2026-06-02 20:52:20,361 INFO     Updating model
+2026-06-02 20:53:04,705 INFO     GP sampling finished (44.343659s)
+2026-06-02 20:53:05,109 INFO     Starting iteration 458
+2026-06-02 20:53:43,488 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 20:53:43,488 INFO     Estimated Elo: 6.9957 +- 4.0361
+2026-06-02 20:53:43,496 INFO     90.0% confidence interval of the Elo value: (0.3569, 13.6345)
+2026-06-02 20:53:43,768 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            472          523
+ROOK_VALUE_Eg            512          564
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           945         1011
+
+2026-06-02 20:53:43,769 INFO     Testing {'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 352, 'KNIGHT_VALUE_Eg': 357, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 496, 'ROOK_VALUE_Eg': 540, 'QUEEN_VALUE_Mg': 980, 'QUEEN_VALUE_Eg': 1013}
+2026-06-02 20:53:43,771 INFO     Start experiment
+2026-06-02 21:00:38,602 INFO     Experiment finished (414.830337s elapsed).
+2026-06-02 21:00:39,010 INFO     Got Elo: -18.798625070489397 +- 34.02774284607831
+2026-06-02 21:00:39,017 INFO     Estimated draw rate: 57.89%
+2026-06-02 21:00:39,018 INFO     Updating model
+2026-06-02 21:01:22,668 INFO     GP sampling finished (43.650674s)
+2026-06-02 21:01:22,979 INFO     Starting iteration 459
+2026-06-02 21:01:59,577 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 21:01:59,578 INFO     Estimated Elo: 6.9298 +- 4.0381
+2026-06-02 21:01:59,578 INFO     90.0% confidence interval of the Elo value: (0.2876, 13.572)
+2026-06-02 21:01:59,872 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          335          369
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          349          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           920          993
+QUEEN_VALUE_Eg           945         1015
+
+2026-06-02 21:01:59,873 INFO     Testing {'PAWN_VALUE_Mg': 102, 'PAWN_VALUE_Eg': 110, 'KNIGHT_VALUE_Mg': 330, 'KNIGHT_VALUE_Eg': 378, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 386, 'ROOK_VALUE_Mg': 523, 'ROOK_VALUE_Eg': 554, 'QUEEN_VALUE_Mg': 995, 'QUEEN_VALUE_Eg': 958}
+2026-06-02 21:01:59,875 INFO     Start experiment
+2026-06-02 21:08:29,701 INFO     Experiment finished (389.825125s elapsed).
+2026-06-02 21:08:30,049 INFO     Got Elo: 47.239724831197776 +- 39.43757605929849
+2026-06-02 21:08:30,049 INFO     Estimated draw rate: 60.53%
+2026-06-02 21:08:30,049 INFO     Updating model
+2026-06-02 21:09:15,400 INFO     GP sampling finished (45.350637s)
+2026-06-02 21:09:15,740 INFO     Starting iteration 460
+2026-06-02 21:10:20,070 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 21:10:20,070 INFO     Estimated Elo: 6.9702 +- 3.9648
+2026-06-02 21:10:20,071 INFO     90.0% confidence interval of the Elo value: (0.4486, 13.4917)
+2026-06-02 21:10:20,518 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          347          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            516          567
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           946         1015
+
+2026-06-02 21:10:20,519 INFO     Testing {'PAWN_VALUE_Mg': 102, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 341, 'KNIGHT_VALUE_Eg': 373, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 364, 'ROOK_VALUE_Mg': 518, 'ROOK_VALUE_Eg': 537, 'QUEEN_VALUE_Mg': 994, 'QUEEN_VALUE_Eg': 992}
+2026-06-02 21:10:20,521 INFO     Start experiment
+2026-06-02 21:17:43,757 INFO     Experiment finished (443.235082s elapsed).
+2026-06-02 21:17:44,181 INFO     Got Elo: -9.392438339809123 +- 30.197054705304343
+2026-06-02 21:17:44,181 INFO     Estimated draw rate: 60.53%
+2026-06-02 21:17:44,181 INFO     Updating model
+2026-06-02 21:18:27,108 INFO     GP sampling finished (42.926611s)
+2026-06-02 21:18:27,407 INFO     Starting iteration 461
+2026-06-02 21:19:06,368 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 21:19:06,368 INFO     Estimated Elo: 6.9118 +- 3.94
+2026-06-02 21:19:06,369 INFO     90.0% confidence interval of the Elo value: (0.431, 13.3926)
+2026-06-02 21:19:06,635 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          363          398
+ROOK_VALUE_Mg            465          519
+ROOK_VALUE_Eg            514          565
+QUEEN_VALUE_Mg           922          991
+QUEEN_VALUE_Eg           941         1010
+
+2026-06-02 21:19:06,636 INFO     Testing {'PAWN_VALUE_Mg': 105, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 348, 'KNIGHT_VALUE_Eg': 380, 'BISHOP_VALUE_Mg': 385, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 516, 'ROOK_VALUE_Eg': 562, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 988}
+2026-06-02 21:19:06,638 INFO     Start experiment
+2026-06-02 21:25:25,018 INFO     Experiment finished (378.379221s elapsed).
+2026-06-02 21:25:25,399 INFO     Got Elo: -18.798625070489397 +- 34.139154461205614
+2026-06-02 21:25:25,399 INFO     Estimated draw rate: 68.42%
+2026-06-02 21:25:25,399 INFO     Updating model
+2026-06-02 21:26:09,161 INFO     GP sampling finished (43.761903s)
+2026-06-02 21:26:09,463 INFO     Starting iteration 462
+2026-06-02 21:26:47,717 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1007}
+2026-06-02 21:26:47,717 INFO     Estimated Elo: 6.8961 +- 3.9956
+2026-06-02 21:26:47,718 INFO     90.0% confidence interval of the Elo value: (0.324, 13.4682)
+2026-06-02 21:26:48,039 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          330          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          348          384
+BISHOP_VALUE_Eg          360          395
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            513          566
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           944         1012
+
+2026-06-02 21:26:48,039 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 360, 'BISHOP_VALUE_Mg': 376, 'BISHOP_VALUE_Eg': 393, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 537, 'QUEEN_VALUE_Mg': 984, 'QUEEN_VALUE_Eg': 1006}
+2026-06-02 21:26:48,042 INFO     Start experiment
+2026-06-02 21:33:12,770 INFO     Experiment finished (384.722701s elapsed).
+2026-06-02 21:33:13,178 INFO     Got Elo: 37.707966736739216 +- 33.44429065364208
+2026-06-02 21:33:13,179 INFO     Estimated draw rate: 52.63%
+2026-06-02 21:33:13,179 INFO     Updating model
+2026-06-02 21:33:56,796 INFO     GP sampling finished (43.617502s)
+2026-06-02 21:33:57,103 INFO     Starting iteration 463
+2026-06-02 21:34:38,467 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 21:34:38,468 INFO     Estimated Elo: 6.9666 +- 3.9829
+2026-06-02 21:34:38,468 INFO     90.0% confidence interval of the Elo value: (0.4152, 13.518)
+2026-06-02 21:34:38,722 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            472          524
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           926          996
+QUEEN_VALUE_Eg           947         1018
+
+2026-06-02 21:34:38,722 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 349, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 362, 'ROOK_VALUE_Mg': 481, 'ROOK_VALUE_Eg': 556, 'QUEEN_VALUE_Mg': 980, 'QUEEN_VALUE_Eg': 980}
+2026-06-02 21:34:38,724 INFO     Start experiment
+2026-06-02 21:41:36,263 INFO     Experiment finished (417.538605s elapsed).
+2026-06-02 21:41:36,682 INFO     Got Elo: -9.392438339809123 +- 30.191281347741512
+2026-06-02 21:41:36,683 INFO     Estimated draw rate: 71.05%
+2026-06-02 21:41:36,683 INFO     Updating model
+2026-06-02 21:42:20,244 INFO     GP sampling finished (43.560551s)
+2026-06-02 21:42:20,575 INFO     Starting iteration 464
+2026-06-02 21:43:02,599 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 21:43:02,599 INFO     Estimated Elo: 6.9058 +- 3.9233
+2026-06-02 21:43:02,600 INFO     90.0% confidence interval of the Elo value: (0.4526, 13.3591)
+2026-06-02 21:43:02,868 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          365
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           942         1011
+
+2026-06-02 21:43:02,868 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 350, 'KNIGHT_VALUE_Eg': 382, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 559, 'QUEEN_VALUE_Mg': 999, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 21:43:02,870 INFO     Start experiment
+2026-06-02 21:49:44,206 INFO     Experiment finished (401.335544s elapsed).
+2026-06-02 21:49:44,634 INFO     Got Elo: -47.23972483119777 +- 31.674852951027923
+2026-06-02 21:49:44,634 INFO     Estimated draw rate: 60.53%
+2026-06-02 21:49:44,634 INFO     Updating model
+2026-06-02 21:50:30,899 INFO     GP sampling finished (46.264482s)
+2026-06-02 21:50:31,283 INFO     Starting iteration 465
+2026-06-02 21:51:09,660 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 21:51:09,660 INFO     Estimated Elo: 6.7345 +- 3.8175
+2026-06-02 21:51:09,660 INFO     90.0% confidence interval of the Elo value: (0.4553, 13.0137)
+2026-06-02 21:51:09,904 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            517          569
+QUEEN_VALUE_Mg           930         1000
+QUEEN_VALUE_Eg           949         1020
+
+2026-06-02 21:51:09,904 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 114, 'KNIGHT_VALUE_Mg': 342, 'KNIGHT_VALUE_Eg': 366, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 500, 'ROOK_VALUE_Eg': 530, 'QUEEN_VALUE_Mg': 993, 'QUEEN_VALUE_Eg': 985}
+2026-06-02 21:51:09,906 INFO     Start experiment
+2026-06-02 21:57:52,845 INFO     Experiment finished (402.938815s elapsed).
+2026-06-02 21:57:53,227 INFO     Got Elo: -106.50715576190773 +- 35.524509652829785
+2026-06-02 21:57:53,228 INFO     Estimated draw rate: 60.53%
+2026-06-02 21:57:53,228 INFO     Updating model
+2026-06-02 21:58:37,783 INFO     GP sampling finished (44.554567s)
+2026-06-02 21:58:38,087 INFO     Starting iteration 466
+2026-06-02 21:59:20,393 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 21:59:20,393 INFO     Estimated Elo: 6.4915 +- 3.7828
+2026-06-02 21:59:20,393 INFO     90.0% confidence interval of the Elo value: (0.2694, 12.7137)
+2026-06-02 21:59:20,593 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          335          369
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            468          519
+ROOK_VALUE_Eg            516          568
+QUEEN_VALUE_Mg           921          993
+QUEEN_VALUE_Eg           941         1008
+
+2026-06-02 21:59:20,593 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 345, 'KNIGHT_VALUE_Eg': 356, 'BISHOP_VALUE_Mg': 372, 'BISHOP_VALUE_Eg': 387, 'ROOK_VALUE_Mg': 521, 'ROOK_VALUE_Eg': 541, 'QUEEN_VALUE_Mg': 972, 'QUEEN_VALUE_Eg': 984}
+2026-06-02 21:59:20,596 INFO     Start experiment
+2026-06-02 22:06:04,058 INFO     Experiment finished (403.46174s elapsed).
+2026-06-02 22:06:04,556 INFO     Got Elo: -9.392438339809123 +- 35.4139648686556
+2026-06-02 22:06:04,557 INFO     Estimated draw rate: 55.26%
+2026-06-02 22:06:04,557 INFO     Updating model
+2026-06-02 22:06:47,804 INFO     GP sampling finished (43.247043s)
+2026-06-02 22:06:48,107 INFO     Starting iteration 467
+2026-06-02 22:07:25,696 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 22:07:25,696 INFO     Estimated Elo: 6.4112 +- 3.7094
+2026-06-02 22:07:25,697 INFO     90.0% confidence interval of the Elo value: (0.3099, 12.5126)
+2026-06-02 22:07:25,987 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          347          381
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            473          524
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           926          997
+QUEEN_VALUE_Eg           944         1015
+
+2026-06-02 22:07:25,987 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 107, 'KNIGHT_VALUE_Mg': 350, 'KNIGHT_VALUE_Eg': 354, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 373, 'ROOK_VALUE_Mg': 519, 'ROOK_VALUE_Eg': 548, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 1004}
+2026-06-02 22:07:25,989 INFO     Start experiment
+2026-06-02 22:13:29,332 INFO     Experiment finished (363.342392s elapsed).
+2026-06-02 22:13:29,704 INFO     Got Elo: -0.0 +- 45.368730290996254
+2026-06-02 22:13:29,704 INFO     Estimated draw rate: 47.37%
+2026-06-02 22:13:29,704 INFO     Updating model
+2026-06-02 22:14:13,499 INFO     GP sampling finished (43.794419s)
+2026-06-02 22:14:13,865 INFO     Starting iteration 468
+2026-06-02 22:14:51,951 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 22:14:51,951 INFO     Estimated Elo: 6.3884 +- 3.6657
+2026-06-02 22:14:51,951 INFO     90.0% confidence interval of the Elo value: (0.3589, 12.418)
+2026-06-02 22:14:52,196 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          993
+QUEEN_VALUE_Eg           949         1017
+
+2026-06-02 22:14:52,196 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 114, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 510, 'ROOK_VALUE_Eg': 548, 'QUEEN_VALUE_Mg': 983, 'QUEEN_VALUE_Eg': 983}
+2026-06-02 22:14:52,198 INFO     Start experiment
+2026-06-02 22:21:41,994 INFO     Experiment finished (409.795285s elapsed).
+2026-06-02 22:21:42,519 INFO     Got Elo: 37.707966736739216 +- 35.9950724016316
+2026-06-02 22:21:42,520 INFO     Estimated draw rate: 57.89%
+2026-06-02 22:21:42,527 INFO     Updating model
+2026-06-02 22:22:26,614 INFO     GP sampling finished (44.086406s)
+2026-06-02 22:22:26,974 INFO     Starting iteration 469
+2026-06-02 22:23:10,086 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 22:23:10,086 INFO     Estimated Elo: 6.4639 +- 3.6985
+2026-06-02 22:23:10,086 INFO     90.0% confidence interval of the Elo value: (0.3805, 12.5474)
+2026-06-02 22:23:10,376 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          330          364
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            467          520
+ROOK_VALUE_Eg            517          570
+QUEEN_VALUE_Mg           922          992
+QUEEN_VALUE_Eg           940         1011
+
+2026-06-02 22:23:10,376 INFO     Testing {'PAWN_VALUE_Mg': 103, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 358, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 396, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 569, 'QUEEN_VALUE_Mg': 992, 'QUEEN_VALUE_Eg': 1010}
+2026-06-02 22:23:10,379 INFO     Start experiment
+2026-06-02 22:30:21,780 INFO     Experiment finished (431.400814s elapsed).
+2026-06-02 22:30:22,155 INFO     Got Elo: -56.84270469812558 +- 32.426806863812104
+2026-06-02 22:30:22,155 INFO     Estimated draw rate: 63.16%
+2026-06-02 22:30:22,156 INFO     Updating model
+2026-06-02 22:31:05,829 INFO     GP sampling finished (43.673132s)
+2026-06-02 22:31:06,182 INFO     Starting iteration 470
+2026-06-02 22:31:41,639 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-02 22:31:41,639 INFO     Estimated Elo: 6.3553 +- 3.7337
+2026-06-02 22:31:41,639 INFO     90.0% confidence interval of the Elo value: (0.214, 12.4966)
+2026-06-02 22:31:41,907 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          349          383
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            467          519
+ROOK_VALUE_Eg            514          567
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           944         1015
+
+2026-06-02 22:31:41,908 INFO     Testing {'PAWN_VALUE_Mg': 96, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 334, 'KNIGHT_VALUE_Eg': 347, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 497, 'ROOK_VALUE_Eg': 557, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 997}
+2026-06-02 22:31:41,910 INFO     Start experiment
+2026-06-02 22:37:53,960 INFO     Experiment finished (372.049818s elapsed).
+2026-06-02 22:37:54,319 INFO     Got Elo: 28.232429714282937 +- 35.165927460090515
+2026-06-02 22:37:54,319 INFO     Estimated draw rate: 65.79%
+2026-06-02 22:37:54,319 INFO     Updating model
+2026-06-02 22:38:38,592 INFO     GP sampling finished (44.272608s)
+2026-06-02 22:38:38,938 INFO     Starting iteration 471
+2026-06-02 22:39:13,740 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 22:39:13,740 INFO     Estimated Elo: 6.4585 +- 3.7367
+2026-06-02 22:39:13,740 INFO     90.0% confidence interval of the Elo value: (0.3122, 12.6049)
+2026-06-02 22:39:14,001 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          347          381
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            470          522
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           943         1013
+
+2026-06-02 22:39:14,002 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 355, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 389, 'ROOK_VALUE_Mg': 508, 'ROOK_VALUE_Eg': 529, 'QUEEN_VALUE_Mg': 961, 'QUEEN_VALUE_Eg': 983}
+2026-06-02 22:39:14,004 INFO     Start experiment
+2026-06-02 22:45:16,691 INFO     Experiment finished (362.686411s elapsed).
+2026-06-02 22:45:17,130 INFO     Got Elo: 28.232429714282937 +- 29.710754918537287
+2026-06-02 22:45:17,130 INFO     Estimated draw rate: 65.79%
+2026-06-02 22:45:17,130 INFO     Updating model
+2026-06-02 22:46:01,738 INFO     GP sampling finished (44.60828s)
+2026-06-02 22:46:02,156 INFO     Starting iteration 472
+2026-06-02 22:46:45,756 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 22:46:45,756 INFO     Estimated Elo: 6.5488 +- 3.7649
+2026-06-02 22:46:45,756 INFO     90.0% confidence interval of the Elo value: (0.3561, 12.7415)
+2026-06-02 22:46:45,983 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            465          518
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           927         1000
+QUEEN_VALUE_Eg           940         1010
+
+2026-06-02 22:46:45,983 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 361, 'BISHOP_VALUE_Mg': 366, 'BISHOP_VALUE_Eg': 372, 'ROOK_VALUE_Mg': 498, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 994, 'QUEEN_VALUE_Eg': 993}
+2026-06-02 22:46:45,985 INFO     Start experiment
+2026-06-02 22:52:35,057 INFO     Experiment finished (349.072404s elapsed).
+2026-06-02 22:52:35,443 INFO     Got Elo: -9.392438339809123 +- 37.818600314215665
+2026-06-02 22:52:35,443 INFO     Estimated draw rate: 55.26%
+2026-06-02 22:52:35,443 INFO     Updating model
+2026-06-02 22:53:19,650 INFO     GP sampling finished (44.206763s)
+2026-06-02 22:53:19,973 INFO     Starting iteration 473
+2026-06-02 22:53:59,282 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 22:53:59,282 INFO     Estimated Elo: 6.5547 +- 3.8126
+2026-06-02 22:53:59,283 INFO     90.0% confidence interval of the Elo value: (0.2836, 12.8259)
+2026-06-02 22:53:59,566 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          349          385
+BISHOP_VALUE_Eg          361          398
+ROOK_VALUE_Mg            466          517
+ROOK_VALUE_Eg            517          569
+QUEEN_VALUE_Mg           921          993
+QUEEN_VALUE_Eg           947         1017
+
+2026-06-02 22:53:59,566 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 112, 'KNIGHT_VALUE_Mg': 358, 'KNIGHT_VALUE_Eg': 367, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 478, 'ROOK_VALUE_Eg': 533, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-02 22:53:59,569 INFO     Start experiment
+2026-06-02 23:00:06,023 INFO     Experiment finished (366.454374s elapsed).
+2026-06-02 23:00:06,421 INFO     Got Elo: -28.232429714282908 +- 48.23572114218683
+2026-06-02 23:00:06,421 INFO     Estimated draw rate: 44.74%
+2026-06-02 23:00:06,421 INFO     Updating model
+2026-06-02 23:00:50,983 INFO     GP sampling finished (44.561774s)
+2026-06-02 23:00:51,328 INFO     Starting iteration 474
+2026-06-02 23:01:36,773 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:01:36,773 INFO     Estimated Elo: 6.4211 +- 3.7079
+2026-06-02 23:01:36,773 INFO     90.0% confidence interval of the Elo value: (0.3221, 12.52)
+2026-06-02 23:01:37,030 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          346          382
+BISHOP_VALUE_Mg          349          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           924          995
+QUEEN_VALUE_Eg           940         1013
+
+2026-06-02 23:01:37,030 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 333, 'KNIGHT_VALUE_Eg': 372, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 384, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 977, 'QUEEN_VALUE_Eg': 987}
+2026-06-02 23:01:37,031 INFO     Start experiment
+2026-06-02 23:08:03,420 INFO     Experiment finished (386.387885s elapsed).
+2026-06-02 23:08:03,782 INFO     Got Elo: 56.84270469812558 +- 44.75752702215558
+2026-06-02 23:08:03,782 INFO     Estimated draw rate: 47.37%
+2026-06-02 23:08:03,783 INFO     Updating model
+2026-06-02 23:08:48,734 INFO     GP sampling finished (44.951203s)
+2026-06-02 23:08:49,132 INFO     Starting iteration 475
+2026-06-02 23:09:22,213 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:09:22,213 INFO     Estimated Elo: 6.4728 +- 3.6105
+2026-06-02 23:09:22,213 INFO     90.0% confidence interval of the Elo value: (0.534, 12.4115)
+2026-06-02 23:09:22,638 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          330          366
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            517          570
+QUEEN_VALUE_Mg           927          996
+QUEEN_VALUE_Eg           945         1015
+
+2026-06-02 23:09:22,639 INFO     Testing {'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 331, 'KNIGHT_VALUE_Eg': 348, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 495, 'ROOK_VALUE_Eg': 552, 'QUEEN_VALUE_Mg': 962, 'QUEEN_VALUE_Eg': 993}
+2026-06-02 23:09:22,641 INFO     Start experiment
+2026-06-02 23:16:19,698 INFO     Experiment finished (417.056274s elapsed).
+2026-06-02 23:16:20,048 INFO     Got Elo: 9.392438339809145 +- 37.86066107097167
+2026-06-02 23:16:20,048 INFO     Estimated draw rate: 55.26%
+2026-06-02 23:16:20,048 INFO     Updating model
+2026-06-02 23:17:04,746 INFO     GP sampling finished (44.696884s)
+2026-06-02 23:17:05,129 INFO     Starting iteration 476
+2026-06-02 23:17:44,212 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:17:44,212 INFO     Estimated Elo: 6.4958 +- 3.6489
+2026-06-02 23:17:44,212 INFO     90.0% confidence interval of the Elo value: (0.4939, 12.4977)
+2026-06-02 23:17:44,483 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          117
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          361          398
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           947         1016
+
+2026-06-02 23:17:44,483 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 352, 'KNIGHT_VALUE_Eg': 368, 'BISHOP_VALUE_Mg': 372, 'BISHOP_VALUE_Eg': 377, 'ROOK_VALUE_Mg': 500, 'ROOK_VALUE_Eg': 553, 'QUEEN_VALUE_Mg': 982, 'QUEEN_VALUE_Eg': 992}
+2026-06-02 23:17:44,486 INFO     Start experiment
+2026-06-02 23:23:36,176 INFO     Experiment finished (351.689495s elapsed).
+2026-06-02 23:23:36,545 INFO     Got Elo: -37.70796673673921 +- 30.721392430212198
+2026-06-02 23:23:36,546 INFO     Estimated draw rate: 68.42%
+2026-06-02 23:23:36,546 INFO     Updating model
+2026-06-02 23:24:21,046 INFO     GP sampling finished (44.500004s)
+2026-06-02 23:24:21,513 INFO     Starting iteration 477
+2026-06-02 23:24:58,143 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:24:58,143 INFO     Estimated Elo: 6.3426 +- 3.5591
+2026-06-02 23:24:58,143 INFO     90.0% confidence interval of the Elo value: (0.4883, 12.1969)
+2026-06-02 23:24:58,417 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          358          394
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            512          564
+QUEEN_VALUE_Mg           922          994
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-02 23:24:58,417 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 110, 'KNIGHT_VALUE_Mg': 355, 'KNIGHT_VALUE_Eg': 372, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 393, 'ROOK_VALUE_Mg': 514, 'ROOK_VALUE_Eg': 555, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 990}
+2026-06-02 23:24:58,419 INFO     Start experiment
+2026-06-02 23:31:06,631 INFO     Experiment finished (368.211792s elapsed).
+2026-06-02 23:31:06,976 INFO     Got Elo: 9.392438339809145 +- 35.46161659826506
+2026-06-02 23:31:06,976 INFO     Estimated draw rate: 60.53%
+2026-06-02 23:31:06,976 INFO     Updating model
+2026-06-02 23:31:51,518 INFO     GP sampling finished (44.541188s)
+2026-06-02 23:31:51,935 INFO     Starting iteration 478
+2026-06-02 23:32:34,418 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:32:34,419 INFO     Estimated Elo: 6.4206 +- 3.6645
+2026-06-02 23:32:34,419 INFO     90.0% confidence interval of the Elo value: (0.393, 12.4482)
+2026-06-02 23:32:34,711 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            473          524
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           924          995
+QUEEN_VALUE_Eg           940         1012
+
+2026-06-02 23:32:34,711 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 381, 'BISHOP_VALUE_Mg': 370, 'BISHOP_VALUE_Eg': 371, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 560, 'QUEEN_VALUE_Mg': 979, 'QUEEN_VALUE_Eg': 1010}
+2026-06-02 23:32:34,714 INFO     Start experiment
+2026-06-02 23:38:54,770 INFO     Experiment finished (380.055743s elapsed).
+2026-06-02 23:38:55,115 INFO     Got Elo: 37.707966736739216 +- 36.08683536754228
+2026-06-02 23:38:55,116 INFO     Estimated draw rate: 52.63%
+2026-06-02 23:38:55,116 INFO     Updating model
+2026-06-02 23:39:39,877 INFO     GP sampling finished (44.760987s)
+2026-06-02 23:39:40,257 INFO     Starting iteration 479
+2026-06-02 23:40:19,270 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 994}
+2026-06-02 23:40:19,270 INFO     Estimated Elo: 6.4357 +- 3.57
+2026-06-02 23:40:19,270 INFO     90.0% confidence interval of the Elo value: (0.5636, 12.3078)
+2026-06-02 23:40:19,686 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          366
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          521
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           926          995
+QUEEN_VALUE_Eg           944         1013
+
+2026-06-02 23:40:19,688 INFO     Testing {'PAWN_VALUE_Mg': 93, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 334, 'KNIGHT_VALUE_Eg': 349, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 538, 'QUEEN_VALUE_Mg': 983, 'QUEEN_VALUE_Eg': 965}
+2026-06-02 23:40:19,690 INFO     Start experiment
+2026-06-02 23:47:19,369 INFO     Experiment finished (419.676374s elapsed).
+2026-06-02 23:47:19,750 INFO     Got Elo: 56.84270469812558 +- 37.93247509388596
+2026-06-02 23:47:19,750 INFO     Estimated draw rate: 52.63%
+2026-06-02 23:47:19,750 INFO     Updating model
+2026-06-02 23:48:04,102 INFO     GP sampling finished (44.352143s)
+2026-06-02 23:48:04,424 INFO     Starting iteration 480
+2026-06-02 23:48:40,796 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 381, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 992}
+2026-06-02 23:48:40,797 INFO     Estimated Elo: 6.5273 +- 3.4683
+2026-06-02 23:48:40,797 INFO     90.0% confidence interval of the Elo value: (0.8224, 12.2321)
+2026-06-02 23:48:41,084 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          363          400
+ROOK_VALUE_Mg            472          524
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           924          996
+QUEEN_VALUE_Eg           947         1017
+
+2026-06-02 23:48:41,084 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 343, 'KNIGHT_VALUE_Eg': 346, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 373, 'ROOK_VALUE_Mg': 498, 'ROOK_VALUE_Eg': 535, 'QUEEN_VALUE_Mg': 975, 'QUEEN_VALUE_Eg': 983}
+2026-06-02 23:48:41,087 INFO     Start experiment
+2026-06-02 23:54:38,563 INFO     Experiment finished (357.475699s elapsed).
+2026-06-02 23:54:38,900 INFO     Got Elo: -37.70796673673921 +- 42.99509067160598
+2026-06-02 23:54:38,900 INFO     Estimated draw rate: 52.63%
+2026-06-02 23:54:38,900 INFO     Updating model
+2026-06-02 23:55:23,622 INFO     GP sampling finished (44.72179s)
+2026-06-02 23:55:24,051 INFO     Starting iteration 481
+2026-06-02 23:55:56,140 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 993}
+2026-06-02 23:55:56,140 INFO     Estimated Elo: 6.4048 +- 3.4548
+2026-06-02 23:55:56,140 INFO     90.0% confidence interval of the Elo value: (0.7222, 12.0875)
+2026-06-02 23:55:56,429 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            515          569
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           940         1011
+
+2026-06-02 23:55:56,429 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 112, 'KNIGHT_VALUE_Mg': 333, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 368, 'ROOK_VALUE_Mg': 502, 'ROOK_VALUE_Eg': 554, 'QUEEN_VALUE_Mg': 991, 'QUEEN_VALUE_Eg': 1010}
+2026-06-02 23:55:56,431 INFO     Start experiment
+2026-06-03 00:01:38,243 INFO     Experiment finished (341.811174s elapsed).
+2026-06-03 00:01:38,617 INFO     Got Elo: -18.798625070489397 +- 31.425894884402172
+2026-06-03 00:01:38,618 INFO     Estimated draw rate: 68.42%
+2026-06-03 00:01:38,618 INFO     Updating model
+2026-06-03 00:02:22,969 INFO     GP sampling finished (44.351066s)
+2026-06-03 00:02:23,373 INFO     Starting iteration 482
+2026-06-03 00:02:52,771 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 00:02:52,771 INFO     Estimated Elo: 6.3401 +- 3.4218
+2026-06-03 00:02:52,771 INFO     90.0% confidence interval of the Elo value: (0.7117, 11.9686)
+2026-06-03 00:02:53,059 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          369
+KNIGHT_VALUE_Eg          350          384
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            516          569
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           947         1019
+
+2026-06-03 00:02:53,059 INFO     Testing {'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 333, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 521, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 1007}
+2026-06-03 00:02:53,062 INFO     Start experiment
+2026-06-03 00:09:35,976 INFO     Experiment finished (402.913923s elapsed).
+2026-06-03 00:09:36,398 INFO     Got Elo: 9.392438339809145 +- 30.188706237565142
+2026-06-03 00:09:36,398 INFO     Estimated draw rate: 60.53%
+2026-06-03 00:09:36,398 INFO     Updating model
+2026-06-03 00:10:21,854 INFO     GP sampling finished (45.455843s)
+2026-06-03 00:10:22,191 INFO     Starting iteration 483
+2026-06-03 00:11:02,610 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 00:11:02,610 INFO     Estimated Elo: 6.3335 +- 3.4013
+2026-06-03 00:11:02,610 INFO     90.0% confidence interval of the Elo value: (0.7388, 11.9283)
+2026-06-03 00:11:02,880 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            468          521
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           921          993
+QUEEN_VALUE_Eg           946         1016
+
+2026-06-03 00:11:02,883 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 112, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 354, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 385, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 561, 'QUEEN_VALUE_Mg': 977, 'QUEEN_VALUE_Eg': 1007}
+2026-06-03 00:11:02,885 INFO     Start experiment
+2026-06-03 00:17:38,865 INFO     Experiment finished (395.978823s elapsed).
+2026-06-03 00:17:39,206 INFO     Got Elo: 37.70796673673929 +- 30.882935480474426
+2026-06-03 00:17:39,206 INFO     Estimated draw rate: 68.42%
+2026-06-03 00:17:39,206 INFO     Updating model
+2026-06-03 00:18:24,114 INFO     GP sampling finished (44.908071s)
+2026-06-03 00:18:24,447 INFO     Starting iteration 484
+2026-06-03 00:18:59,976 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 00:18:59,976 INFO     Estimated Elo: 6.3943 +- 3.3653
+2026-06-03 00:18:59,976 INFO     90.0% confidence interval of the Elo value: (0.8589, 11.9296)
+2026-06-03 00:19:00,378 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-03 00:19:00,381 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 361, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 392, 'ROOK_VALUE_Mg': 516, 'ROOK_VALUE_Eg': 548, 'QUEEN_VALUE_Mg': 991, 'QUEEN_VALUE_Eg': 989}
+2026-06-03 00:19:00,384 INFO     Start experiment
+2026-06-03 00:25:21,972 INFO     Experiment finished (381.58756s elapsed).
+2026-06-03 00:25:22,376 INFO     Got Elo: -28.232429714282908 +- 35.16208944963341
+2026-06-03 00:25:22,377 INFO     Estimated draw rate: 65.79%
+2026-06-03 00:25:22,377 INFO     Updating model
+2026-06-03 00:26:07,358 INFO     GP sampling finished (44.980642s)
+2026-06-03 00:26:07,751 INFO     Starting iteration 485
+2026-06-03 00:26:41,934 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 00:26:41,935 INFO     Estimated Elo: 6.272 +- 3.2884
+2026-06-03 00:26:41,935 INFO     90.0% confidence interval of the Elo value: (0.8631, 11.6808)
+2026-06-03 00:26:42,216 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            468          519
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           922          991
+QUEEN_VALUE_Eg           946         1018
+
+2026-06-03 00:26:42,216 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 344, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 550, 'QUEEN_VALUE_Mg': 994, 'QUEEN_VALUE_Eg': 970}
+2026-06-03 00:26:42,218 INFO     Start experiment
+2026-06-03 00:33:37,644 INFO     Experiment finished (415.425082s elapsed).
+2026-06-03 00:33:38,020 INFO     Got Elo: -47.23972483119777 +- 31.692586495736325
+2026-06-03 00:33:38,020 INFO     Estimated draw rate: 55.26%
+2026-06-03 00:33:38,020 INFO     Updating model
+2026-06-03 00:34:23,227 INFO     GP sampling finished (45.206469s)
+2026-06-03 00:34:23,566 INFO     Starting iteration 486
+2026-06-03 00:35:04,523 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 00:35:04,523 INFO     Estimated Elo: 6.1315 +- 3.2294
+2026-06-03 00:35:04,523 INFO     90.0% confidence interval of the Elo value: (0.8196, 11.4433)
+2026-06-03 00:35:04,769 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          334          370
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            471          524
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           947         1018
+
+2026-06-03 00:35:04,771 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 348, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 379, 'ROOK_VALUE_Mg': 510, 'ROOK_VALUE_Eg': 540, 'QUEEN_VALUE_Mg': 985, 'QUEEN_VALUE_Eg': 1004}
+2026-06-03 00:35:04,773 INFO     Start experiment
+2026-06-03 00:40:54,593 INFO     Experiment finished (349.818309s elapsed).
+2026-06-03 00:40:54,966 INFO     Got Elo: 9.392438339809145 +- 32.92743585742365
+2026-06-03 00:40:54,966 INFO     Estimated draw rate: 65.79%
+2026-06-03 00:40:54,966 INFO     Updating model
+2026-06-03 00:41:40,512 INFO     GP sampling finished (45.544887s)
+2026-06-03 00:41:40,909 INFO     Starting iteration 487
+2026-06-03 00:42:17,450 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 00:42:17,450 INFO     Estimated Elo: 6.1673 +- 3.2755
+2026-06-03 00:42:17,450 INFO     90.0% confidence interval of the Elo value: (0.7796, 11.555)
+2026-06-03 00:42:17,732 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           922          991
+QUEEN_VALUE_Eg           942         1015
+
+2026-06-03 00:42:17,733 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 342, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 366, 'ROOK_VALUE_Mg': 514, 'ROOK_VALUE_Eg': 562, 'QUEEN_VALUE_Mg': 977, 'QUEEN_VALUE_Eg': 1012}
+2026-06-03 00:42:17,735 INFO     Start experiment
+2026-06-03 00:48:08,315 INFO     Experiment finished (350.57928s elapsed).
+2026-06-03 00:48:08,666 INFO     Got Elo: -56.8427046981255 +- 40.24341881059042
+2026-06-03 00:48:08,666 INFO     Estimated draw rate: 52.63%
+2026-06-03 00:48:08,666 INFO     Updating model
+2026-06-03 00:48:53,869 INFO     GP sampling finished (45.202954s)
+2026-06-03 00:48:54,295 INFO     Starting iteration 488
+2026-06-03 00:49:27,079 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 00:49:27,079 INFO     Estimated Elo: 6.0908 +- 3.3339
+2026-06-03 00:49:27,079 INFO     90.0% confidence interval of the Elo value: (0.6069, 11.5746)
+2026-06-03 00:49:27,362 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          360          396
+ROOK_VALUE_Mg            472          523
+ROOK_VALUE_Eg            512          564
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 00:49:27,362 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 109, 'KNIGHT_VALUE_Mg': 353, 'KNIGHT_VALUE_Eg': 372, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 373, 'ROOK_VALUE_Mg': 497, 'ROOK_VALUE_Eg': 538, 'QUEEN_VALUE_Mg': 988, 'QUEEN_VALUE_Eg': 1015}
+2026-06-03 00:49:27,365 INFO     Start experiment
+2026-06-03 00:56:10,995 INFO     Experiment finished (403.629905s elapsed).
+2026-06-03 00:56:11,328 INFO     Got Elo: -28.232429714282848 +- 32.60413017231769
+2026-06-03 00:56:11,328 INFO     Estimated draw rate: 60.53%
+2026-06-03 00:56:11,328 INFO     Updating model
+2026-06-03 00:56:56,687 INFO     GP sampling finished (45.358941s)
+2026-06-03 00:56:57,060 INFO     Starting iteration 489
+2026-06-03 00:57:26,927 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 00:57:26,927 INFO     Estimated Elo: 6.0946 +- 3.4353
+2026-06-03 00:57:26,927 INFO     90.0% confidence interval of the Elo value: (0.4439, 11.7452)
+2026-06-03 00:57:27,189 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            470          522
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           921          990
+QUEEN_VALUE_Eg           946         1013
+
+2026-06-03 00:57:27,190 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 334, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 380, 'BISHOP_VALUE_Eg': 398, 'ROOK_VALUE_Mg': 501, 'ROOK_VALUE_Eg': 548, 'QUEEN_VALUE_Mg': 971, 'QUEEN_VALUE_Eg': 980}
+2026-06-03 00:57:27,192 INFO     Start experiment
+2026-06-03 01:03:17,087 INFO     Experiment finished (349.893863s elapsed).
+2026-06-03 01:03:17,433 INFO     Got Elo: 9.392438339809145 +- 35.5072333750879
+2026-06-03 01:03:17,434 INFO     Estimated draw rate: 60.53%
+2026-06-03 01:03:17,434 INFO     Updating model
+2026-06-03 01:04:03,221 INFO     GP sampling finished (45.786979s)
+2026-06-03 01:04:03,554 INFO     Starting iteration 490
+2026-06-03 01:04:45,651 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:04:45,651 INFO     Estimated Elo: 6.0874 +- 3.42
+2026-06-03 01:04:45,651 INFO     90.0% confidence interval of the Elo value: (0.4619, 11.7129)
+2026-06-03 01:04:46,086 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          347          381
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           922          994
+QUEEN_VALUE_Eg           944         1015
+
+2026-06-03 01:04:46,087 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 110, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 363, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 367, 'ROOK_VALUE_Mg': 517, 'ROOK_VALUE_Eg': 541, 'QUEEN_VALUE_Mg': 990, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 01:04:46,089 INFO     Start experiment
+2026-06-03 01:11:11,363 INFO     Experiment finished (385.272793s elapsed).
+2026-06-03 01:11:11,747 INFO     Got Elo: -0.0 +- 34.25131965197277
+2026-06-03 01:11:11,748 INFO     Estimated draw rate: 57.89%
+2026-06-03 01:11:11,748 INFO     Updating model
+2026-06-03 01:11:56,690 INFO     GP sampling finished (44.942293s)
+2026-06-03 01:11:57,159 INFO     Starting iteration 491
+2026-06-03 01:12:35,654 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:12:35,654 INFO     Estimated Elo: 5.9813 +- 3.2571
+2026-06-03 01:12:35,654 INFO     90.0% confidence interval of the Elo value: (0.6239, 11.3388)
+2026-06-03 01:12:35,939 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          365
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          348          384
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           946         1017
+
+2026-06-03 01:12:35,940 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 115, 'KNIGHT_VALUE_Mg': 340, 'KNIGHT_VALUE_Eg': 352, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 362, 'ROOK_VALUE_Mg': 466, 'ROOK_VALUE_Eg': 522, 'QUEEN_VALUE_Mg': 971, 'QUEEN_VALUE_Eg': 971}
+2026-06-03 01:12:35,942 INFO     Start experiment
+2026-06-03 01:19:29,937 INFO     Experiment finished (413.994686s elapsed).
+2026-06-03 01:19:30,318 INFO     Got Elo: -9.392438339809123 +- 32.926691132286805
+2026-06-03 01:19:30,318 INFO     Estimated draw rate: 65.79%
+2026-06-03 01:19:30,318 INFO     Updating model
+2026-06-03 01:20:16,064 INFO     GP sampling finished (45.746134s)
+2026-06-03 01:20:16,427 INFO     Starting iteration 492
+2026-06-03 01:20:50,262 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 544, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:20:50,262 INFO     Estimated Elo: 5.9362 +- 3.2445
+2026-06-03 01:20:50,262 INFO     90.0% confidence interval of the Elo value: (0.5995, 11.2729)
+2026-06-03 01:20:50,553 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            515          569
+QUEEN_VALUE_Mg           922          992
+QUEEN_VALUE_Eg           940         1012
+
+2026-06-03 01:20:50,553 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 107, 'KNIGHT_VALUE_Mg': 341, 'KNIGHT_VALUE_Eg': 359, 'BISHOP_VALUE_Mg': 375, 'BISHOP_VALUE_Eg': 365, 'ROOK_VALUE_Mg': 512, 'ROOK_VALUE_Eg': 529, 'QUEEN_VALUE_Mg': 975, 'QUEEN_VALUE_Eg': 987}
+2026-06-03 01:20:50,556 INFO     Start experiment
+2026-06-03 01:27:15,232 INFO     Experiment finished (384.676117s elapsed).
+2026-06-03 01:27:15,641 INFO     Got Elo: 18.7986250704894 +- 31.39142468111431
+2026-06-03 01:27:15,641 INFO     Estimated draw rate: 63.16%
+2026-06-03 01:27:15,641 INFO     Updating model
+2026-06-03 01:28:01,380 INFO     GP sampling finished (45.738351s)
+2026-06-03 01:28:01,749 INFO     Starting iteration 493
+2026-06-03 01:28:40,047 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:28:40,047 INFO     Estimated Elo: 5.944 +- 3.2034
+2026-06-03 01:28:40,047 INFO     90.0% confidence interval of the Elo value: (0.675, 11.2131)
+2026-06-03 01:28:40,327 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            466          520
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           949         1020
+
+2026-06-03 01:28:40,328 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 367, 'BISHOP_VALUE_Mg': 376, 'BISHOP_VALUE_Eg': 391, 'ROOK_VALUE_Mg': 517, 'ROOK_VALUE_Eg': 553, 'QUEEN_VALUE_Mg': 981, 'QUEEN_VALUE_Eg': 991}
+2026-06-03 01:28:40,330 INFO     Start experiment
+2026-06-03 01:35:02,469 INFO     Experiment finished (382.13839s elapsed).
+2026-06-03 01:35:02,985 INFO     Got Elo: 37.707966736739216 +- 33.55472543241495
+2026-06-03 01:35:02,985 INFO     Estimated draw rate: 52.63%
+2026-06-03 01:35:02,985 INFO     Updating model
+2026-06-03 01:35:48,338 INFO     GP sampling finished (45.35298s)
+2026-06-03 01:35:48,685 INFO     Starting iteration 494
+2026-06-03 01:36:25,453 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:36:25,454 INFO     Estimated Elo: 5.9866 +- 3.1444
+2026-06-03 01:36:25,454 INFO     90.0% confidence interval of the Elo value: (0.8146, 11.1586)
+2026-06-03 01:36:25,694 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          380
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          358          396
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            511          561
+QUEEN_VALUE_Mg           925          996
+QUEEN_VALUE_Eg           942         1012
+
+2026-06-03 01:36:25,695 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 100, 'KNIGHT_VALUE_Mg': 332, 'KNIGHT_VALUE_Eg': 352, 'BISHOP_VALUE_Mg': 374, 'BISHOP_VALUE_Eg': 385, 'ROOK_VALUE_Mg': 504, 'ROOK_VALUE_Eg': 554, 'QUEEN_VALUE_Mg': 997, 'QUEEN_VALUE_Eg': 946}
+2026-06-03 01:36:25,697 INFO     Start experiment
+2026-06-03 01:43:12,149 INFO     Experiment finished (406.45179s elapsed).
+2026-06-03 01:43:12,473 INFO     Got Elo: -9.392438339809123 +- 42.271530178467934
+2026-06-03 01:43:12,473 INFO     Estimated draw rate: 50.00%
+2026-06-03 01:43:12,474 INFO     Updating model
+2026-06-03 01:43:57,577 INFO     GP sampling finished (45.102662s)
+2026-06-03 01:43:57,925 INFO     Starting iteration 495
+2026-06-03 01:44:31,242 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:44:31,242 INFO     Estimated Elo: 6.0101 +- 3.2072
+2026-06-03 01:44:31,242 INFO     90.0% confidence interval of the Elo value: (0.7347, 11.2854)
+2026-06-03 01:44:31,549 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            465          520
+ROOK_VALUE_Eg            515          567
+QUEEN_VALUE_Mg           920          992
+QUEEN_VALUE_Eg           941         1009
+
+2026-06-03 01:44:31,550 INFO     Testing {'PAWN_VALUE_Mg': 101, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 380, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 524, 'QUEEN_VALUE_Mg': 972, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:44:31,552 INFO     Start experiment
+2026-06-03 01:51:13,575 INFO     Experiment finished (402.023126s elapsed).
+2026-06-03 01:51:13,893 INFO     Got Elo: -9.392438339809123 +- 44.3776218523252
+2026-06-03 01:51:13,893 INFO     Estimated draw rate: 55.26%
+2026-06-03 01:51:13,893 INFO     Updating model
+2026-06-03 01:52:00,187 INFO     GP sampling finished (46.293585s)
+2026-06-03 01:52:00,524 INFO     Starting iteration 496
+2026-06-03 01:52:31,417 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:52:31,417 INFO     Estimated Elo: 5.9353 +- 3.143
+2026-06-03 01:52:31,418 INFO     90.0% confidence interval of the Elo value: (0.7655, 11.1051)
+2026-06-03 01:52:31,913 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            471          521
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           922          991
+QUEEN_VALUE_Eg           946         1018
+
+2026-06-03 01:52:31,914 INFO     Testing {'PAWN_VALUE_Mg': 92, 'PAWN_VALUE_Eg': 109, 'KNIGHT_VALUE_Mg': 351, 'KNIGHT_VALUE_Eg': 347, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 395, 'ROOK_VALUE_Mg': 508, 'ROOK_VALUE_Eg': 558, 'QUEEN_VALUE_Mg': 992, 'QUEEN_VALUE_Eg': 987}
+2026-06-03 01:52:31,917 INFO     Start experiment
+2026-06-03 01:58:20,146 INFO     Experiment finished (348.229317s elapsed).
+2026-06-03 01:58:20,499 INFO     Got Elo: -76.32580635055503 +- 33.94053684152847
+2026-06-03 01:58:20,499 INFO     Estimated draw rate: 57.89%
+2026-06-03 01:58:20,500 INFO     Updating model
+2026-06-03 01:59:06,508 INFO     GP sampling finished (46.008131s)
+2026-06-03 01:59:06,893 INFO     Starting iteration 497
+2026-06-03 01:59:44,296 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 01:59:44,297 INFO     Estimated Elo: 5.8408 +- 3.2671
+2026-06-03 01:59:44,297 INFO     90.0% confidence interval of the Elo value: (0.4669, 11.2146)
+2026-06-03 01:59:44,607 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          363          399
+ROOK_VALUE_Mg            468          521
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 01:59:44,608 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 348, 'KNIGHT_VALUE_Eg': 373, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 395, 'ROOK_VALUE_Mg': 517, 'ROOK_VALUE_Eg': 569, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 1011}
+2026-06-03 01:59:44,610 INFO     Start experiment
+2026-06-03 02:06:09,279 INFO     Experiment finished (384.668567s elapsed).
+2026-06-03 02:06:09,609 INFO     Got Elo: -37.70796673673921 +- 36.11741193383754
+2026-06-03 02:06:09,610 INFO     Estimated draw rate: 57.89%
+2026-06-03 02:06:09,610 INFO     Updating model
+2026-06-03 02:06:54,845 INFO     GP sampling finished (45.234971s)
+2026-06-03 02:06:55,187 INFO     Starting iteration 498
+2026-06-03 02:07:38,062 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:07:38,062 INFO     Estimated Elo: 5.7799 +- 3.3258
+2026-06-03 02:07:38,062 INFO     90.0% confidence interval of the Elo value: (0.3095, 11.2504)
+2026-06-03 02:07:38,323 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             94          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          361          398
+ROOK_VALUE_Mg            468          521
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           929         1000
+QUEEN_VALUE_Eg           947         1018
+
+2026-06-03 02:07:38,323 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 345, 'KNIGHT_VALUE_Eg': 351, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 372, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 538, 'QUEEN_VALUE_Mg': 972, 'QUEEN_VALUE_Eg': 981}
+2026-06-03 02:07:38,326 INFO     Start experiment
+2026-06-03 02:14:54,061 INFO     Experiment finished (435.734395s elapsed).
+2026-06-03 02:14:54,407 INFO     Got Elo: -18.798625070489397 +- 38.92609161695979
+2026-06-03 02:14:54,407 INFO     Estimated draw rate: 47.37%
+2026-06-03 02:14:54,407 INFO     Updating model
+2026-06-03 02:15:40,977 INFO     GP sampling finished (46.569089s)
+2026-06-03 02:15:41,343 INFO     Starting iteration 499
+2026-06-03 02:16:19,901 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:16:19,901 INFO     Estimated Elo: 5.7936 +- 3.4126
+2026-06-03 02:16:19,901 INFO     90.0% confidence interval of the Elo value: (0.1803, 11.4069)
+2026-06-03 02:16:20,223 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             94          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          348          383
+BISHOP_VALUE_Eg          362          399
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           928          998
+QUEEN_VALUE_Eg           942         1012
+
+2026-06-03 02:16:20,224 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 347, 'KNIGHT_VALUE_Eg': 379, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 387, 'ROOK_VALUE_Mg': 512, 'ROOK_VALUE_Eg': 526, 'QUEEN_VALUE_Mg': 959, 'QUEEN_VALUE_Eg': 1001}
+2026-06-03 02:16:20,226 INFO     Start experiment
+2026-06-03 02:22:34,378 INFO     Experiment finished (374.151614s elapsed).
+2026-06-03 02:22:34,770 INFO     Got Elo: -0.0 +- 41.27484837307895
+2026-06-03 02:22:34,771 INFO     Estimated draw rate: 52.63%
+2026-06-03 02:22:34,771 INFO     Updating model
+2026-06-03 02:23:20,143 INFO     GP sampling finished (45.371865s)
+2026-06-03 02:23:20,484 INFO     Starting iteration 500
+2026-06-03 02:23:55,033 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:23:55,034 INFO     Estimated Elo: 5.7806 +- 3.3983
+2026-06-03 02:23:55,034 INFO     90.0% confidence interval of the Elo value: (0.1909, 11.3702)
+2026-06-03 02:23:55,267 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            466          517
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           928          998
+QUEEN_VALUE_Eg           950         1018
+
+2026-06-03 02:23:55,267 INFO     Testing {'PAWN_VALUE_Mg': 105, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 355, 'KNIGHT_VALUE_Eg': 379, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 369, 'ROOK_VALUE_Mg': 493, 'ROOK_VALUE_Eg': 570, 'QUEEN_VALUE_Mg': 995, 'QUEEN_VALUE_Eg': 1015}
+2026-06-03 02:23:55,269 INFO     Start experiment
+2026-06-03 02:30:38,144 INFO     Experiment finished (402.875409s elapsed).
+2026-06-03 02:30:38,488 INFO     Got Elo: -37.70796673673921 +- 47.057546840371714
+2026-06-03 02:30:38,489 INFO     Estimated draw rate: 47.37%
+2026-06-03 02:30:38,489 INFO     Updating model
+2026-06-03 02:31:25,353 INFO     GP sampling finished (46.863574s)
+2026-06-03 02:31:25,703 INFO     Starting iteration 501
+2026-06-03 02:32:03,754 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:32:03,754 INFO     Estimated Elo: 5.7215 +- 3.4162
+2026-06-03 02:32:03,754 INFO     90.0% confidence interval of the Elo value: (0.1023, 11.3407)
+2026-06-03 02:32:04,025 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             94          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            512          565
+QUEEN_VALUE_Mg           929          999
+QUEEN_VALUE_Eg           947         1018
+
+2026-06-03 02:32:04,026 INFO     Testing {'PAWN_VALUE_Mg': 96, 'PAWN_VALUE_Eg': 107, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 508, 'ROOK_VALUE_Eg': 512, 'QUEEN_VALUE_Mg': 983, 'QUEEN_VALUE_Eg': 978}
+2026-06-03 02:32:04,028 INFO     Start experiment
+2026-06-03 02:38:53,977 INFO     Experiment finished (409.949013s elapsed).
+2026-06-03 02:38:54,324 INFO     Got Elo: -18.798625070489397 +- 39.0105880868273
+2026-06-03 02:38:54,324 INFO     Estimated draw rate: 57.89%
+2026-06-03 02:38:54,325 INFO     Updating model
+2026-06-03 02:39:40,304 INFO     GP sampling finished (45.97918s)
+2026-06-03 02:39:40,660 INFO     Starting iteration 502
+2026-06-03 02:40:21,017 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:40:21,017 INFO     Estimated Elo: 5.6092 +- 3.2879
+2026-06-03 02:40:21,017 INFO     90.0% confidence interval of the Elo value: (0.2011, 11.0173)
+2026-06-03 02:40:21,274 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            470          522
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           925          995
+QUEEN_VALUE_Eg           941         1013
+
+2026-06-03 02:40:21,274 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 350, 'KNIGHT_VALUE_Eg': 352, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 399, 'ROOK_VALUE_Mg': 496, 'ROOK_VALUE_Eg': 531, 'QUEEN_VALUE_Mg': 995, 'QUEEN_VALUE_Eg': 1012}
+2026-06-03 02:40:21,276 INFO     Start experiment
+2026-06-03 02:46:56,572 INFO     Experiment finished (395.294896s elapsed).
+2026-06-03 02:46:56,977 INFO     Got Elo: 18.7986250704894 +- 31.432964116022198
+2026-06-03 02:46:56,977 INFO     Estimated draw rate: 57.89%
+2026-06-03 02:46:56,977 INFO     Updating model
+2026-06-03 02:47:42,738 INFO     GP sampling finished (45.761065s)
+2026-06-03 02:47:43,165 INFO     Starting iteration 503
+2026-06-03 02:48:20,828 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:48:20,829 INFO     Estimated Elo: 5.5836 +- 3.1967
+2026-06-03 02:48:20,829 INFO     90.0% confidence interval of the Elo value: (0.3255, 10.8418)
+2026-06-03 02:48:21,132 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          347          384
+BISHOP_VALUE_Mg          349          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            471          524
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           928          998
+QUEEN_VALUE_Eg           944         1014
+
+2026-06-03 02:48:21,132 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 107, 'KNIGHT_VALUE_Mg': 340, 'KNIGHT_VALUE_Eg': 377, 'BISHOP_VALUE_Mg': 373, 'BISHOP_VALUE_Eg': 377, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 523, 'QUEEN_VALUE_Mg': 993, 'QUEEN_VALUE_Eg': 993}
+2026-06-03 02:48:21,135 INFO     Start experiment
+2026-06-03 02:54:45,235 INFO     Experiment finished (384.10044s elapsed).
+2026-06-03 02:54:45,576 INFO     Got Elo: -56.84270469812541 +- 35.471219141486564
+2026-06-03 02:54:45,576 INFO     Estimated draw rate: 52.63%
+2026-06-03 02:54:45,576 INFO     Updating model
+2026-06-03 02:55:31,375 INFO     GP sampling finished (45.798813s)
+2026-06-03 02:55:31,729 INFO     Starting iteration 504
+2026-06-03 02:56:04,210 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 02:56:04,210 INFO     Estimated Elo: 5.4819 +- 3.2202
+2026-06-03 02:56:04,210 INFO     90.0% confidence interval of the Elo value: (0.1852, 10.7787)
+2026-06-03 02:56:04,475 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            470          524
+ROOK_VALUE_Eg            511          566
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           945         1017
+
+2026-06-03 02:56:04,476 INFO     Testing {'PAWN_VALUE_Mg': 96, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 350, 'KNIGHT_VALUE_Eg': 358, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 535, 'QUEEN_VALUE_Mg': 989, 'QUEEN_VALUE_Eg': 976}
+2026-06-03 02:56:04,477 INFO     Start experiment
+2026-06-03 03:02:25,246 INFO     Experiment finished (380.768596s elapsed).
+2026-06-03 03:02:25,619 INFO     Got Elo: -28.232429714282908 +- 29.69322504408261
+2026-06-03 03:02:25,619 INFO     Estimated draw rate: 60.53%
+2026-06-03 03:02:25,619 INFO     Updating model
+2026-06-03 03:03:12,435 INFO     GP sampling finished (46.815791s)
+2026-06-03 03:03:12,803 INFO     Starting iteration 505
+2026-06-03 03:03:51,103 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:03:51,103 INFO     Estimated Elo: 5.3988 +- 3.2164
+2026-06-03 03:03:51,103 INFO     90.0% confidence interval of the Elo value: (0.1083, 10.6893)
+2026-06-03 03:03:51,373 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            517          570
+QUEEN_VALUE_Mg           921          989
+QUEEN_VALUE_Eg           945         1013
+
+2026-06-03 03:03:51,373 INFO     Testing {'PAWN_VALUE_Mg': 101, 'PAWN_VALUE_Eg': 109, 'KNIGHT_VALUE_Mg': 356, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 384, 'ROOK_VALUE_Mg': 524, 'ROOK_VALUE_Eg': 511, 'QUEEN_VALUE_Mg': 946, 'QUEEN_VALUE_Eg': 983}
+2026-06-03 03:03:51,376 INFO     Start experiment
+2026-06-03 03:10:56,664 INFO     Experiment finished (425.28782s elapsed).
+2026-06-03 03:10:57,005 INFO     Got Elo: 37.707966736739216 +- 38.5341575146064
+2026-06-03 03:10:57,006 INFO     Estimated draw rate: 52.63%
+2026-06-03 03:10:57,006 INFO     Updating model
+2026-06-03 03:11:44,059 INFO     GP sampling finished (47.052947s)
+2026-06-03 03:11:44,409 INFO     Starting iteration 506
+2026-06-03 03:12:20,037 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 03:12:20,037 INFO     Estimated Elo: 5.3839 +- 3.098
+2026-06-03 03:12:20,037 INFO     90.0% confidence interval of the Elo value: (0.2881, 10.4797)
+2026-06-03 03:12:20,318 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            470          521
+ROOK_VALUE_Eg            510          564
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           949         1020
+
+2026-06-03 03:12:20,318 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 331, 'KNIGHT_VALUE_Eg': 367, 'BISHOP_VALUE_Mg': 377, 'BISHOP_VALUE_Eg': 379, 'ROOK_VALUE_Mg': 501, 'ROOK_VALUE_Eg': 551, 'QUEEN_VALUE_Mg': 991, 'QUEEN_VALUE_Eg': 990}
+2026-06-03 03:12:20,321 INFO     Start experiment
+2026-06-03 03:18:48,419 INFO     Experiment finished (388.097979s elapsed).
+2026-06-03 03:18:48,767 INFO     Got Elo: -37.70796673673921 +- 38.502670584918874
+2026-06-03 03:18:48,767 INFO     Estimated draw rate: 52.63%
+2026-06-03 03:18:48,768 INFO     Updating model
+2026-06-03 03:19:35,195 INFO     GP sampling finished (46.427217s)
+2026-06-03 03:19:35,556 INFO     Starting iteration 507
+2026-06-03 03:20:08,232 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:20:08,233 INFO     Estimated Elo: 5.2816 +- 3.0802
+2026-06-03 03:20:08,233 INFO     90.0% confidence interval of the Elo value: (0.2151, 10.3481)
+2026-06-03 03:20:08,544 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            472          524
+ROOK_VALUE_Eg            511          564
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           944         1014
+
+2026-06-03 03:20:08,545 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 345, 'KNIGHT_VALUE_Eg': 381, 'BISHOP_VALUE_Mg': 368, 'BISHOP_VALUE_Eg': 375, 'ROOK_VALUE_Mg': 522, 'ROOK_VALUE_Eg': 532, 'QUEEN_VALUE_Mg': 937, 'QUEEN_VALUE_Eg': 972}
+2026-06-03 03:20:08,547 INFO     Start experiment
+2026-06-03 03:27:05,585 INFO     Experiment finished (417.037095s elapsed).
+2026-06-03 03:27:05,925 INFO     Got Elo: -18.798625070489468 +- 36.56732730783008
+2026-06-03 03:27:05,926 INFO     Estimated draw rate: 57.89%
+2026-06-03 03:27:05,926 INFO     Updating model
+2026-06-03 03:27:52,872 INFO     GP sampling finished (46.946064s)
+2026-06-03 03:27:53,281 INFO     Starting iteration 508
+2026-06-03 03:28:29,580 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:28:29,580 INFO     Estimated Elo: 5.1996 +- 3.0138
+2026-06-03 03:28:29,580 INFO     90.0% confidence interval of the Elo value: (0.2423, 10.1568)
+2026-06-03 03:28:29,832 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          349          384
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            514          567
+QUEEN_VALUE_Mg           929          997
+QUEEN_VALUE_Eg           942         1011
+
+2026-06-03 03:28:29,832 INFO     Testing {'PAWN_VALUE_Mg': 93, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 333, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 361, 'ROOK_VALUE_Mg': 466, 'ROOK_VALUE_Eg': 539, 'QUEEN_VALUE_Mg': 992, 'QUEEN_VALUE_Eg': 976}
+2026-06-03 03:28:29,834 INFO     Start experiment
+2026-06-03 03:34:39,227 INFO     Experiment finished (369.392846s elapsed).
+2026-06-03 03:34:39,617 INFO     Got Elo: -47.23972483119777 +- 34.389000112967985
+2026-06-03 03:34:39,617 INFO     Estimated draw rate: 60.53%
+2026-06-03 03:34:39,617 INFO     Updating model
+2026-06-03 03:35:26,088 INFO     GP sampling finished (46.471321s)
+2026-06-03 03:35:26,545 INFO     Starting iteration 509
+2026-06-03 03:36:03,774 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:36:03,774 INFO     Estimated Elo: 5.086 +- 2.9696
+2026-06-03 03:36:03,774 INFO     90.0% confidence interval of the Elo value: (0.2015, 9.9706)
+2026-06-03 03:36:04,042 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          366
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            511          561
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 03:36:04,042 INFO     Testing {'PAWN_VALUE_Mg': 98, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 344, 'KNIGHT_VALUE_Eg': 368, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 399, 'ROOK_VALUE_Mg': 513, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 968, 'QUEEN_VALUE_Eg': 982}
+2026-06-03 03:36:04,044 INFO     Start experiment
+2026-06-03 03:42:46,595 INFO     Experiment finished (402.550488s elapsed).
+2026-06-03 03:42:46,967 INFO     Got Elo: 9.392438339809145 +- 30.186943499571832
+2026-06-03 03:42:46,967 INFO     Estimated draw rate: 55.26%
+2026-06-03 03:42:46,967 INFO     Updating model
+2026-06-03 03:43:33,644 INFO     GP sampling finished (46.675996s)
+2026-06-03 03:43:34,064 INFO     Starting iteration 510
+2026-06-03 03:44:05,443 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:44:05,443 INFO     Estimated Elo: 5.0143 +- 2.8154
+2026-06-03 03:44:05,444 INFO     90.0% confidence interval of the Elo value: (0.3835, 9.6452)
+2026-06-03 03:44:05,764 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          335          369
+KNIGHT_VALUE_Eg          345          381
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            467          520
+ROOK_VALUE_Eg            516          569
+QUEEN_VALUE_Mg           932         1000
+QUEEN_VALUE_Eg           942         1012
+
+2026-06-03 03:44:05,764 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 347, 'BISHOP_VALUE_Mg': 364, 'BISHOP_VALUE_Eg': 387, 'ROOK_VALUE_Mg': 519, 'ROOK_VALUE_Eg': 554, 'QUEEN_VALUE_Mg': 999, 'QUEEN_VALUE_Eg': 966}
+2026-06-03 03:44:05,767 INFO     Start experiment
+2026-06-03 03:50:08,958 INFO     Experiment finished (363.190499s elapsed).
+2026-06-03 03:50:09,300 INFO     Got Elo: -0.0 +- 34.27043687860741
+2026-06-03 03:50:09,301 INFO     Estimated draw rate: 68.42%
+2026-06-03 03:50:09,301 INFO     Updating model
+2026-06-03 03:50:56,088 INFO     GP sampling finished (46.786857s)
+2026-06-03 03:50:56,441 INFO     Starting iteration 511
+2026-06-03 03:51:27,763 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 03:51:27,763 INFO     Estimated Elo: 5.0483 +- 2.8827
+2026-06-03 03:51:27,764 INFO     90.0% confidence interval of the Elo value: (0.3066, 9.79)
+2026-06-03 03:51:28,038 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          369
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          360          396
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            513          566
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           940         1010
+
+2026-06-03 03:51:28,041 INFO     Testing {'PAWN_VALUE_Mg': 96, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 344, 'KNIGHT_VALUE_Eg': 378, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 373, 'ROOK_VALUE_Mg': 508, 'ROOK_VALUE_Eg': 560, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 990}
+2026-06-03 03:51:28,043 INFO     Start experiment
+2026-06-03 03:57:39,820 INFO     Experiment finished (371.775688s elapsed).
+2026-06-03 03:57:40,170 INFO     Got Elo: -18.798625070489397 +- 36.52589522329411
+2026-06-03 03:57:40,170 INFO     Estimated draw rate: 57.89%
+2026-06-03 03:57:40,171 INFO     Updating model
+2026-06-03 03:58:27,792 INFO     GP sampling finished (47.620953s)
+2026-06-03 03:58:28,165 INFO     Starting iteration 512
+2026-06-03 03:58:57,477 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 03:58:57,477 INFO     Estimated Elo: 4.9897 +- 2.8558
+2026-06-03 03:58:57,478 INFO     90.0% confidence interval of the Elo value: (0.2923, 9.6872)
+2026-06-03 03:58:57,745 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          359          394
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           924          996
+QUEEN_VALUE_Eg           946         1016
+
+2026-06-03 03:58:57,746 INFO     Testing {'PAWN_VALUE_Mg': 103, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 357, 'KNIGHT_VALUE_Eg': 356, 'BISHOP_VALUE_Mg': 380, 'BISHOP_VALUE_Eg': 366, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 520, 'QUEEN_VALUE_Mg': 978, 'QUEEN_VALUE_Eg': 1001}
+2026-06-03 03:58:57,748 INFO     Start experiment
+2026-06-03 04:05:18,777 INFO     Experiment finished (381.028001s elapsed).
+2026-06-03 04:05:19,128 INFO     Got Elo: 28.232429714282937 +- 35.1480639573366
+2026-06-03 04:05:19,128 INFO     Estimated draw rate: 60.53%
+2026-06-03 04:05:19,128 INFO     Updating model
+2026-06-03 04:06:06,969 INFO     GP sampling finished (47.840581s)
+2026-06-03 04:06:07,364 INFO     Starting iteration 513
+2026-06-03 04:06:44,109 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:06:44,109 INFO     Estimated Elo: 5.0616 +- 2.912
+2026-06-03 04:06:44,109 INFO     90.0% confidence interval of the Elo value: (0.2718, 9.8514)
+2026-06-03 04:06:44,386 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            516          567
+QUEEN_VALUE_Mg           923          993
+QUEEN_VALUE_Eg           940         1011
+
+2026-06-03 04:06:44,386 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 351, 'KNIGHT_VALUE_Eg': 348, 'BISHOP_VALUE_Mg': 385, 'BISHOP_VALUE_Eg': 389, 'ROOK_VALUE_Mg': 514, 'ROOK_VALUE_Eg': 541, 'QUEEN_VALUE_Mg': 984, 'QUEEN_VALUE_Eg': 1017}
+2026-06-03 04:06:44,389 INFO     Start experiment
+2026-06-03 04:13:52,241 INFO     Experiment finished (427.851206s elapsed).
+2026-06-03 04:13:52,643 INFO     Got Elo: -9.392438339809123 +- 27.17530722467184
+2026-06-03 04:13:52,643 INFO     Estimated draw rate: 76.32%
+2026-06-03 04:13:52,643 INFO     Updating model
+2026-06-03 04:14:39,786 INFO     GP sampling finished (47.142293s)
+2026-06-03 04:14:40,211 INFO     Starting iteration 514
+2026-06-03 04:15:08,483 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:15:08,483 INFO     Estimated Elo: 5.0241 +- 2.93
+2026-06-03 04:15:08,483 INFO     90.0% confidence interval of the Elo value: (0.2047, 9.8435)
+2026-06-03 04:15:08,761 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            466          520
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           947         1016
+
+2026-06-03 04:15:08,762 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 100, 'KNIGHT_VALUE_Mg': 341, 'KNIGHT_VALUE_Eg': 353, 'BISHOP_VALUE_Mg': 373, 'BISHOP_VALUE_Eg': 370, 'ROOK_VALUE_Mg': 509, 'ROOK_VALUE_Eg': 551, 'QUEEN_VALUE_Mg': 967, 'QUEEN_VALUE_Eg': 1006}
+2026-06-03 04:15:08,764 INFO     Start experiment
+2026-06-03 04:21:36,049 INFO     Experiment finished (387.284425s elapsed).
+2026-06-03 04:21:36,417 INFO     Got Elo: -18.798625070489397 +- 31.42566407471611
+2026-06-03 04:21:36,417 INFO     Estimated draw rate: 68.42%
+2026-06-03 04:21:36,418 INFO     Updating model
+2026-06-03 04:22:23,082 INFO     GP sampling finished (46.664153s)
+2026-06-03 04:22:23,503 INFO     Starting iteration 515
+2026-06-03 04:22:53,916 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:22:53,916 INFO     Estimated Elo: 5.0253 +- 3.0367
+2026-06-03 04:22:53,916 INFO     90.0% confidence interval of the Elo value: (0.0304, 10.0202)
+2026-06-03 04:22:54,207 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 04:22:54,208 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 370, 'BISHOP_VALUE_Mg': 372, 'BISHOP_VALUE_Eg': 389, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 545, 'QUEEN_VALUE_Mg': 974, 'QUEEN_VALUE_Eg': 977}
+2026-06-03 04:22:54,210 INFO     Start experiment
+2026-06-03 04:29:08,590 INFO     Experiment finished (374.378962s elapsed).
+2026-06-03 04:29:09,017 INFO     Got Elo: -9.392438339809123 +- 32.956638080575765
+2026-06-03 04:29:09,017 INFO     Estimated draw rate: 60.53%
+2026-06-03 04:29:09,017 INFO     Updating model
+2026-06-03 04:29:56,031 INFO     GP sampling finished (47.01382s)
+2026-06-03 04:29:56,392 INFO     Starting iteration 516
+2026-06-03 04:30:27,085 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:30:27,085 INFO     Estimated Elo: 5.0052 +- 3.0384
+2026-06-03 04:30:27,086 INFO     90.0% confidence interval of the Elo value: (0.0076, 10.0029)
+2026-06-03 04:30:27,376 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          350          383
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            516          568
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-03 04:30:27,377 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 339, 'KNIGHT_VALUE_Eg': 355, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 395, 'ROOK_VALUE_Mg': 507, 'ROOK_VALUE_Eg': 517, 'QUEEN_VALUE_Mg': 984, 'QUEEN_VALUE_Eg': 997}
+2026-06-03 04:30:27,379 INFO     Start experiment
+2026-06-03 04:37:25,090 INFO     Experiment finished (417.710516s elapsed).
+2026-06-03 04:37:25,448 INFO     Got Elo: 7.714619732426298e-14 +- 31.666483558804448
+2026-06-03 04:37:25,448 INFO     Estimated draw rate: 68.42%
+2026-06-03 04:37:25,448 INFO     Updating model
+2026-06-03 04:38:13,121 INFO     GP sampling finished (47.672351s)
+2026-06-03 04:38:13,461 INFO     Starting iteration 517
+2026-06-03 04:38:52,184 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:38:52,184 INFO     Estimated Elo: 4.9848 +- 3.0036
+2026-06-03 04:38:52,184 INFO     90.0% confidence interval of the Elo value: (0.0443, 9.9252)
+2026-06-03 04:38:52,676 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          358          394
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            516          569
+QUEEN_VALUE_Mg           926          996
+QUEEN_VALUE_Eg           942         1014
+
+2026-06-03 04:38:52,676 INFO     Testing {'PAWN_VALUE_Mg': 102, 'PAWN_VALUE_Eg': 109, 'KNIGHT_VALUE_Mg': 344, 'KNIGHT_VALUE_Eg': 370, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 511, 'ROOK_VALUE_Eg': 551, 'QUEEN_VALUE_Mg': 985, 'QUEEN_VALUE_Eg': 962}
+2026-06-03 04:38:52,679 INFO     Start experiment
+2026-06-03 04:44:34,287 INFO     Experiment finished (341.608076s elapsed).
+2026-06-03 04:44:34,657 INFO     Got Elo: -0.0 +- 34.309288163088155
+2026-06-03 04:44:34,657 INFO     Estimated draw rate: 63.16%
+2026-06-03 04:44:34,657 INFO     Updating model
+2026-06-03 04:45:21,573 INFO     GP sampling finished (46.915051s)
+2026-06-03 04:45:21,988 INFO     Starting iteration 518
+2026-06-03 04:45:58,210 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:45:58,210 INFO     Estimated Elo: 4.9459 +- 2.9555
+2026-06-03 04:45:58,210 INFO     90.0% confidence interval of the Elo value: (0.0846, 9.8073)
+2026-06-03 04:45:58,477 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          346          383
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           921          991
+QUEEN_VALUE_Eg           944         1015
+
+2026-06-03 04:45:58,477 INFO     Testing {'PAWN_VALUE_Mg': 103, 'PAWN_VALUE_Eg': 106, 'KNIGHT_VALUE_Mg': 358, 'KNIGHT_VALUE_Eg': 367, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 386, 'ROOK_VALUE_Mg': 517, 'ROOK_VALUE_Eg': 520, 'QUEEN_VALUE_Mg': 963, 'QUEEN_VALUE_Eg': 987}
+2026-06-03 04:45:58,480 INFO     Start experiment
+2026-06-03 04:52:06,232 INFO     Experiment finished (367.75199s elapsed).
+2026-06-03 04:52:06,607 INFO     Got Elo: 18.798625070489468 +- 28.55181702264082
+2026-06-03 04:52:06,607 INFO     Estimated draw rate: 68.42%
+2026-06-03 04:52:06,607 INFO     Updating model
+2026-06-03 04:52:53,607 INFO     GP sampling finished (46.999366s)
+2026-06-03 04:52:53,969 INFO     Starting iteration 519
+2026-06-03 04:53:28,173 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 04:53:28,173 INFO     Estimated Elo: 4.9842 +- 2.9737
+2026-06-03 04:53:28,180 INFO     90.0% confidence interval of the Elo value: (0.0929, 9.8755)
+2026-06-03 04:53:28,473 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            467          519
+ROOK_VALUE_Eg            517          569
+QUEEN_VALUE_Mg           924          994
+QUEEN_VALUE_Eg           948         1019
+
+2026-06-03 04:53:28,474 INFO     Testing {'PAWN_VALUE_Mg': 104, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 357, 'KNIGHT_VALUE_Eg': 358, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 375, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 563, 'QUEEN_VALUE_Mg': 989, 'QUEEN_VALUE_Eg': 1019}
+2026-06-03 04:53:28,476 INFO     Start experiment
+2026-06-03 05:00:07,866 INFO     Experiment finished (399.389047s elapsed).
+2026-06-03 05:00:08,200 INFO     Got Elo: -28.232429714282908 +- 35.19705363850182
+2026-06-03 05:00:08,200 INFO     Estimated draw rate: 60.53%
+2026-06-03 05:00:08,200 INFO     Updating model
+2026-06-03 05:00:54,559 INFO     GP sampling finished (46.359057s)
+2026-06-03 05:00:54,922 INFO     Starting iteration 520
+2026-06-03 05:01:27,701 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 05:01:27,701 INFO     Estimated Elo: 4.9554 +- 3.0298
+2026-06-03 05:01:27,701 INFO     90.0% confidence interval of the Elo value: (-0.0282, 9.939)
+2026-06-03 05:01:27,994 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             94          107
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          333          367
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          518
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           921          993
+QUEEN_VALUE_Eg           946         1017
+
+2026-06-03 05:01:27,994 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 111, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 346, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 383, 'ROOK_VALUE_Mg': 494, 'ROOK_VALUE_Eg': 557, 'QUEEN_VALUE_Mg': 994, 'QUEEN_VALUE_Eg': 983}
+2026-06-03 05:01:27,996 INFO     Start experiment
+2026-06-03 05:07:45,907 INFO     Experiment finished (377.911272s elapsed).
+2026-06-03 05:07:46,290 INFO     Got Elo: 1.3500584531746025e-13 +- 28.819752406307252
+2026-06-03 05:07:46,290 INFO     Estimated draw rate: 73.68%
+2026-06-03 05:07:46,290 INFO     Updating model
+2026-06-03 05:08:33,853 INFO     GP sampling finished (47.562238s)
+2026-06-03 05:08:34,203 INFO     Starting iteration 521
+2026-06-03 05:09:06,875 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 05:09:06,875 INFO     Estimated Elo: 4.9258 +- 2.9879
+2026-06-03 05:09:06,875 INFO     90.0% confidence interval of the Elo value: (0.0111, 9.8404)
+2026-06-03 05:09:07,147 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          360          396
+ROOK_VALUE_Mg            468          519
+ROOK_VALUE_Eg            513          565
+QUEEN_VALUE_Mg           920          992
+QUEEN_VALUE_Eg           942         1012
+
+2026-06-03 05:09:07,148 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 348, 'BISHOP_VALUE_Mg': 380, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 525, 'ROOK_VALUE_Eg': 531, 'QUEEN_VALUE_Mg': 990, 'QUEEN_VALUE_Eg': 985}
+2026-06-03 05:09:07,151 INFO     Start experiment
+2026-06-03 05:14:42,678 INFO     Experiment finished (335.526635s elapsed).
+2026-06-03 05:14:43,065 INFO     Got Elo: 1.3500584531746025e-13 +- 25.65086327435962
+2026-06-03 05:14:43,066 INFO     Estimated draw rate: 73.68%
+2026-06-03 05:14:43,066 INFO     Updating model
+2026-06-03 05:15:29,753 INFO     GP sampling finished (46.686259s)
+2026-06-03 05:15:30,113 INFO     Starting iteration 522
+2026-06-03 05:16:03,983 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 05:16:03,983 INFO     Estimated Elo: 4.9448 +- 3.0459
+2026-06-03 05:16:03,983 INFO     90.0% confidence interval of the Elo value: (-0.0654, 9.9549)
+2026-06-03 05:16:04,224 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          332          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          520
+ROOK_VALUE_Eg            515          567
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           940         1010
+
+2026-06-03 05:16:04,229 INFO     Testing {'PAWN_VALUE_Mg': 96, 'PAWN_VALUE_Eg': 119, 'KNIGHT_VALUE_Mg': 345, 'KNIGHT_VALUE_Eg': 356, 'BISHOP_VALUE_Mg': 385, 'BISHOP_VALUE_Eg': 372, 'ROOK_VALUE_Mg': 469, 'ROOK_VALUE_Eg': 536, 'QUEEN_VALUE_Mg': 978, 'QUEEN_VALUE_Eg': 981}
+2026-06-03 05:16:04,232 INFO     Start experiment
+2026-06-03 05:22:34,078 INFO     Experiment finished (389.844794s elapsed).
+2026-06-03 05:22:34,456 INFO     Got Elo: 7.714619732426298e-14 +- 28.78102498404656
+2026-06-03 05:22:34,456 INFO     Estimated draw rate: 73.68%
+2026-06-03 05:22:34,457 INFO     Updating model
+2026-06-03 05:23:22,095 INFO     GP sampling finished (47.63846s)
+2026-06-03 05:23:22,509 INFO     Starting iteration 523
+2026-06-03 05:23:59,912 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 05:23:59,912 INFO     Estimated Elo: 4.8713 +- 2.9276
+2026-06-03 05:23:59,912 INFO     90.0% confidence interval of the Elo value: (0.0558, 9.6868)
+2026-06-03 05:24:00,184 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          331          366
+KNIGHT_VALUE_Eg          347          383
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            472          524
+ROOK_VALUE_Eg            511          563
+QUEEN_VALUE_Mg           929          997
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-03 05:24:00,184 INFO     Testing {'PAWN_VALUE_Mg': 97, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 376, 'BISHOP_VALUE_Mg': 375, 'BISHOP_VALUE_Eg': 376, 'ROOK_VALUE_Mg': 501, 'ROOK_VALUE_Eg': 560, 'QUEEN_VALUE_Mg': 974, 'QUEEN_VALUE_Eg': 977}
+2026-06-03 05:24:00,185 INFO     Start experiment
+2026-06-03 05:30:13,874 INFO     Experiment finished (373.687825s elapsed).
+2026-06-03 05:30:14,301 INFO     Got Elo: -9.392438339809123 +- 32.8872831164809
+2026-06-03 05:30:14,302 INFO     Estimated draw rate: 60.53%
+2026-06-03 05:30:14,302 INFO     Updating model
+2026-06-03 05:31:01,796 INFO     GP sampling finished (47.494154s)
+2026-06-03 05:31:02,164 INFO     Starting iteration 524
+2026-06-03 05:31:38,842 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 987, 'QUEEN_VALUE_Eg': 994}
+2026-06-03 05:31:38,842 INFO     Estimated Elo: 4.8182 +- 2.8848
+2026-06-03 05:31:38,842 INFO     90.0% confidence interval of the Elo value: (0.0732, 9.5632)
+2026-06-03 05:31:39,114 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          332          366
+KNIGHT_VALUE_Eg          349          383
+BISHOP_VALUE_Mg          348          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            469          522
+ROOK_VALUE_Eg            512          565
+QUEEN_VALUE_Mg           923          993
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-03 05:31:39,115 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 107, 'KNIGHT_VALUE_Mg': 336, 'KNIGHT_VALUE_Eg': 349, 'BISHOP_VALUE_Mg': 376, 'BISHOP_VALUE_Eg': 392, 'ROOK_VALUE_Mg': 515, 'ROOK_VALUE_Eg': 541, 'QUEEN_VALUE_Mg': 998, 'QUEEN_VALUE_Eg': 985}
+2026-06-03 05:31:39,117 INFO     Start experiment
+2026-06-03 05:38:06,850 INFO     Experiment finished (387.732585s elapsed).
+2026-06-03 05:38:07,205 INFO     Got Elo: -47.23972483119777 +- 34.449441868921255
+2026-06-03 05:38:07,206 INFO     Estimated draw rate: 55.26%
+2026-06-03 05:38:07,206 INFO     Updating model
+2026-06-03 05:38:54,899 INFO     GP sampling finished (47.69309s)
+2026-06-03 05:38:55,242 INFO     Starting iteration 525
+2026-06-03 05:39:29,869 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 05:39:29,869 INFO     Estimated Elo: 4.6514 +- 2.7972
+2026-06-03 05:39:29,869 INFO     90.0% confidence interval of the Elo value: (0.0505, 9.2523)
+2026-06-03 05:39:30,147 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          367
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          345          381
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            470          521
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           921          992
+QUEEN_VALUE_Eg           944         1016
+
+2026-06-03 05:39:30,147 INFO     Testing {'PAWN_VALUE_Mg': 92, 'PAWN_VALUE_Eg': 100, 'KNIGHT_VALUE_Mg': 331, 'KNIGHT_VALUE_Eg': 371, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 393, 'ROOK_VALUE_Mg': 508, 'ROOK_VALUE_Eg': 554, 'QUEEN_VALUE_Mg': 997, 'QUEEN_VALUE_Eg': 977}
+2026-06-03 05:39:30,149 INFO     Start experiment
+2026-06-03 05:46:45,486 INFO     Experiment finished (435.336673s elapsed).
+2026-06-03 05:46:45,825 INFO     Got Elo: -37.70796673673921 +- 38.520924167120256
+2026-06-03 05:46:45,825 INFO     Estimated draw rate: 52.63%
+2026-06-03 05:46:45,825 INFO     Updating model
+2026-06-03 05:47:32,925 INFO     GP sampling finished (47.09944s)
+2026-06-03 05:47:33,280 INFO     Starting iteration 526
+2026-06-03 05:48:10,193 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 995}
+2026-06-03 05:48:10,193 INFO     Estimated Elo: 4.5294 +- 2.7076
+2026-06-03 05:48:10,193 INFO     90.0% confidence interval of the Elo value: (0.0759, 8.983)
+2026-06-03 05:48:10,491 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          331          365
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            469          521
+ROOK_VALUE_Eg            517          569
+QUEEN_VALUE_Mg           922          993
+QUEEN_VALUE_Eg           944         1016
+
+2026-06-03 05:48:10,491 INFO     Testing {'PAWN_VALUE_Mg': 103, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 372, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 371, 'ROOK_VALUE_Mg': 521, 'ROOK_VALUE_Eg': 567, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 963}
+2026-06-03 05:48:10,493 INFO     Start experiment
+2026-06-03 05:54:06,281 INFO     Experiment finished (355.787495s elapsed).
+2026-06-03 05:54:06,672 INFO     Got Elo: -0.0 +- 36.712220949477434
+2026-06-03 05:54:06,672 INFO     Estimated draw rate: 57.89%
+2026-06-03 05:54:06,672 INFO     Updating model
+2026-06-03 05:54:54,120 INFO     GP sampling finished (47.447117s)
+2026-06-03 05:54:54,499 INFO     Starting iteration 527
+2026-06-03 05:55:26,593 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 05:55:26,593 INFO     Estimated Elo: 4.4598 +- 2.5599
+2026-06-03 05:55:26,593 INFO     90.0% confidence interval of the Elo value: (0.2491, 8.6706)
+2026-06-03 05:55:26,884 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          345          380
+BISHOP_VALUE_Mg          344          381
+BISHOP_VALUE_Eg          362          398
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           941         1009
+
+2026-06-03 05:55:26,884 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 108, 'KNIGHT_VALUE_Mg': 332, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 379, 'ROOK_VALUE_Mg': 510, 'ROOK_VALUE_Eg': 517, 'QUEEN_VALUE_Mg': 992, 'QUEEN_VALUE_Eg': 988}
+2026-06-03 05:55:26,886 INFO     Start experiment
+2026-06-03 06:01:56,716 INFO     Experiment finished (389.829613s elapsed).
+2026-06-03 06:01:57,065 INFO     Got Elo: -37.70796673673921 +- 33.58985043628109
+2026-06-03 06:01:57,065 INFO     Estimated draw rate: 52.63%
+2026-06-03 06:01:57,065 INFO     Updating model
+2026-06-03 06:02:44,247 INFO     GP sampling finished (47.181349s)
+2026-06-03 06:02:44,634 INFO     Starting iteration 528
+2026-06-03 06:03:18,569 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 06:03:18,569 INFO     Estimated Elo: 4.4324 +- 2.6775
+2026-06-03 06:03:18,569 INFO     90.0% confidence interval of the Elo value: (0.0284, 8.8364)
+2026-06-03 06:03:18,783 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          349          384
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          359          395
+ROOK_VALUE_Mg            470          523
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           926          998
+QUEEN_VALUE_Eg           940         1009
+
+2026-06-03 06:03:18,783 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 105, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 374, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 373, 'ROOK_VALUE_Mg': 512, 'ROOK_VALUE_Eg': 560, 'QUEEN_VALUE_Mg': 997, 'QUEEN_VALUE_Eg': 980}
+2026-06-03 06:03:18,786 INFO     Start experiment
+2026-06-03 06:09:47,346 INFO     Experiment finished (388.5603s elapsed).
+2026-06-03 06:09:47,725 INFO     Got Elo: -18.798625070489397 +- 34.08721551586458
+2026-06-03 06:09:47,725 INFO     Estimated draw rate: 57.89%
+2026-06-03 06:09:47,725 INFO     Updating model
+2026-06-03 06:10:35,458 INFO     GP sampling finished (47.732658s)
+2026-06-03 06:10:35,866 INFO     Starting iteration 529
+2026-06-03 06:11:12,087 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 06:11:12,087 INFO     Estimated Elo: 4.3886 +- 2.6771
+2026-06-03 06:11:12,087 INFO     90.0% confidence interval of the Elo value: (-0.0149, 8.7921)
+2026-06-03 06:11:12,481 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          334          369
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          345          380
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           920          989
+QUEEN_VALUE_Eg           942         1011
+
+2026-06-03 06:11:12,481 INFO     Testing {'PAWN_VALUE_Mg': 101, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 344, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 381, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 523, 'ROOK_VALUE_Eg': 536, 'QUEEN_VALUE_Mg': 994, 'QUEEN_VALUE_Eg': 1001}
+2026-06-03 06:11:12,483 INFO     Start experiment
+2026-06-03 06:16:58,909 INFO     Experiment finished (346.42506s elapsed).
+2026-06-03 06:16:59,279 INFO     Got Elo: 9.392438339809145 +- 30.202208002622218
+2026-06-03 06:16:59,280 INFO     Estimated draw rate: 71.05%
+2026-06-03 06:16:59,280 INFO     Updating model
+2026-06-03 06:17:46,655 INFO     GP sampling finished (47.374835s)
+2026-06-03 06:17:47,063 INFO     Starting iteration 530
+2026-06-03 06:18:24,481 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 505, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 06:18:24,481 INFO     Estimated Elo: 4.3744 +- 2.6293
+2026-06-03 06:18:24,481 INFO     90.0% confidence interval of the Elo value: (0.0496, 8.6992)
+2026-06-03 06:18:24,746 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          366
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          346          382
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            510          563
+QUEEN_VALUE_Mg           920          991
+QUEEN_VALUE_Eg           946         1017
+
+2026-06-03 06:18:24,747 INFO     Testing {'PAWN_VALUE_Mg': 94, 'PAWN_VALUE_Eg': 103, 'KNIGHT_VALUE_Mg': 335, 'KNIGHT_VALUE_Eg': 361, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 397, 'ROOK_VALUE_Mg': 512, 'ROOK_VALUE_Eg': 536, 'QUEEN_VALUE_Mg': 989, 'QUEEN_VALUE_Eg': 1015}
+2026-06-03 06:18:24,749 INFO     Start experiment
+2026-06-03 06:25:27,128 INFO     Experiment finished (422.378249s elapsed).
+2026-06-03 06:25:27,479 INFO     Got Elo: 37.707966736739216 +- 35.9817234915242
+2026-06-03 06:25:27,479 INFO     Estimated draw rate: 52.63%
+2026-06-03 06:25:27,480 INFO     Updating model
+2026-06-03 06:26:15,659 INFO     GP sampling finished (48.179452s)
+2026-06-03 06:26:16,105 INFO     Starting iteration 531
+2026-06-03 06:26:46,516 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 06:26:46,517 INFO     Estimated Elo: 4.4405 +- 2.6299
+2026-06-03 06:26:46,517 INFO     90.0% confidence interval of the Elo value: (0.1147, 8.7663)
+2026-06-03 06:26:46,825 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          330          365
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          349          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          520
+ROOK_VALUE_Eg            511          565
+QUEEN_VALUE_Mg           924          996
+QUEEN_VALUE_Eg           946         1016
+
+2026-06-03 06:26:46,825 INFO     Testing {'PAWN_VALUE_Mg': 100, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 338, 'KNIGHT_VALUE_Eg': 365, 'BISHOP_VALUE_Mg': 380, 'BISHOP_VALUE_Eg': 376, 'ROOK_VALUE_Mg': 520, 'ROOK_VALUE_Eg': 526, 'QUEEN_VALUE_Mg': 984, 'QUEEN_VALUE_Eg': 985}
+2026-06-03 06:26:46,826 INFO     Start experiment
+2026-06-03 06:33:55,275 INFO     Experiment finished (428.447912s elapsed).
+2026-06-03 06:33:55,711 INFO     Got Elo: 9.392438339809145 +- 35.45570241677382
+2026-06-03 06:33:55,712 INFO     Estimated draw rate: 50.00%
+2026-06-03 06:33:55,719 INFO     Updating model
+2026-06-03 06:34:43,186 INFO     GP sampling finished (47.466293s)
+2026-06-03 06:34:43,533 INFO     Starting iteration 532
+2026-06-03 06:35:14,489 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 543, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 06:35:14,489 INFO     Estimated Elo: 4.4229 +- 2.5767
+2026-06-03 06:35:14,489 INFO     90.0% confidence interval of the Elo value: (0.1847, 8.6612)
+2026-06-03 06:35:14,785 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             94          107
+PAWN_VALUE_Eg            102          119
+KNIGHT_VALUE_Mg          335          369
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          347          383
+BISHOP_VALUE_Eg          360          397
+ROOK_VALUE_Mg            468          520
+ROOK_VALUE_Eg            515          569
+QUEEN_VALUE_Mg           924          997
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 06:35:14,785 INFO     Testing {'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 101, 'KNIGHT_VALUE_Mg': 351, 'KNIGHT_VALUE_Eg': 368, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 380, 'ROOK_VALUE_Mg': 514, 'ROOK_VALUE_Eg': 536, 'QUEEN_VALUE_Mg': 954, 'QUEEN_VALUE_Eg': 1012}
+2026-06-03 06:35:14,795 INFO     Start experiment
+2026-06-03 07:40:14,790 INFO     Experiment finished (3899.994571s elapsed).
+2026-06-03 07:40:15,146 INFO     Got Elo: 9.392438339809145 +- 44.32200623178405
+2026-06-03 07:40:15,147 INFO     Estimated draw rate: 39.47%
+2026-06-03 07:40:15,147 INFO     Updating model
+2026-06-03 07:41:02,319 INFO     GP sampling finished (47.172396s)
+2026-06-03 07:41:02,646 INFO     Starting iteration 533
+2026-06-03 07:41:33,968 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 07:41:33,968 INFO     Estimated Elo: 4.4213 +- 2.5441
+2026-06-03 07:41:33,968 INFO     90.0% confidence interval of the Elo value: (0.2366, 8.606)
+2026-06-03 07:41:34,234 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          346          380
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          360          398
+ROOK_VALUE_Mg            468          522
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           923          992
+QUEEN_VALUE_Eg           940         1010
+
+2026-06-03 07:41:34,235 INFO     Testing {'PAWN_VALUE_Mg': 92, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 349, 'KNIGHT_VALUE_Eg': 377, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 498, 'ROOK_VALUE_Eg': 536, 'QUEEN_VALUE_Mg': 975, 'QUEEN_VALUE_Eg': 1002}
+2026-06-03 07:41:34,238 INFO     Start experiment
+2026-06-03 07:49:49,623 INFO     Experiment finished (495.384558s elapsed).
+2026-06-03 07:49:49,979 INFO     Got Elo: 18.79862507048953 +- 34.15473983813958
+2026-06-03 07:49:49,980 INFO     Estimated draw rate: 63.16%
+2026-06-03 07:49:49,980 INFO     Updating model
+2026-06-03 07:50:38,442 INFO     GP sampling finished (48.46193s)
+2026-06-03 07:50:38,871 INFO     Starting iteration 534
+2026-06-03 07:51:12,264 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 07:51:12,264 INFO     Estimated Elo: 4.4623 +- 2.5701
+2026-06-03 07:51:12,264 INFO     90.0% confidence interval of the Elo value: (0.2349, 8.6897)
+2026-06-03 07:51:12,546 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            100          117
+KNIGHT_VALUE_Mg          333          369
+KNIGHT_VALUE_Eg          348          383
+BISHOP_VALUE_Mg          348          383
+BISHOP_VALUE_Eg          363          399
+ROOK_VALUE_Mg            466          520
+ROOK_VALUE_Eg            515          568
+QUEEN_VALUE_Mg           924          996
+QUEEN_VALUE_Eg           941         1011
+
+2026-06-03 07:51:12,546 INFO     Testing {'PAWN_VALUE_Mg': 105, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 358, 'KNIGHT_VALUE_Eg': 349, 'BISHOP_VALUE_Mg': 378, 'BISHOP_VALUE_Eg': 363, 'ROOK_VALUE_Mg': 503, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 982, 'QUEEN_VALUE_Eg': 999}
+2026-06-03 07:51:12,548 INFO     Start experiment
+2026-06-03 07:59:41,454 INFO     Experiment finished (508.905233s elapsed).
+2026-06-03 07:59:41,889 INFO     Got Elo: -28.232429714282908 +- 32.494997841666304
+2026-06-03 07:59:41,889 INFO     Estimated draw rate: 55.26%
+2026-06-03 07:59:41,889 INFO     Updating model
+2026-06-03 08:00:34,657 INFO     GP sampling finished (52.767184s)
+2026-06-03 08:00:35,061 INFO     Starting iteration 535
+2026-06-03 08:01:14,784 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 08:01:14,785 INFO     Estimated Elo: 4.3894 +- 2.5383
+2026-06-03 08:01:14,785 INFO     90.0% confidence interval of the Elo value: (0.2143, 8.5645)
+2026-06-03 08:01:15,021 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          118
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          347          382
+BISHOP_VALUE_Mg          344          380
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            515          566
+QUEEN_VALUE_Mg           920          990
+QUEEN_VALUE_Eg           942         1014
+
+2026-06-03 08:01:15,022 INFO     Testing {'PAWN_VALUE_Mg': 99, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 350, 'KNIGHT_VALUE_Eg': 369, 'BISHOP_VALUE_Mg': 384, 'BISHOP_VALUE_Eg': 376, 'ROOK_VALUE_Mg': 514, 'ROOK_VALUE_Eg': 563, 'QUEEN_VALUE_Mg': 991, 'QUEEN_VALUE_Eg': 977}
+2026-06-03 08:01:15,024 INFO     Start experiment
+2026-06-03 08:08:04,093 INFO     Experiment finished (409.067983s elapsed).
+2026-06-03 08:08:04,466 INFO     Got Elo: -9.392438339809052 +- 23.86760963616754
+2026-06-03 08:08:04,466 INFO     Estimated draw rate: 65.79%
+2026-06-03 08:08:04,466 INFO     Updating model
+2026-06-03 08:08:56,005 INFO     GP sampling finished (51.539352s)
+2026-06-03 08:08:56,392 INFO     Starting iteration 536
+2026-06-03 08:09:31,700 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 08:09:31,701 INFO     Estimated Elo: 4.363 +- 2.5322
+2026-06-03 08:09:31,701 INFO     90.0% confidence interval of the Elo value: (0.1978, 8.5281)
+2026-06-03 08:09:31,929 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             93          107
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          332          368
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          348          383
+BISHOP_VALUE_Eg          358          395
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            515          567
+QUEEN_VALUE_Mg           927          997
+QUEEN_VALUE_Eg           942         1013
+
+2026-06-03 08:09:31,930 INFO     Testing {'PAWN_VALUE_Mg': 93, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 355, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 469, 'ROOK_VALUE_Eg': 535, 'QUEEN_VALUE_Mg': 973, 'QUEEN_VALUE_Eg': 990}
+2026-06-03 08:09:31,932 INFO     Start experiment
+2026-06-03 10:02:09,484 INFO     chess-tuning-tools version: 0.9.5
+2026-06-03 10:02:09,534 INFO     Resuming from existing optimizer in material_values_model.pkl.
+2026-06-03 10:02:09,535 INFO     Starting iteration 536
+2026-06-03 10:02:47,386 INFO     Current optimum:
+{'PAWN_VALUE_Mg': 95, 'PAWN_VALUE_Eg': 102, 'KNIGHT_VALUE_Mg': 337, 'KNIGHT_VALUE_Eg': 350, 'BISHOP_VALUE_Mg': 382, 'BISHOP_VALUE_Eg': 382, 'ROOK_VALUE_Mg': 506, 'ROOK_VALUE_Eg': 542, 'QUEEN_VALUE_Mg': 986, 'QUEEN_VALUE_Eg': 996}
+2026-06-03 10:02:47,386 INFO     Estimated Elo: 4.363 +- 2.5322
+2026-06-03 10:02:47,386 INFO     90.0% confidence interval of the Elo value: (0.1978, 8.5281)
+2026-06-03 10:02:47,732 INFO     90.0% confidence intervals of the parameters:
+Parameter        Lower bound  Upper bound
+-----------------------------------------
+PAWN_VALUE_Mg             92          106
+PAWN_VALUE_Eg            101          119
+KNIGHT_VALUE_Mg          333          368
+KNIGHT_VALUE_Eg          346          381
+BISHOP_VALUE_Mg          349          384
+BISHOP_VALUE_Eg          359          396
+ROOK_VALUE_Mg            466          519
+ROOK_VALUE_Eg            512          565
+QUEEN_VALUE_Mg           923          991
+QUEEN_VALUE_Eg           951         1018
+
+2026-06-03 10:02:47,732 INFO     Testing {'PAWN_VALUE_Mg': 93, 'PAWN_VALUE_Eg': 104, 'KNIGHT_VALUE_Mg': 355, 'KNIGHT_VALUE_Eg': 362, 'BISHOP_VALUE_Mg': 383, 'BISHOP_VALUE_Eg': 374, 'ROOK_VALUE_Mg': 469, 'ROOK_VALUE_Eg': 535, 'QUEEN_VALUE_Mg': 973, 'QUEEN_VALUE_Eg': 990}
+2026-06-03 10:02:47,734 INFO     Start experiment
