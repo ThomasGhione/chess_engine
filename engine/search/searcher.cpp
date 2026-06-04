@@ -654,10 +654,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         chess::Board::MoveState state;
         b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
 
+        // Late captures are reduced too: move ordering ranks good captures early,
+        // so a capture reaching this index is almost always a bad/losing one.
         const bool lmrStructuralCandidate = (ctx.depth >= 4)
             && (moveIndex >= 8)
             && !isPromotionCandidate
-            && (!wasCapture)
             && !createsPawnForkThreat;
 
         const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3 || createsPawnForkThreat);
@@ -700,10 +701,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             if (!ctx.improving) {
                 reduction += 1;
             }
-            // History adjustment: reward historically good quiet moves with less reduction.
-            const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
-            const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
-            reduction -= histScore / 8192;
+            // History adjustment (quiet moves only — quiet history is meaningless
+            // for captures, which the ordering already ranks by SEE/capture history).
+            if (!wasCapture) {
+                const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+                const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+                reduction -= histScore / 8192;
+            }
             reduction = std::clamp(reduction, 1, childDepth - 1);
 
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
