@@ -42,6 +42,24 @@ struct LMRTable {
 };
 static constexpr LMRTable LMR_REDUCTION_TABLE;
 
+// Pawn correction history: smooths the (search - static eval) residual keyed by
+// pawn structure, nudging static eval toward what search actually found.
+constexpr int32_t CORR_HIST_LIMIT   = 1024;  // bound on the smoothed residual (centipawns)
+constexpr int32_t CORR_HIST_DIVISOR = 4;     // applied fraction of the smoothed residual
+constexpr int32_t CORR_HIST_BLEND   = 256;   // weighted-average denominator
+constexpr int32_t CORR_HIST_MAX_W   = 16;    // per-update weight cap (grows with depth)
+
+inline size_t pawnCorrIndex(const chess::Board& b) noexcept {
+    const uint64_t k = b.pawns_bb[0] * 0x9E3779B97F4A7C15ULL
+                     + b.pawns_bb[1] * 0xD6E8FEB86659FD93ULL;
+    return static_cast<size_t>(k >> 48) & (PAWN_CORR_HISTORY_SIZE - 1);
+}
+
+inline int32_t pawnCorrection(const SearchRuntime& runtime, const chess::Board& b) noexcept {
+    const int side = chess::Board::colorToIndex(b.getActiveColor());
+    return runtime.pawnCorrHist[side][pawnCorrIndex(b)] / CORR_HIST_DIVISOR;
+}
+
 } // namespace
 
 // --- Negamax helpers ---
@@ -923,6 +941,9 @@ int32_t Searcher::searchPosition(
                 }
             }
         }
+        // Nudge the static eval by the learned pawn-structure correction.
+        node.staticEval = std::clamp(node.staticEval + pawnCorrection(runtime, b),
+                                     -MATE_BOUND + 1, MATE_BOUND - 1);
     }
 
     // Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
@@ -1091,6 +1112,21 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
+    // Pawn correction history: learn the (search - corrected static eval) residual,
+    // but only from TRUSTWORTHY nodes — deep enough, quiet best move, non-mate, and
+    // the search must genuinely contradict the static eval rather than merely confirm
+    // a cutoff bound. Deeper nodes weigh more; shallow noise is suppressed.
+    const bool corrLearn = (best > node.staticEval)
+                        || (best < node.staticEval && best < betaOrig);
+    if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
+        && std::abs(best) < MATE_BOUND && result.move.from.isValid()
+        && (b.get(result.move.to.index) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
+        int16_t& cell = runtime.pawnCorrHist[chess::Board::colorToIndex(node.activeColor)][pawnCorrIndex(b)];
+        const int32_t residual = std::clamp(best - node.staticEval, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
+        const int32_t w = std::min<int32_t>(depth, CORR_HIST_MAX_W);
+        cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
+    }
+
     if (canUseTT && allowTTWrite) {
         writeTT(runtime, hashKey, ctx.depth, best, alphaOrig, betaOrig, ctx.ply, result.move);
     }
@@ -1166,7 +1202,7 @@ int32_t Searcher::quiescenceSearch(
         }
         best = NEG_INF;
     } else {
-        const int32_t standPat = Evaluator::evaluate(b);
+        const int32_t standPat = Evaluator::evaluate(b) + pawnCorrection(runtime, b);
         if (isBetaCutoff(standPat, beta)) {
             return beta;
         }

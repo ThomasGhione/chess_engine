@@ -20,6 +20,7 @@ namespace time { class TimeManager; }
 // Aliased back inside Searcher to keep Searcher::MAX_PLY etc. call sites working.
 inline constexpr int32_t  MAX_PLY               = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS = 2;
+inline constexpr int32_t  PAWN_CORR_HISTORY_SIZE = 1 << 14;
 inline constexpr uint64_t DEFAULT_DEPTH         = 11;
 
 struct SearchRuntime {
@@ -40,6 +41,8 @@ struct SearchRuntime {
     uint16_t counterMoves[64][64] {};
     int16_t  captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
     int16_t  contHist[2][64][64] {};
+    // Pawn correction history: (search - static eval) residual keyed by pawn structure.
+    int16_t  pawnCorrHist[2][PAWN_CORR_HISTORY_SIZE] {};
     // evalStack is thread_local in searchPosition — NOT here: Lazy-SMP races
     // on a shared array would corrupt the `improving` hard-prune heuristic.
 
