@@ -305,17 +305,19 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
             && m.promotionPiece == hashMove.promo;
         if (isHashMove) hashMoveFound = true;
 
-        const bool needsSee = !isHashMove && (isCapture || (!isPromotionCandidate && fromPieceType != chess::Board::KING));
-        const int32_t see = needsSee ? staticExchangeEvaluation(b, m) : 0;
+        // Lazy SEE: 1 = capture, 2 = quiet that could be SEE-demoted, 0 = score is
+        // already final. The actual SEE is deferred to the picker (finalizeSee) so
+        // moves a beta cutoff never reaches don't pay for it.
+        const SeePending pending = isHashMove ? SeePending::Final
+            : (isCapture ? SeePending::Capture
+              : ((!isPromotionCandidate && fromPieceType != chess::Board::KING) ? SeePending::Quiet : SeePending::Final));
 
         int8_t gcFlag = -1; // -1 = ordering did not compute the quiet check
+        // Score provisionally with see=0: captures rank as good, quiets as their base
+        // score. finalizeSee later applies the good/bad split and the hanging demotion.
         int32_t score = scoreMoveOrderingPriorityInline(
-            orderingCtx, m, isCapture, victimType, see,
+            orderingCtx, m, isCapture, victimType, /*see=*/0,
             isPromotionCandidate, isHashMove, gcFlag);
-
-        if (!isHashMove && !isCapture && !isPromotionCandidate && see < 0) {
-            score = std::min(score, KILLER_2_SCORE - 1) + see;
-        }
 
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));
@@ -329,8 +331,10 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
 
         picker.scores[moveIndex] = score;
         picker.givesCheckFlag[moveIndex] = gcFlag;
+        picker.seePending[moveIndex] = pending;
     }
 
+    picker.board = &b;
     picker.hashMoveIsLegal = hashMoveFound;
     if (outHashMoveIsLegal != nullptr) *outHashMoveIsLegal = hashMoveFound;
     return picker;

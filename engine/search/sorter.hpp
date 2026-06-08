@@ -64,6 +64,11 @@ public:
                                            : PIECE_VALUES[pt] - PIECE_VALUES[chess::Board::PAWN];
     }
 
+    // Deferred-SEE state of a move in the picker: its score is either already final,
+    // or a capture / quiet whose SEE (good-vs-bad split, hanging-quiet demotion) is
+    // resolved lazily by MovePickerData::finalizeSee.
+    enum class SeePending : uint8_t { Final = 0, Capture = 1, Quiet = 2 };
+
     // Incremental lazy-selection picker. Parallel arrays (moves/scores/givesCheckFlag)
     // are kept in sync by nextMove() and fullSort(); never manipulate them separately.
     struct MovePickerData {
@@ -73,6 +78,10 @@ public:
         // nextMove() swaps entries including unscored ones, so an uninitialized
         // slot read as 0 would be misinterpreted as "does not give check".
         int8_t givesCheckFlag[MAX_MOVES];
+        // Per-move deferred-SEE state (default Final). Keeps SEE off the moves a beta
+        // cutoff never examines, while preserving the exact ordering of the eager path.
+        SeePending seePending[MAX_MOVES] {};
+        const chess::Board* board = nullptr; // SEE source for deferred finalisation
         int  size         = 0;
         int  currentIndex = 0;
         bool hashMoveIsLegal = false;
@@ -83,29 +92,56 @@ public:
 
         inline bool hasNext() const noexcept { return currentIndex < size; }
 
+        // Resolve a deferred capture/quiet into its final score (good capture kept,
+        // losing capture or hanging quiet demoted — identical to the old eager path).
+        // Returns true if the score dropped (so the caller must re-pick the max).
+        inline bool finalizeSee(int idx) noexcept {
+            const SeePending pending = seePending[idx];
+            if (pending == SeePending::Final) return false;
+            seePending[idx] = SeePending::Final;
+            const int32_t see = Sorter::staticExchangeEvaluation(*board, moves[idx]);
+            if (see >= 0) return false;                      // good capture / safe quiet: unchanged
+            if (pending == SeePending::Capture) {            // losing capture
+                scores[idx] = -Sorter::CAPTURE_BASE_SCORE + see;
+            } else {                                         // quiet that hangs material
+                const int32_t cap = Sorter::KILLER_2_SCORE - 1;
+                scores[idx] = (scores[idx] < cap ? scores[idx] : cap) + see;
+            }
+            return true;
+        }
+
         inline chess::Board::Move nextMove() noexcept {
-            if (currentIndex >= size) return chess::Board::Move{};
-
-            int bestIdx = currentIndex;
-            int32_t bestScore = scores[currentIndex];
-            for (int i = currentIndex + 1; i < size; ++i) {
-                if (scores[i] > bestScore) { 
-                    bestScore = scores[i]; 
-                    bestIdx = i; 
+            while (currentIndex < size) {
+                int bestIdx = currentIndex;
+                int32_t bestScore = scores[currentIndex];
+                for (int i = currentIndex + 1; i < size; ++i) {
+                    if (scores[i] > bestScore) {
+                        bestScore = scores[i];
+                        bestIdx = i;
+                    }
                 }
-            }
 
-            if (bestIdx != currentIndex) {
-                std::swap(moves[currentIndex],         moves[bestIdx]);
-                std::swap(scores[currentIndex],        scores[bestIdx]);
-                std::swap(givesCheckFlag[currentIndex], givesCheckFlag[bestIdx]);
-            }
+                // Deferred SEE: finalise the top candidate; only when it actually
+                // demotes itself do we re-pick (a kept move is still the max).
+                if (finalizeSee(bestIdx)) {
+                    continue;
+                }
 
-            return moves[currentIndex++];
+                if (bestIdx != currentIndex) {
+                    std::swap(moves[currentIndex],          moves[bestIdx]);
+                    std::swap(scores[currentIndex],         scores[bestIdx]);
+                    std::swap(givesCheckFlag[currentIndex], givesCheckFlag[bestIdx]);
+                    std::swap(seePending[currentIndex],     seePending[bestIdx]);
+                }
+
+                return moves[currentIndex++];
+            }
+            return chess::Board::Move{};
         }
 
         // Full descending insertion sort over [0, size). Used by root search (YBWC).
         inline void fullSort() noexcept {
+            for (int i = 0; i < size; ++i) finalizeSee(i); // resolve deferred SEE before sorting
             for (int i = 1; i < size; ++i) {
                 const chess::Board::Move keyMove  = moves[i];
                 const int32_t            keyScore = scores[i];
