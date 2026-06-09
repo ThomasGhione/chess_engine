@@ -96,7 +96,7 @@ int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialM
         acc += evalPieceCoordinationCached(b);
         acc += evalOutpostsCached(b);
         acc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
-        acc += evalBlockedPawnByBishopsCached(b);
+        acc += evalBlockedPawnByBishops(b);
         acc += evalPawnForks(b);
         acc += evalBlockedCenterWithPieces(b, occ);
         acc += evalKingMiddlegame(b, whitePawns, blackPawns, data);

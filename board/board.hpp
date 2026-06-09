@@ -59,15 +59,14 @@ public:
         EVAL_CACHE_CASTLING_BONUS          = 4,
         EVAL_CACHE_ROOKS                   = 5,
         EVAL_CACHE_BAD_BISHOP              = 6,
-        EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS = 7,
-        EVAL_CACHE_MINOR_DEVELOPMENT       = 8,
-        EVAL_CACHE_EARLY_QUEEN             = 9,
-        EVAL_CACHE_OUTPOSTS                = 10,
-        EVAL_CACHE_PIECE_COORDINATION      = 11,
-        EVAL_CACHE_CENTRAL_CONTROL         = 12,
-        EVAL_CACHE_WEAK_SQUARES            = 13,
-        EVAL_CACHE_BISHOP_VS_KNIGHT        = 14,
-        EVAL_CACHE_COUNT                   = 15
+        EVAL_CACHE_MINOR_DEVELOPMENT       = 7,
+        EVAL_CACHE_EARLY_QUEEN             = 8,
+        EVAL_CACHE_OUTPOSTS                = 9,
+        EVAL_CACHE_PIECE_COORDINATION      = 10,
+        EVAL_CACHE_CENTRAL_CONTROL         = 11,
+        EVAL_CACHE_WEAK_SQUARES            = 12,
+        EVAL_CACHE_BISHOP_VS_KNIGHT        = 13,
+        EVAL_CACHE_COUNT                   = 14
     };
 
     enum MoveChangeFlag : uint16_t {

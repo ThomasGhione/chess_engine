@@ -270,7 +270,6 @@ private:
     static PhaseValue evalPieceCoordinationCached(const chess::Board& b) noexcept;
     static PhaseValue evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalWeakSquaresCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
     static PhaseValue evalBishopVsKnightCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
 #ifdef DEBUG

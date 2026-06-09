@@ -25,10 +25,4 @@ PhaseValue Evaluator::evalWeakSquaresCached(const chess::Board& b, uint64_t whit
     });
 }
 
-PhaseValue Evaluator::evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept {
-    return cachedTerm<chess::Board::EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS>(b, [&] -> PhaseValue {
-        return evalBlockedPawnByBishops(b);
-    });
-}
-
 } // namespace engine
