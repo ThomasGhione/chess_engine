@@ -48,6 +48,9 @@ inline PhaseValue CANDIDATE_PASSER_BONUS    = {10, 14};   // was +4 in EG
 inline PhaseValue CONNECTED_PASSER_BONUS    = {22, 28};   // was +6 in EG
 inline PhaseValue BACKWARD_PAWN_PENALTY     = {-10, -10};
 inline PhaseValue PASSED_PAWN_BLOCKED_PENALTY = {-12, -12};
+// Per enemy pawn on our bishop's colour complex: those pawns are targets for
+// the bishop -> bonus to the bishop's owner (evalWeakSquares). mg == eg.
+inline int32_t COLOR_COMPLEX_PENALTY        = 2;
 inline PhaseValue CENTER_CONTROL_BONUS      = {8, 8};
 
 // Passed-pawn rank scaling: previously isEndgame ? 10 : 2 and isEndgame ? 40 : 20.

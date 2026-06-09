@@ -37,16 +37,14 @@ PhaseValue Evaluator::evalWeakSquares(const chess::Board& b,
     const bool blackBishopOnDark  = (b.bishops_bb[1] & DARK_SQUARES)  != 0ULL;
     const bool blackBishopOnLight = (b.bishops_bb[1] & LIGHT_SQUARES) != 0ULL;
 
-    constexpr int32_t COLOR_COMPLEX_PENALTY = 2;
-
     if (whiteBishopOnDark)
-        score -= std::popcount(blackPawns & DARK_SQUARES)  * COLOR_COMPLEX_PENALTY;
+        score += std::popcount(blackPawns & DARK_SQUARES)  * COLOR_COMPLEX_PENALTY;
     if (whiteBishopOnLight)
-        score -= std::popcount(blackPawns & LIGHT_SQUARES) * COLOR_COMPLEX_PENALTY;
+        score += std::popcount(blackPawns & LIGHT_SQUARES) * COLOR_COMPLEX_PENALTY;
     if (blackBishopOnDark)
-        score += std::popcount(whitePawns & DARK_SQUARES)  * COLOR_COMPLEX_PENALTY;
+        score -= std::popcount(whitePawns & DARK_SQUARES)  * COLOR_COMPLEX_PENALTY;
     if (blackBishopOnLight)
-        score += std::popcount(whitePawns & LIGHT_SQUARES) * COLOR_COMPLEX_PENALTY;
+        score -= std::popcount(whitePawns & LIGHT_SQUARES) * COLOR_COMPLEX_PENALTY;
 
     return PhaseValue{score, score};
 }

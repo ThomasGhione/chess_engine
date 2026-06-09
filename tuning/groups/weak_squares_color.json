@@ -1,0 +1,8 @@
+{
+  "parameter_ranges": {
+    "COLOR_COMPLEX_PENALTY": "Integer(0, 10)"
+  },
+  "data_path": "weak_squares_color_data.npz",
+  "model_path": "weak_squares_color_model.pkl",
+  "log_path": "log_weak_squares_color.txt"
+}
