@@ -585,12 +585,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int oppSide = usSide ^ 1;
     const uint64_t oppKingBBForFutility = b.kings_bb[oppSide];
     const int oppKingSq = oppKingBBForFutility ? std::countr_zero(oppKingBBForFutility) : 64;
-    const uint64_t enemyMajorOrKingTargets =
-        b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
-    const uint64_t enemyForkTargets =
-        b.knights_bb[oppSide] | b.bishops_bb[oppSide] |
-        b.rooks_bb[oppSide]   | b.queens_bb[oppSide] |
-        b.kings_bb[oppSide];
+    // Fork-threat target maps are needed only by the rare quiet-pawn-push path
+    // below, so compute them lazily on first use instead of at every node.
+    bool forkTargetsReady = false;
+    uint64_t enemyMajorOrKingTargets = 0ULL;
+    uint64_t enemyForkTargets = 0ULL;
     const chess::Coords enPassant = b.getEnPassant();
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
 
@@ -628,6 +627,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool isQuietPawnPush = isQuietMove && isPawnMove && isSameFileMove;
         bool createsPawnForkThreat = false;
         if (isQuietPawnPush) {
+            if (!forkTargetsReady) {
+                enemyMajorOrKingTargets =
+                    b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
+                enemyForkTargets = enemyMajorOrKingTargets |
+                    b.knights_bb[oppSide] | b.bishops_bb[oppSide];
+                forkTargetsReady = true;
+            }
             const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][toIndex] & enemyForkTargets;
             createsPawnForkThreat =
                 ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
