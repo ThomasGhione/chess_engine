@@ -752,8 +752,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
             if (!isFirstMove) {
-                const bool shouldResearch = shouldResearchPVS(score, scoutAlpha);
-                if (shouldResearch) {
+                if (shouldResearchPVS(score, scoutAlpha)) {
                     score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
                                             useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
                 }
