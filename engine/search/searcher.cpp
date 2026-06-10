@@ -737,19 +737,17 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             const int32_t reducedDepth = std::max(1, childDepth - reduction);
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
-
-            const bool reducedFailed = shouldResearchPVS(score, scoutAlpha);
-            if (reducedFailed && reducedDepth < childDepth) {
+            
+            if (shouldResearchPVS(score, scoutAlpha)) {
                 score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
 
-            const bool shouldResearch = !isFirstMove && shouldResearchPVS(score, scoutAlpha);
-            if (shouldResearch) {
+            if (!isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
                 score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
-        } else {
+        } else { // can't reduce, regular PVS search 
             score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
