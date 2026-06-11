@@ -45,19 +45,37 @@ static constexpr LMRTable LMR_REDUCTION_TABLE;
 // Pawn correction history: smooths the (search - static eval) residual keyed by
 // pawn structure, nudging static eval toward what search actually found.
 constexpr int32_t CORR_HIST_LIMIT   = 1024;  // bound on the smoothed residual (centipawns)
-constexpr int32_t CORR_HIST_DIVISOR = 4;     // applied fraction of the smoothed residual
+constexpr int32_t CORR_HIST_DIVISOR = 4;     // applied fraction of each smoothed residual
 constexpr int32_t CORR_HIST_BLEND   = 256;   // weighted-average denominator
 constexpr int32_t CORR_HIST_MAX_W   = 16;    // per-update weight cap (grows with depth)
+// Cap on the SUM of the pawn/minor/major corrections: adding extra signals
+// refines the nudge without enlarging its magnitude past the old pawn-only
+// range (CORR_HIST_LIMIT / CORR_HIST_DIVISOR == 256 cp).
+constexpr int32_t CORR_TOTAL_CAP    = CORR_HIST_LIMIT / CORR_HIST_DIVISOR;
 
-inline size_t pawnCorrIndex(const chess::Board& b) noexcept {
-    const uint64_t k = b.pawns_bb[0] * 0x9E3779B97F4A7C15ULL
-                     + b.pawns_bb[1] * 0xD6E8FEB86659FD93ULL;
+inline size_t corrHistIndex(uint64_t a, uint64_t c) noexcept {
+    const uint64_t k = a * 0x9E3779B97F4A7C15ULL + c * 0xD6E8FEB86659FD93ULL;
     return static_cast<size_t>(k >> 48) & (PAWN_CORR_HISTORY_SIZE - 1);
 }
 
-inline int32_t pawnCorrection(const SearchRuntime& runtime, const chess::Board& b) noexcept {
+inline size_t pawnCorrIndex(const chess::Board& b) noexcept {
+    return corrHistIndex(b.pawns_bb[0], b.pawns_bb[1]);
+}
+inline size_t minorCorrIndex(const chess::Board& b) noexcept {
+    return corrHistIndex(b.knights_bb[0] | b.bishops_bb[0],
+                         b.knights_bb[1] | b.bishops_bb[1]);
+}
+inline size_t majorCorrIndex(const chess::Board& b) noexcept {
+    return corrHistIndex(b.rooks_bb[0] | b.queens_bb[0],
+                         b.rooks_bb[1] | b.queens_bb[1]);
+}
+
+inline int32_t evalCorrection(const SearchRuntime& runtime, const chess::Board& b) noexcept {
     const int side = chess::Board::colorToIndex(b.getActiveColor());
-    return runtime.pawnCorrHist[side][pawnCorrIndex(b)] / CORR_HIST_DIVISOR;
+    const int32_t c = runtime.pawnCorrHist[side][pawnCorrIndex(b)]  / CORR_HIST_DIVISOR
+                    + runtime.minorCorrHist[side][minorCorrIndex(b)] / CORR_HIST_DIVISOR
+                    + runtime.majorCorrHist[side][majorCorrIndex(b)] / CORR_HIST_DIVISOR;
+    return std::clamp(c, -CORR_TOTAL_CAP, CORR_TOTAL_CAP);
 }
 
 } // namespace
@@ -430,7 +448,9 @@ bool Searcher::tryNullMovePruning(
         return true;
     }
 
-    outScore = beta;
+    // Fail-soft: return the null-search score (a heuristic lower bound), but
+    // never propagate an unproven mate found behind a null move.
+    outScore = (nullScore >= MATE_BOUND) ? beta : nullScore;
     return true;
 }
 
@@ -786,13 +806,16 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 constexpr int32_t MAX_HISTORY = 16384;
                 constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
 
-                if (isQuietMove) {
-                    for (int i = 0; i < numSearchedQuiets - 1; ++i) {
-                        applyHistoryGravity(runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to],
-                                            malus, MAX_HISTORY);
-                        if (ctx.contHistEntry != nullptr) {
-                            applyHistoryGravity(ctx.contHistEntry[searchedQuiets[i].to], malus, MAX_HISTORY);
-                        }
+                // Malus to quiet moves searched before the cutoff. When the
+                // cutoff move is itself quiet it is the last tracked entry and
+                // is excluded (it gets the bonus instead); when the cutoff is a
+                // capture, every tracked quiet failed and is penalised.
+                const int quietMalusEnd = numSearchedQuiets - (isQuietMove ? 1 : 0);
+                for (int i = 0; i < quietMalusEnd; ++i) {
+                    applyHistoryGravity(runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to],
+                                        malus, MAX_HISTORY);
+                    if (ctx.contHistEntry != nullptr) {
+                        applyHistoryGravity(ctx.contHistEntry[searchedQuiets[i].to], malus, MAX_HISTORY);
                     }
                 }
 
@@ -944,8 +967,8 @@ int32_t Searcher::searchPosition(
                 }
             }
         }
-        // Nudge the static eval by the learned pawn-structure correction.
-        node.staticEval = std::clamp(node.staticEval + pawnCorrection(runtime, b),
+        // Nudge the static eval by the learned correction-history signal.
+        node.staticEval = std::clamp(node.staticEval + evalCorrection(runtime, b),
                                      -MATE_BOUND + 1, MATE_BOUND - 1);
     }
 
@@ -1124,10 +1147,15 @@ int32_t Searcher::searchPosition(
     if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
         && std::abs(best) < MATE_BOUND && result.move.from.isValid()
         && (b.get(result.move.to.index) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
-        int16_t& cell = runtime.pawnCorrHist[chess::Board::colorToIndex(node.activeColor)][pawnCorrIndex(b)];
+        const int corrSide = chess::Board::colorToIndex(node.activeColor);
         const int32_t residual = std::clamp(best - node.staticEval, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
         const int32_t w = std::min<int32_t>(depth, CORR_HIST_MAX_W);
-        cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
+        auto blendCorr = [&](int16_t& cell) noexcept {
+            cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
+        };
+        blendCorr(runtime.pawnCorrHist[corrSide][pawnCorrIndex(b)]);
+        blendCorr(runtime.minorCorrHist[corrSide][minorCorrIndex(b)]);
+        blendCorr(runtime.majorCorrHist[corrSide][majorCorrIndex(b)]);
     }
 
     if (canUseTT && allowTTWrite) {
@@ -1205,9 +1233,9 @@ int32_t Searcher::quiescenceSearch(
         }
         best = NEG_INF;
     } else {
-        const int32_t standPat = Evaluator::evaluate(b) + pawnCorrection(runtime, b);
+        const int32_t standPat = Evaluator::evaluate(b) + evalCorrection(runtime, b);
         if (isBetaCutoff(standPat, beta)) {
-            return beta;
+            return standPat; // fail-soft: tighter bound than a flat beta
         }
         updateBound(standPat, alpha);
 
@@ -1295,7 +1323,7 @@ int32_t Searcher::quiescenceSearch(
                 // storing the raw cutoff bound was looser and inconsistent.
                 writeTT(runtime, b.getHash(), 0, best, alphaOrig, betaOrig, ply);
             }
-            return beta;
+            return best; // fail-soft: best >= score >= beta
         }
     }
 

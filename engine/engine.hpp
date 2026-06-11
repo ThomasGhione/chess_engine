@@ -89,6 +89,10 @@ public:
     uint64_t& nodesSearched;
     int& MAX_THREADS;
 
+    // UCI `Threads` override. 0 = auto (use omp_get_max_threads()). Persists
+    // across reset()/ucinewgame so a GUI/cutechess setting survives new games.
+    int requestedThreads = 0;
+
     static constexpr int32_t DEFAULTDEPTH = Searcher::DEFAULT_DEPTH;
     static constexpr int32_t MAX_PLY = Searcher::MAX_PLY;
 

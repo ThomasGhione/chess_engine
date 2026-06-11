@@ -5,6 +5,8 @@
 #include "../engine/eval_constants.hpp"
 #include "../ascii_utils.hpp"
 
+#include <omp.h>
+
 #include <algorithm>
 #include <charconv>
 #include <cctype>
@@ -402,6 +404,9 @@ namespace uci {
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n";
+        const int hwThreads = omp_get_max_threads();
+        std::cout << "option name Threads type spin default " << hwThreads
+                  << " min 1 max " << hwThreads << "\n";
         for (const auto& option : kEvalOptions) {
             int32_t minValue = option.minValue;
             int32_t maxValue = option.maxValue;
@@ -468,6 +473,21 @@ namespace uci {
                 std::cout << "info string SyzygyProbeDepth set to " << v << "\n";
             } else {
                 std::cout << "info string invalid value for SyzygyProbeDepth\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "threads") {
+            int v = 0;
+            string_view tok = optionValue;
+            const int maxT = omp_get_max_threads();
+            if (parseInt(nextToken(tok), v) && v >= 1) {
+                const int clamped = std::clamp(v, 1, maxT);
+                engine.requestedThreads = clamped;
+                engine.searchRuntime.maxThreads = clamped;
+                std::cout << "info string Threads set to " << clamped << "\n";
+            } else {
+                std::cout << "info string invalid value for Threads\n";
             }
             return;
         }

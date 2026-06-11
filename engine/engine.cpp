@@ -131,7 +131,7 @@ void Engine::reset() noexcept {
     gameResult = ONGOING;
 
     searchRuntime = Searcher::SearchRuntime{};
-    searchRuntime.maxThreads = omp_get_max_threads();
+    searchRuntime.maxThreads = (requestedThreads > 0) ? requestedThreads : omp_get_max_threads();
     bindSearchRuntime();
 
     this->tt.clear();
