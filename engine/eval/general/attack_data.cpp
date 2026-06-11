@@ -10,26 +10,32 @@ inline void Evaluator::processPawns(uint64_t pawns, AttackData& data, bool isWhi
     data.allAttacks |= collectPawnAttacks(pawns, isWhite ? 0 : 1);
 }
 
-template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>
-inline void Evaluator::processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept {
+template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
+inline void Evaluator::processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ,
+                                     PhaseValue weight, int32_t ref) noexcept {
     while (piecesBb) {
         const uint64_t attacks = AttackFn(popLSB(piecesBb), occ);
         data.allAttacks |= attacks;
-        data.*MobilityField += std::popcount(attacks & mobilityMask);
+        // Safe mobility: count squares not blocked by our own pieces and not
+        // controlled by an enemy pawn (mobilityMask already excludes both).
+        const int32_t cnt = std::popcount(attacks & mobilityMask);
+        data.mobility += weight * (cnt - ref);
     }
 }
 
-inline void Evaluator::computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ) noexcept {
+inline void Evaluator::computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ,
+                                                uint64_t enemyPawnAttacks) noexcept {
     const uint64_t ownOcc = b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side] |
                             b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
-    const uint64_t mobilityMask = ~ownOcc;
+    // Mobility area excludes our own pieces and squares attacked by enemy pawns.
+    const uint64_t mobilityMask = ~ownOcc & ~enemyPawnAttacks;
     const bool isWhite = (side == 0);
 
     processPawns(b.pawns_bb[side], data, isWhite);
-    processPieces<knightAttacksLookup, &AttackData::knightMobility>(b.knights_bb[side], data, mobilityMask, occ);
-    processPieces<pieces::getBishopAttacks, &AttackData::bishopMobility>(b.bishops_bb[side], data, mobilityMask, occ);
-    processPieces<pieces::getRookAttacks, &AttackData::rookMobility>(b.rooks_bb[side], data, mobilityMask, occ);
-    processPieces<pieces::getQueenAttacks, &AttackData::queenMobility>(b.queens_bb[side], data, mobilityMask, occ);
+    processPieces<knightAttacksLookup>(b.knights_bb[side], data, mobilityMask, occ, MOBILITY_KNIGHT_WEIGHT, MOBILITY_KNIGHT_REF);
+    processPieces<pieces::getBishopAttacks>(b.bishops_bb[side], data, mobilityMask, occ, MOBILITY_BISHOP_WEIGHT, MOBILITY_BISHOP_REF);
+    processPieces<pieces::getRookAttacks>(b.rooks_bb[side], data, mobilityMask, occ, MOBILITY_ROOK_WEIGHT, MOBILITY_ROOK_REF);
+    processPieces<pieces::getQueenAttacks>(b.queens_bb[side], data, mobilityMask, occ, MOBILITY_QUEEN_WEIGHT, MOBILITY_QUEEN_REF);
 }
 
 void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept {
@@ -52,8 +58,13 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
     data[0] = AttackData{};
     data[1] = AttackData{};
 
-    computeAttackDataForSide(0, data[0], b, occ);
-    computeAttackDataForSide(1, data[1], b, occ);
+    // Enemy pawn attacks are needed up front to carve them out of each side's
+    // safe-mobility area (side 0's area excludes side 1's pawn attacks, etc.).
+    const uint64_t pawnAttacks0 = collectPawnAttacks(b.pawns_bb[0], 0);
+    const uint64_t pawnAttacks1 = collectPawnAttacks(b.pawns_bb[1], 1);
+
+    computeAttackDataForSide(0, data[0], b, occ, pawnAttacks1);
+    computeAttackDataForSide(1, data[1], b, occ, pawnAttacks0);
 
     cacheEntry.key = cacheKey;
     cacheEntry.value[0] = data[0];
@@ -62,10 +73,9 @@ void Evaluator::computeAttackData(AttackData data[2], const chess::Board& b, uin
 }
 
 PhaseValue Evaluator::evalMobility(const AttackData data[2]) noexcept {
-    const int32_t diff = data[0].knightMobility + data[0].bishopMobility + data[0].rookMobility + data[0].queenMobility
-                       - data[1].knightMobility - data[1].bishopMobility - data[1].rookMobility - data[1].queenMobility;
-    // Mobility is phase-agnostic in raw form; expose as mg=eg pair.
-    return PhaseValue{diff / 2, diff / 2};
+    // Per-side scores are already (mg, eg) bonuses centred on each piece's ref;
+    // white-relative mobility is simply white minus black.
+    return data[0].mobility - data[1].mobility;
 }
 
 } // namespace engine

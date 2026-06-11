@@ -79,11 +79,8 @@ private:
     // --- Internal structures ---
     struct AttackData {
         uint64_t allAttacks = 0ULL;
-        // int16 reduces cache footprint; mobility values are tightly bounded.
-        int16_t knightMobility = 0;
-        int16_t bishopMobility = 0;
-        int16_t rookMobility  = 0;
-        int16_t queenMobility = 0;
+        // Per-piece safe-mobility score (mg/eg), accumulated in computeAttackData.
+        PhaseValue mobility{};
     };
 
     // Continuous phase descriptor. `w1024` is a fixed-point phase weight in
@@ -151,10 +148,11 @@ private:
     // --- Attack data ---
     __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
-    static inline void computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ) noexcept;
+    static inline void computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ, uint64_t enemyPawnAttacks) noexcept;
     static inline void processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>
-    static inline void processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
+    static inline void processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ,
+                                     PhaseValue weight, int32_t ref) noexcept;
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
     static uint64_t collectPawnAttacks(uint64_t pawns, int side) noexcept;
     static uint64_t collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept;

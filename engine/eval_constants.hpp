@@ -88,6 +88,20 @@ inline PhaseValue LOW_MOBILITY_QUEEN_PENALTY  = {33, 33};
 inline PhaseValue PINNED_QUEEN_PENALTY        = {141, 141};
 inline PhaseValue MOBILITY_CENTER_BONUS       = {1, 1};
 inline PhaseValue MOBILITY_OWN_PAWN_BLOCKER_PENALTY = {4, 4};
+
+// Per-piece "safe mobility" term (evalMobility): bonus = (safeCount - ref) * weight,
+// mg/eg split. safeCount excludes own-occupied squares AND squares attacked by
+// enemy pawns. Refs sit near the typical safe count so the mean shift vs the old
+// flat term stays small; per-piece weights down-rank queen/rook squares (sliders
+// have naturally high counts) relative to knight/bishop. Tunable in 2 groups.
+inline int32_t   MOBILITY_KNIGHT_REF    = 3;
+inline int32_t   MOBILITY_BISHOP_REF    = 5;
+inline int32_t   MOBILITY_ROOK_REF      = 6;
+inline int32_t   MOBILITY_QUEEN_REF     = 11;
+inline PhaseValue MOBILITY_KNIGHT_WEIGHT = {4, 4};
+inline PhaseValue MOBILITY_BISHOP_WEIGHT = {3, 4};
+inline PhaseValue MOBILITY_ROOK_WEIGHT   = {2, 4};
+inline PhaseValue MOBILITY_QUEEN_WEIGHT  = {1, 2};
 inline int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;      // scalar threshold
 inline PhaseValue QUEEN_EARLY_MOBILITY_PENALTY = {5, 5};
 inline PhaseValue OUTPOST_CENTER_FILE_BONUS    = {4, 4};
