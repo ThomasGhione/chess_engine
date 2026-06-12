@@ -22,7 +22,7 @@ const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
-constexpr double LMR_C = 3.80;
+constexpr double LMR_C = 3.00;
 constexpr int LMR_MAX_DEPTH = 20; // engine never exceeds depth 14 in practice
 constexpr int LMR_MAX_MOVES = 218; // theoretical maximum legal moves in any chess position
 struct LMRTable {
@@ -701,7 +701,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // Late captures are reduced too: move ordering ranks good captures early,
         // so a capture reaching this index is almost always a bad/losing one.
         const bool lmrStructuralCandidate = (ctx.depth >= 4)
-            && (moveIndex >= 8)
+            && (moveIndex >= 4)
             && !isPromotionCandidate
             && !createsPawnForkThreat;
 
