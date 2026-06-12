@@ -94,12 +94,12 @@ inline PhaseValue MOBILITY_OWN_PAWN_BLOCKER_PENALTY = {4, 4};
 // enemy pawns. Refs sit near the typical safe count so the mean shift vs the old
 // flat term stays small; per-piece weights down-rank queen/rook squares (sliders
 // have naturally high counts) relative to knight/bishop. Tunable in 2 groups.
-inline int32_t   MOBILITY_KNIGHT_REF    = 3;
-inline int32_t   MOBILITY_BISHOP_REF    = 5;
+inline int32_t   MOBILITY_KNIGHT_REF    = 2;   // tuned (mobility_minor)
+inline int32_t   MOBILITY_BISHOP_REF    = 2;   // tuned (mobility_minor)
 inline int32_t   MOBILITY_ROOK_REF      = 6;
 inline int32_t   MOBILITY_QUEEN_REF     = 11;
-inline PhaseValue MOBILITY_KNIGHT_WEIGHT = {4, 4};
-inline PhaseValue MOBILITY_BISHOP_WEIGHT = {3, 4};
+inline PhaseValue MOBILITY_KNIGHT_WEIGHT = {7, 3};   // tuned (mobility_minor)
+inline PhaseValue MOBILITY_BISHOP_WEIGHT = {6, 9};   // tuned (mobility_minor)
 inline PhaseValue MOBILITY_ROOK_WEIGHT   = {2, 4};
 inline PhaseValue MOBILITY_QUEEN_WEIGHT  = {1, 2};
 inline int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;      // scalar threshold
