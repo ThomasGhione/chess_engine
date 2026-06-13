@@ -191,13 +191,6 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t 
     return sign * sideSafety;
 }
 
-// Provided as inline declarations only; the bodies above subsume them.
-inline void Evaluator::applyNonCastledPenalties(int, bool, bool, bool, bool,
-                                                 uint64_t, uint64_t, int32_t&) noexcept {}
-inline void Evaluator::applyKingShieldSupport(int, int, uint64_t, uint64_t, int32_t&) noexcept {}
-inline void Evaluator::applyHookPawnPenalty(int, int, uint64_t, uint64_t, uint64_t, int32_t&) noexcept {}
-inline void Evaluator::applyShelterAndStorm(int, int, int, uint64_t, uint64_t, bool, uint64_t, int32_t&) noexcept {}
-inline void Evaluator::applyOpenDiagonalPenalty(const chess::Board&, int, int, uint8_t, int32_t&) noexcept {}
 
 int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile,
                                                uint64_t targetPawns) noexcept {

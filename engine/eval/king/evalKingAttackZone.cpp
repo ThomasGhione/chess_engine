@@ -62,16 +62,6 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
     return sign * attackDanger;
 }
 
-int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
-    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
-
-    const uint64_t occ = b.getPiecesBitMap();
-    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
-    return evalKingAttackZoneSide(b, data, 0, occ, attackMaterialScalePercent(b, 0, blackKingFile, b.pawns_bb[1]))
-         + evalKingAttackZoneSide(b, data, 1, occ, attackMaterialScalePercent(b, 1, whiteKingFile, b.pawns_bb[0]));
-}
-
 inline void Evaluator::addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept {
     const uint64_t knightChecks = b.knights_bb[side] & pieces::KNIGHT_ATTACKS[enemyKingSq];
     const uint64_t bishopChecks = b.bishops_bb[side] & pieces::getBishopAttacks(enemyKingSq, occ);

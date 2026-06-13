@@ -162,23 +162,12 @@ private:
     // --- King safety ---
     static PhaseValue evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     static PhaseValue evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
-    static int32_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
     static int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ, int32_t materialScale) noexcept;
     static inline PhaseValue evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
                                                   bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs,
                                                   int side, int32_t materialScale) noexcept;
     static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile, uint64_t targetPawns) noexcept;
     static inline int32_t scaleKingDanger(int32_t value, int32_t scalePercent) noexcept;
-    static inline void applyNonCastledPenalties(int side, bool rightsLost, bool kingOnWing,
-                                                bool canCastleKingside, bool canCastleQueenside,
-                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyHookPawnPenalty(int side, int kingFile, uint64_t ownPawns,
-                                            uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
-    static inline void applyShelterAndStorm(int side, int kingFile, int kingRank,
-                                            uint64_t ownPawns, uint64_t enemyPawns, bool kingOnWing,
-                                            uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
-    static inline void applyOpenDiagonalPenalty(const chess::Board& b, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
     static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
                                                       uint64_t developedKnights, uint64_t developedBishops,
                                                       int& attackerCount, int32_t& attackWeight) noexcept;
@@ -205,7 +194,6 @@ private:
     static inline PhaseValue evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
     static inline PhaseValue evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                       int sign, PhaseValue penalty) noexcept;
-    static PhaseValue evalThreats(const chess::Board& b, const AttackData data[2], uint64_t occ, bool isEndgame) noexcept;
     static PhaseValue evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
     static inline PhaseValue evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, int sign, uint64_t occ) noexcept;
     static PhaseValue evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;

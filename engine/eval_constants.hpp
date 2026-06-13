@@ -86,8 +86,6 @@ inline PhaseValue LOW_MOBILITY_ROOK_PENALTY   = {30, 30};
 inline PhaseValue PINNED_ROOK_PENALTY         = {75, 75};
 inline PhaseValue LOW_MOBILITY_QUEEN_PENALTY  = {33, 33};
 inline PhaseValue PINNED_QUEEN_PENALTY        = {141, 141};
-inline PhaseValue MOBILITY_CENTER_BONUS       = {1, 1};
-inline PhaseValue MOBILITY_OWN_PAWN_BLOCKER_PENALTY = {4, 4};
 
 // Per-piece "safe mobility" term (evalMobility): bonus = (safeCount - ref) * weight,
 // mg/eg split. safeCount excludes own-occupied squares AND squares attacked by
@@ -102,13 +100,6 @@ inline PhaseValue MOBILITY_KNIGHT_WEIGHT = {7, 3};   // tuned (mobility_minor)
 inline PhaseValue MOBILITY_BISHOP_WEIGHT = {6, 9};   // tuned (mobility_minor)
 inline PhaseValue MOBILITY_ROOK_WEIGHT   = {2, 4};
 inline PhaseValue MOBILITY_QUEEN_WEIGHT  = {1, 2};
-inline int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;      // scalar threshold
-inline PhaseValue QUEEN_EARLY_MOBILITY_PENALTY = {5, 5};
-inline PhaseValue OUTPOST_CENTER_FILE_BONUS    = {4, 4};
-inline PhaseValue OUTPOST_NEAR_CENTER_FILE_BONUS = {3, 3};
-inline PhaseValue OUTPOST_ADVANCED_RANK_BONUS = {5, 5};
-inline PhaseValue OUTPOST_KING_ZONE_BONUS     = {4, 4};
-inline PhaseValue OUTPOST_KEY_SQUARE_BONUS    = {1, 1};
 inline PhaseValue COORDINATION_PENALTY        = {9, 9};
 inline PhaseValue OUTPOST_BISHOP_BONUS        = {11, 11};
 inline PhaseValue OUTPOST_KNIGHT_BONUS        = {17, 17};
@@ -189,7 +180,6 @@ inline PhaseValue KING_SHELTER_WEAK_BONUS       = {17, 17};
 inline PhaseValue KING_SHELTER_MISSING_PENALTY  = {32, 32};
 inline PhaseValue KING_PAWN_STORM_NEAR_PENALTY  = {18, 18};
 inline PhaseValue KING_PAWN_STORM_FAR_PENALTY   = {11, 11};
-inline PhaseValue KING_CASTLED_SHIELD_BREAK_PENALTY = {10, 10};
 inline PhaseValue KING_SHELTER_ADVANCE_ONE_PENALTY  = {3, 3};
 inline PhaseValue KING_SHELTER_ADVANCE_TWO_PENALTY  = {4, 4};
 inline PhaseValue KING_HOOK_PAWN_ATTACKED_PENALTY   = {13, 13};
@@ -236,13 +226,6 @@ inline PhaseValue SPACE_BONUS = {1, 1};
 inline int32_t STALEMATE_DRAW_PENALTY_MAJOR  = 450;
 inline int32_t STALEMATE_DRAW_PENALTY_MINOR  = 120;
 inline int32_t STALEMATE_MATERIAL_THRESHOLD  = 130;
-
-// ===================================================
-// MOVE ORDERING (SEARCH)
-// ===================================================
-inline int32_t CHECK_BONUS    = 50;
-inline int32_t KILLER1_BONUS  = 2000;
-inline int32_t KILLER2_BONUS  = 1900;
 
 // ===================================================
 // MVV (Most Valuable Victim) table for capture ordering

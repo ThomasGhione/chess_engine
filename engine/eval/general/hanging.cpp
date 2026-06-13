@@ -109,11 +109,6 @@ inline PhaseValue Evaluator::evalThreatsSide(const chess::Board& b, const Attack
     return score;
 }
 
-PhaseValue Evaluator::evalThreats(const chess::Board& b, const AttackData data[2], uint64_t /*occ*/, bool /*isEndgame*/) noexcept {
-    // Compatibility shim for perf benchmark; the unified evaluator uses evalThreatsPair.
-    return evalThreatsSide(b, data, 0, 1, 0ULL) + evalThreatsSide(b, data, 1, -1, 0ULL);
-}
-
 PhaseValue Evaluator::evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept {
     return evalThreatsSide(b, data, 0, 1, occ) + evalThreatsSide(b, data, 1, -1, occ);
 }
