@@ -41,13 +41,13 @@ inline int32_t PIECE_VALUES[8] = {
 // ===================================================
 inline PhaseValue DOUBLED_PAWN_PENALTY      = {-8, -8};
 inline PhaseValue ISOLATED_PAWN_PENALTY     = {-17, -17};
-inline PhaseValue PASSED_PAWN_BONUS         = {26, 26};
+inline PhaseValue PASSED_PAWN_BONUS         = {21, 36};   // tuned (pawn_passers)
 inline PhaseValue PAWN_ISLAND_PENALTY       = {-9, -9};
 inline PhaseValue PAWN_SUPPORT_BONUS        = {10, 10};
-inline PhaseValue CANDIDATE_PASSER_BONUS    = {10, 14};   // was +4 in EG
-inline PhaseValue CONNECTED_PASSER_BONUS    = {22, 28};   // was +6 in EG
+inline PhaseValue CANDIDATE_PASSER_BONUS    = {9, 11};    // tuned (pawn_passers)
+inline PhaseValue CONNECTED_PASSER_BONUS    = {17, 19};   // tuned (pawn_passers)
 inline PhaseValue BACKWARD_PAWN_PENALTY     = {-10, -10};
-inline PhaseValue PASSED_PAWN_BLOCKED_PENALTY = {-12, -12};
+inline PhaseValue PASSED_PAWN_BLOCKED_PENALTY = {-16, -16}; // tuned (pawn_passers)
 // Per enemy pawn on our bishop's colour complex: those pawns are targets for
 // the bishop -> bonus to the bishop's owner (evalWeakSquares). mg == eg.
 inline int32_t COLOR_COMPLEX_PENALTY        = 2;
