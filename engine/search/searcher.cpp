@@ -763,19 +763,24 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
 
-            if (!isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
+            // The wide-window widen-research only carries information in PV nodes:
+            // in a non-PV node beta == alpha+1 == scoutBeta, so this window equals
+            // the null-window research above and would just re-probe the TT for an
+            // identical result. Gate on isPVNode to avoid the duplicate node.
+            if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
                 score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
-        } else { // can't reduce, regular PVS search 
+        } else { // can't reduce, regular PVS search
             score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
 
-            if (!isFirstMove) {
-                if (shouldResearchPVS(score, scoutAlpha)) {
-                    score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
-                                            useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
-                }
+            // Only PV nodes need the wide-window re-search; in a non-PV node the
+            // scout window already IS the full window (beta == alpha+1), so a
+            // re-search would duplicate the scout (TT-mitigated but still wasted).
+            if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
+                score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
+                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
         }
 
