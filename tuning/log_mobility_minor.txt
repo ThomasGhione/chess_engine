@@ -1,0 +1,2060 @@
+2026-06-12 11:30:25,602 INFO     chess-tuning-tools version: 0.9.5
+2026-06-12 11:30:25,625 INFO     Starting iteration 0
+2026-06-12 11:30:25,626 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 2, 'MOBILITY_KNIGHT_WEIGHT_Eg': 7, 'MOBILITY_BISHOP_REF': 8, 'MOBILITY_BISHOP_WEIGHT_Mg': 1, 'MOBILITY_BISHOP_WEIGHT_Eg': 6}
+2026-06-12 11:30:25,627 INFO     Start experiment
+2026-06-12 11:32:09,684 INFO     Experiment finished (104.056149s elapsed).
+2026-06-12 11:32:10,147 INFO     Got Elo: 16.55707406329004 +- 34.632189355512125
+2026-06-12 11:32:10,148 INFO     Estimated draw rate: 68.18%
+2026-06-12 11:32:10,148 INFO     Updating model
+2026-06-12 11:32:10,149 INFO     GP sampling finished (0.000367s)
+2026-06-12 11:32:10,184 INFO     Starting iteration 1
+2026-06-12 11:32:10,281 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 6, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 1}
+2026-06-12 11:32:10,282 INFO     Start experiment
+2026-06-12 11:33:50,253 INFO     Experiment finished (99.970455s elapsed).
+2026-06-12 11:33:50,696 INFO     Got Elo: 16.55707406329004 +- 47.53217766733843
+2026-06-12 11:33:50,696 INFO     Estimated draw rate: 59.09%
+2026-06-12 11:33:50,696 INFO     Updating model
+2026-06-12 11:33:50,697 INFO     GP sampling finished (0.000113s)
+2026-06-12 11:33:50,741 INFO     Starting iteration 2
+2026-06-12 11:33:50,877 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 11:33:50,878 INFO     Start experiment
+2026-06-12 11:35:55,879 INFO     Experiment finished (125.000947s elapsed).
+2026-06-12 11:35:56,383 INFO     Got Elo: 49.975494643319976 +- 39.733918351069164
+2026-06-12 11:35:56,384 INFO     Estimated draw rate: 68.18%
+2026-06-12 11:35:56,384 INFO     Updating model
+2026-06-12 11:35:56,384 INFO     GP sampling finished (0.000157s)
+2026-06-12 11:35:56,434 INFO     Starting iteration 3
+2026-06-12 11:35:56,536 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 6, 'MOBILITY_BISHOP_REF': 7, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 4}
+2026-06-12 11:35:56,537 INFO     Start experiment
+2026-06-12 11:37:55,975 INFO     Experiment finished (119.437835s elapsed).
+2026-06-12 11:37:56,394 INFO     Got Elo: -66.99643491750545 +- 48.36729064103611
+2026-06-12 11:37:56,394 INFO     Estimated draw rate: 54.55%
+2026-06-12 11:37:56,394 INFO     Updating model
+2026-06-12 11:37:56,395 INFO     GP sampling finished (0.000155s)
+2026-06-12 11:37:56,462 INFO     Starting iteration 4
+2026-06-12 11:37:56,556 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 4, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 5}
+2026-06-12 11:37:56,556 INFO     Start experiment
+2026-06-12 11:40:24,818 INFO     Experiment finished (148.261585s elapsed).
+2026-06-12 11:40:25,220 INFO     Got Elo: -16.557074063290028 +- 41.54571052422028
+2026-06-12 11:40:25,220 INFO     Estimated draw rate: 59.09%
+2026-06-12 11:40:25,220 INFO     Updating model
+2026-06-12 11:40:25,220 INFO     GP sampling finished (0.000127s)
+2026-06-12 11:40:25,276 INFO     Starting iteration 5
+2026-06-12 11:40:25,358 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 3, 'MOBILITY_KNIGHT_WEIGHT_Eg': 9, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 3}
+2026-06-12 11:40:25,359 INFO     Start experiment
+2026-06-12 11:42:16,621 INFO     Experiment finished (111.262558s elapsed).
+2026-06-12 11:42:17,076 INFO     Got Elo: 84.3413461259573 +- 49.664421751356414
+2026-06-12 11:42:17,076 INFO     Estimated draw rate: 59.09%
+2026-06-12 11:42:17,077 INFO     Updating model
+2026-06-12 11:42:17,077 INFO     GP sampling finished (0.000138s)
+2026-06-12 11:42:17,136 INFO     Starting iteration 6
+2026-06-12 11:42:17,198 INFO     Testing {'MOBILITY_KNIGHT_REF': 1, 'MOBILITY_KNIGHT_WEIGHT_Mg': 6, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 8, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 11:42:17,199 INFO     Start experiment
+2026-06-12 11:44:41,396 INFO     Experiment finished (144.197138s elapsed).
+2026-06-12 11:44:41,837 INFO     Got Elo: -16.557074063290028 +- 53.178344740418915
+2026-06-12 11:44:41,838 INFO     Estimated draw rate: 50.00%
+2026-06-12 11:44:41,838 INFO     Updating model
+2026-06-12 11:44:41,838 INFO     GP sampling finished (0.000155s)
+2026-06-12 11:44:41,897 INFO     Starting iteration 7
+2026-06-12 11:44:41,945 INFO     Testing {'MOBILITY_KNIGHT_REF': 7, 'MOBILITY_KNIGHT_WEIGHT_Mg': 1, 'MOBILITY_KNIGHT_WEIGHT_Eg': 8, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 11:44:41,945 INFO     Start experiment
+2026-06-12 11:46:42,852 INFO     Experiment finished (120.906818s elapsed).
+2026-06-12 11:46:43,233 INFO     Got Elo: -0.0 +- 50.69347702619743
+2026-06-12 11:46:43,233 INFO     Estimated draw rate: 54.55%
+2026-06-12 11:46:43,233 INFO     Updating model
+2026-06-12 11:46:43,234 INFO     GP sampling finished (0.000137s)
+2026-06-12 11:46:43,289 INFO     Starting iteration 8
+2026-06-12 11:46:43,353 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 8, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 2}
+2026-06-12 11:46:43,354 INFO     Start experiment
+2026-06-12 11:48:41,102 INFO     Experiment finished (117.748392s elapsed).
+2026-06-12 11:48:41,535 INFO     Got Elo: -33.18969402590553 +- 37.5163903416256
+2026-06-12 11:48:41,535 INFO     Estimated draw rate: 63.64%
+2026-06-12 11:48:41,536 INFO     Updating model
+2026-06-12 11:48:41,536 INFO     GP sampling finished (0.000117s)
+2026-06-12 11:48:41,591 INFO     Starting iteration 9
+2026-06-12 11:48:41,627 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 2, 'MOBILITY_KNIGHT_WEIGHT_Eg': 6, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 3}
+2026-06-12 11:48:41,627 INFO     Start experiment
+2026-06-12 11:50:46,366 INFO     Experiment finished (124.738531s elapsed).
+2026-06-12 11:50:46,855 INFO     Got Elo: -49.97549464331997 +- 46.099587112312726
+2026-06-12 11:50:46,855 INFO     Estimated draw rate: 59.09%
+2026-06-12 11:50:46,856 INFO     Updating model
+2026-06-12 11:50:46,856 INFO     GP sampling finished (0.000179s)
+2026-06-12 11:50:46,909 INFO     Starting iteration 10
+2026-06-12 11:50:46,955 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 4, 'MOBILITY_KNIGHT_WEIGHT_Eg': 6, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 11:50:46,956 INFO     Start experiment
+2026-06-12 11:53:09,146 INFO     Experiment finished (142.189164s elapsed).
+2026-06-12 11:53:09,543 INFO     Got Elo: -49.97549464331997 +- 51.55281682419483
+2026-06-12 11:53:09,544 INFO     Estimated draw rate: 50.00%
+2026-06-12 11:53:09,544 INFO     Updating model
+2026-06-12 11:53:09,544 INFO     GP sampling finished (0.000155s)
+2026-06-12 11:53:09,604 INFO     Starting iteration 11
+2026-06-12 11:53:09,641 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 7, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 6}
+2026-06-12 11:53:09,642 INFO     Start experiment
+2026-06-12 11:55:21,146 INFO     Experiment finished (131.503069s elapsed).
+2026-06-12 11:55:21,602 INFO     Got Elo: 49.975494643319976 +- 46.625562881401045
+2026-06-12 11:55:21,602 INFO     Estimated draw rate: 68.18%
+2026-06-12 11:55:21,602 INFO     Updating model
+2026-06-12 11:55:21,602 INFO     GP sampling finished (0.000148s)
+2026-06-12 11:55:21,657 INFO     Starting iteration 12
+2026-06-12 11:55:21,701 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 11:55:21,702 INFO     Start experiment
+2026-06-12 11:57:18,050 INFO     Experiment finished (116.347786s elapsed).
+2026-06-12 11:57:18,556 INFO     Got Elo: 33.18969402590559 +- 37.56720232913609
+2026-06-12 11:57:18,556 INFO     Estimated draw rate: 63.64%
+2026-06-12 11:57:18,557 INFO     Updating model
+2026-06-12 11:57:18,557 INFO     GP sampling finished (0.000203s)
+2026-06-12 11:57:18,622 INFO     Starting iteration 13
+2026-06-12 11:57:18,676 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 1, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 11:57:18,678 INFO     Start experiment
+2026-06-12 11:59:07,001 INFO     Experiment finished (108.322982s elapsed).
+2026-06-12 11:59:07,420 INFO     Got Elo: -16.557074063290102 +- 34.73052236473794
+2026-06-12 11:59:07,420 INFO     Estimated draw rate: 77.27%
+2026-06-12 11:59:07,420 INFO     Updating model
+2026-06-12 11:59:07,421 INFO     GP sampling finished (0.000158s)
+2026-06-12 11:59:07,483 INFO     Starting iteration 14
+2026-06-12 11:59:07,536 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 5, 'MOBILITY_KNIGHT_WEIGHT_Eg': 9, 'MOBILITY_BISHOP_REF': 8, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 11:59:07,537 INFO     Start experiment
+2026-06-12 12:00:51,789 INFO     Experiment finished (104.251359s elapsed).
+2026-06-12 12:00:52,195 INFO     Got Elo: 1.9286549331065742e-14 +- 44.87749587357021
+2026-06-12 12:00:52,196 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:00:52,196 INFO     Updating model
+2026-06-12 12:00:52,196 INFO     GP sampling finished (0.000158s)
+2026-06-12 12:00:52,261 INFO     Starting iteration 15
+2026-06-12 12:00:52,295 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 7, 'MOBILITY_BISHOP_REF': 7, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 6}
+2026-06-12 12:00:52,296 INFO     Start experiment
+2026-06-12 12:02:44,948 INFO     Experiment finished (112.652189s elapsed).
+2026-06-12 12:02:45,439 INFO     Got Elo: -49.975494643320026 +- 39.78823752867128
+2026-06-12 12:02:45,439 INFO     Estimated draw rate: 68.18%
+2026-06-12 12:02:45,439 INFO     Updating model
+2026-06-12 12:03:58,882 INFO     GP sampling finished (73.441943s)
+2026-06-12 12:03:58,967 INFO     Starting iteration 16
+2026-06-12 12:04:11,585 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:04:11,585 INFO     Estimated Elo: 3.1239 +- 13.2515
+2026-06-12 12:04:11,586 INFO     90.0% confidence interval of the Elo value: (-18.6729, 24.9206)
+2026-06-12 12:04:11,803 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:04:11,804 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 2, 'MOBILITY_KNIGHT_WEIGHT_Eg': 9, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 6}
+2026-06-12 12:04:11,805 INFO     Start experiment
+2026-06-12 12:05:54,224 INFO     Experiment finished (102.41824s elapsed).
+2026-06-12 12:05:54,691 INFO     Got Elo: 1.9286549331065742e-14 +- 44.87886134560815
+2026-06-12 12:05:54,691 INFO     Estimated draw rate: 54.55%
+2026-06-12 12:05:54,691 INFO     Updating model
+2026-06-12 12:06:00,828 INFO     GP sampling finished (6.136604s)
+2026-06-12 12:06:00,899 INFO     Starting iteration 17
+2026-06-12 12:06:12,923 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:06:12,924 INFO     Estimated Elo: 2.9108 +- 12.8543
+2026-06-12 12:06:12,924 INFO     90.0% confidence interval of the Elo value: (-18.2326, 24.0543)
+2026-06-12 12:06:13,114 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 12:06:13,114 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 3, 'MOBILITY_KNIGHT_WEIGHT_Eg': 8, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 1}
+2026-06-12 12:06:13,115 INFO     Start experiment
+2026-06-12 12:07:50,333 INFO     Experiment finished (97.217076s elapsed).
+2026-06-12 12:07:50,719 INFO     Got Elo: -33.18969402590553 +- 44.03842417759549
+2026-06-12 12:07:50,719 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:07:50,719 INFO     Updating model
+2026-06-12 12:07:57,035 INFO     GP sampling finished (6.315144s)
+2026-06-12 12:07:57,119 INFO     Starting iteration 18
+2026-06-12 12:08:08,911 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:08:08,912 INFO     Estimated Elo: 1.23 +- 12.6521
+2026-06-12 12:08:08,912 INFO     90.0% confidence interval of the Elo value: (-19.5809, 22.041)
+2026-06-12 12:08:09,108 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:08:09,108 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:08:09,110 INFO     Start experiment
+2026-06-12 12:09:51,481 INFO     Experiment finished (102.370701s elapsed).
+2026-06-12 12:09:51,883 INFO     Got Elo: 16.557074063289978 +- 41.59392811155823
+2026-06-12 12:09:51,883 INFO     Estimated draw rate: 68.18%
+2026-06-12 12:09:51,883 INFO     Updating model
+2026-06-12 12:09:57,938 INFO     GP sampling finished (6.054914s)
+2026-06-12 12:09:58,031 INFO     Starting iteration 19
+2026-06-12 12:10:10,711 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:10:10,711 INFO     Estimated Elo: 2.9828 +- 12.4089
+2026-06-12 12:10:10,711 INFO     90.0% confidence interval of the Elo value: (-17.4281, 23.3937)
+2026-06-12 12:10:10,932 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 12:10:10,933 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:10:10,935 INFO     Start experiment
+2026-06-12 12:12:01,773 INFO     Experiment finished (110.836936s elapsed).
+2026-06-12 12:12:02,159 INFO     Got Elo: -0.0 +- 55.70492588318405
+2026-06-12 12:12:02,159 INFO     Estimated draw rate: 54.55%
+2026-06-12 12:12:02,159 INFO     Updating model
+2026-06-12 12:12:08,013 INFO     GP sampling finished (5.854146s)
+2026-06-12 12:12:08,104 INFO     Starting iteration 20
+2026-06-12 12:12:19,988 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:12:19,988 INFO     Estimated Elo: 2.968 +- 12.2662
+2026-06-12 12:12:19,988 INFO     90.0% confidence interval of the Elo value: (-17.2081, 23.1442)
+2026-06-12 12:12:20,197 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:12:20,198 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:12:20,199 INFO     Start experiment
+2026-06-12 12:13:51,059 INFO     Experiment finished (90.859877s elapsed).
+2026-06-12 12:13:51,474 INFO     Got Elo: 33.18969402590559 +- 37.561635343868915
+2026-06-12 12:13:51,482 INFO     Estimated draw rate: 72.73%
+2026-06-12 12:13:51,482 INFO     Updating model
+2026-06-12 12:13:57,839 INFO     GP sampling finished (6.356629s)
+2026-06-12 12:13:57,929 INFO     Starting iteration 21
+2026-06-12 12:14:10,699 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:14:10,699 INFO     Estimated Elo: 7.2462 +- 12.0866
+2026-06-12 12:14:10,699 INFO     90.0% confidence interval of the Elo value: (-12.6346, 27.127)
+2026-06-12 12:14:11,044 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:14:11,045 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:14:11,047 INFO     Start experiment
+2026-06-12 12:15:54,308 INFO     Experiment finished (103.260072s elapsed).
+2026-06-12 12:15:54,712 INFO     Got Elo: 16.55707406328996 +- 62.80245502218066
+2026-06-12 12:15:54,712 INFO     Estimated draw rate: 50.00%
+2026-06-12 12:15:54,712 INFO     Updating model
+2026-06-12 12:16:00,920 INFO     GP sampling finished (6.207347s)
+2026-06-12 12:16:00,981 INFO     Starting iteration 22
+2026-06-12 12:16:14,530 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:16:14,530 INFO     Estimated Elo: 7.8669 +- 12.0323
+2026-06-12 12:16:14,530 INFO     90.0% confidence interval of the Elo value: (-11.9245, 27.6583)
+2026-06-12 12:16:14,761 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:16:14,762 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 12:16:14,764 INFO     Start experiment
+2026-06-12 12:18:10,050 INFO     Experiment finished (115.285211s elapsed).
+2026-06-12 12:18:10,435 INFO     Got Elo: 33.18969402590559 +- 44.0140690900333
+2026-06-12 12:18:10,435 INFO     Estimated draw rate: 54.55%
+2026-06-12 12:18:10,435 INFO     Updating model
+2026-06-12 12:18:16,454 INFO     GP sampling finished (6.018453s)
+2026-06-12 12:18:16,527 INFO     Starting iteration 23
+2026-06-12 12:18:30,089 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:18:30,089 INFO     Estimated Elo: 9.8543 +- 12.2539
+2026-06-12 12:18:30,089 INFO     90.0% confidence interval of the Elo value: (-10.3016, 30.0102)
+2026-06-12 12:18:30,364 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:18:30,364 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:18:30,367 INFO     Start experiment
+2026-06-12 12:20:25,550 INFO     Experiment finished (115.182809s elapsed).
+2026-06-12 12:20:25,921 INFO     Got Elo: -16.557074063290028 +- 53.174610110378126
+2026-06-12 12:20:25,921 INFO     Estimated draw rate: 40.91%
+2026-06-12 12:20:25,921 INFO     Updating model
+2026-06-12 12:20:32,097 INFO     GP sampling finished (6.175822s)
+2026-06-12 12:20:32,192 INFO     Starting iteration 24
+2026-06-12 12:20:45,641 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:20:45,641 INFO     Estimated Elo: 8.302 +- 12.1888
+2026-06-12 12:20:45,641 INFO     90.0% confidence interval of the Elo value: (-11.7468, 28.3509)
+2026-06-12 12:20:45,859 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  3            9
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:20:45,869 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:20:45,871 INFO     Start experiment
+2026-06-12 12:22:29,568 INFO     Experiment finished (103.697257s elapsed).
+2026-06-12 12:22:29,983 INFO     Got Elo: -66.99643491750545 +- 41.42106999977534
+2026-06-12 12:22:29,984 INFO     Estimated draw rate: 54.55%
+2026-06-12 12:22:29,984 INFO     Updating model
+2026-06-12 12:22:35,949 INFO     GP sampling finished (5.964887s)
+2026-06-12 12:22:36,044 INFO     Starting iteration 25
+2026-06-12 12:22:47,955 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:22:47,956 INFO     Estimated Elo: 5.0755 +- 12.6118
+2026-06-12 12:22:47,956 INFO     90.0% confidence interval of the Elo value: (-15.669, 25.82)
+2026-06-12 12:22:48,168 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:22:48,168 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 9, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:22:48,171 INFO     Start experiment
+2026-06-12 12:24:11,079 INFO     Experiment finished (82.90816s elapsed).
+2026-06-12 12:24:11,525 INFO     Got Elo: -16.557074063290028 +- 41.62691464972729
+2026-06-12 12:24:11,525 INFO     Estimated draw rate: 59.09%
+2026-06-12 12:24:11,526 INFO     Updating model
+2026-06-12 12:24:17,555 INFO     GP sampling finished (6.029526s)
+2026-06-12 12:24:17,653 INFO     Starting iteration 26
+2026-06-12 12:24:29,971 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:24:29,971 INFO     Estimated Elo: 4.7138 +- 12.6208
+2026-06-12 12:24:29,971 INFO     90.0% confidence interval of the Elo value: (-16.0455, 25.4732)
+2026-06-12 12:24:30,228 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            9
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:24:30,229 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 12:24:30,231 INFO     Start experiment
+2026-06-12 12:26:12,255 INFO     Experiment finished (102.023775s elapsed).
+2026-06-12 12:26:12,636 INFO     Got Elo: -49.97549464331997 +- 46.01776641931933
+2026-06-12 12:26:12,637 INFO     Estimated draw rate: 59.09%
+2026-06-12 12:26:12,637 INFO     Updating model
+2026-06-12 12:26:18,920 INFO     GP sampling finished (6.282879s)
+2026-06-12 12:26:19,022 INFO     Starting iteration 27
+2026-06-12 12:26:32,770 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:26:32,771 INFO     Estimated Elo: 3.1568 +- 12.6831
+2026-06-12 12:26:32,771 INFO     90.0% confidence interval of the Elo value: (-17.705, 24.0187)
+2026-06-12 12:26:33,003 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:26:33,003 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 12:26:33,005 INFO     Start experiment
+2026-06-12 12:28:03,422 INFO     Experiment finished (90.416566s elapsed).
+2026-06-12 12:28:03,828 INFO     Got Elo: -16.557074063290102 +- 34.72267906520884
+2026-06-12 12:28:03,828 INFO     Estimated draw rate: 68.18%
+2026-06-12 12:28:03,828 INFO     Updating model
+2026-06-12 12:28:10,386 INFO     GP sampling finished (6.557874s)
+2026-06-12 12:28:10,487 INFO     Starting iteration 28
+2026-06-12 12:28:23,875 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:28:23,875 INFO     Estimated Elo: 2.2021 +- 12.5181
+2026-06-12 12:28:23,876 INFO     90.0% confidence interval of the Elo value: (-18.3883, 22.7926)
+2026-06-12 12:28:24,124 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 12:28:24,124 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 2, 'MOBILITY_KNIGHT_WEIGHT_Eg': 9, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 4}
+2026-06-12 12:28:24,126 INFO     Start experiment
+2026-06-12 12:30:04,562 INFO     Experiment finished (100.435317s elapsed).
+2026-06-12 12:30:04,959 INFO     Got Elo: -16.557074063290028 +- 41.60702714026793
+2026-06-12 12:30:04,960 INFO     Estimated draw rate: 68.18%
+2026-06-12 12:30:04,960 INFO     Updating model
+2026-06-12 12:30:10,915 INFO     GP sampling finished (5.955511s)
+2026-06-12 12:30:11,016 INFO     Starting iteration 29
+2026-06-12 12:30:25,161 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:30:25,161 INFO     Estimated Elo: 1.8037 +- 12.4284
+2026-06-12 12:30:25,161 INFO     90.0% confidence interval of the Elo value: (-18.6393, 22.2466)
+2026-06-12 12:30:25,391 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:30:25,392 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:30:25,394 INFO     Start experiment
+2026-06-12 12:32:10,084 INFO     Experiment finished (104.689947s elapsed).
+2026-06-12 12:32:10,446 INFO     Got Elo: 33.18969402590559 +- 50.22040544349707
+2026-06-12 12:32:10,446 INFO     Estimated draw rate: 45.45%
+2026-06-12 12:32:10,447 INFO     Updating model
+2026-06-12 12:32:16,536 INFO     GP sampling finished (6.089309s)
+2026-06-12 12:32:16,630 INFO     Starting iteration 30
+2026-06-12 12:32:29,412 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:32:29,413 INFO     Estimated Elo: 3.5732 +- 12.2163
+2026-06-12 12:32:29,420 INFO     90.0% confidence interval of the Elo value: (-16.5208, 23.6672)
+2026-06-12 12:32:29,643 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:32:29,644 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 5}
+2026-06-12 12:32:29,646 INFO     Start experiment
+2026-06-12 12:34:22,507 INFO     Experiment finished (112.861198s elapsed).
+2026-06-12 12:34:22,891 INFO     Got Elo: -0.0 +- 50.647449615356564
+2026-06-12 12:34:22,891 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:34:22,891 INFO     Updating model
+2026-06-12 12:34:28,971 INFO     GP sampling finished (6.080047s)
+2026-06-12 12:34:29,056 INFO     Starting iteration 31
+2026-06-12 12:34:43,358 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:34:43,358 INFO     Estimated Elo: 3.287 +- 11.9689
+2026-06-12 12:34:43,358 INFO     90.0% confidence interval of the Elo value: (-16.4001, 22.9742)
+2026-06-12 12:34:43,581 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:34:43,582 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:34:43,583 INFO     Start experiment
+2026-06-12 12:36:21,769 INFO     Experiment finished (98.185656s elapsed).
+2026-06-12 12:36:22,167 INFO     Got Elo: 1.9286549331065742e-14 +- 44.85623867109961
+2026-06-12 12:36:22,167 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:36:22,167 INFO     Updating model
+2026-06-12 12:36:28,476 INFO     GP sampling finished (6.308814s)
+2026-06-12 12:36:28,575 INFO     Starting iteration 32
+2026-06-12 12:36:42,877 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:36:42,877 INFO     Estimated Elo: 3.1364 +- 11.7394
+2026-06-12 12:36:42,878 INFO     90.0% confidence interval of the Elo value: (-16.1732, 22.4459)
+2026-06-12 12:36:43,102 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2           10
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            2            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:36:43,103 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:36:43,105 INFO     Start experiment
+2026-06-12 12:38:43,585 INFO     Experiment finished (120.479909s elapsed).
+2026-06-12 12:38:43,967 INFO     Got Elo: 16.55707406328996 +- 62.52351394837142
+2026-06-12 12:38:43,967 INFO     Estimated draw rate: 40.91%
+2026-06-12 12:38:43,967 INFO     Updating model
+2026-06-12 12:38:49,794 INFO     GP sampling finished (5.826531s)
+2026-06-12 12:38:49,876 INFO     Starting iteration 33
+2026-06-12 12:39:02,238 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:39:02,238 INFO     Estimated Elo: 3.7051 +- 11.6547
+2026-06-12 12:39:02,239 INFO     90.0% confidence interval of the Elo value: (-15.4651, 22.8753)
+2026-06-12 12:39:02,490 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:39:02,491 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:39:02,493 INFO     Start experiment
+2026-06-12 12:40:53,241 INFO     Experiment finished (110.748405s elapsed).
+2026-06-12 12:40:53,669 INFO     Got Elo: 49.975494643319976 +- 52.17861371606691
+2026-06-12 12:40:53,669 INFO     Estimated draw rate: 59.09%
+2026-06-12 12:40:53,669 INFO     Updating model
+2026-06-12 12:41:00,241 INFO     GP sampling finished (6.571475s)
+2026-06-12 12:41:00,340 INFO     Starting iteration 34
+2026-06-12 12:41:15,462 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:41:15,462 INFO     Estimated Elo: 5.4704 +- 11.9128
+2026-06-12 12:41:15,462 INFO     90.0% confidence interval of the Elo value: (-14.1244, 25.0652)
+2026-06-12 12:41:15,720 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:41:15,721 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:41:15,723 INFO     Start experiment
+2026-06-12 12:43:07,130 INFO     Experiment finished (111.406703s elapsed).
+2026-06-12 12:43:07,505 INFO     Got Elo: 66.99643491750547 +- 53.85057371906136
+2026-06-12 12:43:07,505 INFO     Estimated draw rate: 36.36%
+2026-06-12 12:43:07,506 INFO     Updating model
+2026-06-12 12:43:13,573 INFO     GP sampling finished (6.067525s)
+2026-06-12 12:43:13,652 INFO     Starting iteration 35
+2026-06-12 12:43:27,162 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:43:27,162 INFO     Estimated Elo: 7.7713 +- 13.361
+2026-06-12 12:43:27,162 INFO     90.0% confidence interval of the Elo value: (-14.2057, 29.7482)
+2026-06-12 12:43:27,408 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            2            9
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 12:43:27,408 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:43:27,410 INFO     Start experiment
+2026-06-12 12:45:16,035 INFO     Experiment finished (108.624989s elapsed).
+2026-06-12 12:45:16,390 INFO     Got Elo: 16.557074063289978 +- 58.084205239735574
+2026-06-12 12:45:16,390 INFO     Estimated draw rate: 50.00%
+2026-06-12 12:45:16,390 INFO     Updating model
+2026-06-12 12:45:22,639 INFO     GP sampling finished (6.248969s)
+2026-06-12 12:45:22,749 INFO     Starting iteration 36
+2026-06-12 12:45:37,201 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:45:37,201 INFO     Estimated Elo: 8.1141 +- 13.2866
+2026-06-12 12:45:37,201 INFO     90.0% confidence interval of the Elo value: (-13.7404, 29.9687)
+2026-06-12 12:45:37,515 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:45:37,516 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 6}
+2026-06-12 12:45:37,518 INFO     Start experiment
+2026-06-12 12:47:15,244 INFO     Experiment finished (97.725602s elapsed).
+2026-06-12 12:47:15,632 INFO     Got Elo: 1.9286549331065742e-14 +- 44.86618663267165
+2026-06-12 12:47:15,633 INFO     Estimated draw rate: 54.55%
+2026-06-12 12:47:15,633 INFO     Updating model
+2026-06-12 12:47:22,097 INFO     GP sampling finished (6.464611s)
+2026-06-12 12:47:22,207 INFO     Starting iteration 37
+2026-06-12 12:47:35,983 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:47:35,984 INFO     Estimated Elo: 7.9126 +- 13.1239
+2026-06-12 12:47:35,984 INFO     90.0% confidence interval of the Elo value: (-13.6742, 29.4995)
+2026-06-12 12:47:36,208 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            2            9
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:47:36,208 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:47:36,211 INFO     Start experiment
+2026-06-12 12:49:07,975 INFO     Experiment finished (91.764401s elapsed).
+2026-06-12 12:49:08,389 INFO     Got Elo: 66.99643491750547 +- 41.38517465165602
+2026-06-12 12:49:08,389 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:49:08,389 INFO     Updating model
+2026-06-12 12:49:14,831 INFO     GP sampling finished (6.442439s)
+2026-06-12 12:49:14,919 INFO     Starting iteration 38
+2026-06-12 12:49:27,846 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:49:27,846 INFO     Estimated Elo: 10.0124 +- 13.4382
+2026-06-12 12:49:27,846 INFO     90.0% confidence interval of the Elo value: (-12.0915, 32.1163)
+2026-06-12 12:49:28,065 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:49:28,066 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:49:28,067 INFO     Start experiment
+2026-06-12 12:51:30,685 INFO     Experiment finished (122.61722s elapsed).
+2026-06-12 12:51:31,051 INFO     Got Elo: -7.714619732426294e-14 +- 60.41781986708893
+2026-06-12 12:51:31,052 INFO     Estimated draw rate: 36.36%
+2026-06-12 12:51:31,052 INFO     Updating model
+2026-06-12 12:51:37,103 INFO     GP sampling finished (6.051008s)
+2026-06-12 12:51:37,193 INFO     Starting iteration 39
+2026-06-12 12:51:49,474 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:51:49,474 INFO     Estimated Elo: 9.7503 +- 13.1865
+2026-06-12 12:51:49,475 INFO     90.0% confidence interval of the Elo value: (-11.9395, 31.4401)
+2026-06-12 12:51:49,724 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2           10
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 12:51:49,725 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 9, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 12:51:49,726 INFO     Start experiment
+2026-06-12 12:53:36,452 INFO     Experiment finished (106.724794s elapsed).
+2026-06-12 12:53:36,950 INFO     Got Elo: 16.557074063289978 +- 41.59042133106133
+2026-06-12 12:53:36,950 INFO     Estimated draw rate: 68.18%
+2026-06-12 12:53:36,950 INFO     Updating model
+2026-06-12 12:53:43,149 INFO     GP sampling finished (6.198437s)
+2026-06-12 12:53:43,262 INFO     Starting iteration 40
+2026-06-12 12:53:56,855 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:53:56,855 INFO     Estimated Elo: 10.1297 +- 13.2078
+2026-06-12 12:53:56,855 INFO     90.0% confidence interval of the Elo value: (-11.5953, 31.8546)
+2026-06-12 12:53:57,107 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:53:57,108 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:53:57,109 INFO     Start experiment
+2026-06-12 12:55:32,236 INFO     Experiment finished (95.126683s elapsed).
+2026-06-12 12:55:32,615 INFO     Got Elo: 33.18969402590559 +- 44.067203433215724
+2026-06-12 12:55:32,615 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:55:32,616 INFO     Updating model
+2026-06-12 12:55:38,941 INFO     GP sampling finished (6.32504s)
+2026-06-12 12:55:39,055 INFO     Starting iteration 41
+2026-06-12 12:55:53,643 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:55:53,643 INFO     Estimated Elo: 10.9899 +- 12.9981
+2026-06-12 12:55:53,643 INFO     90.0% confidence interval of the Elo value: (-10.39, 32.3699)
+2026-06-12 12:55:53,875 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:55:53,876 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:55:53,877 INFO     Start experiment
+2026-06-12 12:57:32,883 INFO     Experiment finished (99.00534s elapsed).
+2026-06-12 12:57:33,335 INFO     Got Elo: -0.0 +- 38.50920796913139
+2026-06-12 12:57:33,335 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:57:33,335 INFO     Updating model
+2026-06-12 12:57:39,494 INFO     GP sampling finished (6.159054s)
+2026-06-12 12:57:39,611 INFO     Starting iteration 42
+2026-06-12 12:57:54,035 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:57:54,035 INFO     Estimated Elo: 10.4786 +- 12.62
+2026-06-12 12:57:54,035 INFO     90.0% confidence interval of the Elo value: (-10.2795, 31.2367)
+2026-06-12 12:57:54,252 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:57:54,252 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 12:57:54,254 INFO     Start experiment
+2026-06-12 12:59:22,099 INFO     Experiment finished (87.843908s elapsed).
+2026-06-12 12:59:22,488 INFO     Got Elo: 33.18969402590559 +- 44.05624564697866
+2026-06-12 12:59:22,488 INFO     Estimated draw rate: 63.64%
+2026-06-12 12:59:22,488 INFO     Updating model
+2026-06-12 12:59:28,828 INFO     GP sampling finished (6.339561s)
+2026-06-12 12:59:28,938 INFO     Starting iteration 43
+2026-06-12 12:59:45,044 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:59:45,044 INFO     Estimated Elo: 10.7566 +- 12.3123
+2026-06-12 12:59:45,044 INFO     90.0% confidence interval of the Elo value: (-9.4952, 31.0085)
+2026-06-12 12:59:45,272 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 12:59:45,273 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 12:59:45,275 INFO     Start experiment
+2026-06-12 13:01:39,909 INFO     Experiment finished (114.633976s elapsed).
+2026-06-12 13:01:40,394 INFO     Got Elo: 33.18969402590559 +- 37.5922929527099
+2026-06-12 13:01:40,394 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:01:40,394 INFO     Updating model
+2026-06-12 13:01:47,118 INFO     GP sampling finished (6.72305s)
+2026-06-12 13:01:47,213 INFO     Starting iteration 44
+2026-06-12 13:02:01,528 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:02:01,528 INFO     Estimated Elo: 12.4697 +- 11.8817
+2026-06-12 13:02:01,528 INFO     90.0% confidence interval of the Elo value: (-7.074, 32.0134)
+2026-06-12 13:02:01,806 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:02:01,807 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 6, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:02:01,809 INFO     Start experiment
+2026-06-12 13:03:57,363 INFO     Experiment finished (115.553101s elapsed).
+2026-06-12 13:03:57,729 INFO     Got Elo: 1.9286549331065742e-14 +- 44.80077951543298
+2026-06-12 13:03:57,729 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:03:57,729 INFO     Updating model
+2026-06-12 13:04:04,246 INFO     GP sampling finished (6.516273s)
+2026-06-12 13:04:04,365 INFO     Starting iteration 45
+2026-06-12 13:04:16,459 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:04:16,459 INFO     Estimated Elo: 12.4295 +- 11.9259
+2026-06-12 13:04:16,459 INFO     90.0% confidence interval of the Elo value: (-7.1869, 32.0459)
+2026-06-12 13:04:16,677 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:04:16,677 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:04:16,679 INFO     Start experiment
+2026-06-12 13:06:02,358 INFO     Experiment finished (105.677871s elapsed).
+2026-06-12 13:06:02,702 INFO     Got Elo: 49.975494643319976 +- 52.20176853067805
+2026-06-12 13:06:02,702 INFO     Estimated draw rate: 59.09%
+2026-06-12 13:06:02,703 INFO     Updating model
+2026-06-12 13:06:08,843 INFO     GP sampling finished (6.140157s)
+2026-06-12 13:06:08,936 INFO     Starting iteration 46
+2026-06-12 13:06:23,155 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:06:23,155 INFO     Estimated Elo: 14.2471 +- 12.1056
+2026-06-12 13:06:23,155 INFO     90.0% confidence interval of the Elo value: (-5.6647, 34.159)
+2026-06-12 13:06:23,344 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  3            9
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:06:23,344 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:06:23,345 INFO     Start experiment
+2026-06-12 13:08:07,622 INFO     Experiment finished (104.276562s elapsed).
+2026-06-12 13:08:08,057 INFO     Got Elo: 33.18969402590559 +- 44.09758742900964
+2026-06-12 13:08:08,057 INFO     Estimated draw rate: 54.55%
+2026-06-12 13:08:08,057 INFO     Updating model
+2026-06-12 13:08:14,584 INFO     GP sampling finished (6.526526s)
+2026-06-12 13:08:14,707 INFO     Starting iteration 47
+2026-06-12 13:08:28,226 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:08:28,226 INFO     Estimated Elo: 15.2539 +- 11.9597
+2026-06-12 13:08:28,226 INFO     90.0% confidence interval of the Elo value: (-4.418, 34.9259)
+2026-06-12 13:08:28,424 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:08:28,425 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:08:28,427 INFO     Start experiment
+2026-06-12 13:10:26,326 INFO     Experiment finished (117.898301s elapsed).
+2026-06-12 13:10:26,750 INFO     Got Elo: -33.18969402590553 +- 37.51700090759529
+2026-06-12 13:10:26,750 INFO     Estimated draw rate: 54.55%
+2026-06-12 13:10:26,751 INFO     Updating model
+2026-06-12 13:10:33,343 INFO     GP sampling finished (6.592282s)
+2026-06-12 13:10:33,476 INFO     Starting iteration 48
+2026-06-12 13:10:45,009 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:10:45,009 INFO     Estimated Elo: 13.8437 +- 12.0181
+2026-06-12 13:10:45,009 INFO     90.0% confidence interval of the Elo value: (-5.9244, 33.6117)
+2026-06-12 13:10:45,186 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:10:45,187 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:10:45,188 INFO     Start experiment
+2026-06-12 13:12:34,914 INFO     Experiment finished (109.725058s elapsed).
+2026-06-12 13:12:35,284 INFO     Got Elo: -16.557074063290028 +- 58.10564152698067
+2026-06-12 13:12:35,284 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:12:35,284 INFO     Updating model
+2026-06-12 13:12:42,180 INFO     GP sampling finished (6.89509s)
+2026-06-12 13:12:42,320 INFO     Starting iteration 49
+2026-06-12 13:12:54,602 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:12:54,602 INFO     Estimated Elo: 13.1103 +- 11.7954
+2026-06-12 13:12:54,602 INFO     90.0% confidence interval of the Elo value: (-6.2915, 32.5121)
+2026-06-12 13:12:54,774 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:12:54,775 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:12:54,777 INFO     Start experiment
+2026-06-12 13:14:28,805 INFO     Experiment finished (94.027826s elapsed).
+2026-06-12 13:14:29,245 INFO     Got Elo: 33.18969402590559 +- 37.501513756904515
+2026-06-12 13:14:29,245 INFO     Estimated draw rate: 72.73%
+2026-06-12 13:14:29,245 INFO     Updating model
+2026-06-12 13:14:36,077 INFO     GP sampling finished (6.83159s)
+2026-06-12 13:14:36,210 INFO     Starting iteration 50
+2026-06-12 13:14:50,604 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:14:50,604 INFO     Estimated Elo: 12.9697 +- 11.3311
+2026-06-12 13:14:50,604 INFO     90.0% confidence interval of the Elo value: (-5.6683, 31.6077)
+2026-06-12 13:14:50,825 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:14:50,826 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 13:14:50,828 INFO     Start experiment
+2026-06-12 13:16:45,400 INFO     Experiment finished (114.571412s elapsed).
+2026-06-12 13:16:45,809 INFO     Got Elo: -33.18969402590553 +- 49.73155225950836
+2026-06-12 13:16:45,809 INFO     Estimated draw rate: 54.55%
+2026-06-12 13:16:45,810 INFO     Updating model
+2026-06-12 13:16:52,438 INFO     GP sampling finished (6.628497s)
+2026-06-12 13:16:52,580 INFO     Starting iteration 51
+2026-06-12 13:17:07,929 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:17:07,929 INFO     Estimated Elo: 12.1714 +- 11.2063
+2026-06-12 13:17:07,929 INFO     90.0% confidence interval of the Elo value: (-6.2613, 30.6041)
+2026-06-12 13:17:08,183 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:17:08,184 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 9, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:17:08,186 INFO     Start experiment
+2026-06-12 13:19:13,120 INFO     Experiment finished (124.933982s elapsed).
+2026-06-12 13:19:13,595 INFO     Got Elo: 16.55707406329004 +- 47.55949061636906
+2026-06-12 13:19:13,596 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:19:13,596 INFO     Updating model
+2026-06-12 13:19:19,910 INFO     GP sampling finished (6.314447s)
+2026-06-12 13:19:20,051 INFO     Starting iteration 52
+2026-06-12 13:19:34,594 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:19:34,594 INFO     Estimated Elo: 12.3091 +- 11.2257
+2026-06-12 13:19:34,594 INFO     90.0% confidence interval of the Elo value: (-6.1555, 30.7737)
+2026-06-12 13:19:34,842 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:19:34,843 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 13:19:34,844 INFO     Start experiment
+2026-06-12 13:21:44,459 INFO     Experiment finished (129.615362s elapsed).
+2026-06-12 13:21:44,843 INFO     Got Elo: -66.99643491750545 +- 53.746442678676274
+2026-06-12 13:21:44,843 INFO     Estimated draw rate: 54.55%
+2026-06-12 13:21:44,843 INFO     Updating model
+2026-06-12 13:21:52,093 INFO     GP sampling finished (7.250086s)
+2026-06-12 13:21:52,226 INFO     Starting iteration 53
+2026-06-12 13:22:10,146 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:22:10,146 INFO     Estimated Elo: 11.1851 +- 11.2227
+2026-06-12 13:22:10,146 INFO     90.0% confidence interval of the Elo value: (-7.2747, 29.6448)
+2026-06-12 13:22:10,618 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:22:10,619 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:22:10,622 INFO     Start experiment
+2026-06-12 13:24:30,586 INFO     Experiment finished (139.963481s elapsed).
+2026-06-12 13:24:30,978 INFO     Got Elo: -0.0 +- 65.04928388820336
+2026-06-12 13:24:30,978 INFO     Estimated draw rate: 45.45%
+2026-06-12 13:24:30,978 INFO     Updating model
+2026-06-12 13:24:38,817 INFO     GP sampling finished (7.838401s)
+2026-06-12 13:24:38,959 INFO     Starting iteration 54
+2026-06-12 13:24:56,417 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:24:56,417 INFO     Estimated Elo: 10.8914 +- 11.0833
+2026-06-12 13:24:56,417 INFO     90.0% confidence interval of the Elo value: (-7.339, 29.1217)
+2026-06-12 13:24:56,772 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 13:24:56,773 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 9, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:24:56,775 INFO     Start experiment
+2026-06-12 13:26:55,239 INFO     Experiment finished (118.463482s elapsed).
+2026-06-12 13:26:55,664 INFO     Got Elo: -0.0 +- 38.60040649736709
+2026-06-12 13:26:55,664 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:26:55,664 INFO     Updating model
+2026-06-12 13:27:03,120 INFO     GP sampling finished (7.455491s)
+2026-06-12 13:27:03,275 INFO     Starting iteration 55
+2026-06-12 13:27:18,492 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:27:18,492 INFO     Estimated Elo: 10.8988 +- 11.113
+2026-06-12 13:27:18,492 INFO     90.0% confidence interval of the Elo value: (-7.3804, 29.1781)
+2026-06-12 13:27:18,674 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:27:18,675 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:27:18,676 INFO     Start experiment
+2026-06-12 13:29:11,425 INFO     Experiment finished (112.748418s elapsed).
+2026-06-12 13:29:11,827 INFO     Got Elo: -33.18969402590553 +- 44.07383546474747
+2026-06-12 13:29:11,828 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:29:11,828 INFO     Updating model
+2026-06-12 13:29:17,878 INFO     GP sampling finished (6.050383s)
+2026-06-12 13:29:18,018 INFO     Starting iteration 56
+2026-06-12 13:29:30,661 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:29:30,661 INFO     Estimated Elo: 9.1054 +- 10.7642
+2026-06-12 13:29:30,661 INFO     90.0% confidence interval of the Elo value: (-8.6001, 26.8109)
+2026-06-12 13:29:30,834 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:29:30,834 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:29:30,835 INFO     Start experiment
+2026-06-12 13:31:08,850 INFO     Experiment finished (98.014621s elapsed).
+2026-06-12 13:31:09,193 INFO     Got Elo: 49.975494643319976 +- 57.27982490749105
+2026-06-12 13:31:09,193 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:31:09,193 INFO     Updating model
+2026-06-12 13:31:15,535 INFO     GP sampling finished (6.342071s)
+2026-06-12 13:31:15,676 INFO     Starting iteration 57
+2026-06-12 13:31:27,035 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:31:27,035 INFO     Estimated Elo: 9.8276 +- 10.8536
+2026-06-12 13:31:27,035 INFO     90.0% confidence interval of the Elo value: (-8.025, 27.6802)
+2026-06-12 13:31:27,250 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:31:27,251 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:31:27,252 INFO     Start experiment
+2026-06-12 13:33:06,799 INFO     Experiment finished (99.547107s elapsed).
+2026-06-12 13:33:07,249 INFO     Got Elo: -16.557074063290102 +- 34.76818557313942
+2026-06-12 13:33:07,249 INFO     Estimated draw rate: 77.27%
+2026-06-12 13:33:07,249 INFO     Updating model
+2026-06-12 13:33:13,595 INFO     GP sampling finished (6.345649s)
+2026-06-12 13:33:13,736 INFO     Starting iteration 58
+2026-06-12 13:33:26,470 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:33:26,470 INFO     Estimated Elo: 8.5586 +- 10.8164
+2026-06-12 13:33:26,470 INFO     90.0% confidence interval of the Elo value: (-9.2328, 26.35)
+2026-06-12 13:33:26,688 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 13:33:26,688 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:33:26,689 INFO     Start experiment
+2026-06-12 13:35:17,689 INFO     Experiment finished (110.999569s elapsed).
+2026-06-12 13:35:18,071 INFO     Got Elo: 49.97549464331993 +- 46.01361903345809
+2026-06-12 13:35:18,071 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:35:18,071 INFO     Updating model
+2026-06-12 13:35:24,381 INFO     GP sampling finished (6.309883s)
+2026-06-12 13:35:24,524 INFO     Starting iteration 59
+2026-06-12 13:35:37,134 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:35:37,135 INFO     Estimated Elo: 10.6563 +- 10.7592
+2026-06-12 13:35:37,135 INFO     90.0% confidence interval of the Elo value: (-7.041, 28.3535)
+2026-06-12 13:35:37,374 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:35:37,375 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:35:37,377 INFO     Start experiment
+2026-06-12 13:37:40,344 INFO     Experiment finished (122.967213s elapsed).
+2026-06-12 13:37:40,786 INFO     Got Elo: 16.55707406329004 +- 47.55740728626469
+2026-06-12 13:37:40,786 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:37:40,786 INFO     Updating model
+2026-06-12 13:37:49,044 INFO     GP sampling finished (8.257157s)
+2026-06-12 13:37:49,155 INFO     Starting iteration 60
+2026-06-12 13:38:07,187 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:38:07,187 INFO     Estimated Elo: 10.4751 +- 10.3817
+2026-06-12 13:38:07,188 INFO     90.0% confidence interval of the Elo value: (-6.6013, 27.5515)
+2026-06-12 13:38:09,820 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:38:09,821 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:38:09,822 INFO     Start experiment
+2026-06-12 13:40:48,026 INFO     Experiment finished (158.203649s elapsed).
+2026-06-12 13:40:48,371 INFO     Got Elo: -16.557074063290028 +- 58.11344377319592
+2026-06-12 13:40:48,371 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:40:48,371 INFO     Updating model
+2026-06-12 13:40:54,477 INFO     GP sampling finished (6.10504s)
+2026-06-12 13:40:54,582 INFO     Starting iteration 61
+2026-06-12 13:41:08,324 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:41:08,324 INFO     Estimated Elo: 9.7464 +- 10.1135
+2026-06-12 13:41:08,324 INFO     90.0% confidence interval of the Elo value: (-6.8889, 26.3816)
+2026-06-12 13:41:08,512 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            2            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:41:08,512 INFO     Testing {'MOBILITY_KNIGHT_REF': 1, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 13:41:08,513 INFO     Start experiment
+2026-06-12 13:42:59,500 INFO     Experiment finished (110.987008s elapsed).
+2026-06-12 13:42:59,849 INFO     Got Elo: -16.557074063290028 +- 67.0490154741411
+2026-06-12 13:42:59,850 INFO     Estimated draw rate: 40.91%
+2026-06-12 13:42:59,850 INFO     Updating model
+2026-06-12 13:43:05,783 INFO     GP sampling finished (5.932863s)
+2026-06-12 13:43:05,890 INFO     Starting iteration 62
+2026-06-12 13:43:19,656 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:43:19,656 INFO     Estimated Elo: 9.088 +- 9.7318
+2026-06-12 13:43:19,656 INFO     90.0% confidence interval of the Elo value: (-6.9194, 25.0955)
+2026-06-12 13:43:19,889 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:43:19,889 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:43:19,892 INFO     Start experiment
+2026-06-12 13:45:00,385 INFO     Experiment finished (100.492818s elapsed).
+2026-06-12 13:45:00,882 INFO     Got Elo: 1.9286549331065742e-14 +- 44.87896584521004
+2026-06-12 13:45:00,883 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:45:00,883 INFO     Updating model
+2026-06-12 13:45:07,842 INFO     GP sampling finished (6.958632s)
+2026-06-12 13:45:07,989 INFO     Starting iteration 63
+2026-06-12 13:45:23,130 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:45:23,131 INFO     Estimated Elo: 8.5188 +- 9.2741
+2026-06-12 13:45:23,131 INFO     90.0% confidence interval of the Elo value: (-6.7358, 23.7734)
+2026-06-12 13:45:23,342 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:45:23,343 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:45:23,345 INFO     Start experiment
+2026-06-12 13:47:34,614 INFO     Experiment finished (131.268632s elapsed).
+2026-06-12 13:47:35,055 INFO     Got Elo: -0.0 +- 38.48717048142557
+2026-06-12 13:47:35,055 INFO     Estimated draw rate: 72.73%
+2026-06-12 13:47:35,055 INFO     Updating model
+2026-06-12 13:47:57,572 INFO     GP sampling finished (22.516577s)
+2026-06-12 13:47:57,718 INFO     Starting iteration 64
+2026-06-12 13:48:13,506 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:48:13,507 INFO     Estimated Elo: 7.9671 +- 8.8195
+2026-06-12 13:48:13,507 INFO     90.0% confidence interval of the Elo value: (-6.5397, 22.474)
+2026-06-12 13:48:13,920 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 13:48:13,920 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 3, 'MOBILITY_KNIGHT_WEIGHT_Eg': 10, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 2}
+2026-06-12 13:48:13,922 INFO     Start experiment
+2026-06-12 13:50:20,088 INFO     Experiment finished (126.1657s elapsed).
+2026-06-12 13:50:20,879 INFO     Got Elo: 16.557074063289978 +- 41.636062164547425
+2026-06-12 13:50:20,879 INFO     Estimated draw rate: 59.09%
+2026-06-12 13:50:20,880 INFO     Updating model
+2026-06-12 13:50:42,568 INFO     GP sampling finished (21.688582s)
+2026-06-12 13:50:42,706 INFO     Starting iteration 65
+2026-06-12 13:51:01,881 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:51:01,882 INFO     Estimated Elo: 7.5267 +- 8.1933
+2026-06-12 13:51:01,882 INFO     90.0% confidence interval of the Elo value: (-5.9501, 21.0034)
+2026-06-12 13:51:03,618 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:51:03,619 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 4}
+2026-06-12 13:51:03,621 INFO     Start experiment
+2026-06-12 13:53:48,450 INFO     Experiment finished (164.828933s elapsed).
+2026-06-12 13:53:48,838 INFO     Got Elo: -16.557074063290028 +- 52.98035061034814
+2026-06-12 13:53:48,838 INFO     Estimated draw rate: 59.09%
+2026-06-12 13:53:48,838 INFO     Updating model
+2026-06-12 13:54:08,502 INFO     GP sampling finished (19.663741s)
+2026-06-12 13:54:08,657 INFO     Starting iteration 66
+2026-06-12 13:54:21,589 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:54:21,589 INFO     Estimated Elo: 7.1696 +- 7.997
+2026-06-12 13:54:21,589 INFO     90.0% confidence interval of the Elo value: (-5.9843, 20.3235)
+2026-06-12 13:54:21,817 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:54:21,818 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 13:54:21,819 INFO     Start experiment
+2026-06-12 13:56:23,799 INFO     Experiment finished (121.979518s elapsed).
+2026-06-12 13:56:24,207 INFO     Got Elo: 16.55707406329004 +- 53.18759388137494
+2026-06-12 13:56:24,207 INFO     Estimated draw rate: 50.00%
+2026-06-12 13:56:24,207 INFO     Updating model
+2026-06-12 13:56:47,624 INFO     GP sampling finished (23.41623s)
+2026-06-12 13:56:47,770 INFO     Starting iteration 67
+2026-06-12 13:57:03,551 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:57:03,551 INFO     Estimated Elo: 7.1952 +- 7.8284
+2026-06-12 13:57:03,551 INFO     90.0% confidence interval of the Elo value: (-5.6813, 20.0717)
+2026-06-12 13:57:03,887 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:57:03,891 INFO     Testing {'MOBILITY_KNIGHT_REF': 6, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:57:03,893 INFO     Start experiment
+2026-06-12 13:59:07,556 INFO     Experiment finished (123.663003s elapsed).
+2026-06-12 13:59:08,076 INFO     Got Elo: 33.18969402590559 +- 37.59614032568632
+2026-06-12 13:59:08,077 INFO     Estimated draw rate: 63.64%
+2026-06-12 13:59:08,077 INFO     Updating model
+2026-06-12 13:59:31,664 INFO     GP sampling finished (23.586544s)
+2026-06-12 13:59:31,783 INFO     Starting iteration 68
+2026-06-12 13:59:46,861 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 13:59:46,861 INFO     Estimated Elo: 7.884 +- 7.9324
+2026-06-12 13:59:46,862 INFO     90.0% confidence interval of the Elo value: (-5.1636, 20.9315)
+2026-06-12 13:59:47,196 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 13:59:47,197 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 5}
+2026-06-12 13:59:47,200 INFO     Start experiment
+2026-06-12 14:02:55,885 INFO     Experiment finished (188.68441s elapsed).
+2026-06-12 14:02:58,361 INFO     Got Elo: -49.97549464331997 +- 51.627115040712
+2026-06-12 14:02:58,363 INFO     Estimated draw rate: 50.00%
+2026-06-12 14:02:58,364 INFO     Updating model
+2026-06-12 14:03:48,380 INFO     GP sampling finished (50.015998s)
+2026-06-12 14:03:48,533 INFO     Starting iteration 69
+2026-06-12 14:04:01,628 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:04:01,628 INFO     Estimated Elo: 7.181 +- 7.8899
+2026-06-12 14:04:01,628 INFO     90.0% confidence interval of the Elo value: (-5.7967, 20.1588)
+2026-06-12 14:04:01,885 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:04:01,886 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 14:04:01,887 INFO     Start experiment
+2026-06-12 14:06:07,043 INFO     Experiment finished (125.155247s elapsed).
+2026-06-12 14:06:07,513 INFO     Got Elo: -16.557074063290028 +- 41.549171078124296
+2026-06-12 14:06:07,513 INFO     Estimated draw rate: 59.09%
+2026-06-12 14:06:07,513 INFO     Updating model
+2026-06-12 14:06:27,799 INFO     GP sampling finished (20.285715s)
+2026-06-12 14:06:27,944 INFO     Starting iteration 70
+2026-06-12 14:06:42,558 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:06:42,558 INFO     Estimated Elo: 6.6713 +- 7.6888
+2026-06-12 14:06:42,558 INFO     90.0% confidence interval of the Elo value: (-5.9757, 19.3183)
+2026-06-12 14:06:42,850 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:06:42,851 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:06:42,853 INFO     Start experiment
+2026-06-12 14:08:54,770 INFO     Experiment finished (131.916906s elapsed).
+2026-06-12 14:08:55,359 INFO     Got Elo: 66.99643491750547 +- 41.38083859928014
+2026-06-12 14:08:55,359 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:08:55,359 INFO     Updating model
+2026-06-12 14:09:14,442 INFO     GP sampling finished (19.082544s)
+2026-06-12 14:09:14,595 INFO     Starting iteration 71
+2026-06-12 14:09:27,924 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:09:27,924 INFO     Estimated Elo: 7.8348 +- 7.3704
+2026-06-12 14:09:27,924 INFO     90.0% confidence interval of the Elo value: (-4.2885, 19.9581)
+2026-06-12 14:09:28,159 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:09:28,159 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:09:28,160 INFO     Start experiment
+2026-06-12 14:12:04,644 INFO     Experiment finished (156.483416s elapsed).
+2026-06-12 14:12:05,132 INFO     Got Elo: 66.99643491750541 +- 47.5678739916199
+2026-06-12 14:12:05,132 INFO     Estimated draw rate: 45.45%
+2026-06-12 14:12:05,132 INFO     Updating model
+2026-06-12 14:12:32,021 INFO     GP sampling finished (26.888943s)
+2026-06-12 14:12:32,143 INFO     Starting iteration 72
+2026-06-12 14:12:47,288 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:12:47,288 INFO     Estimated Elo: 8.4534 +- 7.2501
+2026-06-12 14:12:47,288 INFO     90.0% confidence interval of the Elo value: (-3.4719, 20.3788)
+2026-06-12 14:12:47,696 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2           10
+
+2026-06-12 14:12:47,699 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 6, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:12:47,701 INFO     Start experiment
+2026-06-12 14:15:19,691 INFO     Experiment finished (151.990338s elapsed).
+2026-06-12 14:15:20,062 INFO     Got Elo: -16.557074063290102 +- 67.39069105541512
+2026-06-12 14:15:20,062 INFO     Estimated draw rate: 40.91%
+2026-06-12 14:15:20,062 INFO     Updating model
+2026-06-12 14:15:42,187 INFO     GP sampling finished (22.124118s)
+2026-06-12 14:15:42,345 INFO     Starting iteration 73
+2026-06-12 14:16:00,106 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:16:00,106 INFO     Estimated Elo: 7.9188 +- 7.0268
+2026-06-12 14:16:00,106 INFO     90.0% confidence interval of the Elo value: (-3.6393, 19.477)
+2026-06-12 14:16:00,440 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:16:00,440 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 5, 'MOBILITY_BISHOP_WEIGHT_Mg': 3, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:16:00,442 INFO     Start experiment
+2026-06-12 14:18:30,430 INFO     Experiment finished (149.988171s elapsed).
+2026-06-12 14:18:30,924 INFO     Got Elo: 16.55707406329004 +- 47.529676186370175
+2026-06-12 14:18:30,924 INFO     Estimated draw rate: 50.00%
+2026-06-12 14:18:30,924 INFO     Updating model
+2026-06-12 14:18:57,341 INFO     GP sampling finished (26.416028s)
+2026-06-12 14:18:57,481 INFO     Starting iteration 74
+2026-06-12 14:19:14,164 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:19:14,165 INFO     Estimated Elo: 7.8602 +- 6.801
+2026-06-12 14:19:14,165 INFO     90.0% confidence interval of the Elo value: (-3.3264, 19.0468)
+2026-06-12 14:19:14,552 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:19:14,553 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:19:14,555 INFO     Start experiment
+2026-06-12 14:21:47,032 INFO     Experiment finished (152.476463s elapsed).
+2026-06-12 14:21:47,519 INFO     Got Elo: -0.0 +- 50.47113438874516
+2026-06-12 14:21:47,520 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:21:47,520 INFO     Updating model
+2026-06-12 14:22:10,968 INFO     GP sampling finished (23.447859s)
+2026-06-12 14:22:11,106 INFO     Starting iteration 75
+2026-06-12 14:22:27,397 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:22:27,397 INFO     Estimated Elo: 7.517 +- 6.4886
+2026-06-12 14:22:27,397 INFO     90.0% confidence interval of the Elo value: (-3.1557, 18.1898)
+2026-06-12 14:22:27,961 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:22:27,962 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:22:27,964 INFO     Start experiment
+2026-06-12 14:24:21,256 INFO     Experiment finished (113.292485s elapsed).
+2026-06-12 14:24:21,681 INFO     Got Elo: 16.557074063289978 +- 41.5848912267573
+2026-06-12 14:24:21,681 INFO     Estimated draw rate: 68.18%
+2026-06-12 14:24:21,681 INFO     Updating model
+2026-06-12 14:24:42,832 INFO     GP sampling finished (21.150165s)
+2026-06-12 14:24:42,997 INFO     Starting iteration 76
+2026-06-12 14:24:56,689 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:24:56,689 INFO     Estimated Elo: 7.8321 +- 6.4744
+2026-06-12 14:24:56,689 INFO     90.0% confidence interval of the Elo value: (-2.8174, 18.4816)
+2026-06-12 14:24:56,955 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:24:56,956 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:24:56,958 INFO     Start experiment
+2026-06-12 14:27:04,936 INFO     Experiment finished (127.977371s elapsed).
+2026-06-12 14:27:05,399 INFO     Got Elo: 102.10900204132241 +- 43.22998757527969
+2026-06-12 14:27:05,399 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:27:05,406 INFO     Updating model
+2026-06-12 14:27:27,099 INFO     GP sampling finished (21.692104s)
+2026-06-12 14:27:27,247 INFO     Starting iteration 77
+2026-06-12 14:27:40,328 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:27:40,328 INFO     Estimated Elo: 9.8525 +- 6.5503
+2026-06-12 14:27:40,328 INFO     90.0% confidence interval of the Elo value: (-0.9218, 20.6268)
+2026-06-12 14:27:40,642 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:27:40,643 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:27:40,645 INFO     Start experiment
+2026-06-12 14:29:37,504 INFO     Experiment finished (116.859365s elapsed).
+2026-06-12 14:29:37,889 INFO     Got Elo: -33.18969402590553 +- 44.04415821683186
+2026-06-12 14:29:37,889 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:29:37,889 INFO     Updating model
+2026-06-12 14:29:58,903 INFO     GP sampling finished (21.014059s)
+2026-06-12 14:29:59,046 INFO     Starting iteration 78
+2026-06-12 14:30:17,366 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:30:17,367 INFO     Estimated Elo: 9.1555 +- 6.4072
+2026-06-12 14:30:17,367 INFO     90.0% confidence interval of the Elo value: (-1.3834, 19.6945)
+2026-06-12 14:30:17,707 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:30:17,707 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:30:17,710 INFO     Start experiment
+2026-06-12 14:32:47,560 INFO     Experiment finished (149.850011s elapsed).
+2026-06-12 14:32:48,156 INFO     Got Elo: -0.0 +- 55.649128837847215
+2026-06-12 14:32:48,156 INFO     Estimated draw rate: 45.45%
+2026-06-12 14:32:48,156 INFO     Updating model
+2026-06-12 14:33:16,685 INFO     GP sampling finished (28.528072s)
+2026-06-12 14:33:16,827 INFO     Starting iteration 79
+2026-06-12 14:33:36,235 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:33:36,235 INFO     Estimated Elo: 9.0697 +- 6.3667
+2026-06-12 14:33:36,235 INFO     90.0% confidence interval of the Elo value: (-1.4026, 19.5421)
+2026-06-12 14:33:36,697 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:33:36,699 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:33:36,702 INFO     Start experiment
+2026-06-12 14:35:23,488 INFO     Experiment finished (106.784701s elapsed).
+2026-06-12 14:35:23,902 INFO     Got Elo: -0.0 +- 38.52018270032972
+2026-06-12 14:35:23,902 INFO     Estimated draw rate: 72.73%
+2026-06-12 14:35:23,903 INFO     Updating model
+2026-06-12 14:35:48,993 INFO     GP sampling finished (25.090586s)
+2026-06-12 14:35:49,152 INFO     Starting iteration 80
+2026-06-12 14:36:04,384 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:36:04,385 INFO     Estimated Elo: 8.5147 +- 5.9717
+2026-06-12 14:36:04,385 INFO     90.0% confidence interval of the Elo value: (-1.3078, 18.3372)
+2026-06-12 14:36:04,780 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            2            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:36:04,782 INFO     Testing {'MOBILITY_KNIGHT_REF': 7, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:36:04,784 INFO     Start experiment
+2026-06-12 14:38:24,619 INFO     Experiment finished (139.833717s elapsed).
+2026-06-12 14:38:25,021 INFO     Got Elo: -16.557074063290028 +- 41.598969134177125
+2026-06-12 14:38:25,021 INFO     Estimated draw rate: 68.18%
+2026-06-12 14:38:25,021 INFO     Updating model
+2026-06-12 14:38:45,794 INFO     GP sampling finished (20.772547s)
+2026-06-12 14:38:45,936 INFO     Starting iteration 81
+2026-06-12 14:38:58,065 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:38:58,065 INFO     Estimated Elo: 8.1003 +- 5.8025
+2026-06-12 14:38:58,065 INFO     90.0% confidence interval of the Elo value: (-1.4439, 17.6445)
+2026-06-12 14:38:58,317 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:38:58,318 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:38:58,319 INFO     Start experiment
+2026-06-12 14:40:43,210 INFO     Experiment finished (104.890399s elapsed).
+2026-06-12 14:40:43,572 INFO     Got Elo: -49.97549464331997 +- 52.1998631775322
+2026-06-12 14:40:43,572 INFO     Estimated draw rate: 59.09%
+2026-06-12 14:40:43,572 INFO     Updating model
+2026-06-12 14:41:07,255 INFO     GP sampling finished (23.682772s)
+2026-06-12 14:41:07,389 INFO     Starting iteration 82
+2026-06-12 14:41:22,728 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:41:22,728 INFO     Estimated Elo: 7.1225 +- 5.7858
+2026-06-12 14:41:22,728 INFO     90.0% confidence interval of the Elo value: (-2.3942, 16.6393)
+2026-06-12 14:41:23,104 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 14:41:23,104 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 14:41:23,106 INFO     Start experiment
+2026-06-12 14:43:10,691 INFO     Experiment finished (107.58379s elapsed).
+2026-06-12 14:43:11,099 INFO     Got Elo: 84.34134612595726 +- 61.19523953151239
+2026-06-12 14:43:11,099 INFO     Estimated draw rate: 50.00%
+2026-06-12 14:43:11,099 INFO     Updating model
+2026-06-12 14:43:30,941 INFO     GP sampling finished (19.841506s)
+2026-06-12 14:43:31,099 INFO     Starting iteration 83
+2026-06-12 14:43:43,252 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:43:43,252 INFO     Estimated Elo: 7.9817 +- 5.8402
+2026-06-12 14:43:43,252 INFO     90.0% confidence interval of the Elo value: (-1.6246, 17.5881)
+2026-06-12 14:43:43,475 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:43:43,475 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:43:43,477 INFO     Start experiment
+2026-06-12 14:45:30,005 INFO     Experiment finished (106.526837s elapsed).
+2026-06-12 14:45:30,496 INFO     Got Elo: 16.55707406328996 +- 62.50459800767321
+2026-06-12 14:45:30,496 INFO     Estimated draw rate: 40.91%
+2026-06-12 14:45:30,496 INFO     Updating model
+2026-06-12 14:45:50,120 INFO     GP sampling finished (19.623811s)
+2026-06-12 14:45:50,276 INFO     Starting iteration 84
+2026-06-12 14:46:01,739 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:46:01,739 INFO     Estimated Elo: 8.101 +- 5.8486
+2026-06-12 14:46:01,739 INFO     90.0% confidence interval of the Elo value: (-1.5192, 17.7212)
+2026-06-12 14:46:02,134 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:46:02,134 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 14:46:02,136 INFO     Start experiment
+2026-06-12 14:47:47,445 INFO     Experiment finished (105.309291s elapsed).
+2026-06-12 14:47:47,829 INFO     Got Elo: 49.97549464331993 +- 45.99725400153598
+2026-06-12 14:47:47,829 INFO     Estimated draw rate: 59.09%
+2026-06-12 14:47:47,829 INFO     Updating model
+2026-06-12 14:48:07,299 INFO     GP sampling finished (19.469494s)
+2026-06-12 14:48:07,451 INFO     Starting iteration 85
+2026-06-12 14:48:20,382 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:48:20,383 INFO     Estimated Elo: 8.8131 +- 6.0587
+2026-06-12 14:48:20,383 INFO     90.0% confidence interval of the Elo value: (-1.1526, 18.7789)
+2026-06-12 14:48:20,637 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:48:20,637 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:48:20,639 INFO     Start experiment
+2026-06-12 14:50:17,542 INFO     Experiment finished (116.90335s elapsed).
+2026-06-12 14:50:17,924 INFO     Got Elo: 33.18969402590559 +- 44.01261847009773
+2026-06-12 14:50:17,924 INFO     Estimated draw rate: 36.36%
+2026-06-12 14:50:17,925 INFO     Updating model
+2026-06-12 14:50:37,471 INFO     GP sampling finished (19.546348s)
+2026-06-12 14:50:37,630 INFO     Starting iteration 86
+2026-06-12 14:50:49,336 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:50:49,336 INFO     Estimated Elo: 9.1093 +- 5.9201
+2026-06-12 14:50:49,336 INFO     90.0% confidence interval of the Elo value: (-0.6284, 18.8469)
+2026-06-12 14:50:49,586 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:50:49,586 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 5, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:50:49,587 INFO     Start experiment
+2026-06-12 14:52:23,093 INFO     Experiment finished (93.504986s elapsed).
+2026-06-12 14:52:23,454 INFO     Got Elo: 33.18969402590559 +- 50.227179146205415
+2026-06-12 14:52:23,454 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:52:23,454 INFO     Updating model
+2026-06-12 14:52:43,234 INFO     GP sampling finished (19.779817s)
+2026-06-12 14:52:43,370 INFO     Starting iteration 87
+2026-06-12 14:52:54,663 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:52:54,663 INFO     Estimated Elo: 9.3402 +- 5.8839
+2026-06-12 14:52:54,671 INFO     90.0% confidence interval of the Elo value: (-0.338, 19.0183)
+2026-06-12 14:52:54,893 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:52:54,893 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 14:52:54,895 INFO     Start experiment
+2026-06-12 14:54:25,957 INFO     Experiment finished (91.061895s elapsed).
+2026-06-12 14:54:26,366 INFO     Got Elo: -16.557074063290102 +- 34.79039376097809
+2026-06-12 14:54:26,366 INFO     Estimated draw rate: 68.18%
+2026-06-12 14:54:26,366 INFO     Updating model
+2026-06-12 14:54:46,015 INFO     GP sampling finished (19.648566s)
+2026-06-12 14:54:46,150 INFO     Starting iteration 88
+2026-06-12 14:54:57,736 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:54:57,736 INFO     Estimated Elo: 9.2303 +- 5.9554
+2026-06-12 14:54:57,737 INFO     90.0% confidence interval of the Elo value: (-0.5655, 19.026)
+2026-06-12 14:54:57,970 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  3            9
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:54:57,972 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:54:57,974 INFO     Start experiment
+2026-06-12 14:57:03,827 INFO     Experiment finished (125.852713s elapsed).
+2026-06-12 14:57:04,229 INFO     Got Elo: -33.18969402590553 +- 44.035714331639696
+2026-06-12 14:57:04,229 INFO     Estimated draw rate: 63.64%
+2026-06-12 14:57:04,229 INFO     Updating model
+2026-06-12 14:57:25,342 INFO     GP sampling finished (21.112326s)
+2026-06-12 14:57:25,489 INFO     Starting iteration 89
+2026-06-12 14:57:38,765 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 14:57:38,765 INFO     Estimated Elo: 8.6843 +- 6.0167
+2026-06-12 14:57:38,765 INFO     90.0% confidence interval of the Elo value: (-1.2122, 18.5808)
+2026-06-12 14:57:39,051 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 14:57:39,052 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 2, 'MOBILITY_KNIGHT_WEIGHT_Eg': 10, 'MOBILITY_BISHOP_REF': 8, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 1}
+2026-06-12 14:57:39,054 INFO     Start experiment
+2026-06-12 14:59:48,431 INFO     Experiment finished (129.376263s elapsed).
+2026-06-12 14:59:48,887 INFO     Got Elo: 1.9286549331065742e-14 +- 44.872144733688806
+2026-06-12 14:59:48,888 INFO     Estimated draw rate: 54.55%
+2026-06-12 14:59:48,888 INFO     Updating model
+2026-06-12 15:00:12,302 INFO     GP sampling finished (23.412641s)
+2026-06-12 15:00:12,475 INFO     Starting iteration 90
+2026-06-12 15:00:29,925 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:00:29,926 INFO     Estimated Elo: 8.6629 +- 6.0493
+2026-06-12 15:00:29,926 INFO     90.0% confidence interval of the Elo value: (-1.2872, 18.6131)
+2026-06-12 15:00:30,665 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:00:30,672 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 15:00:30,675 INFO     Start experiment
+2026-06-12 15:02:32,353 INFO     Experiment finished (121.677517s elapsed).
+2026-06-12 15:02:32,861 INFO     Got Elo: -33.18969402590553 +- 44.01458470534625
+2026-06-12 15:02:32,861 INFO     Estimated draw rate: 54.55%
+2026-06-12 15:02:32,861 INFO     Updating model
+2026-06-12 15:02:58,974 INFO     GP sampling finished (26.112642s)
+2026-06-12 15:02:59,118 INFO     Starting iteration 91
+2026-06-12 15:03:16,102 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:03:16,102 INFO     Estimated Elo: 8.1753 +- 5.9186
+2026-06-12 15:03:16,103 INFO     90.0% confidence interval of the Elo value: (-1.5599, 17.9105)
+2026-06-12 15:03:16,358 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:03:16,359 INFO     Testing {'MOBILITY_KNIGHT_REF': 1, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:03:16,361 INFO     Start experiment
+2026-06-12 15:05:10,037 INFO     Experiment finished (113.675789s elapsed).
+2026-06-12 15:05:10,414 INFO     Got Elo: 33.18969402590559 +- 50.2359148756082
+2026-06-12 15:05:10,414 INFO     Estimated draw rate: 54.55%
+2026-06-12 15:05:10,414 INFO     Updating model
+2026-06-12 15:05:30,675 INFO     GP sampling finished (20.260781s)
+2026-06-12 15:05:30,831 INFO     Starting iteration 92
+2026-06-12 15:05:44,508 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:05:44,509 INFO     Estimated Elo: 8.4209 +- 5.8675
+2026-06-12 15:05:44,509 INFO     90.0% confidence interval of the Elo value: (-1.2303, 18.0722)
+2026-06-12 15:05:44,811 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:05:44,812 INFO     Testing {'MOBILITY_KNIGHT_REF': 5, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 2, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 15:05:44,814 INFO     Start experiment
+2026-06-12 15:08:02,536 INFO     Experiment finished (137.722001s elapsed).
+2026-06-12 15:08:03,094 INFO     Got Elo: 16.55707406329004 +- 47.557477602679185
+2026-06-12 15:08:03,096 INFO     Estimated draw rate: 50.00%
+2026-06-12 15:08:03,097 INFO     Updating model
+2026-06-12 15:08:26,582 INFO     GP sampling finished (23.48519s)
+2026-06-12 15:08:26,747 INFO     Starting iteration 93
+2026-06-12 15:08:42,549 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:08:42,550 INFO     Estimated Elo: 8.1106 +- 5.4601
+2026-06-12 15:08:42,550 INFO     90.0% confidence interval of the Elo value: (-0.8706, 17.0917)
+2026-06-12 15:08:42,905 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            2            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:08:42,906 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 15:08:42,908 INFO     Start experiment
+2026-06-12 15:10:42,455 INFO     Experiment finished (119.546923s elapsed).
+2026-06-12 15:10:42,928 INFO     Got Elo: 84.3413461259573 +- 49.70984651166381
+2026-06-12 15:10:42,929 INFO     Estimated draw rate: 59.09%
+2026-06-12 15:10:42,929 INFO     Updating model
+2026-06-12 15:11:09,018 INFO     GP sampling finished (26.088721s)
+2026-06-12 15:11:09,184 INFO     Starting iteration 94
+2026-06-12 15:11:25,693 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:11:25,693 INFO     Estimated Elo: 8.9846 +- 5.3859
+2026-06-12 15:11:25,693 INFO     90.0% confidence interval of the Elo value: (0.1256, 17.8436)
+2026-06-12 15:11:26,059 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:11:26,060 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 4, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 15:11:26,061 INFO     Start experiment
+2026-06-12 15:13:53,285 INFO     Experiment finished (147.223396s elapsed).
+2026-06-12 15:13:53,721 INFO     Got Elo: -16.557074063290028 +- 58.12254636892356
+2026-06-12 15:13:53,721 INFO     Estimated draw rate: 40.91%
+2026-06-12 15:13:53,721 INFO     Updating model
+2026-06-12 15:14:21,891 INFO     GP sampling finished (28.169234s)
+2026-06-12 15:14:22,080 INFO     Starting iteration 95
+2026-06-12 15:14:39,465 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:14:39,466 INFO     Estimated Elo: 8.798 +- 5.4995
+2026-06-12 15:14:39,466 INFO     90.0% confidence interval of the Elo value: (-0.2479, 17.8438)
+2026-06-12 15:14:39,840 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  3            9
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:14:39,841 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:14:39,843 INFO     Start experiment
+2026-06-12 15:16:13,263 INFO     Experiment finished (93.418703s elapsed).
+2026-06-12 15:16:13,782 INFO     Got Elo: -33.18969402590553 +- 37.46002039001153
+2026-06-12 15:16:13,783 INFO     Estimated draw rate: 63.64%
+2026-06-12 15:16:13,783 INFO     Updating model
+2026-06-12 15:16:38,139 INFO     GP sampling finished (24.356429s)
+2026-06-12 15:16:38,293 INFO     Starting iteration 96
+2026-06-12 15:16:52,652 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 9, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:16:52,653 INFO     Estimated Elo: 8.0376 +- 5.4299
+2026-06-12 15:16:52,653 INFO     90.0% confidence interval of the Elo value: (-0.8938, 16.9691)
+2026-06-12 15:16:53,072 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:16:53,073 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 8}
+2026-06-12 15:16:53,074 INFO     Start experiment
+2026-06-12 15:19:13,062 INFO     Experiment finished (139.987394s elapsed).
+2026-06-12 15:19:13,524 INFO     Got Elo: -16.557074063290028 +- 41.569025620382845
+2026-06-12 15:19:13,524 INFO     Estimated draw rate: 50.00%
+2026-06-12 15:19:13,525 INFO     Updating model
+2026-06-12 15:19:39,523 INFO     GP sampling finished (25.998316s)
+2026-06-12 15:19:39,679 INFO     Starting iteration 97
+2026-06-12 15:19:54,939 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:19:54,939 INFO     Estimated Elo: 7.5489 +- 5.2241
+2026-06-12 15:19:54,939 INFO     90.0% confidence interval of the Elo value: (-1.044, 16.1418)
+2026-06-12 15:19:55,680 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:19:55,680 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 10, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:19:55,681 INFO     Start experiment
+2026-06-12 15:22:28,901 INFO     Experiment finished (153.219342s elapsed).
+2026-06-12 15:22:29,341 INFO     Got Elo: -16.557074063290028 +- 58.04231461785289
+2026-06-12 15:22:29,341 INFO     Estimated draw rate: 50.00%
+2026-06-12 15:22:29,341 INFO     Updating model
+2026-06-12 15:22:52,695 INFO     GP sampling finished (23.35388s)
+2026-06-12 15:22:52,850 INFO     Starting iteration 98
+2026-06-12 15:23:07,322 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:23:07,323 INFO     Estimated Elo: 7.177 +- 4.9663
+2026-06-12 15:23:07,323 INFO     90.0% confidence interval of the Elo value: (-0.9919, 15.3458)
+2026-06-12 15:23:07,697 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:23:07,697 INFO     Testing {'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 5, 'MOBILITY_KNIGHT_WEIGHT_Eg': 4, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:23:07,700 INFO     Start experiment
+2026-06-12 15:25:08,754 INFO     Experiment finished (121.053041s elapsed).
+2026-06-12 15:25:09,261 INFO     Got Elo: 16.55707406329004 +- 47.51633947622459
+2026-06-12 15:25:09,262 INFO     Estimated draw rate: 50.00%
+2026-06-12 15:25:09,262 INFO     Updating model
+2026-06-12 15:25:36,798 INFO     GP sampling finished (27.534992s)
+2026-06-12 15:25:36,944 INFO     Starting iteration 99
+2026-06-12 15:25:56,159 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:25:56,159 INFO     Estimated Elo: 7.2524 +- 4.913
+2026-06-12 15:25:56,160 INFO     90.0% confidence interval of the Elo value: (-0.8287, 15.3336)
+2026-06-12 15:25:58,207 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:25:58,210 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 8, 'MOBILITY_BISHOP_WEIGHT_Eg': 10}
+2026-06-12 15:25:58,213 INFO     Start experiment
+2026-06-12 15:28:13,152 INFO     Experiment finished (134.939606s elapsed).
+2026-06-12 15:28:13,582 INFO     Got Elo: -33.18969402590553 +- 37.53267755174439
+2026-06-12 15:28:13,582 INFO     Estimated draw rate: 72.73%
+2026-06-12 15:28:13,582 INFO     Updating model
+2026-06-12 15:28:33,853 INFO     GP sampling finished (20.270571s)
+2026-06-12 15:28:34,018 INFO     Starting iteration 100
+2026-06-12 15:28:46,871 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 3, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 5, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:28:46,871 INFO     Estimated Elo: 6.9266 +- 4.9601
+2026-06-12 15:28:46,871 INFO     90.0% confidence interval of the Elo value: (-1.232, 15.0852)
+2026-06-12 15:28:47,318 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            2            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:28:47,319 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 7, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:28:47,322 INFO     Start experiment
+2026-06-12 15:30:29,270 INFO     Experiment finished (101.947978s elapsed).
+2026-06-12 15:30:29,814 INFO     Got Elo: 84.34134612595726 +- 42.56909854502286
+2026-06-12 15:30:29,814 INFO     Estimated draw rate: 59.09%
+2026-06-12 15:30:29,814 INFO     Updating model
+2026-06-12 15:30:49,980 INFO     GP sampling finished (20.166031s)
+2026-06-12 15:30:50,140 INFO     Starting iteration 101
+2026-06-12 15:31:03,171 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:31:03,171 INFO     Estimated Elo: 8.0351 +- 5.2048
+2026-06-12 15:31:03,171 INFO     90.0% confidence interval of the Elo value: (-0.5259, 16.5962)
+2026-06-12 15:31:03,418 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 15:31:03,419 INFO     Testing {'MOBILITY_KNIGHT_REF': 4, 'MOBILITY_KNIGHT_WEIGHT_Mg': 8, 'MOBILITY_KNIGHT_WEIGHT_Eg': 1, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 4, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 15:31:03,420 INFO     Start experiment
+2026-06-12 15:32:48,007 INFO     Experiment finished (104.586433s elapsed).
+2026-06-12 15:32:48,497 INFO     Got Elo: 1.9286549331065742e-14 +- 44.83665393775645
+2026-06-12 15:32:48,497 INFO     Estimated draw rate: 54.55%
+2026-06-12 15:32:48,497 INFO     Updating model
+2026-06-12 15:33:10,571 INFO     GP sampling finished (22.073555s)
+2026-06-12 15:33:10,716 INFO     Starting iteration 102
+2026-06-12 15:33:27,707 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:33:27,707 INFO     Estimated Elo: 7.8796 +- 5.0732
+2026-06-12 15:33:27,707 INFO     90.0% confidence interval of the Elo value: (-0.4652, 16.2243)
+2026-06-12 15:33:28,028 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  2            7
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            2            9
+
+2026-06-12 15:33:28,028 INFO     Testing {'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 3, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:33:28,030 INFO     Start experiment
+2026-06-12 15:35:10,662 INFO     Experiment finished (102.630868s elapsed).
+2026-06-12 15:35:11,116 INFO     Got Elo: 16.557074063289978 +- 41.55199131051195
+2026-06-12 15:35:11,117 INFO     Estimated draw rate: 68.18%
+2026-06-12 15:35:11,117 INFO     Updating model
+2026-06-12 15:35:34,982 INFO     GP sampling finished (23.864768s)
+2026-06-12 15:35:35,132 INFO     Starting iteration 103
+2026-06-12 15:35:52,604 INFO     Current optimum:
+{'MOBILITY_KNIGHT_REF': 2, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 3, 'MOBILITY_BISHOP_REF': 2, 'MOBILITY_BISHOP_WEIGHT_Mg': 6, 'MOBILITY_BISHOP_WEIGHT_Eg': 9}
+2026-06-12 15:35:52,604 INFO     Estimated Elo: 7.9406 +- 4.9148
+2026-06-12 15:35:52,604 INFO     90.0% confidence interval of the Elo value: (-0.1436, 16.0248)
+2026-06-12 15:35:52,971 INFO     90.0% confidence intervals of the parameters:
+Parameter                  Lower bound  Upper bound
+---------------------------------------------------
+MOBILITY_KNIGHT_REF                  1            6
+MOBILITY_KNIGHT_WEIGHT_Mg            1            9
+MOBILITY_KNIGHT_WEIGHT_Eg            1            9
+MOBILITY_BISHOP_REF                  2            8
+MOBILITY_BISHOP_WEIGHT_Mg            1            8
+MOBILITY_BISHOP_WEIGHT_Eg            1            9
+
+2026-06-12 15:35:52,971 INFO     Testing {'MOBILITY_KNIGHT_REF': 1, 'MOBILITY_KNIGHT_WEIGHT_Mg': 7, 'MOBILITY_KNIGHT_WEIGHT_Eg': 2, 'MOBILITY_BISHOP_REF': 6, 'MOBILITY_BISHOP_WEIGHT_Mg': 9, 'MOBILITY_BISHOP_WEIGHT_Eg': 7}
+2026-06-12 15:35:52,974 INFO     Start experiment
