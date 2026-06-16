@@ -413,7 +413,13 @@ bool Searcher::tryNullMovePruning(
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter,
     int32_t& outScore) noexcept {
-    const int32_t reduction = 3 + depth / 3;
+    // Eval-scaled reduction: the further static eval sits above beta, the more
+    // certain the null move fails high, so reduce deeper. Clamped to >= 0 (the
+    // NMP gate allows eval up to ~100cp below beta) and capped.
+    static constexpr int32_t NMP_EVAL_DIV = 200;
+    static constexpr int32_t NMP_EVAL_MAX = 3;
+    const int32_t evalReduction = std::clamp((node.staticEval - beta) / NMP_EVAL_DIV, 0, NMP_EVAL_MAX);
+    const int32_t reduction = 3 + depth / 3 + evalReduction;
 
     chess::Board::MoveState nullState;
     b.doNullMove(nullState);
