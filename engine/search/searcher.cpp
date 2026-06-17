@@ -1460,8 +1460,11 @@ chess::Board::Move Searcher::getBestMove(
         int32_t nullAlpha = 0;
         int32_t nullBeta = 0;
         rootNullWindow(alpha, nullAlpha, nullBeta);
+        // allowTTWrite=true: deferred root subtrees memoise their own LMR
+        // re-searches (which otherwise re-expand from scratch, since the PVS
+        // scout and its full-depth re-search hit no shared entries).
         const int32_t score = searchRootMoveScore(
-            threadBoard, m, runtime, nullAlpha, nullBeta, false, false, &workerNodes);
+            threadBoard, m, runtime, nullAlpha, nullBeta, true, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;
