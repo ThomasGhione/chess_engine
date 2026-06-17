@@ -1073,23 +1073,6 @@ int32_t Searcher::searchPosition(
         return score;
     }
 
-    // Razoring (negamax, alpha side — complements RFP on the beta side): at low
-    // depth, if the static eval is far below alpha, the node is likely to fail
-    // low. Confirm with a qsearch; if it still cannot reach alpha, fail low here
-    // instead of searching every move. Margin scales with depth (deeper nodes
-    // demand a larger gap before trusting the qsearch).
-    static constexpr int32_t RAZOR_MARGIN    = 300; // per ply of remaining depth
-    static constexpr int     RAZOR_MAX_DEPTH = 3;
-    if (!node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0
-        && depth <= RAZOR_MAX_DEPTH
-        && node.staticEval + RAZOR_MARGIN * depth < alpha) {
-        const int32_t razorScore = quiescenceSearch(
-            b, runtime, alpha, beta, ply, canUseTT, counter, allowTTWrite);
-        if (razorScore < alpha) {
-            return razorScore;
-        }
-    }
-
     // Probcut (negamax): if a winning capture, searched shallow with a null
     // window above beta+margin, still beats beta+margin, this node likely
     // fails high. SEE is side-to-move relative so the filter is one-sided.
