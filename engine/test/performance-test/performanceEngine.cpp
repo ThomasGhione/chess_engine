@@ -64,17 +64,28 @@ ut::suite performanceEngineSuite = [] {
     constexpr int runs = 20;
     int64_t totalDuration = 0;
 
-    // plays against itself for "runs" moves
+    // Plays against itself for "runs" moves. searchUCI() searches a COPY of the
+    // board and does NOT advance it, so we must play the returned move on e.board
+    // ourselves — otherwise every run re-searches the identical root position and
+    // hits a fully warm TT (~0 ms at any depth), measuring nothing.
+    int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        e.searchUCI(e.depth);
+        const chess::Board::Move move = e.searchUCI(e.depth);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
         totalDuration += duration;
+        ++completedRuns;
+
+        // Advance the self-play game so the next run is a new position; stop if
+        // there is no legal move (checkmate / stalemate / terminal).
+        if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) break;
+        chess::Board::MoveState state;
+        e.board.doMove(move, state, move.promotionPiece);
     }
 
-    double avgDuration = static_cast<double>(totalDuration) / runs;
+    double avgDuration = static_cast<double>(totalDuration) / completedRuns;
 
     // Attesa che la ricerca media venga completata in meno di 500 millisecondi
     printf("Average Depth 10 search time over %d runs: %.2f ms\n\n", runs, avgDuration);
