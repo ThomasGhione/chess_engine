@@ -119,6 +119,34 @@ echo " H1 accepted (LLR>=upper)  -> the change is a GAIN: keep it."
 echo " H0 accepted (LLR<=lower)  -> no measurable gain: discard it."
 echo "=============================================================="
 
+# Backend: fastchess computes the pentanomial SPRT (~1.5-2x fewer games for the
+# same decision) and is preferred when present; cutechess-cli is the fallback.
+# Force either with SPRT_BACKEND=fastchess|cutechess.
+fastchess_bin=""
+command -v fastchess >/dev/null 2>&1 && fastchess_bin="$(command -v fastchess)"
+SPRT_BACKEND="${SPRT_BACKEND:-$([[ -n "${fastchess_bin}" ]] && echo fastchess || echo cutechess)}"
+
+if [[ "${SPRT_BACKEND}" == "fastchess" ]]; then
+    [[ -n "${fastchess_bin}" ]] || { echo "error: SPRT_BACKEND=fastchess but fastchess not on PATH (~/.local/bin)." >&2; exit 127; }
+    echo " backend: fastchess (pentanomial, model=normalized)"
+    echo "=============================================================="
+    # No option.Hash: the engine has no UCI Hash option (TT is fixed-size).
+    exec "${fastchess_bin}" \
+        -engine name=new  cmd="${new_bin}"  args="-uci" proto=uci option.Threads="${THREADS}" \
+        -engine name=base cmd="${base_bin}" args="-uci" proto=uci option.Threads="${THREADS}" \
+        -each tc="${TC}" \
+        -openings file="${BOOK}" format=pgn order=random plies=16 \
+        -repeat -games 2 -rounds "$(( MAXGAMES / 2 ))" \
+        -sprt elo0="${ELO0}" elo1="${ELO1}" alpha="${ALPHA}" beta="${BETA}" model=normalized \
+        -resign movecount=3 score=500 \
+        -draw movenumber=40 movecount=8 score=8 \
+        -concurrency "${CONCURRENCY}" \
+        -ratinginterval 10 \
+        -pgnout file="${pgn_out}"
+fi
+
+echo " backend: cutechess-cli"
+echo "=============================================================="
 # -repeat: each opening played from both sides for fairness.
 # adjudication speeds up decided games without biasing Elo.
 exec "${real_cutechess}" \
