@@ -126,6 +126,32 @@ make prod && ./tuning/run_sprt.sh              # new vs baseline; H1 = keep, H0 
 Knobs via env vars (defaults shown): `TC=4+0.04`, `ELO0=0 ELO1=5` (gain test; use
 `ELO0=-3 ELO1=3` for non-regression of cleanups), `CONCURRENCY`, `HASH`, `THREADS`.
 
+### Gauntlet (absolute ELO)
+
+`tuning/run_gauntlet.sh` complements SPRT: instead of "better than the last
+baseline?", it answers "how strong are we on a fixed scale?". The current build
+plays a gauntlet against one or more frozen release tags, then [ordo](https://github.com/michiguel/Ordo)
+turns the PGN into ratings with an old release pinned at a constant ELO, so every
+run is comparable over time.
+
+```sh
+make prod && ./tuning/run_gauntlet.sh            # current build vs tag 1.2.0, 400 games
+REF_TAGS="1.2.0" GAMES=1000 ./tuning/run_gauntlet.sh
+```
+
+Reference binaries are built on demand in a throwaway `git worktree` (your checkout
+is never touched) and cached as `tuning/chess_ref_<tag>`. `ordo` must be on `PATH`
+(the script also looks in `~/.local/bin`); build it with `make` from its repo.
+
+Knobs via env vars (defaults shown): `REF_TAGS=1.2.0` (space-separated list for a
+ladder), `ANCHOR_TAG` / `ANCHOR_ELO=2000` (the fixed yardstick — an internal value,
+not a CCRL rating), `GAMES=400` (per opponent), `TC=4+0.04`, `CONCURRENCY`, `THREADS`.
+
+> A new anchor tag must have working time management. Tag 1.1.0 (and older) ignores
+> the clock and forfeits on time at any real TC — sanity-check first:
+> `printf 'position startpos\ngo wtime 4000 winc 40\n' | ./tuning/chess_ref_<tag> -uci`
+> should reply in ~100 ms, not seconds.
+
 Run Valgrind leak checks:
 
 ```sh
