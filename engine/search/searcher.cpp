@@ -282,7 +282,7 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
     // The previous "STALEMATE_DRAW_PENALTY_MINOR + advantage * 2" formula had
     // no cap and easily exceeded 1000cp in good positions, which made the
     // search rationally sacrifice material rather than allow the draw.
-    constexpr int32_t REPETITION_CONTEMPT = 50; // 1/2 pawn
+    constexpr int32_t REPETITION_CONTEMPT = 80; // ~0.8 pawn
     return (drawDelta > 0) ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT;
 }
 
