@@ -611,11 +611,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int oppSide = usSide ^ 1;
     const uint64_t oppKingBBForFutility = b.kings_bb[oppSide];
     const int oppKingSq = oppKingBBForFutility ? std::countr_zero(oppKingBBForFutility) : 64;
-    // Fork-threat target maps are needed only by the rare quiet-pawn-push path
-    // below, so compute them lazily on first use instead of at every node.
-    bool forkTargetsReady = false;
-    uint64_t enemyMajorOrKingTargets = 0ULL;
-    uint64_t enemyForkTargets = 0ULL;
     const chess::Coords enPassant = b.getEnPassant();
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
 
@@ -644,29 +639,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const int fromPieceType = b.get(fromIndex) & chess::Board::MASK_PIECE_TYPE;
         const int toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
         const bool isPawnMove = (fromPieceType == chess::Board::PAWN);
-        const bool isSameFileMove = chess::Board::file(fromIndex) == chess::Board::file(toIndex);
         const auto cap = Sorter::classifyCapture(m, fromPieceType, toPieceType, enPassant);
         const bool wasCapture = cap.isCapture;
         const int victimType = cap.victimType;
         const bool isPromotionCandidate = isPawnMove && (m.to.rank() == promotionRank);
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
-        const bool isQuietPawnPush = isQuietMove && isPawnMove && isSameFileMove;
-        bool createsPawnForkThreat = false;
-        if (isQuietPawnPush) {
-            if (!forkTargetsReady) {
-                enemyMajorOrKingTargets =
-                    b.rooks_bb[oppSide] | b.queens_bb[oppSide] | b.kings_bb[oppSide];
-                enemyForkTargets = enemyMajorOrKingTargets |
-                    b.knights_bb[oppSide] | b.bishops_bb[oppSide];
-                forkTargetsReady = true;
-            }
-            const uint64_t forkTargets = pieces::PAWN_ATTACKS[usSide][toIndex] & enemyForkTargets;
-            createsPawnForkThreat =
-                ((forkTargets & enemyMajorOrKingTargets) != 0ULL)
-                && (std::popcount(forkTargets) >= 2);
-        }
 
-        if (canLMP && isQuietMove && !createsPawnForkThreat && moveIndex >= lmpThreshold) {
+        if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
             continue;
         }
 
@@ -686,7 +665,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
-        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !createsPawnForkThreat && !preMoveGivesCheck && moveIndex > 0
+        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !preMoveGivesCheck && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha)) {
             continue;
         }
@@ -708,10 +687,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // so a capture reaching this index is almost always a bad/losing one.
         const bool lmrStructuralCandidate = (ctx.depth >= 4)
             && (moveIndex >= 4)
-            && !isPromotionCandidate
-            && !createsPawnForkThreat;
+            && !isPromotionCandidate;
 
-        const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3 || createsPawnForkThreat);
+        const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3);
         const bool needsCheckInfo =
             (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;

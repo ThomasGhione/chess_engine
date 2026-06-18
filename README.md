@@ -126,6 +126,17 @@ make prod && ./tuning/run_sprt.sh              # new vs baseline; H1 = keep, H0 
 Knobs via env vars (defaults shown): `TC=4+0.04`, `ELO0=0 ELO1=5` (gain test; use
 `ELO0=-3 ELO1=3` for non-regression of cleanups), `CONCURRENCY`, `HASH`, `THREADS`.
 
+Follow the running test live (fastchess buffers its own stdout, so read the
+PGN instead) — Elo, error bar, and CFS/LOS via ordo:
+
+```sh
+watch -n 5 'ordo -q -s 1000 -J -p "$(ls -t tuning/sprt_*.pgn | head -1)"'
+```
+
+`-s 1000` enables error bars, `-J` adds the CFS (confidence-for-superiority = LOS)
+column. Drop `watch` for a one-shot snapshot. The final SPRT LLR/H0/H1 verdict
+comes from fastchess itself (the per-run `.output`/console), not ordo.
+
 ### Gauntlet (absolute ELO)
 
 `tuning/run_gauntlet.sh` complements SPRT: instead of "better than the last
