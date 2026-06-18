@@ -68,15 +68,11 @@ public:
     // resolved lazily by MovePickerData::finalizeSee.
     enum class SeePending : uint8_t { Final = 0, Capture = 1, Quiet = 2 };
 
-    // Incremental lazy-selection picker. Parallel arrays (moves/scores/givesCheckFlag)
+    // Incremental lazy-selection picker. Parallel arrays (moves/scores/seePending)
     // are kept in sync by nextMove() and fullSort(); never manipulate them separately.
     struct MovePickerData {
         MoveList<chess::Board::Move> moves;
         int32_t scores[MAX_MOVES] {};
-        // -1 = not computed, 0 = false, 1 = true. Must be -1 for all slots:
-        // nextMove() swaps entries including unscored ones, so an uninitialized
-        // slot read as 0 would be misinterpreted as "does not give check".
-        int8_t givesCheckFlag[MAX_MOVES];
         // Per-move deferred-SEE state (default Final). Keeps SEE off the moves a beta
         // cutoff never examines, while preserving the exact ordering of the eager path.
         SeePending seePending[MAX_MOVES] {};
@@ -84,10 +80,6 @@ public:
         int  size         = 0;
         int  currentIndex = 0;
         bool hashMoveIsLegal = false;
-
-        MovePickerData() noexcept {
-            std::memset(givesCheckFlag, 0xFF, sizeof(givesCheckFlag)); // 0xFF == -1 for int8_t
-        }
 
         inline bool hasNext() const noexcept { return currentIndex < size; }
 
@@ -129,7 +121,6 @@ public:
                 if (bestIdx != currentIndex) {
                     std::swap(moves[currentIndex],          moves[bestIdx]);
                     std::swap(scores[currentIndex],         scores[bestIdx]);
-                    std::swap(givesCheckFlag[currentIndex], givesCheckFlag[bestIdx]);
                     std::swap(seePending[currentIndex],     seePending[bestIdx]);
                 }
 
@@ -144,17 +135,14 @@ public:
             for (int i = 1; i < size; ++i) {
                 const chess::Board::Move keyMove  = moves[i];
                 const int32_t            keyScore = scores[i];
-                const int8_t             keyGc    = givesCheckFlag[i];
                 int j = i - 1;
                 while (j >= 0 && scores[j] < keyScore) {
                     scores[j + 1] = scores[j];
                     moves[j + 1] = moves[j];
-                    givesCheckFlag[j + 1] = givesCheckFlag[j];
                     --j;
                 }
                 scores[j + 1] = keyScore;
                 moves[j + 1] = keyMove;
-                givesCheckFlag[j + 1] = keyGc;
             }
         }
     };
@@ -241,8 +229,7 @@ private:
         int victimType,
         int32_t see,
         bool isPromotionCandidate,
-        bool isHashMove,
-        int8_t& outGivesCheck) noexcept;
+        bool isHashMove) noexcept;
 
     static LeastValuableAttacker getLeastValuableAttackerTo(
         const chess::Board& b,

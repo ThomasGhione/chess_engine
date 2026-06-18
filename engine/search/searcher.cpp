@@ -638,19 +638,14 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
-        // Pre-move check detection for futility: reuse the value the ordering
-        // pass already computed for this move (same pre-move position); only
-        // fall back to recomputing when ordering short-circuited (killer/
-        // counter/etc, flag == -1). Bit-identical to the old direct call.
+        // Pre-move check detection for futility, computed lazily only on the
+        // quiet moves that can actually be futility/LMP-pruned.
         bool preMoveGivesCheck = false;
         if ((canFutilityPrune || (canLMP && isQuietMove))
             && isQuietMove && fromPieceType != chess::Board::KING
             && oppKingSq < 64) {
-            const int8_t gc = movePicker.givesCheckFlag[moveIndex];
-            preMoveGivesCheck = (gc >= 0)
-                ? (gc != 0)
-                : Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
-                                         b.getPiecesBitMap());
+            preMoveGivesCheck = Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
+                                                       b.getPiecesBitMap());
         }
 
         if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0

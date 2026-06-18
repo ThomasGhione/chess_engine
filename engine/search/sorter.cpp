@@ -64,7 +64,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         bool isCapture, int victimType, int32_t see,
-        bool isPromotionCandidate, bool isHashMove, [[maybe_unused]] int8_t& outGivesCheck) noexcept {
+        bool isPromotionCandidate, bool isHashMove) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
@@ -290,12 +290,11 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
             : (isCapture ? SeePending::Capture
               : ((!isPromotionCandidate && fromPieceType != chess::Board::KING) ? SeePending::Quiet : SeePending::Final));
 
-        int8_t gcFlag = -1; // -1 = ordering did not compute the quiet check
         // Score provisionally with see=0: captures rank as good, quiets as their base
         // score. finalizeSee later applies the good/bad split and the hanging demotion.
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, isCapture, victimType, /*see=*/0,
-            isPromotionCandidate, isHashMove, gcFlag);
+            isPromotionCandidate, isHashMove);
 
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));
@@ -308,7 +307,6 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
         }
 
         picker.scores[moveIndex] = score;
-        picker.givesCheckFlag[moveIndex] = gcFlag;
         picker.seePending[moveIndex] = pending;
     }
 
