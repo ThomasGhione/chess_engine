@@ -65,7 +65,6 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         bool isCapture, int victimType, int32_t see,
         bool isPromotionCandidate, bool isHashMove, [[maybe_unused]] int8_t& outGivesCheck) noexcept {
-    const int fromPieceType = ctx.b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
@@ -103,20 +102,6 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         if (ctx.contHistEntry != nullptr) {
             score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[m.to.index]),
                                 HISTORY_SCORE_MIN, HISTORY_SCORE_MAX) / 2;
-        }
-    }
-
-    if (fromPieceType == chess::Board::PAWN && ctx.isEndgameOrdering) {
-        const int advancement = ctx.usIsWhite
-            ? (6 - chess::Board::rank(m.to.index))
-            : (chess::Board::rank(m.to.index) - 1);
-        if (chess::Board::file(m.from.index) == chess::Board::file(m.to.index) && advancement > 0) {
-            score += 20 + advancement * 12;
-        }
-    } else if (fromPieceType == chess::Board::PAWN && ctx.fullMoveClock < 8) {
-        const int pawnStartRank = ctx.usIsWhite ? 6 : 1;
-        if (chess::Board::rank(m.from.index) != pawnStartRank) {
-            score -= 15;
         }
     }
 
