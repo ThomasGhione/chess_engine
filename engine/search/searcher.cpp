@@ -577,7 +577,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
     // Macro-step 2: Precompute pruning buckets and loop invariants.
     const int nonPawnMajorsForLMR = b.getIncrementalNonPawnMajorCount();
-    const bool isDelicateEndgame = (nonPawnMajorsForLMR <= 2);
     const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
     // [isLateEndgame][depth]; depth is gated to 1..2 by canPruneByDepthAndNodeType.
@@ -585,13 +584,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const bool canPruneByDepthAndNodeType =
         !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
 
-    const bool canFutilityPruneRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
-    // Delicate endgames: keep futility nearly off, but allow a tiny depth-1 gate.
-    const bool canFutilityPruneDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
-    const bool canFutilityPrune = (canFutilityPruneRegular || canFutilityPruneDelicate) && !ctx.improving;
-    const int32_t futilityMargin = canFutilityPruneRegular
-        ? FUTILITY_MARGINS[isLateEndgame][ctx.depth]
-        : (canFutilityPruneDelicate ? 180 : 0);
+    const bool canFutilityPrune = canPruneByDepthAndNodeType && !ctx.improving;
+    const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[isLateEndgame][ctx.depth] : 0;
 
     // LMP thresholds [improving][isLateEndgame][depth]: higher (more permissive)
     // when improving / in late endgames.
@@ -599,13 +593,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         {{0, 12, 20, 30}, {0, 16, 26, 38}},
         {{0, 16, 26, 38}, {0, 20, 32, 46}},
     };
-    const bool canLMPRegular = canPruneByDepthAndNodeType && !isDelicateEndgame;
-    // Delicate endgames: prune only very-late quiets at depth-1.
-    const bool canLMPDelicate = canPruneByDepthAndNodeType && isDelicateEndgame && (ctx.depth == 1);
-    const bool canLMP = canLMPRegular || canLMPDelicate;
-    const int lmpThreshold = canLMPRegular
-        ? LMP_THRESHOLDS[ctx.improving][isLateEndgame][ctx.depth]
-        : (canLMPDelicate ? 48 : 999);
+    const bool canLMP = canPruneByDepthAndNodeType;
+    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][isLateEndgame][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppSide = usSide ^ 1;
@@ -664,8 +653,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                                          b.getPiecesBitMap());
         }
 
-        const bool delicateFutilityGate = !isDelicateEndgame || (moveIndex >= 24);
-        if (canFutilityPrune && delicateFutilityGate && isQuietMove && !preMoveGivesCheck && moveIndex > 0
+        if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha)) {
             continue;
         }
