@@ -64,7 +64,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         bool isCapture, int victimType, int32_t see,
-        bool isPromotionCandidate, bool isHashMove, int8_t& outGivesCheck) noexcept {
+        bool isPromotionCandidate, bool isHashMove, [[maybe_unused]] int8_t& outGivesCheck) noexcept {
     const int fromPieceType = ctx.b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
 
     if (isHashMove) return HASH_MOVE_SCORE;
@@ -94,13 +94,6 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 
     if (isPromotionCandidate) {
         return PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
-    }
-
-    if (ctx.oppKingSq < 64 && fromPieceType != chess::Board::KING) {
-        const bool gc = givesCheckAfterQuietMoveFast(
-            ctx.b, m, fromPieceType, ctx.oppKingSq, ctx.occ);
-        outGivesCheck = gc ? 1 : 0;
-        if (gc) return CHECK_QUIET_SCORE;
     }
 
     int32_t score = 0;

@@ -26,7 +26,6 @@ public:
     static constexpr int32_t KILLER_1_SCORE       = 9000;
     static constexpr int32_t KILLER_2_SCORE       = 8500;
     static constexpr int32_t COUNTER_MOVE_SCORE   = 8200;
-    static constexpr int32_t CHECK_QUIET_SCORE    = 8000;
     static constexpr int32_t PROMOTION_BASE_SCORE = 7000;
     static constexpr int32_t HISTORY_SCORE_MAX    = 7500;
     static constexpr int32_t HISTORY_SCORE_MIN    = -2000;
