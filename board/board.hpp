@@ -52,21 +52,19 @@ public:
     };
 
     enum EvalCacheTerm : uint32_t {
-        EVAL_CACHE_MATERIAL_DELTA          = 0,
-        EVAL_CACHE_PAWN_STRUCTURE_MG       = 1,
-        EVAL_CACHE_PAWN_STRUCTURE_EG       = 2,
-        EVAL_CACHE_BISHOP_PAIR_BONUS       = 3,
-        EVAL_CACHE_CASTLING_BONUS          = 4,
-        EVAL_CACHE_ROOKS                   = 5,
-        EVAL_CACHE_BAD_BISHOP              = 6,
-        EVAL_CACHE_MINOR_DEVELOPMENT       = 7,
-        EVAL_CACHE_EARLY_QUEEN             = 8,
-        EVAL_CACHE_OUTPOSTS                = 9,
-        EVAL_CACHE_PIECE_COORDINATION      = 10,
-        EVAL_CACHE_CENTRAL_CONTROL         = 11,
-        EVAL_CACHE_WEAK_SQUARES            = 12,
-        EVAL_CACHE_BISHOP_VS_KNIGHT        = 13,
-        EVAL_CACHE_COUNT                   = 14
+        EVAL_CACHE_PAWN_STRUCTURE_MG       = 0,
+        EVAL_CACHE_BISHOP_PAIR_BONUS       = 1,
+        EVAL_CACHE_CASTLING_BONUS          = 2,
+        EVAL_CACHE_ROOKS                   = 3,
+        EVAL_CACHE_BAD_BISHOP              = 4,
+        EVAL_CACHE_MINOR_DEVELOPMENT       = 5,
+        EVAL_CACHE_EARLY_QUEEN             = 6,
+        EVAL_CACHE_OUTPOSTS                = 7,
+        EVAL_CACHE_PIECE_COORDINATION      = 8,
+        EVAL_CACHE_CENTRAL_CONTROL         = 9,
+        EVAL_CACHE_WEAK_SQUARES            = 10,
+        EVAL_CACHE_BISHOP_VS_KNIGHT        = 11,
+        EVAL_CACHE_COUNT                   = 12
     };
 
     enum MoveChangeFlag : uint16_t {

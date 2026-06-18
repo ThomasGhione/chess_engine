@@ -48,13 +48,11 @@ constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept 
     uint32_t mask = 0;
 
     if constexpr (captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_MATERIAL_DELTA);
         mask |= evalCacheBit(EVAL_CACHE_BISHOP_PAIR_BONUS);
     }
 
     if constexpr (pawnRelated) {
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_MG);
-        mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
         mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
         mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
         mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);

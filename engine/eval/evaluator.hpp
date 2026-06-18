@@ -205,7 +205,6 @@ private:
     // --- Pawns & space ---
     static PhaseValue evalPawnForks(const chess::Board& b) noexcept;
     static PhaseValue evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static PhaseValue evalInitiativePair(const chess::Board& b) noexcept;
 
     // --- Piece activity ---

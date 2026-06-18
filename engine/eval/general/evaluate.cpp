@@ -139,7 +139,7 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t m
     acc += evalMopUp(b);
     acc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
     acc += evalRuleOfSquare(b, whitePawns, blackPawns);
-    acc += evalInitiative(b, true);
+    acc += evalInitiativePair(b);
     return acc.eg;
 }
 
