@@ -52,7 +52,7 @@ inline constexpr int LMP_THRESHOLDS[2][2][6] = {
 inline constexpr int32_t HISTORY_PRUNE_THRESHOLD[4] = {0, -4096, -6144, -8192};
 
 // SEE capture pruning: skip captures with SEE < -SEE_CAPTURE_MARGIN * depth.
-inline constexpr int32_t SEE_CAPTURE_MARGIN = 90;
+inline constexpr int32_t SEE_CAPTURE_MARGIN = 70;
 // Singular extension.
 inline constexpr int SE_MIN_DEPTH     = 6;
 inline constexpr int SE_DEPTH_MARGIN  = 3;
