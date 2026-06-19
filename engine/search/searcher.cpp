@@ -137,31 +137,6 @@ void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
         static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(best, ply), NEG_INF, POS_INF)), static_cast<uint8_t>(flag), encodedMove);
 }
 
-bool SearchRuntime::shouldAbort() const noexcept {
-    const bool stopRequested = stopSearchRequested != nullptr
-        && stopSearchRequested->load(std::memory_order_acquire);
-    const bool ponderStopRequested = ponderingStopRequested != nullptr
-        && ponderingStopRequested->load(std::memory_order_acquire);
-    return stopRequested || ponderStopRequested;
-}
-
-void SearchRuntime::markInterrupted() noexcept {
-    if (searchInterrupted != nullptr) {
-        searchInterrupted->store(true, std::memory_order_relaxed);
-    }
-}
-
-bool SearchRuntime::isInterrupted() const noexcept {
-    return searchInterrupted != nullptr
-        && searchInterrupted->load(std::memory_order_relaxed);
-}
-
-void SearchRuntime::clearInterrupted() noexcept {
-    if (searchInterrupted != nullptr) {
-        searchInterrupted->store(false, std::memory_order_relaxed);
-    }
-}
-
 bool Searcher::checkEarlyTerminalConditions(
     const chess::Board& b,
     SearchRuntime& runtime,
@@ -283,23 +258,6 @@ void Searcher::updateMinMax(
     bestMove = better ? m : bestMove;
 
     updateBound(score, alpha);
-}
-
-void SearchRuntime::softResetHistory() noexcept {
-    constexpr int HISTORY_CELLS      = 2 * 64 * 64;
-    constexpr int CONT_HIST_CELLS    = 2 * 64 * 64;
-    constexpr int CAP_HIST_CELLS     = 2 * 64 * 7 * CAPTURE_HISTORY_SLOTS;
-
-    int16_t* historyFlat  = &history[0][0][0];
-    int16_t* contHistFlat = &contHist[0][0][0];
-    int16_t* capHistFlat  = &captureHistory[0][0][0][0];
-
-    #pragma omp simd
-    for (int i = 0; i < HISTORY_CELLS; ++i)   historyFlat[i]  >>= 1;
-    #pragma omp simd
-    for (int i = 0; i < CONT_HIST_CELLS; ++i) contHistFlat[i] >>= 1;
-    #pragma omp simd
-    for (int i = 0; i < CAP_HIST_CELLS; ++i)  capHistFlat[i]  >>= 1;
 }
 
 chess::Board::Move Searcher::searchBestMove(
