@@ -47,6 +47,10 @@ inline constexpr int LMP_THRESHOLDS[2][2][4] = {
     {{0, 12, 20, 30}, {0, 16, 26, 38}},
     {{0, 16, 26, 38}, {0, 20, 32, 46}},
 };
+// History-based quiet pruning: skip quiet moves with very negative history.
+// Indexed by depth (0..3); depth 0 unused.
+inline constexpr int32_t HISTORY_PRUNE_THRESHOLD[4] = {0, -4096, -6144, -8192};
+
 // SEE capture pruning: skip captures with SEE < -SEE_CAPTURE_MARGIN * depth.
 inline constexpr int32_t SEE_CAPTURE_MARGIN = 90;
 // Singular extension.

@@ -572,6 +572,17 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
+        // History-based quiet pruning: skip late quiet moves with very negative
+        // history at low depth — they reliably fail to improve alpha.
+        if (isQuietMove && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0
+            && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
+            const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
+            const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+            if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
+                continue;
+            }
+        }
+
         // SEE pruning: skip clearly losing captures at shallow non-PV nodes.
         // Move 0 (a winning or hash capture) is always searched; the margin
         // scales with depth so deeper nodes tolerate slightly worse trades.
