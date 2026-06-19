@@ -43,9 +43,9 @@ inline constexpr int32_t FUTILITY_MARGINS[2][7] = {
     {0, 170, 350, 530,  710,  890, 1070},
 };
 // LMP_THRESHOLDS[improving][isLateEndgame][depth]: higher = more permissive.
-inline constexpr int LMP_THRESHOLDS[2][2][4] = {
-    {{0, 12, 20, 30}, {0, 16, 26, 38}},
-    {{0, 16, 26, 38}, {0, 20, 32, 46}},
+inline constexpr int LMP_THRESHOLDS[2][2][6] = {
+    {{0, 12, 20, 30, 42, 56}, {0, 16, 26, 38, 52, 68}},
+    {{0, 16, 26, 38, 52, 68}, {0, 20, 32, 46, 62, 80}},
 };
 // History-based quiet pruning: skip quiet moves with very negative history.
 // Indexed by depth (0..3); depth 0 unused.

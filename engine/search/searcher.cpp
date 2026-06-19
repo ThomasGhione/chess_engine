@@ -506,14 +506,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int nonPawnMajorsForLMR = b.getIncrementalNonPawnMajorCount();
     const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
 
-    const bool canPruneByDepthAndNodeType =
-        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
-
     const bool canFutilityPrune =
         !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6 && !ctx.improving;
     const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[isLateEndgame][ctx.depth] : 0;
 
-    const bool canLMP = canPruneByDepthAndNodeType;
+    const bool canLMP =
+        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 4;
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][isLateEndgame][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
