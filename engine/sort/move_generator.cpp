@@ -418,27 +418,27 @@ MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess
     return moves;
 }
 
-engine::Sorter::MovePickerData MoveGenerator::generateQSearchEvasions(
+engine::MovePicker MoveGenerator::generateQSearchEvasions(
     const chess::Board& b,
     bool inDoubleCheckKnown,
     bool inDoubleCheckValue) noexcept {
     MoveList<chess::Board::Move> evasions = generateLegalEvasions(b, inDoubleCheckKnown, inDoubleCheckValue);
-    if (evasions.is_empty()) return engine::Sorter::MovePickerData{};
+    if (evasions.is_empty()) return engine::MovePicker{};
 
-    engine::Sorter::MovePickerData data;
+    engine::MovePicker data;
     data.moves = engine::Sorter::sortEvasionsForcingFirst(std::move(evasions), b);
     data.size = data.moves.size;
     data.currentIndex = 0;
     return data;
 }
 
-engine::Sorter::MovePickerData MoveGenerator::generateQSearchTacticalMoves(
+engine::MovePicker MoveGenerator::generateQSearchTacticalMoves(
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
     int ply) noexcept {
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
-    if (tacticalMoves.is_empty()) return engine::Sorter::MovePickerData{};
+    if (tacticalMoves.is_empty()) return engine::MovePicker{};
     return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply);
 }
 

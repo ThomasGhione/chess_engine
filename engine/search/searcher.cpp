@@ -523,7 +523,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
 Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board& b,
-    Sorter::MovePickerData& movePicker,
+    MovePicker& movePicker,
     const SearchContext& ctx,
     AlphaBeta& bounds,
     SearchRuntime& runtime,
@@ -1029,7 +1029,7 @@ int32_t Searcher::searchPosition(
 
     bool hasHashMove = false;
 
-    Sorter::MovePickerData movePicker = Sorter::sortLegalMoves(
+    MovePicker movePicker = Sorter::sortLegalMoves(
         std::move(moves),
         ply,
         b,
@@ -1135,7 +1135,7 @@ int32_t Searcher::quiescenceSearch(
         return Evaluator::evaluate(b);
     }
 
-    Sorter::MovePickerData movePicker;
+    MovePicker movePicker;
     int32_t best;
     const int32_t alphaOrig = alpha;
     const int32_t betaOrig = beta;
@@ -1258,7 +1258,7 @@ chess::Board::Move Searcher::getBestMove(
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
-    Sorter::MovePickerData orderedRootMoves = Sorter::sortLegalMoves(
+    MovePicker orderedRootMoves = Sorter::sortLegalMoves(
         moves,
         0,
         rootBoard,

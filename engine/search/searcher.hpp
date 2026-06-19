@@ -247,7 +247,7 @@ private:
         const chess::Board& b, const SearchNodeState& node,
         int32_t depth, int32_t beta, int32_t& outScore) noexcept;
     static SearchMoveResult searchMoves(
-        chess::Board& b, Sorter::MovePickerData& movePicker,
+        chess::Board& b, MovePicker& movePicker,
         const SearchContext& ctx, AlphaBeta& bounds,
         SearchRuntime& runtime,
         bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;

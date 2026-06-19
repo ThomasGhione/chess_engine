@@ -7,6 +7,10 @@
 
 namespace engine {
 
+int32_t computeSeeForPicker(const chess::Board& b, const chess::Board::Move& m) noexcept {
+    return Sorter::staticExchangeEvaluationPublic(b, m);
+}
+
 Sorter::CaptureInfo Sorter::classifyCapture(
         const chess::Board::Move& m, int fromPieceType, int toPieceType,
         const chess::Coords& enPassant) noexcept {
@@ -220,7 +224,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     return gain[0];
 }
 
-Sorter::MovePickerData Sorter::sortLegalMoves(
+MovePicker Sorter::sortLegalMoves(
     MoveList<chess::Board::Move> moves,
     int ply,
     const chess::Board& b,
@@ -230,7 +234,7 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
     bool* outHashMoveIsLegal,
     const int16_t* contHistEntry) noexcept {
 
-    MovePickerData picker;
+    MovePicker picker;
     picker.size  = moves.size;
     picker.moves = std::move(moves);
     if (picker.moves.is_empty()) [[unlikely]] {
@@ -317,14 +321,14 @@ Sorter::MovePickerData Sorter::sortLegalMoves(
 
 }
 
-Sorter::MovePickerData Sorter::sortTacticalMoves(
+MovePicker Sorter::sortTacticalMoves(
     const MoveList<chess::Board::Move>& tacticalMoves,
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
     int ply) noexcept {
 
-    MovePickerData picker;
+    MovePicker picker;
     if (tacticalMoves.is_empty()) return picker;
 
     const bool usIsWhite = (b.getActiveColor() == chess::Board::WHITE);

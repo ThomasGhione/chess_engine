@@ -27,12 +27,12 @@ public:
     static MoveList<chess::Board::Move> generateTacticalMoves(
         const chess::Board& b) noexcept;
 
-    static engine::Sorter::MovePickerData generateQSearchEvasions(
+    static engine::MovePicker generateQSearchEvasions(
         const chess::Board& b,
         bool inDoubleCheckKnown = false,
         bool inDoubleCheckValue = false) noexcept;
 
-    static engine::Sorter::MovePickerData generateQSearchTacticalMoves(
+    static engine::MovePicker generateQSearchTacticalMoves(
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
