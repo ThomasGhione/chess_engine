@@ -10,7 +10,7 @@
 #include "../movelist.hpp"
 #include "../syzygy/syzygy.hpp"
 #include "search_constants.hpp"
-#include "sorter.hpp"
+#include "../sort/sorter.hpp"
 
 namespace engine {
 

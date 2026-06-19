@@ -6,7 +6,7 @@
 #include "../../board/board.hpp"
 #include "../../tt/tt.hpp"
 #include "../movelist.hpp"
-#include "search_constants.hpp"
+#include "../search/search_constants.hpp"
 
 namespace engine {
 

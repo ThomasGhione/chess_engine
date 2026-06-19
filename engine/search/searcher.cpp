@@ -8,8 +8,8 @@
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
 #include "../time/time_manager.hpp"
-#include "move_generator.hpp"
-#include "sorter.hpp"
+#include "../sort/move_generator.hpp"
+#include "../sort/sorter.hpp"
 
 namespace engine {
 

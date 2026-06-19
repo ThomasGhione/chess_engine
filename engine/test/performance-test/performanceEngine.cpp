@@ -3,7 +3,7 @@
 #include <bit>
 #include "../../engine.hpp"
 #include "../../eval/evaluator.hpp"
-#include "../../search/move_generator.hpp"
+#include "../../sort/move_generator.hpp"
 #include "../../movelist.hpp"
 #include "../../../tests/ut.hpp"
 
