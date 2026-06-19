@@ -509,7 +509,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const bool canPruneByDepthAndNodeType =
         !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 2 && ctx.depth >= 1;
 
-    const bool canFutilityPrune = canPruneByDepthAndNodeType && !ctx.improving;
+    const bool canFutilityPrune =
+        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6 && !ctx.improving;
     const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[isLateEndgame][ctx.depth] : 0;
 
     const bool canLMP = canPruneByDepthAndNodeType;
