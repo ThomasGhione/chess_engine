@@ -6,6 +6,7 @@
 #include "../../board/board.hpp"
 #include "../../tt/tt.hpp"
 #include "../movelist.hpp"
+#include "search_constants.hpp"
 
 namespace engine {
 
@@ -17,31 +18,7 @@ public:
     Sorter() = delete;
     ~Sorter() = delete;
 
-    static constexpr int MAX_PLY = 64;
-    static constexpr int CAPTURE_HISTORY_SLOTS = 2;
-
-    // --- Move ordering score thresholds ---
-    static constexpr int32_t HASH_MOVE_SCORE      = 100000;
-    static constexpr int32_t CAPTURE_BASE_SCORE   = 10000;
-    static constexpr int32_t KILLER_1_SCORE       = 9000;
-    static constexpr int32_t KILLER_2_SCORE       = 8500;
-    static constexpr int32_t COUNTER_MOVE_SCORE   = 8200;
-    static constexpr int32_t PROMOTION_BASE_SCORE = 7000;
-    static constexpr int32_t HISTORY_SCORE_MAX    = 7500;
-    static constexpr int32_t HISTORY_SCORE_MIN    = -2000;
-
-    // --- Opening king ordering ---
-    static constexpr int32_t OPENING_KING_MOVE_PENALTY  = 220;
-    static constexpr int32_t CASTLING_BONUS             = 550;
-    static constexpr int     OPENING_FULLMOVE_THRESHOLD = 10;
-
-    // --- Qsearch tactical scoring ---
-    static constexpr int32_t TACTICAL_PROMOTION_SCORE    = 9000;
-    static constexpr int32_t FUTILITY_MARGIN             = 100;
-    static constexpr int32_t MOVE_DELTA_MARGIN           = 140;
-    static constexpr int32_t SEE_THRESHOLD_SHALLOW       = -24;  // ply < 10
-    static constexpr int32_t SEE_THRESHOLD_MID           = -12;  // 10 <= ply < 20
-    static constexpr int32_t SEE_THRESHOLD_DEEP          = -4;   // ply >= 20
+    // All scoring constants live in search_constants.hpp (namespace engine).
 
     // Inlined here so callers (in header-included contexts) get guaranteed inlining.
     // Returns EMPTY (0) as a sentinel for unrecognised input so SEE / move-ordering
@@ -93,9 +70,9 @@ public:
             const int32_t see = Sorter::staticExchangeEvaluation(*board, moves[idx]);
             if (see >= 0) return false;                      // good capture / safe quiet: unchanged
             if (pending == SeePending::Capture) {            // losing capture
-                scores[idx] = -Sorter::CAPTURE_BASE_SCORE + see;
+                scores[idx] = -CAPTURE_BASE_SCORE + see;
             } else {                                         // quiet that hangs material
-                const int32_t cap = Sorter::KILLER_2_SCORE - 1;
+                const int32_t cap = KILLER_2_SCORE - 1;
                 scores[idx] = (scores[idx] < cap ? scores[idx] : cap) + see;
             }
             return true;

@@ -9,19 +9,12 @@
 #include "../eval_constants.hpp"
 #include "../movelist.hpp"
 #include "../syzygy/syzygy.hpp"
+#include "search_constants.hpp"
 #include "sorter.hpp"
 
 namespace engine {
 
 namespace time { class TimeManager; }
-
-// Hoisted to namespace scope so SearchRuntime and other TUs (sorter) can use
-// them without depending on the full Searcher class definition.
-// Aliased back inside Searcher to keep Searcher::MAX_PLY etc. call sites working.
-inline constexpr int32_t  MAX_PLY               = 64;
-inline constexpr int32_t  CAPTURE_HISTORY_SLOTS = 2;
-inline constexpr int32_t  PAWN_CORR_HISTORY_SIZE = 1 << 14;
-inline constexpr uint64_t DEFAULT_DEPTH         = 11;
 
 struct SearchRuntime {
     // --- Search state ---
@@ -80,27 +73,8 @@ public:
     static constexpr int32_t  CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
     using SearchRuntime = ::engine::SearchRuntime;
 
-    // --- Search constants ---
-    static constexpr int     NULL_MOVE_VERIFICATION_DEPTH  = 10;
-    static constexpr int32_t MATE_BOUND                    = POS_INF - 2048;
-
-    // --- Qsearch delta pruning ---
-    static constexpr int32_t QSEARCH_PAWN_PROMO_DELTA          = 150;
-    static constexpr int32_t QSEARCH_MATERIAL_BAD              = -400;
-    static constexpr int32_t QSEARCH_MATERIAL_WORSE            = -200;
-    static constexpr int32_t QSEARCH_MATERIAL_BAD_DELTA        = 150;
-    static constexpr int32_t QSEARCH_MATERIAL_WORSE_DELTA      = 75;
-    static constexpr int32_t QSEARCH_DEPTH_REDUCTION_THRESHOLD = 5;
-    static constexpr int32_t QSEARCH_DEPTH_REDUCTION_PER_5     = 50;
-    static constexpr int32_t QSEARCH_DELTAMARGIN_MIN           = 960;  // QUEEN_VALUE
-
-    // --- Near-promotion ranks ---
-    static constexpr uint64_t WHITE_NEAR_PROMO_PAWNS = 0x00FF000000000000ULL;
-    static constexpr uint64_t BLACK_NEAR_PROMO_PAWNS = 0x000000000000FF00ULL;
-
-    // --- YBWC (root parallelism) ---
-    static constexpr int YBWC_MIN_MOVES = 10;
-    static constexpr int YBWC_MIN_DEPTH = DEFAULT_DEPTH - 2;
+    // All tunable search parameters live in search_constants.hpp (namespace
+    // engine), referenced unqualified from Searcher's methods.
 
     // --- Result structs ---
     struct SearchMoveResult {
