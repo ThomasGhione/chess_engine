@@ -35,7 +35,7 @@ inline constexpr int     NULL_MOVE_VERIFICATION_DEPTH = 10;
 inline constexpr int32_t NMP_EVAL_DIV = 200;
 inline constexpr int32_t NMP_EVAL_MAX = 3;
 // Reverse futility pruning margin per remaining ply.
-inline constexpr int32_t RFP_MARGIN_PER_DEPTH = 110;
+inline constexpr int32_t RFP_MARGIN_PER_DEPTH = 90;
 // Futility / late-move-pruning in the move loop (depth gated to 1..2).
 // FUTILITY_MARGINS[isLateEndgame][depth].
 inline constexpr int32_t FUTILITY_MARGINS[2][7] = {
