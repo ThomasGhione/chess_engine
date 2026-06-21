@@ -60,7 +60,7 @@ inline constexpr int SE_BETA_MARGIN   = 3;  // seBeta = ttScore - margin*depth
 inline constexpr int SE_DOUBLE_MARGIN = 16; // double-extend when seScore < seBeta - 16
 // ProbCut.
 inline constexpr int32_t PROBCUT_MARGIN    = 80;
-inline constexpr int32_t PROBCUT_MIN_DEPTH = 5;
+inline constexpr int32_t PROBCUT_MIN_DEPTH = 4;
 
 // ===================================================
 // LMR (late move reductions) table parameters
