@@ -33,7 +33,7 @@ inline constexpr int32_t MATE_BOUND = std::numeric_limits<int32_t>::max() - 2048
 inline constexpr int     NULL_MOVE_VERIFICATION_DEPTH = 10;
 // Null-move reduction eval scaling: deeper reduction the further eval beats beta.
 inline constexpr int32_t NMP_EVAL_DIV = 150;
-inline constexpr int32_t NMP_EVAL_MAX = 3;
+inline constexpr int32_t NMP_EVAL_MAX = 4;
 // Reverse futility pruning margin per remaining ply.
 inline constexpr int32_t RFP_MARGIN_PER_DEPTH = 90;
 // Futility / late-move-pruning in the move loop (depth gated to 1..2).
