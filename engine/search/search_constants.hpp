@@ -56,7 +56,7 @@ inline constexpr int32_t SEE_CAPTURE_MARGIN = 70;
 // Singular extension.
 inline constexpr int SE_MIN_DEPTH     = 6;
 inline constexpr int SE_DEPTH_MARGIN  = 3;
-inline constexpr int SE_BETA_MARGIN   = 2;  // seBeta = ttScore - margin*depth
+inline constexpr int SE_BETA_MARGIN   = 3;  // seBeta = ttScore - margin*depth
 inline constexpr int SE_DOUBLE_MARGIN = 16; // double-extend when seScore < seBeta - 16
 // ProbCut.
 inline constexpr int32_t PROBCUT_MARGIN    = 80;
