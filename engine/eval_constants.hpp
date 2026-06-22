@@ -188,7 +188,7 @@ inline PhaseValue KING_SEMI_OPEN_FILE_PENALTY       = {16, 16};
 inline PhaseValue KING_OPEN_FILE_PENALTY            = {14, 14};
 inline PhaseValue KING_FILE_PRESSURE_PENALTY        = {13, 13};
 inline PhaseValue KING_OPEN_DIAGONAL_PENALTY        = {8, 8};
-inline int32_t KING_SAFETY_SIDE_CAP                = 168;  // scalar cap
+inline int32_t KING_SAFETY_SIDE_CAP                = 130;  // scalar cap
 inline int32_t KING_ATTACK_MATERIAL_MIN_SCALE      = 38;
 inline int32_t KING_ATTACK_MATERIAL_MAX_SCALE      = 152;
 inline int32_t KING_ATTACK_WEIGHT_KNIGHT           = 9;
@@ -199,7 +199,7 @@ inline int32_t KING_SAFE_CONTACT_BONUS             = 7;
 inline int32_t KING_FORCING_CONTACT_BONUS          = 5;
 inline int32_t KING_SAFE_CHECK_BONUS               = 12;
 inline int32_t KING_FORCING_CHECK_BONUS            = 9;
-inline int32_t KING_ATTACK_DANGER_CAP              = 136;
+inline int32_t KING_ATTACK_DANGER_CAP              = 100;
 
 // Scalar tuning levers for king safety (internal multipliers/thresholds).
 inline int32_t KING_SHELTER_PAWN_MULTIPLIER        = 12;
@@ -208,6 +208,7 @@ inline int32_t KING_ATTACK_ROOK_WEIGHT             = 16;
 inline int32_t KING_ATTACK_MINOR_WEIGHT            = 8;
 inline int32_t KING_ATTACK_OPEN_FILE_INCREMENT     = 4;
 inline int32_t KING_ATTACK_HEAVY_FILE_INCREMENT    = 8;
+inline int32_t KING_ATTACK_DOWN_MATERIAL_PENALTY   = 16;
 inline int32_t KING_SHELTER_INIT_DISTANCE          = 99;
 inline int32_t KING_SHELTER_VERY_CLOSE             = 1;
 inline int32_t KING_SHELTER_CLOSE                  = 2;

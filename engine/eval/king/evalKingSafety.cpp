@@ -186,6 +186,26 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t 
     mgSafety = std::clamp(mgSafety, -KING_SAFETY_SIDE_CAP, KING_SAFETY_SIDE_CAP);
     egSafety = std::clamp(egSafety, -KING_SAFETY_SIDE_CAP, KING_SAFETY_SIDE_CAP);
 
+    // Down-material damping: an attack mounted while behind in non-pawn material
+    // rarely converts (the defender can hand material back to blunt it). Applied
+    // AFTER the cap so it still bites when the raw danger saturates the cap —
+    // the sacrifice case, where stripping the enemy king reads as a big gain.
+    // opp is the attacker; `side` is the defended king's owner.
+    if (mgSafety < 0 || egSafety < 0) {
+        const int attMaterial = 3 * std::popcount(b.knights_bb[opp] | b.bishops_bb[opp])
+                              + 5 * std::popcount(b.rooks_bb[opp])
+                              + 9 * std::popcount(b.queens_bb[opp]);
+        const int defMaterial = 3 * std::popcount(b.knights_bb[side] | b.bishops_bb[side])
+                              + 5 * std::popcount(b.rooks_bb[side])
+                              + 9 * std::popcount(b.queens_bb[side]);
+        const int materialDeficit = defMaterial - attMaterial;  // attacker behind
+        if (materialDeficit > 0) {
+            const int factor = std::max(0, 100 - materialDeficit * KING_ATTACK_DOWN_MATERIAL_PENALTY);
+            if (mgSafety < 0) mgSafety = (mgSafety * factor) / 100;
+            if (egSafety < 0) egSafety = (egSafety * factor) / 100;
+        }
+    }
+
     sideSafety.mg = mgSafety;
     sideSafety.eg = egSafety;
     return sign * sideSafety;
