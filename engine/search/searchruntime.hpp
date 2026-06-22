@@ -18,6 +18,7 @@ struct SearchRuntime {
     uint64_t depth         = DEFAULT_DEPTH;
     int32_t  eval          = 0;
     int      maxThreads    = 1;
+    bool     emitUciInfo   = false;
     // UCI `go nodes N`: 0 = unlimited. Checked per-node against
     // (runtime.nodesSearched + *counter), so the total across IDS iterations
     // is bounded. In YBWC each worker also bounds itself by the same value;

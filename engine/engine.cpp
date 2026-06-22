@@ -431,6 +431,7 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
     this->clearPonderResult();
 
     chess::Board searchBoard = this->board;
+    this->searchRuntime.emitUciInfo = true;
     const chess::Board::Move candidate = Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth);
     if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
         this->bestMove = chess::Board::Move{};
@@ -494,6 +495,7 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 
     this->searchRuntime.timeManager = &this->timeManager;
     this->searchRuntime.maxNodes    = limits.maxNodes;
+    this->searchRuntime.emitUciInfo = true;
     this->timeManager.start();
 
     chess::Board searchBoard = this->board;

@@ -2,8 +2,10 @@
 #include "searcher.hpp"
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <numeric>
+#include <string>
 
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
@@ -1426,6 +1428,80 @@ void Searcher::storeRootHashMove(
     runtime.transpositionTable->store(rootBoard.getHash(), depth, static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(score, 0), NEG_INF, POS_INF)), flag, encodedMove);
 }
 
+namespace {
+
+// Reconstruct a principal variation by following best moves stored in the TT.
+// Each candidate is validated against the legal move list (a TT key collision
+// could otherwise yield an illegal move), and the walk stops on a repetition so
+// a cyclic PV cannot loop forever. The board is left exactly as it was found.
+std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int maxLen) noexcept {
+    if (tt == nullptr) return {};
+
+    std::array<chess::Board::Move, MAX_PLY> pvMoves{};
+    std::array<chess::Board::MoveState, MAX_PLY> states{};
+    int applied = 0;
+    std::string pv;
+
+    for (int i = 0; i < maxLen && applied < static_cast<int>(MAX_PLY); ++i) {
+        uint16_t encoded = 0;
+        if (!tt->probeMove(board.getHash(), encoded) || encoded == 0) break;
+
+        const auto decoded = TranspositionTable::Entry::decodeMove(encoded);
+        const chess::Board::Move mv{chess::Coords{decoded.from}, chess::Coords{decoded.to}, decoded.promo};
+
+        const MoveList<chess::Board::Move> legal = engine::MoveGenerator::generateLegalMoves(board);
+        bool legalMove = false;
+        for (int k = 0; k < legal.size; ++k) {
+            if (legal[k] == mv) { legalMove = true; break; }
+        }
+        if (!legalMove) break;
+
+        if (!pv.empty()) pv += ' ';
+        pv += mv.toUCIString();
+
+        pvMoves[applied] = mv;
+        board.doMove(mv, states[applied], mv.promotionPiece);
+        ++applied;
+
+        if (board.countRepetitions() >= 3) break;
+    }
+
+    for (int i = applied - 1; i >= 0; --i) {
+        board.undoMove(pvMoves[i], states[i]);
+    }
+    return pv;
+}
+
+// Emit one UCI `info` line for a completed iteration: depth, score (cp or
+// mate N), node/time/nps counters and a TT-reconstructed PV.
+void emitUciInfoLine(uint64_t depth, int32_t score, const SearchRuntime& runtime,
+                     chess::Board& rootBoard) noexcept {
+    const int64_t timeMs = (runtime.timeManager != nullptr)
+        ? runtime.timeManager->elapsedMs() : 0;
+    const uint64_t nodes = runtime.nodesSearched;
+    const int64_t nps = (timeMs > 0)
+        ? static_cast<int64_t>(static_cast<long double>(nodes) * 1000.0L / static_cast<long double>(timeMs))
+        : 0;
+
+    std::cout << "info depth " << depth << " score ";
+    const int32_t absScore = (score < 0) ? -score : score;
+    if (absScore >= MATE_BOUND) {
+        const int32_t plies = Searcher::POS_INF - absScore;
+        const int32_t mateMoves = (plies + 1) / 2;
+        std::cout << "mate " << (score > 0 ? mateMoves : -mateMoves);
+    } else {
+        std::cout << "cp " << score;
+    }
+    std::cout << " nodes " << nodes << " nps " << nps << " time " << timeMs;
+
+    const std::string pv = buildPvFromTT(rootBoard, runtime.transpositionTable, 16);
+    if (!pv.empty()) std::cout << " pv " << pv;
+    std::cout << '\n';
+    std::cout.flush();
+}
+
+} // namespace
+
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     chess::Board& rootBoard,
     SearchRuntime& runtime,
@@ -1668,6 +1744,10 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         result.bestScore = runtime.eval;
         result.rootScoreBound = determineFlag(result.bestScore, iterationAlpha, iterationBeta);
         storeRootHashMove(rootBoard, bestMove, currentDepth, runtime.eval, runtime, static_cast<uint8_t>(result.rootScoreBound));
+
+        if (runtime.emitUciInfo) {
+            emitUciInfoLine(currentDepth, runtime.eval, runtime, rootBoard);
+        }
     }
 
     result.interruptedDepth = interruptedDepth;
