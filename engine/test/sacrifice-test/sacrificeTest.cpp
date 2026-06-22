@@ -47,6 +47,18 @@ constexpr auto SACRIFICE_CASES = std::to_array<SacrificeCase>({
   {"H8gqsRhX m8 Bxh7+ (unsound greek-gift sac)",
    "r1bq1rk1/ppp2ppp/2n1p3/3p3n/1b1P1B2/3BPN2/PPPN1PPP/R2Q1RK1 w - - 6 8",
    "d3", "h7", 13},
+
+  // lichess.org/cKw6haTL, move 12: HydraY (Black) played ...Nxg2, grabbing a
+  // pawn next to the king and just losing the knight to Kxg2.
+  {"cKw6haTL m12 ...Nxg2 (unsound piece grab)",
+   "r2q1rk1/pp1nbpp1/2p1p2p/3pPb2/2PP1n2/5N1P/PP3PP1/RNBQRBK1 b - - 2 12",
+   "f4", "g2", 13},
+
+  // lichess.org/cKw6haTL, move 18: HydraY (Black) played ...Bxd6, losing the
+  // bishop for a pawn instead of retreating (...Bg5).
+  {"cKw6haTL m18 ...Bxd6 (loses bishop for pawn)",
+   "r2q1rk1/p2nbpp1/3Pp2p/1pp1Pb2/2P5/5N1P/P2B1PK1/RN1QRB2 b - - 0 18",
+   "e7", "d6", 13},
 });
 
 } // namespace
