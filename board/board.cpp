@@ -358,7 +358,7 @@ void Board::rebuildRepetitionHistory() noexcept {
     repetitionHistory[historySize++] = currentHash;
 }
 
-void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noexcept {
+void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash, MoveState* st) noexcept {
     if (recomputeHash)
         recomputeHashAndEp();
 
@@ -369,6 +369,12 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash) noe
         std::memmove(repetitionHistory.data(), repetitionHistory.data() + 1, (repetitionHistory.size() - 1) * sizeof(uint64_t));
         historySize = static_cast<uint8_t>(repetitionHistory.size() - 1);
     }
+    // Remember the slot we are about to overwrite so undoMove can restore it
+    // (writeIndex == historySize here; on undo historySize-1 recovers it). This
+    // is what keeps a reset-to-0 on an irreversible move from corrupting earlier
+    // entries in the parent line.
+    if (st != nullptr)
+        st->prevHistorySlotValue = repetitionHistory[historySize];
     repetitionHistory[historySize++] = currentHash;
 }
 

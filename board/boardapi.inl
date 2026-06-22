@@ -208,6 +208,10 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
+    // Default that keeps undo a no-op for moves that do not push a history slot
+    // (null moves); doMove overwrites this via updateRepetitionAfterMove with the
+    // value of the exact slot it clobbers. historySize >= 1 always.
+    st.prevHistorySlotValue = repetitionHistory[historySize - 1];
     st.prevEvalCache     = evalCache;
     st.prevLastMoveChangeFlags = lastMoveChangeFlags;
 }
@@ -249,6 +253,9 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     epHashFile    = st.prevEpHashFile;
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
+    // Restore the one repetitionHistory slot doMove overwrote before shrinking
+    // historySize back (writeIndex == current historySize - 1).
+    repetitionHistory[historySize - 1] = st.prevHistorySlotValue;
     historySize   = st.prevHistorySize;
     currentHash   = st.prevHistoryHead;
     evalCache     = st.prevEvalCache;

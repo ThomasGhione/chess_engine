@@ -112,6 +112,13 @@ public:
 
     struct MoveState {
         uint64_t prevHistoryHead{};
+        // Old value of the single repetitionHistory slot this move overwrites,
+        // so undoMove can restore it. Without this, an irreversible move during
+        // search (which resets historySize to 0 and rewrites from index 0)
+        // permanently clobbers earlier game-history entries even though
+        // historySize is restored — silently breaking repetition detection in
+        // every sibling line that follows a capture/pawn move.
+        uint64_t prevHistorySlotValue{};
         EvalCache prevEvalCache{};
         uint16_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
 
@@ -144,8 +151,13 @@ public:
     static constexpr uint8_t  BLACK_ROOK_A_START      = 0;
     static constexpr uint8_t  BLACK_ROOK_H_START      = 7;
     static constexpr uint8_t  CASTLING_RIGHTS_ALL     = 0x0F;
-    // 50-move rule bounds reversible plies to 100; +1 keeps the current position.
-    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 101;
+    // The 50-move rule bounds the reversible game window to 100 plies, but the
+    // SEARCH appends its own plies on top (each node doMove's into the history),
+    // so the buffer must hold the game window plus the deepest reversible search
+    // line without wrapping. Sized so that the capacity overflow path (a memmove
+    // the per-move slot restore cannot undo) is never reached in search; stays
+    // <= 255 because historySize is a uint8_t.
+    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 255;
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
@@ -352,7 +364,8 @@ private:
     std::string    enPassantToFen() const;
     void           recomputeHashAndEp() noexcept;
     void           rebuildRepetitionHistory() noexcept;
-    void           updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
+    void           updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true,
+                                             MoveState* st = nullptr) noexcept;
     inline void    copyFromBoard(const Board& other) noexcept;
 
     // --- Private data ---
