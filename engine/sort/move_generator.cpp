@@ -429,6 +429,13 @@ engine::MovePicker MoveGenerator::generateQSearchEvasions(
     data.moves = engine::Sorter::sortEvasionsForcingFirst(std::move(evasions), b);
     data.size = data.moves.size;
     data.currentIndex = 0;
+    // Evasions keep their forcing-first partition order: equal scores so
+    // nextMove() is order-preserving, and no deferred SEE. MovePicker no longer
+    // zero-inits, so fill the live prefix explicitly.
+    for (int i = 0; i < data.size; ++i) {
+        data.scores[i]     = 0;
+        data.seePending[i] = engine::SeePending::Final;
+    }
     return data;
 }
 

@@ -372,6 +372,9 @@ MovePicker Sorter::sortTacticalMoves(
 
         picker.moves[filteredCount]  = m;
         picker.scores[filteredCount] = score;
+        // Tactical moves carry their final score (SEE already applied above);
+        // mark Final so finalizeSee is a no-op. MovePicker no longer zero-inits.
+        picker.seePending[filteredCount] = SeePending::Final;
         ++filteredCount;
     }
 

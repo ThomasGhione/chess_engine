@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <utility>  // for std::move
 
 #include "../../board/board.hpp"
 #include "../movelist.hpp"
@@ -20,14 +21,32 @@ enum class SeePending : uint8_t { Final = 0, Capture = 1, Quiet = 2 };
 
 // Incremental lazy-selection picker. Parallel arrays (moves/scores/seePending)
 // are kept in sync by nextMove() and fullSort(); never manipulate them separately.
+//
+// Like MoveList, only entries [0, size) are ever live: producers MUST fill both
+// scores[i] and seePending[i] for every i < size before the picker is read or
+// copied. The arrays are intentionally left uninitialised past `size`, and the
+// copy/move ops below touch only [0, size) -- so on the hot quiescence path the
+// per-node array traffic is O(size), not O(MAX_MOVES).
 struct MovePicker {
     MoveList<chess::Board::Move> moves;
-    int32_t    scores[MAX_MOVES] {};
-    SeePending seePending[MAX_MOVES] {};
+    int32_t    scores[MAX_MOVES];
+    SeePending seePending[MAX_MOVES];
     const chess::Board* board = nullptr; // SEE source for deferred finalisation
     int  size         = 0;
     int  currentIndex = 0;
     bool hashMoveIsLegal = false;
+
+    MovePicker() noexcept = default;
+    MovePicker(const MovePicker& o) noexcept { copyFrom(o); }
+    MovePicker(MovePicker&& o) noexcept { moveFrom(std::move(o)); }
+    MovePicker& operator=(const MovePicker& o) noexcept {
+        if (this != &o) copyFrom(o);
+        return *this;
+    }
+    MovePicker& operator=(MovePicker&& o) noexcept {
+        if (this != &o) moveFrom(std::move(o));
+        return *this;
+    }
 
     inline bool hasNext() const noexcept { return currentIndex < size; }
 
@@ -92,6 +111,32 @@ struct MovePicker {
             scores[j + 1] = keyScore;
             moves[j + 1]  = keyMove;
         }
+    }
+
+private:
+    // Copy/move only the live prefix [0, size); scores and seePending past
+    // `size` are indeterminate and must never be read. Mirrors MoveList's
+    // size-bounded copyFrom/moveFrom.
+    inline void copyLivePrefix(const MovePicker& o) noexcept {
+        board           = o.board;
+        size            = o.size;
+        currentIndex    = o.currentIndex;
+        hashMoveIsLegal = o.hashMoveIsLegal;
+        const size_t n = static_cast<size_t>(size);
+        std::memcpy(scores,     o.scores,     n * sizeof(scores[0]));
+        std::memcpy(seePending, o.seePending, n * sizeof(seePending[0]));
+    }
+
+    inline void copyFrom(const MovePicker& o) noexcept {
+        moves = o.moves;
+        copyLivePrefix(o);
+    }
+
+    inline void moveFrom(MovePicker&& o) noexcept {
+        moves = std::move(o.moves);
+        copyLivePrefix(o);
+        o.size         = 0;
+        o.currentIndex = 0;
     }
 };
 
