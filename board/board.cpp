@@ -62,16 +62,16 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
         }
         case KNIGHT:
             if ((pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
         case BISHOP:
             if ((pieces::generateMovesByType<BISHOP>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
         case ROOK:
             if ((pieces::generateMovesByType<ROOK>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
         case QUEEN:
             if ((pieces::generateMovesByType<QUEEN>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return verifyKingSafetyForSimplePiece(fromIndex, toIndex, movingColor, destPiece);
+            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
         case KING:
             return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
         default:
@@ -182,16 +182,6 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (isSquareAttacked(sq2, oppColor)) return false;
 
     return true;
-}
-
-[[nodiscard]] bool Board::verifyKingSafetyForSimplePiece(
-    uint8_t fromIndex,
-    uint8_t toIndex,
-    uint8_t movingColor,
-    uint8_t destPiece
-) const noexcept {
-    const uint64_t capturedEnemyMask = (destPiece != EMPTY) ? Board::bitMask(toIndex) : 0ULL;
-    return isKingSafeAfterMove(movingColor, fromIndex, toIndex, capturedEnemyMask);
 }
 
 // ------------------------------------------------------------

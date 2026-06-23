@@ -318,8 +318,6 @@ private:
     // --- Private helpers: legality ---
     [[nodiscard]] inline bool isKingMoveLegal(uint8_t fromIndex, uint8_t toIndex,
                                                uint64_t toBit, uint8_t movingColor) const noexcept;
-    [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(uint8_t fromIndex, uint8_t toIndex,
-                                                              uint8_t movingColor, uint8_t destPiece) const noexcept;
     template<uint8_t PieceType>
     [[nodiscard]] bool hasLegalMovesForPieceType(uint64_t pieceBB, uint64_t ownOcc,
                                                   uint64_t enemyOcc, uint8_t movingColor) const noexcept;
