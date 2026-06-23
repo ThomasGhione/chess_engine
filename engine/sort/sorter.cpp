@@ -68,7 +68,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
         bool isCapture, int victimType, int32_t see,
-        bool isPromotionCandidate, bool isHashMove) noexcept {
+        bool isPromotionCandidate, bool isHashMove, int fromPieceType) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
@@ -104,7 +104,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         score = std::clamp(static_cast<int32_t>(ctx.runtime.history[ctx.usSide][m.from.index][m.to.index]),
                            HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
         if (ctx.contHistEntry != nullptr) {
-            score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[m.to.index]),
+            score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[contHistIndex(fromPieceType, m.to.index)]),
                                 HISTORY_SCORE_MIN, HISTORY_SCORE_MAX) / 2;
         }
     }
@@ -298,7 +298,7 @@ MovePicker Sorter::sortLegalMoves(
         // score. finalizeSee later applies the good/bad split and the hanging demotion.
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, isCapture, victimType, /*see=*/0,
-            isPromotionCandidate, isHashMove);
+            isPromotionCandidate, isHashMove, fromPieceType);
 
         if (fromPieceType == chess::Board::KING) {
             const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));

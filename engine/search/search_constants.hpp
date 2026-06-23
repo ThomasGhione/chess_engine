@@ -122,6 +122,19 @@ inline constexpr int YBWC_MIN_MOVES = 10;
 inline constexpr int YBWC_MIN_DEPTH = static_cast<int>(DEFAULT_DEPTH) - 2;
 
 // ===================================================
+// CONTINUATION HISTORY layout
+// ===================================================
+// contHist is keyed by the previous move's (side, pieceType, toSq); each context
+// holds a [PIECE_TYPES][64] PieceTo block indexed by the CURRENT move's
+// (pieceType, toSq). Piece types are 0..6 (EMPTY..KING), so the block is 7*64.
+inline constexpr int CONT_HIST_PIECE_TYPES   = 7;
+inline constexpr int CONT_HIST_PIECE_STRIDE  = 64;
+inline constexpr int CONT_HIST_BLOCK         = CONT_HIST_PIECE_TYPES * CONT_HIST_PIECE_STRIDE;
+inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
+    return pieceType * CONT_HIST_PIECE_STRIDE + toSq;
+}
+
+// ===================================================
 // MOVE ORDERING (sorter) — score buckets
 // ===================================================
 inline constexpr int32_t HASH_MOVE_SCORE      = 100000;

@@ -209,7 +209,8 @@ private:
         const chess::Board::Move& m, bool isCapture, int victimType,
         int32_t depth, int ply, uint8_t us, SearchRuntime& runtime,
         const chess::Board::Move* previousMove,
-        int16_t* contHistEntry = nullptr) noexcept;
+        int16_t* contHistEntry = nullptr,
+        int fromPieceType = 0) noexcept;
 };
 
 } // namespace engine

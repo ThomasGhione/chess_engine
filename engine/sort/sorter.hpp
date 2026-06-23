@@ -124,7 +124,8 @@ private:
         int victimType,
         int32_t see,
         bool isPromotionCandidate,
-        bool isHashMove) noexcept;
+        bool isHashMove,
+        int fromPieceType) noexcept;
 
     static LeastValuableAttacker getLeastValuableAttackerTo(
         const chess::Board& b,

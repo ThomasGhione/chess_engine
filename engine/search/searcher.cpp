@@ -430,7 +430,8 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     uint8_t us,
     SearchRuntime& runtime,
     const chess::Board::Move* previousMove,
-    int16_t* contHistEntry) noexcept {
+    int16_t* contHistEntry,
+    int fromPieceType) noexcept {
     if (ply < 0 || ply >= MAX_PLY) return;
 
     const int fromIndex = m.from.index;
@@ -477,7 +478,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
     // CONTINUATION HISTORY: bonus for this move given the previous move.
     if (contHistEntry != nullptr) {
-        applyHistoryGravity(contHistEntry[toIndex], bonus, MAX_HISTORY);
+        applyHistoryGravity(contHistEntry[contHistIndex(fromPieceType, toIndex)], bonus, MAX_HISTORY);
     }
 }
 
@@ -495,7 +496,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board::Move bestMove{};
     bool searchedAnyMove = false;
 
-    struct QuietEntry { uint8_t from; uint8_t to; };
+    struct QuietEntry { uint8_t from; uint8_t to; uint8_t pieceType; };
     constexpr int MAX_QUIETS_TRACKED = 64;
     QuietEntry searchedQuiets[MAX_QUIETS_TRACKED];
     int numSearchedQuiets = 0;
@@ -688,7 +689,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
-            searchedQuiets[numSearchedQuiets++] = {m.from.index, m.to.index};
+            searchedQuiets[numSearchedQuiets++] =
+                {static_cast<uint8_t>(m.from.index), static_cast<uint8_t>(m.to.index),
+                 static_cast<uint8_t>(fromPieceType)};
         }
         if (wasCapture && numSearchedCaptures < MAX_CAPTURES_TRACKED) {
             searchedCaptures[numSearchedCaptures++] = {m.to.index, static_cast<uint8_t>(victimType)};
@@ -699,7 +702,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isBetaCutoff(best, bounds.beta)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
-                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry);
+                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
 
                 const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
                 const int32_t depthPlusOne = ctx.depth + 1;
@@ -714,7 +717,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                     applyHistoryGravity(runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to],
                                         malus, MAX_HISTORY);
                     if (ctx.contHistEntry != nullptr) {
-                        applyHistoryGravity(ctx.contHistEntry[searchedQuiets[i].to], malus, MAX_HISTORY);
+                        applyHistoryGravity(
+                            ctx.contHistEntry[contHistIndex(searchedQuiets[i].pieceType, searchedQuiets[i].to)],
+                            malus, MAX_HISTORY);
                     }
                 }
 
@@ -976,9 +981,11 @@ int32_t Searcher::searchPosition(
     }
 
     const int prevSide = chess::Board::colorToIndex(node.activeColor) ^ 1;
-    int16_t* contHistEntry = (previousMove != nullptr && previousMove->to.index < 64)
-        ? &runtime.contHist[prevSide][previousMove->to.index][0]
-        : nullptr;
+    int16_t* contHistEntry = nullptr;
+    if (previousMove != nullptr && previousMove->to.index < 64) {
+        const int prevPiece = b.get(previousMove->to.index) & chess::Board::MASK_PIECE_TYPE;
+        contHistEntry = &runtime.contHist[prevSide][prevPiece][previousMove->to.index][0][0];
+    }
 
     SearchContext ctx{
         depth, ply, node.activeColor,
