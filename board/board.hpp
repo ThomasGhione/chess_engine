@@ -92,9 +92,11 @@ public:
     // MoveState's 96-byte budget. Sub-eval term values comfortably fit
     // [-32768, 32767]; mate-scored positions skip the cache entirely.
     struct EvalCache {
-        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms{};
-        std::array<int16_t, EVAL_CACHE_COUNT> egTerms{};
-        uint32_t validMask = 0;
+        // Intentionally NOT default-zeroed: the live `evalCache{}` member and any
+        // value-init (EvalCache{}) still zero all members: skips a wasted ~52B zero-fill
+        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms;
+        std::array<int16_t, EVAL_CACHE_COUNT> egTerms;
+        uint32_t validMask;
     };
 
     struct Move {
@@ -110,34 +112,36 @@ public:
         std::string toUCIString() const noexcept;
     };
 
+    // Members are intentionally NOT default-initialised: skips a full ~96B zero-fill per node.
+    // Value-init sites (`MoveState st{}`) still zero everything.
     struct MoveState {
-        uint64_t prevHistoryHead{};
+        uint64_t prevHistoryHead;
         // Old value of the single repetitionHistory slot this move overwrites,
         // so undoMove can restore it. Without this, an irreversible move during
         // search (which resets historySize to 0 and rewrites from index 0)
         // permanently clobbers earlier game-history entries even though
-        // historySize is restored — silently breaking repetition detection in
+        // historySize is restored: silently breaking repetition detection in
         // every sibling line that follows a capture/pawn move.
-        uint64_t prevHistorySlotValue{};
-        EvalCache prevEvalCache{};
-        uint16_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
+        uint64_t prevHistorySlotValue;
+        EvalCache prevEvalCache;
+        uint16_t prevLastMoveChangeFlags;
 
-        uint8_t prevHalfMoveClock{};
-        uint8_t prevFullMoveClock{};
-        uint8_t prevHistorySize{};
+        uint8_t prevHalfMoveClock;
+        uint8_t prevFullMoveClock;
+        uint8_t prevHistorySize;
 
-        Coords  prevEnPassant{};
-        uint8_t prevEpHashFile{0xFF};
-        uint8_t prevCastle{};
-        uint8_t prevHasMoved{};
+        Coords  prevEnPassant;
+        uint8_t prevEpHashFile;
+        uint8_t prevCastle;
+        uint8_t prevHasMoved;
 
-        uint8_t capturedPiece{};
-        uint8_t fromPiece{};
-        uint8_t promotionPieceType{};
-        uint8_t enPassantCapturedIndex{};
-        uint8_t rookFromIndex{};
-        uint8_t rookToIndex{};
-        MoveKind moveKind{MoveKind::Quiet};
+        uint8_t capturedPiece;
+        uint8_t fromPiece;
+        uint8_t promotionPieceType;
+        uint8_t enPassantCapturedIndex;
+        uint8_t rookFromIndex;
+        uint8_t rookToIndex;
+        MoveKind moveKind;
     };
 
     static_assert(sizeof(MoveState) <= 96, "MoveState layout regressed; keep it compact for search stack usage.");
@@ -151,13 +155,7 @@ public:
     static constexpr uint8_t  BLACK_ROOK_A_START      = 0;
     static constexpr uint8_t  BLACK_ROOK_H_START      = 7;
     static constexpr uint8_t  CASTLING_RIGHTS_ALL     = 0x0F;
-    // The 50-move rule bounds the reversible game window to 100 plies, but the
-    // SEARCH appends its own plies on top (each node doMove's into the history),
-    // so the buffer must hold the game window plus the deepest reversible search
-    // line without wrapping. Sized so that the capacity overflow path (a memmove
-    // the per-move slot restore cannot undo) is never reached in search; stays
-    // <= 255 because historySize is a uint8_t.
-    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 255;
+    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 255; // must be 255 instead of 100 due to the 8-bit prevHistorySize in MoveState
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
