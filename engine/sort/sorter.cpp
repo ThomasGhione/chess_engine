@@ -267,8 +267,7 @@ MovePicker Sorter::sortLegalMoves(
     for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
         const auto& m = picker.moves[moveIndex];
 
-        const int fromPiece    = b.get(m.from);
-        const int fromPieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
+        const int fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const int toPieceType  = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
 
         const auto cap = classifyCapture(m, fromPieceType, toPieceType, enPassant);

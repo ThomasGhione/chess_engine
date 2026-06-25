@@ -53,24 +53,18 @@ public:
     static PhaseValue evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                       int file, const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
-                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
                                       uint64_t enemyPawns,
-                                      PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                      PhaseValue connectedPasserBonus, int promotionRank, int sign) noexcept;
+                                      int promotionRank, int sign) noexcept;
 
     static PhaseValue evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                          uint64_t allPawns, int file, bool hasSupport,
                                          const uint64_t& frontMask, const uint64_t& forwardFill,
                                          uint8_t ownIsolatedFiles,
-                                         const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                         PhaseValue candidatePasserBonus, int pawnAttackerIndex,
+                                         int pawnAttackerIndex,
                                          bool isWhite, int sign) noexcept;
 
     static PhaseValue evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                        uint8_t ownIsolatedFiles,
-                                        PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                        PhaseValue connectedPasserBonus, PhaseValue candidatePasserBonus,
-                                        int sign) noexcept;
+                                        uint8_t ownIsolatedFiles, int sign) noexcept;
 
 private:
     // --- Internal structures ---

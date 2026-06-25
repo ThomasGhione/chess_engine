@@ -66,16 +66,14 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
 PhaseValue Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                       int file, const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
-                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
                                       uint64_t enemyPawns,
-                                      PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                      PhaseValue connectedPasserBonus, int promotionRank, int sign) noexcept {
+                                      int promotionRank, int sign) noexcept {
     PhaseValue score = sign * engine::PASSED_PAWN_BONUS;
     const int advancement = sign > 0 ? (6 - rank) : (rank - 1);
-    score += (sign * advancement) * passedAdvancementScale;
+    score += (sign * advancement) * engine::PASSED_ADVANCEMENT_SCALE;
 
     if (rank == promotionRank) {
-        score += sign * passedNearPromotionBonus;
+        score += sign * engine::PASSED_NEAR_PROMOTION_BONUS;
     }
 
     const uint64_t frontMask = oneStepMasks[sq];
@@ -97,7 +95,7 @@ PhaseValue Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64
     }
 
     if (hasConnectedPassedPawn) {
-        score += sign * connectedPasserBonus;
+        score += sign * engine::CONNECTED_PASSER_BONUS;
     }
 
     return score;
@@ -107,8 +105,7 @@ PhaseValue Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t en
                                          uint64_t allPawns, int file, bool hasSupport,
                                          const uint64_t& frontMask, const uint64_t& forwardFill,
                                          uint8_t ownIsolatedFiles,
-                                         const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                         PhaseValue candidatePasserBonus, int pawnAttackerIndex,
+                                         int pawnAttackerIndex,
                                          bool isWhite, int sign) noexcept {
     PhaseValue score{};
 
@@ -116,7 +113,7 @@ PhaseValue Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t en
     if (noEnemySameFileAhead && (frontMask == 0ULL || (allPawns & frontMask) == 0ULL) && hasSupport) {
         const uint64_t enemyAdjacentAhead = enemyPawns & ADJACENT_FILES_ONLY[file] & forwardFill;
         if ((enemyAdjacentAhead & (enemyAdjacentAhead - 1ULL)) == 0ULL) {
-            score += sign * candidatePasserBonus;
+            score += sign * engine::CANDIDATE_PASSER_BONUS;
         }
     }
 
@@ -141,10 +138,7 @@ PhaseValue Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t en
 }
 
 PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                        uint8_t ownIsolatedFiles,
-                                        PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                        PhaseValue connectedPasserBonus, PhaseValue candidatePasserBonus,
-                                        int sign) noexcept {
+                                        uint8_t ownIsolatedFiles, int sign) noexcept {
     const bool isWhite = (sign > 0);
 
     const auto& supportMasks = getPawnSupportMasks(isWhite);
@@ -177,16 +171,13 @@ PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, u
 
         if (isPassed) {
             score += evalPassedPawn(sq, rank, ownPawns, allPawns, file, forwardFill[sq],
-                                    oneStepMasks, ADJACENT_FILES_ONLY, enemyPawns,
-                                    passedAdvancementScale, passedNearPromotionBonus,
-                                    connectedPasserBonus, promotionRank, sign);
+                                    oneStepMasks, enemyPawns, promotionRank, sign);
             continue;
         }
 
         score += evalNonPassedPawn(rank, ownPawns, enemyPawns, allPawns, file, hasSupport,
                                     frontMask, forwardFill[sq], ownIsolatedFiles,
-                                    ADJACENT_FILES_ONLY,
-                                    candidatePasserBonus, pawnAttackerIndex, isWhite, sign);
+                                    pawnAttackerIndex, isWhite, sign);
     }
 
     return score;
@@ -237,25 +228,16 @@ PhaseValue Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns
         return cachedScore;
     }
 
-    const PhaseValue passedAdvancementScale     = engine::PASSED_ADVANCEMENT_SCALE;
-    const PhaseValue passedNearPromotionBonus   = engine::PASSED_NEAR_PROMOTION_BONUS;
-    const PhaseValue connectedPasserBonus       = engine::CONNECTED_PASSER_BONUS;
-    const PhaseValue candidatePasserBonus       = engine::CANDIDATE_PASSER_BONUS;
-
     PawnFileStats fileStats = Evaluator::evalPawnFileStats(whitePawns, blackPawns);
 
     PhaseValue score = fileStats.doubledScore + fileStats.islandScore;
     const uint64_t allPawns = whitePawns | blackPawns;
 
     score += Evaluator::evalPawnsByColor(whitePawns, blackPawns, allPawns,
-                                          fileStats.whiteIsolatedFiles,
-                                          passedAdvancementScale, passedNearPromotionBonus,
-                                          connectedPasserBonus, candidatePasserBonus, 1);
+                                          fileStats.whiteIsolatedFiles, 1);
 
     score += Evaluator::evalPawnsByColor(blackPawns, whitePawns, allPawns,
-                                          fileStats.blackIsolatedFiles,
-                                          passedAdvancementScale, passedNearPromotionBonus,
-                                          connectedPasserBonus, candidatePasserBonus, -1);
+                                          fileStats.blackIsolatedFiles, -1);
 
     storePawnCachePV(whitePawns, blackPawns, score);
     return score;
