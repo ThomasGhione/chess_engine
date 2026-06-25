@@ -162,7 +162,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t pawnSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i);
-      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns, static_cast<bool>(i & 1)).mg;
+      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns).mg;
     }
     auto end2 = std::chrono::high_resolution_clock::now();
     auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
@@ -207,7 +207,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t kingActivitySink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 3);
-      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board, false).mg;
+      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board).mg;
     }
     auto end8 = std::chrono::high_resolution_clock::now();
     auto duration8 = std::chrono::duration_cast<std::chrono::milliseconds>(end8 - start8).count();

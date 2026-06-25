@@ -34,10 +34,8 @@ inline PhaseValue Evaluator::evalKingActivitySide(const chess::Board& b, int sid
     return (sign * enemiesNearKing) * engine::KING_SAFETY_PENALTY;
 }
 
-PhaseValue Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
-    return isEndgame
-        ? (evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1))
-        : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
+PhaseValue Evaluator::evalKingActivity(const chess::Board& b) noexcept {
+    return evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1);
 }
 
 PhaseValue Evaluator::evalKingActivityPair(const chess::Board& b) noexcept {

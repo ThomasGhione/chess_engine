@@ -21,7 +21,7 @@ Sorter::CaptureInfo Sorter::classifyCapture(
         && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
     const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
     const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
-    return {isCapture, isEpCapture, victimType};
+    return {isCapture, victimType};
 }
 
 constexpr bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
@@ -67,13 +67,14 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Bo
 }
 
 int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, const chess::Board::Move& m,
-        bool isCapture, int victimType, int32_t see,
+        bool isCapture, int victimType,
         bool isPromotionCandidate, bool isHashMove, int fromPieceType) noexcept {
 
     if (isHashMove) return HASH_MOVE_SCORE;
 
     if (isCapture) {
-        if (see < 0) return std::clamp<int32_t>(-CAPTURE_BASE_SCORE + see, NEG_INF, POS_INF);
+        // Captures are scored provisionally as "good" here; the losing-capture
+        // (SEE < 0) demotion is applied lazily by MovePicker::finalizeSee.
         int32_t score = CAPTURE_BASE_SCORE + MVV_TABLE[victimType];
         if (isPromotionCandidate) score += getPromotionValueDelta(m.promotionPiece);
         score += std::min<int32_t>(500,
@@ -244,20 +245,13 @@ MovePicker Sorter::sortLegalMoves(
 
     const bool usIsWhite = (b.getActiveColor() == chess::Board::WHITE);
     const int usSide  = chess::Board::colorToIndex(b.getActiveColor());
-    const int oppSide = usSide ^ 1;
-    const uint64_t occ       = b.getPiecesBitMap();
-    const uint64_t oppKingBB = b.kings_bb[oppSide];
-    const int oppKingSq = oppKingBB ? std::countr_zero(oppKingBB) : 64;
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
     const chess::Coords enPassant   = b.getEnPassant();
     const int fullMoveClock  = b.getFullMoveClock();
-    const int nonPawnMajors  = b.getIncrementalNonPawnMajorCount();
     const bool inCheck       = b.inCheck(b.getActiveColor());
 
     const MoveOrderingContext orderingCtx{
-        b, ply, previousMove, usSide, oppKingSq, occ,
-        usIsWhite, nonPawnMajors <= 5, fullMoveClock,
-        runtime, contHistEntry
+        ply, previousMove, usSide, runtime, contHistEntry
     };
 
     // Probe TT for hash move.
@@ -294,10 +288,10 @@ MovePicker Sorter::sortLegalMoves(
             : (isCapture ? SeePending::Capture
               : ((!isPromotionCandidate && fromPieceType != chess::Board::KING) ? SeePending::Quiet : SeePending::Final));
 
-        // Score provisionally with see=0: captures rank as good, quiets as their base
-        // score. finalizeSee later applies the good/bad split and the hanging demotion.
+        // Score provisionally: captures rank as good, quiets as their base score.
+        // finalizeSee later applies the good/bad split and the hanging demotion.
         int32_t score = scoreMoveOrderingPriorityInline(
-            orderingCtx, m, isCapture, victimType, /*see=*/0,
+            orderingCtx, m, isCapture, victimType,
             isPromotionCandidate, isHashMove, fromPieceType);
 
         if (fromPieceType == chess::Board::KING) {

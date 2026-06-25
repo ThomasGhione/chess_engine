@@ -15,9 +15,7 @@ public:
 
     static MoveList<chess::Board::Move> generateLegalMoves(
         const chess::Board& b,
-        bool inCheckKnown      = false,
-        bool inCheckValue      = false,
-        bool inDoubleCheckValue = false) noexcept;
+        bool knownNotInCheck = false) noexcept;
 
     static MoveList<chess::Board::Move> generateLegalEvasions(
         const chess::Board& b,
@@ -50,9 +48,7 @@ private:
     template<bool IsWhite>
     static MoveList<chess::Board::Move> generateLegalMovesFor(
         const chess::Board& b,
-        bool inCheckKnown,
-        bool inCheckValue,
-        bool inDoubleCheckValue) noexcept;
+        bool knownNotInCheck) noexcept;
 
     template<bool IsWhite>
     static MoveList<chess::Board::Move> generateLegalEvasionsFor(

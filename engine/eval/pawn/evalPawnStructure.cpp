@@ -192,48 +192,6 @@ PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, u
     return score;
 }
 
-bool Evaluator::tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool /*isEndgame*/,
-                                 int32_t& outScore) noexcept {
-    // Compatibility shim: probes the mg side of the cached PhaseValue.
-    const uint64_t cacheHash =
-        (whitePawns * 0x9E3779B97F4A7C15ULL) ^
-        (blackPawns * 0xC2B2AE3D27D4EB4FULL);
-    auto& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    for (size_t way = 0; way < PAWN_CACHE_WAYS; ++way) {
-        PawnEvalCacheEntry& cacheEntry = cacheBucket[way];
-        if (cacheEntry.valid
-            && cacheEntry.whitePawns == whitePawns
-            && cacheEntry.blackPawns == blackPawns) {
-            cacheEntry.stamp = ++pawnCacheStamp;
-            outScore = cacheEntry.scoreMg;
-            return true;
-        }
-    }
-    return false;
-}
-
-void Evaluator::storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool /*isEndgame*/,
-                                    int32_t score) noexcept {
-    // Compatibility shim: stores the score as the mg side only.
-    const uint64_t cacheHash =
-        (whitePawns * 0x9E3779B97F4A7C15ULL) ^
-        (blackPawns * 0xC2B2AE3D27D4EB4FULL);
-    auto& cacheBucket = pawnCache[cacheHash & PAWN_CACHE_MASK];
-    const uint16_t currentStamp = ++pawnCacheStamp;
-
-    PawnEvalCacheEntry* replaceEntry = &cacheBucket[0];
-    if (!cacheBucket[1].valid || cacheBucket[1].stamp < cacheBucket[0].stamp) {
-        replaceEntry = &cacheBucket[1];
-    }
-
-    replaceEntry->whitePawns = whitePawns;
-    replaceEntry->blackPawns = blackPawns;
-    replaceEntry->scoreMg = score;
-    replaceEntry->scoreEg = score;
-    replaceEntry->valid = 1;
-    replaceEntry->stamp = currentStamp;
-}
-
 namespace {
 inline bool tryPawnCachePV(uint64_t whitePawns, uint64_t blackPawns, PhaseValue& out) noexcept {
     const uint64_t cacheHash =
@@ -273,7 +231,7 @@ inline void storePawnCachePV(uint64_t whitePawns, uint64_t blackPawns, PhaseValu
 }
 } // namespace
 
-PhaseValue Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool /*isEndgame*/) noexcept {
+PhaseValue Evaluator::evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns) noexcept {
     PhaseValue cachedScore;
     if (tryPawnCachePV(whitePawns, blackPawns, cachedScore)) {
         return cachedScore;

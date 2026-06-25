@@ -27,10 +27,10 @@ public:
     // --- Public eval helpers (used by tests/benchmarks) ---
     // Phase-aware: each returns (mg, eg) so callers can blend with the smooth
     // phase weight. Perf-test sinks may project to `.mg`.
-    static PhaseValue evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static PhaseValue evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static PhaseValue evalKingActivity(const chess::Board& b) noexcept;
     static PhaseValue evalKingActivityPair(const chess::Board& b) noexcept;
     static PhaseValue evalEndgameKingActivity(const chess::Board& b) noexcept;
     static PhaseValue evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
@@ -49,9 +49,6 @@ public:
 
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
-
-    static bool tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame, int32_t& outScore) noexcept;
-    static void storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame, int32_t score) noexcept;
 
     static PhaseValue evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                       int file, const uint64_t& forwardFill,
@@ -243,7 +240,7 @@ private:
     template<uint32_t Term, class Compute>
     __attribute__((always_inline))
     static inline PhaseValue cachedTerm(const chess::Board& b, Compute compute) noexcept;
-    static PhaseValue evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
+    static PhaseValue evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalBishopPairBonusCached(const chess::Board& b) noexcept;
     static PhaseValue evalCastlingBonusCached(const chess::Board& b) noexcept;

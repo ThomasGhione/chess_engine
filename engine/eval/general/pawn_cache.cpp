@@ -2,15 +2,15 @@
 
 namespace engine {
 
-PhaseValue Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool /*isEndgame*/) noexcept {
+PhaseValue Evaluator::evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
     // PhaseValue cached: a single slot covers both mg and eg.
     return cachedTerm<chess::Board::EVAL_CACHE_PAWN_STRUCTURE_MG>(b, [&] -> PhaseValue {
-        return evalPawnStructure(whitePawns, blackPawns, false);
+        return evalPawnStructure(whitePawns, blackPawns);
     });
 }
 
 PhaseValue Evaluator::evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {
-    return evalPawnStructureCached(b, whitePawns, blackPawns, false);
+    return evalPawnStructureCached(b, whitePawns, blackPawns);
 }
 
 PhaseValue Evaluator::evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept {

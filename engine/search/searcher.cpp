@@ -996,7 +996,7 @@ int32_t Searcher::searchPosition(
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
     MoveList<chess::Board::Move> moves = node.inCheck
         ? engine::MoveGenerator::generateLegalEvasions(b, true, nodeInDoubleCheck)
-        : engine::MoveGenerator::generateLegalMoves(b, true, false, false);
+        : engine::MoveGenerator::generateLegalMoves(b, /*knownNotInCheck=*/true);
     if (moves.is_empty()) {
         const int32_t mdW = b.getIncrementalMaterialDelta();
         return node.inCheck

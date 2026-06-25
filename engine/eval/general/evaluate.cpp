@@ -133,8 +133,8 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t m
     // pawn-only endgame fast path.
     PhaseValue acc{0, materialAndEgPsqt};
     acc += evalHangingPieces(b, pawnAttacks);
-    acc += evalPawnStructureCached(b, whitePawns, blackPawns, true);
-    acc += evalKingActivity(b, true);
+    acc += evalPawnStructureCached(b, whitePawns, blackPawns);
+    acc += evalKingActivity(b);
     acc += evalEndgameKingActivity(b);
     acc += evalMopUp(b);
     acc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);

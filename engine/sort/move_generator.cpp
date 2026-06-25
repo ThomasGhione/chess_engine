@@ -155,16 +155,16 @@ inline void appendPawnTacticalNoChecks(
 
 } // namespace
 
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b, bool inCheckKnown, 
-                                                               bool inCheckValue, bool inDoubleCheckValue) noexcept {
+MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b,
+                                                               bool knownNotInCheck) noexcept {
     return (b.getActiveColor() == chess::Board::WHITE)
-        ? generateLegalMovesFor<true>(b, inCheckKnown, inCheckValue, inDoubleCheckValue)
-        : generateLegalMovesFor<false>(b, inCheckKnown, inCheckValue, inDoubleCheckValue);
+        ? generateLegalMovesFor<true>(b, knownNotInCheck)
+        : generateLegalMovesFor<false>(b, knownNotInCheck);
 }
 
 template<bool IsWhite>
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::Board& b, bool inCheckKnown,
-                                                                  bool inCheckValue, bool inDoubleCheckValue) noexcept {
+MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::Board& b,
+                                                                  bool knownNotInCheck) noexcept {
     // Macro-step 1: Initialize side-to-move context and occupancy masks.
     MoveList<chess::Board::Move> moves;
 
@@ -185,10 +185,9 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     const chess::Coords enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
-    const bool inCheck = inCheckKnown ? inCheckValue : b.inCheck(color);
-    const bool inDoubleCheck = inCheck
-        ? (inCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color))
-        : false;
+    // When the caller guarantees we are not in check, both tests are skipped.
+    const bool inCheck = knownNotInCheck ? false : b.inCheck(color);
+    const bool inDoubleCheck = inCheck ? b.isDoubleCheck(color) : false;
     const bool singleCheck = inCheck && !inDoubleCheck;
     const uint8_t kingPiece = chess::Board::KING | color;
 

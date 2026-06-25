@@ -54,7 +54,6 @@ public:
 
     struct CaptureInfo {
         bool isCapture;
-        bool isEpCapture;
         int  victimType;
     };
 
@@ -86,15 +85,9 @@ public:
 
 private:
     struct MoveOrderingContext {
-        const chess::Board& b;
         int ply;
         const chess::Board::Move* previousMove;
         int     usSide;
-        int     oppKingSq;
-        uint64_t occ;
-        bool    usIsWhite;
-        bool    isEndgameOrdering;
-        int     fullMoveClock;
         const SearchRuntime& runtime;
         const int16_t* contHistEntry;
     };
@@ -122,7 +115,6 @@ private:
         const chess::Board::Move& m,
         bool isCapture,
         int victimType,
-        int32_t see,
         bool isPromotionCandidate,
         bool isHashMove,
         int fromPieceType) noexcept;
