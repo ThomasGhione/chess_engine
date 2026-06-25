@@ -224,7 +224,7 @@ public:
     __attribute__((always_inline)) void removePieceFromBB(uint8_t piece, uint8_t index) noexcept;
 
     // --- Move execution ---
-    void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
+    void doMove(const Move& m, MoveState& state) noexcept;
     void undoMove(const Move& m, const MoveState& state) noexcept;
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;

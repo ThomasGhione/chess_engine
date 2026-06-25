@@ -82,7 +82,7 @@ ut::suite performanceEngineSuite = [] {
         // there is no legal move (checkmate / stalemate / terminal).
         if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) break;
         chess::Board::MoveState state;
-        e.board.doMove(move, state, move.promotionPiece);
+        e.board.doMove(move, state);
     }
 
     double avgDuration = static_cast<double>(totalDuration) / completedRuns;

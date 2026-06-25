@@ -302,7 +302,7 @@ int32_t Searcher::searchRootMoveScore(
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter) noexcept {
     chess::Board::MoveState state;
-    b.doMove(m, state, m.promotionPiece);
+    b.doMove(m, state);
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
     // runtime.depth is uint64_t; guard the subtraction so an unexpected depth
     // of 0 cannot underflow to UINT64_MAX and reinterpret as a negative int32_t.
@@ -594,7 +594,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         chess::Board::MoveState state;
-        b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
+        b.doMove(m, state);
 
         // Late captures are reduced too: move ordering ranks good captures early,
         // so a capture reaching this index is almost always a bad/losing one.
@@ -971,7 +971,7 @@ int32_t Searcher::searchPosition(
             const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
             if (see < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
-            b.doMove(mc, pcState, mc.promotionPiece);
+            b.doMove(mc, pcState);
             // Negamax child: negate result and swap/negate the scout window.
             const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
                 ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
@@ -1174,7 +1174,6 @@ int32_t Searcher::quiescenceSearch(
         best = standPat;
     }
 
-    const int promotionRank = chess::Board::promotionRank(usIsWhite);
     while (movePicker.hasNext()) {
         const auto m = movePicker.nextMove();
 
@@ -1194,9 +1193,7 @@ int32_t Searcher::quiescenceSearch(
         }
 
         chess::Board::MoveState state;
-        const bool isPromotionCandidate =
-            (pieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
-        b.doMove(m, state, isPromotionCandidate ? m.promotionPiece : '\0');
+        b.doMove(m, state);
         // Negamax: child is opponent to move -> negate + swap/negate window.
         const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, canUseTT, counter, allowTTWrite);
         b.undoMove(m, state);
@@ -1467,7 +1464,7 @@ std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int
         pv += mv.toUCIString();
 
         pvMoves[applied] = mv;
-        board.doMove(mv, states[applied], mv.promotionPiece);
+        board.doMove(mv, states[applied]);
         ++applied;
 
         if (board.countRepetitions() >= 3) break;

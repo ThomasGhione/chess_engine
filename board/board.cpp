@@ -18,7 +18,7 @@ bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noe
 
     MoveState st{};
     //FIXME Cambiare funzione per far ritornare MoveState, evitiamo di passare un paraemtro e rendiamo espicito il comportamento.
-    doMove(Move{from, to, promotionChoice}, st, promotionChoice);
+    doMove(Move{from, to, promotionChoice}, st);
     return true;
 }
 
