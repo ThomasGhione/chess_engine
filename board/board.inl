@@ -142,12 +142,6 @@ inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
     return (chessboard[row] >> (col << 2)) & MASK_PIECE;
 }
 
-inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
-    const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
-    const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
-    return incrementalPsqtPieces + pawns + kings;
-}
-
 inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
     outMg = incrementalPsqtPieces + incrementalPsqtPawnsMg + incrementalPsqtKingsMg;
     outEg = incrementalPsqtPieces + incrementalPsqtPawnsEg + incrementalPsqtKingsEg;

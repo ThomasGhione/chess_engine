@@ -348,10 +348,7 @@ void Board::rebuildRepetitionHistory() noexcept {
     repetitionHistory[historySize++] = currentHash;
 }
 
-void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash, MoveState* st) noexcept {
-    if (recomputeHash)
-        recomputeHashAndEp();
-
+void Board::updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept {
     if (resetHistory)
         historySize = 0;
 
@@ -363,8 +360,7 @@ void Board::updateRepetitionAfterMove(bool resetHistory, bool recomputeHash, Mov
     // (writeIndex == historySize here; on undo historySize-1 recovers it). This
     // is what keeps a reset-to-0 on an irreversible move from corrupting earlier
     // entries in the parent line.
-    if (st != nullptr)
-        st->prevHistorySlotValue = repetitionHistory[historySize];
+    st.prevHistorySlotValue = repetitionHistory[historySize];
     repetitionHistory[historySize++] = currentHash;
 }
 

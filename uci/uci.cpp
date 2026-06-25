@@ -347,7 +347,7 @@ namespace uci {
     UCI::UCI(engine::Engine& e) : engine(e) {}
 
     UCI::~UCI() noexcept {
-        finishSearch(true, false);
+        finishSearch(false);
     }
 
     void UCI::emitBestMove(std::string_view move) noexcept {
@@ -356,8 +356,8 @@ namespace uci {
         searchPrinted = true;
     }
 
-    void UCI::finishSearch(bool requestStop, bool printBestMove) noexcept {
-        if (requestStop) engine.stopThinking();
+    void UCI::finishSearch(bool printBestMove) noexcept {
+        engine.stopThinking();
         if (searchThread.joinable()) searchThread.join();
 
         std::lock_guard<std::mutex> lock(searchMutex);
@@ -377,7 +377,7 @@ namespace uci {
     void UCI::parseCommand(std::string_view command) noexcept {
         string_view args;
         if (command == "quit") {
-            finishSearch(true, true);
+            finishSearch(true);
             return quit();
         }
         if (command == "uci") return uci();
@@ -432,7 +432,7 @@ namespace uci {
         // a worker reads is a data race and `refreshPieceTables` would also
         // leave the incremental material/PSQT deltas out of sync with the new
         // table until the next FEN re-parse.
-        finishSearch(true, false);
+        finishSearch(false);
 
         string_view rest = args;
         if (nextToken(rest) != "name") return;
@@ -563,7 +563,7 @@ namespace uci {
     }
 
     void UCI::position(std::string_view command) noexcept {
-        finishSearch(true, false);
+        finishSearch(false);
         string_view moves;
 
         if (command.starts_with("startpos") && (command.size() == 8 || isSpace(command[8]))) {
@@ -592,7 +592,7 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
-        finishSearch(true, false);
+        finishSearch(false);
         engine.reset();
     }
 
@@ -602,7 +602,7 @@ namespace uci {
     }
     
     void UCI::go(std::string_view args) noexcept {
-        finishSearch(true, false);
+        finishSearch(false);
         engine::time::Limits limits;
 
         while (!args.empty()) {
@@ -665,7 +665,7 @@ namespace uci {
     }
     
     void UCI::stop() noexcept {
-        finishSearch(true, true);
+        finishSearch(true);
     }
 
     void UCI::ponderhit() noexcept {

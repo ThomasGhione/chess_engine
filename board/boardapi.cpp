@@ -108,7 +108,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     epHashFile = newEpHashFile;
     currentHash = newHash;
 
-    updateRepetitionAfterMove(resetHistory, false, &st);
+    updateRepetitionAfterMove(resetHistory, st);
 }
 
 __attribute__((hot))

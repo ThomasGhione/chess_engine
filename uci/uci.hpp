@@ -45,7 +45,7 @@ private:
     bool searchDone = false;
     bool searchPrinted = true;
 
-    void finishSearch(bool requestStop, bool printBestMove) noexcept;
+    void finishSearch(bool printBestMove) noexcept;
     void emitBestMove(std::string_view move) noexcept; // caller must hold searchMutex
     void parseMoves(std::string_view moves) noexcept;
     void parseFEN(std::string_view fen) noexcept;

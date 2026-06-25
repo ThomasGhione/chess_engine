@@ -268,7 +268,6 @@ public:
     // Weighted phase units across both sides (N=B=1, R=2, Q=4). 0 = no
     // non-pawn pieces (pawn-only endgame), 24 = full opening material.
     constexpr int32_t getIncrementalPhaseWeight() const noexcept       { return incrementalPhaseWeight; }
-    int32_t           getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
 
     // --- Eval cache ---
@@ -360,8 +359,7 @@ private:
     std::string    enPassantToFen() const;
     void           recomputeHashAndEp() noexcept;
     void           rebuildRepetitionHistory() noexcept;
-    void           updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true,
-                                             MoveState* st = nullptr) noexcept;
+    void           updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept;
     inline void    copyFromBoard(const Board& other) noexcept;
 
     // --- Private data ---
