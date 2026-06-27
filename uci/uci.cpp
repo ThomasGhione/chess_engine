@@ -408,6 +408,9 @@ namespace uci {
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
                   << " min 1 max " << hwThreads << "\n";
+        std::cout << "option name Hash type spin default " << TranspositionTable::DEFAULT_HASH_MB
+                  << " min " << TranspositionTable::MIN_HASH_MB
+                  << " max " << TranspositionTable::MAX_HASH_MB << "\n";
         for (const auto& option : kEvalOptions) {
             int32_t minValue = option.minValue;
             int32_t maxValue = option.maxValue;
@@ -489,6 +492,24 @@ namespace uci {
                 std::cout << "info string Threads set to " << clamped << "\n";
             } else {
                 std::cout << "info string invalid value for Threads\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "hash") {
+            int v = 0;
+            string_view tok = optionValue;
+            if (parseInt(nextToken(tok), v) && v >= 1) {
+                const int clamped = std::clamp(v,
+                    static_cast<int>(TranspositionTable::MIN_HASH_MB),
+                    static_cast<int>(TranspositionTable::MAX_HASH_MB));
+                if (engine.tt.resize(static_cast<size_t>(clamped))) {
+                    std::cout << "info string Hash set to " << engine.tt.sizeMB() << " MB\n";
+                } else {
+                    std::cout << "info string Hash resize to " << clamped << " MB failed (out of memory)\n";
+                }
+            } else {
+                std::cout << "info string invalid value for Hash\n";
             }
             return;
         }
