@@ -1147,11 +1147,9 @@ int32_t Searcher::quiescenceSearch(
         }
 
         // standPat is already side-to-move relative (negamax eval).
-        const int32_t materialBalance = standPat;
-        
-        if (materialBalance < QSEARCH_MATERIAL_BAD) {
+        if (standPat < QSEARCH_MATERIAL_BAD) {
             deltaMargin += QSEARCH_MATERIAL_BAD_DELTA;
-        } else if (materialBalance < QSEARCH_MATERIAL_WORSE) {
+        } else if (standPat < QSEARCH_MATERIAL_WORSE) {
             deltaMargin += QSEARCH_MATERIAL_WORSE_DELTA;
         }
 
