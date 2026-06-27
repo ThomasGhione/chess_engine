@@ -1,5 +1,9 @@
+//FIXME Creare dei file tipo engine_getter.cpp e engine_setter.cpp
+//Rendiamo il file piu' leggibile eliminando tanti metodi in comune
+
 #include "engine.hpp"
 
+//FIXME Eliminare #include da .cpp
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -15,35 +19,45 @@
 
 namespace engine {
 
+//FIXME Elimianre namespace anonimi
 namespace {
 
 [[nodiscard]] bool resolveSearchApiMutexGuardDefault() noexcept {
+    //FIXME Mettere parametro getenv in variabile
+    //FIXME Mettere blocco in funzione helper leggi_varabile_ambiente(const std::string nome) -> std::string
     const char* envValue = std::getenv("CHESS_ENGINE_SEARCH_MUTEX_GUARD");
     if (envValue == nullptr || *envValue == '\0') {
         return true;
     }
 
     const std::string_view value(envValue);
+    //FIXME Mettere codizione if dentro funzione helper
     if (ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false")) {
         return false;
     }
+
+    //FIXME Controllo inutile da qui diventa comunque vero anche se codizione falsa
     if (ascii::iequals(value, "1") || ascii::iequals(value, "on") || ascii::iequals(value, "true")) {
         return true;
     }
     return true;
 }
 
+//FIXME Sarebbe da fare in modo che engine non sapesse com'e' fatto questa logica
 [[nodiscard]] chess::Board::Move getTTPonderMove(const chess::Board& board, const TranspositionTable& tt) noexcept {
     uint16_t encodedMove = 0;
     if (!tt.probeMove(board.getHash(), encodedMove)) return {};
 
     const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
+    //FIXME Creaiamo un costruttore apposta ed evitiamo costruzione anonima
     return {chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
 }
 
 [[nodiscard]] chess::Board::Move getFallbackPonderMove(
     chess::Board& board,
     const Searcher::SearchRuntime& sourceRuntime) noexcept {
+
+    //FIXME Questo oggetto siamo sicuri debba essere creato? Mi sembra che di fatto sia usato come un oggetto statico
     Searcher::SearchRuntime runtime{};
     runtime.maxThreads = sourceRuntime.maxThreads;
     return Searcher::searchBestMove(board, runtime, 1);
@@ -52,25 +66,32 @@ namespace {
 } // namespace
 
 char Engine::promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept {
+    //FIXME Creare metodo dento move per fare questo controllo
+    //la codizone verrebbe tipo if(!move.isValid())
     if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
         return '\0';
     }
 
+    //FIXME Engine non dovrebbe toccare le maschere dei bit
     const uint8_t fromPieceType = board.get(move.from) & chess::Board::MASK_PIECE_TYPE;
     if (fromPieceType != chess::Board::PAWN) {
         return '\0';
     }
 
+    //FIXME Se abbiamo il parametro dentro Board, usiamo quello
+    //Se non abbiamo il parametro, allora dovrebbe esserci un metodo dentro board per calcolarlo
     const bool isWhite = (board.getColor(move.from.index) == chess::Board::WHITE);
     const bool isPromotion = (move.to.rank() == chess::Board::promotionRank(isWhite));
     if (!isPromotion) {
         return '\0';
     }
 
+    //FIXME Evitiamo operatore ternario in codizione
     return (move.promotionPiece != '\0') ? move.promotionPiece : 'q';
 }
 
 void Engine::bindSearchRuntime() noexcept {
+    //FIXME Mancano i this->
     searchRuntime.transpositionTable = &tt;
     searchRuntime.stopSearchRequested = &stopSearchRequested;
     searchRuntime.ponderingStopRequested = &ponderingStopRequested;
@@ -79,6 +100,7 @@ void Engine::bindSearchRuntime() noexcept {
 }
 
 void Engine::ensureMagicTablesInitialized() noexcept {
+    //FIXME Invertire codizione per evitare indentazione
     if (!magicTablesInitialized) {
         pieces::initMagicBitboards();
         magicTablesInitialized = true;
@@ -92,13 +114,18 @@ Engine::Engine()
     , eval(searchRuntime.eval)
     , nodesSearched(searchRuntime.nodesSearched)
     , MAX_THREADS(searchRuntime.maxThreads) {
+
     ensureMagicTablesInitialized();
+
+    //FIXME Logica thread dovrebbe essere mascherata
     searchApiMutexEnabled.store(resolveSearchApiMutexGuardDefault(), std::memory_order_relaxed);
     searchRuntime.maxThreads = omp_get_max_threads();
+
     bindSearchRuntime();
     this->tt.clear();
     // The path is relative to the working directory; UCI clients can still
     // override at runtime via `setoption name BookFile value <path>`.
+    //FIXME Evitiamo hardcode value, mettiamo dentro una viariabile
     if (!this->openingBook.load("engine/komodo.bin")) {
         std::cerr << "info string BookFile error: could not load 'engine/komodo.bin'"
                      " at startup (cwd-relative). Use 'setoption name BookFile value <path>' to override.\n";
@@ -107,6 +134,7 @@ Engine::Engine()
 }
 
 Engine::~Engine() noexcept {
+    //FIXME Evitare blocchi di codice in questo modo
     {
         std::lock_guard<std::mutex> lock(this->ponderingMutex);
         this->ponderingWorkerStopping = true;
@@ -118,6 +146,7 @@ Engine::~Engine() noexcept {
 }
 
 void Engine::reset() noexcept {
+    //FIXME Funzione troppo alata, avvaliamoci di sottofunzioni per macro blocchi di reset
     // Stop the watchdog first: if reset arrives mid-search, a still-running
     // watchdog would set stopSearchRequested *after* this reset returns and
     // abort whatever search starts next.
@@ -182,8 +211,10 @@ uint64_t Engine::getPonderInterruptedDepth() const noexcept {
 
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
+    //FIXME Questa funzione ha un problema su com'e' strutturata
     this->requestStopPondering();
 
+    //FIXME Evitar codizione ternaria in questo modo
     const bool result = (promotionPiece == '\0')
         ? this->board.move(from, to)
         : this->board.move(from, to, promotionPiece);
@@ -192,13 +223,16 @@ bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const c
         appendMoveHistoryEntry(from, to, promotionPiece);
     }
 
+    //FIXME MA se abbiamo avuto un problema con la mossa precedente, non ha senso chiamare questa funzione ⊙▂⊙
     this->updateGameResult();
     return result;
 }
 
 void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
+    //FIXME USARE THIS non stavo capendo moveHistory da dove spuntasse fuori
     const size_t appendLen = (promotionPiece == '\0') ? size_t{5} : size_t{6};
 
+    //FIXME Creare funzione helper tipo fix_eccessive_moveHistory_size
     if (moveHistory.size() + appendLen > MOVE_HISTORY_MAX_BYTES) {
         const size_t overflow = (moveHistory.size() + appendLen) - MOVE_HISTORY_MAX_BYTES;
         const size_t firstErase = std::min(overflow, moveHistory.size());
@@ -215,6 +249,7 @@ void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coor
     moveHistory.reserve(moveHistory.size() + appendLen);
     moveHistory += from.toString();
     moveHistory += to.toString();
+    //FIXME Evitiamo questo if mettendo a promotionPiece \n 
     if (promotionPiece != '\0') {
         moveHistory += promotionPiece;
     }
@@ -222,8 +257,10 @@ void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coor
 }
 
 void Engine::updateGameResult() noexcept {
+    //FIXME Spostare gameResult = ONGOING in fondo come "valore se non viene trovata una corrispondenza"
     gameResult = GameResult::ONGOING;
     const uint8_t toMove = board.getActiveColor();
+    //FIXME Mettere if constexpr
     if (board.kings_bb[0] == 0) {
         gameResult = GameResult::BLACK_WINS;
     } else if (board.kings_bb[1] == 0) {
@@ -236,6 +273,7 @@ void Engine::updateGameResult() noexcept {
 }
 
 void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
+    //FIXME Funzione troppo alta, fare delle funzioni helper
     this->ponderRootHash = rootBoard.getHash();
     this->stopSearchRequested.store(false, std::memory_order_relaxed);
     this->searchInterrupted.store(false, std::memory_order_relaxed);
@@ -253,12 +291,14 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
         DBG_LOG_STREAM("[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n");
     }
 
+    //FIXME Stiamo usando Searcher come statico, ma siamo sicuri debba essere tale?
     const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
         rootBoard,
         this->searchRuntime,
         Engine::DEFAULTDEPTH,
         Engine::MAX_PLY);
 
+    //FIXME Fare funzione helper
     this->ponderCurrentDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
     this->ponderLastCompletedDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
     this->ponderLastCompletedEvenDepth.store(ponderResult.completedEvenDepth, std::memory_order_relaxed);
@@ -269,11 +309,14 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->ponderResultMove = ponderResult.bestMove;
     this->ponderResultScore = ponderResult.bestScore;
     this->ponderResultDepth = ponderResult.completedDepth;
+    
+    //FIXME Creare funzione del tipo update_ponderResult
     this->ponderResultReady = ponderResult.hasLegalMoves
         && ponderResult.completedAnyDepth
         && chess::Coords::isInBounds(ponderResult.bestMove.from)
         && chess::Coords::isInBounds(ponderResult.bestMove.to);
 
+    //FIXME Fare funzione helper per cose di debug
     if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         DBG_LOG_STREAM("[PONDER] ended. current depth: " << this->getPonderCurrentDepth()
                       << ", last completed depth: " << this->getPonderLastCompletedDepth()
@@ -288,6 +331,7 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
 }
 
 void Engine::requestStopPondering() noexcept {
+    //FIXME Fare funzione helper per codizione, evitiamo di avere codizioni su piu' righe
     if (!this->ponderingActive.load(std::memory_order_relaxed)
         && !this->ponderingThread.joinable()) {
         return;
@@ -313,6 +357,8 @@ bool Engine::tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& out
 }
 
 void Engine::startPondering() noexcept {
+    //FIXME Questa funzione ha i commenti perche' non si capiscono le codizioni
+    //Facciamo delle funzioni helper per le condizioni
     if (this->isGameOver()) return;
 
     this->stopPondering();
@@ -334,6 +380,7 @@ void Engine::startPondering() noexcept {
         }
     }
 
+    //FIXME Funzione helper per blocco logico di salvataggio dei dati
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
@@ -348,6 +395,7 @@ void Engine::startPondering() noexcept {
 
 void Engine::stopPondering() noexcept {
     bool hadActivePonder = false;
+    //FIXME Evitare blocchi di codice anonimimi
     {
         std::lock_guard<std::mutex> lock(this->ponderingMutex);
         hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed) || this->ponderingWorkReady;
@@ -355,6 +403,7 @@ void Engine::stopPondering() noexcept {
 
     this->requestStopPondering();
 
+    //FIXME Evitare blocchi di codice anonimimi
     {
         std::unique_lock<std::mutex> lock(this->ponderingMutex);
         this->ponderingCv.wait(lock, [this] {
@@ -367,6 +416,7 @@ void Engine::stopPondering() noexcept {
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
 
+    //FIXME Spostare in funzione helper
     if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
         DBG_LOG_STREAM("[PONDER] stop requested. current depth: " << this->getPonderCurrentDepth()
                       << ", last completed depth: " << this->getPonderLastCompletedDepth()
@@ -379,8 +429,10 @@ void Engine::stopPondering() noexcept {
 }
 
 void Engine::ponderWorkerLoop() noexcept {
+    //FIXME while true no bello
     while (true) {
         chess::Board rootBoard;
+	//FIXME Evitare blocchi di codice anonimimi
         {
             std::unique_lock<std::mutex> lock(this->ponderingMutex);
             this->ponderingCv.wait(lock, [this] {
@@ -402,6 +454,7 @@ void Engine::stopThinking() noexcept {
 }
 
 chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
+    //FIXME Funzione troppo alta
     std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
     if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
         searchApiGuard.lock();
@@ -443,6 +496,7 @@ chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
 }
 
 chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
+    //FIXME Funzione troppo alta
     std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
     if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
         searchApiGuard.lock();
@@ -516,6 +570,7 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 }
 
 void Engine::search(uint64_t requestedDepth) noexcept {
+    //FIXME Funzione troppo alta
     std::unique_lock<std::mutex> searchApiGuard(this->searchApiMutex, std::defer_lock);
     if (this->searchApiMutexEnabled.load(std::memory_order_acquire)) {
         searchApiGuard.lock();

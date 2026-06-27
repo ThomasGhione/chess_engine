@@ -30,6 +30,7 @@ static inline constexpr int32_t NEG_INF = -POS_INF;
 
 class Engine final {
 public:
+    //FIXME Da creare una enum class
     enum GameResult : uint8_t {
         ONGOING = 0,
         WHITE_WINS = 1,
@@ -64,6 +65,7 @@ public:
     uint64_t getPonderInterruptedDepth() const noexcept;
 
     // Game state
+    //FIXME Vengono chiamate esternamente queste? Se no, da mettere private
     bool isGameOver() const noexcept;
     bool isMate() const noexcept;
     bool isStalemate() const noexcept;
@@ -72,10 +74,12 @@ public:
     uint8_t getActiveColor() const noexcept;
 
     // Shared bitboard init (all Engine instances)
+    //FIXME Vengono chiamate esternamente queste? Se no, da mettere private
     static inline bool magicTablesInitialized = false;
     static void ensureMagicTablesInitialized() noexcept;
 
     // Public state kept for compatibility with existing call-sites.
+    //FIXME La cosa citata nella riga sopra: NO.
     chess::Board::Move bestMove;
     chess::Board board;
     bool isPlayerWhite = true;
@@ -84,6 +88,7 @@ public:
     Searcher::SearchRuntime searchRuntime{};
 
     // Compatibility aliases for existing call-sites.
+    //FIXME Creare classe con parametri engine
     uint64_t& depth;
     int32_t& eval;
     uint64_t& nodesSearched;
