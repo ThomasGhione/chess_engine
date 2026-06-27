@@ -403,7 +403,6 @@ namespace uci {
             << "option name Opening type check default true\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n";
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
@@ -566,14 +565,6 @@ namespace uci {
             engine.openingEnabled.store(enabled, std::memory_order_relaxed);
             std::cout << "info string Opening "
                       << (enabled ? "enabled" : "disabled") << '\n';
-            return;
-        }
-
-        if (normalizedName == "ponderdebug") {
-            engine.setPonderDebugEnabled(enabled);
-            std::cout << "info string PonderDebug "
-                      << (engine.isPonderDebugEnabled() ? "enabled" : "disabled")
-                      << '\n';
             return;
         }
 

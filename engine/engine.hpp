@@ -21,13 +21,9 @@
 
 namespace engine {
 
-
-
 static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
 // Negamax-safe: NEG_INF == -POS_INF so it can be negated without UB.
 static inline constexpr int32_t NEG_INF = -POS_INF;
-
-
 
 class Engine final {
 public:
@@ -57,11 +53,6 @@ public:
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;
-    void setPonderDebugEnabled(bool enabled) noexcept;
-    bool isPonderDebugEnabled() const noexcept;
-    uint64_t getPonderCurrentDepth() const noexcept;
-    uint64_t getPonderLastCompletedDepth() const noexcept;
-    uint64_t getPonderInterruptedDepth() const noexcept;
 
     // Game state
     bool isGameOver() const noexcept { return gameResult != GameResult::ONGOING; }
@@ -126,14 +117,6 @@ private:
     std::atomic<bool> searchInterrupted {false};
     std::mutex searchApiMutex;
     std::atomic<bool> searchApiMutexEnabled {true};
-    std::atomic<bool> ponderDebugEnabled {false};
-    std::atomic<uint64_t> ponderCurrentDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedEvenDepth {0};
-    std::atomic<uint64_t> ponderInterruptedDepth {0};
-    std::atomic<uint32_t> ponderAspirationResearches {0};
-    std::atomic<uint32_t> ponderAspirationFailLow {0};
-    std::atomic<uint32_t> ponderAspirationFailHigh {0};
     uint64_t ponderRootHash = 0;
     uint64_t ponderResultDepth = 0;
     int32_t ponderResultScore = 0;
@@ -148,12 +131,10 @@ private:
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
     void clearPonderResult() noexcept;
-    void clearPonderCounters() noexcept;
     void clearSearchStopFlags() noexcept;
     std::optional<chess::Board::Move> probeOpeningBook() noexcept;
     std::optional<chess::Board::Move> tryInstantMove(uint64_t targetDepth) noexcept;
     chess::Board::Move commitSearchResult(const chess::Board::Move& candidate) noexcept;
-    void logPonderStats(const char* phase) noexcept;
     std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
     bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;

@@ -112,11 +112,6 @@ void Engine::reset() noexcept {
     bindSearchRuntime();
 
     this->tt.clear();
-    this->clearPonderCounters();
-}
-
-void Engine::setPonderDebugEnabled(bool enabled) noexcept {
-    this->ponderDebugEnabled.store(enabled, std::memory_order_relaxed);
 }
 
 void Engine::setSearchApiMutexEnabled(bool enabled) noexcept {
@@ -137,26 +132,12 @@ std::unique_lock<std::mutex> Engine::acquireSearchApiLock() noexcept {
     return guard;
 }
 
-bool Engine::isPonderDebugEnabled() const noexcept {
-    return this->ponderDebugEnabled.load(std::memory_order_relaxed);
-}
-
 void Engine::clearPonderResult() noexcept {
     this->ponderRootHash = 0;
     this->ponderResultDepth = 0;
     this->ponderResultScore = 0;
     this->ponderResultMove = chess::Board::Move{};
     this->ponderResultReady = false;
-}
-
-void Engine::clearPonderCounters() noexcept {
-    this->ponderCurrentDepth.store(0, std::memory_order_relaxed);
-    this->ponderLastCompletedDepth.store(0, std::memory_order_relaxed);
-    this->ponderLastCompletedEvenDepth.store(0, std::memory_order_relaxed);
-    this->ponderInterruptedDepth.store(0, std::memory_order_relaxed);
-    this->ponderAspirationResearches.store(0, std::memory_order_relaxed);
-    this->ponderAspirationFailLow.store(0, std::memory_order_relaxed);
-    this->ponderAspirationFailHigh.store(0, std::memory_order_relaxed);
 }
 
 void Engine::clearSearchStopFlags() noexcept {
@@ -188,36 +169,12 @@ chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidat
     return this->bestMove;
 }
 
-void Engine::logPonderStats([[maybe_unused]] const char* phase) noexcept {
-    DBG_LOG_STREAM("[PONDER] " << phase << ". current depth: " << this->getPonderCurrentDepth()
-                  << ", last completed depth: " << this->getPonderLastCompletedDepth()
-                  << ", last even depth: " << this->ponderLastCompletedEvenDepth.load(std::memory_order_relaxed)
-                  << ", interrupted depth: " << this->getPonderInterruptedDepth()
-                  << ", asp retries: " << this->ponderAspirationResearches.load(std::memory_order_relaxed)
-                  << ", fail-low: " << this->ponderAspirationFailLow.load(std::memory_order_relaxed)
-                  << ", fail-high: " << this->ponderAspirationFailHigh.load(std::memory_order_relaxed) << "\n");
-}
-
-uint64_t Engine::getPonderCurrentDepth() const noexcept {
-    return this->ponderCurrentDepth.load(std::memory_order_relaxed);
-}
-
-uint64_t Engine::getPonderLastCompletedDepth() const noexcept {
-    return this->ponderLastCompletedDepth.load(std::memory_order_relaxed);
-}
-
-uint64_t Engine::getPonderInterruptedDepth() const noexcept {
-    return this->ponderInterruptedDepth.load(std::memory_order_relaxed);
-}
-
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     this->requestStopPondering();
 
     const bool result = this->board.move(from, to, promotionPiece);
 
-    // A rejected (illegal) move leaves the board untouched, so the game result
-    // cannot have changed -- only refresh it when a move was actually applied.
     if (result) [[likely]] {
         appendMoveHistoryEntry(from, to, promotionPiece);
         this->updateGameResult();
@@ -269,34 +226,18 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->clearSearchStopFlags();
     this->nodesSearched = 0;
     this->tt.incrementGeneration();
-    this->clearPonderCounters();
-
-    if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-        DBG_LOG_STREAM("[PONDER] started from depth " << Engine::DEFAULTDEPTH << "\n");
-    }
 
     const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
         rootBoard, this->searchRuntime, Engine::DEFAULTDEPTH, Engine::MAX_PLY);
 
-    this->ponderCurrentDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
-    this->ponderLastCompletedDepth.store(ponderResult.completedDepth, std::memory_order_relaxed);
-    this->ponderLastCompletedEvenDepth.store(ponderResult.completedEvenDepth, std::memory_order_relaxed);
-    this->ponderInterruptedDepth.store(ponderResult.interruptedDepth, std::memory_order_relaxed);
-    this->ponderAspirationResearches.store(ponderResult.aspirationResearches, std::memory_order_relaxed);
-    this->ponderAspirationFailLow.store(ponderResult.aspirationFailLow, std::memory_order_relaxed);
-    this->ponderAspirationFailHigh.store(ponderResult.aspirationFailHigh, std::memory_order_relaxed);
     this->ponderResultMove = ponderResult.bestMove;
     this->ponderResultScore = ponderResult.bestScore;
     this->ponderResultDepth = ponderResult.completedDepth;
-    
+
     this->ponderResultReady = ponderResult.hasLegalMoves
         && ponderResult.completedAnyDepth
         && chess::Coords::isInBounds(ponderResult.bestMove.from)
         && chess::Coords::isInBounds(ponderResult.bestMove.to);
-
-    if (this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-        logPonderStats("ended");
-    }
 
     this->ponderingActive.store(false, std::memory_order_release);
 }
@@ -356,12 +297,6 @@ void Engine::startPondering() noexcept {
 }
 
 void Engine::stopPondering() noexcept {
-    bool hadActivePonder = false;
-    {
-        std::lock_guard<std::mutex> lock(this->ponderingMutex);
-        hadActivePonder = this->ponderingActive.load(std::memory_order_relaxed) || this->ponderingWorkReady;
-    }
-
     this->requestStopPondering();
 
     {
@@ -375,10 +310,6 @@ void Engine::stopPondering() noexcept {
     this->ponderingStopRequested.store(false, std::memory_order_release);
     this->stopSearchRequested.store(false, std::memory_order_release);
     this->searchInterrupted.store(false, std::memory_order_release);
-
-    if (hadActivePonder && this->ponderDebugEnabled.load(std::memory_order_relaxed)) {
-        logPonderStats("stop requested");
-    }
 }
 
 bool Engine::waitForPonderJob(chess::Board& outBoard) noexcept {
