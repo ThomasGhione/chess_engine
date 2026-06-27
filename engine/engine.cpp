@@ -169,17 +169,22 @@ chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidat
     return this->bestMove;
 }
 
+// Plays "move" on the engine's own board, recording it in the move history and
+// refreshing the game result. Returns false (board untouched) when the move is
+// out of bounds or illegal.
+bool Engine::playMoveOnBoard(const chess::Board::Move& move) noexcept {
+    if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) return false;
+    if (!this->board.move(move.from, move.to, move.promotionPiece)) return false;
+
+    this->appendMoveHistoryEntry(move.from, move.to, move.promotionPiece);
+    this->updateGameResult();
+    return true;
+}
+
 __attribute__((hot))
 bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
     this->requestStopPondering();
-
-    const bool result = this->board.move(from, to, promotionPiece);
-
-    if (result) [[likely]] {
-        appendMoveHistoryEntry(from, to, promotionPiece);
-        this->updateGameResult();
-    }
-    return result;
+    return this->playMoveOnBoard(chess::Board::Move{from, to, promotionPiece});
 }
 
 void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
@@ -247,11 +252,7 @@ void Engine::requestStopPondering() noexcept {
     this->stopSearchRequested.store(true, std::memory_order_release);
 }
 
-bool Engine::tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept {
-    const uint64_t targetDepth = (requestedDepth == 0)
-        ? Engine::DEFAULTDEPTH
-        : requestedDepth;
-
+bool Engine::tryUsePonderResult(uint64_t targetDepth, chess::Board::Move& outMove) noexcept {
     if (!this->ponderResultReady) return false;
     if (this->ponderRootHash != this->board.getHash()) return false;
     if (this->ponderResultDepth < targetDepth) return false;
@@ -398,21 +399,14 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     const chess::Board::Move candidate =
         searchUCI(time::Limits{.maxDepth = static_cast<int64_t>(requestedDepth)});
 
-    const bool valid = chess::Coords::isInBounds(candidate.from)
-                    && chess::Coords::isInBounds(candidate.to);
-    if (!valid || !this->board.move(candidate.from, candidate.to, candidate.promotionPiece)) {
+    if (!this->playMoveOnBoard(candidate)) {
         this->bestMove = chess::Board::Move{};
         this->updateGameResult();
         return;
     }
 
-    this->updateGameResult();
-    this->appendMoveHistoryEntry(candidate.from, candidate.to, candidate.promotionPiece);
     this->clearPonderResult();
-
-    if (!this->isGameOver()) {
-        this->startPondering();
-    }
+    this->startPondering(); // no-op when the move just played ended the game
 
     DBG_ONLY(
         std::string moveStr = chess::Coords::toAlgebric(candidate.from) + chess::Coords::toAlgebric(candidate.to);

@@ -130,6 +130,7 @@ private:
     // Internal helpers
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
+    bool playMoveOnBoard(const chess::Board::Move& move) noexcept;
     void clearPonderResult() noexcept;
     void clearSearchStopFlags() noexcept;
     std::optional<chess::Board::Move> probeOpeningBook() noexcept;
@@ -137,7 +138,7 @@ private:
     chess::Board::Move commitSearchResult(const chess::Board::Move& candidate) noexcept;
     std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
-    bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
+    bool tryUsePonderResult(uint64_t targetDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     bool waitForPonderJob(chess::Board& outBoard) noexcept;
