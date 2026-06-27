@@ -406,28 +406,6 @@ void Engine::stopThinking() noexcept {
     this->requestStopPondering();
 }
 
-chess::Board::Move Engine::searchUCI(uint64_t requestedDepth) noexcept {
-    auto searchApiGuard = acquireSearchApiLock();
-
-    this->stopPondering();
-
-    const uint64_t targetDepth = (requestedDepth == 0)
-        ? Engine::DEFAULTDEPTH
-        : requestedDepth;
-
-    if (auto instant = tryInstantMove(targetDepth)) {
-        this->bestMove = *instant;
-        return this->bestMove;
-    }
-
-    this->clearSearchStopFlags();
-    this->clearPonderResult();
-
-    chess::Board searchBoard = this->board;
-    this->searchRuntime.emitUciInfo = true;
-    return commitSearchResult(Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth));
-}
-
 chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
     auto searchApiGuard = acquireSearchApiLock();
 
@@ -469,7 +447,6 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 
     this->searchRuntime.timeManager = &this->timeManager;
     this->searchRuntime.maxNodes    = limits.maxNodes;
-    this->searchRuntime.emitUciInfo = true;
     this->timeManager.start();
 
     chess::Board searchBoard = this->board;
@@ -484,41 +461,20 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 }
 
 void Engine::search(uint64_t requestedDepth) noexcept {
-    auto searchApiGuard = acquireSearchApiLock();
+    // Terminal-mode play: compute the move via the one search entry point, then
+    // apply it on our board and ponder the reply. searchUCI already set bestMove
+    // (a maxDepth-only Limits runs to depth with no time management).
+    const chess::Board::Move candidate =
+        searchUCI(time::Limits{.maxDepth = static_cast<int64_t>(requestedDepth)});
 
-    this->stopPondering();
-
-    const uint64_t targetDepth = (requestedDepth == 0)
-        ? Engine::DEFAULTDEPTH
-        : requestedDepth;
-
-    chess::Board::Move candidate{};
-    if (!this->tryUsePonderResult(targetDepth, candidate)) {
-        this->clearSearchStopFlags();
-        this->clearPonderResult();
-
-        if (auto bookMove = probeOpeningBook()) {
-            candidate = *bookMove;
-        }
-        if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
-            candidate = Searcher::searchBestMove(this->board, this->searchRuntime, targetDepth);
-        }
-    }
-
-    if (!chess::Coords::isInBounds(candidate.from) || !chess::Coords::isInBounds(candidate.to)) {
+    const bool valid = chess::Coords::isInBounds(candidate.from)
+                    && chess::Coords::isInBounds(candidate.to);
+    if (!valid || !this->board.move(candidate.from, candidate.to, candidate.promotionPiece)) {
         this->bestMove = chess::Board::Move{};
         this->updateGameResult();
         return;
     }
 
-    const bool moveOk = this->board.move(candidate.from, candidate.to, candidate.promotionPiece);
-    if (!moveOk) {
-        this->bestMove = chess::Board::Move{};
-        this->updateGameResult();
-        return;
-    }
-
-    this->bestMove = candidate;
     this->updateGameResult();
     this->appendMoveHistoryEntry(candidate.from, candidate.to, candidate.promotionPiece);
     this->clearPonderResult();

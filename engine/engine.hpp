@@ -53,7 +53,6 @@ public:
 
     // Search API
     void search(uint64_t depth) noexcept;
-    chess::Board::Move searchUCI(uint64_t depth) noexcept;
     chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;

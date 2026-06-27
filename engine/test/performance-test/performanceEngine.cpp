@@ -18,7 +18,7 @@ ut::suite performanceEngineSuite = [] {
     engine::Engine e(FEN);
     e.depth = 10;
 
-    const chess::Board::Move bestMove = e.searchUCI(e.depth);
+    const chess::Board::Move bestMove = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
     const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
       && bestMove.to == chess::Coords("e3");
 
@@ -33,7 +33,7 @@ ut::suite performanceEngineSuite = [] {
     chess::Board::MoveState state;
     e.board.doMove(chess::Board::Move{chess::Coords("d3"), chess::Coords("e3")}, state);
 
-    const chess::Board::Move reply = e.searchUCI(1);
+    const chess::Board::Move reply = e.searchUCI(engine::time::Limits{.maxDepth = 1});
     expect(reply.from == chess::Coords("g5") && reply.to == chess::Coords("e3"))
       << "Expected black to immediately punish Qe3 with Bg5xe3, got "
       << reply.from.toString() << reply.to.toString() << '\n';
@@ -46,7 +46,7 @@ ut::suite performanceEngineSuite = [] {
     e.depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.searchUCI(e.depth);
+    e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -71,7 +71,7 @@ ut::suite performanceEngineSuite = [] {
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        const chess::Board::Move move = e.searchUCI(e.depth);
+        const chess::Board::Move move = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);

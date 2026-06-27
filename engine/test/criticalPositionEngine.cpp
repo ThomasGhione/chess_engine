@@ -255,7 +255,7 @@ ut::suite criticalPositionEngineSuite = [] {
     engine::Engine e = engine::Engine(FEN);
     e.depth = 10;
 
-    const chess::Board::Move bestMove = e.searchUCI(e.depth);
+    const chess::Board::Move bestMove = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
     const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
       && bestMove.to == chess::Coords("e3");
 

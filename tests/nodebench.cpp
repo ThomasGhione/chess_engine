@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         e.openingEnabled.store(false, std::memory_order_relaxed);
         e.searchRuntime.maxThreads = 1;        // no YBWC -> deterministic
         e.board = chess::Board(fens[i]);
-        e.searchUCI(depth);
+        e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(depth)});
         totalNodes += e.nodesSearched;
         std::printf("pos %zu  nodes %12lu\n", i + 1, (unsigned long)e.nodesSearched);
     }

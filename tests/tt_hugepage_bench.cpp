@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
             engine.updateGameResult();
 
             const auto start = std::chrono::steady_clock::now();
-            const chess::Board::Move bestMove = engine.searchUCI(static_cast<uint64_t>(cfg.depth));
+            const chess::Board::Move bestMove = engine.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(cfg.depth)});
             const auto stop = std::chrono::steady_clock::now();
             const uint64_t elapsedNs = static_cast<uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count());

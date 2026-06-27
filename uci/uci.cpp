@@ -669,6 +669,7 @@ namespace uci {
             searchPrinted = false;
         }
         try {
+            engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
             searchThread = std::thread([this, limits, ponder] {
                 const chess::Board::Move move = engine.searchUCI(limits);
                 std::string bestMove = move.toUCIString();
