@@ -30,8 +30,7 @@ static inline constexpr int32_t NEG_INF = -POS_INF;
 
 class Engine final {
 public:
-    //FIXME Da creare una enum class
-    enum GameResult : uint8_t {
+    enum class GameResult : uint8_t {
         ONGOING = 0,
         WHITE_WINS = 1,
         BLACK_WINS = 2,
@@ -65,21 +64,13 @@ public:
     uint64_t getPonderInterruptedDepth() const noexcept;
 
     // Game state
-    //FIXME Vengono chiamate esternamente queste? Se no, da mettere private
-    bool isGameOver() const noexcept;
-    bool isMate() const noexcept;
-    bool isStalemate() const noexcept;
-    bool isDraw() const noexcept;
+    bool isGameOver() const noexcept { return gameResult != GameResult::ONGOING; }
+    bool isMate() const noexcept { return gameResult == GameResult::WHITE_WINS || gameResult == GameResult::BLACK_WINS; }
+    bool isStalemate() const noexcept { return gameResult == GameResult::DRAW && board.isStalemate(board.getActiveColor()); }
+    bool isDraw() const noexcept { return gameResult == GameResult::DRAW; }
     void updateGameResult() noexcept;
-    uint8_t getActiveColor() const noexcept;
-
-    // Shared bitboard init (all Engine instances)
-    //FIXME Vengono chiamate esternamente queste? Se no, da mettere private
-    static inline bool magicTablesInitialized = false;
-    static void ensureMagicTablesInitialized() noexcept;
 
     // Public state kept for compatibility with existing call-sites.
-    //FIXME La cosa citata nella riga sopra: NO.
     chess::Board::Move bestMove;
     chess::Board board;
     bool isPlayerWhite = true;
@@ -88,7 +79,6 @@ public:
     Searcher::SearchRuntime searchRuntime{};
 
     // Compatibility aliases for existing call-sites.
-    //FIXME Creare classe con parametri engine
     uint64_t& depth;
     int32_t& eval;
     uint64_t& nodesSearched;
@@ -150,15 +140,21 @@ private:
     chess::Board::Move ponderResultMove {};
     bool ponderResultReady = false;
 
+    // Shared bitboard init (all Engine instances); only the ctor touches these.
+    static inline bool magicTablesInitialized = false;
+    static void ensureMagicTablesInitialized() noexcept;
+
     // Internal helpers
-    static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     void bindSearchRuntime() noexcept;
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
     void clearPonderResult() noexcept;
+    void clearPonderCounters() noexcept;
+    std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
     bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
+    bool waitForPonderJob(chess::Board& outBoard) noexcept;
     void ponderWorkerLoop() noexcept;
     void ponderLoop(chess::Board&& rootBoard) noexcept;
 };
@@ -166,4 +162,3 @@ private:
 } // namespace engine
 
 #include "inl/bitboard_helpers.inl"
-#include "inl/accessors.inl"

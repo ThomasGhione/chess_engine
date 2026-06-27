@@ -234,7 +234,7 @@ void Driver::endGame() noexcept {
     if (!engine.isGameOver()) return;
 
     if (engine.isMate()) {
-        const uint8_t nextColor = engine.getActiveColor();
+        const uint8_t nextColor = engine.board.getActiveColor();
         std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
     } else if (engine.isStalemate()) {
         std::cout << "\nStalemate. Game drawn.\n";
@@ -288,7 +288,7 @@ void Driver::botVsBot() noexcept { playAlternatingTurns(false, false, true); }
 
 void Driver::playerTurn() noexcept {
     //FIXME Usare if invece di costrutto ternario inline.
-    std::cout << (engine.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
+    std::cout << (engine.board.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
 
     std::string playerInput;
 
