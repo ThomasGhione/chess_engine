@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -149,6 +150,11 @@ private:
     void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
     void clearPonderResult() noexcept;
     void clearPonderCounters() noexcept;
+    void clearSearchStopFlags() noexcept;
+    std::optional<chess::Board::Move> probeOpeningBook() noexcept;
+    std::optional<chess::Board::Move> tryInstantMove(uint64_t targetDepth) noexcept;
+    chess::Board::Move commitSearchResult(const chess::Board::Move& candidate) noexcept;
+    void logPonderStats(const char* phase) noexcept;
     std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
     bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
