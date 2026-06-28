@@ -46,6 +46,8 @@ private:
 
     static uint64_t toPyrrhicBB(uint64_t bb) noexcept;
     static unsigned toPyrrhicEP(chess::Coords ep) noexcept;
+    // Union of every piece bitboard for one side (0 = White, 1 = Black).
+    static uint64_t sideOccupancy(const chess::Board& b, int side) noexcept;
 };
 
 } // namespace syzygy

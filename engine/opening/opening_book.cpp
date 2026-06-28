@@ -134,13 +134,11 @@ chess::Board::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
     // Castling: polyglot encodes king→rook-original-square.
     // Detect: king on e-file, same rank, moving to a- or h-file.
     // Remap to the king's actual destination (g or c file).
-    uint8_t effective_to_file = to_file;
     if (from_file == 4 && from_rank == to_rank &&
         (to_file == 0 || to_file == 7)) {
-        effective_to_file = (to_file == 7) ? 6u : 2u; // g or c file
-        to_idx = static_cast<uint8_t>((7u - to_rank) * 8u + effective_to_file);
+        const uint8_t kingToFile = (to_file == 7) ? 6u : 2u; // g or c file
+        to_idx = static_cast<uint8_t>((7u - to_rank) * 8u + kingToFile);
     }
-    (void)effective_to_file;
 
     // Promotion char: '\0' = none, 'n','b','r','q'
     static constexpr char PROMO_CHARS[5] = {'\0', 'n', 'b', 'r', 'q'};
