@@ -192,13 +192,13 @@ private:
     // --- Mobility, threats, trapped pieces ---
     static PhaseValue evalMobility(const AttackData data[2]) noexcept;
     static PhaseValue evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
-    static inline PhaseValue evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
+    static inline PhaseValue evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side) noexcept;
     static inline PhaseValue evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                       int sign, PhaseValue penalty) noexcept;
     static PhaseValue evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
-    static inline PhaseValue evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, int sign, uint64_t occ) noexcept;
+    static inline PhaseValue evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept;
     static PhaseValue evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static inline PhaseValue evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
+    static inline PhaseValue evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
     static inline PhaseValue evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask,
                                                        int sign, PhaseValue pinnedPenalty, PhaseValue lowMobPenalty) noexcept;
@@ -213,7 +213,7 @@ private:
     static inline PhaseValue evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
     static PhaseValue evalOutposts(const chess::Board& b) noexcept;
     static inline PhaseValue evalOutpostsForColor(const chess::Board& b, int color) noexcept;
-    static inline PhaseValue evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
+    static inline PhaseValue evalOutpostsPieces(uint64_t piecesBb, int color,
                                                  const chess::Board& b, PhaseValue bonus) noexcept;
     static inline PhaseValue evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     template<int Side>

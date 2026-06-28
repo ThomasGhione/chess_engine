@@ -9,9 +9,10 @@ inline PhaseValue Evaluator::evalHangingPiecePenalty(uint64_t pieces, uint64_t e
     return (sign * static_cast<int32_t>(std::popcount(hanging))) * penalty;
 }
 
-inline PhaseValue Evaluator::evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept {
+inline PhaseValue Evaluator::evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side) noexcept {
     PhaseValue score{};
     const int opp  = side ^ 1;
+    const int sign = (side == 0) ? 1 : -1;
 
     const uint64_t enemyAttacks = data[opp].allAttacks;
     const uint64_t friendlyDef = data[side].allAttacks;
@@ -39,7 +40,7 @@ inline PhaseValue Evaluator::evalHangingPiecesSide(const chess::Board& b, const 
 }
 
 PhaseValue Evaluator::evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept {
-    return evalHangingPiecesSide(b, data, 0, 1) + evalHangingPiecesSide(b, data, 1, -1);
+    return evalHangingPiecesSide(b, data, 0) + evalHangingPiecesSide(b, data, 1);
 }
 
 uint64_t Evaluator::collectPawnAttacks(uint64_t pawns, int side) noexcept {
@@ -69,8 +70,9 @@ uint64_t Evaluator::collectPieceAttacks(uint64_t piecesBb, uint64_t occ) noexcep
 }
 
 inline PhaseValue Evaluator::evalThreatsSide(const chess::Board& b, const AttackData data[2], int side,
-                                              int sign, uint64_t occ) noexcept {
+                                              uint64_t occ) noexcept {
     const int opp = side ^ 1;
+    const int sign = (side == 0) ? 1 : -1;
     const uint64_t ownMinors = b.knights_bb[side] | b.bishops_bb[side];
     const uint64_t ownRooks = b.rooks_bb[side];
     const uint64_t ownQueens = b.queens_bb[side];
@@ -110,7 +112,7 @@ inline PhaseValue Evaluator::evalThreatsSide(const chess::Board& b, const Attack
 }
 
 PhaseValue Evaluator::evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept {
-    return evalThreatsSide(b, data, 0, 1, occ) + evalThreatsSide(b, data, 1, -1, occ);
+    return evalThreatsSide(b, data, 0, occ) + evalThreatsSide(b, data, 1, occ);
 }
 
 } // namespace engine
