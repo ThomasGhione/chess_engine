@@ -165,6 +165,10 @@ private:
 
     // --- Draw scoring ---
     static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
+    // When `node`'s side has no legal move, sets outScore to the stalemate score
+    // and returns true; otherwise returns false. Shared by the NMP/RFP fail-high
+    // paths, which must not claim a cutoff on a stalemated node.
+    static bool tryStalemateScore(const chess::Board& b, const SearchNodeState& node, int32_t& outScore) noexcept;
     static int32_t drawAdvantageScore(const chess::Board& b) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
 

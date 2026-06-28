@@ -218,6 +218,13 @@ int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
     return (matDelta > 0) ? -stalematePenalty : stalematePenalty;
 }
 
+bool Searcher::tryStalemateScore(const chess::Board& b, const SearchNodeState& node, int32_t& outScore) noexcept {
+    if (b.hasAnyLegalMove(node.activeColor)) return false;
+    const int32_t md = b.getIncrementalMaterialDelta();
+    outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
+    return true;
+}
+
 int32_t Searcher::drawAdvantageScore(const chess::Board& b) noexcept {
     // Negamax: make the white-centric material delta side-to-move relative;
     // Evaluator::evaluate() is already STM-relative.
@@ -382,9 +389,7 @@ bool Searcher::tryNullMovePruning(
         return false;
     }
 
-    if (!b.hasAnyLegalMove(node.activeColor)) {
-        const int32_t md = b.getIncrementalMaterialDelta();
-        outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
+    if (tryStalemateScore(b, node, outScore)) {
         return true;
     }
 
@@ -411,9 +416,7 @@ bool Searcher::tryReverseFutilityPruning(
         return false;
     }
 
-    if (!b.hasAnyLegalMove(node.activeColor)) {
-        const int32_t md = b.getIncrementalMaterialDelta();
-        outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
+    if (tryStalemateScore(b, node, outScore)) {
         return true;
     }
 
@@ -659,26 +662,19 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                         useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
-
-            // The wide-window widen-research only carries information in PV nodes:
-            // in a non-PV node beta == alpha+1 == scoutBeta, so this window equals
-            // the null-window research above and would just re-probe the TT for an
-            // identical result. Gate on isPVNode to avoid the duplicate node.
-            if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
-                score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
-                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
-            }
         } else { // can't reduce, regular PVS search
             score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+        }
 
-            // Only PV nodes need the wide-window re-search; in a non-PV node the
-            // scout window already IS the full window (beta == alpha+1), so a
-            // re-search would duplicate the scout (TT-mitigated but still wasted).
-            if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
-                score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
-                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
-            }
+        // Wide-window PV re-search, shared by both paths above. It only carries
+        // information in PV nodes: in a non-PV node beta == alpha+1 == scoutBeta,
+        // so this window equals the null-window scout/research and would just
+        // re-probe the TT for an identical result. Gate on isPVNode to avoid the
+        // duplicate node. (In the reduce path !isFirstMove always holds.)
+        if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
+            score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
+                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
         }
 
         b.undoMove(m, state);
