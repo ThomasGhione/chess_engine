@@ -58,19 +58,17 @@ public:
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
 
-    //FIXME Queste funzioni hanno tanti parameti
-    static PhaseValue evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
-                                      int file, const uint64_t& forwardFill,
+    // rank/file derive from sq; promotionRank/isWhite/pawnAttackerIndex derive
+    // from the sign (+1 white, -1 black), so none of them are passed.
+    static PhaseValue evalPassedPawn(int sq, uint64_t ownPawns, uint64_t allPawns,
+                                      const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
-                                      uint64_t enemyPawns,
-                                      int promotionRank, int sign) noexcept;
+                                      uint64_t enemyPawns, int sign) noexcept;
 
     static PhaseValue evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                          uint64_t allPawns, int file, bool hasSupport,
                                          const uint64_t& frontMask, const uint64_t& forwardFill,
-                                         uint8_t ownIsolatedFiles,
-                                         int pawnAttackerIndex,
-                                         bool isWhite, int sign) noexcept;
+                                         uint8_t ownIsolatedFiles, int sign) noexcept;
 
     static PhaseValue evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
                                         uint8_t ownIsolatedFiles, int sign) noexcept;
@@ -166,8 +164,9 @@ private:
     static PhaseValue evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
                                               int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept;
     static int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ, int32_t materialScale) noexcept;
-    static inline PhaseValue evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                                  bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs,
+    // pawns and castling rights are read from `b` (board.pawns_bb / getCastle);
+    // only `side` and the attacker material scale vary per call.
+    static inline PhaseValue evalKingSafetySide(const chess::Board& b, const AttackData data[2],
                                                   int side, int32_t materialScale) noexcept;
     static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile, uint64_t targetPawns) noexcept;
     static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,

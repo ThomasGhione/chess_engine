@@ -63,11 +63,14 @@ Evaluator::PawnFileStats Evaluator::evalPawnFileStats(uint64_t whitePawns, uint6
     return stats;
 }
 
-PhaseValue Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
-                                      int file, const uint64_t& forwardFill,
+PhaseValue Evaluator::evalPassedPawn(int sq, uint64_t ownPawns, uint64_t allPawns,
+                                      const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
-                                      uint64_t enemyPawns,
-                                      int promotionRank, int sign) noexcept {
+                                      uint64_t enemyPawns, int sign) noexcept {
+    const int rank = chess::Board::rank(sq);
+    const int file = chess::Board::file(sq);
+    const int promotionRank = (sign > 0) ? 1 : 6;
+
     PhaseValue score = sign * engine::PASSED_PAWN_BONUS;
     const int advancement = sign > 0 ? (6 - rank) : (rank - 1);
     score += (sign * advancement) * engine::PASSED_ADVANCEMENT_SCALE;
@@ -104,9 +107,10 @@ PhaseValue Evaluator::evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64
 PhaseValue Evaluator::evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                          uint64_t allPawns, int file, bool hasSupport,
                                          const uint64_t& frontMask, const uint64_t& forwardFill,
-                                         uint8_t ownIsolatedFiles,
-                                         int pawnAttackerIndex,
-                                         bool isWhite, int sign) noexcept {
+                                         uint8_t ownIsolatedFiles, int sign) noexcept {
+    const bool isWhite = (sign > 0);
+    const int pawnAttackerIndex = isWhite ? 1 : 0;
+
     PhaseValue score{};
 
     const bool noEnemySameFileAhead = ((enemyPawns & FILE_MASKS[file] & forwardFill) == 0ULL);
@@ -144,8 +148,6 @@ PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, u
     const auto& supportMasks = getPawnSupportMasks(isWhite);
     const auto& oneStepMasks = getPawnOneStepMasks(isWhite);
     const auto& forwardFill = isWhite ? WHITE_FORWARD_FILL : BLACK_FORWARD_FILL;
-    const int pawnAttackerIndex = isWhite ? 1 : 0;
-    const int promotionRank = isWhite ? 1 : 6;
 
     PhaseValue score{};
     uint64_t pawns = ownPawns;
@@ -170,14 +172,13 @@ PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, u
         }
 
         if (isPassed) {
-            score += evalPassedPawn(sq, rank, ownPawns, allPawns, file, forwardFill[sq],
-                                    oneStepMasks, enemyPawns, promotionRank, sign);
+            score += evalPassedPawn(sq, ownPawns, allPawns, forwardFill[sq],
+                                    oneStepMasks, enemyPawns, sign);
             continue;
         }
 
         score += evalNonPassedPawn(rank, ownPawns, enemyPawns, allPawns, file, hasSupport,
-                                    frontMask, forwardFill[sq], ownIsolatedFiles,
-                                    pawnAttackerIndex, isWhite, sign);
+                                    frontMask, forwardFill[sq], ownIsolatedFiles, sign);
     }
 
     return score;

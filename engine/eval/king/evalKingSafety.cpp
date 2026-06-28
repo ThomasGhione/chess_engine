@@ -3,9 +3,8 @@
 
 namespace engine {
 
-inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                                 bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs, int side,
-                                                 int32_t materialScale) noexcept {
+inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, const AttackData data[2],
+                                                 int side, int32_t materialScale) noexcept {
     const uint64_t kingBB = b.kings_bb[side];
     if (!kingBB) [[unlikely]] return {};
 
@@ -14,10 +13,10 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t 
     const int kingRank = chess::Board::rank(sq);
     const int sign = (side == 0) ? 1 : -1;
     const int opp = side ^ 1;
-    const bool canCastleKingside = (side == 0) ? whiteCastleKs : blackCastleKs;
-    const bool canCastleQueenside = (side == 0) ? whiteCastleQs : blackCastleQs;
-    const uint64_t ownPawns = (side == 0) ? whitePawns : blackPawns;
-    const uint64_t enemyPawns = (side == 0) ? blackPawns : whitePawns;
+    const bool canCastleKingside  = b.getCastle(static_cast<uint8_t>(side * 2));
+    const bool canCastleQueenside = b.getCastle(static_cast<uint8_t>(side * 2 + 1));
+    const uint64_t ownPawns = b.pawns_bb[side];
+    const uint64_t enemyPawns = b.pawns_bb[opp];
     const uint64_t oppKingBB = b.kings_bb[opp];
     uint64_t ownAttacks = data[side].allAttacks | pieces::KING_ATTACKS[sq];
     uint64_t enemyAttacks = data[opp].allAttacks;
@@ -66,7 +65,7 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, uint64_t 
     {
         const uint64_t shieldSquares = pieces::KING_ATTACKS[sq] &
                                        (side == 0 ? WHITE_FORWARD_FILL[sq] : BLACK_FORWARD_FILL[sq]);
-        const int n = std::popcount(((side == 0) ? whitePawns : blackPawns) & shieldSquares);
+        const int n = std::popcount(ownPawns & shieldSquares);
         add(n * CASTLE_PAWN_SUPPORT_BONUS);
     }
 
@@ -243,18 +242,13 @@ int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attacki
 PhaseValue Evaluator::evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns,
                                               const AttackData data[2],
                                               int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept {
-    const bool whiteCastleKs = b.getCastle(0);
-    const bool whiteCastleQs = b.getCastle(1);
-    const bool blackCastleKs = b.getCastle(2);
-    const bool blackCastleQs = b.getCastle(3);
-
     const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
     const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
     scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
     scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
 
-    return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0, scaleBlackAttackingWhite)
-         + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1, scaleWhiteAttackingBlack);
+    return evalKingSafetySide(b, data, 0, scaleBlackAttackingWhite)
+         + evalKingSafetySide(b, data, 1, scaleWhiteAttackingBlack);
 }
 
 PhaseValue Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
