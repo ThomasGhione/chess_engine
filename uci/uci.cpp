@@ -349,7 +349,7 @@ namespace uci {
     UCI::UCI(engine::Engine& e) : engine(e) {}
 
     UCI::~UCI() noexcept {
-        finishSearch(false);
+        stopSearch(false);
     }
 
     void UCI::emitBestMove(std::string_view move) noexcept {
@@ -358,7 +358,7 @@ namespace uci {
         searchPrinted = true;
     }
 
-    void UCI::finishSearch(bool printBestMove) noexcept {
+    void UCI::stopSearch(bool printBestMove) noexcept {
         engine.stopThinking();
         if (searchThread.joinable()) searchThread.join();
 
@@ -379,13 +379,13 @@ namespace uci {
     void UCI::parseCommand(std::string_view command) noexcept {
         string_view args;
         if (command == "quit") {
-            finishSearch(true);
+            stopSearch(true);
             return quit();
         }
         if (command == "uci") return uci();
         if (command == "ucinewgame") return ucinewgame();
         if (command == "isready") return isready();
-        if (command == "stop") return stop();
+        if (command == "stop") return stopSearch(true);
         if (command == "ponderhit") return ponderhit();
         if (splitCommand(command, "setoption", args)) return setOption(args);
         if (splitCommand(command, "position", args)) return position(args);
@@ -436,7 +436,7 @@ namespace uci {
         // a worker reads is a data race and `refreshPieceTables` would also
         // leave the incremental material/PSQT deltas out of sync with the new
         // table until the next FEN re-parse.
-        finishSearch(false);
+        stopSearch(false);
 
         string_view rest = args;
         if (nextToken(rest) != "name") return;
@@ -572,7 +572,7 @@ namespace uci {
     }
 
     void UCI::position(std::string_view command) noexcept {
-        finishSearch(false);
+        stopSearch(false);
         string_view moves;
 
         if (command.starts_with("startpos") && (command.size() == 8 || isSpace(command[8]))) {
@@ -601,7 +601,7 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
-        finishSearch(false);
+        stopSearch(false);
         engine.reset();
     }
 
@@ -611,7 +611,7 @@ namespace uci {
     }
     
     void UCI::go(std::string_view args) noexcept {
-        finishSearch(false);
+        stopSearch(false);
         engine::time::Limits limits;
 
         while (!args.empty()) {
@@ -674,10 +674,6 @@ namespace uci {
         }
     }
     
-    void UCI::stop() noexcept {
-        finishSearch(true);
-    }
-
     void UCI::ponderhit() noexcept {
         std::lock_guard<std::mutex> lock(searchMutex);
         searchPonder = false;
@@ -685,13 +681,12 @@ namespace uci {
     }
 
     void UCI::parseMoves(std::string_view moves) noexcept {
+        // Precondition: caller passes the substring beginning at the "moves"
+        // keyword (position() locates it via findWord), so just drop it.
         moves = trimLeft(moves);
-        if (!moves.starts_with("moves")) return;
         moves.remove_prefix(5);
 
-        while (true) {
-            const string_view move = nextToken(moves);
-            if (move.empty()) break;
+        for (string_view move = nextToken(moves); !move.empty(); move = nextToken(moves)) {
             if (move.size() < 4) continue;
 
             const chess::Coords from = parseSquare(move.substr(0, 2));
