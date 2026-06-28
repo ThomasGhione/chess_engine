@@ -60,23 +60,19 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             if (!(pieces::getPawnForwardPushes(fromIndex, isWhite, occupancy) & toBit)) return false;
             return isKingSafeAfterMove(movingColor, fromIndex, toIndex, 0ULL);
         }
-        case KNIGHT:
-            if ((pieces::generateMovesByType<KNIGHT>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
-        case BISHOP:
-            if ((pieces::generateMovesByType<BISHOP>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
-        case ROOK:
-            if ((pieces::generateMovesByType<ROOK>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
-        case QUEEN:
-            if ((pieces::generateMovesByType<QUEEN>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
-            return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
-        case KING:
-            return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
-        default:
-            return false;
+        case KNIGHT: return pseudoMoveLegalByType<KNIGHT>(fromIndex, toIndex, toBit, movingColor, destPiece);
+        case BISHOP: return pseudoMoveLegalByType<BISHOP>(fromIndex, toIndex, toBit, movingColor, destPiece);
+        case ROOK:   return pseudoMoveLegalByType<ROOK>(fromIndex, toIndex, toBit, movingColor, destPiece);
+        case QUEEN:  return pseudoMoveLegalByType<QUEEN>(fromIndex, toIndex, toBit, movingColor, destPiece);
+        case KING: return isKingMoveLegal(fromIndex, toIndex, toBit, movingColor);
+        default: return false;
     }
+}
+
+template<uint8_t PieceType>
+inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit, uint8_t movingColor, uint8_t destPiece) const noexcept {
+    if ((pieces::generateMovesByType<PieceType>(fromIndex, occupancy) & toBit) == 0ULL) [[unlikely]] return false;
+    return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
 }
 
 // ============================================

@@ -318,6 +318,9 @@ private:
     template<uint8_t PieceType>
     [[nodiscard]] bool hasLegalMovesForPieceType(uint64_t pieceBB, uint64_t ownOcc,
                                                   uint64_t enemyOcc, uint8_t movingColor) const noexcept;
+    template<uint8_t PieceType>
+    [[nodiscard]] inline bool pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit,
+                                                    uint8_t movingColor, uint8_t destPiece) const noexcept;
     static bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                       uint64_t pawns, uint64_t knights, uint64_t bishops,
                                       uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
