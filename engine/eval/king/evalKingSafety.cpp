@@ -237,14 +237,12 @@ int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attacki
     return std::clamp(scale, KING_ATTACK_MATERIAL_MIN_SCALE, KING_ATTACK_MATERIAL_MAX_SCALE);
 }
 
-inline int32_t Evaluator::scaleKingDanger(int32_t value, int32_t scalePercent) noexcept {
-    if (value < 0) return (value * scalePercent) / 100;
-    return value;
-}
-
-PhaseValue Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
-    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return {};
-
+// Combined two-sided king-safety score. Also returns the two attack material
+// scales (via out-params) so the middlegame caller can reuse them for the
+// attack-zone term without recomputing. Caller must guarantee both kings exist.
+PhaseValue Evaluator::evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns,
+                                              const AttackData data[2],
+                                              int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept {
     const bool whiteCastleKs = b.getCastle(0);
     const bool whiteCastleQs = b.getCastle(1);
     const bool blackCastleKs = b.getCastle(2);
@@ -252,29 +250,27 @@ PhaseValue Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64
 
     const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
     const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
-    const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
-    const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
+    scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
+    scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
 
     return evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0, scaleBlackAttackingWhite)
          + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1, scaleWhiteAttackingBlack);
 }
 
+PhaseValue Evaluator::evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
+    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return {};
+
+    int32_t scaleWhiteAttackingBlack = 0, scaleBlackAttackingWhite = 0;
+    return evalKingSafetyAndScales(b, whitePawns, blackPawns, data,
+                                   scaleWhiteAttackingBlack, scaleBlackAttackingWhite);
+}
+
 PhaseValue Evaluator::evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept {
     if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return {};
 
-    const bool whiteCastleKs = b.getCastle(0);
-    const bool whiteCastleQs = b.getCastle(1);
-    const bool blackCastleKs = b.getCastle(2);
-    const bool blackCastleQs = b.getCastle(3);
-
-    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
-    const int32_t scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
-    const int32_t scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
-
-    const PhaseValue safety =
-        evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 0, scaleBlackAttackingWhite)
-      + evalKingSafetySide(b, whitePawns, blackPawns, data, whiteCastleKs, whiteCastleQs, blackCastleKs, blackCastleQs, 1, scaleWhiteAttackingBlack);
+    int32_t scaleWhiteAttackingBlack = 0, scaleBlackAttackingWhite = 0;
+    const PhaseValue safety = evalKingSafetyAndScales(b, whitePawns, blackPawns, data,
+                                                      scaleWhiteAttackingBlack, scaleBlackAttackingWhite);
 
     const uint64_t occ = b.getPiecesBitMap();
     const int32_t attackZone =

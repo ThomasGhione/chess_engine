@@ -163,12 +163,13 @@ private:
     // --- King safety ---
     static PhaseValue evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     static PhaseValue evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
+    static PhaseValue evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
+                                              int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept;
     static int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ, int32_t materialScale) noexcept;
     static inline PhaseValue evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
                                                   bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs,
                                                   int side, int32_t materialScale) noexcept;
     static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile, uint64_t targetPawns) noexcept;
-    static inline int32_t scaleKingDanger(int32_t value, int32_t scalePercent) noexcept;
     static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
                                                       uint64_t developedKnights, uint64_t developedBishops,
                                                       int& attackerCount, int32_t& attackWeight) noexcept;
