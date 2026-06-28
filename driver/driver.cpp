@@ -303,10 +303,9 @@ void Driver::playerTurn() noexcept {
         if (playerInput == "q") [[unlikely]] exitGame();
 
         // Optional promotion character (5th char): e7e8q, e2e1N, ...
-        char promoChar = '\0';
         if (playerInput.length() == 5) {
-            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
-            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
+            const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') [[unlikely]] {
                 std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
                 continue;
             }
