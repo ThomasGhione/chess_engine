@@ -1,3 +1,11 @@
+//FIXME Proposta FORTE: cambiare classe Evaluator da statica a non-statica.
+// const chess::Board& b compare molte volte come parametro
+// Altre informazioni possono essere passate quando viene costruito l'oggetto.
+// Es. Chi deve muovere, oppure altre informazioni sullo stato della board.
+//
+// Nota, alcune funzioni effettivamente sono statiche: quelle andrebbero messe in una classe NUOVA satatica
+// es. static_evaluation
+
 #pragma once
 
 #include <algorithm>
@@ -50,6 +58,7 @@ public:
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
 
+    //FIXME Queste funzioni hanno tanti parameti
     static PhaseValue evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
                                       int file, const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
@@ -120,6 +129,7 @@ private:
 
     // --- Score limits ---
     // Negamax-safe: NEG_INF == -POS_INF (negating int32_min is UB).
+    //FIXME Esistono gia' questi dati altrove, sono variabili duplicate
     static inline constexpr int32_t POS_INF                  = std::numeric_limits<int32_t>::max();
     static inline constexpr int32_t NEG_INF                  = -POS_INF;
     static inline constexpr int32_t TRAPPED_EXTRA_SEVERITY   = 10;
