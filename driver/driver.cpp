@@ -303,8 +303,11 @@ void Driver::playerTurn() noexcept {
         if (playerInput == "q") [[unlikely]] exitGame();
 
         // Optional promotion character (5th char): e7e8q, e2e1N, ...
+        // Normalise to lowercase in place so the move uses the validated form
+        // (the engine's promotion convention is lowercase q/r/b/n).
         if (playerInput.length() == 5) {
-            const char promo = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            playerInput[4] = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            const char promo = playerInput[4];
             if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') [[unlikely]] {
                 std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
                 continue;
