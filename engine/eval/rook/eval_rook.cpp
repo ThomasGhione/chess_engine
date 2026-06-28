@@ -4,6 +4,16 @@
 
 namespace engine {
 
+namespace {
+// Rough non-pawn material (centipawns) for `side`, used by the rook-endgame
+// heuristics to detect a near-lone enemy king. Values are intentionally fixed
+// (independent of the tunable PIECE_VALUES) so the thresholds stay stable.
+inline int roughNonPawnMaterial(const chess::Board& b, int side, int rookCount) noexcept {
+    return std::popcount(b.queens_bb[side]) * 900 + rookCount * 500
+         + std::popcount(b.bishops_bb[side]) * 330 + std::popcount(b.knights_bb[side]) * 320;
+}
+} // namespace
+
 inline PhaseValue Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept {
     PhaseValue score{};
 
@@ -69,13 +79,8 @@ inline PhaseValue Evaluator::evalRookEndgamePressureSide(const chess::Board& b, 
     if (!sideHasAdvantage) return {};
 
     const int oppSide = side ^ 1;
-    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppRooks2 = (side == 0) ? blackRooks : whiteRooks;
-    const int oppMaterial = oppQueens * 900 + oppRooks2 * 500 + oppBishops * 330 + oppKnights * 320;
-
-    if (oppMaterial > 400) return {};
+    const int oppRooks = (side == 0) ? blackRooks : whiteRooks;
+    if (roughNonPawnMaterial(b, oppSide, oppRooks) > 400) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
@@ -102,12 +107,7 @@ inline PhaseValue Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, in
     if (ourRooks < 2 || ourRooks <= oppRooks) return {};
 
     const int oppSide = side ^ 1;
-    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppMaterial = oppQueens * 900 + oppRooks * 500 + oppBishops * 330 + oppKnights * 320;
-
-    if (oppMaterial > 500) return {};
+    if (roughNonPawnMaterial(b, oppSide, oppRooks) > 500) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
@@ -127,22 +127,20 @@ inline PhaseValue Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, in
     PhaseValue score{0, sign * edgeProximity(enemyKingSq) * DOUBLE_ROOK_EDGE_BONUS};
 
     uint64_t rooksBB = b.rooks_bb[side];
-    if ((rooksBB & (rooksBB - 1)) != 0ULL) {
-        const int rook1 = popLSB(rooksBB);
-        const int rook2 = std::countr_zero(rooksBB);
+    const int rook1 = popLSB(rooksBB);
+    const int rook2 = std::countr_zero(rooksBB);
 
-        const int r1_rank = chess::Board::rank(rook1);
-        const int r1_file = chess::Board::file(rook1);
-        const int r2_rank = chess::Board::rank(rook2);
-        const int r2_file = chess::Board::file(rook2);
+    const int r1_rank = chess::Board::rank(rook1);
+    const int r1_file = chess::Board::file(rook1);
+    const int r2_rank = chess::Board::rank(rook2);
+    const int r2_file = chess::Board::file(rook2);
 
-        if (r1_rank == r2_rank || r1_file == r2_file) {
-            score.eg += sign * DOUBLE_ROOK_RANKFILE_BONUS;
-        }
+    if (r1_rank == r2_rank || r1_file == r2_file) {
+        score.eg += sign * DOUBLE_ROOK_RANKFILE_BONUS;
+    }
 
-        if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
-            score.eg += sign * DOUBLE_ROOK_ON_KING_LINE;
-        }
+    if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
+        score.eg += sign * DOUBLE_ROOK_ON_KING_LINE;
     }
 
     score.eg += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * DOUBLE_ROOK_PROX_SCALE;
