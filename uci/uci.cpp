@@ -280,18 +280,20 @@ namespace {
         return token;
     }
 
-    static bool parseInt(string_view token, int& out) noexcept {
+    // Parses a whole signed-integer token (optional leading '+'); the entire
+    // token must be consumed. Works for any integer type via std::from_chars.
+    template<typename T>
+    static bool parseInt(string_view token, T& out) noexcept {
         if (token.starts_with('+')) token.remove_prefix(1);
         if (token.empty()) return false;
         const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
         return err == std::errc{} && ptr == token.data() + token.size();
     }
 
-    static bool parseI64(string_view token, int64_t& out) noexcept {
-        if (token.starts_with('+')) token.remove_prefix(1);
-        if (token.empty()) return false;
-        const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
-        return err == std::errc{} && ptr == token.data() + token.size();
+    // Parses the first whitespace-delimited token of `text` as an integer.
+    template<typename T>
+    static bool parseFirstInt(string_view text, T& out) noexcept {
+        return parseInt(nextToken(text), out);
     }
 
     static bool splitCommand(string_view command, string_view name, string_view& args) noexcept {
@@ -470,8 +472,7 @@ namespace uci {
 
         if (normalizedName == "syzygyprobedepth") {
             int v = 0;
-            string_view tok = optionValue;
-            if (parseInt(nextToken(tok), v) && v >= 1 && v <= 100) {
+            if (parseFirstInt(optionValue, v) && v >= 1 && v <= 100) {
                 engine.syzygyProber.probeDepth = v;
                 std::cout << "info string SyzygyProbeDepth set to " << v << "\n";
             } else {
@@ -482,9 +483,8 @@ namespace uci {
 
         if (normalizedName == "threads") {
             int v = 0;
-            string_view tok = optionValue;
             const int maxT = omp_get_max_threads();
-            if (parseInt(nextToken(tok), v) && v >= 1) {
+            if (parseFirstInt(optionValue, v) && v >= 1) {
                 const int clamped = std::clamp(v, 1, maxT);
                 engine.requestedThreads = clamped;
                 engine.searchRuntime.maxThreads = clamped;
@@ -497,8 +497,7 @@ namespace uci {
 
         if (normalizedName == "hash") {
             int v = 0;
-            string_view tok = optionValue;
-            if (parseInt(nextToken(tok), v) && v >= 1) {
+            if (parseFirstInt(optionValue, v) && v >= 1) {
                 const int clamped = std::clamp(v,
                     static_cast<int>(TranspositionTable::MIN_HASH_MB),
                     static_cast<int>(TranspositionTable::MAX_HASH_MB));
@@ -513,13 +512,11 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "opening" && normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") {
+        if (normalizedName != "opening" && normalizedName != "searchapimutexguard") {
             for (auto& option : kEvalOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
-                string_view valueRest = optionValue;
-                string_view valueToken = nextToken(valueRest);
-                if (!parseInt(valueToken, parsedValue)) {
+                if (!parseFirstInt(optionValue, parsedValue)) {
                     std::cout << "info string invalid value for " << optionName << "\n";
                     return;
                 }
@@ -631,7 +628,7 @@ namespace uci {
             }
             if (token == "nodes") {
                 int64_t v = 0;
-                if (parseI64(nextToken(args), v) && v > 0) {
+                if (parseInt(nextToken(args), v) && v > 0) {
                     limits.maxNodes = static_cast<uint64_t>(v);
                 }
                 continue;
@@ -643,11 +640,11 @@ namespace uci {
             }
 
             int64_t v = 0;
-            if (token == "wtime"    && parseI64(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
-            if (token == "btime"    && parseI64(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
-            if (token == "winc"     && parseI64(nextToken(args), v)) { limits.winc = v;  continue; }
-            if (token == "binc"     && parseI64(nextToken(args), v)) { limits.binc = v;  continue; }
-            if (token == "movetime" && parseI64(nextToken(args), v)) { limits.movetime = v; continue; }
+            if (token == "wtime"    && parseInt(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
+            if (token == "btime"    && parseInt(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
+            if (token == "winc"     && parseInt(nextToken(args), v)) { limits.winc = v;  continue; }
+            if (token == "binc"     && parseInt(nextToken(args), v)) { limits.binc = v;  continue; }
+            if (token == "movetime" && parseInt(nextToken(args), v)) { limits.movetime = v; continue; }
             if (token == "mate")    { (void)nextToken(args); continue; }
         }
 
