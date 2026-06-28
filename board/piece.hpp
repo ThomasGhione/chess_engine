@@ -244,16 +244,6 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_DOUBLE_PUSH_TARGET
     return table;
 }();
 
-inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
-    std::array<std::array<uint64_t, 64>, 2> table{};
-    for (int c = 0; c < 2; ++c) {
-        for (int sq = 0; sq < 64; ++sq) {
-            table[c][sq] = PAWN_SINGLE_PUSH_TARGETS[c][sq] | PAWN_DOUBLE_PUSH_TARGETS[c][sq];
-        }
-    }
-    return table;
-}();
-
 // Occupancy bits relevant to pawn forward pushes:
 // bit0 = one-step destination occupied
 // bit1 = two-step destination occupied

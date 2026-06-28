@@ -129,7 +129,6 @@ inline constexpr int YBWC_MIN_DEPTH = static_cast<int>(DEFAULT_DEPTH) - 2;
 // (pieceType, toSq). Piece types are 0..6 (EMPTY..KING), so the block is 7*64.
 inline constexpr int CONT_HIST_PIECE_TYPES   = 7;
 inline constexpr int CONT_HIST_PIECE_STRIDE  = 64;
-inline constexpr int CONT_HIST_BLOCK         = CONT_HIST_PIECE_TYPES * CONT_HIST_PIECE_STRIDE;
 inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
     return pieceType * CONT_HIST_PIECE_STRIDE + toSq;
 }
