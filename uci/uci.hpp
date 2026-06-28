@@ -26,7 +26,6 @@ public:
     void parseCommand(std::string_view command) noexcept;
 
     // Standard UCI commands
-    void quit() noexcept;
     void uci() noexcept;
     void setOption(std::string_view args) noexcept;
     void position(std::string_view command) noexcept;

@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
     using std::string_view;
@@ -72,17 +73,24 @@ namespace {
         int32_t maxValue;
     };
 
-    static void defaultRangeFor(int32_t value, int32_t& minValue, int32_t& maxValue) noexcept {
-        // Wide auto-range so the tuner's sampled values land inside the
-        // engine's accepted bounds without each option needing an explicit
-        // hasRange entry. ±200% of magnitude with a floor of 10 covers the
-        // typical chess-tuning-tools parameter ranges used by the JSON groups.
+    // Wide auto-range so the tuner's sampled values land inside the engine's
+    // accepted bounds without each option needing an explicit hasRange entry.
+    // ±200% of magnitude with a floor of 10 covers the typical
+    // chess-tuning-tools parameter ranges used by the JSON groups.
+    static std::pair<int32_t, int32_t> defaultRangeFor(int32_t value) noexcept {
         const int64_t absValue = std::llabs(static_cast<int64_t>(value));
         const int64_t delta = std::max<int64_t>(10, absValue * 2);
-        const int64_t minCandidate = static_cast<int64_t>(value) - delta;
-        const int64_t maxCandidate = static_cast<int64_t>(value) + delta;
-        minValue = static_cast<int32_t>(std::clamp(minCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
-        maxValue = static_cast<int32_t>(std::clamp(maxCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
+        const auto toI32 = [](int64_t x) {
+            return static_cast<int32_t>(std::clamp<int64_t>(x, INT32_MIN, INT32_MAX));
+        };
+        return {toI32(value - delta), toI32(value + delta)};
+    }
+
+    // Resolved [min, max] range advertised and accepted for an eval option:
+    // its explicit bounds when given, otherwise the auto-range.
+    static std::pair<int32_t, int32_t> optionRange(const EvalOption& option) noexcept {
+        return option.hasRange ? std::pair{option.minValue, option.maxValue}
+                               : defaultRangeFor(*option.value);
     }
 
     static void refreshPieceTables() noexcept {
@@ -380,7 +388,7 @@ namespace uci {
         string_view args;
         if (command == "quit") {
             stopSearch(true);
-            return quit();
+            std::exit(EXIT_SUCCESS);
         }
         if (command == "uci") return uci();
         if (command == "ucinewgame") return ucinewgame();
@@ -393,13 +401,9 @@ namespace uci {
     }
 
 
-    void UCI::quit() noexcept {
-        std::exit(EXIT_SUCCESS);
-    }
-
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 1.1.0\n"
+            << "id name HydraY 1.2.1\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name BookFile type string default engine/komodo.bin\n"
             << "option name Opening type check default true\n"
@@ -413,11 +417,7 @@ namespace uci {
                   << " min " << TranspositionTable::MIN_HASH_MB
                   << " max " << TranspositionTable::MAX_HASH_MB << "\n";
         for (const auto& option : kEvalOptions) {
-            int32_t minValue = option.minValue;
-            int32_t maxValue = option.maxValue;
-            if (!option.hasRange) {
-                defaultRangeFor(*option.value, minValue, maxValue);
-            }
+            const auto [minValue, maxValue] = optionRange(option);
             std::cout << "option name " << optionDisplayName(option.key)
                       << " type spin default " << *option.value
                       << " min " << minValue
@@ -440,6 +440,7 @@ namespace uci {
 
         string_view rest = args;
         if (nextToken(rest) != "name") return;
+        rest = trimLeft(rest); // nextToken leaves the leading gap before the name
 
         const std::size_t valuePos = findWord(rest, "value");
         const string_view optionName =
@@ -520,11 +521,7 @@ namespace uci {
                     std::cout << "info string invalid value for " << optionName << "\n";
                     return;
                 }
-                int32_t minValue = option.minValue;
-                int32_t maxValue = option.maxValue;
-                if (!option.hasRange) {
-                    defaultRangeFor(*option.value, minValue, maxValue);
-                }
+                const auto [minValue, maxValue] = optionRange(option);
                 if (parsedValue < minValue || parsedValue > maxValue) {
                     std::cout << "info string value out of range for " << optionName
                               << " (" << minValue << ".." << maxValue << ")\n";
