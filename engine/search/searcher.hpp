@@ -40,15 +40,7 @@ public:
         bool     hasLegalMoves      = false;
         bool     completedAnyDepth  = false;
         bool     terminalRoot       = false;
-        uint64_t startDepth         = 0;
-        uint64_t targetDepth        = 0;
-        uint64_t completedIterations = 0;
         uint64_t completedDepth     = 0;
-        uint64_t completedEvenDepth = 0;
-        uint64_t interruptedDepth   = 0;
-        uint32_t aspirationResearches = 0;
-        uint32_t aspirationFailLow    = 0;
-        uint32_t aspirationFailHigh   = 0;
         TranspositionTable::Entry::Flag rootScoreBound = TranspositionTable::Entry::EXACT;
         chess::Board::Move bestMove{};
         int32_t            bestScore = 0;

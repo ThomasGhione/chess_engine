@@ -1509,25 +1509,15 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     IterativeSearchResult result;
     const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
     const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);
-    result.startDepth = firstDepth;
-    result.targetDepth = maxDepth;
 
-    {
+    if (rootBoard.kings_bb[0] == 0 || rootBoard.kings_bb[1] == 0) {
         const bool rootWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
-        if (rootBoard.kings_bb[0] == 0) {            // white king gone
-            result.terminalRoot = true;
-            result.completedAnyDepth = true;
-            result.bestScore = rootWhite ? NEG_INF : POS_INF; // STM-relative
-            runtime.eval = result.bestScore;
-            return result;
-        }
-        if (rootBoard.kings_bb[1] == 0) {            // black king gone
-            result.terminalRoot = true;
-            result.completedAnyDepth = true;
-            result.bestScore = rootWhite ? POS_INF : NEG_INF; // STM-relative
-            runtime.eval = result.bestScore;
-            return result;
-        }
+        const bool ourKingGone = (rootBoard.kings_bb[0] == 0) ? rootWhite : !rootWhite;
+        result.terminalRoot = true;
+        result.completedAnyDepth = true;
+        result.bestScore = ourKingGone ? NEG_INF : POS_INF; // STM-relative
+        runtime.eval = result.bestScore;
+        return result;
     }
 
     int32_t rootDrawScore = 0;
@@ -1599,7 +1589,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         }
     }
 
-    uint64_t interruptedDepth = 0;
     chess::Board::Move bestMove = moves[0];
     int32_t prevPrevScore = 0;
     int32_t prevScore = 0;
@@ -1612,7 +1601,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (runtime.shouldAbort()) {
-            interruptedDepth = currentDepth;
             break;
         }
 
@@ -1679,12 +1667,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 }
 
                 ++aspirationResearches;
-                ++result.aspirationResearches;
                 if (failLow) {
-                    ++result.aspirationFailLow;
                     centerScore = std::min(centerScore, score);
                 } else {
-                    ++result.aspirationFailHigh;
                     centerScore = std::max(centerScore, score);
                 }
 
@@ -1710,7 +1695,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         }
 
         if (!iterationCompleted) {
-            interruptedDepth = currentDepth;
             break;
         }
 
@@ -1733,11 +1717,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             runtime.timeManager->updateStability(
                 bestMoveChanged, runtime.eval, prevScoreBefore, hadPrevScore);
         }
-        ++result.completedIterations;
         result.completedDepth = currentDepth;
-        if ((currentDepth & 1ULL) == 0ULL) {
-            result.completedEvenDepth = currentDepth;
-        }
         result.bestMove = bestMove;
         result.bestScore = runtime.eval;
         result.rootScoreBound = determineFlag(result.bestScore, iterationAlpha, iterationBeta);
@@ -1748,7 +1728,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         }
     }
 
-    result.interruptedDepth = interruptedDepth;
     return result;
 }
 
