@@ -45,6 +45,22 @@ private:
         uint64_t mask,
         chess::Coords enPassant) noexcept;
 
+    // Per-pawn pseudo-legal move emission shared by the full and evasion
+    // generators. `evasionMask` must be ~0ULL when not in single check, so the
+    // unconditional AND matches the full generator's `if (singleCheck)` guard.
+    template<bool IsWhite>
+    static void appendPawnPseudoLegalMoves(
+        const chess::Board& b,
+        MoveList<chess::Board::Move>& moves,
+        uint64_t pawns,
+        uint64_t occ,
+        uint64_t oppOcc,
+        uint64_t enPassantBit,
+        chess::Coords enPassant,
+        uint64_t evasionMask,
+        uint64_t pinnedMask,
+        const uint64_t pinRayBySquare[64]) noexcept;
+
     template<bool IsWhite>
     static MoveList<chess::Board::Move> generateLegalMovesFor(
         const chess::Board& b,

@@ -235,19 +235,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
         computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
     }
 
-    while (pawns) {
-        const int from = engine::popLSB(pawns);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
-        const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
-        mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
-        if (singleCheck) mask &= evasionMask;
-        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
-        // Keep EP candidate for legality check because EP changes occupancy on two squares.
-        mask |= epCandidate;
-        addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, enPassant);
-    }
+    appendPawnPseudoLegalMoves<IsWhite>(
+        b, moves, pawns, occ, oppOcc, enPassantBit, enPassant, evasionMask, pinnedMask, pinRayBySquare.data());
 
     if (singleCheck) {
         if (pinnedMask)
@@ -325,18 +314,8 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
         computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
     }
 
-    while (pawns) {
-        const int from = engine::popLSB(pawns);
-        const uint64_t fromBit = chess::Board::bitMask(from);
-        uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
-        const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
-        mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
-        mask &= evasionMask;
-        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
-        mask |= epCandidate;
-        addPawnMovesFromMask<IsWhite>(
-            b, moves, from, mask, enPassant);
-    }
+    appendPawnPseudoLegalMoves<IsWhite>(
+        b, moves, pawns, occ, oppOcc, enPassantBit, enPassant, evasionMask, pinnedMask, pinRayBySquare.data());
 
     if (pinnedMask)
         emitAllNonPawnLegal<true, true>(moves, knights, bishops, rooks, queens, occ, ownOcc, evasionMask, pinnedMask, pinRayBySquare.data());
@@ -446,6 +425,28 @@ engine::MovePicker MoveGenerator::generateQSearchTacticalMoves(
     MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
     if (tacticalMoves.is_empty()) return engine::MovePicker{};
     return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply);
+}
+
+template<bool IsWhite>
+__attribute__((always_inline))
+inline void MoveGenerator::appendPawnPseudoLegalMoves(
+    const chess::Board& b, MoveList<chess::Board::Move>& moves, uint64_t pawns,
+    uint64_t occ, uint64_t oppOcc, uint64_t enPassantBit, chess::Coords enPassant,
+    uint64_t evasionMask, uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept {
+    constexpr int side = IsWhite ? 0 : 1;
+
+    while (pawns) {
+        const int from = engine::popLSB(pawns);
+        const uint64_t fromBit = chess::Board::bitMask(from);
+        uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
+        const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
+        mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
+        mask &= evasionMask; // ~0ULL outside single check, so a no-op there
+        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
+        // Keep EP candidate for legality check because EP changes occupancy on two squares.
+        mask |= epCandidate;
+        addPawnMovesFromMask<IsWhite>(b, moves, from, mask, enPassant);
+    }
 }
 
 template<bool IsWhite>
