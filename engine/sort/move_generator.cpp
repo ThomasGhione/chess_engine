@@ -475,9 +475,6 @@ uint64_t MoveGenerator::computePinRays(const chess::Board& b, chess::Coords king
     const int kingSq = kingPos.index;
 
     const uint64_t ownOcc = b.pawns_bb[us] | b.knights_bb[us] | b.bishops_bb[us] | b.rooks_bb[us] | b.queens_bb[us];
-    if (!ownOcc) {
-        return 0ULL;
-    }
 
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
