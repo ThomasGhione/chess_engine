@@ -1586,7 +1586,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         if (result.completedAnyDepth) {
             for (int i = 0; i < moves.size; ++i) {
                 if (moves[i] == bestMove) {
-                    chess::Board::Move::rotate(moves, i);
+                    moves.rotate(i);
                     break;
                 }
             }

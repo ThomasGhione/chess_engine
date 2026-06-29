@@ -105,9 +105,8 @@ public:
         char promotionPiece = '\0';
 
         bool operator==(const Move& other) const noexcept;
-
-        template<typename MoveContainer>
-        static void rotate(MoveContainer& moves, size_t index) noexcept;
+        constexpr bool sameFromTo(const Move& other) const noexcept { return from.index == other.from.index && to.index == other.to.index; };
+        constexpr bool sameFromTo(int f, int t) const noexcept { return from.index == static_cast<uint8_t>(f) && to.index == static_cast<uint8_t>(t); };
 
         std::string toUCIString() const noexcept;
     };

@@ -51,6 +51,13 @@ struct MoveList {
 
     inline void clear() noexcept { size = 0; }
 
+    inline void rotate(size_t index) noexcept {
+        chess::Board::Move temp = (*this)[index];
+        for (size_t i = index; i > 0; --i)
+            (*this)[i] = (*this)[i - 1];
+        (*this)[0] = temp;
+    }
+
 private:
     inline chess::Board::Move* ptr(size_t i) noexcept {
         return reinterpret_cast<chess::Board::Move*>(&data[i]);

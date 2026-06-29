@@ -101,16 +101,6 @@ inline bool Board::Move::operator==(const Move& other) const noexcept {
     return from == other.from && to == other.to && promotionPiece == other.promotionPiece;
 }
 
-template<typename MoveContainer>
-inline void Board::Move::rotate(MoveContainer& moves, size_t index) noexcept {
-    Move temp = moves[index];
-    // Shift all moves [0..index-1] one position to the right
-    for (size_t i = index; i > 0; --i) {
-        moves[i] = moves[i - 1];
-    }
-    moves[0] = temp;
-}
-
 inline std::string Board::Move::toUCIString() const noexcept {
     std::string uciMove = from.toString() + to.toString();
     if (promotionPiece != '\0') {

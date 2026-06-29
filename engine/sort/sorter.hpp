@@ -98,9 +98,6 @@ private:
         int type;
     };
 
-    static constexpr bool sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept;
-    static constexpr bool sameFromTo(const chess::Board::Move& m, int from, int to) noexcept;
-
     static bool givesCheckAfterQuietMoveFast(
         const chess::Board& b,
         const chess::Board::Move& m,

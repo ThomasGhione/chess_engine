@@ -21,13 +21,6 @@ Sorter::CaptureInfo Sorter::classifyCapture(
     return {isCapture, victimType};
 }
 
-constexpr bool Sorter::sameFromTo(const chess::Board::Move& a, const chess::Board::Move& b) noexcept {
-    return a.from.index == b.from.index && a.to.index == b.to.index;
-}
-
-constexpr bool Sorter::sameFromTo(const chess::Board::Move& m, int from, int to) noexcept {
-    return m.from.index == from && m.to.index == to;
-}
 
 bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m,
         int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
@@ -81,8 +74,8 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     }
 
     if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        if (sameFromTo(m, ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
-        if (sameFromTo(m, ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
+        if (m.sameFromTo(ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
+        if (m.sameFromTo(ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
     }
 
     if (ctx.previousMove != nullptr && ctx.previousMove->from.index < 64) {
@@ -265,7 +258,7 @@ MovePicker Sorter::sortLegalMoves(
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         const bool isHashMove = isHashMoveProbed
-            && sameFromTo(m, hashMove.from, hashMove.to)
+            && m.sameFromTo(hashMove.from, hashMove.to)
             && m.promotionPiece == hashMove.promo;
         if (isHashMove) hashMoveFound = true;
 
