@@ -77,10 +77,9 @@ private:
         const chess::Board& b) noexcept;
 
     template<bool IsWhite>
-    static void computePinRays(
+    static uint64_t computePinRays(
         const chess::Board& b,
         chess::Coords kingPos,
-        uint64_t& pinnedMask,
         uint64_t pinRays[64]) noexcept;
 
     template<bool IsWhite>

@@ -222,13 +222,11 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     // Macro-step 4: Compute pin rays to restrict non-king piece mobility.
     // NOTE: for performance, legality checks are skipped for many non-king moves
     // when check/pin filters already guarantee king safety.
-    uint64_t pinnedMask = 0ULL;
     // NOTE: per performance, don't zero-initialize this array.
     // It's only ever read where pinnedMask has a bit set.
     std::array<uint64_t, 64> pinRayBySquare;
-    if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
-    }
+    const uint64_t pinnedMask = (pawns | knights | bishops | rooks | queens)
+        ? computePinRays<IsWhite>(b, kingFromC, pinRayBySquare.data()) : 0ULL;
 
     appendPawnPseudoLegalMoves<IsWhite>(
         b, moves, pawns, occ, oppOcc, enPassantBit, enPassant, evasionMask, pinnedMask, pinRayBySquare.data());
@@ -300,11 +298,9 @@ MoveList MoveGenerator::generateLegalEvasionsFor(
 
     if (inDoubleCheck) return moves;
 
-    uint64_t pinnedMask = 0ULL;
     std::array<uint64_t, 64> pinRayBySquare;
-    if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays<IsWhite>(b, kingFromC, pinnedMask, pinRayBySquare.data());
-    }
+    const uint64_t pinnedMask = (pawns | knights | bishops | rooks | queens)
+        ? computePinRays<IsWhite>(b, kingFromC, pinRayBySquare.data()) : 0ULL;
 
     appendPawnPseudoLegalMoves<IsWhite>(
         b, moves, pawns, occ, oppOcc, enPassantBit, enPassant, evasionMask, pinnedMask, pinRayBySquare.data());
@@ -350,12 +346,10 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
     if (!kings) [[unlikely]] return moves;
     const int kingIndex = std::countr_zero(kings);
 
-    uint64_t pinnedMask = 0ULL;
     // NOTE: per performance, don't zero-initialize this array.
     std::array<uint64_t, 64> pinRayBySquare;
-    if (pawns | knights | bishops | rooks | queens) [[likely]] {
-        computePinRays<IsWhite>(b, chess::Coords{static_cast<uint8_t>(kingIndex)}, pinnedMask, pinRayBySquare.data());
-    }
+    const uint64_t pinnedMask = (pawns | knights | bishops | rooks | queens)
+        ? computePinRays<IsWhite>(b, chess::Coords{static_cast<uint8_t>(kingIndex)}, pinRayBySquare.data()) : 0ULL;
 
     const int enPassantIndex = hasEnPassant ? enPassant.index : 0;
     appendPawnTacticalNoChecks<IsWhite>(
@@ -474,35 +468,35 @@ void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList& moves,
 }
 
 template<bool IsWhite>
-void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
-                                   uint64_t& pinnedMask, uint64_t pinRays[64]) noexcept {
-    pinnedMask = 0ULL;
+uint64_t MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
+                                       uint64_t pinRays[64]) noexcept {
     constexpr int us = IsWhite ? 0 : 1;
     constexpr int them = us ^ 1;
     const int kingSq = kingPos.index;
 
     const uint64_t ownOcc = b.pawns_bb[us] | b.knights_bb[us] | b.bishops_bb[us] | b.rooks_bb[us] | b.queens_bb[us];
     if (!ownOcc) {
-        return;
+        return 0ULL;
     }
 
     const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
     const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
     if ((rookLikeEnemy | bishopLikeEnemy) == 0ULL) {
-        return;
+        return 0ULL;
     }
 
     // Geometric fast-path: if no enemy slider is geometrically aligned with our king
     // (even with an empty board), we don't need to compute real occupancy rays.
     if (!(pieces::getRookAttacks(kingSq, 0ULL) & rookLikeEnemy) &&
         !(pieces::getBishopAttacks(kingSq, 0ULL) & bishopLikeEnemy)) {
-        return;
+        return 0ULL;
     }
 
     const uint64_t occWithoutOwn = b.getPiecesBitMap() ^ ownOcc;
     uint64_t rookPinners = pieces::getRookAttacks(kingSq, occWithoutOwn) & rookLikeEnemy;
     uint64_t bishopPinners = pieces::getBishopAttacks(kingSq, occWithoutOwn) & bishopLikeEnemy;
 
+    uint64_t pinnedMask = 0ULL;
     const auto processPinners = [&](uint64_t pinners) noexcept {
         while (pinners) {
             const int pinnerSq = engine::popLSB(pinners);
@@ -517,6 +511,7 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
     };
     processPinners(rookPinners);
     processPinners(bishopPinners);
+    return pinnedMask;
 }
 
 template<bool IsWhite>
