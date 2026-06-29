@@ -93,19 +93,19 @@ public:
 private:
     // --- Private context structs ---
     struct SearchContext {
+        const chess::Board::Move* previousMove = nullptr;
+        uint64_t* nodeCounter      = nullptr;
+        int16_t* contHistEntry     = nullptr;
         int32_t depth;
         int     ply;
-        uint8_t activeColor;
-        const chess::Board::Move* previousMove = nullptr;
         int32_t  staticEval        = 0;
+        int      singularExtension = 0;
+        chess::Board::Move excludedMove = {};
+        uint8_t activeColor;
         bool     inCheck           = false;
         bool     isPVNode          = false;
-        uint64_t* nodeCounter      = nullptr;
-        int      singularExtension = 0;
-        int16_t* contHistEntry     = nullptr;
         bool     iirActive         = false;
         bool     improving         = false;
-        chess::Board::Move excludedMove = {};
     };
 
     struct AlphaBeta {

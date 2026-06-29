@@ -978,9 +978,9 @@ int32_t Searcher::searchPosition(
     }
 
     SearchContext ctx{
-        depth, ply, node.activeColor,
-        previousMove, node.staticEval, node.inCheck, node.isPVNode, counter,
-        singularExtension, contHistEntry, false, improving, excludedMove
+        previousMove, counter, contHistEntry,
+        depth, ply, node.staticEval, singularExtension, excludedMove,
+        node.activeColor, node.inCheck, node.isPVNode, false, improving
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);

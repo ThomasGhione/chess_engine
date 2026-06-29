@@ -244,7 +244,7 @@ MovePicker Sorter::sortLegalMoves(
     const bool inCheck       = b.inCheck(b.getActiveColor());
 
     const MoveOrderingContext orderingCtx{
-        ply, previousMove, usSide, runtime, contHistEntry
+        previousMove, runtime, contHistEntry, ply, usSide
     };
 
     // Probe TT for hash move.
@@ -257,15 +257,14 @@ MovePicker Sorter::sortLegalMoves(
 
     bool hashMoveFound = false;
 
-    for (int moveIndex = 0; moveIndex < picker.moves.size; ++moveIndex) {
-        const auto& m = picker.moves[moveIndex];
+    for (int i = 0; i < picker.moves.size; ++i) {
+        const auto& m = picker.moves[i];
 
         const int fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
         const int toPieceType  = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
 
         const auto cap = classifyCapture(m, fromPieceType, toPieceType, enPassant);
         const bool isCapture = cap.isCapture;
-        const int victimType = cap.victimType;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         const bool isHashMove = isHashMoveProbed
@@ -283,7 +282,7 @@ MovePicker Sorter::sortLegalMoves(
         // Score provisionally: captures rank as good, quiets as their base score.
         // finalizeSee later applies the good/bad split and the hanging demotion.
         int32_t score = scoreMoveOrderingPriorityInline(
-            orderingCtx, m, isCapture, victimType,
+            orderingCtx, m, isCapture, cap.victimType,
             isPromotionCandidate, isHashMove, fromPieceType);
 
         if (fromPieceType == chess::Board::KING) {
@@ -296,8 +295,8 @@ MovePicker Sorter::sortLegalMoves(
             }
         }
 
-        picker.scores[moveIndex] = score;
-        picker.seePending[moveIndex] = pending;
+        picker.scores[i] = score;
+        picker.seePending[i] = pending;
     }
 
     picker.board = &b;
@@ -332,13 +331,12 @@ MovePicker Sorter::sortTacticalMoves(
         const int toPieceType   = b.get(m.to)   & chess::Board::MASK_PIECE_TYPE;
 
         const auto cap = classifyCapture(m, fromPieceType, toPieceType, enPassant);
-        const bool isCapture = cap.isCapture;
         const int victimType = cap.victimType;
-        const bool isPromotion  = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
+        const bool isPromotion = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
 
         int32_t score;
 
-        if (isCapture) {
+        if (cap.isCapture) {
             int32_t capturedValue = PIECE_VALUES[victimType];
             if (isPromotion) capturedValue += getPromotionValueDelta(m.promotionPiece);
 

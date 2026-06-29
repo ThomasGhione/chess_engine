@@ -85,11 +85,11 @@ public:
 
 private:
     struct MoveOrderingContext {
-        int ply;
         const chess::Board::Move* previousMove;
-        int     usSide;
         const SearchRuntime& runtime;
         const int16_t* contHistEntry;
+        int ply;
+        int usSide;
     };
 
     // square == 64 means "no attacker" (type then unspecified).

@@ -31,10 +31,10 @@ struct MovePicker {
     MoveList<chess::Board::Move> moves;
     int32_t    scores[MAX_MOVES];
     SeePending seePending[MAX_MOVES];
-    const chess::Board* board = nullptr; // SEE source for deferred finalisation
+    bool hashMoveIsLegal = false;
     int  size         = 0;
     int  currentIndex = 0;
-    bool hashMoveIsLegal = false;
+    const chess::Board* board = nullptr; // SEE source for deferred finalisation
 
     MovePicker() noexcept = default;
     MovePicker(const MovePicker& o) noexcept { copyFrom(o); }
