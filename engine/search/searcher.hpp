@@ -23,8 +23,8 @@ public:
     // (negating std::numeric_limits<int32_t>::min() is undefined behaviour).
     static constexpr int32_t  NEG_INF               = -POS_INF;
     static constexpr uint64_t DEFAULT_DEPTH         = ::engine::DEFAULT_DEPTH;
-    static constexpr int32_t  MAX_PLY               = ::engine::MAX_PLY;
-    static constexpr int32_t  CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
+    static constexpr int      MAX_PLY               = ::engine::MAX_PLY;
+    static constexpr int      CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
     using SearchRuntime = ::engine::SearchRuntime;
 
     // All tunable search parameters live in search_constants.hpp (namespace
@@ -68,7 +68,7 @@ public:
     static int32_t searchPosition(
         chess::Board& b,
         SearchRuntime& runtime,
-        int32_t depth,
+        int depth,
         int32_t alpha,
         int32_t beta,
         int ply,
@@ -96,8 +96,8 @@ private:
         const chess::Board::Move* previousMove = nullptr;
         uint64_t* nodeCounter      = nullptr;
         int16_t* contHistEntry     = nullptr;
-        int32_t depth;
-        int     ply;
+        int      depth;
+        int      ply;
         int32_t  staticEval        = 0;
         int      singularExtension = 0;
         chess::Board::Move excludedMove = {};
@@ -135,14 +135,6 @@ private:
     static constexpr int32_t scoreFromTT(int32_t score, int ply) noexcept;
     // delta > 0 is a bonus, delta < 0 a malus; decay uses |delta|.
     static void applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValue) noexcept;
-
-    // --- TT helpers ---
-    // The move-less overload must NOT forward a 0 move (would clobber an existing stored move).
-    static void writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
-                        int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply) noexcept;
-    static void writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
-                        int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply,
-                        const chess::Board::Move& bestMove) noexcept;
 
     // --- Terminal condition checks ---
     static bool checkEarlyTerminalConditions(
@@ -184,16 +176,16 @@ private:
 
     // --- Internal search primitives ---
     static bool handleSearchPrelude(
-        const SearchRuntime& runtime, int32_t depth, const AlphaBeta& bounds,
+        const SearchRuntime& runtime, int depth, const AlphaBeta& bounds,
         int32_t& score, uint64_t hashKey, int ply) noexcept;
     static bool tryNullMovePruning(
         chess::Board& b, const SearchNodeState& node, SearchRuntime& runtime,
-        int32_t depth, int32_t alpha, int32_t beta, int ply,
+        int depth, int32_t alpha, int32_t beta, int ply,
         bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
         uint64_t* nodeCounter, int32_t& outScore) noexcept;
     static bool tryReverseFutilityPruning(
         const chess::Board& b, const SearchNodeState& node,
-        int32_t depth, int32_t beta, int32_t& outScore) noexcept;
+        int depth, int32_t beta, int32_t& outScore) noexcept;
     static SearchMoveResult searchMoves(
         chess::Board& b, MovePicker& movePicker,
         const SearchContext& ctx, AlphaBeta& bounds,
@@ -201,7 +193,7 @@ private:
         bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
     static void updateKillerAndHistoryOnBetaCutoff(
         const chess::Board::Move& m, bool isCapture, int victimType,
-        int32_t depth, int ply, uint8_t us, SearchRuntime& runtime,
+        int depth, int ply, uint8_t us, SearchRuntime& runtime,
         const chess::Board::Move* previousMove,
         int16_t* contHistEntry = nullptr,
         int fromPieceType = 0) noexcept;

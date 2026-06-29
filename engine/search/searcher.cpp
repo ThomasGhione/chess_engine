@@ -114,24 +114,6 @@ void Searcher::applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValu
     cell = static_cast<int16_t>(std::clamp(value, MIN_I16, MAX_I16));
 }
 
-void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
-                       int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply) noexcept {
-    const auto flag = determineFlag(best, alphaOrig, betaOrig);
-    runtime.transpositionTable->store(
-        hashKey, static_cast<uint8_t>(depth),
-        static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(best, ply), NEG_INF, POS_INF)), static_cast<uint8_t>(flag));
-}
-
-void Searcher::writeTT(SearchRuntime& runtime, uint64_t hashKey, int32_t depth,
-                       int32_t best, int32_t alphaOrig, int32_t betaOrig, int ply,
-                       const chess::Board::Move& bestMove) noexcept {
-    const auto flag = determineFlag(best, alphaOrig, betaOrig);
-    const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
-        bestMove.from.index, bestMove.to.index, bestMove.promotionPiece);
-    runtime.transpositionTable->store(
-        hashKey, static_cast<uint8_t>(depth),
-        static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(best, ply), NEG_INF, POS_INF)), static_cast<uint8_t>(flag), encodedMove);
-}
 
 bool Searcher::checkEarlyTerminalConditions(
     const chess::Board& b,
@@ -304,8 +286,8 @@ int32_t Searcher::searchRootMoveScore(
     // of 0 cannot underflow to UINT64_MAX and reinterpret as a negative int32_t.
     // In normal IDS flow runtime.depth is always >= 1, but tests/direct callers
     // could pass through with 0.
-    const int32_t childDepth = (runtime.depth > 0)
-        ? static_cast<int32_t>(runtime.depth - 1)
+    const int childDepth = (runtime.depth > 0)
+        ? static_cast<int>(runtime.depth - 1)
         : 0;
     const int32_t score = -searchPosition(
         b, runtime, childDepth, -beta, -alpha, 1,
@@ -316,7 +298,7 @@ int32_t Searcher::searchRootMoveScore(
 
 bool Searcher::handleSearchPrelude(
     const SearchRuntime& runtime,
-    int32_t depth,
+    int depth,
     const AlphaBeta& bounds,
     int32_t& score,
     uint64_t hashKey,
@@ -336,7 +318,7 @@ bool Searcher::tryNullMovePruning(
     chess::Board& b,
     const SearchNodeState& node,
     SearchRuntime& runtime,
-    int32_t depth,
+    int depth,
     int32_t alpha,
     int32_t beta,
     int ply,
@@ -348,8 +330,8 @@ bool Searcher::tryNullMovePruning(
     // Eval-scaled reduction: the further static eval sits above beta, the more
     // certain the null move fails high, so reduce deeper. Clamped to >= 0 (the
     // NMP gate allows eval up to ~100cp below beta) and capped.
-    const int32_t evalReduction = std::clamp((node.staticEval - beta) / NMP_EVAL_DIV, 0, NMP_EVAL_MAX);
-    const int32_t reduction = 3 + depth / 3 + evalReduction;
+    const int evalReduction = std::clamp((node.staticEval - beta) / NMP_EVAL_DIV, 0, NMP_EVAL_MAX);
+    const int reduction = 3 + depth / 3 + evalReduction;
 
     chess::Board::MoveState nullState;
     b.doNullMove(nullState);
@@ -391,7 +373,7 @@ bool Searcher::tryNullMovePruning(
 bool Searcher::tryReverseFutilityPruning(
     const chess::Board& b,
     const SearchNodeState& node,
-    int32_t depth,
+    int depth,
     int32_t beta,
     int32_t& outScore) noexcept {
     // Precondition (guaranteed by the only caller's canReverseFutilityPrune):
@@ -417,7 +399,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const chess::Board::Move& m,
     bool isCapture,
     int victimType,
-    int32_t depth,
+    int depth,
     int ply,
     uint8_t us,
     SearchRuntime& runtime,
@@ -427,7 +409,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const int fromIndex = m.from.index;
     const int toIndex = m.to.index;
     const int usSide = chess::Board::colorToIndex(us);
-    const int32_t depthPlusOne = depth + 1;
+    const int depthPlusOne = depth + 1;
     const int32_t bonus = depthPlusOne * depthPlusOne;
 
     // CAPTURE HISTORY: bonus for captures that cause cutoffs.
@@ -592,8 +574,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isForcingCheck = givesCheck && forcingCandidate;
         const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
-        const int32_t childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
-                                 + (isFirstMove ? ctx.singularExtension : 0);
+        const int childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
+                             + (isFirstMove ? ctx.singularExtension : 0);
         const auto& km0 = runtime.killerMoves[0][ctx.ply];
         const auto& km1 = runtime.killerMoves[1][ctx.ply];
         const bool isKiller = (m.from.index == km0.from.index && m.to.index == km0.to.index)
@@ -612,7 +594,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (canReduce) {
             const int di = ctx.depth < LMR_MAX_DEPTH ? ctx.depth : LMR_MAX_DEPTH - 1;
             const int mi = moveIndex < LMR_MAX_MOVES ? moveIndex : LMR_MAX_MOVES - 1;
-            int32_t reduction = LMR_REDUCTION_TABLE.data[di][mi];
+            int reduction = LMR_REDUCTION_TABLE.data[di][mi];
 
             if (ctx.isPVNode) {
                 reduction = std::max(1, reduction - 1);
@@ -633,7 +615,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             }
             reduction = std::clamp(reduction, 1, childDepth - 1);
 
-            const int32_t reducedDepth = std::max(1, childDepth - reduction);
+            const int reducedDepth = std::max(1, childDepth - reduction);
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             
@@ -679,7 +661,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 updateKillerAndHistoryOnBetaCutoff(
                     m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
 
-                const int32_t depthPlusOne = ctx.depth + 1;
+                const int depthPlusOne = ctx.depth + 1;
                 const int32_t malus = -(depthPlusOne * depthPlusOne);
 
                 // Malus to quiet moves searched before the cutoff. When the
@@ -720,7 +702,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 int32_t Searcher::searchPosition(
     chess::Board& b,
     SearchRuntime& runtime,
-    int32_t depth,
+    int depth,
     int32_t alpha,
     int32_t beta,
     int ply,
@@ -1013,7 +995,7 @@ int32_t Searcher::searchPosition(
         && (b.get(result.move.to.index) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
         const int corrSide = chess::Board::colorToIndex(node.activeColor);
         const int32_t residual = std::clamp(best - node.staticEval, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
-        const int32_t w = std::min<int32_t>(depth, CORR_HIST_MAX_W);
+        const int w = std::min(depth, CORR_HIST_MAX_W);
         auto blendCorr = [&](int16_t& cell) noexcept {
             cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
         };
@@ -1023,7 +1005,11 @@ int32_t Searcher::searchPosition(
     }
 
     if (canUseTT && allowTTWrite) {
-        writeTT(runtime, hashKey, ctx.depth, best, alphaOrig, betaOrig, ctx.ply, result.move);
+        runtime.transpositionTable->store(
+            hashKey, static_cast<uint8_t>(ctx.depth),
+            scoreToTT(best, ctx.ply),
+            static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)),
+            TranspositionTable::Entry::encodeMove(result.move.from.index, result.move.to.index, result.move.promotionPiece));
     }
 
     return best;
@@ -1172,14 +1158,18 @@ int32_t Searcher::quiescenceSearch(
                 // Store `best` so the stored score matches the flag derived
                 // from it (consistent with the fall-through store below);
                 // storing the raw cutoff bound was looser and inconsistent.
-                writeTT(runtime, b.getHash(), 0, best, alphaOrig, betaOrig, ply);
+                runtime.transpositionTable->store(
+                    b.getHash(), 0, scoreToTT(best, ply),
+                    static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)));
             }
             return best; // fail-soft: best >= score >= beta
         }
     }
 
     if (!inCheck && canUseTT && allowTTWrite) {
-        writeTT(runtime, b.getHash(), 0, best, alphaOrig, betaOrig, ply);
+        runtime.transpositionTable->store(
+            b.getHash(), 0, scoreToTT(best, ply),
+            static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)));
     }
 
     return best;
