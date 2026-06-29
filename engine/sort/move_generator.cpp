@@ -190,10 +190,7 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     const uint8_t kingPiece = chess::Board::KING | color;
 
     // Macro-step 2: Compute check-evasion mask when in single-check.
-    uint64_t evasionMask = ~0ULL;
-    if (singleCheck) {
-        computeCheckEvasionMasks<IsWhite>(b, evasionMask);
-    }
+    const uint64_t evasionMask = singleCheck ? computeCheckEvasionMasks<IsWhite>(b) : ~0ULL;
 
     if (!kings) [[unlikely]] return moves;
 
@@ -289,10 +286,7 @@ MoveList MoveGenerator::generateLegalEvasionsFor(
     const bool singleCheck = !inDoubleCheck;
     const uint8_t kingPiece = chess::Board::KING | color;
 
-    uint64_t evasionMask = ~0ULL;
-    if (singleCheck) {
-        computeCheckEvasionMasks<IsWhite>(b, evasionMask);
-    }
+    const uint64_t evasionMask = singleCheck ? computeCheckEvasionMasks<IsWhite>(b) : ~0ULL;
 
     const int kingFrom = std::countr_zero(kings);
     const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
@@ -526,18 +520,15 @@ void MoveGenerator::computePinRays(const chess::Board& b, chess::Coords kingPos,
 }
 
 template<bool IsWhite>
-void MoveGenerator::computeCheckEvasionMasks(
-    const chess::Board& b,
-    uint64_t& evasionMask) noexcept {
-    evasionMask = 0ULL;
-
+uint64_t MoveGenerator::computeCheckEvasionMasks(
+    const chess::Board& b) noexcept {
     constexpr int us = IsWhite ? 0 : 1;
     constexpr int them = us ^ 1;
     const uint64_t kingBB = b.kings_bb[us];
     if (!kingBB) [[unlikely]] {
-        return;
+        return 0ULL;
     }
-  
+
     const int kingSq = std::countr_zero(kingBB);
     const uint64_t occ = b.getPiecesBitMap();
 
@@ -551,20 +542,20 @@ void MoveGenerator::computeCheckEvasionMasks(
         | bishopCheckers;
 
     if ((checkersMask & (checkersMask - 1)) != 0ULL) {
-        return;
+        return 0ULL;
     }
 
     if (!checkersMask) [[unlikely]] {
-        evasionMask = ~0ULL;
-        return;
+        return ~0ULL;
     }
 
     const int checkerSq = std::countr_zero(checkersMask);
     const uint64_t checkerBit = chess::Board::bitMask(checkerSq);
-    evasionMask = checkerBit;
+    uint64_t evasionMask = checkerBit;
     if ((rookCheckers | bishopCheckers) & checkerBit) {
         evasionMask |= BETWEEN_EXCLUSIVE_LUT[kingSq][checkerSq];
     }
+    return evasionMask;
 }
 
 
