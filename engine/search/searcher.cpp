@@ -215,7 +215,7 @@ int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
 bool Searcher::tryStalemateScore(const chess::Board& b, const SearchNodeState& node, int32_t& outScore) noexcept {
     if (b.hasAnyLegalMove(node.activeColor)) return false;
     const int32_t md = b.getIncrementalMaterialDelta();
-    outScore = stalemateScoreFromMaterialDelta(node.usIsWhite ? md : -md);
+    outScore = stalemateScoreFromMaterialDelta((node.activeColor == chess::Board::WHITE) ? md : -md);
     return true;
 }
 
@@ -243,11 +243,6 @@ int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
     // when winning, but smaller than any meaningful material amount so it
     // won't trade a piece just to avoid the repetition.
     return (drawDelta > 0) ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT;
-}
-
-void Searcher::rootNullWindow(int32_t alpha, int32_t& outAlpha, int32_t& outBeta) noexcept {
-    outAlpha = alpha;
-    outBeta = saturatingAdd32(alpha, 1);
 }
 
 void Searcher::updateMinMax(
@@ -760,10 +755,8 @@ int32_t Searcher::searchPosition(
     const bool isPVNode = (static_cast<int64_t>(beta) - static_cast<int64_t>(alpha) > 1);
 
     if (ply > 0) {
-        const int32_t matingAlpha = NEG_INF + ply;
-        const int32_t matingBeta  = POS_INF - ply;
-        if (alpha < matingAlpha) alpha = matingAlpha;
-        if (beta > matingBeta)   beta = matingBeta;
+        alpha = std::max(alpha, NEG_INF + ply);
+        beta  = std::min(beta,  POS_INF - ply);
         if (alpha >= beta) return alpha;
     }
 
@@ -822,7 +815,6 @@ int32_t Searcher::searchPosition(
 
     SearchNodeState node{};
     node.activeColor = b.getActiveColor();
-    node.usIsWhite = (node.activeColor == chess::Board::WHITE);
     node.inCheck = b.inCheck(node.activeColor);
     node.isPVNode = isPVNode;
     const int nonPawnMajorsAll = b.getIncrementalNonPawnMajorCount();
@@ -983,7 +975,7 @@ int32_t Searcher::searchPosition(
         const int32_t mdW = b.getIncrementalMaterialDelta();
         return node.inCheck
             ? (NEG_INF + ply)  // side to move is checkmated (negamax)
-            : stalemateScoreFromMaterialDelta(node.usIsWhite ? mdW : -mdW);
+            : stalemateScoreFromMaterialDelta((node.activeColor == chess::Board::WHITE) ? mdW : -mdW);
     }
 
     bool hasHashMove = false;
@@ -1243,10 +1235,8 @@ chess::Board::Move Searcher::getBestMove(
             if (isFirst) {
                 score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
             } else {
-                int32_t nullAlpha = 0;
-                int32_t nullBeta = 0;
-                rootNullWindow(alpha, nullAlpha, nullBeta);
-                score = searchRootMoveScore(rootBoard, m, runtime, nullAlpha, nullBeta, true, true, &localNodes);
+                const int32_t nullBeta = saturatingAdd32(alpha, 1);
+                score = searchRootMoveScore(rootBoard, m, runtime, alpha, nullBeta, true, true, &localNodes);
                 if (shouldResearchPVS(score, alpha)) {
                     score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
                 }
@@ -1289,14 +1279,12 @@ chess::Board::Move Searcher::getBestMove(
     auto searchDeferredRootMove = [&](int i, chess::Board& threadBoard) noexcept {
         const auto m = rootMoves[i];
         uint64_t workerNodes = 0;
-        int32_t nullAlpha = 0;
-        int32_t nullBeta = 0;
-        rootNullWindow(alpha, nullAlpha, nullBeta);
+        const int32_t nullBeta = saturatingAdd32(alpha, 1);
         // allowTTWrite=true: deferred root subtrees memoise their own LMR
         // re-searches (which otherwise re-expand from scratch, since the PVS
         // scout and its full-depth re-search hit no shared entries).
         const int32_t score = searchRootMoveScore(
-            threadBoard, m, runtime, nullAlpha, nullBeta, true, false, &workerNodes);
+            threadBoard, m, runtime, alpha, nullBeta, true, false, &workerNodes);
 
         threadScores[i] = score;
         threadNodeCounts[i] = workerNodes;

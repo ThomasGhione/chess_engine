@@ -115,7 +115,6 @@ private:
 
     struct SearchNodeState {
         uint8_t activeColor             = chess::Board::WHITE;
-        bool    usIsWhite               = true;
         bool    inCheck                 = false;
         bool    isPVNode                = false;
         bool    isPawnEndgameForPruning = false;
@@ -165,7 +164,6 @@ private:
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
 
     // --- Root search helpers ---
-    static void rootNullWindow(int32_t alpha, int32_t& outAlpha, int32_t& outBeta) noexcept;
     static void updateMinMax(int32_t score, int32_t& alpha, int32_t& bestScore,
                              chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
     static int32_t searchRootMoveScore(
