@@ -433,15 +433,14 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
     const int fromIndex = m.from.index;
     const int toIndex = m.to.index;
+    const int usSide = chess::Board::colorToIndex(us);
+    const int32_t depthPlusOne = depth + 1;
+    const int32_t bonus = depthPlusOne * depthPlusOne;
 
     // CAPTURE HISTORY: bonus for captures that cause cutoffs.
     if (isCapture) {
-        const int colorIndex = chess::Board::colorToIndex(us);
-        const int32_t depthPlusOne = depth + 1;
-        const int32_t bonus = depthPlusOne * depthPlusOne;
-
-        auto& chPrimary = runtime.captureHistory[colorIndex][toIndex][victimType][0];
-        auto& chSecondary = runtime.captureHistory[colorIndex][toIndex][victimType][1];
+        auto& chPrimary = runtime.captureHistory[usSide][toIndex][victimType][0];
+        auto& chSecondary = runtime.captureHistory[usSide][toIndex][victimType][1];
         applyHistoryGravity(chPrimary, bonus, MAX_CAPTURE_HISTORY);
         applyHistoryGravity(chSecondary, bonus >> 1, MAX_CAPTURE_HISTORY);
         if (chSecondary > chPrimary) {
@@ -467,11 +466,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     }
 
     // HISTORY HEURISTIC: gravity update.
-    const int colorIndex = chess::Board::colorToIndex(us);
-    const int32_t depthPlusOne = depth + 1;
-    const int32_t bonus = depthPlusOne * depthPlusOne;
-
-    applyHistoryGravity(runtime.history[colorIndex][fromIndex][toIndex], bonus, MAX_HISTORY);
+    applyHistoryGravity(runtime.history[usSide][fromIndex][toIndex], bonus, MAX_HISTORY);
 
     // CONTINUATION HISTORY: bonus for this move given the previous move.
     if (contHistEntry != nullptr) {
@@ -574,8 +569,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // history at low depth — they reliably fail to improve alpha.
         if (isQuietMove && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0
             && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
-            const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
-            const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+            const int32_t histScore = runtime.history[usSide][m.from.index][m.to.index];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
                 continue;
             }
@@ -642,8 +636,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             // History adjustment (quiet moves only — quiet history is meaningless
             // for captures, which the ordering already ranks by SEE/capture history).
             if (!wasCapture) {
-                const int8_t colorIdx = (ctx.activeColor == chess::Board::WHITE) ? 0 : 1;
-                const int32_t histScore = runtime.history[colorIdx][m.from.index][m.to.index];
+                const int32_t histScore = runtime.history[usSide][m.from.index][m.to.index];
                 reduction -= histScore / 8192;
             }
             reduction = std::clamp(reduction, 1, childDepth - 1);
@@ -694,7 +687,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 updateKillerAndHistoryOnBetaCutoff(
                     m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
 
-                const int colorIndex = chess::Board::colorToIndex(ctx.activeColor);
                 const int32_t depthPlusOne = ctx.depth + 1;
                 const int32_t malus = -(depthPlusOne * depthPlusOne);
 
@@ -704,7 +696,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 // capture, every tracked quiet failed and is penalised.
                 const int quietMalusEnd = numSearchedQuiets - (isQuietMove ? 1 : 0);
                 for (int i = 0; i < quietMalusEnd; ++i) {
-                    applyHistoryGravity(runtime.history[colorIndex][searchedQuiets[i].from][searchedQuiets[i].to],
+                    applyHistoryGravity(runtime.history[usSide][searchedQuiets[i].from][searchedQuiets[i].to],
                                         malus, MAX_HISTORY);
                     if (ctx.contHistEntry != nullptr) {
                         applyHistoryGravity(
@@ -716,9 +708,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 // Capture history malus: penalize captures searched before the cutoff move.
                 const int capMalusEnd = wasCapture ? numSearchedCaptures - 1 : numSearchedCaptures;
                 for (int i = 0; i < capMalusEnd; ++i) {
-                    applyHistoryGravity(runtime.captureHistory[colorIndex][searchedCaptures[i].to][searchedCaptures[i].victimType][0],
+                    applyHistoryGravity(runtime.captureHistory[usSide][searchedCaptures[i].to][searchedCaptures[i].victimType][0],
                                         malus, MAX_CAPTURE_HISTORY);
-                    applyHistoryGravity(runtime.captureHistory[colorIndex][searchedCaptures[i].to][searchedCaptures[i].victimType][1],
+                    applyHistoryGravity(runtime.captureHistory[usSide][searchedCaptures[i].to][searchedCaptures[i].victimType][1],
                                         malus, MAX_CAPTURE_HISTORY);
                 }
             }
@@ -1172,13 +1164,9 @@ int32_t Searcher::quiescenceSearch(
 
         const int fromPiece = b.get(m.from.index);
         const int pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        if (!inCheck) {
-            if (pieceType == chess::Board::KING) {
-                if (!b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece)) {
-                    continue;
-                }
-            }
-        }
+        if (!inCheck && pieceType == chess::Board::KING
+            && !b.isLegalPseudoMove(m.from.index, m.to.index, fromPiece))
+            continue;
 
         chess::Board::MoveState state;
         b.doMove(m, state);
