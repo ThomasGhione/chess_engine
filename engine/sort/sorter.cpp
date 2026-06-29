@@ -156,8 +156,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         ^ static_cast<uint64_t>(fromSq)
         ^ (static_cast<uint64_t>(toSq) << 6)
         ^ (static_cast<uint64_t>(static_cast<unsigned char>(m.promotionPiece)) << 12);
-    const uint64_t slot = cacheKey & SEE_CACHE_MASK;
-    SEECacheEntry& entry = seeCache[slot];
+    SEECacheEntry& entry = seeCache[cacheKey & SEE_CACHE_MASK];
     if (entry.valid && entry.key == cacheKey) return entry.score;
 
     const int sideActive  = chess::Board::colorToIndex(b.getActiveColor());
@@ -199,10 +198,8 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         const auto lva = getLeastValuableAttackerTo(b, toSq, occ, side);
         if (lva.square == 64) break;
 
-        const uint64_t attackerBit = occ & chess::Board::bitMask(lva.square);
-
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
-        occ ^= attackerBit;
+        occ ^= chess::Board::bitMask(lva.square);
         capturedOnTargetType = lva.type;
         side ^= 1;
         ++depth;
@@ -316,8 +313,7 @@ MovePicker Sorter::sortTacticalMoves(
     MovePicker picker;
     if (tacticalMoves.is_empty()) return picker;
 
-    const bool usIsWhite = (b.getActiveColor() == chess::Board::WHITE);
-    const int promotionRank  = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank  = chess::Board::promotionRank((b.getActiveColor() == chess::Board::WHITE));
     const chess::Coords enPassant = b.getEnPassant();
     const int32_t seeThreshold   = (ply < 10) ? SEE_THRESHOLD_SHALLOW
                                   : (ply < 20) ? SEE_THRESHOLD_MID
