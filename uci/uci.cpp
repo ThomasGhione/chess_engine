@@ -85,49 +85,27 @@ namespace {
     }
 
     static void refreshPieceTables() noexcept {
-        engine::PIECE_VALUES[0] = 0;
-        engine::PIECE_VALUES[1] = engine::PAWN_VALUE;
-        engine::PIECE_VALUES[2] = engine::KNIGHT_VALUE;
-        engine::PIECE_VALUES[3] = engine::BISHOP_VALUE;
-        engine::PIECE_VALUES[4] = engine::ROOK_VALUE;
-        engine::PIECE_VALUES[5] = engine::QUEEN_VALUE;
-        engine::PIECE_VALUES[6] = engine::KING_VALUE;
-        engine::PIECE_VALUES[7] = 0;
-
-        engine::MVV_TABLE[0] = 0;
-        engine::MVV_TABLE[1] = engine::PAWN_VALUE * 10;
-        engine::MVV_TABLE[2] = engine::KNIGHT_VALUE * 10;
-        engine::MVV_TABLE[3] = engine::BISHOP_VALUE * 10;
-        engine::MVV_TABLE[4] = engine::ROOK_VALUE * 10;
-        engine::MVV_TABLE[5] = engine::QUEEN_VALUE * 10;
-        engine::MVV_TABLE[6] = engine::KING_VALUE * 10;
-
-        chess::Board::MATERIAL_VALUES[0] = 0;
-        chess::Board::MATERIAL_VALUES[1] = engine::PAWN_VALUE;
-        chess::Board::MATERIAL_VALUES[2] = engine::KNIGHT_VALUE;
-        chess::Board::MATERIAL_VALUES[3] = engine::BISHOP_VALUE;
-        chess::Board::MATERIAL_VALUES[4] = engine::ROOK_VALUE;
-        chess::Board::MATERIAL_VALUES[5] = engine::QUEEN_VALUE;
-        chess::Board::MATERIAL_VALUES[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES[7] = 0;
-
-        chess::Board::MATERIAL_VALUES_MG[0] = 0;
-        chess::Board::MATERIAL_VALUES_MG[1] = engine::PAWN_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[2] = engine::KNIGHT_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[3] = engine::BISHOP_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[4] = engine::ROOK_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[5] = engine::QUEEN_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES_MG[7] = 0;
-
-        chess::Board::MATERIAL_VALUES_EG[0] = 0;
-        chess::Board::MATERIAL_VALUES_EG[1] = engine::PAWN_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[2] = engine::KNIGHT_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[3] = engine::BISHOP_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[4] = engine::ROOK_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[5] = engine::QUEEN_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES_EG[7] = 0;
+        // One row per piece slot (0=empty, 1=pawn … 6=king, 7=empty).
+        // King has no phase-split value, so mg/eg both use the base.
+        struct Slot { int32_t base, mg, eg; };
+        const Slot slots[] = {
+            {0,                    0,                       0                      },
+            {engine::PAWN_VALUE,   engine::PAWN_VALUE_MG,   engine::PAWN_VALUE_EG  },
+            {engine::KNIGHT_VALUE, engine::KNIGHT_VALUE_MG, engine::KNIGHT_VALUE_EG},
+            {engine::BISHOP_VALUE, engine::BISHOP_VALUE_MG, engine::BISHOP_VALUE_EG},
+            {engine::ROOK_VALUE,   engine::ROOK_VALUE_MG,   engine::ROOK_VALUE_EG  },
+            {engine::QUEEN_VALUE,  engine::QUEEN_VALUE_MG,  engine::QUEEN_VALUE_EG },
+            {engine::KING_VALUE,   engine::KING_VALUE,      engine::KING_VALUE     },
+            {0,                    0,                       0                      },
+        };
+        for (int i = 0; i < 8; ++i) {
+            engine::PIECE_VALUES[i] = slots[i].base;
+            chess::Board::MATERIAL_VALUES[i]    = slots[i].base;
+            chess::Board::MATERIAL_VALUES_MG[i] = slots[i].mg;
+            chess::Board::MATERIAL_VALUES_EG[i] = slots[i].eg;
+        }
+        for (int i = 0; i < 7; ++i)
+            engine::MVV_TABLE[i] = slots[i].base * 10;
     }
 
     // Macro to expand a PhaseValue constant into Mg + Eg UCI options. Tuners
