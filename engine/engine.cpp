@@ -54,11 +54,7 @@ void Engine::ensureMagicTablesInitialized() noexcept {
     }
 }
 
-Engine::Engine()
-    : depth(searchRuntime.depth)
-    , eval(searchRuntime.eval)
-    , nodesSearched(searchRuntime.nodesSearched)
-    , MAX_THREADS(searchRuntime.maxThreads) {
+Engine::Engine() {
 
     ensureMagicTablesInitialized();
 
@@ -222,7 +218,7 @@ void Engine::updateGameResult() noexcept {
 void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
     this->ponderRootHash = rootBoard.getHash();
     this->clearSearchStopFlags();
-    this->nodesSearched = 0;
+    this->searchRuntime.nodesSearched = 0;
     this->tt.incrementGeneration();
 
     const Searcher::IterativeSearchResult ponderResult = Searcher::runIterativeDeepening(
@@ -406,7 +402,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
         if (candidate.promotionPiece != '\0') {
             moveStr += candidate.promotionPiece;
         }
-        DBG_LOG_STREAM("Engine plays: " << moveStr << " (score: " << this->eval << ")\n");
+        DBG_LOG_STREAM("Engine plays: " << moveStr << " (score: " << this->searchRuntime.eval << ")\n");
     );
 }
 

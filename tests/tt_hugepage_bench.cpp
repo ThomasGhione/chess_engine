@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
             const auto stop = std::chrono::steady_clock::now();
             const uint64_t elapsedNs = static_cast<uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count());
-            const uint64_t nodes = engine.nodesSearched;
+            const uint64_t nodes = engine.searchRuntime.nodesSearched;
 
             if (firstMoveUci.empty()) firstMoveUci = bestMove.toUCIString();
 

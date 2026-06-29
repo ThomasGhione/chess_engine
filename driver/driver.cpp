@@ -311,7 +311,7 @@ void Driver::engineTurn() noexcept {
     engine.search(engine.DEFAULTDEPTH);
 
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
-    DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
+    DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.searchRuntime.nodesSearched << "\n");
 }
 
 std::string Driver::getBasicBoard(const Board& board) {

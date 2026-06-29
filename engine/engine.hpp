@@ -69,12 +69,6 @@ public:
     // Unified runtime state owned by Searcher.
     Searcher::SearchRuntime searchRuntime{};
 
-    // Compatibility aliases for existing call-sites.
-    uint64_t& depth;
-    int32_t& eval;
-    uint64_t& nodesSearched;
-    int& MAX_THREADS;
-
     // UCI `Threads` override. 0 = auto (use omp_get_max_threads()). Persists
     // across reset()/ucinewgame so a GUI/cutechess setting survives new games.
     int requestedThreads = 0;
