@@ -39,7 +39,6 @@ inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b,
     int32_t sideScore = edgeProximity(enemyKingSq) * QUEEN_EG_EDGE_BONUS;
     sideScore += ownKingProximity(b.kings_bb[side], enemyKingSq) * 14;
 
-    // ourQueens >= 1 is guaranteed above, so queens_bb[side] is always non-empty.
     uint64_t tempQueens = b.queens_bb[side];
     int bestQueenDist = 100;
     while (tempQueens) {

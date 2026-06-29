@@ -149,31 +149,27 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     static constexpr uint64_t SEE_CACHE_MASK = SEE_CACHE_SIZE - 1u;
     thread_local std::array<SEECacheEntry, SEE_CACHE_SIZE> seeCache{};
 
+    const int toSq   = m.to.index;
+    const int fromSq = m.from.index;
+
     // Cheap key: 0 multiplies. from/to/promo land in distinct bit regions
     // (0..5, 6..11, 12..) so within the same position they disperse cleanly;
     // the zobrist hash provides cross-position dispersion in the high bits.
     const uint64_t cacheKey = b.getHash()
-        ^ static_cast<uint64_t>(m.from.index)
-        ^ (static_cast<uint64_t>(m.to.index) << 6)
+        ^ static_cast<uint64_t>(fromSq)
+        ^ (static_cast<uint64_t>(toSq) << 6)
         ^ (static_cast<uint64_t>(static_cast<unsigned char>(m.promotionPiece)) << 12);
     const uint64_t slot = cacheKey & SEE_CACHE_MASK;
     SEECacheEntry& entry = seeCache[slot];
     if (entry.valid && entry.key == cacheKey) return entry.score;
-
-    const int toSq   = m.to.index;
-    const int fromSq = m.from.index;
 
     const int sideActive  = chess::Board::colorToIndex(b.getActiveColor());
     const int sidePassive = sideActive ^ 1;
 
     int capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
     int capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
-    // Genuine en-passant only: pawn moving diagonally onto an empty square.
-    // (A plain quiet move also has an empty destination — must NOT be treated
-    // as EP, or it gets a phantom +PAWN gain and corrupted occupancy.)
-    const bool isEp = (capturedType == chess::Board::EMPTY)
-        && (capturedOnTargetType == chess::Board::PAWN)
-        && (chess::Board::file(fromSq) != chess::Board::file(toSq));
+    const bool isEp = (capturedOnTargetType == chess::Board::PAWN)
+                   && (m.to == b.getEnPassant());
     if (isEp) capturedType = chess::Board::PAWN;
 
     int32_t initialGain = PIECE_VALUES[capturedType];
