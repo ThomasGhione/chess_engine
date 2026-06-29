@@ -192,8 +192,6 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     // Macro-step 2: Compute check-evasion mask when in single-check.
     const uint64_t evasionMask = singleCheck ? computeCheckEvasionMasks<IsWhite>(b) : ~0ULL;
 
-    if (!kings) [[unlikely]] return moves;
-
     const int kingFrom = std::countr_zero(kings);
     const chess::Coords kingFromC{static_cast<uint8_t>(kingFrom)};
 
@@ -273,8 +271,6 @@ MoveList MoveGenerator::generateLegalEvasionsFor(
     const uint64_t queens = b.queens_bb[side];
     const uint64_t kings = b.kings_bb[side];
 
-    if (!kings) [[unlikely]] return moves;
-
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
     const uint64_t oppOcc = occ & ~ownOcc;
     const chess::Coords enPassant = b.getEnPassant();
@@ -343,7 +339,6 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
 
     const uint8_t pawnPiece = chess::Board::PAWN | color;
 
-    if (!kings) [[unlikely]] return moves;
     const int kingIndex = std::countr_zero(kings);
 
     // NOTE: per performance, don't zero-initialize this array.
