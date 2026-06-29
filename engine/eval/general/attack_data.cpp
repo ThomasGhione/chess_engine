@@ -1,4 +1,3 @@
-#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {

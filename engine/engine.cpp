@@ -1,18 +1,11 @@
 
 #include "engine.hpp"
 
-#include <algorithm>
-#include <cctype>
-#include <cstdlib>
 #include <iostream>
-#include <string_view>
-#include <utility>
 
 #include <omp.h>
 
-#include "../board/piece.hpp"
 #include "../debug.hpp"
-#include "../ascii_utils.hpp"
 
 namespace engine {
 

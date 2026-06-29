@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <bit>
 #include "board.hpp"
 #include "../tt/zobrist.hpp"
 

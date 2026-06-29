@@ -1,11 +1,8 @@
-#include <bit>
 #include "opening_book.hpp"
 #include "polyglot_keys.hpp"
-#include "../../board/piece.hpp"
 
 #include <algorithm>
 #include <cstdio>
-#include <cstring>
 #include <numeric>
 #include <random>
 

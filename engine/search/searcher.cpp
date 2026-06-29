@@ -1,17 +1,11 @@
-#include <bit>
 #include "searcher.hpp"
 
-#include <algorithm>
-#include <array>
 #include <iostream>
 #include <numeric>
-#include <string>
 
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
-#include "../time/time_manager.hpp"
 #include "../sort/move_generator.hpp"
-#include "../sort/sorter.hpp"
 
 namespace engine {
 

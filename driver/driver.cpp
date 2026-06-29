@@ -2,18 +2,12 @@
 
 //FIXME Spostare gli include dentro .hpp non qui
 #include "../engine/engine.hpp"
-#include "../uci/uci.hpp"
 #include "../debug.hpp"
 
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
 #include <ctime>
-#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <limits>
 
 namespace driver {
 

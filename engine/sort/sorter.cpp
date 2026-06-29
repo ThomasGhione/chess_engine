@@ -1,4 +1,3 @@
-#include <bit>
 #include "sorter.hpp"
 
 #include "../engine.hpp"

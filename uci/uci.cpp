@@ -1,20 +1,11 @@
 #include "uci.hpp"
 
-#include "../board/board.hpp"
 #include "../engine/engine.hpp"
-#include "../engine/eval_constants.hpp"
-#include "../ascii_utils.hpp"
 
 #include <omp.h>
 
-#include <algorithm>
 #include <charconv>
-#include <cctype>
-#include <cstdlib>
 #include <iostream>
-#include <string>
-#include <string_view>
-#include <utility>
 
 namespace {
     using std::string_view;
