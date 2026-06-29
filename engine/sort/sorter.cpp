@@ -73,12 +73,10 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return std::clamp<int32_t>(score, NEG_INF, POS_INF);
     }
 
-    if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        if (m.sameFromTo(ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
-        if (m.sameFromTo(ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
-    }
+    if (m.sameFromTo(ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
+    if (m.sameFromTo(ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
 
-    if (ctx.previousMove != nullptr && ctx.previousMove->from.index < 64) {
+    if (ctx.previousMove != nullptr) {
         const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from.index][ctx.previousMove->to.index];
         if (counter != 0
             && counter == TranspositionTable::Entry::encodeMove(m.from.index, m.to.index, m.promotionPiece)) {
@@ -90,14 +88,11 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
     }
 
-    int32_t score = 0;
-    if (ctx.ply >= 0 && ctx.ply < MAX_PLY) {
-        score = std::clamp(static_cast<int32_t>(ctx.runtime.history[ctx.usSide][m.from.index][m.to.index]),
-                           HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
-        if (ctx.contHistEntry != nullptr) {
-            score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[contHistIndex(fromPieceType, m.to.index)]),
-                                HISTORY_SCORE_MIN, HISTORY_SCORE_MAX) / 2;
-        }
+    int32_t score = std::clamp(static_cast<int32_t>(ctx.runtime.history[ctx.usSide][m.from.index][m.to.index]),
+                               HISTORY_SCORE_MIN, HISTORY_SCORE_MAX);
+    if (ctx.contHistEntry != nullptr) {
+        score += std::clamp(static_cast<int32_t>(ctx.contHistEntry[contHistIndex(fromPieceType, m.to.index)]),
+                            HISTORY_SCORE_MIN, HISTORY_SCORE_MAX) / 2;
     }
 
     return std::clamp<int32_t>(score, NEG_INF, POS_INF);
