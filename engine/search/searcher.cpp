@@ -504,8 +504,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppSide = usSide ^ 1;
-    const uint64_t oppKingBBForFutility = b.kings_bb[oppSide];
-    const int oppKingSq = oppKingBBForFutility ? std::countr_zero(oppKingBBForFutility) : 64;
+    const int oppKingSq = std::countr_zero(b.kings_bb[oppSide]);
     const chess::Coords enPassant = b.getEnPassant();
     const int promotionRank = chess::Board::promotionRank(usIsWhite);
 
@@ -548,7 +547,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         bool preMoveGivesCheck = false;
         if ((canFutilityPrune || (canLMP && isQuietMove))
             && isQuietMove && fromPieceType != chess::Board::KING
-            && oppKingSq < 64) {
+            ) {
             preMoveGivesCheck = Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
                                                        b.getPiecesBitMap());
         }

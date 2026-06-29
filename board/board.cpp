@@ -80,8 +80,6 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 
 [[nodiscard]] bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
     const uint8_t side = colorToIndex(movingColor);
-    if (!kings_bb[side]) [[unlikely]] return false; // malformed position guard
-
     //FIXME Usare funzione helper chiamata a esempio 'calculateAttackersKingMask'
     const uint8_t kingIndex = std::countr_zero(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;

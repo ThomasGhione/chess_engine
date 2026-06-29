@@ -82,7 +82,6 @@ inline PhaseValue Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b,
     const int file = chess::Board::file(psq);
     const bool pawnOnStart = rank == (side == 0 ? 6 : 1);
     const int forward = side == 0 ? (psq - 8) : (psq + 8);
-    if (forward < 0 || forward >= 64) return {};
 
     PhaseValue penalty{};
     const bool centralStart = pawnOnStart && (file == 3 || file == 4);
