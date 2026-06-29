@@ -424,8 +424,6 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     const chess::Board::Move* previousMove,
     int16_t* contHistEntry,
     int fromPieceType) noexcept {
-    if (ply < 0 || ply >= MAX_PLY) return;
-
     const int fromIndex = m.from.index;
     const int toIndex = m.to.index;
     const int usSide = chess::Board::colorToIndex(us);
@@ -446,7 +444,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     }
 
     // COUNTER-MOVE: best response to previous quiet move.
-    if (previousMove != nullptr && previousMove->from.index < 64) {
+    if (previousMove != nullptr) {
         runtime.counterMoves[previousMove->from.index][previousMove->to.index] =
             TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
     }
@@ -856,8 +854,7 @@ int32_t Searcher::searchPosition(
     // In-check nodes have no meaningful static eval, so store a sentinel
     // instead of the stale default 0, which would otherwise corrupt the
     // improving comparison two plies deeper.
-    if (ply >= 0 && ply < MAX_PLY)
-        evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
+    evalStack[ply] = node.inCheck ? NEG_INF : node.staticEval;
     // Negamax: staticEval is side-to-move relative and ply-2 is the same
     // side, so "improving" is simply eval rising versus two plies ago.
     const bool improving = !node.inCheck && ply >= 2
