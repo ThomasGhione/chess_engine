@@ -43,7 +43,7 @@ public:
     }
 
     static MovePicker sortLegalMoves(
-        MoveList<chess::Board::Move> moves,
+        MoveList moves,
         int ply,
         const chess::Board& b,
         const SearchRuntime& runtime,
@@ -73,14 +73,14 @@ public:
     }
 
     static MovePicker sortTacticalMoves(
-        const MoveList<chess::Board::Move>& tacticalMoves,
+        const MoveList& tacticalMoves,
         const chess::Board& b,
         int32_t standPat,
         int32_t alpha,
         int ply) noexcept;
 
-    static MoveList<chess::Board::Move> sortEvasionsForcingFirst(
-        MoveList<chess::Board::Move> evasions,
+    static MoveList sortEvasionsForcingFirst(
+        MoveList evasions,
         const chess::Board& b) noexcept;
 
 private:

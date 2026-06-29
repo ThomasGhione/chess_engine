@@ -283,7 +283,7 @@ chess::Board::Move Searcher::searchBestMove(
         return result.bestMove;
     }
 
-    MoveList<chess::Board::Move> fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
+    MoveList fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
     runtime.eval = Evaluator::evaluate(board);
     return fallbackMoves.is_empty() ? chess::Board::Move{} : fallbackMoves[0];
 }
@@ -939,7 +939,7 @@ int32_t Searcher::searchPosition(
         const int32_t probcutBound = saturatingAdd32(beta, PROBCUT_MARGIN);
         const int32_t pcAlpha = probcutBound - 1;
         const int32_t pcBeta  = probcutBound;
-        MoveList<chess::Board::Move> captures = engine::MoveGenerator::generateTacticalMoves(b);
+        MoveList captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
             const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
@@ -968,7 +968,7 @@ int32_t Searcher::searchPosition(
     };
 
     const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
-    MoveList<chess::Board::Move> moves = node.inCheck
+    MoveList moves = node.inCheck
         ? engine::MoveGenerator::generateLegalEvasions(b, true, nodeInDoubleCheck)
         : engine::MoveGenerator::generateLegalMoves(b, /*knownNotInCheck=*/true);
     if (moves.is_empty()) {
@@ -1077,7 +1077,7 @@ int32_t Searcher::quiescenceSearch(
 
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            MoveList<chess::Board::Move> evasions = engine::MoveGenerator::generateLegalEvasions(
+            MoveList evasions = engine::MoveGenerator::generateLegalEvasions(
                 b, true, inDoubleCheck);
             if (evasions.is_empty()) {
                 return NEG_INF + ply; // side to move is checkmated (negamax)
@@ -1191,7 +1191,7 @@ int32_t Searcher::quiescenceSearch(
 
 chess::Board::Move Searcher::getBestMove(
     chess::Board& rootBoard,
-    const MoveList<chess::Board::Move>& moves,
+    const MoveList& moves,
     SearchRuntime& runtime,
     int32_t alpha,
     int32_t beta) noexcept {
@@ -1212,7 +1212,7 @@ chess::Board::Move Searcher::getBestMove(
     // YBWC and Root iterations require fully sorted list upfront.
     orderedRootMoves.fullSort();
     
-    const MoveList<chess::Board::Move>& rootMoves = orderedRootMoves.moves;
+    const MoveList& rootMoves = orderedRootMoves.moves;
 
     const bool useYBWC = (rootMoves.size >= YBWC_MIN_MOVES
         && runtime.depth >= YBWC_MIN_DEPTH);
@@ -1417,7 +1417,7 @@ std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int
         const auto decoded = TranspositionTable::Entry::decodeMove(encoded);
         const chess::Board::Move mv{chess::Coords{decoded.from}, chess::Coords{decoded.to}, decoded.promo};
 
-        const MoveList<chess::Board::Move> legal = engine::MoveGenerator::generateLegalMoves(board);
+        const MoveList legal = engine::MoveGenerator::generateLegalMoves(board);
         bool legalMove = false;
         for (int k = 0; k < legal.size; ++k) {
             if (legal[k] == mv) { legalMove = true; break; }
@@ -1492,7 +1492,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     int32_t rootDrawScore = 0;
     if (checkDrawTerminalConditions(rootBoard, rootDrawScore, /*atRoot=*/true)) {
-        MoveList<chess::Board::Move> drawMoves = engine::MoveGenerator::generateLegalMoves(rootBoard);
+        MoveList drawMoves = engine::MoveGenerator::generateLegalMoves(rootBoard);
         result.terminalRoot = true;
         result.completedAnyDepth = true;
         result.bestScore = rootDrawScore;
@@ -1501,7 +1501,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         return result;
     }
 
-    MoveList<chess::Board::Move> moves = engine::MoveGenerator::generateLegalMoves(rootBoard);
+    MoveList moves = engine::MoveGenerator::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
         const uint8_t toMove = rootBoard.getActiveColor();
         if (rootBoard.isCheckmate(toMove)) {
@@ -1530,7 +1530,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     // skip the TB branch and let the normal search take over.
     if (runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
         && runtime.syzygyProber->inTBRange(rootBoard)) {
-        const std::vector<syzygy::RootMove> tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
+        const auto tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
             int32_t bestRank = tbMoves[0].tbRank;
             chess::Board::Move tbBest = tbMoves[0].move;

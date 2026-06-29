@@ -216,7 +216,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
 }
 
 MovePicker Sorter::sortLegalMoves(
-    MoveList<chess::Board::Move> moves,
+    MoveList moves,
     int ply,
     const chess::Board& b,
     const SearchRuntime& runtime,
@@ -304,7 +304,7 @@ MovePicker Sorter::sortLegalMoves(
 }
 
 MovePicker Sorter::sortTacticalMoves(
-    const MoveList<chess::Board::Move>& tacticalMoves,
+    const MoveList& tacticalMoves,
     const chess::Board& b,
     int32_t standPat,
     int32_t alpha,
@@ -374,8 +374,8 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m
     return chess::Coords::isInBounds(enPassant) && (m.to == enPassant);
 }
 
-MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Board::Move> evasions, const chess::Board& b) noexcept {
-    const chess::Coords enPassant = b.getEnPassant();
+MoveList Sorter::sortEvasionsForcingFirst(MoveList evasions, const chess::Board& b) noexcept {
+    const auto enPassant = b.getEnPassant();
 
     std::ranges::stable_partition(evasions,
         [&](const auto& m) { return isForcingEvasion(b, m, enPassant);

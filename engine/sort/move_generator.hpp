@@ -13,16 +13,16 @@ class MoveGenerator final {
 public:
     MoveGenerator() = delete;
 
-    static MoveList<chess::Board::Move> generateLegalMoves(
+    static MoveList generateLegalMoves(
         const chess::Board& b,
         bool knownNotInCheck = false) noexcept;
 
-    static MoveList<chess::Board::Move> generateLegalEvasions(
+    static MoveList generateLegalEvasions(
         const chess::Board& b,
         bool inDoubleCheckKnown = false,
         bool inDoubleCheckValue = false) noexcept;
 
-    static MoveList<chess::Board::Move> generateTacticalMoves(
+    static MoveList generateTacticalMoves(
         const chess::Board& b) noexcept;
 
     static engine::MovePicker generateQSearchEvasions(
@@ -40,7 +40,7 @@ private:
     template<bool IsWhite>
     static void addPawnMovesFromMask(
         const chess::Board& b,
-        MoveList<chess::Board::Move>& moves,
+        MoveList& moves,
         int from,
         uint64_t mask,
         chess::Coords enPassant) noexcept;
@@ -51,7 +51,7 @@ private:
     template<bool IsWhite>
     static void appendPawnPseudoLegalMoves(
         const chess::Board& b,
-        MoveList<chess::Board::Move>& moves,
+        MoveList& moves,
         uint64_t pawns,
         uint64_t occ,
         uint64_t oppOcc,
@@ -62,18 +62,18 @@ private:
         const uint64_t pinRayBySquare[64]) noexcept;
 
     template<bool IsWhite>
-    static MoveList<chess::Board::Move> generateLegalMovesFor(
+    static MoveList generateLegalMovesFor(
         const chess::Board& b,
         bool knownNotInCheck) noexcept;
 
     template<bool IsWhite>
-    static MoveList<chess::Board::Move> generateLegalEvasionsFor(
+    static MoveList generateLegalEvasionsFor(
         const chess::Board& b,
         bool inDoubleCheckKnown,
         bool inDoubleCheckValue) noexcept;
 
     template<bool IsWhite>
-    static MoveList<chess::Board::Move> generateTacticalMovesFor(
+    static MoveList generateTacticalMovesFor(
         const chess::Board& b) noexcept;
 
     template<bool IsWhite>
@@ -90,7 +90,7 @@ private:
 
     template<bool HasPins, bool InCheck, uint8_t PieceType>
     static void generateNonPawnLegalMoves(
-        MoveList<chess::Board::Move>& moves,
+        MoveList& moves,
         uint64_t bb,
         uint64_t occ,
         uint64_t ownOcc,
@@ -100,14 +100,14 @@ private:
 
     template<bool HasPins, bool InCheck>
     static void emitAllNonPawnLegal(
-        MoveList<chess::Board::Move>& moves,
+        MoveList& moves,
         uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
         uint64_t occ, uint64_t ownOcc, uint64_t evasionMask,
         uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept;
 
     template<bool HasPins>
     static void emitAllNonPawnTactical(
-        MoveList<chess::Board::Move>& moves,
+        MoveList& moves,
         uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
         uint64_t occ, uint64_t oppOcc,
         uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept;

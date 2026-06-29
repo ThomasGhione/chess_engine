@@ -185,13 +185,13 @@ std::optional<chess::Board::Move> OpeningBook::probe(const chess::Board& board) 
     std::uniform_int_distribution<uint32_t> dist(0, total - 1);
     uint32_t pick = dist(rng);
 
-    for (const Entry& e : candidates) {
+    for (const auto& e : candidates) {
         if (pick < e.weight) return decodeMove(e.move);
         pick -= e.weight;
     }
 
     // Fallback: return highest-weight entry (shouldn't normally reach here)
-    const Entry& best = *std::max_element(
+    const auto& best = *std::max_element(
         candidates.begin(), candidates.end(),
         [](const Entry& a, const Entry& b) { return a.weight < b.weight; });
     return decodeMove(best.move);

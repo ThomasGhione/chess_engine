@@ -28,7 +28,7 @@ enum class SeePending : uint8_t { Final = 0, Capture = 1, Quiet = 2 };
 // copy/move ops below touch only [0, size) -- so on the hot quiescence path the
 // per-node array traffic is O(size), not O(MAX_MOVES).
 struct MovePicker {
-    MoveList<chess::Board::Move> moves;
+    MoveList moves;
     int32_t    scores[MAX_MOVES];
     SeePending seePending[MAX_MOVES];
     bool hashMoveIsLegal = false;

@@ -7,7 +7,7 @@ namespace engine {
 namespace {
 
 __attribute__((always_inline))
-inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, int from, int to) noexcept {
+inline void appendMoveByIndex(MoveList& moves, int from, int to) noexcept {
     moves.emplace_back();
     auto& m = moves[moves.size - 1];
     m.from.index = from;
@@ -16,7 +16,7 @@ inline void appendMoveByIndex(MoveList<chess::Board::Move>& moves, int from, int
 }
 
 __attribute__((always_inline))
-inline void appendPromotionSetByIndex(MoveList<chess::Board::Move>& moves, int from, int to) noexcept {
+inline void appendPromotionSetByIndex(MoveList& moves, int from, int to) noexcept {
     constexpr char promos[4] = {'q', 'r', 'b', 'n'};
     for (char p : promos) {
         moves.emplace_back();
@@ -76,7 +76,7 @@ inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT 
 template<bool HasPins, uint8_t PieceType>
 __attribute__((always_inline))
 inline void appendNonPawnTacticalNoChecks(
-    MoveList<chess::Board::Move>& moves,
+    MoveList& moves,
     uint64_t pieceBB,
     uint64_t occ,
     uint64_t oppOcc,
@@ -104,7 +104,7 @@ template<bool IsWhite>
 __attribute__((always_inline))
 inline void appendPawnTacticalNoChecks(
     const chess::Board& b,
-    MoveList<chess::Board::Move>& moves,
+    MoveList& moves,
     uint64_t pawnBB,
     uint64_t occ,
     uint64_t oppOcc,
@@ -153,7 +153,7 @@ inline void appendPawnTacticalNoChecks(
 
 } // namespace
 
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Board& b,
+MoveList MoveGenerator::generateLegalMoves(const chess::Board& b,
                                                                bool knownNotInCheck) noexcept {
     return (b.getActiveColor() == chess::Board::WHITE)
         ? generateLegalMovesFor<true>(b, knownNotInCheck)
@@ -161,10 +161,10 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMoves(const chess::Boar
 }
 
 template<bool IsWhite>
-MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::Board& b,
+MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
                                                                   bool knownNotInCheck) noexcept {
     // Macro-step 1: Initialize side-to-move context and occupancy masks.
-    MoveList<chess::Board::Move> moves;
+    MoveList moves;
 
     constexpr uint8_t color = IsWhite ? chess::Board::WHITE : chess::Board::BLACK;
     constexpr int side = IsWhite ? 0 : 1;
@@ -251,7 +251,7 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalMovesFor(const chess::B
     return moves;
 }
 
-MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasions(
+MoveList MoveGenerator::generateLegalEvasions(
     const chess::Board& b,
     bool inDoubleCheckKnown,
     bool inDoubleCheckValue) noexcept {
@@ -261,11 +261,11 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasions(
 }
 
 template<bool IsWhite>
-MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
+MoveList MoveGenerator::generateLegalEvasionsFor(
     const chess::Board& b,
     bool inDoubleCheckKnown,
     bool inDoubleCheckValue) noexcept {
-    MoveList<chess::Board::Move> moves;
+    MoveList moves;
 
     constexpr uint8_t color = IsWhite ? chess::Board::WHITE : chess::Board::BLACK;
     constexpr int side = IsWhite ? 0 : 1;
@@ -323,15 +323,15 @@ MoveList<chess::Board::Move> MoveGenerator::generateLegalEvasionsFor(
     return moves;
 }
 
-MoveList<chess::Board::Move> MoveGenerator::generateTacticalMoves(const chess::Board& b) noexcept {
+MoveList MoveGenerator::generateTacticalMoves(const chess::Board& b) noexcept {
     return (b.getActiveColor() == chess::Board::WHITE)
         ? generateTacticalMovesFor<true>(b)
         : generateTacticalMovesFor<false>(b);
 }
 
 template<bool IsWhite>
-MoveList<chess::Board::Move> MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept {
-    MoveList<chess::Board::Move> moves;
+MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept {
+    MoveList moves;
 
     constexpr uint8_t color = IsWhite ? chess::Board::WHITE : chess::Board::BLACK;
     constexpr int side = IsWhite ? 0 : 1;
@@ -398,7 +398,7 @@ engine::MovePicker MoveGenerator::generateQSearchEvasions(
     const chess::Board& b,
     bool inDoubleCheckKnown,
     bool inDoubleCheckValue) noexcept {
-    MoveList<chess::Board::Move> evasions = generateLegalEvasions(b, inDoubleCheckKnown, inDoubleCheckValue);
+    MoveList evasions = generateLegalEvasions(b, inDoubleCheckKnown, inDoubleCheckValue);
     if (evasions.is_empty()) return engine::MovePicker{};
 
     engine::MovePicker data;
@@ -420,7 +420,7 @@ engine::MovePicker MoveGenerator::generateQSearchTacticalMoves(
     int32_t standPat,
     int32_t alpha,
     int ply) noexcept {
-    MoveList<chess::Board::Move> tacticalMoves = generateTacticalMoves(b);
+    MoveList tacticalMoves = generateTacticalMoves(b);
     if (tacticalMoves.is_empty()) return engine::MovePicker{};
     return engine::Sorter::sortTacticalMoves(tacticalMoves, b, standPat, alpha, ply);
 }
@@ -428,7 +428,7 @@ engine::MovePicker MoveGenerator::generateQSearchTacticalMoves(
 template<bool IsWhite>
 __attribute__((always_inline))
 inline void MoveGenerator::appendPawnPseudoLegalMoves(
-    const chess::Board& b, MoveList<chess::Board::Move>& moves, uint64_t pawns,
+    const chess::Board& b, MoveList& moves, uint64_t pawns,
     uint64_t occ, uint64_t oppOcc, uint64_t enPassantBit, chess::Coords enPassant,
     uint64_t evasionMask, uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept {
     constexpr int side = IsWhite ? 0 : 1;
@@ -448,7 +448,7 @@ inline void MoveGenerator::appendPawnPseudoLegalMoves(
 }
 
 template<bool IsWhite>
-void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList<chess::Board::Move>& moves,
+void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList& moves,
                                          int from, uint64_t mask,
                                          chess::Coords enPassant) noexcept {
     if (!mask) [[unlikely]] return;
@@ -571,7 +571,7 @@ void MoveGenerator::computeCheckEvasionMasks(
 
 template<bool HasPins, bool InCheck, uint8_t PieceType>
 void MoveGenerator::generateNonPawnLegalMoves(
-    MoveList<chess::Board::Move>& moves,
+    MoveList& moves,
     uint64_t bb,
     uint64_t occ,
     uint64_t ownOcc,
@@ -597,7 +597,7 @@ void MoveGenerator::generateNonPawnLegalMoves(
 
 template<bool HasPins, bool InCheck>
 void MoveGenerator::emitAllNonPawnLegal(
-    MoveList<chess::Board::Move>& moves,
+    MoveList& moves,
     uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
     uint64_t occ, uint64_t ownOcc, uint64_t evasionMask,
     uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept {
@@ -609,7 +609,7 @@ void MoveGenerator::emitAllNonPawnLegal(
 
 template<bool HasPins>
 void MoveGenerator::emitAllNonPawnTactical(
-    MoveList<chess::Board::Move>& moves,
+    MoveList& moves,
     uint64_t knights, uint64_t bishops, uint64_t rooks, uint64_t queens,
     uint64_t occ, uint64_t oppOcc,
     uint64_t pinnedMask, const uint64_t pinRayBySquare[64]) noexcept {

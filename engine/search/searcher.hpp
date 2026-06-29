@@ -60,7 +60,7 @@ public:
 
     static chess::Board::Move getBestMove(
         chess::Board& rootBoard,
-        const MoveList<chess::Board::Move>& moves,
+        const MoveList& moves,
         SearchRuntime& runtime,
         int32_t alpha = NEG_INF,
         int32_t beta  = POS_INF) noexcept;
