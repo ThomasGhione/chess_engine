@@ -1,8 +1,6 @@
 #include <bit>
 #include "sorter.hpp"
 
-#include <algorithm>
-
 #include "../engine.hpp"
 
 namespace engine {
@@ -373,25 +371,22 @@ MovePicker Sorter::sortTacticalMoves(
 }
 
 bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m, const chess::Coords& enPassant) noexcept {
-    const int toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-    if (toPieceType != chess::Board::EMPTY) return true;
+    if ((b.get(m.to) & chess::Board::MASK_PIECE_TYPE) != chess::Board::EMPTY)
+        return true;
+    if ((b.get(m.from) & chess::Board::MASK_PIECE_TYPE) != chess::Board::PAWN)
+        return false;
+    if (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from.index) == chess::Board::WHITE))
+        return true;
 
-    const int fromPiece = b.get(m.from);
-    const int fromType  = fromPiece & chess::Board::MASK_PIECE_TYPE;
-    if (fromType != chess::Board::PAWN) return false;
-
-    if (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from.index) == chess::Board::WHITE)) return true;
-
-    return chess::Coords::isInBounds(enPassant)
-        && (m.to == enPassant)
-        && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+    return chess::Coords::isInBounds(enPassant) && (m.to == enPassant);
 }
 
 MoveList<chess::Board::Move> Sorter::sortEvasionsForcingFirst(MoveList<chess::Board::Move> evasions, const chess::Board& b) noexcept {
     const chess::Coords enPassant = b.getEnPassant();
 
-    std::stable_partition(evasions.begin(), evasions.end(),
-        [&](const chess::Board::Move& m) { return isForcingEvasion(b, m, enPassant); });
+    std::ranges::stable_partition(evasions,
+        [&](const auto& m) { return isForcingEvasion(b, m, enPassant);
+    });
 
     return evasions;
 }
