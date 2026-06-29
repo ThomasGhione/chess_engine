@@ -13,9 +13,11 @@ namespace driver {
 //FIXME per errori usare cerr e non cout.
 //FIXME Usare this in chiamate funzioni interne alla classe
 //FIXME Evitiamo di usare le stringhe stile C.
-class Driver {
+class Driver final {
 
 public:
+
+    enum class GameMode : uint8_t { PvP, PvE, BvB };
 
     engine::Engine& engine;
     uci::UCI uciInterface;
@@ -27,24 +29,18 @@ public:
 
 private:
 
-    bool vsBot = false;
+    GameMode mode_ = GameMode::PvP;
 
     void parse(int argc, char* argv[]) noexcept;
-    static void printInvalidOption() noexcept;
 
     bool loadGame() noexcept;
-    //FIXME Il commento serve ancora?
-    void saveGame() noexcept; // botColor: true = bot is white, false = bot is black
+    void saveGame() noexcept;
     void endGame() noexcept;
     void printGameOnFile() noexcept;
 
-    void playGameVsHuman() noexcept;
-    void playGameVsEngine(bool isWhite) noexcept;
-    void botVsBot() noexcept;
-
+    void startSession(GameMode mode, bool playerIsWhite = true) noexcept;
     void playerTurn() noexcept;
     void engineTurn() noexcept;
-    bool playOneTurn(bool playerTurn) noexcept;
     void playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept;
 
     //FIXME Ci sono tanti parametri per questa funzione
