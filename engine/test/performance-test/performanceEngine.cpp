@@ -15,15 +15,14 @@ ut::suite performanceEngineSuite = [] {
   "performance searchPosition depth 11"_test = []{
     engine::Engine e = engine::Engine();
     e.openingEnabled.store(false, std::memory_order_relaxed);
-    e.depth = 11;
+    constexpr int depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
+    e.searchUCI(engine::time::Limits{.maxDepth = depth});
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     printf("Depth 11 search completed in %lu ms\n", duration);
-    printf("Nodes searched: %lu\n\n", e.nodesSearched);
     expect(duration < 9000);
   };
 
@@ -31,7 +30,7 @@ ut::suite performanceEngineSuite = [] {
   "avg performance searchPosition depth 10 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
     e.openingEnabled.store(false, std::memory_order_relaxed);
-    e.depth = 10;
+    constexpr int depth = 10;
 
     constexpr int runs = 20;
     int64_t totalDuration = 0;
@@ -43,7 +42,7 @@ ut::suite performanceEngineSuite = [] {
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        const chess::Board::Move move = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
+        const chess::Board::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);

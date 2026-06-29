@@ -157,7 +157,7 @@ void Driver::saveGame() noexcept {
     std::filesystem::create_directories("saves");
 
     if (std::filesystem::exists("saves/save.txt")) {
-        std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) ";
+        std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) " << std::flush;
         char ans = '\0';
         std::cin >> ans;
         if (ans != 'Y' && ans != 'y') return;
@@ -192,7 +192,7 @@ void Driver::endGame() noexcept {
         std::cout << "\nDraw.\n";
     }
 
-    std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
+    std::cout << "Press s to print the game on a file or any other key to return to the menu: " << std::flush;
 
     // Clear any pending input, then block for a full line to ensure Windows/Linux parity
     std::cin.clear();
@@ -243,7 +243,7 @@ void Driver::playerTurn() noexcept {
     //FIXME Usare funzioni helper per il copro della funzione, troppo alto
     while (true) {
         std::cout << getBasicBoard(engine.board) << "\n";
-        std::cout << "Enter your move (type 's' to save or 'q' to quit): ";
+        std::cout << "Enter your move (type 's' to save or 'q' to quit): " << std::flush;
         std::cin >> playerInput;
 
         if (playerInput == "s") [[unlikely]] { saveGame(); continue; }
@@ -304,7 +304,7 @@ void Driver::playerTurn() noexcept {
 }
 
 void Driver::engineTurn() noexcept {
-    std::cout << "Engine's thinking... \n";
+    std::cout << "Engine's thinking... \n" << std::flush;
     DBG_TIMER_DECLARE(engineSearchTimer);
     DBG_TIMER_START(engineSearchTimer);
 
@@ -347,7 +347,7 @@ std::string Driver::getBasicBoard(const Board& board) {
 
 uint32_t Driver::showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoice, bool clearBefore) noexcept {
     if (clearBefore) clearScreen();
-    std::cout << prompt;
+    std::cout << prompt << std::flush;
     uint8_t choice = 0;
     std::cin >> choice;
     while (choice < minChoice || choice > maxChoice) {
