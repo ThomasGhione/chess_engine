@@ -209,10 +209,10 @@ public:
     static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };
 
     // --- Board access ---
-    __attribute__((hot, always_inline)) constexpr inline uint8_t get(uint8_t index) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t get(Coords coords) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t get(uint8_t row, uint8_t col) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t getColor(uint8_t index) const noexcept;
+    __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return (chessboard[7 - (index >> 3)] >> ((index & 7) << 2)) & MASK_PIECE; }
+    __attribute__((always_inline))      constexpr uint8_t get(Coords coords) const noexcept { return get(coords.index); }
+    __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard[row] >> (col << 2)) & MASK_PIECE; }
+    __attribute__((always_inline))      constexpr inline uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 
     __attribute__((always_inline)) void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;
@@ -266,11 +266,11 @@ public:
     void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
 
     // --- Eval cache ---
-    template<uint32_t Term> bool             hasEvalCacheTerm() const noexcept;
+    template<uint32_t Term> bool hasEvalCacheTerm() const noexcept { return (evalCache.validMask & evalCacheBit(Term)) != 0; }
     template<uint32_t Term> engine::PhaseValue getEvalCacheTerm() const noexcept;
-    template<uint32_t Term> void             setEvalCacheTerm(engine::PhaseValue value) const noexcept;
-    void invalidateEvalCacheTerms(uint32_t terms) noexcept;
-    void clearEvalCache() noexcept;
+    template<uint32_t Term> void setEvalCacheTerm(engine::PhaseValue value) const noexcept;
+    void invalidateEvalCacheTerms(uint32_t terms) noexcept { evalCache.validMask &= ~terms; }
+    void clearEvalCache() noexcept { evalCache.validMask = 0; }
 
     // --- FEN ---
     void        fromFenToBoard(const std::string& fen);

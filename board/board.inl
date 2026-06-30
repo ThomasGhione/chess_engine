@@ -75,43 +75,15 @@ inline std::string Board::Move::toUCIString() const noexcept {
 // ==============================
 // Public Board API
 // ==============================
-__attribute__((hot, always_inline))
-inline constexpr uint8_t Board::get(uint8_t index) const noexcept {
-    //FIXME Eliminare costati magiche
-    const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
-    const uint8_t file = index & 7;   // index % 8
-    // Convert from Coords convention to Board storage
-    return (chessboard[7 - rank] >> (file << 2)) & MASK_PIECE;
-}
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::get(Coords coords) const noexcept {
-    return get(coords.index);
-}
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
-    //FIXME Eliminare costati magiche
-    return (chessboard[row] >> (col << 2)) & MASK_PIECE;
-}
-
 inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
     outMg = incrementalPsqtPieces + incrementalPsqtPawnsMg + incrementalPsqtKingsMg;
     outEg = incrementalPsqtPieces + incrementalPsqtPawnsEg + incrementalPsqtKingsEg;
 }
 
 template<uint32_t Term>
-inline bool Board::hasEvalCacheTerm() const noexcept {
-    return (evalCache.validMask & evalCacheBit(Term)) != 0;
-}
-
-template<uint32_t Term>
 inline engine::PhaseValue Board::getEvalCacheTerm() const noexcept {
     static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
-    return engine::PhaseValue{
-        static_cast<int32_t>(evalCache.mgTerms[Term]),
-        static_cast<int32_t>(evalCache.egTerms[Term])
-    };
+    return {evalCache.mgTerms[Term], evalCache.egTerms[Term]};
 }
 
 template<uint32_t Term>
@@ -120,21 +92,6 @@ inline void Board::setEvalCacheTerm(engine::PhaseValue value) const noexcept {
     evalCache.mgTerms[Term] = static_cast<int16_t>(value.mg);
     evalCache.egTerms[Term] = static_cast<int16_t>(value.eg);
     evalCache.validMask |= evalCacheBit(Term);
-}
-
-inline void Board::invalidateEvalCacheTerms(uint32_t terms) noexcept {
-    evalCache.validMask &= ~terms;
-}
-
-inline void Board::clearEvalCache() noexcept {
-    evalCache.validMask = 0;
-}
-
-
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
-    return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 __attribute__((hot, always_inline))
@@ -169,7 +126,6 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
     incrementalPsqtKingsMg = 0;
     incrementalPsqtKingsEg = 0;
 
-    //FIXME Contollare se non esiste qualche sistema per evitare il ciclo
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
     for (uint8_t index = 0; index < 64; ++index) {
