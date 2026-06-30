@@ -108,7 +108,7 @@ public:
         constexpr bool sameFromTo(const Move& other) const noexcept { return from.index == other.from.index && to.index == other.to.index; };
         constexpr bool sameFromTo(int f, int t) const noexcept { return from.index == static_cast<uint8_t>(f) && to.index == static_cast<uint8_t>(t); };
 
-        std::string toUCIString() const noexcept;
+        std::string toUCIString() const noexcept { return from.toString() + to.toString() + (promotionPiece ? std::string(1, std::tolower(promotionPiece)) : std::string{}); }
     };
 
     // Members are intentionally NOT default-initialised: skips a full ~96B zero-fill per node.
@@ -203,7 +203,7 @@ public:
     Board(Board&& other) noexcept = default;
     Board& operator=(Board&& other) noexcept = default;
 
-    // --- Static utilities ---
+    // --- Static utilities ---d
     static constexpr uint8_t  oppositeColor(uint8_t color) noexcept { return color ^ 0x8; };
     static constexpr uint8_t  colorToIndex(uint8_t color) noexcept { return ((color & MASK_COLOR) >> 3) ^ 0x1u; };
     static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };

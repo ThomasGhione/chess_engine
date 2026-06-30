@@ -62,17 +62,6 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 }
 
 // ==============================
-// Move Value Helpers
-// ==============================
-inline std::string Board::Move::toUCIString() const noexcept {
-    std::string uciMove = from.toString() + to.toString();
-    if (promotionPiece != '\0') {
-        uciMove += std::tolower(promotionPiece);
-    }
-    return uciMove;
-}
-
-// ==============================
 // Public Board API
 // ==============================
 inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
@@ -253,16 +242,10 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece);
-    const uint64_t bit = BIT_MASKS[index];
-    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
+    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
 }
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece);
-    const uint64_t bit = BIT_MASKS[index];
-    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
+    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
 }
