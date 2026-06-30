@@ -11,14 +11,14 @@ namespace {
 void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     chess::Board board("k7/8/8/8/8/8/8/K6R w - - 0 1");
 
-    assert(board.move(chess::Coords("h1"), chess::Coords("g1")));
-    assert(board.move(chess::Coords("a8"), chess::Coords("b8")));
-    assert(board.move(chess::Coords("g1"), chess::Coords("h1")));
-    assert(board.move(chess::Coords("b8"), chess::Coords("a8")));
-    assert(board.move(chess::Coords("h1"), chess::Coords("g1")));
-    assert(board.move(chess::Coords("a8"), chess::Coords("b8")));
-    assert(board.move(chess::Coords("g1"), chess::Coords("h1")));
-    assert(board.move(chess::Coords("b8"), chess::Coords("a8")));
+    assert(board.move({chess::Coords("h1"), chess::Coords("g1"}));
+    assert(board.move({chess::Coords("a8"), chess::Coords("b8"}));
+    assert(board.move({chess::Coords("g1"), chess::Coords("h1"}));
+    assert(board.move({chess::Coords("b8"), chess::Coords("a8"}));
+    assert(board.move({chess::Coords("h1"), chess::Coords("g1"}));
+    assert(board.move({chess::Coords("a8"), chess::Coords("b8"}));
+    assert(board.move({chess::Coords("g1"), chess::Coords("h1"}));
+    assert(board.move({chess::Coords("b8"), chess::Coords("a8"}));
 
     assert(board.isThreefoldRepetition());
     assert(engine::Evaluator::evaluate(board) > 0);
@@ -50,10 +50,10 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
 
 void testBoardMoveRejectsWrongSideToMove() {
     chess::Board board;
-    assert(!board.move(chess::Coords("e7"), chess::Coords("e5")));
+    assert(!board.move({chess::Coords("e7"), chess::Coords("e5"}));
     assert(board.getActiveColor() == chess::Board::WHITE);
-    assert(board.move(chess::Coords("e2"), chess::Coords("e4")));
-    assert(!board.move(chess::Coords("d2"), chess::Coords("d4")));
+    assert(board.move({chess::Coords("e2"), chess::Coords("e4"}));
+    assert(!board.move({chess::Coords("d2"), chess::Coords("d4"}));
 }
 
 } // namespace

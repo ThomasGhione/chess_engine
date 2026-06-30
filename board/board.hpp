@@ -224,8 +224,7 @@ public:
     void undoMove(const Move& m, const MoveState& state) noexcept;
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
-    //FIXME Abbiamo la struttura dati Move, usiamola invece di passare parametri separati
-    bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
+    bool move(Move move) noexcept;
 
     // --- Legality & attack queries ---
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept;

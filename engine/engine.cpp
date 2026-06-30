@@ -163,7 +163,7 @@ chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidat
 // out of bounds or illegal.
 bool Engine::playMoveOnBoard(const chess::Board::Move& move) noexcept {
     if (!move.from.isValid() || !move.to.isValid()) return false;
-    if (!this->board.move(move.from, move.to, move.promotionPiece)) return false;
+    if (!this->board.move(move)) return false;
 
     this->appendMoveHistoryEntry(move.from, move.to, move.promotionPiece);
     this->updateGameResult();
@@ -265,11 +265,11 @@ void Engine::startPondering() noexcept {
     }
     if (!ponderMove.from.isValid()) return; // did the fallback fail too?
 
-    if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
+    if (!rootBoard.move(ponderMove)) {
         rootBoard = this->board;
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
         if (!ponderMove.from.isValid()
-            || !rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
+            || !rootBoard.move(ponderMove)) {
             return;
         }
     }

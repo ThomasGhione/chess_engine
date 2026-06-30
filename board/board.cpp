@@ -5,19 +5,14 @@
 namespace chess {
 
 
-bool Board::move(const Coords& from, const Coords& to, char promotionChoice) noexcept {    
-    //FIXME Da aggiungere i this
-    const uint8_t moving = get(from.index);
-    //FIXME Fare helper inline privato per fare unico if di precodizione
+bool Board::move(Move move) noexcept {
+    const uint8_t moving = get(move.from.index);
     if (moving == EMPTY || (moving & MASK_COLOR) != activeColor) [[unlikely]]
         return false;
-
-    if (!isLegalPseudoMove(from.index, to.index, moving)) [[unlikely]]
+    if (!isLegalPseudoMove(move.from.index, move.to.index, moving)) [[unlikely]]
         return false;
-
     MoveState st{};
-    //FIXME Cambiare funzione per far ritornare MoveState, evitiamo di passare un paraemtro e rendiamo espicito il comportamento.
-    doMove(Move{from, to, promotionChoice}, st);
+    doMove(move, st);
     return true;
 }
 

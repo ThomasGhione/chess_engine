@@ -298,14 +298,14 @@ namespace {
 
     static std::string ponderSuffix(const engine::Engine& engine, const chess::Board::Move& bestMove) noexcept {
         chess::Board board = engine.board;
-        if (!board.move(bestMove.from, bestMove.to, bestMove.promotionPiece)) return {};
+        if (!board.move(bestMove)) return {};
 
         uint16_t encodedMove = 0;
         if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
 
         const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
         const chess::Board::Move ponderMove{chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
-        return board.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)
+        return board.move(ponderMove)
             ? (" ponder " + ponderMove.toUCIString())
             : std::string{};
     }
