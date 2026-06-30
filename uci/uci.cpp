@@ -494,8 +494,8 @@ namespace uci {
                     // this, deltas accumulated under the old values keep being
                     // used by Evaluator::evaluate() until the next `position`
                     // command re-parses a FEN.
-                    engine.board.updateOccupancyBB();
-                    // updateOccupancyBB() repopulates the incremental fields but
+                    engine.board.rebuildBitboardsFromSquares();
+                    // rebuildBitboardsFromSquares() repopulates the incremental fields but
                     // leaves any cached eval terms valid against the *old* table;
                     // drop them so the next evaluate() recomputes from scratch.
                     engine.board.clearEvalCache();

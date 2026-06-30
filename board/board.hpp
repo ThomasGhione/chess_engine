@@ -204,9 +204,9 @@ public:
     Board& operator=(Board&& other) noexcept;
 
     // --- Static utilities ---
-    static constexpr uint8_t  oppositeColor(uint8_t color) noexcept;
-    static constexpr uint8_t  colorToIndex(uint8_t color) noexcept;
-    static constexpr uint8_t  promotionRank(bool isWhite) noexcept;
+    static constexpr uint8_t  oppositeColor(uint8_t color) noexcept { return color ^ 0x8; };
+    static constexpr uint8_t  colorToIndex(uint8_t color) noexcept { return ((color & MASK_COLOR) >> 3) ^ 0x1u; };
+    static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };
 
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr inline uint8_t get(uint8_t index) const noexcept;
@@ -237,10 +237,10 @@ public:
     // --- Game state queries ---
     __attribute__((hot)) bool isCheckmate(uint8_t color) const noexcept { return inCheck(color) && !hasAnyLegalMove(color); }
     bool hasAnyLegalMove(uint8_t color) const noexcept;
-    bool isStalemate(uint8_t color) const noexcept    { return !inCheck(color) && !hasAnyLegalMove(color); }
-    bool isFiftyMoveRule() const noexcept             { return halfMoveClock >= 100; }
-    bool isDraw(uint8_t color) const noexcept;
-    bool isThreefoldRepetition() const noexcept;
+    bool isStalemate(uint8_t color) const noexcept { return !inCheck(color) && !hasAnyLegalMove(color); }
+    bool isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
+    bool isDraw(uint8_t color) const noexcept { return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw(); }
+    bool isThreefoldRepetition() const noexcept { return countRepetitions() >= 3; }
     int  countRepetitions() const noexcept;
     bool hasInsufficientMaterialDraw() const noexcept;
 
@@ -252,7 +252,7 @@ public:
     Coords             getEnPassant() const noexcept     { return enPassant; }
     constexpr uint64_t getHash() const noexcept          { return currentHash; }
     uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }
-    void               updateOccupancyBB() noexcept;
+    void               rebuildBitboardsFromSquares() noexcept;
 
     // --- Incremental eval accessors ---
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }

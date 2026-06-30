@@ -1,19 +1,6 @@
 //FIXME Usare i this in chiamate
 
 // ==============================
-// Compile-Time Basic Utilities
-// ==============================
-
-//FIXME Eliminare costati magiche
-inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
-
-inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
-    return ((color & MASK_COLOR) >> 3) ^ 0x1u;
-}
-
-inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
-
-// ==============================
 // Constructors
 // ==============================
 inline Board::Board() noexcept {
@@ -173,7 +160,7 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
 // Board Internals
 // ==============================
 
-inline void Board::updateOccupancyBB() noexcept {
+inline void Board::rebuildBitboardsFromSquares() noexcept {
     // Reset all bitboards
     occupancy       = 0ULL;
     pawns_bb[0]     = pawns_bb[1]     = 0ULL;
@@ -202,7 +189,7 @@ inline void Board::updateOccupancyBB() noexcept {
         if (piece == EMPTY) continue;
         
         const uint64_t bit = BIT_MASKS[index];
-        const uint8_t color = colorToIndex(piece & MASK_COLOR);
+        const uint8_t color = colorToIndex(piece);
 
         occupancy |= bit;
         dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
@@ -322,7 +309,7 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece & MASK_COLOR);
+    const uint8_t color = colorToIndex(piece);
     const uint64_t bit = BIT_MASKS[index];
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
@@ -330,15 +317,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece & MASK_COLOR);
+    const uint8_t color = colorToIndex(piece);
     const uint64_t bit = BIT_MASKS[index];
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
-}
-
-// ==============================
-// High-Level Game State API
-// ==============================
-
-inline bool Board::isDraw(uint8_t color) const noexcept {
-    return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw();
 }

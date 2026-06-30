@@ -75,7 +75,7 @@ void Board::fromFenToBoard(const std::string& fen) {
 
     clearEvalCache();
     lastMoveChangeFlags = MOVE_CHANGE_NONE;
-    updateOccupancyBB();
+    rebuildBitboardsFromSquares();
     rebuildRepetitionHistory();
 }
 
