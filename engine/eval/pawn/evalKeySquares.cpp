@@ -64,7 +64,7 @@ PhaseValue Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
 
     const int32_t total = evalSide(whitePawns, blackPawns, true)
                         + evalSide(blackPawns, whitePawns, false);
-    return PhaseValue{0, total};
+    return {0, total};
 }
 
 } // namespace engine

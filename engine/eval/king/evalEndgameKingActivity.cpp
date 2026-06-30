@@ -29,7 +29,7 @@ inline PhaseValue Evaluator::evalEndgameKingActivitySide(const chess::Board& b) 
     const int sq = std::countr_zero(kbb);
     constexpr int sign = (Side == 0) ? 1 : -1;
     // Pure endgame contribution (mg = 0).
-    return PhaseValue{0, sign * (7 - MIN_CENTER_DIST[sq]) * 10};
+    return {0, sign * (7 - MIN_CENTER_DIST[sq]) * 10};
 }
 
 PhaseValue Evaluator::evalEndgameKingActivity(const chess::Board& b) noexcept {

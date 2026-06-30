@@ -141,11 +141,7 @@ chess::Board::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
     static constexpr char PROMO_CHARS[5] = {'\0', 'n', 'b', 'r', 'q'};
     const char promo_char = (promo < 5) ? PROMO_CHARS[promo] : '\0';
 
-    return chess::Board::Move{
-        chess::Coords{from_idx},
-        chess::Coords{to_idx},
-        promo_char
-    };
+    return { chess::Coords{from_idx}, chess::Coords{to_idx}, promo_char };
 }
 
 // ── book probe ──────────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ PhaseValue Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_
     score += blackBlocked * ((b.bishops_bb[1] & BLACK_BLOCKED_BISHOPS) != 0ULL) * BLOCKED_PIECE_PENALTY;
 
     // MG-only feature.
-    return PhaseValue{score, 0};
+    return {score, 0};
 }
 
 } // namespace engine

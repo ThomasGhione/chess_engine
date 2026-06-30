@@ -10,22 +10,14 @@
 namespace {
     using std::string_view;
 
-    static bool isSpace(const char c) noexcept {
-        return std::isspace(static_cast<unsigned char>(c)) != 0;
-    }
-
-    static char asciiLower(const char c) noexcept {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-
     static string_view trimLeft(string_view s) noexcept {
-        std::size_t i = 0;
-        while (i < s.size() && isSpace(s[i])) ++i;
+        size_t i = 0;
+        while (i < s.size() && std::isspace(s[i])) ++i;
         return s.substr(i);
     }
 
     static string_view trimRight(string_view s) noexcept {
-        while (!s.empty() && isSpace(s.back())) s.remove_suffix(1);
+        while (!s.empty() && std::isspace(s.back())) s.remove_suffix(1);
         return s;
     }
 
@@ -34,7 +26,7 @@ namespace {
         normalized.reserve(optionName.size());
         for (const char c : optionName) {
             if (c == ' ' || c == '_' || c == '-') continue;
-            normalized.push_back(asciiLower(c));
+            normalized.push_back(static_cast<char>(std::tolower(c)));
         }
         return normalized;
     }
@@ -48,8 +40,8 @@ namespace {
                 upperNext = true;
                 continue;
             }
-            display.push_back(upperNext ? static_cast<char>(std::toupper(static_cast<unsigned char>(c)))
-                                         : static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            display.push_back(upperNext ? static_cast<char>(std::toupper(c))
+                                        : static_cast<char>(std::tolower(c)));
             upperNext = false;
         }
         return display;
@@ -250,8 +242,8 @@ namespace {
     static string_view nextToken(string_view& text) noexcept {
         text = trimLeft(text);
         if (text.empty()) return {};
-        std::size_t end = 0;
-        while (end < text.size() && !isSpace(text[end])) ++end;
+        size_t end = 0;
+        while (end < text.size() && !std::isspace(text[end])) ++end;
         const string_view token = text.substr(0, end);
         text.remove_prefix(end);
         return token;
@@ -279,17 +271,17 @@ namespace {
             args = {};
             return true;
         }
-        if (!isSpace(command[name.size()])) return false;
+        if (!std::isspace(command[name.size()])) return false;
         args = trimLeft(command.substr(name.size()));
         return true;
     }
 
-    static std::size_t findWord(string_view text, string_view word) noexcept {
-        std::size_t pos = text.find(word);
+    static size_t findWord(string_view text, string_view word) noexcept {
+        size_t pos = text.find(word);
         while (pos != string_view::npos) {
-            const std::size_t end = pos + word.size();
-            const bool leftOk = (pos == 0) || isSpace(text[pos - 1]);
-            const bool rightOk = (end == text.size()) || isSpace(text[end]);
+            const size_t end = pos + word.size();
+            const bool leftOk = (pos == 0) || std::isspace(text[pos - 1]);
+            const bool rightOk = (end == text.size()) || std::isspace(text[end]);
             if (leftOk && rightOk) return pos;
             pos = text.find(word, pos + 1);
         }
@@ -298,12 +290,10 @@ namespace {
 
     static chess::Coords parseSquare(string_view sq) noexcept {
         if (sq.size() != 2) return {};
-        const char file = asciiLower(sq[0]);
+        const char file = static_cast<char>(std::tolower(sq[0]));
         const char rank = sq[1];
         if (file < 'a' || file > 'h' || rank < '1' || rank > '8') return {};
-        return chess::Coords(
-            static_cast<uint8_t>(file - 'a'),
-            static_cast<uint8_t>('8' - rank));
+        return {static_cast<uint8_t>(file - 'a'), static_cast<uint8_t>('8' - rank)};
     }
 
     static std::string ponderSuffix(const engine::Engine& engine, const chess::Board::Move& bestMove) noexcept {
@@ -411,7 +401,7 @@ namespace uci {
         if (nextToken(rest) != "name") return;
         rest = trimLeft(rest); // nextToken leaves the leading gap before the name
 
-        const std::size_t valuePos = findWord(rest, "value");
+        const size_t valuePos = findWord(rest, "value");
         const string_view optionName =
             (valuePos == string_view::npos) ? trimRight(rest) : trimRight(rest.substr(0, valuePos));
         const string_view optionValue =
@@ -541,13 +531,13 @@ namespace uci {
         stopSearch(false);
         string_view moves;
 
-        if (command.starts_with("startpos") && (command.size() == 8 || isSpace(command[8]))) {
+        if (command.starts_with("startpos") && (command.size() == 8 || std::isspace(command[8]))) {
             engine.board = chess::Board{};
-            const std::size_t movesPos = findWord(command, "moves");
+            const size_t movesPos = findWord(command, "moves");
             if (movesPos != string_view::npos) moves = command.substr(movesPos);
-        } else if (command.starts_with("fen") && (command.size() == 3 || isSpace(command[3]))) {
+        } else if (command.starts_with("fen") && (command.size() == 3 || std::isspace(command[3]))) {
             string_view fenPayload = trimLeft(command.substr(3));
-            const std::size_t movesPos = findWord(fenPayload, "moves");
+            const size_t movesPos = findWord(fenPayload, "moves");
             if (movesPos == string_view::npos) {
                 parseFEN(fenPayload);
             } else {
@@ -659,7 +649,7 @@ namespace uci {
             const chess::Coords to = parseSquare(move.substr(2, 2));
             if (!from.isValid() || !to.isValid()) continue;
 
-            const char promo = (move.size() > 4) ? asciiLower(move[4]) : '\0';
+            const char promo = (move.size() > 4) ? static_cast<char>(std::tolower(move[4])) : '\0';
             engine.movePiece(from, to, promo);
         }
     }

@@ -11,7 +11,7 @@ PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
-    return PhaseValue{score, 0};
+    return {score, 0};
 }
 
 inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
@@ -53,7 +53,7 @@ inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b,
     sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
 
     const int sign = (side == 0) ? 1 : -1;
-    return PhaseValue{0, sign * sideScore};
+    return {0, sign * sideScore};
 }
 
 PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {

@@ -41,7 +41,7 @@ PhaseValue Evaluator::evalKingActivityPair(const chess::Board& b) noexcept {
     const PhaseValue mgPart = evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
     const PhaseValue egPart = evalKingActivitySide<true>(b, 0)  + evalKingActivitySide<true>(b, 1);
     // Composite: mg-branch contributes only to mg side, eg-branch only to eg.
-    return PhaseValue{mgPart.mg, egPart.eg};
+    return {mgPart.mg, egPart.eg};
 }
 
 } // namespace engine

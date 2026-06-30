@@ -42,7 +42,7 @@ PhaseValue Evaluator::evalMopUp(const chess::Board& b) noexcept {
 
     const int sign = (winningSide == 0) ? 1 : -1;
     // Pure endgame: mop-up is meaningless in the middlegame.
-    return PhaseValue{0, sign * (cornerBonus + proximityBonus)};
+    return {0, sign * (cornerBonus + proximityBonus)};
 }
 
 } // namespace engine

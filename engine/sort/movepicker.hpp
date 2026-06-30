@@ -93,7 +93,7 @@ struct MovePicker {
 
             return moves[currentIndex++];
         }
-        return chess::Board::Move{};
+        return {};
     }
 
     // Full descending insertion sort over [0, size). Used by root search (YBWC).
