@@ -75,7 +75,6 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 
 [[nodiscard]] bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
     const uint8_t side = colorToIndex(movingColor);
-    //FIXME Usare funzione helper chiamata a esempio 'calculateAttackersKingMask'
     const uint8_t kingIndex = std::countr_zero(kings_bb[side]);
     const uint8_t oppSide = side ^ 1;
     
@@ -250,37 +249,32 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     const uint8_t oppColor = oppositeColor(color);
 
     const bool inChk = inCheck(color);
-    const bool inDoubleChk = inChk && isDoubleCheck(color);
 
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
                              rooks_bb[side] | queens_bb[side]  | kings_bb[side];
     const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
                                rooks_bb[oppSide] | queens_bb[oppSide]  | kings_bb[oppSide];
 
-    //FIXME Di fatto rappresenta un controllo inutile
-    // --- KING MOVES (always exists, cheap to test) ---
-    const uint64_t kings = kings_bb[side];
-    if (kings) [[likely]] {
-        const uint8_t king = std::countr_zero(kings);
-        uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
-        while (moves) {
-            const uint8_t to = std::countr_zero(moves);
-            moves &= moves - 1;
-            if (!isSquareAttacked(to, oppColor, king)) return true;
-        }
-        
-        if (!inChk) {
-            constexpr uint8_t WHITE_KING_START = 60;  // e1
-            constexpr uint8_t BLACK_KING_START = 4;   // e8
-            const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
-            if (king == eIndex) {
-                if (canCastleGeneric(side == 0, eIndex, true)) return true;
-                if (canCastleGeneric(side == 0, eIndex, false)) return true;
-            }
+    // --- KING MOVES ---
+    const uint8_t king = std::countr_zero(kings_bb[side]);
+    uint64_t moves = pieces::KING_ATTACKS[king] & ~ownOcc;
+    while (moves) {
+        const uint8_t to = std::countr_zero(moves);
+        moves &= moves - 1;
+        if (!isSquareAttacked(to, oppColor, king)) return true;
+    }
+
+    if (!inChk) {
+        constexpr uint8_t WHITE_KING_START = 60;  // e1
+        constexpr uint8_t BLACK_KING_START = 4;   // e8
+        const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
+        if (king == eIndex) {
+            if (canCastleGeneric(side == 0, eIndex, true)) return true;
+            if (canCastleGeneric(side == 0, eIndex, false)) return true;
         }
     }
 
-    if (inDoubleChk) return false;
+    if (inChk && isDoubleCheck(color)) return false;
 
     // --- NON-KING PIECES: skip isLegalPseudoMove, call isKingSafeAfterMove directly ---
 

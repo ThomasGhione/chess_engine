@@ -61,27 +61,6 @@ inline int32_t evalCorrection(const SearchRuntime& runtime, const chess::Board& 
 
 } // namespace
 
-// --- Negamax helpers ---
-constexpr bool Searcher::isBetter(int32_t newScore, int32_t currentBest) noexcept {
-    return newScore > currentBest;
-}
-
-constexpr bool Searcher::isBetaCutoff(int32_t score, int32_t beta) noexcept {
-    return score >= beta;
-}
-
-void Searcher::updateBound(int32_t score, int32_t& alpha) noexcept {
-    if (score > alpha) alpha = score;
-}
-
-constexpr bool Searcher::shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept {
-    return standPat + margin <= alpha;
-}
-
-constexpr bool Searcher::shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept {
-    return score > alphaBound;
-}
-
 
 constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);

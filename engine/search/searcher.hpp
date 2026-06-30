@@ -122,11 +122,11 @@ private:
     };
 
     // --- Score utilities ---
-    static constexpr bool    isBetter(int32_t newScore, int32_t currentBest) noexcept;
-    static constexpr bool    isBetaCutoff(int32_t score, int32_t beta) noexcept;
-    static void              updateBound(int32_t score, int32_t& alpha) noexcept;
-    static constexpr bool    shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept;
-    static constexpr bool    shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept;
+    static constexpr bool isBetter(int32_t newScore, int32_t currentBest) noexcept       { return newScore > currentBest; }
+    static constexpr bool isBetaCutoff(int32_t score, int32_t beta) noexcept             { return score >= beta; }
+    static void           updateBound(int32_t score, int32_t& alpha) noexcept            { if (score > alpha) alpha = score; }
+    static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept { return standPat + margin <= alpha; }
+    static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept  { return score > alphaBound; }
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
     // Mate scores embed ply-distance; rebase on TT store/load so mate distances
