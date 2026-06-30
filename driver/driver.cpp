@@ -268,7 +268,7 @@ void Driver::playerTurn() noexcept {
 
         const chess::Coords fromCoords(playerInput.substr(0, 2));
         const chess::Coords toCoords(playerInput.substr(2, 2));
-        if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) [[unlikely]] {
+        if (!fromCoords.isValid() || !toCoords.isValid()) [[unlikely]] {
             std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
             continue;
         }

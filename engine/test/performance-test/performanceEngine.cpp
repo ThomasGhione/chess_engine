@@ -51,7 +51,7 @@ ut::suite performanceEngineSuite = [] {
 
         // Advance the self-play game so the next run is a new position; stop if
         // there is no legal move (checkmate / stalemate / terminal).
-        if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) break;
+        if (!move.from.isValid() || !move.to.isValid()) break;
         chess::Board::MoveState state;
         e.board.doMove(move, state);
     }

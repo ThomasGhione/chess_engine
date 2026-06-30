@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <cstdint>
 #include <cctype>
 
@@ -31,23 +32,18 @@ struct Coords {
     {}
 
     // Constructor from algebraic notation string (e.g. "e4", "a8")
-    explicit Coords(const std::string& input) noexcept 
-        : index(INVALID_COORDS) 
+    explicit Coords(std::string_view input) noexcept
+        : index(INVALID_COORDS)
     {
         if (input.length() != 2) [[unlikely]] return;
 
         const char fileChar = static_cast<char>(std::tolower(static_cast<unsigned char>(input[0])));
         const char rankChar = input[1];
 
-        if (!isLetter(fileChar) || !isNumber(rankChar)) [[unlikely]] return;
+        if (fileChar < 'a' || fileChar > 'h' || rankChar < '1' || rankChar > '8') [[unlikely]] return;
 
-        const uint8_t f = fileChar - 'a';
-        const uint8_t r = '8' - rankChar;
-
-        this->index = r * 8 + f;
+        this->index = static_cast<uint8_t>(('8' - rankChar) * 8 + (fileChar - 'a'));
     }
-
-    constexpr Coords(const Coords& other) noexcept = default;
 
     // ============== ACCESS METHODS ==============
 
@@ -60,32 +56,17 @@ struct Coords {
 
     constexpr bool operator==(const Coords& other) const noexcept { return this->index == other.index; }
     constexpr bool operator!=(const Coords& other) const noexcept { return this->index != other.index; }
-    constexpr Coords& operator=(const Coords& other) noexcept = default;
 
     // ============== SETTERS / UPDATERS ==============
-
-    // ============== UTILITY STATIC METHODS ==============
-
-    //FIXME Eliminare costati magiche
-    static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
-    static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
-    static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }
 
     // ============== CONVERSION METHODS ==============
 
     // Convert to algebraic notation string (e.g. "e4")
     std::string toString() const noexcept {
         if (!this->isValid()) [[unlikely]] return "??";
-
-        std::string result(2, ' ');
-
-        result[0] = 'a' + this->file(); // file: 0-7 -> 'a'-'h'
-        result[1] = '8' - this->rank(); // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
-
-        return result;
+        return {static_cast<char>('a' + this->file()), static_cast<char>('8' - this->rank())};
     }
 
-    static std::string toAlgebric(const Coords& c) noexcept { return c.toString(); }
 
 }; // class Coords
 

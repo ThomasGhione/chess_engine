@@ -152,8 +152,8 @@ std::optional<chess::Board::Move> Engine::tryInstantMove(uint64_t targetDepth) n
 // Stores `candidate` as bestMove (normalising an out-of-bounds search result
 // to the empty sentinel) and returns it.
 chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidate) noexcept {
-    const bool playable = chess::Coords::isInBounds(candidate.from)
-                       && chess::Coords::isInBounds(candidate.to);
+    const bool playable = candidate.from.isValid()
+                       && candidate.to.isValid();
     this->bestMove = playable ? candidate : chess::Board::Move{};
     return this->bestMove;
 }
@@ -162,7 +162,7 @@ chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidat
 // refreshing the game result. Returns false (board untouched) when the move is
 // out of bounds or illegal.
 bool Engine::playMoveOnBoard(const chess::Board::Move& move) noexcept {
-    if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) return false;
+    if (!move.from.isValid() || !move.to.isValid()) return false;
     if (!this->board.move(move.from, move.to, move.promotionPiece)) return false;
 
     this->appendMoveHistoryEntry(move.from, move.to, move.promotionPiece);
@@ -230,8 +230,8 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
 
     this->ponderResultReady = ponderResult.hasLegalMoves
         && ponderResult.completedAnyDepth
-        && chess::Coords::isInBounds(ponderResult.bestMove.from)
-        && chess::Coords::isInBounds(ponderResult.bestMove.to);
+        && ponderResult.bestMove.from.isValid()
+        && ponderResult.bestMove.to.isValid();
 
     this->ponderingActive.store(false, std::memory_order_release);
 }
@@ -260,15 +260,15 @@ void Engine::startPondering() noexcept {
 
     chess::Board rootBoard = this->board;
     auto ponderMove = getTTPonderMove(rootBoard, this->tt);
-    if (!chess::Coords::isInBounds(ponderMove.from)) { // did the TT fail?
+    if (!ponderMove.from.isValid()) { // did the TT fail?
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
     }
-    if (!chess::Coords::isInBounds(ponderMove.from)) return; // did the fallback fail too?
+    if (!ponderMove.from.isValid()) return; // did the fallback fail too?
 
     if (!rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
         rootBoard = this->board;
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
-        if (!chess::Coords::isInBounds(ponderMove.from)
+        if (!ponderMove.from.isValid()
             || !rootBoard.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)) {
             return;
         }
@@ -398,7 +398,7 @@ void Engine::search(uint64_t requestedDepth) noexcept {
     this->startPondering(); // no-op when the move just played ended the game
 
     DBG_ONLY(
-        std::string moveStr = chess::Coords::toAlgebric(candidate.from) + chess::Coords::toAlgebric(candidate.to);
+        std::string moveStr = candidate.from.toString() + candidate.to.toString();
         if (candidate.promotionPiece != '\0') {
             moveStr += candidate.promotionPiece;
         }

@@ -657,7 +657,7 @@ namespace uci {
 
             const chess::Coords from = parseSquare(move.substr(0, 2));
             const chess::Coords to = parseSquare(move.substr(2, 2));
-            if (!chess::Coords::isInBounds(from) || !chess::Coords::isInBounds(to)) continue;
+            if (!from.isValid() || !to.isValid()) continue;
 
             const char promo = (move.size() > 4) ? asciiLower(move[4]) : '\0';
             engine.movePiece(from, to, promo);

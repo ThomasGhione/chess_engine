@@ -181,7 +181,7 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
     const uint64_t oppOcc = occ & ~ownOcc;
     const chess::Coords enPassant = b.getEnPassant();
-    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const bool hasEnPassant = enPassant.isValid();
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
     // When the caller guarantees we are not in check, both tests are skipped.
     const bool inCheck = knownNotInCheck ? false : b.inCheck(color);
@@ -274,7 +274,7 @@ MoveList MoveGenerator::generateLegalEvasionsFor(
     const uint64_t ownOcc = pawns | knights | bishops | rooks | queens | kings;
     const uint64_t oppOcc = occ & ~ownOcc;
     const chess::Coords enPassant = b.getEnPassant();
-    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const bool hasEnPassant = enPassant.isValid();
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
     const bool inDoubleCheck = inDoubleCheckKnown ? inDoubleCheckValue : b.isDoubleCheck(color);
     const bool singleCheck = !inDoubleCheck;
@@ -334,7 +334,7 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
     const uint64_t oppOcc = occ & ~ownOcc;
 
     const chess::Coords enPassant = b.getEnPassant();
-    const bool hasEnPassant = chess::Coords::isInBounds(enPassant);
+    const bool hasEnPassant = enPassant.isValid();
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::bitMask(enPassant.index) : 0ULL;
 
     const uint8_t pawnPiece = chess::Board::PAWN | color;
@@ -442,7 +442,7 @@ void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList& moves,
 
     while (mask) {
         const int to = engine::popLSB(mask);
-        const bool isEnPassant = chess::Coords::isInBounds(enPassant)
+        const bool isEnPassant = enPassant.isValid()
             && (to == enPassant.index)
             && (chess::Board::file(to) != fromFile);
 

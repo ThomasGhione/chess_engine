@@ -11,7 +11,7 @@ int32_t computeSeeForPicker(const chess::Board& b, const chess::Board::Move& m) 
 Sorter::CaptureInfo Sorter::classifyCapture(
         const chess::Board::Move& m, int fromPieceType, int toPieceType,
         const chess::Coords& enPassant) noexcept {
-    const bool isEpCapture = chess::Coords::isInBounds(enPassant)
+    const bool isEpCapture = enPassant.isValid()
         && fromPieceType == chess::Board::PAWN
         && toPieceType   == chess::Board::EMPTY
         && (m.to == enPassant)
@@ -359,7 +359,7 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Board::Move& m
     if (m.to.rank() == chess::Board::promotionRank(b.getColor(m.from.index) == chess::Board::WHITE))
         return true;
 
-    return chess::Coords::isInBounds(enPassant) && (m.to == enPassant);
+    return enPassant.isValid() && (m.to == enPassant);
 }
 
 MoveList Sorter::sortEvasionsForcingFirst(MoveList evasions, const chess::Board& b) noexcept {

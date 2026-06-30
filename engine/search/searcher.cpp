@@ -1367,7 +1367,7 @@ void Searcher::storeRootHashMove(
         return;
     }
 
-    if (!chess::Coords::isInBounds(move.from) || !chess::Coords::isInBounds(move.to)) {
+    if (!move.from.isValid() || !move.to.isValid()) {
         return;
     }
 

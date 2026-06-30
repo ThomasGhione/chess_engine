@@ -101,7 +101,7 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
         newHash ^= zobrist::TABLES.castling[castle];
     }
     uint8_t newEpHashFile = 0xFF;
-    if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+    if (enPassant.isValid() && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
         newEpHashFile = enPassant.file();
         newHash ^= zobrist::TABLES.enPassant[newEpHashFile];
     }

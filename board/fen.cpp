@@ -108,7 +108,7 @@ std::string Board::castlingToFen() const {
 
 //FIXME Rendere constexpr 
 std::string Board::enPassantToFen() const {
-    if (!Coords::isInBounds(enPassant)) return "-";
+    if (!enPassant.isValid()) return "-";
     return std::string(1, 'a' + enPassant.file()) + static_cast<char>('8' - enPassant.rank());
 }
 

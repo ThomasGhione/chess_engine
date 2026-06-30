@@ -150,7 +150,7 @@ inline Board::MoveKind Board::classifyMoveKind(
     //FIXME Usa funzione helper
     if (fromFile != toFile
         && destBefore == EMPTY
-        && Coords::isInBounds(prevEnPassant)
+        && prevEnPassant.isValid()
         && toIndex == prevEnPassant.index) {
         return MoveKind::EnPassant;
     }

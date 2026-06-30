@@ -43,7 +43,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             if (pieces::PAWN_ATTACKS[side][fromIndex] & toBit) {
                 // En-passant: diagonal to empty square that matches EP target
                 if (destPiece == EMPTY) {
-                    if (Coords::isInBounds(enPassant) && toIndex == enPassant.index) {
+                    if (enPassant.isValid() && toIndex == enPassant.index) {
                         const int8_t epDir = isWhite ? 8 : -8;
                         const uint8_t capturedPawnIdx = toIndex + epDir;
                         return isKingSafeAfterMove(movingColor, fromIndex, toIndex, bitMask(capturedPawnIdx));
@@ -331,7 +331,7 @@ void Board::recomputeHashAndEp() noexcept {
     //FIXME Eliminare numero magico
     epHashFile = 0xFF;
     //FIXME Creare funzione heleper per la codizione
-    if (Coords::isInBounds(getEnPassant()) && zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
+    if (getEnPassant().isValid() && zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
         epHashFile = getEnPassant().file();
 }
 

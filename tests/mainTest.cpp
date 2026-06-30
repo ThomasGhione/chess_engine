@@ -42,8 +42,8 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
     assert(board.isDraw(board.getActiveColor()));
     const chess::Board::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
 
-    assert(!chess::Coords::isInBounds(bestMove.from));
-    assert(!chess::Coords::isInBounds(bestMove.to));
+    assert(!bestMove.from.isValid());
+    assert(!bestMove.to.isValid());
     assert(runtime.eval == 0);
     assert(runtime.nodesSearched == 0);
 }
