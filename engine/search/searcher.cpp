@@ -509,15 +509,12 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isFirstMove = (moveIndex == 0);
 
-        const int fromIndex = m.from.index;
-        const int toIndex = m.to.index;
-        const int fromPieceType = b.get(fromIndex) & chess::Board::MASK_PIECE_TYPE;
-        const int toPieceType = b.get(toIndex) & chess::Board::MASK_PIECE_TYPE;
-        const bool isPawnMove = (fromPieceType == chess::Board::PAWN);
+        const int fromPieceType = b.get(m.from.index) & chess::Board::MASK_PIECE_TYPE;
+        const int toPieceType = b.get(m.to.index) & chess::Board::MASK_PIECE_TYPE;
         const auto cap = Sorter::classifyCapture(m, fromPieceType, toPieceType, enPassant);
         const bool wasCapture = cap.isCapture;
         const int victimType = cap.victimType;
-        const bool isPromotionCandidate = isPawnMove && (m.to.rank() == promotionRank);
+        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (m.to.rank() == promotionRank);
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {

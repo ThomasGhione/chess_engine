@@ -49,8 +49,6 @@ struct MoveList {
 
     [[nodiscard]] inline bool is_empty() const noexcept { return size == 0; }
 
-    inline void clear() noexcept { size = 0; }
-
     inline void rotate(size_t index) noexcept {
         chess::Board::Move temp = (*this)[index];
         for (size_t i = index; i > 0; --i)

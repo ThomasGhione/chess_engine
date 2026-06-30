@@ -237,9 +237,9 @@ bool Board::hasLegalMovesForPieceType(
 
         uint64_t movesMask = pieces::generateMovesByType<PieceType>(from, occupancy) & ~ownOcc;
         while (movesMask) {
-            const uint8_t to = std::countr_zero(movesMask);
-            movesMask &= movesMask - 1;
-            const uint64_t toBit = Board::bitMask(to);
+            const uint64_t toBit = movesMask & -movesMask;
+            movesMask ^= toBit;
+            const uint8_t to = std::countr_zero(toBit);
             const uint64_t capturedMask = toBit & enemyOcc;
             if (isKingSafeAfterMove(movingColor, from, to, capturedMask)) return true;
         }
@@ -307,9 +307,10 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
 
         uint64_t caps = pieces::PAWN_ATTACKS[side][from] & enemyOcc;
         while (caps) {
-            const uint8_t to = std::countr_zero(caps);
-            caps &= caps - 1;
-            if (isKingSafeAfterMove(color, from, to, bitMask(to))) return true;
+            const uint64_t capBit = caps & -caps;
+            caps ^= capBit;
+            const uint8_t to = std::countr_zero(capBit);
+            if (isKingSafeAfterMove(color, from, to, capBit)) return true;
         }
     }
 
