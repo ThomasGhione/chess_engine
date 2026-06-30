@@ -66,8 +66,8 @@ PhaseValue Evaluator::evalPassedPawn(int sq, uint64_t ownPawns, uint64_t allPawn
                                       const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
                                       uint64_t enemyPawns, int sign) noexcept {
-    const int rank = chess::Board::rank(sq);
-    const int file = chess::Board::file(sq);
+    const int rank = chess::rank(sq);
+    const int file = chess::file(sq);
     const int promotionRank = (sign > 0) ? 1 : 6;
 
     PhaseValue score = sign * engine::PASSED_PAWN_BONUS;
@@ -88,7 +88,7 @@ PhaseValue Evaluator::evalPassedPawn(int sq, uint64_t ownPawns, uint64_t allPawn
     uint64_t adjacentPawns = ownPawns & ADJACENT_FILES_ONLY[file] & pieces::KING_ATTACKS[sq];
     while (adjacentPawns) {
         const int adjSq = popLSB(adjacentPawns);
-        const int adjFile = chess::Board::file(adjSq);
+        const int adjFile = chess::file(adjSq);
         const bool adjPassed = ((enemyPawns & ADJACENT_AND_FILE_MASKS[adjFile] & forwardFill) == 0ULL);
         if (adjPassed) {
             hasConnectedPassedPawn = true;
@@ -152,8 +152,8 @@ PhaseValue Evaluator::evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, u
     uint64_t pawns = ownPawns;
     while (pawns) {
         const int sq = popLSB(pawns);
-        const int file = chess::Board::file(sq);
-        const int rank = chess::Board::rank(sq);
+        const int file = chess::file(sq);
+        const int rank = chess::rank(sq);
         const bool hasSupport = (ownPawns & supportMasks[sq]) != 0ULL;
         const uint64_t frontMask = oneStepMasks[sq];
         const bool frontBlockedByPawn = (frontMask != 0ULL) && ((allPawns & frontMask) != 0ULL);

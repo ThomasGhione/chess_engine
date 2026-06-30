@@ -104,7 +104,7 @@ public:
         Coords to;
         char promotionPiece = '\0';
 
-        bool operator==(const Move& other) const noexcept;
+        constexpr bool operator==(const Move&) const noexcept = default;
         constexpr bool sameFromTo(const Move& other) const noexcept { return from.index == other.from.index && to.index == other.to.index; };
         constexpr bool sameFromTo(int f, int t) const noexcept { return from.index == static_cast<uint8_t>(f) && to.index == static_cast<uint8_t>(t); };
 
@@ -207,9 +207,6 @@ public:
     static constexpr uint8_t  oppositeColor(uint8_t color) noexcept;
     static constexpr uint8_t  colorToIndex(uint8_t color) noexcept;
     static constexpr uint8_t  promotionRank(bool isWhite) noexcept;
-    static constexpr uint64_t bitMask(uint8_t sq) noexcept;
-    static constexpr uint8_t  file(uint8_t sq) noexcept;
-    static constexpr uint8_t  rank(uint8_t sq) noexcept;
 
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr inline uint8_t get(uint8_t index) const noexcept;

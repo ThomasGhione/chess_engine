@@ -33,7 +33,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
         return false;
 
     //FIXME Convertire switch in funzione helper
-    const uint64_t toBit = Board::bitMask(toIndex);
+    const uint64_t toBit = Board::BIT_MASKS[toIndex];
     switch (fromType) {
         case PAWN: {
             const bool isWhite = (movingColor == WHITE);
@@ -46,7 +46,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
                     if (enPassant.isValid() && toIndex == enPassant.index) {
                         const int8_t epDir = isWhite ? 8 : -8;
                         const uint8_t capturedPawnIdx = toIndex + epDir;
-                        return isKingSafeAfterMove(movingColor, fromIndex, toIndex, bitMask(capturedPawnIdx));
+                        return isKingSafeAfterMove(movingColor, fromIndex, toIndex, BIT_MASKS[capturedPawnIdx]);
                     }
                     return false; // diagonal to empty square but not en-passant
                 }
@@ -119,10 +119,10 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     // Castling moves are uniquely identified by a destination offset of +2 or -2.
     // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
     if (diff == 2 || diff == -2) [[unlikely]] {
-        if (file(fromIndex) != 4) return false;
+        if (chess::file(fromIndex) != 4) return false;
         const bool isWhite = (movingColor == WHITE);
         const uint8_t expectedRank = isWhite ? 7 : 0;
-        if (rank(fromIndex) != expectedRank) return false;
+        if (chess::rank(fromIndex) != expectedRank) return false;
         return canCastleGeneric(isWhite, fromIndex, diff == 2);
     }
 
@@ -167,7 +167,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
         return false;
     
     // Check rook presence
-    if ((rooks_bb[side] & Board::bitMask(rookIdx)) == 0ULL)
+    if ((rooks_bb[side] & Board::BIT_MASKS[rookIdx]) == 0ULL)
         return false;
     
     if (isSquareAttacked(fromIndex, oppColor)) return false;
@@ -183,7 +183,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~Board::bitMask(excludeSquare)) : occupancy;
+    const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~Board::BIT_MASKS[excludeSquare]) : occupancy;
     const uint8_t side = colorToIndex(byColor);
     return isKingAttackedCustom(targetIndex, side, occMinus,
                                 pawns_bb[side], knights_bb[side], bishops_bb[side],

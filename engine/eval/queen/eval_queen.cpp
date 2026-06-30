@@ -3,8 +3,8 @@
 namespace engine {
 
 PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
-    static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59);
-    static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);
+    static constexpr uint64_t WHITE_QUEEN_START = chess::Board::BIT_MASKS[59];
+    static constexpr uint64_t BLACK_QUEEN_START = chess::Board::BIT_MASKS[3];
     static constexpr int32_t EARLY_QUEEN_DEV_PENALTY = 20;
 
     int32_t score = 0;

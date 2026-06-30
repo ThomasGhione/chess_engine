@@ -11,19 +11,19 @@ constexpr uint8_t algebraicSquare(char file, int rank) noexcept {
 } // namespace
 
 PhaseValue Evaluator::evalBlockedCenterWithPieces(const chess::Board& b, uint64_t occ) noexcept {
-    static constexpr uint64_t WHITE_D4_PAWN = chess::Board::bitMask(algebraicSquare('d', 4));
-    static constexpr uint64_t BLACK_D5_PIECE = chess::Board::bitMask(algebraicSquare('d', 5));
+    static constexpr uint64_t WHITE_D4_PAWN = chess::Board::BIT_MASKS[algebraicSquare('d', 4)];
+    static constexpr uint64_t BLACK_D5_PIECE = chess::Board::BIT_MASKS[algebraicSquare('d', 5)];
     static constexpr uint64_t WHITE_BLOCKED_KNIGHTS =
-        chess::Board::bitMask(algebraicSquare('c', 3)) | chess::Board::bitMask(algebraicSquare('f', 3));
+        chess::Board::BIT_MASKS[algebraicSquare('c', 3)] | chess::Board::BIT_MASKS[algebraicSquare('f', 3)];
     static constexpr uint64_t WHITE_BLOCKED_BISHOPS =
-        chess::Board::bitMask(algebraicSquare('d', 3)) | chess::Board::bitMask(algebraicSquare('e', 3));
+        chess::Board::BIT_MASKS[algebraicSquare('d', 3)] | chess::Board::BIT_MASKS[algebraicSquare('e', 3)];
 
-    static constexpr uint64_t BLACK_D5_PAWN = chess::Board::bitMask(algebraicSquare('d', 5));
-    static constexpr uint64_t WHITE_D4_PIECE = chess::Board::bitMask(algebraicSquare('d', 4));
+    static constexpr uint64_t BLACK_D5_PAWN = chess::Board::BIT_MASKS[algebraicSquare('d', 5)];
+    static constexpr uint64_t WHITE_D4_PIECE = chess::Board::BIT_MASKS[algebraicSquare('d', 4)];
     static constexpr uint64_t BLACK_BLOCKED_KNIGHTS =
-        chess::Board::bitMask(algebraicSquare('c', 6)) | chess::Board::bitMask(algebraicSquare('f', 6));
+        chess::Board::BIT_MASKS[algebraicSquare('c', 6)] | chess::Board::BIT_MASKS[algebraicSquare('f', 6)];
     static constexpr uint64_t BLACK_BLOCKED_BISHOPS =
-        chess::Board::bitMask(algebraicSquare('d', 6)) | chess::Board::bitMask(algebraicSquare('e', 6));
+        chess::Board::BIT_MASKS[algebraicSquare('d', 6)] | chess::Board::BIT_MASKS[algebraicSquare('e', 6)];
 
     static constexpr int32_t BLOCKED_CENTER_PENALTY = 15;
     static constexpr int32_t BLOCKED_PIECE_PENALTY = 10;

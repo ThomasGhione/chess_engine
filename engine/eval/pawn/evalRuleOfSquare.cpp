@@ -9,15 +9,15 @@ PhaseValue Evaluator::evalRuleOfSquare(const chess::Board& b,
 
     auto kingInSquare = [](int kingSq, int pawnSq, bool isWhite,
                            bool enemyToMove) -> bool {
-        const int pawnRank   = chess::Board::rank(pawnSq);
-        const int pawnFile   = chess::Board::file(pawnSq);
+        const int pawnRank   = chess::rank(pawnSq);
+        const int pawnFile   = chess::file(pawnSq);
         const int movesToProm = isWhite ? pawnRank : (7 - pawnRank);
         if (movesToProm <= 0) return true;
 
         const int promRank = isWhite ? 0 : 7;
         const int dist = std::max(
-            std::abs(chess::Board::rank(kingSq) - promRank),
-            std::abs(chess::Board::file(kingSq) - pawnFile)
+            std::abs(chess::rank(kingSq) - promRank),
+            std::abs(chess::file(kingSq) - pawnFile)
         );
         return dist <= movesToProm + (enemyToMove ? 1 : 0);
     };
@@ -45,7 +45,7 @@ PhaseValue Evaluator::evalRuleOfSquare(const chess::Board& b,
             const int sq = std::countr_zero(pawns);
             pawns &= pawns - 1;
 
-            const int file = chess::Board::file(sq);
+            const int file = chess::file(sq);
 
             if ((enemyPawns & ADJACENT_AND_FILE_MASKS[file] & fwd[sq]) != 0ULL) continue;
 
@@ -55,18 +55,18 @@ PhaseValue Evaluator::evalRuleOfSquare(const chess::Board& b,
                 continue;
             }
 
-            const int pawnRank    = chess::Board::rank(sq);
+            const int pawnRank    = chess::rank(sq);
             const int movesToProm = isWhite ? pawnRank : (7 - pawnRank);
             const int promRank    = isWhite ? 0 : 7;
             const int distEnemy   = std::max(
-                std::abs(chess::Board::rank(enemyKingSq) - promRank),
-                std::abs(chess::Board::file(enemyKingSq) - file)
+                std::abs(chess::rank(enemyKingSq) - promRank),
+                std::abs(chess::file(enemyKingSq) - file)
             );
             const int margin = (movesToProm + (enemyToMove ? 1 : 0)) - distEnemy;
             if (margin <= 1) {
                 const int distOur = std::max(
-                    std::abs(chess::Board::rank(ourKingSq) - promRank),
-                    std::abs(chess::Board::file(ourKingSq) - file)
+                    std::abs(chess::rank(ourKingSq) - promRank),
+                    std::abs(chess::file(ourKingSq) - file)
                 );
                 constexpr int32_t TIGHT_RACE_KING_BONUS = 6;
                 score += sign * (14 - std::min(14, distOur)) * TIGHT_RACE_KING_BONUS / 14;

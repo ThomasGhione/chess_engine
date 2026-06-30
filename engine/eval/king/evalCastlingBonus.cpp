@@ -11,8 +11,8 @@ inline PhaseValue Evaluator::evalCastlingBonusSide(const chess::Board& b, int si
     const bool hasAnyRight = castleKs || castleQs;
 
     const int kingSq   = std::countr_zero(kingBB);
-    const int kingFile = chess::Board::file(kingSq);
-    const int kingRank = chess::Board::rank(kingSq);
+    const int kingFile = chess::file(kingSq);
+    const int kingRank = chess::rank(kingSq);
     const int backRank = (side == 0) ? 7 : 0;   // own first rank (a1=56 => rank 7)
     const int startSq  = (side == 0) ? 60 : 4;  // e1 / e8
     const bool onBackRank = (kingRank == backRank);

@@ -27,7 +27,7 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
     if (!enemyKingBB) [[unlikely]] return 0;
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
-    const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::bitMask(enemyKingSq);
+    const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::BIT_MASKS[enemyKingSq];
 
     const uint64_t developedKnights = (side == 0)
         ? (b.knights_bb[side] & ~WHITE_MINOR_START)

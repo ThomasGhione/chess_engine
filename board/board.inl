@@ -86,21 +86,8 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 }
 
 // ==============================
-// Geometry Helpers
-// ==============================
-
-inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
-
-inline constexpr uint8_t Board::file(uint8_t sq) noexcept { return chess::file(sq); } // Extract bits 0-2
-inline constexpr uint8_t Board::rank(uint8_t sq) noexcept { return chess::rank(sq); } // Extract bits 3-5
-
-// ==============================
 // Move Value Helpers
 // ==============================
-inline bool Board::Move::operator==(const Move& other) const noexcept {
-    return from == other.from && to == other.to && promotionPiece == other.promotionPiece;
-}
-
 inline std::string Board::Move::toUCIString() const noexcept {
     std::string uciMove = from.toString() + to.toString();
     if (promotionPiece != '\0') {
@@ -214,7 +201,7 @@ inline void Board::updateOccupancyBB() noexcept {
         
         if (piece == EMPTY) continue;
         
-        const uint64_t bit = bitMask(index);
+        const uint64_t bit = BIT_MASKS[index];
         const uint8_t color = colorToIndex(piece & MASK_COLOR);
 
         occupancy |= bit;
@@ -224,8 +211,8 @@ inline void Board::updateOccupancyBB() noexcept {
 
 __attribute__((always_inline))
 inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-    occupancy |= bitMask(toIndex);  // Set the bit at 'to' position    
-    occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
+    occupancy |= BIT_MASKS[toIndex];  // Set the bit at 'to' position    
+    occupancy &= ~BIT_MASKS[fromIndex]; // Clear the bit at 'from' position
 }
 
 inline bool Board::isKingSafeAfterMove(
@@ -242,7 +229,7 @@ inline bool Board::isKingSafeAfterMove(
     const uint8_t kingSq = std::countr_zero(kingBB);
 
     const uint64_t occNew =
-        (occupancy & ~bitMask(fromIndex) & ~capturedMask) | bitMask(toIndex);
+        (occupancy & ~BIT_MASKS[fromIndex] & ~capturedMask) | BIT_MASKS[toIndex];
     const uint64_t keep = ~capturedMask;
 
     return !isKingAttackedCustom(kingSq, oppSide, occNew,
@@ -336,7 +323,7 @@ __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = colorToIndex(piece & MASK_COLOR);
-    const uint64_t bit = bitMask(index);
+    const uint64_t bit = BIT_MASKS[index];
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 
@@ -344,7 +331,7 @@ __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     if (piece == EMPTY) [[unlikely]] return;
     const uint8_t color = colorToIndex(piece & MASK_COLOR);
-    const uint64_t bit = bitMask(index);
+    const uint64_t bit = BIT_MASKS[index];
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
 }
 

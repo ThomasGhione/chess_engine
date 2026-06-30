@@ -15,7 +15,7 @@ Sorter::CaptureInfo Sorter::classifyCapture(
         && fromPieceType == chess::Board::PAWN
         && toPieceType   == chess::Board::EMPTY
         && (m.to == enPassant)
-        && (chess::Board::file(m.from.index) != chess::Board::file(m.to.index));
+        && (chess::file(m.from.index) != chess::file(m.to.index));
     const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
     const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
     return {isCapture, victimType};
@@ -25,8 +25,8 @@ Sorter::CaptureInfo Sorter::classifyCapture(
 bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Board::Move& m,
         int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
     const int usSide = chess::Board::colorToIndex(b.getActiveColor());
-    const uint64_t fromBit = chess::Board::bitMask(m.from.index);
-    const uint64_t toBit   = chess::Board::bitMask(m.to.index);
+    const uint64_t fromBit = chess::Board::BIT_MASKS[m.from.index];
+    const uint64_t toBit   = chess::Board::BIT_MASKS[m.to.index];
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
 
     uint64_t pawns   = b.pawns_bb[usSide];
@@ -173,10 +173,10 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
     gain[0] = initialGain;
 
     uint64_t occ = b.getPiecesBitMap();
-    occ ^= chess::Board::bitMask(fromSq);
+    occ ^= chess::Board::BIT_MASKS[fromSq];
     if (isEp) {
-        const uint8_t epCapturedSq = (chess::Board::rank(fromSq) * 8) + chess::Board::file(toSq);
-        occ ^= chess::Board::bitMask(epCapturedSq);
+        const uint8_t epCapturedSq = (chess::rank(fromSq) * 8) + chess::file(toSq);
+        occ ^= chess::Board::BIT_MASKS[epCapturedSq];
     }
 
     int depth = 1;
@@ -187,7 +187,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Boa
         if (lva.square == 64) break;
 
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
-        occ ^= chess::Board::bitMask(lva.square);
+        occ ^= chess::Board::BIT_MASKS[lva.square];
         capturedOnTargetType = lva.type;
         side ^= 1;
         ++depth;
@@ -271,7 +271,7 @@ MovePicker Sorter::sortLegalMoves(
             isPromotionCandidate, isHashMove, fromPieceType);
 
         if (fromPieceType == chess::Board::KING) {
-            const int fileDelta = std::abs(chess::Board::file(m.to.index) - chess::Board::file(m.from.index));
+            const int fileDelta = std::abs(chess::file(m.to.index) - chess::file(m.from.index));
             const bool isCastling = (fileDelta == 2);
             if (fullMoveClock < OPENING_FULLMOVE_THRESHOLD && !inCheck && !isCastling) {
                 score -= OPENING_KING_MOVE_PENALTY;

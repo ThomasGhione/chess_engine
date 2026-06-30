@@ -78,8 +78,8 @@ inline PhaseValue Evaluator::evalCentralBlockPenalty(uint8_t blockerType, int fu
 }
 
 inline PhaseValue Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b, int side, uint64_t bishops, int fullMoves, int psq) noexcept {
-    const int rank = chess::Board::rank(psq);
-    const int file = chess::Board::file(psq);
+    const int rank = chess::rank(psq);
+    const int file = chess::file(psq);
     const bool pawnOnStart = rank == (side == 0 ? 6 : 1);
     const int forward = side == 0 ? (psq - 8) : (psq + 8);
 
@@ -92,7 +92,7 @@ inline PhaseValue Evaluator::evalBlockedPawnByBishopsPawn(const chess::Board& b,
         penalty += evalCentralBlockPenalty(blocker & chess::Board::MASK_PIECE_TYPE, fullMoves);
     }
 
-    if (bishops & chess::Board::bitMask(forward)) {
+    if (bishops & chess::Board::BIT_MASKS[forward]) {
         PhaseValue blockPenalty = BLOCK_PAWN_BISHOP_PENALTY;
         if (file == 3 || file == 4) {
             blockPenalty += BLOCK_PAWN_CENTER_FILE_BONUS;

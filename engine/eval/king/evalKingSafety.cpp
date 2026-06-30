@@ -8,8 +8,8 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, const Att
     if (!kingBB) [[unlikely]] return {};
 
     const int sq = std::countr_zero(kingBB);
-    const int kingFile = chess::Board::file(sq);
-    const int kingRank = chess::Board::rank(sq);
+    const int kingFile = chess::file(sq);
+    const int kingRank = chess::rank(sq);
     const int sign = (side == 0) ? 1 : -1;
     const int opp = side ^ 1;
     const bool canCastleKingside  = b.getCastle(static_cast<uint8_t>(side * 2));
@@ -73,13 +73,13 @@ inline PhaseValue Evaluator::evalKingSafetySide(const chess::Board& b, const Att
         const int homePawnRank = (side == 0) ? 6 : 1;
         const int outerFile = (kingFile >= 4) ? 7 : 0;
         const int hookFile = (kingFile >= 4) ? 6 : 1;
-        uint64_t hookPawns = chess::Board::bitMask((homePawnRank << 3) | hookFile)
-                           | chess::Board::bitMask((homePawnRank << 3) | outerFile);
+        uint64_t hookPawns = chess::Board::BIT_MASKS[(homePawnRank << 3) | hookFile]
+                           | chess::Board::BIT_MASKS[(homePawnRank << 3) | outerFile];
         hookPawns &= ownPawns;
 
         while (hookPawns) {
             const uint8_t hookPawnSq = popLSB(hookPawns);
-            const uint64_t hookPawnBit = chess::Board::bitMask(hookPawnSq);
+            const uint64_t hookPawnBit = chess::Board::BIT_MASKS[hookPawnSq];
             if (enemyAttacks & hookPawnBit) {
                 sub(KING_HOOK_PAWN_ATTACKED_PENALTY);
                 if ((ownAttacks & hookPawnBit) == 0ULL) {
@@ -241,8 +241,8 @@ int32_t Evaluator::attackMaterialScalePercent(const chess::Board& b, int attacki
 PhaseValue Evaluator::evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns,
                                               const AttackData data[2],
                                               int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept {
-    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
+    const int whiteKingFile = chess::file(std::countr_zero(b.kings_bb[0]));
+    const int blackKingFile = chess::file(std::countr_zero(b.kings_bb[1]));
     scaleBlackAttackingWhite = attackMaterialScalePercent(b, 1, whiteKingFile, whitePawns);
     scaleWhiteAttackingBlack = attackMaterialScalePercent(b, 0, blackKingFile, blackPawns);
 
