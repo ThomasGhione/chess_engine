@@ -22,17 +22,6 @@ inline Board& Board::operator=(const Board& other) noexcept {
     return *this;
 }
 
-inline Board::Board(Board&& other) noexcept {
-    copyFromBoard(other);
-}
-
-inline Board& Board::operator=(Board&& other) noexcept {
-    if (this != &other) {
-        copyFromBoard(other);
-    }
-    return *this;
-}
-
 inline void Board::copyFromBoard(const Board& other) noexcept {
     //FIXME Creare 3 funzioni helper per racchiudere i blocchi di logica.
     pawns_bb = other.pawns_bb;

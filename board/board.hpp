@@ -200,8 +200,8 @@ public:
     explicit Board(const std::string& fen);
     Board(const Board& other) noexcept;
     Board& operator=(const Board& other) noexcept;
-    Board(Board&& other) noexcept;
-    Board& operator=(Board&& other) noexcept;
+    Board(Board&& other) noexcept = default;
+    Board& operator=(Board&& other) noexcept = default;
 
     // --- Static utilities ---
     static constexpr uint8_t  oppositeColor(uint8_t color) noexcept { return color ^ 0x8; };

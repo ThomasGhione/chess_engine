@@ -246,10 +246,7 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     //FIXME Funzione troppo alta, usare helper per ridurre blocchi di logica.
     const int side = colorToIndex(color);
     const int oppSide = side ^ 1;
-    const uint8_t oppColor = oppositeColor(color);
-
-    const bool inChk = inCheck(color);
-
+    
     const uint64_t ownOcc = pawns_bb[side] | knights_bb[side] | bishops_bb[side] |
                              rooks_bb[side] | queens_bb[side]  | kings_bb[side];
     const uint64_t enemyOcc = pawns_bb[oppSide] | knights_bb[oppSide] | bishops_bb[oppSide] |
@@ -261,10 +258,12 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
     while (moves) {
         const uint8_t to = std::countr_zero(moves);
         moves &= moves - 1;
-        if (!isSquareAttacked(to, oppColor, king)) return true;
+        if (!isSquareAttacked(to, oppositeColor(color), king)) return true;
     }
 
-    if (!inChk) {
+    if (inCheck(color)) {
+        if (isDoubleCheck(color)) return false;
+    } else {
         constexpr uint8_t WHITE_KING_START = 60;  // e1
         constexpr uint8_t BLACK_KING_START = 4;   // e8
         const uint8_t eIndex = (side == 0) ? WHITE_KING_START : BLACK_KING_START;
@@ -273,8 +272,6 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
             if (canCastleGeneric(side == 0, eIndex, false)) return true;
         }
     }
-
-    if (inChk && isDoubleCheck(color)) return false;
 
     // --- NON-KING PIECES: skip isLegalPseudoMove, call isKingSafeAfterMove directly ---
 
@@ -320,8 +317,7 @@ void Board::recomputeHashAndEp() noexcept {
     currentHash = zobrist::computeHashKey(*this);
     //FIXME Eliminare numero magico
     epHashFile = 0xFF;
-    //FIXME Creare funzione heleper per la codizione
-    if (getEnPassant().isValid() && zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
+    if (zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
         epHashFile = getEnPassant().file();
 }
 
@@ -347,10 +343,6 @@ void Board::updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept
     repetitionHistory[historySize++] = currentHash;
 }
 
-bool Board::isThreefoldRepetition() const noexcept {
-    return countRepetitions() >= 3;
-}
-
 int Board::countRepetitions() const noexcept {
     const uint64_t* const begin = repetitionHistory.data();
     return static_cast<int>(std::count(begin, begin + historySize, currentHash));
@@ -361,7 +353,6 @@ bool Board::hasInsufficientMaterialDraw() const noexcept {
     if (pawns_bb[0] || pawns_bb[1] || rooks_bb[0] || rooks_bb[1] || queens_bb[0] || queens_bb[1]) return false;
     const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
     const uint64_t bMinors = knights_bb[1] | bishops_bb[1];
-    // (wMinors==0 && bMinors==0) is subsumed by either clause below.
     return (std::popcount(wMinors) <= 1 && bMinors == 0ULL)
         || (std::popcount(bMinors) <= 1 && wMinors == 0ULL);
 }
