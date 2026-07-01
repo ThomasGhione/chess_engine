@@ -34,7 +34,6 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Mo
     uint64_t bishops = b.bishops_bb[usSide];
     uint64_t rooks   = b.rooks_bb[usSide];
     uint64_t queens  = b.queens_bb[usSide];
-    uint64_t kings   = b.kings_bb[usSide];
 
     switch (fromPieceType) {
         case chess::Board::PAWN:   pawns   = (pawns   & ~fromBit) | toBit; break;
@@ -42,13 +41,11 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Mo
         case chess::Board::BISHOP: bishops = (bishops & ~fromBit) | toBit; break;
         case chess::Board::ROOK:   rooks   = (rooks   & ~fromBit) | toBit; break;
         case chess::Board::QUEEN:  queens  = (queens  & ~fromBit) | toBit; break;
-        case chess::Board::KING:   kings   = (kings   & ~fromBit) | toBit; break;
         default: break;
     }
 
     if (pieces::PAWN_ATTACKERS_TO[usSide][oppKingSq] & pawns)   return true;
     if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights)             return true;
-    if (pieces::KING_ATTACKS[oppKingSq] & kings)                 return true;
 
     const uint64_t rookQueens   = rooks   | queens;
     const uint64_t bishopQueens = bishops | queens;
@@ -147,8 +144,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
     SEECacheEntry& entry = seeCache[cacheKey & SEE_CACHE_MASK];
     if (entry.valid && entry.key == cacheKey) return entry.score;
 
-    const int sideActive  = chess::Board::colorToIndex(b.getActiveColor());
-    const int sidePassive = sideActive ^ 1;
+    const int sidePassive = chess::Board::colorToIndex(b.getActiveColor()) ^ 1;
 
     int capturedType = b.get(toSq) & chess::Board::MASK_PIECE_TYPE;
     int capturedOnTargetType = b.get(fromSq) & chess::Board::MASK_PIECE_TYPE;
@@ -221,9 +217,8 @@ MovePicker Sorter::sortLegalMoves(
         return picker;
     }
 
-    const bool usIsWhite = (b.getActiveColor() == chess::Board::WHITE);
     const int usSide  = chess::Board::colorToIndex(b.getActiveColor());
-    const int promotionRank = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank = chess::Board::promotionRank(b.getActiveColor() == chess::Board::WHITE);
     const chess::Square enPassant   = b.getEnPassant();
     const int fullMoveClock  = b.getFullMoveClock();
     const bool inCheck       = b.inCheck(b.getActiveColor());
@@ -236,9 +231,8 @@ MovePicker Sorter::sortLegalMoves(
     uint16_t encodedHashMove = 0;
     const bool isHashMoveProbed = useHashMove && runtime.transpositionTable != nullptr
         && runtime.transpositionTable->probeMove(b.getHash(), encodedHashMove);
-    const auto hashMove = isHashMoveProbed
-        ? TranspositionTable::Entry::decodeMove(encodedHashMove)
-        : TranspositionTable::Entry::DecodedMove{64, 64, '\0'};
+    // encodedHashMove stays 0 when unprobed → hashMove is then unused (isHashMove is gated on isHashMoveProbed below).
+    const auto hashMove = TranspositionTable::Entry::decodeMove(encodedHashMove);
 
     bool hashMoveFound = false;
 
@@ -271,8 +265,7 @@ MovePicker Sorter::sortLegalMoves(
             isPromotionCandidate, isHashMove, fromPieceType);
 
         if (fromPieceType == chess::Board::KING) {
-            const int fileDelta = std::abs(chess::file(m.to) - chess::file(m.from));
-            const bool isCastling = (fileDelta == 2);
+            const bool isCastling = (std::abs(chess::file(m.to) - chess::file(m.from)) == 2);
             if (fullMoveClock < OPENING_FULLMOVE_THRESHOLD && !inCheck && !isCastling) {
                 score -= OPENING_KING_MOVE_PENALTY;
             } else if (isCastling) {
@@ -301,7 +294,7 @@ MovePicker Sorter::sortTacticalMoves(
     MovePicker picker;
     if (tacticalMoves.is_empty()) return picker;
 
-    const int promotionRank  = chess::Board::promotionRank((b.getActiveColor() == chess::Board::WHITE));
+    const int promotionRank  = chess::Board::promotionRank(b.getActiveColor() == chess::Board::WHITE);
     const chess::Square enPassant = b.getEnPassant();
     const int32_t seeThreshold   = (ply < 10) ? SEE_THRESHOLD_SHALLOW
                                   : (ply < 20) ? SEE_THRESHOLD_MID
