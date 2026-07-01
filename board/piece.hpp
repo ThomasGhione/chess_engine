@@ -180,7 +180,7 @@ inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
 	int8_t file = chess::file(squareIndex), rank = chess::rank(squareIndex);
 	U64 attackBitboard = 0ULL;
-	// Coords convention: rank 0 = row 8, rank 7 = row 1
+	// Square convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack "forward" (rank decreases), Black pawns attack "backward" (rank increases)
 	int8_t newRank = rank + (isWhite ? -1 : 1);
 	
@@ -289,7 +289,7 @@ inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64
 inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexcept {
 	int8_t tf = chess::file(targetIndex), tr = chess::rank(targetIndex);
 	U64 attackers = 0ULL;
-	// Coords convention: rank 0 = row 8, rank 7 = row 1
+	// Square convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack from rank+1 (one rank "lower" numerically), Black pawns attack from rank-1
 	int8_t fromRank = tr + (isWhite ? 1 : -1);
 	if (fromRank >= 0 && fromRank < 8) {

@@ -9,8 +9,8 @@ namespace chess {
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st) noexcept {
     //FIXME Eliminare costati magiche
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex   = m.to.index;
+    const uint8_t fromIndex = m.from;
+    const uint8_t toIndex   = m.to;
 
     const uint8_t moving      = get(fromIndex);
     const uint8_t movingType  = moving & MASK_PIECE_TYPE;
@@ -26,7 +26,7 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
     }
     newHash ^= zobrist::TABLES.pieces[moving][fromIndex];
 
-    enPassant = Coords{};
+    enPassant = NO_SQUARE;
 
     const MoveKind kind = st.moveKind;
     switch (kind) {
@@ -101,8 +101,8 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
         newHash ^= zobrist::TABLES.castling[castle];
     }
     uint8_t newEpHashFile = 0xFF;
-    if (enPassant.isValid() && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
-        newEpHashFile = enPassant.file();
+    if (isValidSquare(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+        newEpHashFile = chess::file(enPassant);
         newHash ^= zobrist::TABLES.enPassant[newEpHashFile];
     }
     epHashFile = newEpHashFile;
@@ -113,10 +113,10 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
 
 __attribute__((hot))
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex   = m.to.index;
+    const uint8_t fromIndex = m.from;
+    const uint8_t toIndex   = m.to;
 
-    uint8_t pieceOnTo = get(toIndex);  // use index-based access
+    uint8_t pieceOnTo = get(toIndex);
 
     switch (st.moveKind) {
         case MoveKind::Capture:
@@ -156,7 +156,7 @@ void Board::doNullMove(MoveState& st) noexcept {
         newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];
     }
 
-    enPassant = Coords{};
+    enPassant = NO_SQUARE;
     epHashFile = 0xFF;
 
     if (halfMoveClock < 255) {

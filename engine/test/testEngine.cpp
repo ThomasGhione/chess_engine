@@ -48,7 +48,7 @@ ut::suite engineSuite = [] {
       
       // Play the move
       (void)engine.board.moveBB(bestMove.from, bestMove.to);
-      moves += std::to_string(moveNum) + bestMove.from.toString() + bestMove.to.toString() + "\n";
+      moves += std::to_string(moveNum) + chess::squareToString(bestMove.from) + chess::squareToString(bestMove.to) + "\n";
       
       // Compute material delta after the move
       materialDelta = engine::Engine::getMaterialDelta(engine.board);

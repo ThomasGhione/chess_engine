@@ -12,7 +12,7 @@ namespace engine {
 
 // Defined in sorter.cpp; declared here to break the sorter<->movepicker
 // circular dependency (finalizeSee needs SEE, which lives in Sorter).
-int32_t computeSeeForPicker(const chess::Board& b, const chess::Board::Move& m) noexcept;
+int32_t computeSeeForPicker(const chess::Board& b, const chess::Move& m) noexcept;
 
 // Deferred-SEE state of a move in the picker: its score is either already
 // final, or a capture / quiet whose SEE (good-vs-bad split, hanging-quiet
@@ -68,7 +68,7 @@ struct MovePicker {
         return true;
     }
 
-    inline chess::Board::Move nextMove() noexcept {
+    inline chess::Move nextMove() noexcept {
         while (currentIndex < size) {
             int bestIdx = currentIndex;
             int32_t bestScore = scores[currentIndex];
@@ -100,7 +100,7 @@ struct MovePicker {
     inline void fullSort() noexcept {
         for (int i = 0; i < size; ++i) finalizeSee(i); // resolve deferred SEE before sorting
         for (int i = 1; i < size; ++i) {
-            const chess::Board::Move keyMove  = moves[i];
+            const chess::Move keyMove  = moves[i];
             const int32_t            keyScore = scores[i];
             int j = i - 1;
             while (j >= 0 && scores[j] < keyScore) {

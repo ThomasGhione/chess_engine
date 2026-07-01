@@ -20,15 +20,15 @@ namespace {
     return !(ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false"));
 }
 
-[[nodiscard]] chess::Board::Move getTTPonderMove(const chess::Board& board, const TranspositionTable& tt) noexcept {
+[[nodiscard]] chess::Move getTTPonderMove(const chess::Board& board, const TranspositionTable& tt) noexcept {
     uint16_t encodedMove = 0;
     if (!tt.probeMove(board.getHash(), encodedMove)) return {};
 
     const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-    return {chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
+    return {move.from, move.to, move.promo};
 }
 
-[[nodiscard]] chess::Board::Move getFallbackPonderMove(
+[[nodiscard]] chess::Move getFallbackPonderMove(
     chess::Board& board,
     const Searcher::SearchRuntime& sourceRuntime) noexcept {
 
@@ -91,7 +91,7 @@ void Engine::reset() noexcept {
     this->stopPondering();
     this->clearPonderResult();
     board = chess::Board();
-    bestMove = chess::Board::Move{};
+    bestMove = chess::Move{};
     moveHistory.clear();
     isPlayerWhite = true;
     gameResult = GameResult::ONGOING;
@@ -125,7 +125,7 @@ void Engine::clearPonderResult() noexcept {
     this->ponderRootHash = 0;
     this->ponderResultDepth = 0;
     this->ponderResultScore = 0;
-    this->ponderResultMove = chess::Board::Move{};
+    this->ponderResultMove = chess::Move{};
     this->ponderResultReady = false;
 }
 
@@ -136,33 +136,33 @@ void Engine::clearSearchStopFlags() noexcept {
 
 // Book move when the opening book is enabled, else nullopt. Keeps the search
 // entry points from repeating the enabled-then-probe dance.
-std::optional<chess::Board::Move> Engine::probeOpeningBook() noexcept {
+std::optional<chess::Move> Engine::probeOpeningBook() noexcept {
     if (!this->openingEnabled.load(std::memory_order_relaxed)) return std::nullopt;
     return this->openingBook.probe(this->board);
 }
 
 // A move available without a full search: a usable ponder result first, then
 // the opening book. nullopt means the caller must actually search.
-std::optional<chess::Board::Move> Engine::tryInstantMove(int targetDepth) noexcept {
-    chess::Board::Move ponderMove{};
+std::optional<chess::Move> Engine::tryInstantMove(int targetDepth) noexcept {
+    chess::Move ponderMove{};
     if (this->tryUsePonderResult(targetDepth, ponderMove)) return ponderMove;
     return probeOpeningBook();
 }
 
 // Stores `candidate` as bestMove (normalising an out-of-bounds search result
 // to the empty sentinel) and returns it.
-chess::Board::Move Engine::commitSearchResult(const chess::Board::Move& candidate) noexcept {
-    const bool playable = candidate.from.isValid()
-                       && candidate.to.isValid();
-    this->bestMove = playable ? candidate : chess::Board::Move{};
+chess::Move Engine::commitSearchResult(const chess::Move& candidate) noexcept {
+    const bool playable = chess::isValidSquare(candidate.from)
+                       && chess::isValidSquare(candidate.to);
+    this->bestMove = playable ? candidate : chess::Move{};
     return this->bestMove;
 }
 
 // Plays "move" on the engine's own board, recording it in the move history and
 // refreshing the game result. Returns false (board untouched) when the move is
 // out of bounds or illegal.
-bool Engine::playMoveOnBoard(const chess::Board::Move& move) noexcept {
-    if (!move.from.isValid() || !move.to.isValid()) return false;
+bool Engine::playMoveOnBoard(const chess::Move& move) noexcept {
+    if (!chess::isValidSquare(move.from) || !chess::isValidSquare(move.to)) return false;
     if (!this->board.move(move)) return false;
 
     this->appendMoveHistoryEntry(move.from, move.to, move.promotionPiece);
@@ -171,12 +171,12 @@ bool Engine::playMoveOnBoard(const chess::Board::Move& move) noexcept {
 }
 
 __attribute__((hot))
-bool Engine::movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece) noexcept {
+bool Engine::movePiece(const chess::Square from, const chess::Square to, const char promotionPiece) noexcept {
     this->requestStopPondering();
-    return this->playMoveOnBoard(chess::Board::Move{from, to, promotionPiece});
+    return this->playMoveOnBoard(chess::Move{from, to, promotionPiece});
 }
 
-void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept {
+void Engine::appendMoveHistoryEntry(const chess::Square& from, const chess::Square& to, char promotionPiece) noexcept {
     const size_t appendLen = (promotionPiece == '\0') ? size_t{5} : size_t{6};
 
     if (moveHistory.size() + appendLen > MOVE_HISTORY_MAX_BYTES) {
@@ -193,8 +193,8 @@ void Engine::appendMoveHistoryEntry(const chess::Coords& from, const chess::Coor
     }
 
     moveHistory.reserve(moveHistory.size() + appendLen);
-    moveHistory += from.toString();
-    moveHistory += to.toString();
+    moveHistory += chess::squareToString(from);
+    moveHistory += chess::squareToString(to);
     if (promotionPiece != '\0') {
         moveHistory += promotionPiece;
     }
@@ -230,8 +230,8 @@ void Engine::ponderLoop(chess::Board&& rootBoard) noexcept {
 
     this->ponderResultReady = ponderResult.hasLegalMoves
         && ponderResult.completedAnyDepth
-        && ponderResult.bestMove.from.isValid()
-        && ponderResult.bestMove.to.isValid();
+        && chess::isValidSquare(ponderResult.bestMove.from)
+        && chess::isValidSquare(ponderResult.bestMove.to);
 
     this->ponderingActive.store(false, std::memory_order_release);
 }
@@ -241,7 +241,7 @@ void Engine::requestStopPondering() noexcept {
     this->stopSearchRequested.store(true, std::memory_order_release);
 }
 
-bool Engine::tryUsePonderResult(int targetDepth, chess::Board::Move& outMove) noexcept {
+bool Engine::tryUsePonderResult(int targetDepth, chess::Move& outMove) noexcept {
     if (!this->ponderResultReady) return false;
     if (this->ponderRootHash != this->board.getHash()) return false;
     if (this->ponderResultDepth < targetDepth) return false;
@@ -260,15 +260,15 @@ void Engine::startPondering() noexcept {
 
     chess::Board rootBoard = this->board;
     auto ponderMove = getTTPonderMove(rootBoard, this->tt);
-    if (!ponderMove.from.isValid()) { // did the TT fail?
+    if (!chess::isValidSquare(ponderMove.from)) { // did the TT fail?
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
     }
-    if (!ponderMove.from.isValid()) return; // did the fallback fail too?
+    if (!chess::isValidSquare(ponderMove.from)) return; // did the fallback fail too?
 
     if (!rootBoard.move(ponderMove)) {
         rootBoard = this->board;
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
-        if (!ponderMove.from.isValid()
+        if (!chess::isValidSquare(ponderMove.from)
             || !rootBoard.move(ponderMove)) {
             return;
         }
@@ -327,7 +327,7 @@ void Engine::stopThinking() noexcept {
     this->requestStopPondering();
 }
 
-chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
+chess::Move Engine::searchUCI(const time::Limits& limits) noexcept {
     auto searchApiGuard = acquireSearchApiLock();
 
     this->stopPondering();
@@ -371,7 +371,7 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
     this->timeManager.start();
 
     chess::Board searchBoard = this->board;
-    const chess::Board::Move candidate =
+    const chess::Move candidate =
         Searcher::searchBestMove(searchBoard, this->searchRuntime, targetDepth);
 
     this->timeManager.stop();
@@ -385,11 +385,11 @@ void Engine::search(int requestedDepth) noexcept {
     // Terminal-mode play: compute the move via the one search entry point, then
     // apply it on our board and ponder the reply. searchUCI already set bestMove
     // (a maxDepth-only Limits runs to depth with no time management).
-    const chess::Board::Move candidate =
+    const chess::Move candidate =
         searchUCI(time::Limits{.maxDepth = requestedDepth});
 
     if (!this->playMoveOnBoard(candidate)) {
-        this->bestMove = chess::Board::Move{};
+        this->bestMove = chess::Move{};
         this->updateGameResult();
         return;
     }
@@ -398,7 +398,7 @@ void Engine::search(int requestedDepth) noexcept {
     this->startPondering(); // no-op when the move just played ended the game
 
     DBG_ONLY(
-        std::string moveStr = candidate.from.toString() + candidate.to.toString();
+        std::string moveStr = chess::squareToString(candidate.from) + chess::squareToString(candidate.to);
         if (candidate.promotionPiece != '\0') {
             moveStr += candidate.promotionPiece;
         }

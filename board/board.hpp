@@ -17,6 +17,18 @@ namespace chess {
 
 using board = std::array<uint32_t, 8>;
 
+struct Move {
+    Square from = NO_SQUARE;
+    Square to   = NO_SQUARE;
+    char promotionPiece = '\0';
+
+    constexpr bool operator==(const Move&) const noexcept = default;
+    constexpr bool sameFromTo(const Move& other) const noexcept { return from == other.from && to == other.to; };
+    constexpr bool sameFromTo(int f, int t) const noexcept { return from == static_cast<uint8_t>(f) && to == static_cast<uint8_t>(t); };
+
+    std::string toUCIString() const noexcept { return squareToString(from) + squareToString(to) + (promotionPiece ? std::string(1, std::tolower(promotionPiece)) : std::string{}); }
+};
+
 class Board {
 public:
     // --- Enums ---
@@ -99,18 +111,6 @@ public:
         uint32_t validMask;
     };
 
-    struct Move {
-        Coords from;
-        Coords to;
-        char promotionPiece = '\0';
-
-        constexpr bool operator==(const Move&) const noexcept = default;
-        constexpr bool sameFromTo(const Move& other) const noexcept { return from.index == other.from.index && to.index == other.to.index; };
-        constexpr bool sameFromTo(int f, int t) const noexcept { return from.index == static_cast<uint8_t>(f) && to.index == static_cast<uint8_t>(t); };
-
-        std::string toUCIString() const noexcept { return from.toString() + to.toString() + (promotionPiece ? std::string(1, std::tolower(promotionPiece)) : std::string{}); }
-    };
-
     // Members are intentionally NOT default-initialised: skips a full ~96B zero-fill per node.
     // Value-init sites (`MoveState st{}`) still zero everything.
     struct MoveState {
@@ -129,7 +129,7 @@ public:
         uint8_t prevFullMoveClock;
         uint8_t prevHistorySize;
 
-        Coords  prevEnPassant;
+        Square  prevEnPassant;
         uint8_t prevEpHashFile;
         uint8_t prevCastle;
         uint8_t prevHasMoved;
@@ -210,7 +210,6 @@ public:
 
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return (chessboard[7 - (index >> 3)] >> ((index & 7) << 2)) & MASK_PIECE; }
-    __attribute__((always_inline))      constexpr uint8_t get(Coords coords) const noexcept { return get(coords.index); }
     __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard[row] >> (col << 2)) & MASK_PIECE; }
     __attribute__((always_inline))      constexpr inline uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
@@ -249,7 +248,7 @@ public:
     constexpr bool     getCastle(uint8_t index) const noexcept { return (castle & (1u << index)); }
     constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
     constexpr uint8_t  getHalfMoveClock() const noexcept { return halfMoveClock; }
-    Coords             getEnPassant() const noexcept     { return enPassant; }
+    Square             getEnPassant() const noexcept     { return enPassant; }
     constexpr uint64_t getHash() const noexcept          { return currentHash; }
     uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }
     void               rebuildBitboardsFromSquares() noexcept;
@@ -343,14 +342,14 @@ private:
     [[nodiscard]] static constexpr bool     isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline MoveKind    classifyMoveKind(uint8_t movingType, uint8_t movingColor,
                                                               uint8_t fromIndex, uint8_t toIndex,
-                                                              uint8_t destBefore, const Coords& prevEnPassant) noexcept;
+                                                              uint8_t destBefore, const Square& prevEnPassant) noexcept;
     [[nodiscard]] static inline uint8_t     normalizePromotionChoice(char choice) noexcept;
     [[nodiscard]] static inline uint8_t     promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
 
     // --- Private helpers: FEN & hash ---
     static bool    parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     static uint8_t parseActiveColor(const std::string& activeSection);
-    static Coords  parseEnPassant(const std::string& enPassantSection);
+    static Square  parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string    boardToFenPieces() const;
     std::string    castlingToFen() const;
@@ -385,7 +384,7 @@ private:
     uint8_t  fullMoveClock       = 1;
     uint8_t  castle              = CASTLING_RIGHTS_ALL;
     uint8_t  hasMoved            = 0x00;
-    Coords   enPassant{};
+    Square   enPassant           = NO_SQUARE;
     uint8_t  epHashFile          = 0xFF;
     uint8_t  activeColor         = WHITE;
     uint8_t  historySize         = 0;

@@ -43,7 +43,7 @@ private:
         MoveList& moves,
         int from,
         uint64_t mask,
-        chess::Coords enPassant) noexcept;
+        chess::Square enPassant) noexcept;
 
     // Per-pawn pseudo-legal move emission shared by the full and evasion
     // generators. `evasionMask` must be ~0ULL when not in single check, so the
@@ -56,7 +56,7 @@ private:
         uint64_t occ,
         uint64_t oppOcc,
         uint64_t enPassantBit,
-        chess::Coords enPassant,
+        chess::Square enPassant,
         uint64_t evasionMask,
         uint64_t pinnedMask,
         const uint64_t pinRayBySquare[64]) noexcept;
@@ -79,7 +79,7 @@ private:
     template<bool IsWhite>
     static uint64_t computePinRays(
         const chess::Board& b,
-        chess::Coords kingPos,
+        chess::Square kingPos,
         uint64_t pinRays[64]) noexcept;
 
     template<bool IsWhite>

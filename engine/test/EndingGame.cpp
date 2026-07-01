@@ -33,7 +33,7 @@ namespace {
       }
 
       bool whiteToMove = (e.board.getActiveColor() == chess::Board::WHITE);
-      chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+      chess::Move bestMove = e.getBestMove(moves, whiteToMove);
 
       chess::Board::MoveState state;
       e.board.doMove(bestMove, state);
@@ -60,7 +60,7 @@ namespace {
       }
 
       bool whiteToMove = (e.board.getActiveColor() == chess::Board::WHITE);
-      chess::Board::Move bestMove = e.getBestMove(moves, whiteToMove);
+      chess::Move bestMove = e.getBestMove(moves, whiteToMove);
 
       chess::Board::MoveState state;
       e.board.doMove(bestMove, state);
@@ -87,10 +87,10 @@ ut::suite EndingGameSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
     e.evaluate(e.board);
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    expect(!(bestMove.from == chess::Coords("c6") && bestMove.to == chess::Coords("b4")))
-      << "Shouldn't sacrifice the knight (c6 b4), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+    expect(!(bestMove.from == chess::parseSquare("c6") && bestMove.to == chess::parseSquare("b4")))
+      << "Shouldn't sacrifice the knight (c6 b4), got move " << chess::squareToString(bestMove.from) << chess::squareToString(bestMove.to) << '\n';
   };
 
   "critical position 15, avoid sacrificing queen (after knight)"_test = []{
@@ -98,18 +98,18 @@ ut::suite EndingGameSuite = [] {
 
     auto moves = e.generateLegalMoves(e.board);
     e.evaluate(e.board);
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    expect(!(bestMove.from == chess::Coords("d6") && bestMove.to == chess::Coords("c5")))
-      << "Shouldn't sacrifice the queen (d6 c5), got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+    expect(!(bestMove.from == chess::parseSquare("d6") && bestMove.to == chess::parseSquare("c5")))
+      << "Shouldn't sacrifice the queen (d6 c5), got move " << chess::squareToString(bestMove.from) << chess::squareToString(bestMove.to) << '\n';
   };
 
   "critical position 16, avoid sacrificing queen"_test = [] {
     engine::Engine e = engine::Engine("3r1r1k/2Q3pp/p1p2q1n/1p6/2b1P3/2N1PN1P/PPP2RP1/R5K1 w - - 0 18");
     auto moves = e.generateLegalMoves(e.board);
     e.evaluate(e.board);
-    chess::Board::Move bestMove = e.getBestMove(moves, true);
-    expect(!(bestMove.from == chess::Coords("c7") && bestMove.to == chess::Coords("d8")))
+    chess::Move bestMove = e.getBestMove(moves, true);
+    expect(!(bestMove.from == chess::parseSquare("c7") && bestMove.to == chess::parseSquare("d8")))
       << "Expected not to sacrifice queen.";
   };
 

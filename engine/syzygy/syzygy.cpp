@@ -50,9 +50,9 @@ uint64_t SyzygyProber::toPyrrhicBB(uint64_t bb) noexcept {
     return __builtin_bswap64(bb);
 }
 
-unsigned SyzygyProber::toPyrrhicEP(chess::Coords ep) noexcept {
-    if (!ep.isValid()) return 0;
-    return static_cast<unsigned>(56 ^ ep.index);
+unsigned SyzygyProber::toPyrrhicEP(chess::Square ep) noexcept {
+    if (!chess::isValidSquare(ep)) return 0;
+    return static_cast<unsigned>(56 ^ ep);
 }
 
 // HydraY convention: bb[0] = White, bb[1] = Black (colorToIndex(WHITE) == 0).
@@ -149,9 +149,9 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
         // TB_DRAW, TB_CURSED_WIN, TB_BLESSED_LOSS → rank 0.
 
         out.push_back({
-            chess::Board::Move{
-                chess::Coords{static_cast<uint8_t>(56 ^ from)},
-                chess::Coords{static_cast<uint8_t>(56 ^ to)},
+            chess::Move{
+                static_cast<uint8_t>(56 ^ from),
+                static_cast<uint8_t>(56 ^ to),
                 promo},
             rank});
     }

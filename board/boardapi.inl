@@ -124,7 +124,7 @@ inline Board::MoveKind Board::classifyMoveKind(
     uint8_t fromIndex,
     uint8_t toIndex,
     uint8_t destBefore,
-    const Coords& prevEnPassant
+    const Square& prevEnPassant
 ) noexcept {
     const uint8_t fromRank = chess::rank(fromIndex);
     const uint8_t toRank = chess::rank(toIndex);
@@ -150,8 +150,8 @@ inline Board::MoveKind Board::classifyMoveKind(
     //FIXME Usa funzione helper
     if (fromFile != toFile
         && destBefore == EMPTY
-        && prevEnPassant.isValid()
-        && toIndex == prevEnPassant.index) {
+        && isValidSquare(prevEnPassant)
+        && toIndex == prevEnPassant) {
         return MoveKind::EnPassant;
     }
 
@@ -390,7 +390,7 @@ inline void Board::doMoveByKind(
     if constexpr (Kind == MoveKind::DoublePawnPush) {
         // Cache the en-passant square directly from the midpoint index.
         const uint8_t enPassantIndex = (fromIndex + toIndex) >> 1;
-        enPassant = Coords{enPassantIndex};
+        enPassant = enPassantIndex;
     }
 
     if constexpr (isPromotionKind(Kind)) {

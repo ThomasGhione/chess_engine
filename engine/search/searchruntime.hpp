@@ -26,7 +26,7 @@ struct SearchRuntime {
     uint64_t maxNodes      = 0;
 
     // --- Heuristics ---
-    chess::Board::Move killerMoves[2][MAX_PLY] {};
+    chess::Move killerMoves[2][MAX_PLY] {};
     int16_t  history[2][64][64] {};
     uint16_t counterMoves[64][64] {};
     int16_t  captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};

@@ -98,13 +98,13 @@ uint64_t OpeningBook::polyglotKey(const chess::Board& board) noexcept {
         key ^= POLYGLOT_KEYS[121 + 120 + toCutechessInternal(0)];
 
     // En passant: include only when the side to move has a pawn that can capture.
-    const chess::Coords ep = board.getEnPassant();
-    if (ep.isValid()) {
+    const chess::Square ep = board.getEnPassant();
+    if (chess::isValidSquare(ep)) {
         const int stm = chess::Board::colorToIndex(board.getActiveColor());
         const uint64_t candidates =
-            pieces::PAWN_ATTACKERS_TO[stm][ep.index] & board.pawns_bb[stm];
+            pieces::PAWN_ATTACKERS_TO[stm][ep] & board.pawns_bb[stm];
         if (candidates != 0ULL)
-            key ^= POLYGLOT_KEYS[1 + toCutechessInternal(ep.index)];
+            key ^= POLYGLOT_KEYS[1 + toCutechessInternal(ep)];
     }
 
     // Side to move: XOR key when White is to move (cutechess convention,
@@ -117,7 +117,7 @@ uint64_t OpeningBook::polyglotKey(const chess::Board& board) noexcept {
 
 // ── move decoding ───────────────────────────────────────────────────────────
 
-chess::Board::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
+chess::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
     const uint8_t to_file   = pgMove & 7;
     const uint8_t to_rank   = (pgMove >> 3) & 7;   // polyglot rank: 0=rank1
     const uint8_t from_file = (pgMove >> 6) & 7;
@@ -141,7 +141,7 @@ chess::Board::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
     static constexpr char PROMO_CHARS[5] = {'\0', 'n', 'b', 'r', 'q'};
     const char promo_char = (promo < 5) ? PROMO_CHARS[promo] : '\0';
 
-    return { chess::Coords{from_idx}, chess::Coords{to_idx}, promo_char };
+    return { from_idx, to_idx, promo_char };
 }
 
 // ── book probe ──────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ std::span<const OpeningBook::Entry> OpeningBook::findEntries(uint64_t key) const
     return std::span<const Entry>{lo, hi};
 }
 
-std::optional<chess::Board::Move> OpeningBook::probe(const chess::Board& board) const {
+std::optional<chess::Move> OpeningBook::probe(const chess::Board& board) const {
     if (entries_.empty()) return std::nullopt;
 
     const uint64_t key      = polyglotKey(board);

@@ -42,7 +42,7 @@ ut::suite performanceEngineSuite = [] {
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        const chess::Board::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
+        const chess::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
@@ -51,7 +51,7 @@ ut::suite performanceEngineSuite = [] {
 
         // Advance the self-play game so the next run is a new position; stop if
         // there is no legal move (checkmate / stalemate / terminal).
-        if (!move.from.isValid() || !move.to.isValid()) break;
+        if (!chess::isValidSquare(move.from) || !chess::isValidSquare(move.to)) break;
         chess::Board::MoveState state;
         e.board.doMove(move, state);
     }

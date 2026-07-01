@@ -32,7 +32,7 @@ public:
 
     // --- Result structs ---
     struct SearchMoveResult {
-        chess::Board::Move move;
+        chess::Move move;
         int32_t            score;
     };
 
@@ -42,12 +42,12 @@ public:
         bool     terminalRoot       = false;
         int      completedDepth     = 0;
         TranspositionTable::Entry::Flag rootScoreBound = TranspositionTable::Entry::EXACT;
-        chess::Board::Move bestMove{};
+        chess::Move bestMove{};
         int32_t            bestScore = 0;
     };
 
     // --- Public interface ---
-    static chess::Board::Move searchBestMove(
+    static chess::Move searchBestMove(
         chess::Board& board,
         SearchRuntime& runtime,
         int requestedDepth = DEFAULT_DEPTH) noexcept;
@@ -58,7 +58,7 @@ public:
         int startDepth,
         int targetDepth) noexcept;
 
-    static chess::Board::Move getBestMove(
+    static chess::Move getBestMove(
         chess::Board& rootBoard,
         const MoveList& moves,
         SearchRuntime& runtime,
@@ -75,10 +75,10 @@ public:
         bool useTT                          = true,
         bool allowTTWrite                   = true,
         bool allowHeuristicUpdates          = true,
-        const chess::Board::Move* previousMove = nullptr,
+        const chess::Move* previousMove = nullptr,
         uint64_t* nodeCounter               = nullptr,
         bool allowNullMove                  = true,
-        chess::Board::Move excludedMove     = {}) noexcept;
+        chess::Move excludedMove     = {}) noexcept;
 
     static int32_t quiescenceSearch(
         chess::Board& b,
@@ -93,14 +93,14 @@ public:
 private:
     // --- Private context structs ---
     struct SearchContext {
-        const chess::Board::Move* previousMove = nullptr;
+        const chess::Move* previousMove = nullptr;
         uint64_t* nodeCounter      = nullptr;
         int16_t* contHistEntry     = nullptr;
         int      depth;
         int      ply;
         int32_t  staticEval        = 0;
         int      singularExtension = 0;
-        chess::Board::Move excludedMove = {};
+        chess::Move excludedMove = {};
         uint8_t activeColor;
         bool     inCheck           = false;
         bool     isPVNode          = false;
@@ -152,10 +152,10 @@ private:
 
     // --- Root search helpers ---
     static void updateMinMax(int32_t score, int32_t& alpha, int32_t& bestScore,
-                             chess::Board::Move& bestMove, const chess::Board::Move& m) noexcept;
+                             chess::Move& bestMove, const chess::Move& m) noexcept;
     static int32_t searchRootMoveScore(
         chess::Board& b,
-        const chess::Board::Move& m,
+        const chess::Move& m,
         SearchRuntime& runtime,
         int32_t alpha, int32_t beta,
         bool allowTTWrite,
@@ -163,7 +163,7 @@ private:
         uint64_t* nodeCounter) noexcept;
     static void storeRootHashMove(
         const chess::Board& rootBoard,
-        const chess::Board::Move& move,
+        const chess::Move& move,
         int depth,
         int32_t score,
         SearchRuntime& runtime,
@@ -187,9 +187,9 @@ private:
         SearchRuntime& runtime,
         bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
     static void updateKillerAndHistoryOnBetaCutoff(
-        const chess::Board::Move& m, bool isCapture, int victimType,
+        const chess::Move& m, bool isCapture, int victimType,
         int depth, int ply, uint8_t us, SearchRuntime& runtime,
-        const chess::Board::Move* previousMove,
+        const chess::Move* previousMove,
         int16_t* contHistEntry = nullptr,
         int fromPieceType = 0) noexcept;
 };

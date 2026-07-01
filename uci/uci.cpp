@@ -288,15 +288,7 @@ namespace {
         return string_view::npos;
     }
 
-    static chess::Coords parseSquare(string_view sq) noexcept {
-        if (sq.size() != 2) return {};
-        const char file = static_cast<char>(std::tolower(sq[0]));
-        const char rank = sq[1];
-        if (file < 'a' || file > 'h' || rank < '1' || rank > '8') return {};
-        return {static_cast<uint8_t>(file - 'a'), static_cast<uint8_t>('8' - rank)};
-    }
-
-    static std::string ponderSuffix(const engine::Engine& engine, const chess::Board::Move& bestMove) noexcept {
+    static std::string ponderSuffix(const engine::Engine& engine, const chess::Move& bestMove) noexcept {
         chess::Board board = engine.board;
         if (!board.move(bestMove)) return {};
 
@@ -304,7 +296,7 @@ namespace {
         if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
 
         const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-        const chess::Board::Move ponderMove{chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
+        const chess::Move ponderMove{move.from, move.to, move.promo};
         return board.move(ponderMove)
             ? (" ponder " + ponderMove.toUCIString())
             : std::string{};
@@ -548,7 +540,7 @@ namespace uci {
             return;
         }
 
-        engine.bestMove = chess::Board::Move{};
+        engine.bestMove = chess::Move{};
         engine.moveHistory.clear();
         
         if (!moves.empty()) parseMoves(moves);
@@ -615,7 +607,7 @@ namespace uci {
         try {
             engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
             searchThread = std::thread([this, limits, ponder] {
-                const chess::Board::Move move = engine.searchUCI(limits);
+                const chess::Move move = engine.searchUCI(limits);
                 std::string bestMove = move.toUCIString();
                 if (!ponder) bestMove += ponderSuffix(engine, move);
                 std::lock_guard<std::mutex> lock(searchMutex);
@@ -645,9 +637,9 @@ namespace uci {
         for (string_view move = nextToken(moves); !move.empty(); move = nextToken(moves)) {
             if (move.size() < 4) continue;
 
-            const chess::Coords from = parseSquare(move.substr(0, 2));
-            const chess::Coords to = parseSquare(move.substr(2, 2));
-            if (!from.isValid() || !to.isValid()) continue;
+            const chess::Square from = chess::parseSquare(move.substr(0, 2));
+            const chess::Square to = chess::parseSquare(move.substr(2, 2));
+            if (!chess::isValidSquare(from) || !chess::isValidSquare(to)) continue;
 
             const char promo = (move.size() > 4) ? static_cast<char>(std::tolower(move[4])) : '\0';
             engine.movePiece(from, to, promo);

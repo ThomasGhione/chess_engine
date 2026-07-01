@@ -6,10 +6,10 @@ namespace chess {
 
 
 bool Board::move(Move move) noexcept {
-    const uint8_t moving = get(move.from.index);
+    const uint8_t moving = get(move.from);
     if (moving == EMPTY || (moving & MASK_COLOR) != activeColor) [[unlikely]]
         return false;
-    if (!isLegalPseudoMove(move.from.index, move.to.index, moving)) [[unlikely]]
+    if (!isLegalPseudoMove(move.from, move.to, moving)) [[unlikely]]
         return false;
     MoveState st{};
     doMove(move, st);
@@ -38,7 +38,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
             if (pieces::PAWN_ATTACKS[side][fromIndex] & toBit) {
                 // En-passant: diagonal to empty square that matches EP target
                 if (destPiece == EMPTY) {
-                    if (enPassant.isValid() && toIndex == enPassant.index) {
+                    if (isValidSquare(enPassant) && toIndex == enPassant) {
                         const int8_t epDir = isWhite ? 8 : -8;
                         const uint8_t capturedPawnIdx = toIndex + epDir;
                         return isKingSafeAfterMove(movingColor, fromIndex, toIndex, BIT_MASKS[capturedPawnIdx]);
@@ -318,7 +318,7 @@ void Board::recomputeHashAndEp() noexcept {
     //FIXME Eliminare numero magico
     epHashFile = 0xFF;
     if (zobrist::hasPseudoLegalEnPassantCapture(*this, getEnPassant()))
-        epHashFile = getEnPassant().file();
+        epHashFile = chess::file(getEnPassant());
 }
 
 void Board::rebuildRepetitionHistory() noexcept {

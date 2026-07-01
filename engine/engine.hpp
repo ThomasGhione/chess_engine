@@ -45,11 +45,11 @@ public:
 
     // Gameplay API
     void reset() noexcept;
-    bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
+    bool movePiece(const chess::Square from, const chess::Square to, const char promotionPiece = '\0') noexcept;
 
     // Search API
     void search(int depth) noexcept;
-    chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
+    chess::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;
@@ -62,7 +62,7 @@ public:
     void updateGameResult() noexcept;
 
     // Public state kept for compatibility with existing call-sites.
-    chess::Board::Move bestMove;
+    chess::Move bestMove;
     chess::Board board;
     bool isPlayerWhite = true;
 
@@ -114,7 +114,7 @@ private:
     uint64_t ponderRootHash = 0;
     int      ponderResultDepth = 0;
     int32_t ponderResultScore = 0;
-    chess::Board::Move ponderResultMove {};
+    chess::Move ponderResultMove {};
     bool ponderResultReady = false;
 
     // Shared bitboard init (all Engine instances); only the ctor touches these.
@@ -123,16 +123,16 @@ private:
 
     // Internal helpers
     void bindSearchRuntime() noexcept;
-    void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
-    bool playMoveOnBoard(const chess::Board::Move& move) noexcept;
+    void appendMoveHistoryEntry(const chess::Square& from, const chess::Square& to, char promotionPiece) noexcept;
+    bool playMoveOnBoard(const chess::Move& move) noexcept;
     void clearPonderResult() noexcept;
     void clearSearchStopFlags() noexcept;
-    std::optional<chess::Board::Move> probeOpeningBook() noexcept;
-    std::optional<chess::Board::Move> tryInstantMove(int targetDepth) noexcept;
-    chess::Board::Move commitSearchResult(const chess::Board::Move& candidate) noexcept;
+    std::optional<chess::Move> probeOpeningBook() noexcept;
+    std::optional<chess::Move> tryInstantMove(int targetDepth) noexcept;
+    chess::Move commitSearchResult(const chess::Move& candidate) noexcept;
     std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
-    bool tryUsePonderResult(int targetDepth, chess::Board::Move& outMove) noexcept;
+    bool tryUsePonderResult(int targetDepth, chess::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     bool waitForPonderJob(chess::Board& outBoard) noexcept;

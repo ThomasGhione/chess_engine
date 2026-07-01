@@ -18,16 +18,16 @@ ut::suite criticalPositionEngineSuite = [] {
     // Use search() for realistic behavior (iterative deepening + move ordering),
     // rather than getBestMove() directly which skips iterative deepening.
     e.search(e.depth);
-    chess::Board::Move bestMove = e.bestMove;
+    chess::Move bestMove = e.bestMove;
 
     // The knight on e4 should NOT be sacrificed on g3, f2, or c3
     // (capturing defended pawns loses material: knight 320 vs pawn 100).
-    const bool isKnightSacrifice = (bestMove.from == chess::Coords("e4")) &&
-      (bestMove.to == chess::Coords("g3") || bestMove.to == chess::Coords("f2") || bestMove.to == chess::Coords("c3"));
+    const bool isKnightSacrifice = (bestMove.from == chess::parseSquare("e4")) &&
+      (bestMove.to == chess::parseSquare("g3") || bestMove.to == chess::parseSquare("f2") || bestMove.to == chess::parseSquare("c3"));
 
     // let's keep this as always fail to make sure we see the move that the engine is trying to play, which should be a knight sacrifice if the bug is present
     expect(false && !isKnightSacrifice)
-      << "Shouldn't sacrifice the knight, got move " << bestMove.from.toString() << bestMove.to.toString() << '\n';
+      << "Shouldn't sacrifice the knight, got move " << chess::squareToString(bestMove.from) << chess::squareToString(bestMove.to) << '\n';
   };
 
   "is engine generating & sorting castling rights correctly"_test = []{
@@ -42,14 +42,14 @@ ut::suite criticalPositionEngineSuite = [] {
     int castleMoveIndex = -1;
 
     castleMoveIndex = std::distance(moves.begin(), 
-      std::find_if(moves.begin(), moves.end(), [](const chess::Board::Move& m) {
-        return (m.from == chess::Coords("e1") && m.to == chess::Coords("g1"));
+      std::find_if(moves.begin(), moves.end(), [](const chess::Move& m) {
+        return (m.from == chess::parseSquare("e1") && m.to == chess::parseSquare("g1"));
       })
     );
 
     auto sortedMoves = e.sortLegalMoves(moves, 0, e.board, true, 0);
-    expect(sortedMoves[0].move.from == chess::Coords("e1") && sortedMoves[0].move.to == chess::Coords("g1"))
-      << "Expected castling move to be prioritized, but got move from " << sortedMoves[0].move.from.toString() << sortedMoves[0].move.to.toString() << '\n'
+    expect(sortedMoves[0].move.from == chess::parseSquare("e1") && sortedMoves[0].move.to == chess::parseSquare("g1"))
+      << "Expected castling move to be prioritized, but got move from " << chess::squareToString(sortedMoves[0].move.from) << chess::squareToString(sortedMoves[0].move.to) << '\n'
       << "with score " << sortedMoves[0].score << '\n'
       << "Castling move at index:" << castleMoveIndex << '\n';
   };
@@ -62,8 +62,8 @@ ut::suite criticalPositionEngineSuite = [] {
 
     expect(moves.size == 1) // Only knight move is legal
       << "Expected 1 legal move, got " << moves.size << '\n'
-      << moves[0].from.toString() << moves[0].to.toString() << '\n'
-      << moves[1].from.toString() << moves[1].to.toString() << '\n';
+      << chess::squareToString(moves[0].from) << chess::squareToString(moves[0].to) << '\n'
+      << chess::squareToString(moves[1].from) << chess::squareToString(moves[1].to) << '\n';
   };
 
   "critical position 1"_test = []{
@@ -74,13 +74,13 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
     expect(moves.size == 46)
       << "Expected 46 legal moves, got " << moves.size << '\n';
 
-    if(bestMove.from == chess::Coords("b4")){
-      expect(bestMove.to != chess::Coords("c2"))
+    if(bestMove.from == chess::parseSquare("b4")){
+      expect(bestMove.to != chess::parseSquare("c2"))
         << "Expected not sacrifice the knight.";
     }
   };
@@ -103,15 +103,15 @@ ut::suite criticalPositionEngineSuite = [] {
 
     // write a test to see if it generates the illegal move d3-d6:
     bool illegalMoveFound = false;
-    chess::Board::Move m;
+    chess::Move m;
     for (const auto& move : moves) {
-      if (move.from == chess::Coords("d3") && move.to == chess::Coords("d6")) {
+      if (move.from == chess::parseSquare("d3") && move.to == chess::parseSquare("d6")) {
         illegalMoveFound = true;
         m = move;
         break;
       }
     }
-    expect(!illegalMoveFound) << "Illegal move d3-d6 found in generated moves. move = " << m.from.toString() << m.to.toString() << '\n';
+    expect(!illegalMoveFound) << "Illegal move d3-d6 found in generated moves. move = " << chess::squareToString(m.from) << chess::squareToString(m.to) << '\n';
   };
 
   "critical position 5"_test = []{
@@ -121,10 +121,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("f6")){
-      expect(bestMove.to != chess::Coords("e4"))
+    if(bestMove.from == chess::parseSquare("f6")){
+      expect(bestMove.to != chess::parseSquare("e4"))
         << "Expected not knight in center.";
     }
   };
@@ -136,10 +136,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, true);
+    chess::Move bestMove = e.getBestMove(moves, true);
 
-    if(bestMove.from == chess::Coords("h4")){
-      expect(bestMove.to != chess::Coords("g5"))
+    if(bestMove.from == chess::parseSquare("h4")){
+      expect(bestMove.to != chess::parseSquare("g5"))
         << "Expected not knight in center.";
     }
   };
@@ -151,10 +151,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("a7")){
-      expect(bestMove.to != chess::Coords("a5"))
+    if(bestMove.from == chess::parseSquare("a7")){
+      expect(bestMove.to != chess::parseSquare("a5"))
         << "Expected not pawn push.";
     }
   };
@@ -166,10 +166,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("e5")){
-      expect(bestMove.to != chess::Coords("d4"))
+    if(bestMove.from == chess::parseSquare("e5")){
+      expect(bestMove.to != chess::parseSquare("d4"))
         << "Expected not pawn capture.";
     }
   };
@@ -181,10 +181,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("b3")){
-      expect(bestMove.to != chess::Coords("c5"))
+    if(bestMove.from == chess::parseSquare("b3")){
+      expect(bestMove.to != chess::parseSquare("c5"))
         << "Expected not sacrifice knight.";
     }
   };
@@ -196,10 +196,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("e1")){
-      expect(bestMove.to != chess::Coords("e7"))
+    if(bestMove.from == chess::parseSquare("e1")){
+      expect(bestMove.to != chess::parseSquare("e7"))
         << "Expected not sacrifice rook.";
     }
   };
@@ -211,10 +211,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("g8")){
-      expect(bestMove.to != chess::Coords("f6"))
+    if(bestMove.from == chess::parseSquare("g8")){
+      expect(bestMove.to != chess::parseSquare("f6"))
         << "Expected not sacrifice rook.";
     }
   };
@@ -227,10 +227,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("e6")){
-      expect(bestMove.to != chess::Coords("b3"))
+    if(bestMove.from == chess::parseSquare("e6")){
+      expect(bestMove.to != chess::parseSquare("b3"))
         << "Expected not sacrifice rook.";
     }
   };
@@ -242,10 +242,10 @@ ut::suite criticalPositionEngineSuite = [] {
 
     e.evaluate(e.board);
 
-    chess::Board::Move bestMove = e.getBestMove(moves, false);
+    chess::Move bestMove = e.getBestMove(moves, false);
 
-    if(bestMove.from == chess::Coords("e7")){
-      expect(bestMove.to != chess::Coords("d6"))
+    if(bestMove.from == chess::parseSquare("e7")){
+      expect(bestMove.to != chess::parseSquare("d6"))
         << "Expected not sacrifice knight.";
     }
   };
@@ -255,13 +255,13 @@ ut::suite criticalPositionEngineSuite = [] {
     engine::Engine e = engine::Engine(FEN);
     e.depth = 10;
 
-    const chess::Board::Move bestMove = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
-    const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
-      && bestMove.to == chess::Coords("e3");
+    const chess::Move bestMove = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(e.depth)});
+    const bool playsHangingQueen = bestMove.from == chess::parseSquare("d3")
+      && bestMove.to == chess::parseSquare("e3");
 
     expect(!playsHangingQueen)
       << "Critical regression: engine played Qe3, hanging the queen to Bg5xe3. Got "
-      << bestMove.from.toString() << bestMove.to.toString() << '\n';
+      << chess::squareToString(bestMove.from) << chess::squareToString(bestMove.to) << '\n';
   };
 
 }; // ut::suite criticalPositionEngineSuite

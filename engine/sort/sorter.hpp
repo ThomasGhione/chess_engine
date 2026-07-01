@@ -48,7 +48,7 @@ public:
         const chess::Board& b,
         const SearchRuntime& runtime,
         bool useHashMove = true,
-        const chess::Board::Move* previousMove = nullptr,
+        const chess::Move* previousMove = nullptr,
         bool* outHashMoveIsLegal = nullptr,
         const int16_t* contHistEntry = nullptr) noexcept;
 
@@ -58,16 +58,16 @@ public:
     };
 
     static CaptureInfo classifyCapture(
-        const chess::Board::Move& m,
+        const chess::Move& m,
         int fromPieceType,
         int toPieceType,
-        const chess::Coords& enPassant) noexcept;
+        const chess::Square& enPassant) noexcept;
 
-    static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Board::Move& m) noexcept {
+    static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Move& m) noexcept {
         return staticExchangeEvaluation(b, m);
     }
 
-    static bool givesCheckFast(const chess::Board& b, const chess::Board::Move& m,
+    static bool givesCheckFast(const chess::Board& b, const chess::Move& m,
             int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
         return givesCheckAfterQuietMoveFast(b, m, fromPieceType, oppKingSq, occ);
     }
@@ -85,7 +85,7 @@ public:
 
 private:
     struct MoveOrderingContext {
-        const chess::Board::Move* previousMove;
+        const chess::Move* previousMove;
         const SearchRuntime& runtime;
         const int16_t* contHistEntry;
         int ply;
@@ -100,16 +100,16 @@ private:
 
     static bool givesCheckAfterQuietMoveFast(
         const chess::Board& b,
-        const chess::Board::Move& m,
+        const chess::Move& m,
         int fromPieceType,
         int oppKingSq,
         uint64_t occ) noexcept;
 
-    static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Board::Move& m) noexcept;
+    static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Move& m) noexcept;
 
     static int32_t scoreMoveOrderingPriorityInline(
         const MoveOrderingContext& ctx,
-        const chess::Board::Move& m,
+        const chess::Move& m,
         bool isCapture,
         int victimType,
         bool isPromotionCandidate,
@@ -124,8 +124,8 @@ private:
 
     static bool isForcingEvasion(
         const chess::Board& b,
-        const chess::Board::Move& m,
-        const chess::Coords& enPassant) noexcept;
+        const chess::Move& m,
+        const chess::Square& enPassant) noexcept;
 };
 
 } // namespace engine

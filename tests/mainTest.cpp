@@ -11,14 +11,14 @@ namespace {
 void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     chess::Board board("k7/8/8/8/8/8/8/K6R w - - 0 1");
 
-    assert(board.move({chess::Coords("h1"), chess::Coords("g1"}));
-    assert(board.move({chess::Coords("a8"), chess::Coords("b8"}));
-    assert(board.move({chess::Coords("g1"), chess::Coords("h1"}));
-    assert(board.move({chess::Coords("b8"), chess::Coords("a8"}));
-    assert(board.move({chess::Coords("h1"), chess::Coords("g1"}));
-    assert(board.move({chess::Coords("a8"), chess::Coords("b8"}));
-    assert(board.move({chess::Coords("g1"), chess::Coords("h1"}));
-    assert(board.move({chess::Coords("b8"), chess::Coords("a8"}));
+    assert(board.move({chess::parseSquare("h1"), chess::parseSquare("g1")}));
+    assert(board.move({chess::parseSquare("a8"), chess::parseSquare("b8")}));
+    assert(board.move({chess::parseSquare("g1"), chess::parseSquare("h1")}));
+    assert(board.move({chess::parseSquare("b8"), chess::parseSquare("a8")}));
+    assert(board.move({chess::parseSquare("h1"), chess::parseSquare("g1")}));
+    assert(board.move({chess::parseSquare("a8"), chess::parseSquare("b8")}));
+    assert(board.move({chess::parseSquare("g1"), chess::parseSquare("h1")}));
+    assert(board.move({chess::parseSquare("b8"), chess::parseSquare("a8")}));
 
     assert(board.isThreefoldRepetition());
     assert(engine::Evaluator::evaluate(board) > 0);
@@ -40,20 +40,20 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
     engine::Searcher::SearchRuntime runtime{};
 
     assert(board.isDraw(board.getActiveColor()));
-    const chess::Board::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
+    const chess::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
 
-    assert(!bestMove.from.isValid());
-    assert(!bestMove.to.isValid());
+    assert(!chess::isValidSquare(bestMove.from));
+    assert(!chess::isValidSquare(bestMove.to));
     assert(runtime.eval == 0);
     assert(runtime.nodesSearched == 0);
 }
 
 void testBoardMoveRejectsWrongSideToMove() {
     chess::Board board;
-    assert(!board.move({chess::Coords("e7"), chess::Coords("e5"}));
+    assert(!board.move({chess::parseSquare("e7"), chess::parseSquare("e5")}));
     assert(board.getActiveColor() == chess::Board::WHITE);
-    assert(board.move({chess::Coords("e2"), chess::Coords("e4"}));
-    assert(!board.move({chess::Coords("d2"), chess::Coords("d4"}));
+    assert(board.move({chess::parseSquare("e2"), chess::parseSquare("e4")}));
+    assert(!board.move({chess::parseSquare("d2"), chess::parseSquare("d4")}));
 }
 
 } // namespace

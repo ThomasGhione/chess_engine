@@ -79,14 +79,14 @@ ut::suite sacrificeSuite = [] {
       e.MAX_THREADS = 1;
       e.depth = c.depth;
 
-      const chess::Board::Move best = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(c.depth)});
-      const bool playsSac = best.from == chess::Coords(c.forbiddenFrom)
-                         && best.to == chess::Coords(c.forbiddenTo);
+      const chess::Move best = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(c.depth)});
+      const bool playsSac = best.from == chess::parseSquare(c.forbiddenFrom)
+                         && best.to == chess::parseSquare(c.forbiddenTo);
 
       expect(!playsSac)
         << "Engine played forbidden sacrifice " << c.forbiddenFrom << c.forbiddenTo
         << " at depth " << c.depth << " [" << c.name << "]. Got "
-        << best.from.toString() << best.to.toString() << '\n';
+        << chess::squareToString(best.from) << chess::squareToString(best.to) << '\n';
     };
   }
 };

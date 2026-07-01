@@ -12,7 +12,7 @@ namespace syzygy {
 enum class WDL : int8_t { Loss = -2, BlessedLoss = -1, Draw = 0, CursedWin = 1, Win = 2 };
 
 struct RootMove {
-    chess::Board::Move move;
+    chess::Move move;
     int32_t            tbRank; // higher = better; use to order root moves
 };
 
@@ -45,7 +45,7 @@ private:
     bool loaded_ = false;
 
     static uint64_t toPyrrhicBB(uint64_t bb) noexcept;
-    static unsigned toPyrrhicEP(chess::Coords ep) noexcept;
+    static unsigned toPyrrhicEP(chess::Square ep) noexcept;
     // Union of every piece bitboard for one side (0 = White, 1 = Black).
     static uint64_t sideOccupancy(const chess::Board& b, int side) noexcept;
 };

@@ -91,12 +91,12 @@ int main(int argc, char** argv) {
     for (int r = 0; r < cfg.repeats; ++r) {
         for (std::size_t i = 0; i < FENS.size(); ++i) {
             engine.board = chess::Board(FENS[i]);
-            engine.bestMove = chess::Board::Move{};
+            engine.bestMove = chess::Move{};
             engine.moveHistory.clear();
             engine.updateGameResult();
 
             const auto start = std::chrono::steady_clock::now();
-            const chess::Board::Move bestMove = engine.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(cfg.depth)});
+            const chess::Move bestMove = engine.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(cfg.depth)});
             const auto stop = std::chrono::steady_clock::now();
             const uint64_t elapsedNs = static_cast<uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count());

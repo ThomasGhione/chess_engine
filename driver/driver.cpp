@@ -266,9 +266,9 @@ void Driver::playerTurn() noexcept {
             continue;
         }
 
-        const chess::Coords fromCoords(playerInput.substr(0, 2));
-        const chess::Coords toCoords(playerInput.substr(2, 2));
-        if (!fromCoords.isValid() || !toCoords.isValid()) [[unlikely]] {
+        const chess::Square fromSquare = chess::parseSquare(playerInput.substr(0, 2));
+        const chess::Square toSquare = chess::parseSquare(playerInput.substr(2, 2));
+        if (!chess::isValidSquare(fromSquare) || !chess::isValidSquare(toSquare)) [[unlikely]] {
             std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
             continue;
         }
@@ -276,14 +276,14 @@ void Driver::playerTurn() noexcept {
         DBG_TIMER_DECLARE(moveTimer);
         DBG_TIMER_START(moveTimer);
 
-        const uint8_t piece = engine.board.get(fromCoords);
+        const uint8_t piece = engine.board.get(fromSquare);
         const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
         const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) &&
-            ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
-             (pieceColor == chess::Board::BLACK && toCoords.rank() == 7));
+            ((pieceColor == chess::Board::WHITE && chess::rank(toSquare) == 0) ||
+             (pieceColor == chess::Board::BLACK && chess::rank(toSquare) == 7));
 
         if (isPromotionCandidate && playerInput.length() == 4) {
             // If user didn't specify, default to queen
@@ -291,7 +291,7 @@ void Driver::playerTurn() noexcept {
         }
 
         const char movePromotion = (playerInput.length() == 5) ? playerInput[4] : '\0';
-        if (!engine.movePiece(fromCoords, toCoords, movePromotion)) {
+        if (!engine.movePiece(fromSquare, toSquare, movePromotion)) {
             std::cout << "Illegal move.\n";
             continue;
         }
