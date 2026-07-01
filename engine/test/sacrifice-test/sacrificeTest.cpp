@@ -73,11 +73,11 @@ ut::suite sacrificeSuite = [] {
       e.openingEnabled.store(false, std::memory_order_relaxed);
       // Force single-threaded search: with multiple OpenMP threads the move
       // chosen at a fixed depth is non-deterministic (TT update order races),
-      // which makes borderline cases flaky across machines/runs. MAX_THREADS is
-      // the value the searcher actually reads; requestedThreads only takes
-      // effect via reset(), which we don't call here.
-      e.MAX_THREADS = 1;
-      e.depth = c.depth;
+      // which makes borderline cases flaky across machines/runs.
+      // searchRuntime.maxThreads is the value the searcher actually reads; also
+      // set requestedThreads so the choice survives any later reset().
+      e.requestedThreads = 1;
+      e.searchRuntime.maxThreads = 1;
 
       const chess::Move best = e.searchUCI(engine::time::Limits{.maxDepth = static_cast<int64_t>(c.depth)});
       const bool playsSac = best.from == chess::parseSquare(c.forbiddenFrom)
