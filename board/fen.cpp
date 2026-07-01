@@ -37,7 +37,7 @@ uint8_t Board::parseActiveColor(const std::string& activeSection) {
 
 Square Board::parseEnPassant(const std::string& ep) {
     //FIXME Creare funzione helper per codizione
-    if (ep.size() != 2 || ep == "-" || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return NO_SQUARE;
+    if (ep.size() != 2 || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return NO_SQUARE;
     return squareFrom(ep[0] - 'a', '8' - ep[1]);
 }
 

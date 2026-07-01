@@ -32,10 +32,9 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     switch (fromType) {
         case PAWN: {
             const bool isWhite = (movingColor == WHITE);
-            const int side = colorToIndex(movingColor);
 
             // Diagonal move (capture or en-passant)?
-            if (pieces::PAWN_ATTACKS[side][fromIndex] & toBit) {
+            if (pieces::PAWN_ATTACKS[colorToIndex(movingColor)][fromIndex] & toBit) {
                 // En-passant: diagonal to empty square that matches EP target
                 if (destPiece == EMPTY) {
                     if (isValidSquare(enPassant) && toIndex == enPassant) {
@@ -107,7 +106,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     uint8_t movingColor
 ) const noexcept {
     const uint8_t oppColor = oppositeColor(movingColor);
-    const int diff = (int)toIndex - (int)fromIndex;
+    const int diff = static_cast<int>(toIndex) - fromIndex;
 
     //FIXME Eliminare numeri magici
     // Castling moves are uniquely identified by a destination offset of +2 or -2.
@@ -357,4 +356,4 @@ bool Board::hasInsufficientMaterialDraw() const noexcept {
         || (std::popcount(bMinors) <= 1 && wMinors == 0ULL);
 }
 
-}; // namespace chess
+} // namespace chess

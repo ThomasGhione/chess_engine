@@ -203,7 +203,7 @@ public:
     Board(Board&& other) noexcept = default;
     Board& operator=(Board&& other) noexcept = default;
 
-    // --- Static utilities ---d
+    // --- Static utilities ---
     static constexpr uint8_t  oppositeColor(uint8_t color) noexcept { return color ^ 0x8; };
     static constexpr uint8_t  colorToIndex(uint8_t color) noexcept { return ((color & MASK_COLOR) >> 3) ^ 0x1u; };
     static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };
@@ -211,7 +211,7 @@ public:
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return (chessboard[7 - (index >> 3)] >> ((index & 7) << 2)) & MASK_PIECE; }
     __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard[row] >> (col << 2)) & MASK_PIECE; }
-    __attribute__((always_inline))      constexpr inline uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
+    __attribute__((always_inline))      constexpr uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 
     __attribute__((always_inline)) void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;

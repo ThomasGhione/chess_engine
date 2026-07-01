@@ -176,4 +176,4 @@ __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
     restoreState(st);
 }
-} // namespace chess {
+} // namespace chess
