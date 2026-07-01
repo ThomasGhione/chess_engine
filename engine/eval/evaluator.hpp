@@ -22,6 +22,16 @@
 
 namespace engine {
 
+// Fixed-weight non-pawn material (centipawns) for `side`: Q=900, R=500, B=330,
+// N=320. Deliberately independent of the tunable PIECE_VALUES so the material
+// thresholds in the piece-eval heuristics stay stable across tuning runs.
+inline int nonPawnMaterial(const chess::Board& b, int side) noexcept {
+    return std::popcount(b.queens_bb[side])  * 900
+         + std::popcount(b.rooks_bb[side])   * 500
+         + std::popcount(b.bishops_bb[side]) * 330
+         + std::popcount(b.knights_bb[side]) * 320;
+}
+
 class Evaluator final {
 public:
     Evaluator() = delete;
@@ -237,7 +247,7 @@ private:
     static PhaseValue evalRuleOfSquare(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalRookEndgamePressure(const chess::Board& b) noexcept;
     static PhaseValue evalQueenEndgamePressure(const chess::Board& b) noexcept;
-    static inline PhaseValue evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept;
+    static inline PhaseValue evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens) noexcept;
     static PhaseValue evalDoubleRookEndgame(const chess::Board& b) noexcept;
 
     // --- Eval cache layer ---

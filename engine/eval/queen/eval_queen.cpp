@@ -14,18 +14,13 @@ PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
     return {score, 0};
 }
 
-inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
+inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens) noexcept {
     if (ourQueens == 0) return {};
 
     const int oppSide = side ^ 1;
 
     const int oppPawns = std::popcount(b.pawns_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppRooks = std::popcount(b.rooks_bb[oppSide]);
-
-    const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
-                            oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
+    const int oppMaterial = nonPawnMaterial(b, oppSide) + oppPawns * 100;
     if (oppMaterial > 1300) return {};
 
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
@@ -62,8 +57,8 @@ PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
 
     if (whiteQueens == 0 && blackQueens == 0) return {};
 
-    return evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens)
-         + evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
+    return evalQueenEndgamePressureSide(b, 0, whiteQueens)
+         + evalQueenEndgamePressureSide(b, 1, blackQueens);
 }
 
 } // namespace engine
