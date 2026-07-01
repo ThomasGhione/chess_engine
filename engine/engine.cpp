@@ -143,7 +143,7 @@ std::optional<chess::Board::Move> Engine::probeOpeningBook() noexcept {
 
 // A move available without a full search: a usable ponder result first, then
 // the opening book. nullopt means the caller must actually search.
-std::optional<chess::Board::Move> Engine::tryInstantMove(uint64_t targetDepth) noexcept {
+std::optional<chess::Board::Move> Engine::tryInstantMove(int targetDepth) noexcept {
     chess::Board::Move ponderMove{};
     if (this->tryUsePonderResult(targetDepth, ponderMove)) return ponderMove;
     return probeOpeningBook();
@@ -241,7 +241,7 @@ void Engine::requestStopPondering() noexcept {
     this->stopSearchRequested.store(true, std::memory_order_release);
 }
 
-bool Engine::tryUsePonderResult(uint64_t targetDepth, chess::Board::Move& outMove) noexcept {
+bool Engine::tryUsePonderResult(int targetDepth, chess::Board::Move& outMove) noexcept {
     if (!this->ponderResultReady) return false;
     if (this->ponderRootHash != this->board.getHash()) return false;
     if (this->ponderResultDepth < targetDepth) return false;
@@ -344,13 +344,13 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
 
     // Depth-bounded request keeps its cap; a time-managed search deepens
     // until the budget runs out (the watchdog trips the stop flag).
-    uint64_t targetDepth;
+    int targetDepth;
     if (limits.maxDepth > 0) {
-        targetDepth = static_cast<uint64_t>(limits.maxDepth);
+        targetDepth = static_cast<int>(limits.maxDepth);
     } else if (this->timeManager.useTimeManagement() || limits.infinite) {
         // Time-managed / infinite: deepen until the watchdog or an external
         // stop interrupts the search.
-        targetDepth = static_cast<uint64_t>(Searcher::MAX_PLY);
+        targetDepth = Searcher::MAX_PLY;
     } else {
         // Ponder (or a bare `go`): this engine's `ponderhit` does not convert
         // a running search into a timed one, so a ponder search MUST be
@@ -381,12 +381,12 @@ chess::Board::Move Engine::searchUCI(const time::Limits& limits) noexcept {
     return commitSearchResult(candidate);
 }
 
-void Engine::search(uint64_t requestedDepth) noexcept {
+void Engine::search(int requestedDepth) noexcept {
     // Terminal-mode play: compute the move via the one search entry point, then
     // apply it on our board and ponder the reply. searchUCI already set bestMove
     // (a maxDepth-only Limits runs to depth with no time management).
     const chess::Board::Move candidate =
-        searchUCI(time::Limits{.maxDepth = static_cast<int64_t>(requestedDepth)});
+        searchUCI(time::Limits{.maxDepth = requestedDepth});
 
     if (!this->playMoveOnBoard(candidate)) {
         this->bestMove = chess::Board::Move{};

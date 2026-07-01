@@ -15,7 +15,7 @@ namespace time { class TimeManager; }
 struct SearchRuntime {
     // --- Search state ---
     uint64_t nodesSearched = 0;
-    uint64_t depth         = DEFAULT_DEPTH;
+    int      depth         = DEFAULT_DEPTH;
     int32_t  eval          = 0;
     int      maxThreads    = 1;
     bool     emitUciInfo   = false;

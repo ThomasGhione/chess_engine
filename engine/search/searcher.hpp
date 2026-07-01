@@ -22,7 +22,7 @@ public:
     // Negamax-safe: NEG_INF == -POS_INF so -(NEG_INF) == POS_INF is valid
     // (negating std::numeric_limits<int32_t>::min() is undefined behaviour).
     static constexpr int32_t  NEG_INF               = -POS_INF;
-    static constexpr uint64_t DEFAULT_DEPTH         = ::engine::DEFAULT_DEPTH;
+    static constexpr int       DEFAULT_DEPTH         = ::engine::DEFAULT_DEPTH;
     static constexpr int      MAX_PLY               = ::engine::MAX_PLY;
     static constexpr int      CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
     using SearchRuntime = ::engine::SearchRuntime;
@@ -40,7 +40,7 @@ public:
         bool     hasLegalMoves      = false;
         bool     completedAnyDepth  = false;
         bool     terminalRoot       = false;
-        uint64_t completedDepth     = 0;
+        int      completedDepth     = 0;
         TranspositionTable::Entry::Flag rootScoreBound = TranspositionTable::Entry::EXACT;
         chess::Board::Move bestMove{};
         int32_t            bestScore = 0;
@@ -50,13 +50,13 @@ public:
     static chess::Board::Move searchBestMove(
         chess::Board& board,
         SearchRuntime& runtime,
-        uint64_t requestedDepth = DEFAULT_DEPTH) noexcept;
+        int requestedDepth = DEFAULT_DEPTH) noexcept;
 
     static IterativeSearchResult runIterativeDeepening(
         chess::Board& rootBoard,
         SearchRuntime& runtime,
-        uint64_t startDepth,
-        uint64_t targetDepth) noexcept;
+        int startDepth,
+        int targetDepth) noexcept;
 
     static chess::Board::Move getBestMove(
         chess::Board& rootBoard,
@@ -106,11 +106,6 @@ private:
         bool     isPVNode          = false;
         bool     iirActive         = false;
         bool     improving         = false;
-    };
-
-    struct AlphaBeta {
-        int32_t alpha;
-        int32_t beta;
     };
 
     struct SearchNodeState {
@@ -169,14 +164,14 @@ private:
     static void storeRootHashMove(
         const chess::Board& rootBoard,
         const chess::Board::Move& move,
-        uint64_t depth,
+        int depth,
         int32_t score,
         SearchRuntime& runtime,
         uint8_t flag = TranspositionTable::Entry::EXACT) noexcept;
 
     // --- Internal search primitives ---
     static bool handleSearchPrelude(
-        const SearchRuntime& runtime, int depth, const AlphaBeta& bounds,
+        const SearchRuntime& runtime, int depth, int32_t alpha, int32_t beta,
         int32_t& score, uint64_t hashKey, int ply) noexcept;
     static bool tryNullMovePruning(
         chess::Board& b, const SearchNodeState& node, SearchRuntime& runtime,
@@ -188,7 +183,7 @@ private:
         int depth, int32_t beta, int32_t& outScore) noexcept;
     static SearchMoveResult searchMoves(
         chess::Board& b, MovePicker& movePicker,
-        const SearchContext& ctx, AlphaBeta& bounds,
+        const SearchContext& ctx, int32_t alpha, int32_t beta,
         SearchRuntime& runtime,
         bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
     static void updateKillerAndHistoryOnBetaCutoff(

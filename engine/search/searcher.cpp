@@ -222,8 +222,8 @@ void Searcher::updateMinMax(
 chess::Board::Move Searcher::searchBestMove(
     chess::Board& board,
     SearchRuntime& runtime,
-    uint64_t requestedDepth) noexcept {
-    const uint64_t targetDepth = (requestedDepth == 0)
+    int requestedDepth) noexcept {
+    const int targetDepth = (requestedDepth == 0)
         ? DEFAULT_DEPTH
         : requestedDepth;
 
@@ -261,13 +261,7 @@ int32_t Searcher::searchRootMoveScore(
     chess::Board::MoveState state;
     b.doMove(m, state);
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
-    // runtime.depth is uint64_t; guard the subtraction so an unexpected depth
-    // of 0 cannot underflow to UINT64_MAX and reinterpret as a negative int32_t.
-    // In normal IDS flow runtime.depth is always >= 1, but tests/direct callers
-    // could pass through with 0.
-    const int childDepth = (runtime.depth > 0)
-        ? static_cast<int>(runtime.depth - 1)
-        : 0;
+    const int childDepth = std::max(0, runtime.depth - 1);
     const int32_t score = -searchPosition(
         b, runtime, childDepth, -beta, -alpha, 1,
         true, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
@@ -278,7 +272,8 @@ int32_t Searcher::searchRootMoveScore(
 bool Searcher::handleSearchPrelude(
     const SearchRuntime& runtime,
     int depth,
-    const AlphaBeta& bounds,
+    int32_t alpha,
+    int32_t beta,
     int32_t& score,
     uint64_t hashKey,
     int ply) noexcept {
@@ -286,7 +281,7 @@ bool Searcher::handleSearchPrelude(
     if (depth >= 2) runtime.transpositionTable->prefetch(hashKey);
 
     int32_t ttScore = 0;
-    if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), bounds.alpha, bounds.beta, ttScore)) {
+    if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), alpha, beta, ttScore)) {
         score = scoreFromTT(ttScore, ply); // re-base mate scores to this node's ply
         return true;
     }
@@ -432,7 +427,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     chess::Board& b,
     MovePicker& movePicker,
     const SearchContext& ctx,
-    AlphaBeta& bounds,
+    int32_t alpha,
+    int32_t beta,
     SearchRuntime& runtime,
     bool useTT,
     bool allowHeuristicUpdates,
@@ -511,7 +507,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0
-            && shouldDeltaPrune(ctx.staticEval, futilityMargin, bounds.alpha)) {
+            && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)) {
             continue;
         }
 
@@ -562,9 +558,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         // Negamax PVS scout window: full [alpha,beta] for the first move,
         // null window [alpha, alpha+1] for the rest.
-        const int32_t scoutAlpha = bounds.alpha;
-        const int32_t scoutBeta  = isFirstMove ? bounds.beta
-                                               : saturatingAdd32(bounds.alpha, 1);
+        const int32_t scoutAlpha = alpha;
+        const int32_t scoutBeta  = isFirstMove ? beta
+                                               : saturatingAdd32(alpha, 1);
 
         int32_t score = 0;
         if (canReduce) {
@@ -610,7 +606,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // re-probe the TT for an identical result. Gate on isPVNode to avoid the
         // duplicate node. (In the reduce path !isFirstMove always holds.)
         if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
-            score = -searchPosition(b, runtime, childDepth, -bounds.beta, -bounds.alpha, ctx.ply + 1,
+            score = -searchPosition(b, runtime, childDepth, -beta, -alpha, ctx.ply + 1,
                                     useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
         }
 
@@ -630,9 +626,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             searchedCaptures[numSearchedCaptures++] = {m.to.index, static_cast<uint8_t>(victimType)};
         }
 
-        updateMinMax(score, bounds.alpha, best, bestMove, m);
+        updateMinMax(score, alpha, best, bestMove, m);
 
-        if (isBetaCutoff(best, bounds.beta)) {
+        if (isBetaCutoff(best, beta)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
                     m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
@@ -760,10 +756,9 @@ int32_t Searcher::searchPosition(
     }
 
     const uint64_t hashKey = b.getHash();
-    AlphaBeta bounds{alpha, beta};
     int32_t score = 0;
     const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
-    if (canUseTT && !hasExcludedMove && handleSearchPrelude(runtime, depth, bounds, score, hashKey, ply)) {
+    if (canUseTT && !hasExcludedMove && handleSearchPrelude(runtime, depth, alpha, beta, score, hashKey, ply)) {
         return score;
     }
     if (hasExcludedMove) allowTTWrite = false;
@@ -949,11 +944,8 @@ int32_t Searcher::searchPosition(
         if (depth >= 6 && ply > 0) ctx.iirActive = true;
     }
 
-    const int32_t alphaOrig = bounds.alpha;
-    const int32_t betaOrig = bounds.beta;
-
     SearchMoveResult result = searchMoves(
-        b, movePicker, ctx, bounds, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
+        b, movePicker, ctx, alpha, beta, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
     if (runtime.isInterrupted()) {
@@ -965,7 +957,7 @@ int32_t Searcher::searchPosition(
     // the search must genuinely contradict the static eval rather than merely confirm
     // a cutoff bound. Deeper nodes weigh more; shallow noise is suppressed.
     const bool corrLearn = (best > node.staticEval)
-                        || (best < node.staticEval && best < betaOrig);
+                        || (best < node.staticEval && best < beta);
     if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
         && std::abs(best) < MATE_BOUND && result.move.from.isValid()
         && (b.get(result.move.to.index) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
@@ -984,7 +976,7 @@ int32_t Searcher::searchPosition(
         runtime.transpositionTable->store(
             hashKey, static_cast<uint8_t>(ctx.depth),
             scoreToTT(best, ctx.ply),
-            static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)),
+            static_cast<uint8_t>(determineFlag(best, alpha, beta)),
             TranspositionTable::Entry::encodeMove(result.move.from.index, result.move.to.index, result.move.promotionPiece));
     }
 
@@ -1085,8 +1077,7 @@ int32_t Searcher::quiescenceSearch(
             deltaMargin += QSEARCH_MATERIAL_WORSE_DELTA;
         }
 
-        const int runtimeDepth = runtime.depth;
-        const int qsearchDepth = std::max(0, ply - runtimeDepth);
+        const int qsearchDepth = std::max(0, ply - runtime.depth);
         if (qsearchDepth > QSEARCH_DEPTH_REDUCTION_THRESHOLD) {
             deltaMargin -= QSEARCH_DEPTH_REDUCTION_PER_5 * ((qsearchDepth - QSEARCH_DEPTH_REDUCTION_THRESHOLD) / 5);
             deltaMargin = std::max(deltaMargin, QSEARCH_DELTAMARGIN_MIN);
@@ -1332,7 +1323,7 @@ chess::Board::Move Searcher::getBestMove(
 void Searcher::storeRootHashMove(
     const chess::Board& rootBoard,
     const chess::Board::Move& move,
-    uint64_t depth,
+    int depth,
     int32_t score,
     SearchRuntime& runtime,
     uint8_t flag) noexcept {
@@ -1401,7 +1392,7 @@ std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int
 
 // Emit one UCI `info` line for a completed iteration: depth, score (cp or
 // mate N), node/time/nps counters and a TT-reconstructed PV.
-void emitUciInfoLine(uint64_t depth, int32_t score, const SearchRuntime& runtime,
+void emitUciInfoLine(int depth, int32_t score, const SearchRuntime& runtime,
                      chess::Board& rootBoard) noexcept {
     const int64_t timeMs = (runtime.timeManager != nullptr)
         ? runtime.timeManager->elapsedMs() : 0;
@@ -1432,12 +1423,12 @@ void emitUciInfoLine(uint64_t depth, int32_t score, const SearchRuntime& runtime
 Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     chess::Board& rootBoard,
     SearchRuntime& runtime,
-    uint64_t startDepth,
-    uint64_t targetDepth) noexcept {
-    
+    int startDepth,
+    int targetDepth) noexcept {
+
     IterativeSearchResult result;
-    const uint64_t firstDepth = std::max<uint64_t>(1, startDepth);
-    const uint64_t maxDepth = std::max<uint64_t>(firstDepth, targetDepth);
+    const int firstDepth = std::max(1, startDepth);
+    const int maxDepth = std::max(firstDepth, targetDepth);
 
     if (rootBoard.kings_bb[0] == 0 || rootBoard.kings_bb[1] == 0) {
         const bool rootWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
@@ -1528,7 +1519,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         return (v >= 0) ? v : -v;
     };
 
-    for (uint64_t currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
+    for (int currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (runtime.shouldAbort()) {
             break;
         }

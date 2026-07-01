@@ -21,7 +21,7 @@ namespace engine {
 inline constexpr int32_t  MAX_PLY                = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
 inline constexpr int32_t  PAWN_CORR_HISTORY_SIZE = 1 << 14;
-inline constexpr uint64_t DEFAULT_DEPTH          = 11;
+inline constexpr int DEFAULT_DEPTH               = 11;
 
 // Scores within MATE_BOUND of ±INF encode a forced mate at a ply distance and
 // are rebased on TT store/load (see scoreToTT / scoreFromTT).
@@ -119,7 +119,7 @@ inline constexpr int32_t REPETITION_CONTEMPT                = 80; // ~0.8 pawn
 // ROOT PARALLELISM (YBWC)
 // ===================================================
 inline constexpr int YBWC_MIN_MOVES = 10;
-inline constexpr int YBWC_MIN_DEPTH = static_cast<int>(DEFAULT_DEPTH) - 2;
+inline constexpr int YBWC_MIN_DEPTH = DEFAULT_DEPTH - 2;
 
 // ===================================================
 // CONTINUATION HISTORY layout

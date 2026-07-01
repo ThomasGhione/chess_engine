@@ -48,7 +48,7 @@ public:
     bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
 
     // Search API
-    void search(uint64_t depth) noexcept;
+    void search(int depth) noexcept;
     chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
@@ -112,7 +112,7 @@ private:
     std::mutex searchApiMutex;
     std::atomic<bool> searchApiMutexEnabled {true};
     uint64_t ponderRootHash = 0;
-    uint64_t ponderResultDepth = 0;
+    int      ponderResultDepth = 0;
     int32_t ponderResultScore = 0;
     chess::Board::Move ponderResultMove {};
     bool ponderResultReady = false;
@@ -128,11 +128,11 @@ private:
     void clearPonderResult() noexcept;
     void clearSearchStopFlags() noexcept;
     std::optional<chess::Board::Move> probeOpeningBook() noexcept;
-    std::optional<chess::Board::Move> tryInstantMove(uint64_t targetDepth) noexcept;
+    std::optional<chess::Board::Move> tryInstantMove(int targetDepth) noexcept;
     chess::Board::Move commitSearchResult(const chess::Board::Move& candidate) noexcept;
     std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
-    bool tryUsePonderResult(uint64_t targetDepth, chess::Board::Move& outMove) noexcept;
+    bool tryUsePonderResult(int targetDepth, chess::Board::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
     bool waitForPonderJob(chess::Board& outBoard) noexcept;
