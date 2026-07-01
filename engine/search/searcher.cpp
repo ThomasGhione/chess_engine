@@ -619,8 +619,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
             searchedQuiets[numSearchedQuiets++] =
-                {static_cast<uint8_t>(m.from.index), static_cast<uint8_t>(m.to.index),
-                 static_cast<uint8_t>(fromPieceType)};
+                {m.from.index, m.to.index, static_cast<uint8_t>(fromPieceType)};
         }
         if (wasCapture && numSearchedCaptures < MAX_CAPTURES_TRACKED) {
             searchedCaptures[numSearchedCaptures++] = {m.to.index, static_cast<uint8_t>(victimType)};
@@ -1343,7 +1342,7 @@ void Searcher::storeRootHashMove(
 
     const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
         move.from.index, move.to.index, move.promotionPiece);
-    runtime.transpositionTable->store(rootBoard.getHash(), depth, static_cast<int32_t>(std::clamp<int64_t>(scoreToTT(score, 0), NEG_INF, POS_INF)), flag, encodedMove);
+    runtime.transpositionTable->store(rootBoard.getHash(), depth, scoreToTT(score, 0), flag, encodedMove);
 }
 
 namespace {
@@ -1360,7 +1359,7 @@ std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int
     int applied = 0;
     std::string pv;
 
-    for (int i = 0; i < maxLen && applied < static_cast<int>(MAX_PLY); ++i) {
+    for (int i = 0; i < maxLen && applied < MAX_PLY; ++i) {
         uint16_t encoded = 0;
         if (!tt->probeMove(board.getHash(), encoded) || encoded == 0) break;
 
