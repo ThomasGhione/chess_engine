@@ -208,7 +208,7 @@ MovePicker Sorter::sortLegalMoves(
     int ply,
     const chess::Board& b,
     const SearchRuntime& runtime,
-    const TranspositionTable* transpositionTable,
+    bool useHashMove,
     const chess::Board::Move* previousMove,
     bool* outHashMoveIsLegal,
     const int16_t* contHistEntry) noexcept {
@@ -234,8 +234,8 @@ MovePicker Sorter::sortLegalMoves(
 
     // Probe TT for hash move.
     uint16_t encodedHashMove = 0;
-    const bool isHashMoveProbed = transpositionTable != nullptr
-        && transpositionTable->probeMove(b.getHash(), encodedHashMove);
+    const bool isHashMoveProbed = useHashMove && runtime.transpositionTable != nullptr
+        && runtime.transpositionTable->probeMove(b.getHash(), encodedHashMove);
     const auto hashMove = isHashMoveProbed
         ? TranspositionTable::Entry::decodeMove(encodedHashMove)
         : TranspositionTable::Entry::DecodedMove{64, 64, '\0'};

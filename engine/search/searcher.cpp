@@ -939,7 +939,7 @@ int32_t Searcher::searchPosition(
         ply,
         b,
         runtime,
-        canUseTT ? runtime.transpositionTable : nullptr,
+        canUseTT,
         ctx.previousMove,
         &hasHashMove,
         ctx.contHistEntry);
@@ -1166,10 +1166,7 @@ chess::Board::Move Searcher::getBestMove(
         moves,
         0,
         rootBoard,
-        runtime,
-        runtime.transpositionTable,
-        nullptr,
-        nullptr);
+        runtime);
     
     // YBWC and Root iterations require fully sorted list upfront.
     orderedRootMoves.fullSort();
