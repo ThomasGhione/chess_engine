@@ -134,6 +134,12 @@ private:
     // --- Terminal condition checks ---
     static bool checkEarlyTerminalConditions(
         const chess::Board& b, SearchRuntime& runtime, int ply, int32_t& outScore) noexcept;
+    // Node-counter bump + node-budget cap + early-terminal checks; the shared
+    // node entry for searchPosition/quiescenceSearch. Returns true (outScore
+    // set) when the node must return immediately.
+    static bool enterNode(
+        chess::Board& b, SearchRuntime& runtime, int ply,
+        uint64_t* counter, int32_t& outScore) noexcept;
     // atRoot=true restricts terminals to *forced* draws (3rd repetition,
     // 50-move, insufficient material). The "2nd repetition scores as 0"
     // pruning rule is an interior-node heuristic only: at the root it would
@@ -188,7 +194,7 @@ private:
         bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
     static void updateKillerAndHistoryOnBetaCutoff(
         const chess::Move& m, bool isCapture, int victimType,
-        int depth, int ply, uint8_t us, SearchRuntime& runtime,
+        int depth, int ply, int usSide, SearchRuntime& runtime,
         const chess::Move* previousMove,
         int16_t* contHistEntry = nullptr,
         int fromPieceType = 0) noexcept;

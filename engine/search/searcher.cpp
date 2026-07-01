@@ -124,6 +124,24 @@ bool Searcher::checkEarlyTerminalConditions(
     return false;
 }
 
+// Per-node entry shared by searchPosition and quiescenceSearch: bump the node
+// counter, enforce the UCI `go nodes` hard cap, and run the early-terminal
+// checks (abort / max-ply / king-capture). Returns true with outScore set when
+// the node must return immediately.
+bool Searcher::enterNode(
+    chess::Board& b, SearchRuntime& runtime, int ply,
+    uint64_t* counter, int32_t& outScore) noexcept {
+    ++(*counter);
+    // runtime.nodesSearched holds prior IDS iterations; *counter is the current
+    // iteration/worker. Their sum is the total node budget consumed.
+    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
+        runtime.markInterrupted();
+        outScore = Evaluator::evaluate(b);
+        return true;
+    }
+    return checkEarlyTerminalConditions(b, runtime, ply, outScore);
+}
+
 bool Searcher::checkDrawTerminalConditions(
     const chess::Board& b,
     int32_t& outScore,
@@ -375,14 +393,13 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     int victimType,
     int depth,
     int ply,
-    uint8_t us,
+    int usSide,
     SearchRuntime& runtime,
     const chess::Move* previousMove,
     int16_t* contHistEntry,
     int fromPieceType) noexcept {
     const int fromIndex = m.from;
     const int toIndex = m.to;
-    const int usSide = chess::Board::colorToIndex(us);
     const int depthPlusOne = depth + 1;
     const int32_t bonus = depthPlusOne * depthPlusOne;
 
@@ -433,7 +450,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     bool useTT,
     bool allowHeuristicUpdates,
     bool allowTTWrite) noexcept {
-    const bool usIsWhite = (ctx.activeColor == chess::Board::WHITE);
     int32_t best = NEG_INF;
     chess::Move bestMove{};
     bool searchedAnyMove = false;
@@ -460,10 +476,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][isLateEndgame][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
-    const int oppSide = usSide ^ 1;
-    const int oppKingSq = std::countr_zero(b.kings_bb[oppSide]);
+    const int oppKingSq = std::countr_zero(b.kings_bb[usSide ^ 1]);
     const chess::Square enPassant = b.getEnPassant();
-    const int promotionRank = chess::Board::promotionRank(usIsWhite);
+    const int promotionRank = chess::Board::promotionRank(ctx.activeColor == chess::Board::WHITE);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
 
@@ -496,12 +511,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
-        // Pre-move check detection for futility, computed lazily only on the
-        // quiet moves that can actually be futility/LMP-pruned.
+        // Pre-move check detection, computed lazily only on the quiet moves
+        // that can actually be futility-pruned (its sole consumer below).
         bool preMoveGivesCheck = false;
-        if ((canFutilityPrune || (canLMP && isQuietMove))
-            && isQuietMove && fromPieceType != chess::Board::KING
-            ) {
+        if (canFutilityPrune && isQuietMove && fromPieceType != chess::Board::KING) {
             preMoveGivesCheck = Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
                                                        b.getPiecesBitMap());
         }
@@ -544,8 +557,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
-        const bool isForcingCheck = givesCheck && forcingCandidate;
-        const bool shouldCheckExtend = isForcingCheck && (ctx.depth >= 2) && (ctx.depth <= 4);
+        const bool shouldCheckExtend = givesCheck && forcingCandidate && ctx.depth >= 2 && ctx.depth <= 4;
         const int childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
                              + (isFirstMove ? ctx.singularExtension : 0);
         const auto& km0 = runtime.killerMoves[0][ctx.ply];
@@ -630,7 +642,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isBetaCutoff(best, beta)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
-                    m, wasCapture, victimType, ctx.depth, ctx.ply, ctx.activeColor, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
+                    m, wasCapture, victimType, ctx.depth, ctx.ply, usSide, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
 
                 const int depthPlusOne = ctx.depth + 1;
                 const int32_t malus = -(depthPlusOne * depthPlusOne);
@@ -688,19 +700,8 @@ int32_t Searcher::searchPosition(
     const bool hasExcludedMove = chess::isValidSquare(excludedMove.from);
 
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
-    ++(*counter);
-
-    // UCI `go nodes` hard cap. runtime.nodesSearched holds prior IDS iterations;
-    // *counter is the current iteration / worker. Sum is the total node budget used.
-    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
-        runtime.markInterrupted();
-        return Evaluator::evaluate(b);
-    }
-
     int32_t earlyScore = 0;
-    if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
-        return earlyScore;
-    }
+    if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
 
     const bool isPVNode = (static_cast<int64_t>(beta) - static_cast<int64_t>(alpha) > 1);
 
@@ -766,9 +767,8 @@ int32_t Searcher::searchPosition(
     node.activeColor = b.getActiveColor();
     node.inCheck = b.inCheck(node.activeColor);
     node.isPVNode = isPVNode;
-    const int nonPawnMajorsAll = b.getIncrementalNonPawnMajorCount();
     node.isPawnEndgameForPruning =
-        ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (nonPawnMajorsAll <= 4);
+        ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (b.getIncrementalNonPawnMajorCount() <= 4);
 
     // Compute static eval at every ply (including the root) so that the
     // `improving` heuristic can compare evalStack[ply-2] vs current eval
@@ -827,29 +827,24 @@ int32_t Searcher::searchPosition(
             && std::abs(ttSeScore) < MATE_BOUND
             && runtime.transpositionTable->probeMove(hashKey, encodedHashMove)) {
 
+            // decodeMove masks from/to to 6 bits, so both are always in [0,63].
             const auto hashMove = TranspositionTable::Entry::decodeMove(encodedHashMove);
+            const chess::Move seExcluded{hashMove.from, hashMove.to, hashMove.promo};
 
-            if (hashMove.from < 64 && hashMove.to < 64) {
-                chess::Move seExcluded;
-                seExcluded.from = hashMove.from;
-                seExcluded.to   = hashMove.to;
-                seExcluded.promotionPiece = hashMove.promo;
+            ttSeScore = scoreFromTT(ttSeScore, ply);
+            const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
 
-                ttSeScore = scoreFromTT(ttSeScore, ply);
-                const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
+            const int32_t seScore = searchPosition(
+                b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
+                canUseTT, false, allowHeuristicUpdates,
+                previousMove, counter, false, seExcluded);
 
-                const int32_t seScore = searchPosition(
-                    b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
-                    canUseTT, false, allowHeuristicUpdates,
-                    previousMove, counter, false, seExcluded);
-
-                if (seScore < seBeta - SE_DOUBLE_MARGIN) {
-                    singularExtension = 2;
-                } else if (seScore < seBeta) {
-                    singularExtension = 1;
-                } else if (seScore >= beta) {
-                    return seScore; // multi-cut: every move beats beta, prune
-                }
+            if (seScore < seBeta - SE_DOUBLE_MARGIN) {
+                singularExtension = 2;
+            } else if (seScore < seBeta) {
+                singularExtension = 1;
+            } else if (seScore >= beta) {
+                return seScore; // multi-cut: every move beats beta, prune
             }
         }
     }
@@ -902,11 +897,10 @@ int32_t Searcher::searchPosition(
         }
     }
 
-    const int prevSide = chess::Board::colorToIndex(node.activeColor) ^ 1;
     int16_t* contHistEntry = nullptr;
     if (previousMove != nullptr && previousMove->to < 64) {
         const int prevPiece = b.get(previousMove->to) & chess::Board::MASK_PIECE_TYPE;
-        contHistEntry = &runtime.contHist[prevSide][prevPiece][previousMove->to][0][0];
+        contHistEntry = &runtime.contHist[side ^ 1][prevPiece][previousMove->to][0][0];
     }
 
     SearchContext ctx{
@@ -960,15 +954,14 @@ int32_t Searcher::searchPosition(
     if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
         && std::abs(best) < MATE_BOUND && chess::isValidSquare(result.move.from)
         && (b.get(result.move.to) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
-        const int corrSide = chess::Board::colorToIndex(node.activeColor);
         const int32_t residual = std::clamp(best - node.staticEval, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
         const int w = std::min(depth, CORR_HIST_MAX_W);
         auto blendCorr = [&](int16_t& cell) noexcept {
             cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
         };
-        blendCorr(runtime.pawnCorrHist[corrSide][pawnCorrIndex(b)]);
-        blendCorr(runtime.minorCorrHist[corrSide][minorCorrIndex(b)]);
-        blendCorr(runtime.majorCorrHist[corrSide][majorCorrIndex(b)]);
+        blendCorr(runtime.pawnCorrHist[side][pawnCorrIndex(b)]);
+        blendCorr(runtime.minorCorrHist[side][minorCorrIndex(b)]);
+        blendCorr(runtime.majorCorrHist[side][majorCorrIndex(b)]);
     }
 
     if (canUseTT && allowTTWrite) {
@@ -992,18 +985,8 @@ int32_t Searcher::quiescenceSearch(
     uint64_t* nodeCounter,
     bool allowTTWrite) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
-    ++(*counter);
-
-    // UCI `go nodes` hard cap (same accounting as searchPosition).
-    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
-        runtime.markInterrupted();
-        return Evaluator::evaluate(b);
-    }
-
     int32_t earlyScore = 0;
-    if (checkEarlyTerminalConditions(b, runtime, ply, earlyScore)) {
-        return earlyScore;
-    }
+    if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
 
     int32_t drawScore = 0;
     if (checkDrawTerminalConditions(b, drawScore)) {
@@ -1120,15 +1103,7 @@ int32_t Searcher::quiescenceSearch(
 
         updateBound(score, alpha);
         if (isBetaCutoff(score, beta)) {
-            if (!inCheck && canUseTT && allowTTWrite) {
-                // Store `best` so the stored score matches the flag derived
-                // from it (consistent with the fall-through store below);
-                // storing the raw cutoff bound was looser and inconsistent.
-                runtime.transpositionTable->store(
-                    b.getHash(), 0, scoreToTT(best, ply),
-                    static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)));
-            }
-            return best; // fail-soft: best >= score >= beta
+            break; // fail-soft cutoff; the shared TT store below records `best`
         }
     }
 
@@ -1513,10 +1488,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     int32_t prevScore = 0;
     bool hasPrevScore = false;
     bool hasPrevPrevScore = false;
-    auto absScore = [](int32_t v) noexcept -> int32_t {
-        if (v == NEG_INF) return POS_INF;
-        return (v >= 0) ? v : -v;
-    };
 
     for (int currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (runtime.shouldAbort()) {
@@ -1551,7 +1522,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             hasPrevScore
             && result.completedAnyDepth
             && currentDepth >= 5
-            && absScore(prevScore) < MATE_BOUND;
+            && std::abs(prevScore) < MATE_BOUND;
 
         if (!canUseAspiration) {
             candidateBestMove = getBestMove(rootBoard, moves, runtime);
