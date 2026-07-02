@@ -63,9 +63,9 @@ public:
         int toPieceType,
         const chess::Square& enPassant) noexcept;
 
-    static int32_t staticExchangeEvaluationPublic(const chess::Board& b, const chess::Move& m) noexcept {
-        return staticExchangeEvaluation(b, m);
-    }
+    static int32_t staticExchangeEvaluation(
+        const chess::Board& b, 
+        const chess::Move& m) noexcept;
 
     static bool givesCheckFast(const chess::Board& b, const chess::Move& m,
             int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
@@ -104,8 +104,6 @@ private:
         int fromPieceType,
         int oppKingSq,
         uint64_t occ) noexcept;
-
-    static int32_t staticExchangeEvaluation(const chess::Board& b, const chess::Move& m) noexcept;
 
     static int32_t scoreMoveOrderingPriorityInline(
         const MoveOrderingContext& ctx,

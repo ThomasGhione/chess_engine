@@ -490,9 +490,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             break;
         }
 
-        if (chess::isValidSquare(ctx.excludedMove.from)
-            && m.from == ctx.excludedMove.from
-            && m.to   == ctx.excludedMove.to) {
+        if (chess::isValidSquare(ctx.excludedMove.from) && m.sameFromTo(ctx.excludedMove)) {
             continue;
         }
 
@@ -538,7 +536,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // scales with depth so deeper nodes tolerate slightly worse trades.
         if (wasCapture && !isPromotionCandidate && moveIndex > 0
             && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3
-            && Sorter::staticExchangeEvaluationPublic(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
+            && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
             continue;
         }
 
@@ -882,7 +880,7 @@ int32_t Searcher::searchPosition(
         MoveList captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
-            const int32_t see = Sorter::staticExchangeEvaluationPublic(b, mc);
+            const int32_t see = Sorter::staticExchangeEvaluation(b, mc);
             if (see < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
             b.doMove(mc, pcState);

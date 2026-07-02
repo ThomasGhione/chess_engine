@@ -5,7 +5,7 @@
 namespace engine {
 
 int32_t computeSeeForPicker(const chess::Board& b, const chess::Move& m) noexcept {
-    return Sorter::staticExchangeEvaluationPublic(b, m);
+    return Sorter::staticExchangeEvaluation(b, m);
 }
 
 Sorter::CaptureInfo Sorter::classifyCapture(
@@ -179,12 +179,12 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
     int side  = sidePassive;
 
     while (depth < MAX_SEE_DEPTH) {
-        const auto lva = getLeastValuableAttackerTo(b, toSq, occ, side);
-        if (lva.square == 64) break;
+        const auto [square, type] = getLeastValuableAttackerTo(b, toSq, occ, side);
+        if (square == 64) break;
 
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
-        occ ^= chess::Board::BIT_MASKS[lva.square];
-        capturedOnTargetType = lva.type;
+        occ ^= chess::Board::BIT_MASKS[square];
+        capturedOnTargetType = type;
         side ^= 1;
         ++depth;
     }
