@@ -100,8 +100,8 @@ struct MovePicker {
     inline void fullSort() noexcept {
         for (int i = 0; i < size; ++i) finalizeSee(i); // resolve deferred SEE before sorting
         for (int i = 1; i < size; ++i) {
-            const chess::Move keyMove  = moves[i];
-            const int32_t            keyScore = scores[i];
+            const auto    keyMove  = moves[i];
+            const int32_t keyScore = scores[i];
             int j = i - 1;
             while (j >= 0 && scores[j] < keyScore) {
                 scores[j + 1] = scores[j];

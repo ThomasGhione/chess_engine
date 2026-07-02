@@ -423,7 +423,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
     // KILLER MOVES: update while avoiding duplicates.
     auto& km1 = runtime.killerMoves[0][ply];
-    const bool isAlreadyKm1 = (fromIndex == km1.from) && (toIndex == km1.to);
+    const bool isAlreadyKm1 = m.sameFromTo(km1);
     if (!isAlreadyKm1) {
         auto& km2 = runtime.killerMoves[1][ply];
         km2 = km1;
@@ -559,11 +559,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                              + (isFirstMove ? ctx.singularExtension : 0);
         const auto& km0 = runtime.killerMoves[0][ctx.ply];
         const auto& km1 = runtime.killerMoves[1][ctx.ply];
-        const bool isKiller = (m.from == km0.from && m.to == km0.to)
-                           || (m.from == km1.from && m.to == km1.to);
+        const bool isKiller = m.sameFromTo(km0) || m.sameFromTo(km1);
         const bool canReduce = lmrStructuralCandidate
-            && !givesCheck
-            && !isKiller;
+                           && !givesCheck
+                           && !isKiller;
 
         // Negamax PVS scout window: full [alpha,beta] for the first move,
         // null window [alpha, alpha+1] for the rest.
@@ -824,7 +823,7 @@ int32_t Searcher::searchPosition(
             && std::abs(ttSeScore) < MATE_BOUND
             && runtime.transpositionTable->probeMove(hashKey, encodedHashMove)) {
 
-            const chess::Move seExcluded = TT::Entry::decodeMove(encodedHashMove);
+            const auto seExcluded = TT::Entry::decodeMove(encodedHashMove);
 
             ttSeScore = scoreFromTT(ttSeScore, ply);
             const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
@@ -1118,7 +1117,7 @@ chess::Move Searcher::getBestMove(
     int32_t alpha,
     int32_t beta) noexcept {
     int32_t bestScore = NEG_INF;
-    chess::Move bestMove = moves[0];
+    auto bestMove = moves[0];
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
@@ -1307,7 +1306,7 @@ std::string buildPvFromTT(chess::Board& board, const TT* tt, int maxLen) noexcep
         uint16_t encoded = 0;
         if (!tt->probeMove(board.getHash(), encoded) || encoded == 0) break;
 
-        const chess::Move mv = TT::Entry::decodeMove(encoded);
+        const auto mv = TT::Entry::decodeMove(encoded);
 
         const MoveList legal = engine::MoveGenerator::generateLegalMoves(board);
         bool legalMove = false;
@@ -1425,7 +1424,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         const auto tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
             int32_t bestRank = tbMoves[0].tbRank;
-            chess::Move tbBest = tbMoves[0].move;
+            auto tbBest = tbMoves[0].move;
             for (const auto& tm : tbMoves) {
                 if (tm.tbRank > bestRank) { bestRank = tm.tbRank; tbBest = tm.move; }
             }
@@ -1451,7 +1450,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         }
     }
 
-    chess::Move bestMove = moves[0];
+    auto bestMove = moves[0];
     int32_t prevPrevScore = 0;
     int32_t prevScore = 0;
     bool hasPrevScore = false;
@@ -1484,7 +1483,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         bool iterationCompleted = true;
         int32_t iterationAlpha = NEG_INF;
         int32_t iterationBeta = POS_INF;
-        chess::Move candidateBestMove = moves[0];
+        auto candidateBestMove = moves[0];
 
         const bool canUseAspiration =
             hasPrevScore

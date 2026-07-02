@@ -22,7 +22,7 @@ public:
     // Negamax-safe: NEG_INF == -POS_INF so -(NEG_INF) == POS_INF is valid
     // (negating std::numeric_limits<int32_t>::min() is undefined behaviour).
     static constexpr int32_t  NEG_INF               = -POS_INF;
-    static constexpr int       DEFAULT_DEPTH         = ::engine::DEFAULT_DEPTH;
+    static constexpr int      DEFAULT_DEPTH         = ::engine::DEFAULT_DEPTH;
     static constexpr int      MAX_PLY               = ::engine::MAX_PLY;
     static constexpr int      CAPTURE_HISTORY_SLOTS = ::engine::CAPTURE_HISTORY_SLOTS;
     using SearchRuntime = ::engine::SearchRuntime;
