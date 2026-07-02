@@ -7,23 +7,9 @@ namespace engine {
 namespace {
 
 __attribute__((always_inline))
-inline void appendMoveByIndex(MoveList& moves, int from, int to) noexcept {
-    moves.emplace_back();
-    auto& m = moves[moves.size - 1];
-    m.from = from;
-    m.to = to;
-    m.promotionPiece = '\0';
-}
-
-__attribute__((always_inline))
 inline void appendPromotionSetByIndex(MoveList& moves, int from, int to) noexcept {
-    constexpr char promos[4] = {'q', 'r', 'b', 'n'};
-    for (char p : promos) {
-        moves.emplace_back();
-        auto& m = moves[moves.size - 1];
-        m.from = from;
-        m.to   = to;
-        m.promotionPiece = p;
+    for (char p : {'q', 'r', 'b', 'n'}) {
+        moves.emplace_back(from, to, p);
     }
 }
 
@@ -95,7 +81,7 @@ inline void appendNonPawnTacticalNoChecks(
         }
 
         while (attacks) {
-            appendMoveByIndex(moves, from, engine::popLSB(attacks));
+            moves.emplace_back(from, engine::popLSB(attacks));
         }
     }
 }
@@ -120,9 +106,7 @@ inline void appendPawnTacticalNoChecks(
 
     while (pawnBB) {
         const int from = engine::popLSB(pawnBB);
-        const uint64_t fromBit = chess::Board::BIT_MASKS[from];
-        const uint64_t pawnAttacks = pieces::PAWN_ATTACKS[Side][from];
-        uint64_t attacks = pawnAttacks & (oppOcc | enPassantBit);
+        uint64_t attacks = pieces::PAWN_ATTACKS[Side][from] & (oppOcc | enPassantBit);
 
         // Add forward push moves for promotion
         if (chess::rank(from) == prePromotionRank) {
@@ -132,7 +116,7 @@ inline void appendPawnTacticalNoChecks(
             }
         }
 
-        if (pinnedMask & fromBit) {
+        if (pinnedMask & chess::Board::BIT_MASKS[from]) {
             attacks &= pinRayBySquare[from];
         }
 
@@ -145,7 +129,7 @@ inline void appendPawnTacticalNoChecks(
             if (chess::rank(to) == promotionRank) {
                 appendPromotionSetByIndex(moves, from, to);
             } else {
-                appendMoveByIndex(moves, from, to);
+                moves.emplace_back(from, to);
             }
         }
     }
@@ -171,7 +155,7 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     
     const uint64_t occ = b.getPiecesBitMap();
 
-    uint64_t pawns   = b.pawns_bb[side];
+    const uint64_t pawns   = b.pawns_bb[side];
     const uint64_t knights = b.knights_bb[side];
     const uint64_t bishops = b.bishops_bb[side];
     const uint64_t rooks   = b.rooks_bb[side];
@@ -199,17 +183,17 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b,
     while (mask) {
         const int to = engine::popLSB(mask);
         if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) {
-            moves.emplace_back(chess::Move{kingFromC, static_cast<uint8_t>(to)});
+            moves.emplace_back(kingFrom, to);
         }
     }
 
     if (!inCheck) { // castling: illegal when in check.
         const int f = chess::file(kingFrom);
         if (f <= 5 && b.isLegalPseudoMove(kingFrom, kingFrom + 2, kingPiece)) {
-            moves.emplace_back(chess::Move{kingFromC, static_cast<uint8_t>(kingFrom + 2)});
+            moves.emplace_back(kingFrom, kingFrom + 2);
         }
         if (f >= 2 && b.isLegalPseudoMove(kingFrom, kingFrom - 2, kingPiece)) {
-            moves.emplace_back(chess::Move{kingFromC, static_cast<uint8_t>(kingFrom - 2)});
+            moves.emplace_back(kingFrom, kingFrom - 2);
         }
     }
     // In double-check only king moves are legal.
@@ -286,7 +270,7 @@ MoveList MoveGenerator::generateLegalEvasionsFor(
     while (kingTargets) {
         const int to = engine::popLSB(kingTargets);
         if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) {
-            moves.emplace_back(chess::Move{kingFromC, static_cast<uint8_t>(to)});
+            moves.emplace_back(kingFrom, to);
         }
     }
 
@@ -368,7 +352,7 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
         do {
             const int to = engine::popLSB(kingAttacks);
             if (b.isLegalPseudoMove(kingIndex, to, kingPiece)) {
-                appendMoveByIndex(moves, kingIndex, to);
+                moves.emplace_back(kingIndex, to);
             }
         } while (kingAttacks);
     }
@@ -416,12 +400,11 @@ inline void MoveGenerator::appendPawnPseudoLegalMoves(
 
     while (pawns) {
         const int from = engine::popLSB(pawns);
-        const uint64_t fromBit = chess::Board::BIT_MASKS[from];
         uint64_t mask = pieces::getPawnForwardPushes(from, IsWhite, occ);
         const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
         mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
         mask &= evasionMask; // ~0ULL outside single check, so a no-op there
-        if (pinnedMask & fromBit) mask &= pinRayBySquare[from];
+        if (pinnedMask & chess::Board::BIT_MASKS[from]) mask &= pinRayBySquare[from];
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(b, moves, from, mask, enPassant);
@@ -451,11 +434,7 @@ void MoveGenerator::addPawnMovesFromMask(const chess::Board& b, MoveList& moves,
         if (chess::rank(to) == promotionRank) {
             appendPromotionSetByIndex(moves, from, to);
         } else {
-            moves.emplace_back();
-            auto& m = moves[moves.size - 1];
-            m.from = from;
-            m.to   = to;
-            m.promotionPiece = '\0';
+            moves.emplace_back(from, to);
         }
     }
 }
@@ -566,7 +545,7 @@ void MoveGenerator::generateNonPawnLegalMoves(
         }
 
         while (mask) {
-            appendMoveByIndex(moves, from, engine::popLSB(mask));
+            moves.emplace_back(from, engine::popLSB(mask));
         }
     }
 }
