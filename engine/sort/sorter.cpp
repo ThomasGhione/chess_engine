@@ -76,7 +76,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     if (ctx.previousMove != nullptr) {
         const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from][ctx.previousMove->to];
         if (counter != 0
-            && counter == TranspositionTable::Entry::encodeMove(m.from, m.to, m.promotionPiece)) {
+            && counter == TT::Entry::encodeMove(m)) {
             return COUNTER_MOVE_SCORE;
         }
     }
@@ -232,7 +232,7 @@ MovePicker Sorter::sortLegalMoves(
     const bool isHashMoveProbed = useHashMove && runtime.transpositionTable != nullptr
         && runtime.transpositionTable->probeMove(b.getHash(), encodedHashMove);
     // encodedHashMove stays 0 when unprobed → hashMove is then unused (isHashMove is gated on isHashMoveProbed below).
-    const auto hashMove = TranspositionTable::Entry::decodeMove(encodedHashMove);
+    const auto hashMove = TT::Entry::decodeMove(encodedHashMove);
 
     bool hashMoveFound = false;
 
@@ -246,9 +246,7 @@ MovePicker Sorter::sortLegalMoves(
         const bool isCapture = cap.isCapture;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (chess::rank(m.to) == promotionRank);
 
-        const bool isHashMove = isHashMoveProbed
-            && m.sameFromTo(hashMove.from, hashMove.to)
-            && m.promotionPiece == hashMove.promo;
+        const bool isHashMove = isHashMoveProbed && m == hashMove;
         if (isHashMove) hashMoveFound = true;
 
         // Lazy SEE: 1 = capture, 2 = quiet that could be SEE-demoted, 0 = score is

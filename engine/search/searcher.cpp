@@ -418,8 +418,7 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
 
     // COUNTER-MOVE: best response to previous quiet move.
     if (previousMove != nullptr) {
-        runtime.counterMoves[previousMove->from][previousMove->to] =
-            TranspositionTable::Entry::encodeMove(fromIndex, toIndex, m.promotionPiece);
+        runtime.counterMoves[previousMove->from][previousMove->to] = TT::Entry::encodeMove(m);
     }
 
     // KILLER MOVES: update while avoiding duplicates.
@@ -747,7 +746,7 @@ int32_t Searcher::searchPosition(
                 if (runtime.transpositionTable != nullptr) {
                     runtime.transpositionTable->store(
                         b.getHash(), static_cast<uint8_t>(depth),
-                        tbScore, TranspositionTable::Entry::EXACT);
+                        tbScore, TT::Entry::EXACT);
                 }
                 return tbScore;
             }
@@ -783,9 +782,9 @@ int32_t Searcher::searchPosition(
                 ttStaticScore = scoreFromTT(ttStaticScore, ply); // re-base mate scores
                 // Negamax (STM-relative): a LOWERBOUND tightens upward, an
                 // UPPERBOUND tightens downward, EXACT always replaces.
-                if (ttStaticFlag == TranspositionTable::Entry::EXACT
-                    || (ttStaticFlag == TranspositionTable::Entry::LOWERBOUND && ttStaticScore > node.staticEval)
-                    || (ttStaticFlag == TranspositionTable::Entry::UPPERBOUND && ttStaticScore < node.staticEval)) {
+                if (ttStaticFlag == TT::Entry::EXACT
+                    || (ttStaticFlag == TT::Entry::LOWERBOUND && ttStaticScore > node.staticEval)
+                    || (ttStaticFlag == TT::Entry::UPPERBOUND && ttStaticScore < node.staticEval)) {
                     node.staticEval = ttStaticScore;
                 }
             }
@@ -823,13 +822,11 @@ int32_t Searcher::searchPosition(
         uint16_t encodedHashMove = 0;
         if (canUseTT
             && runtime.transpositionTable->probeSE(hashKey, static_cast<uint8_t>(depth - SE_DEPTH_MARGIN), ttSeScore, ttSeFlag)
-            && (ttSeFlag == TranspositionTable::Entry::LOWERBOUND || ttSeFlag == TranspositionTable::Entry::EXACT)
+            && (ttSeFlag == TT::Entry::LOWERBOUND || ttSeFlag == TT::Entry::EXACT)
             && std::abs(ttSeScore) < MATE_BOUND
             && runtime.transpositionTable->probeMove(hashKey, encodedHashMove)) {
 
-            // decodeMove masks from/to to 6 bits, so both are always in [0,63].
-            const auto hashMove = TranspositionTable::Entry::decodeMove(encodedHashMove);
-            const chess::Move seExcluded{hashMove.from, hashMove.to, hashMove.promo};
+            const chess::Move seExcluded = TT::Entry::decodeMove(encodedHashMove);
 
             ttSeScore = scoreFromTT(ttSeScore, ply);
             const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
@@ -969,7 +966,7 @@ int32_t Searcher::searchPosition(
             hashKey, static_cast<uint8_t>(ctx.depth),
             scoreToTT(best, ctx.ply),
             static_cast<uint8_t>(determineFlag(best, alpha, beta)),
-            TranspositionTable::Entry::encodeMove(result.move.from, result.move.to, result.move.promotionPiece));
+            TT::Entry::encodeMove(result.move));
     }
 
     return best;
@@ -1309,14 +1306,13 @@ void Searcher::storeRootHashMove(
         return;
     }
 
-    if (flag != TranspositionTable::Entry::EXACT
-        && flag != TranspositionTable::Entry::LOWERBOUND
-        && flag != TranspositionTable::Entry::UPPERBOUND) {
-        flag = TranspositionTable::Entry::EXACT;
+    if (flag != TT::Entry::EXACT
+        && flag != TT::Entry::LOWERBOUND
+        && flag != TT::Entry::UPPERBOUND) {
+        flag = TT::Entry::EXACT;
     }
 
-    const uint16_t encodedMove = TranspositionTable::Entry::encodeMove(
-        move.from, move.to, move.promotionPiece);
+    const uint16_t encodedMove = TT::Entry::encodeMove(move);
     runtime.transpositionTable->store(rootBoard.getHash(), depth, scoreToTT(score, 0), flag, encodedMove);
 }
 
@@ -1326,7 +1322,7 @@ namespace {
 // Each candidate is validated against the legal move list (a TT key collision
 // could otherwise yield an illegal move), and the walk stops on a repetition so
 // a cyclic PV cannot loop forever. The board is left exactly as it was found.
-std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int maxLen) noexcept {
+std::string buildPvFromTT(chess::Board& board, const TT* tt, int maxLen) noexcept {
     if (tt == nullptr) return {};
 
     std::array<chess::Move, MAX_PLY> pvMoves{};
@@ -1338,8 +1334,7 @@ std::string buildPvFromTT(chess::Board& board, const TranspositionTable* tt, int
         uint16_t encoded = 0;
         if (!tt->probeMove(board.getHash(), encoded) || encoded == 0) break;
 
-        const auto decoded = TranspositionTable::Entry::decodeMove(encoded);
-        const chess::Move mv{decoded.from, decoded.to, decoded.promo};
+        const chess::Move mv = TT::Entry::decodeMove(encoded);
 
         const MoveList legal = engine::MoveGenerator::generateLegalMoves(board);
         bool legalMove = false;

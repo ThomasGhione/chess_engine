@@ -20,12 +20,11 @@ namespace {
     return !(ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false"));
 }
 
-[[nodiscard]] chess::Move getTTPonderMove(const chess::Board& board, const TranspositionTable& tt) noexcept {
+[[nodiscard]] chess::Move getTTPonderMove(const chess::Board& board, const TT& tt) noexcept {
     uint16_t encodedMove = 0;
     if (!tt.probeMove(board.getHash(), encodedMove)) return {};
 
-    const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-    return {move.from, move.to, move.promo};
+    return TT::Entry::decodeMove(encodedMove);
 }
 
 [[nodiscard]] chess::Move getFallbackPonderMove(

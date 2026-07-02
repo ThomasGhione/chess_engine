@@ -41,7 +41,7 @@ public:
         bool     completedAnyDepth  = false;
         bool     terminalRoot       = false;
         int      completedDepth     = 0;
-        TranspositionTable::Entry::Flag rootScoreBound = TranspositionTable::Entry::EXACT;
+        TT::Entry::Flag rootScoreBound = TT::Entry::EXACT;
         chess::Move bestMove{};
         int32_t            bestScore = 0;
     };
@@ -173,7 +173,7 @@ private:
         int depth,
         int32_t score,
         SearchRuntime& runtime,
-        uint8_t flag = TranspositionTable::Entry::EXACT) noexcept;
+        uint8_t flag = TT::Entry::EXACT) noexcept;
 
     // --- Internal search primitives ---
     static bool handleSearchPrelude(

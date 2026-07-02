@@ -17,7 +17,7 @@
 #include "zobrist.hpp"
 #include "../ascii_utils.hpp"
 
-class TranspositionTable {
+class TT {
 
 public:
     enum class HugePageMode : uint8_t {
@@ -53,12 +53,6 @@ public:
         static constexpr uint8_t FLAG_SHIFT = DEPTH_BITS;
         static constexpr uint16_t FLAG_MASK = static_cast<uint16_t>((1u << FLAG_BITS) - 1u);
         static constexpr uint8_t AGE_SHIFT = DEPTH_BITS + FLAG_BITS;
-
-        struct DecodedMove {
-            uint8_t from = 0;
-            uint8_t to = 0;
-            char promo = '\0';
-        };
 
         static constexpr uint8_t promoCodeFromChar(char promo) noexcept {
             switch (promo) {
@@ -122,14 +116,14 @@ public:
                  | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
         }
 
-        static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
-            return (static_cast<uint16_t>(from) & 0x3F)
-                 | ((static_cast<uint16_t>(to) & 0x3F) << 6)
-                 | ((static_cast<uint16_t>(promoCodeFromChar(promo)) & 0xF) << 12);
+        static constexpr uint16_t encodeMove(const chess::Move& m) noexcept {
+            return (static_cast<uint16_t>(m.from) & 0x3F)
+                 | ((static_cast<uint16_t>(m.to) & 0x3F) << 6)
+                 | ((static_cast<uint16_t>(promoCodeFromChar(m.promotionPiece)) & 0xF) << 12);
         }
 
-        static constexpr DecodedMove decodeMove(uint16_t encoded) noexcept {
-            return DecodedMove{
+        static constexpr chess::Move decodeMove(uint16_t encoded) noexcept {
+            return chess::Move{
                 static_cast<uint8_t>(encoded & 0x3F),
                 static_cast<uint8_t>((encoded >> 6) & 0x3F),
                 promoCharFromCode(static_cast<uint8_t>((encoded >> 12) & 0xF))
@@ -162,15 +156,8 @@ public:
         return std::clamp(pow2, MIN_BUCKET_COUNT, MAX_BUCKET_COUNT);
     }
 
-    explicit TranspositionTable(HugePageMode mode = HugePageMode::Auto)
-        : table_(nullptr, BlockDeleter{})
-        , generation_(0)
-        , hugePageMode_(resolveHugePageMode(mode))
-        , hugePagesBacked_(false)
-        , entries_(nullptr)
-        , bucketSeq_(nullptr)
-        , bucketCount_(0)
-        , bucketMask_(0) {
+    explicit TT(HugePageMode mode = HugePageMode::Auto)
+        : hugePageMode_(resolveHugePageMode(mode)) {
         if (!allocateInPlace(DEFAULT_BUCKET_COUNT)) {
             throw std::bad_alloc{};
         }
@@ -196,10 +183,10 @@ public:
     inline void incrementGeneration() noexcept { ++generation_; }
     inline void clear() noexcept;
 
-    TranspositionTable(const TranspositionTable&) = delete;
-    TranspositionTable& operator=(const TranspositionTable&) = delete;
-    TranspositionTable(TranspositionTable&&) = default;
-    TranspositionTable& operator=(TranspositionTable&&) = default;
+    TT(const TT&) = delete;
+    TT& operator=(const TT&) = delete;
+    TT(TT&&) = default;
+    TT& operator=(TT&&) = default;
 
 private:
     struct BucketSeq {
@@ -238,14 +225,14 @@ private:
 
     using BlockPtr = std::unique_ptr<void, BlockDeleter>;
 
-    BlockPtr table_;
-    uint8_t generation_;
+    BlockPtr table_{nullptr, BlockDeleter{}};
+    uint8_t generation_ = 0;
     HugePageMode hugePageMode_;
-    bool hugePagesBacked_;
-    Entry* entries_;
-    BucketSeq* bucketSeq_;
-    size_t bucketCount_;
-    size_t bucketMask_;
+    bool hugePagesBacked_ = false;
+    Entry* entries_ = nullptr;
+    BucketSeq* bucketSeq_ = nullptr;
+    size_t bucketCount_ = 0;
+    size_t bucketMask_ = 0;
 
     inline Entry* data() noexcept { return entries_; }
     inline const Entry* data() const noexcept { return entries_; }
@@ -458,18 +445,18 @@ private:
 
 };
 
-inline void TranspositionTable::prefetch(uint64_t key) noexcept {
+inline void TT::prefetch(uint64_t key) noexcept {
     const size_t bucketIndex = static_cast<size_t>(key) & bucketMask_;
     __builtin_prefetch(data() + (bucketIndex * ENTRIES_PER_BUCKET), 0, 3);
     __builtin_prefetch(seqData() + bucketIndex, 0, 3);
 }
 
-static_assert(TranspositionTable::Entry::encodeMove(12, 28, 'q') == TranspositionTable::Entry::encodeMove(12, 28, 'Q'), "promotion encoding should be case-insensitive");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).from == 12, "move decode from mismatch");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).to == 28, "move decode to mismatch");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).promo == 'n', "move decode promotion mismatch");
+static_assert(TT::Entry::encodeMove(chess::Move{12, 28, 'q'}) == TT::Entry::encodeMove(chess::Move{12, 28, 'Q'}), "promotion encoding should be case-insensitive");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).from == 12, "move decode from mismatch");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).to == 28, "move decode to mismatch");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).promotionPiece == 'n', "move decode promotion mismatch");
 
-inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
+inline bool TT::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     EntrySnapshot entry;
     if (!findEntrySnapshot(key, entry)) {
         outBestMove = 0;
@@ -479,8 +466,8 @@ inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) c
     return outBestMove != 0;
 }
 
-inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
-                                      int32_t alpha, int32_t beta, int32_t& outScore) noexcept {
+inline bool TT::probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, 
+                      int32_t& outScore) noexcept {
     EntrySnapshot entry;
     if (!findEntrySnapshot(key, entry)) return false;
     if (Entry::depthFromPayload(entry.payload) < clampDepth(depth)) return false;
@@ -496,7 +483,7 @@ inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
     return false;
 }
 
-inline bool TranspositionTable::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept {
+inline bool TT::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept {
     EntrySnapshot entry;
     if (!findEntrySnapshot(key, entry)) return false;
     if (Entry::depthFromPayload(entry.payload) < minDepth) return false;
@@ -505,7 +492,7 @@ inline bool TranspositionTable::probeSE(uint64_t key, uint8_t minDepth, int32_t&
     return true;
 }
 
-inline void TranspositionTable::storeImpl(
+inline void TT::storeImpl(
     uint64_t key,
     uint8_t depth,
     int32_t score,
@@ -559,15 +546,15 @@ inline void TranspositionTable::storeImpl(
     unlockBucket(bucketSeq, lockBase);
 }
 
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept {
+inline void TT::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept {
     storeImpl(key, depth, score, flag, 0, false);
 }
 
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
+inline void TT::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
     storeImpl(key, depth, score, flag, bestMove, true);
 }
 
-inline void TranspositionTable::clear() noexcept {
+inline void TT::clear() noexcept {
     std::fill_n(data(), bucketCount_ * ENTRIES_PER_BUCKET, Entry{});
     BucketSeq* bucketSeq = seqData();
     for (size_t i = 0; i < bucketCount_; ++i) {
@@ -575,7 +562,7 @@ inline void TranspositionTable::clear() noexcept {
     }
 }
 
-inline bool TranspositionTable::resize(size_t megabytes) noexcept {
+inline bool TT::resize(size_t megabytes) noexcept {
     const size_t newBuckets = bucketCountForMB(megabytes);
 
     // Same bucket count: nothing to reallocate, just drop the contents.
@@ -591,13 +578,13 @@ inline bool TranspositionTable::resize(size_t megabytes) noexcept {
     return allocateInPlace(newBuckets);
 }
 
-inline constexpr TranspositionTable::Entry::Flag
+inline constexpr TT::Entry::Flag
 determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
-    if (score <= alphaOrig) return TranspositionTable::Entry::UPPERBOUND;
-    if (score >= beta) return TranspositionTable::Entry::LOWERBOUND;
-    return TranspositionTable::Entry::EXACT;
+    if (score <= alphaOrig) return TT::Entry::UPPERBOUND;
+    if (score >= beta) return TT::Entry::LOWERBOUND;
+    return TT::Entry::EXACT;
 }
 
-static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "determineFlag logic error");
-static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
-static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");
+static_assert(determineFlag(100, 50, 200) == TT::Entry::EXACT, "determineFlag logic error");
+static_assert(determineFlag(40, 50, 200) == TT::Entry::UPPERBOUND, "determineFlag logic error");
+static_assert(determineFlag(250, 50, 200) == TT::Entry::LOWERBOUND, "determineFlag logic error");

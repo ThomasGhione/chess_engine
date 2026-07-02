@@ -89,7 +89,7 @@ public:
     syzygy::SyzygyProber syzygyProber;
 
     // Transposition table (shared by normal search and pondering)
-    TranspositionTable tt;
+    TT tt;
 
     // Per-move time budget + hard-deadline watchdog (UCI clock searches).
     time::TimeManager timeManager;

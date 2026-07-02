@@ -295,8 +295,7 @@ namespace {
         uint16_t encodedMove = 0;
         if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
 
-        const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-        const chess::Move ponderMove{move.from, move.to, move.promo};
+        const chess::Move ponderMove = TT::Entry::decodeMove(encodedMove);
         return board.move(ponderMove)
             ? (" ponder " + ponderMove.toUCIString())
             : std::string{};
@@ -364,9 +363,9 @@ namespace uci {
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
                   << " min 1 max " << hwThreads << "\n";
-        std::cout << "option name Hash type spin default " << TranspositionTable::DEFAULT_HASH_MB
-                  << " min " << TranspositionTable::MIN_HASH_MB
-                  << " max " << TranspositionTable::MAX_HASH_MB << "\n";
+        std::cout << "option name Hash type spin default " << TT::DEFAULT_HASH_MB
+                  << " min " << TT::MIN_HASH_MB
+                  << " max " << TT::MAX_HASH_MB << "\n";
         for (const auto& option : kEvalOptions) {
             const auto [minValue, maxValue] = optionRange(option);
             std::cout << "option name " << optionDisplayName(option.key)
@@ -451,8 +450,8 @@ namespace uci {
             int v = 0;
             if (parseFirstInt(optionValue, v) && v >= 1) {
                 const int clamped = std::clamp(v,
-                    static_cast<int>(TranspositionTable::MIN_HASH_MB),
-                    static_cast<int>(TranspositionTable::MAX_HASH_MB));
+                    static_cast<int>(TT::MIN_HASH_MB),
+                    static_cast<int>(TT::MAX_HASH_MB));
                 if (engine.tt.resize(static_cast<size_t>(clamped))) {
                     std::cout << "info string Hash set to " << engine.tt.sizeMB() << " MB\n";
                 } else {

@@ -47,7 +47,7 @@ struct SearchRuntime {
     // on a shared array would corrupt the `improving` hard-prune heuristic.
 
     // --- External coordination ---
-    TranspositionTable*       transpositionTable     = nullptr;
+    TT*       transpositionTable     = nullptr;
     std::atomic<bool>*        stopSearchRequested    = nullptr;
     std::atomic<bool>*        ponderingStopRequested = nullptr;
     std::atomic<bool>*        searchInterrupted      = nullptr;
