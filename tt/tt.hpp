@@ -167,8 +167,9 @@ public:
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
     inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
     inline bool probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept;
-    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
-    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
+    // bestMove == 0 means "no move to store" (a bound-only write): the existing
+    // move in a matching entry is preserved rather than clobbered.
+    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove = 0) noexcept;
 
     // Resize to approximately `megabytes` MiB (rounded down to a power-of-two
     // bucket count) and clear all entries. NOT safe to call during a live
@@ -441,8 +442,6 @@ private:
         return (depth <= Entry::MAX_DEPTH) ? depth : Entry::MAX_DEPTH;
     }
 
-    inline void storeImpl(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove, bool replaceBestMove) noexcept;
-
 };
 
 inline void TT::prefetch(uint64_t key) noexcept {
@@ -492,13 +491,12 @@ inline bool TT::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8
     return true;
 }
 
-inline void TT::storeImpl(
+inline void TT::store(
     uint64_t key,
     uint8_t depth,
     int32_t score,
     uint8_t flag,
-    uint16_t bestMove,
-    bool replaceBestMove) noexcept {
+    uint16_t bestMove) noexcept {
     const uint8_t storedDepth = clampDepth(depth);
     const size_t bucketIndex = static_cast<size_t>(key) & bucketMask_;
     Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
@@ -523,7 +521,8 @@ inline void TT::storeImpl(
 
         if (entryKey == key) {
             if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
-                const uint16_t moveToStore = replaceBestMove ? bestMove : Entry::bestMoveFromPayload(entryPayload);
+                // Preserve the stored move on a bound-only write (bestMove == 0).
+                const uint16_t moveToStore = (bestMove != 0) ? bestMove : Entry::bestMoveFromPayload(entryPayload);
                 const uint64_t newPayload = Entry::encodePayload(score, moveToStore, storedDepth, generation_, flag);
                 atomicWord(entry.payload).store(newPayload, std::memory_order_relaxed);
             }
@@ -544,14 +543,6 @@ inline void TT::storeImpl(
     atomicWord(target->payload).store(newPayload, std::memory_order_relaxed);
     atomicWord(target->key).store(key, std::memory_order_relaxed);
     unlockBucket(bucketSeq, lockBase);
-}
-
-inline void TT::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept {
-    storeImpl(key, depth, score, flag, 0, false);
-}
-
-inline void TT::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
-    storeImpl(key, depth, score, flag, bestMove, true);
 }
 
 inline void TT::clear() noexcept {

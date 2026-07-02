@@ -167,13 +167,6 @@ private:
         bool allowTTWrite,
         bool allowHeuristicUpdates,
         uint64_t* nodeCounter) noexcept;
-    static void storeRootHashMove(
-        const chess::Board& rootBoard,
-        const chess::Move& move,
-        int depth,
-        int32_t score,
-        SearchRuntime& runtime,
-        uint8_t flag = TT::Entry::EXACT) noexcept;
 
     // --- Internal search primitives ---
     static bool handleSearchPrelude(

@@ -1291,31 +1291,6 @@ chess::Move Searcher::getBestMove(
     return bestMove;
 }
 
-void Searcher::storeRootHashMove(
-    const chess::Board& rootBoard,
-    const chess::Move& move,
-    int depth,
-    int32_t score,
-    SearchRuntime& runtime,
-    uint8_t flag) noexcept {
-    if (runtime.transpositionTable == nullptr) {
-        return;
-    }
-
-    if (!chess::isValidSquare(move.from) || !chess::isValidSquare(move.to)) {
-        return;
-    }
-
-    if (flag != TT::Entry::EXACT
-        && flag != TT::Entry::LOWERBOUND
-        && flag != TT::Entry::UPPERBOUND) {
-        flag = TT::Entry::EXACT;
-    }
-
-    const uint16_t encodedMove = TT::Entry::encodeMove(move);
-    runtime.transpositionTable->store(rootBoard.getHash(), depth, scoreToTT(score, 0), flag, encodedMove);
-}
-
 namespace {
 
 // Reconstruct a principal variation by following best moves stored in the TT.
@@ -1606,7 +1581,11 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         result.bestMove = bestMove;
         result.bestScore = runtime.eval;
         result.rootScoreBound = determineFlag(result.bestScore, iterationAlpha, iterationBeta);
-        storeRootHashMove(rootBoard, bestMove, currentDepth, runtime.eval, runtime, static_cast<uint8_t>(result.rootScoreBound));
+        if (runtime.transpositionTable != nullptr) {
+            runtime.transpositionTable->store(
+                rootBoard.getHash(), currentDepth, scoreToTT(runtime.eval, 0),
+                static_cast<uint8_t>(result.rootScoreBound), TT::Entry::encodeMove(bestMove));
+        }
 
         if (runtime.emitUciInfo) {
             emitUciInfoLine(currentDepth, runtime.eval, runtime, rootBoard);
