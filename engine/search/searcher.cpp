@@ -409,10 +409,10 @@ void Searcher::updateKillerAndHistoryOnBetaCutoff(
     }
 
     // KILLER MOVES: update while avoiding duplicates.
-    auto& km1 = runtime.killerMoves[0][ply];
+    auto& km1 = runtime.killerMoves[ply][0];
     const bool isAlreadyKm1 = m.sameFromTo(km1);
     if (!isAlreadyKm1) {
-        auto& km2 = runtime.killerMoves[1][ply];
+        auto& km2 = runtime.killerMoves[ply][1];
         km2 = km1;
         km1 = m;
     }
@@ -548,8 +548,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool shouldCheckExtend = givesCheck && forcingCandidate && ctx.depth >= 2 && ctx.depth <= 4;
         const int childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
                              + (isFirstMove ? ctx.singularExtension : 0);
-        const auto& km0 = runtime.killerMoves[0][ctx.ply];
-        const auto& km1 = runtime.killerMoves[1][ctx.ply];
+        const auto& km0 = runtime.killerMoves[ctx.ply][0];
+        const auto& km1 = runtime.killerMoves[ctx.ply][1];
         const bool isKiller = m.sameFromTo(km0) || m.sameFromTo(km1);
         const bool canReduce = lmrStructuralCandidate
                            && !givesCheck

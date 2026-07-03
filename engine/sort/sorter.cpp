@@ -70,8 +70,8 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return std::clamp<int32_t>(score, NEG_INF, POS_INF);
     }
 
-    if (m.sameFromTo(ctx.runtime.killerMoves[0][ctx.ply])) return KILLER_1_SCORE;
-    if (m.sameFromTo(ctx.runtime.killerMoves[1][ctx.ply])) return KILLER_2_SCORE;
+    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][0])) return KILLER_1_SCORE;
+    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][1])) return KILLER_2_SCORE;
 
     if (ctx.previousMove != nullptr) {
         const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from][ctx.previousMove->to];
