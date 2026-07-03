@@ -40,7 +40,9 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   In tt.hpp `probe/probeSE/probeMove` collassano in una funzione. Node-identico (single-thread).
   Nota: qui si aggiungerà il campo static-eval nel payload quando arriverà NNUE.
 
-- [ ] **4. Gate su `tryStalemateScore` nei cutoff RFP/NMP** — Elo atteso: **+2–5** (SPRT)
+- [x] **4. Gate su `tryStalemateScore` nei cutoff RFP/NMP** — ❌ **SCARTATO** 2026-07-03
+  Node-identico ma NPS −2.8% su 9 round A/B (l'early-out di hasAnyLegalMove è già economico;
+  delta dominato dal code-layout). Guadagno non dimostrabile → revert, niente 5 righe in più.
   Ogni fail-high RFP/NMP paga `hasAnyLegalMove()`. Stallo con eval ≥ beta+margine e
   materiale non-pedone è ~impossibile (RFP già gated `!isPawnEndgameForPruning`).
   Gate su materiale basso (es. `nonPawnMajorCount <= 4`) o rimozione dal path RFP.
@@ -53,12 +55,15 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   `excludedMove` ha la chiave "sbagliata" (soppressione locale già presente via
   `hasExcludedMove`). Passare `true` alla ricorsione del probe SE.
 
-- [ ] **6. Negative extension nel blocco singular** — Elo: **+5–10** — ⏳ SPRT in corso 2026-07-03
+- [x] **6. Negative extension nel blocco singular** — ❌ **BOCCIATO** 2026-07-03
+  SPRT [0,5]: **−10.9 ±19.4 @ 860 partite, LLR −0.56, LOS ~8%** — killed early, revert.
+  Implementazione standard (`ttScore>=beta → ext −1`); conferma il meta-pattern: aggiungere
+  termini di riduzione a questo search tunato non paga. Non ritentare senza gating diverso.
   Il gruppo SE è stato la miniera del ciclo 2026-06 (SE_BETA_MARGIN +16.6). Ramo mancante
   standard: quando `seScore >= seBeta` e `ttScore >= beta`, ridurre di 1 il primo figlio
   invece di estendere. Unica leva SE mai provata.
 
-- [ ] **7. Store bound-only sul stand-pat fail-high in qsearch** — Elo: **+0–8**
+- [ ] **7. Store bound-only sul stand-pat fail-high in qsearch** — Elo: **+0–8** — ⏳ SPRT [0,5] in corso
   Il return `standPat >= beta` esce PRIMA dello store. `store(hash, 0, standPat, LOWERBOUND)`
   senza mossa (bestMove=0 preserva la mossa esistente) evita la move-pollution che uccise
   l'esperimento qsearch-TT-con-mosse (−30 Elo).
@@ -145,9 +150,9 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 
 ## 🟢 Candidati "remove-to-gain" (SPRT; pattern vincente 3/3 a giugno: +19, +10.9, +8.8)
 
-- [ ] **24. Opening-king penalty + castling bonus nell'ordering** (sorter.cpp ~265)
-  Ultima micro-euristica di ordering sopravvissuta alla purga. Rimuoverla elimina anche
-  il `b.inCheck()` per nodo (#19) e la lettura di fullMoveClock.
+- [x] **24. Opening-king penalty + castling bonus nell'ordering** — ✅ **RIMOSSO** 2026-07-03
+  Commit e0/[REMOVE], −15 LOC. SPRT [−3,3]: +43 ±51 @ 138, trend netto positivo, accettato
+  early (decisione utente). Elimina anche il `b.inCheck()` per nodo nel sorter (#19 assorbito).
 
 - [ ] **25. SEE cache 1 MB thread_local** (sorter.cpp ~130)
   64K entry × 16 B per thread. Con la lazy SEE le chiamate sono crollate: la cache
