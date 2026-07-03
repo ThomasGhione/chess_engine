@@ -146,25 +146,32 @@ bool Searcher::checkDrawTerminalConditions(
     const chess::Board& b,
     int32_t& outScore,
     bool atRoot) noexcept {
-    const int repCount = b.countRepetitions();
+    // A repetition needs at least 4 reversible plies (each side out and back;
+    // null moves preserve side-to-move parity so they cannot shorten the cycle),
+    // so the O(historySize) scan is skipped below that threshold. In quiescence
+    // nearly every move is a capture/promotion that resets the clock, so this
+    // guard removes the scan from most of the tree.
+    if (b.getHalfMoveClock() >= 4) {
+        const int repCount = b.countRepetitions();
 
-    // Third repetition: forced draw — apply full contempt penalty.
-    if (repCount >= 3) {
-        outScore = repetitionDrawScore(b);
-        return true;
-    }
+        // Third repetition: forced draw — apply full contempt penalty.
+        if (repCount >= 3) {
+            outScore = repetitionDrawScore(b);
+            return true;
+        }
 
-    // Second repetition: not yet a forced draw, but scores as 0.
-    // This prevents the engine from "chasing" draws when winning (alpha > 0
-    // won't be improved by a 0 score, so the engine is forced to find real moves).
-    //
-    // This is an INTERIOR-NODE heuristic only. At the root the current position
-    // is not a draw under FIDE rules until it actually occurs a third time, so
-    // returning here would abandon the search and play moves[0] — a random legal
-    // move that, as observed, can hang the queen. At the root we must search.
-    if (!atRoot && repCount >= 2) {
-        outScore = 0;
-        return true;
+        // Second repetition: not yet a forced draw, but scores as 0.
+        // This prevents the engine from "chasing" draws when winning (alpha > 0
+        // won't be improved by a 0 score, so the engine is forced to find real moves).
+        //
+        // This is an INTERIOR-NODE heuristic only. At the root the current position
+        // is not a draw under FIDE rules until it actually occurs a third time, so
+        // returning here would abandon the search and play moves[0] — a random legal
+        // move that, as observed, can hang the queen. At the root we must search.
+        if (!atRoot && repCount >= 2) {
+            outScore = 0;
+            return true;
+        }
     }
 
     if (b.isFiftyMoveRule()) [[unlikely]] {
@@ -296,8 +303,6 @@ bool Searcher::handleSearchPrelude(
     uint64_t hashKey,
     int ply) noexcept {
     // Precondition (guaranteed by the only caller's canUseTT): transpositionTable != nullptr.
-    if (depth >= 2) runtime.transpositionTable->prefetch(hashKey);
-
     int32_t ttScore = 0;
     if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), alpha, beta, ttScore)) {
         score = scoreFromTT(ttScore, ply); // re-base mate scores to this node's ply
@@ -540,6 +545,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         chess::Board::MoveState state;
         b.doMove(m, state);
+        // Prefetch the child's TT bucket now: the load overlaps the child's
+        // node entry, draw checks and static eval before its TT probe.
+        if (runtime.transpositionTable != nullptr) {
+            runtime.transpositionTable->prefetch(b.getHash());
+        }
 
         // Late captures are reduced too: move ordering ranks good captures early,
         // so a capture reaching this index is almost always a bad/losing one.
@@ -1075,6 +1085,10 @@ int32_t Searcher::quiescenceSearch(
 
         chess::Board::MoveState state;
         b.doMove(m, state);
+        // Prefetch the child's TT bucket (see the same hint in searchMoves).
+        if (canUseTT) {
+            runtime.transpositionTable->prefetch(b.getHash());
+        }
         // Negamax: child is opponent to move -> negate + swap/negate window.
         const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, counter, allowTTWrite);
         b.undoMove(m, state);
