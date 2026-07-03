@@ -29,7 +29,10 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   `tt->prefetch(b.getHash())` — la latenza si nasconde dietro enterNode+draw-check+eval del figlio.
   Node-identico.
 
-- [ ] **3. Unified TT probe: 1 snapshot per nodo invece di 4** — Elo atteso: **+3–6**, −40 LOC
+- [x] **3. Unified TT probe: 1 snapshot per nodo invece di 4** — Elo atteso: **+3–6**, −40 LOC
+  ✅ 2026-07-03 (bb9f5f8), node-identico. NPS **neutro** (−0.24% interleaved: i re-probe
+  erano L1-hot) — tenuto per il valore strutturale (−40 LOC, sorter senza TT, un solo
+  punto di lettura da estendere col campo static-eval per NNUE).
   Per nodo il bucket viene letto fino a 4 volte: `probe()` (prelude), `probeSE()` (static-eval
   tightening), `probeSE()`+`probeMove()` (gate singular), `probeMove()` (sortLegalMoves).
   Un unico `probeEntry(key) → {found, score, flag, depth, move}` a inizio nodo serve tutti;
@@ -79,7 +82,8 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 
 ## 🟡 Codice morto / duplicato — zero Elo, −LOC (node-count identico)
 
-- [ ] **12. Fondere `generateLegalEvasionsFor` in `generateLegalMovesFor`** — **−60 LOC**
+- [x] **12. Fondere `generateLegalEvasionsFor` in `generateLegalMovesFor`** — **−60 LOC**
+  ✅ 2026-07-03 (9928ca3), node-identico, −47 LOC netti via CheckContext.
   Il generatore completo gestisce GIÀ lo scacco (evasionMask, double-check early-return,
   castling gated `!inCheck`); la versione evasioni è lo stesso codice meno il castling.
   Unificare con un parametro `CheckInfo {known, inCheck, doubleCheck}`.
@@ -129,11 +133,12 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 - [ ] **22. Ponder-move da TT duplicato** — **−8 LOC** (cold path)
   `engine.cpp:getTTPonderMove` e `uci.cpp:ponderSuffix` fanno lo stesso probe+decode.
 
-- [ ] **23. Minori**
-  - [ ] `LMR_MAX_MOVES`(218) duplica `MAX_MOVES`(218) → unificare in search_constants
-  - [ ] `LMP_THRESHOLDS[..][6]`: entry [5] mai indicizzata (gate depth≤4) → array [5]
-  - [ ] Commento stale su FUTILITY_MARGINS ("depth gated to 1..2" → 1..6)
-  - [ ] `TT::probe` non-const senza motivo
+- [x] **23. Minori** — ✅ 2026-07-03 (1ad2d0f), node-identico
+  - [x] `LMR_MAX_MOVES`/`MAX_MOVES`: cross-reference nel commento (unificarli costerebbe
+        include-churn movelist↔search_constants — non vale la pena)
+  - [x] `LMP_THRESHOLDS[..][6]`: entry [5] mai indicizzata → array [5]
+  - [x] Commento stale su FUTILITY_MARGINS corretto (1..6)
+  - [x] `TT::probe` const (poi assorbito da probeEntry in #3)
   - [x] hydray.md: claim "prefetch 2 nodes ahead" corretto insieme a #2 (2026-07-03)
 
 ## 🟢 Candidati "remove-to-gain" (SPRT; pattern vincente 3/3 a giugno: +19, +10.9, +8.8)
@@ -170,5 +175,7 @@ rimozione SEE per-quiet nell'ordering (load-bearing, +80% nodi senza).
 (startpos 1.257.726 · kiwipete 325.684 · endgame 17.810 · midgame 3.396.556 ·
 tactical 869.242 · open 2.055.698 — driver: `nodebench.py`, vedi memoria tooling-nodebench)
 
-**Log:** 2026-07-03 — batch #14/#18/#15/#16/#17, poi #13, poi #1/#2: tutti node-identici
-(7.922.716 dopo ogni batch); NPS complessivo **+3.45%** (A/B interleaved 4×, engine-reported time).
+**Log:** 2026-07-03 — batch #14/#18/#15/#16/#17 (d1d1dfe), #13 (8ba81c1), #1/#2 (0e3303c),
+#23 (1ad2d0f), #3 (bb9f5f8), #12 (9928ca3): tutti node-identici (7.922.716 dopo ogni commit).
+NPS: **+3.45%** dai batch 1–3 (A/B interleaved); #3 neutro (−0.24%, tenuto per struttura/LOC).
+Prossimi: #20 checkersTo → SPRT batch (#4–#8, #24–#26).
