@@ -145,10 +145,6 @@ inline constexpr int32_t COUNTER_MOVE_SCORE   = 8200;
 inline constexpr int32_t PROMOTION_BASE_SCORE = 7000;
 inline constexpr int32_t HISTORY_SCORE_MAX    = 7500;
 inline constexpr int32_t HISTORY_SCORE_MIN    = -2000;
-// Opening king ordering.
-inline constexpr int32_t OPENING_KING_MOVE_PENALTY  = 220;
-inline constexpr int32_t CASTLING_BONUS             = 550;
-inline constexpr int     OPENING_FULLMOVE_THRESHOLD = 10;
 // Qsearch tactical move scoring.
 inline constexpr int32_t TACTICAL_PROMOTION_SCORE = 9000;
 inline constexpr int32_t FUTILITY_MARGIN          = 100;

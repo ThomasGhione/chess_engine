@@ -219,8 +219,6 @@ MovePicker Sorter::sortLegalMoves(
     const int usSide  = chess::Board::colorToIndex(b.getActiveColor());
     const int promotionRank = chess::Board::promotionRank(b.getActiveColor() == chess::Board::WHITE);
     const chess::Square enPassant   = b.getEnPassant();
-    const int fullMoveClock  = b.getFullMoveClock();
-    const bool inCheck       = b.inCheck(b.getActiveColor());
 
     const MoveOrderingContext orderingCtx{
         previousMove, runtime, contHistEntry, ply, usSide
@@ -257,15 +255,6 @@ MovePicker Sorter::sortLegalMoves(
         int32_t score = scoreMoveOrderingPriorityInline(
             orderingCtx, m, isCapture, cap.victimType,
             isPromotionCandidate, isHashMove, fromPieceType);
-
-        if (fromPieceType == chess::Board::KING) {
-            const bool isCastling = (std::abs(chess::file(m.to) - chess::file(m.from)) == 2);
-            if (fullMoveClock < OPENING_FULLMOVE_THRESHOLD && !inCheck && !isCastling) {
-                score -= OPENING_KING_MOVE_PENALTY;
-            } else if (isCastling) {
-                score += CASTLING_BONUS;
-            }
-        }
 
         picker.scores[i] = score;
         picker.seePending[i] = pending;
