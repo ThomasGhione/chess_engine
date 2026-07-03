@@ -122,27 +122,8 @@ Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
 }
 
 int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Move& m) noexcept {
-    struct SEECacheEntry { 
-        uint64_t key; 
-        int32_t score; 
-        uint8_t valid; 
-    };
-    static constexpr size_t SEE_CACHE_SIZE = 1u << 16;
-    static constexpr uint64_t SEE_CACHE_MASK = SEE_CACHE_SIZE - 1u;
-    thread_local std::array<SEECacheEntry, SEE_CACHE_SIZE> seeCache{};
-
     const int toSq   = m.to;
     const int fromSq = m.from;
-
-    // Cheap key: 0 multiplies. from/to/promo land in distinct bit regions
-    // (0..5, 6..11, 12..) so within the same position they disperse cleanly;
-    // the zobrist hash provides cross-position dispersion in the high bits.
-    const uint64_t cacheKey = b.getHash()
-        ^ static_cast<uint64_t>(fromSq)
-        ^ (static_cast<uint64_t>(toSq) << 6)
-        ^ (static_cast<uint64_t>(static_cast<unsigned char>(m.promotionPiece)) << 12);
-    SEECacheEntry& entry = seeCache[cacheKey & SEE_CACHE_MASK];
-    if (entry.valid && entry.key == cacheKey) return entry.score;
 
     const int sidePassive = chess::Board::colorToIndex(b.getActiveColor()) ^ 1;
 
@@ -193,9 +174,6 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
         gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
     }
 
-    entry.key   = cacheKey;
-    entry.score = gain[0];
-    entry.valid = 1;
     return gain[0];
 }
 
