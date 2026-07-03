@@ -1017,6 +1017,12 @@ int32_t Searcher::quiescenceSearch(
     } else {
         const int32_t standPat = Evaluator::evaluate(b) + evalCorrection(runtime, b);
         if (isBetaCutoff(standPat, beta)) {
+            // Bound-only store (bestMove 0 preserves any stored move): sibling
+            // qsearch nodes can then cut on this stand-pat without re-evaluating.
+            if (canUseTT && allowTTWrite) {
+                runtime.transpositionTable->store(
+                    b.getHash(), 0, scoreToTT(standPat, ply), TT::Entry::LOWERBOUND);
+            }
             return standPat; // fail-soft: tighter bound than a flat beta
         }
         updateBound(standPat, alpha);
