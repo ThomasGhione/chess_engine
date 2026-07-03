@@ -294,23 +294,6 @@ int32_t Searcher::searchRootMoveScore(
     return score;
 }
 
-bool Searcher::handleSearchPrelude(
-    const SearchRuntime& runtime,
-    int depth,
-    int32_t alpha,
-    int32_t beta,
-    int32_t& score,
-    uint64_t hashKey,
-    int ply) noexcept {
-    // Precondition (guaranteed by the only caller's canUseTT): transpositionTable != nullptr.
-    int32_t ttScore = 0;
-    if (runtime.transpositionTable->probe(hashKey, static_cast<uint8_t>(depth), alpha, beta, ttScore)) {
-        score = scoreFromTT(ttScore, ply); // re-base mate scores to this node's ply
-        return true;
-    }
-    return false;
-}
-
 bool Searcher::tryNullMovePruning(
     chess::Board& b,
     const SearchNodeState& node,
@@ -761,8 +744,17 @@ int32_t Searcher::searchPosition(
     const uint64_t hashKey = b.getHash();
     int32_t score = 0;
     const bool canUseTT = (runtime.transpositionTable != nullptr);
-    if (canUseTT && !hasExcludedMove && handleSearchPrelude(runtime, depth, alpha, beta, score, hashKey, ply)) {
-        return score;
+
+    // Single TT read per node: this snapshot feeds the depth-gated cutoff
+    // below, the static-eval tightening, the singular-extension gate and the
+    // hash move for ordering (previously four separate bucket reads).
+    TT::ProbeResult tte{};
+    if (canUseTT) tte = runtime.transpositionTable->probeEntry(hashKey);
+
+    if (!hasExcludedMove && tte.hit
+        && static_cast<int>(tte.depth) >= std::min(depth, static_cast<int>(TT::Entry::MAX_DEPTH))
+        && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
+        return scoreFromTT(tte.score, ply); // re-base mate scores to this node's ply
     }
     if (hasExcludedMove) allowTTWrite = false;
 
@@ -779,18 +771,14 @@ int32_t Searcher::searchPosition(
     // zero-initialised value, biasing `improving` to (staticEval > 0) at ply 2.
     if (!node.inCheck) {
         node.staticEval = Evaluator::evaluate(b);
-        if (canUseTT) {
-            int32_t ttStaticScore = 0;
-            uint8_t ttStaticFlag = 0;
-            if (runtime.transpositionTable->probeSE(hashKey, 0, ttStaticScore, ttStaticFlag)) {
-                ttStaticScore = scoreFromTT(ttStaticScore, ply); // re-base mate scores
-                // Negamax (STM-relative): a LOWERBOUND tightens upward, an
-                // UPPERBOUND tightens downward, EXACT always replaces.
-                if (ttStaticFlag == TT::Entry::EXACT
-                    || (ttStaticFlag == TT::Entry::LOWERBOUND && ttStaticScore > node.staticEval)
-                    || (ttStaticFlag == TT::Entry::UPPERBOUND && ttStaticScore < node.staticEval)) {
-                    node.staticEval = ttStaticScore;
-                }
+        if (tte.hit) {
+            const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
+            // Negamax (STM-relative): a LOWERBOUND tightens upward, an
+            // UPPERBOUND tightens downward, EXACT always replaces.
+            if (tte.flag == TT::Entry::EXACT
+                || (tte.flag == TT::Entry::LOWERBOUND && ttStaticScore > node.staticEval)
+                || (tte.flag == TT::Entry::UPPERBOUND && ttStaticScore < node.staticEval)) {
+                node.staticEval = ttStaticScore;
             }
         }
         // Nudge the static eval by the learned correction-history signal.
@@ -821,18 +809,15 @@ int32_t Searcher::searchPosition(
         b.rooks_bb[side]   | b.queens_bb[side]);
     int singularExtension = 0;
     if (!hasExcludedMove && !node.inCheck && depth >= SE_MIN_DEPTH && ply > 0) {
-        int32_t ttSeScore = 0;
-        uint8_t ttSeFlag  = 0;
-        uint16_t encodedHashMove = 0;
-        if (canUseTT
-            && runtime.transpositionTable->probeSE(hashKey, static_cast<uint8_t>(depth - SE_DEPTH_MARGIN), ttSeScore, ttSeFlag)
-            && (ttSeFlag == TT::Entry::LOWERBOUND || ttSeFlag == TT::Entry::EXACT)
-            && std::abs(ttSeScore) < MATE_BOUND
-            && runtime.transpositionTable->probeMove(hashKey, encodedHashMove)) {
+        if (tte.hit
+            && static_cast<int>(tte.depth) >= depth - SE_DEPTH_MARGIN
+            && (tte.flag == TT::Entry::LOWERBOUND || tte.flag == TT::Entry::EXACT)
+            && std::abs(tte.score) < MATE_BOUND
+            && tte.move != 0) {
 
-            const auto seExcluded = TT::Entry::decodeMove(encodedHashMove);
+            const auto seExcluded = TT::Entry::decodeMove(tte.move);
 
-            ttSeScore = scoreFromTT(ttSeScore, ply);
+            const int32_t ttSeScore = scoreFromTT(tte.score, ply);
             const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
 
             const int32_t seScore = searchPosition(
@@ -928,6 +913,7 @@ int32_t Searcher::searchPosition(
         ply,
         b,
         runtime,
+        tte.move,
         ctx.previousMove,
         &hasHashMove,
         ctx.contHistEntry);
@@ -994,10 +980,10 @@ int32_t Searcher::quiescenceSearch(
 
     const bool canUseTT = (runtime.transpositionTable != nullptr);
     if (canUseTT) {
-        const uint64_t hashKey = b.getHash();
-        int32_t ttScore = 0;
-        if (runtime.transpositionTable->probe(hashKey, 0, alpha, beta, ttScore)) {
-            return scoreFromTT(ttScore, ply);
+        const auto tte = runtime.transpositionTable->probeEntry(b.getHash());
+        // Any depth qualifies at a quiescence node (stored qsearch depth is 0).
+        if (tte.hit && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
+            return scoreFromTT(tte.score, ply);
         }
     }
 
@@ -1123,11 +1109,16 @@ chess::Move Searcher::getBestMove(
     uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
+    uint16_t rootHashMove = 0;
+    if (runtime.transpositionTable != nullptr) {
+        rootHashMove = runtime.transpositionTable->probeEntry(rootBoard.getHash()).move;
+    }
     MovePicker orderedRootMoves = Sorter::sortLegalMoves(
         moves,
         0,
         rootBoard,
-        runtime);
+        runtime,
+        rootHashMove);
     
     // YBWC and Root iterations require fully sorted list upfront.
     orderedRootMoves.fullSort();

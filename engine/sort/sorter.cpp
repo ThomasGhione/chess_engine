@@ -204,6 +204,7 @@ MovePicker Sorter::sortLegalMoves(
     int ply,
     const chess::Board& b,
     const SearchRuntime& runtime,
+    uint16_t encodedHashMove,
     const chess::Move* previousMove,
     bool* outHashMoveIsLegal,
     const int16_t* contHistEntry) noexcept {
@@ -225,11 +226,8 @@ MovePicker Sorter::sortLegalMoves(
         previousMove, runtime, contHistEntry, ply, usSide
     };
 
-    // Probe TT for hash move.
-    uint16_t encodedHashMove = 0;
-    const bool isHashMoveProbed = runtime.transpositionTable != nullptr
-        && runtime.transpositionTable->probeMove(b.getHash(), encodedHashMove);
-    // encodedHashMove stays 0 when unprobed → hashMove is then unused (isHashMove is gated on isHashMoveProbed below).
+    // Hash move handed down from the caller's single TT probe (0 = none).
+    const bool hasEncodedHashMove = (encodedHashMove != 0);
     const auto hashMove = TT::Entry::decodeMove(encodedHashMove);
 
     bool hashMoveFound = false;
@@ -244,7 +242,7 @@ MovePicker Sorter::sortLegalMoves(
         const bool isCapture = cap.isCapture;
         const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (chess::rank(m.to) == promotionRank);
 
-        const bool isHashMove = isHashMoveProbed && m == hashMove;
+        const bool isHashMove = hasEncodedHashMove && m == hashMove;
         if (isHashMove) hashMoveFound = true;
 
         // Lazy SEE: 1 = capture, 2 = quiet that could be SEE-demoted, 0 = score is

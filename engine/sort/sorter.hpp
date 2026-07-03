@@ -42,11 +42,14 @@ public:
                                            : PIECE_VALUES[pt] - PIECE_VALUES[chess::Board::PAWN];
     }
 
+    // encodedHashMove is the TT move from the caller's node probe (0 = none);
+    // the sorter itself never touches the TT.
     static MovePicker sortLegalMoves(
         MoveList moves,
         int ply,
         const chess::Board& b,
         const SearchRuntime& runtime,
+        uint16_t encodedHashMove = 0,
         const chess::Move* previousMove = nullptr,
         bool* outHashMoveIsLegal = nullptr,
         const int16_t* contHistEntry = nullptr) noexcept;

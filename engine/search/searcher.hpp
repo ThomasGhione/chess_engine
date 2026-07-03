@@ -122,6 +122,13 @@ private:
     static void           updateBound(int32_t score, int32_t& alpha) noexcept            { if (score > alpha) alpha = score; }
     static constexpr bool shouldDeltaPrune(int32_t standPat, int32_t margin, int32_t alpha) noexcept { return standPat + margin <= alpha; }
     static constexpr bool shouldResearchPVS(int32_t score, int32_t alphaBound) noexcept  { return score > alphaBound; }
+    // True when a TT entry's bound proves a cutoff for the [alpha, beta] window
+    // (scores are raw TT scores; mate rebasing happens after the cutoff check).
+    static constexpr bool ttBoundCutoff(uint8_t flag, int32_t score, int32_t alpha, int32_t beta) noexcept {
+        return flag == TT::Entry::EXACT
+            || (flag == TT::Entry::LOWERBOUND && score >= beta)
+            || (flag == TT::Entry::UPPERBOUND && score <= alpha);
+    }
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
     // Mate scores embed ply-distance; rebase on TT store/load so mate distances
@@ -169,9 +176,6 @@ private:
         uint64_t* nodeCounter) noexcept;
 
     // --- Internal search primitives ---
-    static bool handleSearchPrelude(
-        const SearchRuntime& runtime, int depth, int32_t alpha, int32_t beta,
-        int32_t& score, uint64_t hashKey, int ply) noexcept;
     static bool tryNullMovePruning(
         chess::Board& b, const SearchNodeState& node, SearchRuntime& runtime,
         int depth, int32_t alpha, int32_t beta, int ply,
