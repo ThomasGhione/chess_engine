@@ -760,7 +760,10 @@ int32_t Searcher::searchPosition(
 
     SearchNodeState node{};
     node.activeColor = b.getActiveColor();
-    node.inCheck = b.inCheck(node.activeColor);
+    // One attack scan answers inCheck, double check and (in movegen) the
+    // evasion mask — the bitboard is reused at move generation below.
+    const uint64_t checkers = b.checkersTo(node.activeColor);
+    node.inCheck = (checkers != 0ULL);
     node.isPVNode = isPVNode;
     node.isPawnEndgameForPruning =
         ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (b.getIncrementalNonPawnMajorCount() <= 4);
@@ -895,9 +898,8 @@ int32_t Searcher::searchPosition(
         node.activeColor, node.inCheck, node.isPVNode, false, improving
     };
 
-    const bool nodeInDoubleCheck = node.inCheck && b.isDoubleCheck(node.activeColor);
     MoveList moves = node.inCheck
-        ? engine::MoveGenerator::generateLegalEvasions(b, true, nodeInDoubleCheck)
+        ? engine::MoveGenerator::generateLegalEvasions(b, checkers)
         : engine::MoveGenerator::generateLegalMoves(b, /*knownNotInCheck=*/true);
     if (moves.is_empty()) {
         const int32_t mdW = b.getIncrementalMaterialDelta();
@@ -989,13 +991,12 @@ int32_t Searcher::quiescenceSearch(
 
     const uint8_t activeColor = b.getActiveColor();
     const bool usIsWhite = (activeColor == chess::Board::WHITE);
-    const bool inCheck = b.inCheck(activeColor);
-    const bool inDoubleCheck = inCheck && b.isDoubleCheck(activeColor);
+    const uint64_t checkers = b.checkersTo(activeColor);
+    const bool inCheck = (checkers != 0ULL);
 
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            MoveList evasions = engine::MoveGenerator::generateLegalEvasions(
-                b, true, inDoubleCheck);
+            MoveList evasions = engine::MoveGenerator::generateLegalEvasions(b, checkers);
             if (evasions.is_empty()) {
                 return NEG_INF + ply; // side to move is checkmated (negamax)
             }
@@ -1008,7 +1009,7 @@ int32_t Searcher::quiescenceSearch(
     const int32_t alphaOrig = alpha;
 
     if (inCheck) {
-        movePicker = engine::MoveGenerator::generateQSearchEvasions(b, true, inDoubleCheck);
+        movePicker = engine::MoveGenerator::generateQSearchEvasions(b, checkers);
         if (!movePicker.hasNext()) {
             return NEG_INF + ply; // side to move is checkmated (negamax)
         }

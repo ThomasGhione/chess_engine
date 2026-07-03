@@ -72,31 +72,28 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 // HELPER FUNCTIONS FOR isLegalPseudoMove
 // ============================================
 
-[[nodiscard]] bool Board::isDoubleCheck(uint8_t movingColor) const noexcept {
-    const uint8_t side = colorToIndex(movingColor);
-    const uint8_t kingIndex = std::countr_zero(kings_bb[side]);
+[[nodiscard]] uint64_t Board::checkersTo(uint8_t color) const noexcept {
+    const uint8_t side = colorToIndex(color);
+    const uint64_t kingBB = kings_bb[side];
+    if (!kingBB) [[unlikely]] return 0ULL;
+    const uint8_t kingIndex = std::countr_zero(kingBB);
     const uint8_t oppSide = side ^ 1;
-    
-    // Accumulate all attackers in a single bitboard
-    uint64_t attackers = (pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide])
-                       | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide]);
+
+    uint64_t checkers = (pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide])
+                      | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide])
+                      | (pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
 
     const uint64_t rookLike = rooks_bb[oppSide] | queens_bb[oppSide];
     if (rookLike) {
-        attackers |= (pieces::getRookAttacks(kingIndex, occupancy) & rookLike);
+        checkers |= (pieces::getRookAttacks(kingIndex, occupancy) & rookLike);
     }
 
     const uint64_t bishopLike = bishops_bb[oppSide] | queens_bb[oppSide];
     if (bishopLike) {
-        attackers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
+        checkers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
     }
 
-    //FIXME Se ha bisogno di un commento significa che quel codice cosi' non e' chiaro. 
-    // Fare una funzione helper chiamata ad esempio 'hasMoreThenOneAttacckers'
-
-    // A double check means at least 2 distinct pieces are attacking the king.
-    // If the bitboard has more than 1 bit set, clearing the LSB will leave a non-zero value.
-    return (attackers & (attackers - 1)) != 0ULL;
+    return checkers;
 }
 
 [[nodiscard]] bool Board::isKingMoveLegal(
@@ -260,8 +257,10 @@ bool Board::hasAnyLegalMove(uint8_t color) const noexcept {
         if (!isSquareAttacked(to, oppositeColor(color), king)) return true;
     }
 
-    if (inCheck(color)) {
-        if (isDoubleCheck(color)) return false;
+    const uint64_t checkers = checkersTo(color);
+    if (checkers) {
+        // Double check: only king moves are legal, all rejected above.
+        if ((checkers & (checkers - 1)) != 0ULL) return false;
     } else {
         constexpr uint8_t WHITE_KING_START = 60;  // e1
         constexpr uint8_t BLACK_KING_START = 4;   // e8

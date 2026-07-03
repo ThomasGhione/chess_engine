@@ -140,7 +140,7 @@ inline void appendPawnTacticalNoChecks(
 MoveList MoveGenerator::generateLegalMoves(const chess::Board& b,
                                                                bool knownNotInCheck) noexcept {
     CheckContext check;
-    check.inCheckKnown = knownNotInCheck; // known not-in-check; otherwise computed
+    check.known = knownNotInCheck; // known not-in-check (checkers 0); otherwise scanned
     return (b.getActiveColor() == chess::Board::WHITE)
         ? generateLegalMovesFor<true>(b, check)
         : generateLegalMovesFor<false>(b, check);
@@ -148,9 +148,8 @@ MoveList MoveGenerator::generateLegalMoves(const chess::Board& b,
 
 MoveList MoveGenerator::generateLegalEvasions(
     const chess::Board& b,
-    bool inDoubleCheckKnown,
-    bool inDoubleCheckValue) noexcept {
-    const CheckContext check{true, true, inDoubleCheckKnown, inDoubleCheckValue};
+    uint64_t checkers) noexcept {
+    const CheckContext check{true, checkers};
     return (b.getActiveColor() == chess::Board::WHITE)
         ? generateLegalMovesFor<true>(b, check)
         : generateLegalMovesFor<false>(b, check);
@@ -178,18 +177,21 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b, CheckContex
     const chess::Square enPassant = b.getEnPassant();
     const bool hasEnPassant = chess::isValidSquare(enPassant);
     const uint64_t enPassantBit = hasEnPassant ? chess::Board::BIT_MASKS[enPassant] : 0ULL;
-    // Callers that already know the check state skip both scans.
-    const bool inCheck = check.inCheckKnown ? check.inCheckValue : b.inCheck(color);
-    const bool inDoubleCheck = inCheck
-        && (check.doubleCheckKnown ? check.doubleCheckValue : b.isDoubleCheck(color));
+    // Callers that already computed the checkers bitboard skip the scan.
+    const uint64_t checkers = check.known ? check.checkers : b.checkersTo(color);
+    const bool inCheck = (checkers != 0ULL);
+    const bool inDoubleCheck = (checkers & (checkers - 1)) != 0ULL;
     const bool singleCheck = inCheck && !inDoubleCheck;
     const uint8_t kingPiece = chess::Board::KING | color;
 
-    // Macro-step 2: Compute check-evasion mask when in single-check.
-    const uint64_t evasionMask = singleCheck ? computeCheckEvasionMasks<IsWhite>(b) : ~0ULL;
-
     const int kingFrom = std::countr_zero(kings);
     const chess::Square kingFromC = static_cast<uint8_t>(kingFrom);
+
+    // Macro-step 2: single-check evasion targets — capture the checker or
+    // block the ray (BETWEEN is empty for contact and knight checks).
+    const uint64_t evasionMask = singleCheck
+        ? (checkers | BETWEEN_EXCLUSIVE_LUT[kingFrom][std::countr_zero(checkers)])
+        : ~0ULL;
 
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~ownOcc;
     while (mask) {
@@ -308,9 +310,8 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
 
 engine::MovePicker MoveGenerator::generateQSearchEvasions(
     const chess::Board& b,
-    bool inDoubleCheckKnown,
-    bool inDoubleCheckValue) noexcept {
-    MoveList evasions = generateLegalEvasions(b, inDoubleCheckKnown, inDoubleCheckValue);
+    uint64_t checkers) noexcept {
+    MoveList evasions = generateLegalEvasions(b, checkers);
     if (evasions.is_empty()) return engine::MovePicker{};
 
     engine::MovePicker data;
@@ -428,47 +429,6 @@ uint64_t MoveGenerator::computePinRays(const chess::Board& b, chess::Square king
     processPinners(bishopPinners);
     return pinnedMask;
 }
-
-template<bool IsWhite>
-uint64_t MoveGenerator::computeCheckEvasionMasks(
-    const chess::Board& b) noexcept {
-    constexpr int us = IsWhite ? 0 : 1;
-    constexpr int them = us ^ 1;
-    const uint64_t kingBB = b.kings_bb[us];
-    if (!kingBB) [[unlikely]] {
-        return 0ULL;
-    }
-
-    const int kingSq = std::countr_zero(kingBB);
-    const uint64_t occ = b.getPiecesBitMap();
-
-    const uint64_t rookCheckers = pieces::getRookAttacks(kingSq, occ) & (b.rooks_bb[them] | b.queens_bb[them]);
-    const uint64_t bishopCheckers = pieces::getBishopAttacks(kingSq, occ) & (b.bishops_bb[them] | b.queens_bb[them]);
-    const uint64_t checkersMask =
-        (pieces::PAWN_ATTACKERS_TO[them][kingSq] & b.pawns_bb[them])
-        | (pieces::KNIGHT_ATTACKS[kingSq] & b.knights_bb[them])
-        | (pieces::KING_ATTACKS[kingSq] & b.kings_bb[them])
-        | rookCheckers
-        | bishopCheckers;
-
-    if ((checkersMask & (checkersMask - 1)) != 0ULL) {
-        return 0ULL;
-    }
-
-    if (!checkersMask) [[unlikely]] {
-        return ~0ULL;
-    }
-
-    const int checkerSq = std::countr_zero(checkersMask);
-    const uint64_t checkerBit = chess::Board::BIT_MASKS[checkerSq];
-    uint64_t evasionMask = checkerBit;
-    if ((rookCheckers | bishopCheckers) & checkerBit) {
-        evasionMask |= BETWEEN_EXCLUSIVE_LUT[kingSq][checkerSq];
-    }
-    return evasionMask;
-}
-
-
 
 template<bool HasPins, bool InCheck, uint8_t PieceType>
 void MoveGenerator::generateNonPawnLegalMoves(

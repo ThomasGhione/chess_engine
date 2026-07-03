@@ -229,7 +229,10 @@ public:
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
-    bool isDoubleCheck(uint8_t color) const noexcept;
+    // Bitboard of enemy pieces giving check to `color`'s king (0 = no check).
+    // One scan answers inCheck (!=0), double check (>1 bit) and, via the
+    // checker square, the evasion mask — callers should reuse it.
+    uint64_t checkersTo(uint8_t color) const noexcept;
     [[nodiscard]] inline bool isKingSafeAfterMove(uint8_t movingColor, uint8_t fromIndex,
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
 

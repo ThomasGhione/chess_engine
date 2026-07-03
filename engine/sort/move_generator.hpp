@@ -17,18 +17,18 @@ public:
         const chess::Board& b,
         bool knownNotInCheck = false) noexcept;
 
+    // `checkers` is the (non-empty) Board::checkersTo bitboard the caller
+    // already computed; it also yields the evasion mask without a rescan.
     static MoveList generateLegalEvasions(
         const chess::Board& b,
-        bool inDoubleCheckKnown = false,
-        bool inDoubleCheckValue = false) noexcept;
+        uint64_t checkers) noexcept;
 
     static MoveList generateTacticalMoves(
         const chess::Board& b) noexcept;
 
     static engine::MovePicker generateQSearchEvasions(
         const chess::Board& b,
-        bool inDoubleCheckKnown = false,
-        bool inDoubleCheckValue = false) noexcept;
+        uint64_t checkers) noexcept;
 
     static engine::MovePicker generateQSearchTacticalMoves(
         const chess::Board& b,
@@ -61,13 +61,11 @@ private:
         uint64_t pinnedMask,
         const uint64_t pinRayBySquare[64]) noexcept;
 
-    // Check state handed to the unified generator: each known/value pair lets
-    // a caller that already determined the check state skip the recomputation.
+    // Check state handed to the unified generator. When `known`, `checkers`
+    // is authoritative (0 = not in check) and no attack scan is needed.
     struct CheckContext {
-        bool inCheckKnown     = false;
-        bool inCheckValue     = false;
-        bool doubleCheckKnown = false;
-        bool doubleCheckValue = false;
+        bool     known    = false;
+        uint64_t checkers = 0;
     };
 
     // One generator for both the normal and the in-check (evasion) case: the
@@ -87,10 +85,6 @@ private:
         const chess::Board& b,
         chess::Square kingPos,
         uint64_t pinRays[64]) noexcept;
-
-    template<bool IsWhite>
-    static uint64_t computeCheckEvasionMasks(
-        const chess::Board& b) noexcept;
 
     template<bool HasPins, bool InCheck, uint8_t PieceType>
     static void generateNonPawnLegalMoves(
