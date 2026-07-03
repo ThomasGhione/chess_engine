@@ -50,7 +50,9 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 
 ## 🟠 Criticità MEDIA — leve Elo non ancora provate (SPRT)
 
-- [ ] **5. Riabilitare TT-write nei *discendenti* del probe singolare** — Elo: **+0–8**
+- [ ] **5. Riabilitare TT-write nei *discendenti* del probe singolare** — Elo: **+0–8** — ⏳ SPRT [0,5] in corso
+  Nota implementativa: passare `allowTTWrite` al call-site era inerte (il nodo excluded
+  azzerava il flag e lo propagava); fix vero = gate `!hasExcludedMove` sul solo store del nodo.
   La SE passa `allowTTWrite=false` che si propaga a tutto il sottoalbero; solo il nodo con
   `excludedMove` ha la chiave "sbagliata" (soppressione locale già presente via
   `hasExcludedMove`). Passare `true` alla ricorsione del probe SE.
@@ -63,12 +65,16 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   standard: quando `seScore >= seBeta` e `ttScore >= beta`, ridurre di 1 il primo figlio
   invece di estendere. Unica leva SE mai provata.
 
-- [ ] **7. Store bound-only sul stand-pat fail-high in qsearch** — Elo: **+0–8** — ⏳ SPRT [0,5] in corso
+- [x] **7. Store bound-only sul stand-pat fail-high in qsearch** — ✅ **KEPT** 2026-07-03
+  SPRT [0,5]: **+22.6 ±27.9 @ 400, CFS ~99**, accettato early (decisione utente).
   Il return `standPat >= beta` esce PRIMA dello store. `store(hash, 0, standPat, LOWERBOUND)`
   senza mossa (bestMove=0 preserva la mossa esistente) evita la move-pollution che uccise
   l'esperimento qsearch-TT-con-mosse (−30 Elo).
 
-- [ ] **8. `improving` con fallback a ply−4** — Elo: **+0–5**
+- [x] **8. `improving` con fallback a ply−4** — ⚪ **NEUTRO, scartato** 2026-07-03
+  SPRT [0,5]: −1.9 ±18.4 @ 900. Nessun segnale → revert (niente righe extra per zero Elo).
+  Nota: 2 run interrotti da "engine not responsive" (~1/900 partite, entrambi i lati,
+  solo stasera) — probabile carico macchina; da monitorare.
   Quando `evalStack[ply-2] == NEG_INF` (in scacco 2 ply fa) `improving` è sempre false;
   fallback standard a ply−4. ~3 LOC.
 
@@ -154,12 +160,14 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   Commit e0/[REMOVE], −15 LOC. SPRT [−3,3]: +43 ±51 @ 138, trend netto positivo, accettato
   early (decisione utente). Elimina anche il `b.inCheck()` per nodo nel sorter (#19 assorbito).
 
-- [ ] **25. SEE cache 1 MB thread_local** (sorter.cpp ~130)
+- [x] **25. SEE cache 1 MB thread_local** — ✅ **RIMOSSA** 2026-07-03
+  Node-identica (cache esatta), **+1.76% NPS** (5 round interleaved), −22 LOC, −1 MiB/thread.
   64K entry × 16 B per thread. Con la lazy SEE le chiamate sono crollate: la cache
   potrebbe non ripagare la cache-pressure. Se neutra: −25 LOC e 1 MB/thread in meno
   (rilevante per Lazy SMP).
 
-- [ ] **26. Layout killer `[2][MAX_PLY]` → `[MAX_PLY][2]`**
+- [x] **26. Layout killer `[2][MAX_PLY]` → `[MAX_PLY][2]`** — ✅ **FATTO** 2026-07-03
+  Node-identico; **+5.05% NPS cumulato con #25** (5 round interleaved).
   killer0/killer1 dello stesso ply oggi distano 192 B (2 cache line). Micro, node-identico.
 
 ## ⛔ Da NON rifare (già testato e bocciato — vedi memoria sessioni 2026-06)
