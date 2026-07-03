@@ -47,7 +47,6 @@ public:
         int ply,
         const chess::Board& b,
         const SearchRuntime& runtime,
-        bool useHashMove = true,
         const chess::Move* previousMove = nullptr,
         bool* outHashMoveIsLegal = nullptr,
         const int16_t* contHistEntry = nullptr) noexcept;

@@ -282,7 +282,7 @@ int32_t Searcher::searchRootMoveScore(
     const int childDepth = std::max(0, runtime.depth - 1);
     const int32_t score = -searchPosition(
         b, runtime, childDepth, -beta, -alpha, 1,
-        true, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
+        allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter);
     b.undoMove(m, state);
     return score;
 }
@@ -314,7 +314,6 @@ bool Searcher::tryNullMovePruning(
     int32_t alpha,
     int32_t beta,
     int ply,
-    bool useTT,
     bool allowTTWrite,
     bool allowHeuristicUpdates,
     uint64_t* nodeCounter,
@@ -331,7 +330,7 @@ bool Searcher::tryNullMovePruning(
     // Negamax: after the null move it is the opponent to move.
     const int32_t nullScore = -searchPosition(
         b, runtime, depth - reduction, -beta, -alpha, ply + 1,
-        useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
+        allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
 
     b.undoNullMove(nullState);
 
@@ -344,7 +343,7 @@ bool Searcher::tryNullMovePruning(
         // Verification re-search of THIS node (same side to move): no negation.
         const int32_t verifyScore = searchPosition(
             b, runtime, depth - reduction, alpha, beta, ply,
-            useTT, allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
+            allowTTWrite, allowHeuristicUpdates, nullptr, nodeCounter, false);
         confirmedCutoff = isBetaCutoff(verifyScore, beta);
     }
 
@@ -446,7 +445,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     int32_t alpha,
     int32_t beta,
     SearchRuntime& runtime,
-    bool useTT,
     bool allowHeuristicUpdates,
     bool allowTTWrite) noexcept {
     int32_t best = NEG_INF;
@@ -597,15 +595,15 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
             const int reducedDepth = std::max(1, childDepth - reduction);
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
-            
+                                    allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+
             if (shouldResearchPVS(score, scoutAlpha)) {
                 score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                        useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                        allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
             }
         } else { // can't reduce, regular PVS search
             score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                    allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
         }
 
         // Wide-window PV re-search, shared by both paths above. It only carries
@@ -615,7 +613,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // duplicate node. (In the reduce path !isFirstMove always holds.)
         if (ctx.isPVNode && !isFirstMove && shouldResearchPVS(score, scoutAlpha)) {
             score = -searchPosition(b, runtime, childDepth, -beta, -alpha, ctx.ply + 1,
-                                    useTT, allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                    allowTTWrite, allowHeuristicUpdates, &m, ctx.nodeCounter);
         }
 
         b.undoMove(m, state);
@@ -685,7 +683,6 @@ int32_t Searcher::searchPosition(
     int32_t alpha,
     int32_t beta,
     int ply,
-    bool useTT,
     bool allowTTWrite,
     bool allowHeuristicUpdates,
     const chess::Move* previousMove,
@@ -715,7 +712,7 @@ int32_t Searcher::searchPosition(
     }
 
     if (depth <= 0) {
-        return quiescenceSearch(b, runtime, alpha, beta, ply, useTT, counter, allowTTWrite);
+        return quiescenceSearch(b, runtime, alpha, beta, ply, counter, allowTTWrite);
     }
 
     // TB WDL probe (in-search): only return Draw as exact. Returning Win or
@@ -753,7 +750,7 @@ int32_t Searcher::searchPosition(
 
     const uint64_t hashKey = b.getHash();
     int32_t score = 0;
-    const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
+    const bool canUseTT = (runtime.transpositionTable != nullptr);
     if (canUseTT && !hasExcludedMove && handleSearchPrelude(runtime, depth, alpha, beta, score, hashKey, ply)) {
         return score;
     }
@@ -830,7 +827,7 @@ int32_t Searcher::searchPosition(
 
             const int32_t seScore = searchPosition(
                 b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
-                canUseTT, false, allowHeuristicUpdates,
+                false, allowHeuristicUpdates,
                 previousMove, counter, false, seExcluded);
 
             if (seScore < seBeta - SE_DOUBLE_MARGIN) {
@@ -856,7 +853,7 @@ int32_t Searcher::searchPosition(
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
-                              canUseTT, allowTTWrite, allowHeuristicUpdates,
+                              allowTTWrite, allowHeuristicUpdates,
                               counter, score)) {
         return score;
     }
@@ -885,7 +882,7 @@ int32_t Searcher::searchPosition(
             b.doMove(mc, pcState);
             // Negamax child: negate result and swap/negate the scout window.
             const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
-                ply + 1, useTT, allowTTWrite, false, &mc, counter, false);
+                ply + 1, allowTTWrite, false, &mc, counter, false);
             b.undoMove(mc, pcState);
             if (pcScore >= probcutBound) return beta;
         }
@@ -921,7 +918,6 @@ int32_t Searcher::searchPosition(
         ply,
         b,
         runtime,
-        canUseTT,
         ctx.previousMove,
         &hasHashMove,
         ctx.contHistEntry);
@@ -932,7 +928,7 @@ int32_t Searcher::searchPosition(
     }
 
     SearchMoveResult result = searchMoves(
-        b, movePicker, ctx, alpha, beta, runtime, canUseTT, allowHeuristicUpdates, allowTTWrite);
+        b, movePicker, ctx, alpha, beta, runtime, allowHeuristicUpdates, allowTTWrite);
     const int32_t best = result.score;
 
     if (runtime.isInterrupted()) {
@@ -975,7 +971,6 @@ int32_t Searcher::quiescenceSearch(
     int32_t alpha,
     int32_t beta,
     int ply,
-    bool useTT,
     uint64_t* nodeCounter,
     bool allowTTWrite) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
@@ -987,7 +982,7 @@ int32_t Searcher::quiescenceSearch(
         return drawScore;
     }
 
-    const bool canUseTT = useTT && (runtime.transpositionTable != nullptr);
+    const bool canUseTT = (runtime.transpositionTable != nullptr);
     if (canUseTT) {
         const uint64_t hashKey = b.getHash();
         int32_t ttScore = 0;
@@ -1081,7 +1076,7 @@ int32_t Searcher::quiescenceSearch(
         chess::Board::MoveState state;
         b.doMove(m, state);
         // Negamax: child is opponent to move -> negate + swap/negate window.
-        const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, canUseTT, counter, allowTTWrite);
+        const int32_t score = -quiescenceSearch(b, runtime, -beta, -alpha, ply + 1, counter, allowTTWrite);
         b.undoMove(m, state);
 
         if (isBetter(score, best)) {

@@ -65,6 +65,8 @@ public:
         int32_t alpha = NEG_INF,
         int32_t beta  = POS_INF) noexcept;
 
+    // The TT is used whenever runtime.transpositionTable != nullptr; callers
+    // control writes (not probes) via allowTTWrite.
     static int32_t searchPosition(
         chess::Board& b,
         SearchRuntime& runtime,
@@ -72,7 +74,6 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        bool useTT                          = true,
         bool allowTTWrite                   = true,
         bool allowHeuristicUpdates          = true,
         const chess::Move* previousMove = nullptr,
@@ -86,7 +87,6 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        bool useTT            = true,
         uint64_t* nodeCounter = nullptr,
         bool allowTTWrite     = true) noexcept;
 
@@ -175,7 +175,7 @@ private:
     static bool tryNullMovePruning(
         chess::Board& b, const SearchNodeState& node, SearchRuntime& runtime,
         int depth, int32_t alpha, int32_t beta, int ply,
-        bool useTT, bool allowTTWrite, bool allowHeuristicUpdates,
+        bool allowTTWrite, bool allowHeuristicUpdates,
         uint64_t* nodeCounter, int32_t& outScore) noexcept;
     static bool tryReverseFutilityPruning(
         const chess::Board& b, const SearchNodeState& node,
@@ -184,7 +184,7 @@ private:
         chess::Board& b, MovePicker& movePicker,
         const SearchContext& ctx, int32_t alpha, int32_t beta,
         SearchRuntime& runtime,
-        bool useTT, bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
+        bool allowHeuristicUpdates, bool allowTTWrite) noexcept;
     static void updateKillerAndHistoryOnBetaCutoff(
         const chess::Move& m, bool isCapture, int victimType,
         int depth, int ply, int usSide, SearchRuntime& runtime,
