@@ -61,16 +61,22 @@ private:
         uint64_t pinnedMask,
         const uint64_t pinRayBySquare[64]) noexcept;
 
+    // Check state handed to the unified generator: each known/value pair lets
+    // a caller that already determined the check state skip the recomputation.
+    struct CheckContext {
+        bool inCheckKnown     = false;
+        bool inCheckValue     = false;
+        bool doubleCheckKnown = false;
+        bool doubleCheckValue = false;
+    };
+
+    // One generator for both the normal and the in-check (evasion) case: the
+    // evasion mask, double-check early-out and !inCheck castling gate already
+    // specialize the output, so a separate evasion body would be a duplicate.
     template<bool IsWhite>
     static MoveList generateLegalMovesFor(
         const chess::Board& b,
-        bool knownNotInCheck) noexcept;
-
-    template<bool IsWhite>
-    static MoveList generateLegalEvasionsFor(
-        const chess::Board& b,
-        bool inDoubleCheckKnown,
-        bool inDoubleCheckValue) noexcept;
+        CheckContext check) noexcept;
 
     template<bool IsWhite>
     static MoveList generateTacticalMovesFor(
