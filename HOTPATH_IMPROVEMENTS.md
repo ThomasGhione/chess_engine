@@ -53,7 +53,7 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   `excludedMove` ha la chiave "sbagliata" (soppressione locale già presente via
   `hasExcludedMove`). Passare `true` alla ricorsione del probe SE.
 
-- [ ] **6. Negative extension nel blocco singular** — Elo: **+5–10**
+- [ ] **6. Negative extension nel blocco singular** — Elo: **+5–10** — ⏳ SPRT in corso 2026-07-03
   Il gruppo SE è stato la miniera del ciclo 2026-06 (SE_BETA_MARGIN +16.6). Ramo mancante
   standard: quando `seScore >= seBeta` e `ttScore >= beta`, ridurre di 1 il primo figlio
   invece di estendere. Unica leva SE mai provata.
@@ -119,7 +119,9 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   sorter.cpp ricalcola `b.inCheck()` per nodo solo per il ramo opening-king;
   il chiamante lo conosce già. (Superato da #24 se si rimuove l'euristica.)
 
-- [ ] **20. `checkersTo(kingSq)` unificato** — **−20 LOC**, +NPS nei nodi in scacco
+- [x] **20. `checkersTo(kingSq)` unificato** — **−20 LOC**, +NPS nei nodi in scacco
+  ✅ 2026-07-03 (761d5b1), node-identico, −43 LOC netti. `isDoubleCheck` e
+  `computeCheckEvasionMasks` eliminati; CheckContext = {known, checkers}.
   Oggi 3 scan di attacco per nodo in scacco: `inCheck()` → `isDoubleCheck()` →
   `computeCheckEvasionMasks` (ricalcola i checkers). Un unico bitboard risponde a tutte
   e tre (≠0, >1 bit, maschera evasioni).
