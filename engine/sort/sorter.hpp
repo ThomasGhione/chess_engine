@@ -67,10 +67,12 @@ public:
         const chess::Board& b, 
         const chess::Move& m) noexcept;
 
-    static bool givesCheckFast(const chess::Board& b, const chess::Move& m,
-            int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
-        return givesCheckAfterQuietMoveFast(b, m, fromPieceType, oppKingSq, occ);
-    }
+    static bool givesCheckAfterQuietMoveFast(
+        const chess::Board& b,
+        const chess::Move& m,
+        int fromPieceType,
+        int oppKingSq,
+        uint64_t occ) noexcept;
 
     static MovePicker sortTacticalMoves(
         const MoveList& tacticalMoves,
@@ -97,13 +99,6 @@ private:
         int square;
         int type;
     };
-
-    static bool givesCheckAfterQuietMoveFast(
-        const chess::Board& b,
-        const chess::Move& m,
-        int fromPieceType,
-        int oppKingSq,
-        uint64_t occ) noexcept;
 
     static int32_t scoreMoveOrderingPriorityInline(
         const MoveOrderingContext& ctx,

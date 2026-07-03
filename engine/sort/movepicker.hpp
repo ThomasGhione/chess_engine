@@ -31,8 +31,6 @@ struct MovePicker {
     MoveList moves;
     int32_t    scores[MAX_MOVES];
     SeePending seePending[MAX_MOVES];
-    bool hashMoveIsLegal = false;
-    int  size         = 0;
     int  currentIndex = 0;
     const chess::Board* board = nullptr; // SEE source for deferred finalisation
 
@@ -48,7 +46,7 @@ struct MovePicker {
         return *this;
     }
 
-    inline bool hasNext() const noexcept { return currentIndex < size; }
+    inline bool hasNext() const noexcept { return currentIndex < moves.size; }
 
     // Resolve a deferred capture/quiet into its final score (good capture kept,
     // losing capture or hanging quiet demoted). Returns true if the score dropped
@@ -69,10 +67,10 @@ struct MovePicker {
     }
 
     inline chess::Move nextMove() noexcept {
-        while (currentIndex < size) {
+        while (currentIndex < moves.size) {
             int bestIdx = currentIndex;
             int32_t bestScore = scores[currentIndex];
-            for (int i = currentIndex + 1; i < size; ++i) {
+            for (int i = currentIndex + 1; i < moves.size; ++i) {
                 if (scores[i] > bestScore) {
                     bestScore = scores[i];
                     bestIdx = i;
@@ -96,10 +94,10 @@ struct MovePicker {
         return {};
     }
 
-    // Full descending insertion sort over [0, size). Used by root search (YBWC).
+    // Full descending insertion sort over [0, moves.size). Used by root search (YBWC).
     inline void fullSort() noexcept {
-        for (int i = 0; i < size; ++i) finalizeSee(i); // resolve deferred SEE before sorting
-        for (int i = 1; i < size; ++i) {
+        for (int i = 0; i < moves.size; ++i) finalizeSee(i); // resolve deferred SEE before sorting
+        for (int i = 1; i < moves.size; ++i) {
             const auto    keyMove  = moves[i];
             const int32_t keyScore = scores[i];
             int j = i - 1;
@@ -114,15 +112,14 @@ struct MovePicker {
     }
 
 private:
-    // Copy/move only the live prefix [0, size); scores and seePending past
-    // `size` are indeterminate and must never be read. Mirrors MoveList's
-    // size-bounded copyFrom/moveFrom.
+    // Copy/move only the live prefix [0, moves.size); scores and seePending past
+    // it are indeterminate and must never be read. Mirrors MoveList's
+    // size-bounded copyFrom/moveFrom. `moves` must be assigned before this runs
+    // (it is the size authority; o.moves.size is already 0 after a move).
     inline void copyLivePrefix(const MovePicker& o) noexcept {
-        board           = o.board;
-        size            = o.size;
-        currentIndex    = o.currentIndex;
-        hashMoveIsLegal = o.hashMoveIsLegal;
-        const size_t n = static_cast<size_t>(size);
+        board        = o.board;
+        currentIndex = o.currentIndex;
+        const size_t n = static_cast<size_t>(moves.size);
         std::memcpy(scores,     o.scores,     n * sizeof(scores[0]));
         std::memcpy(seePending, o.seePending, n * sizeof(seePending[0]));
     }
@@ -135,7 +132,6 @@ private:
     inline void moveFrom(MovePicker&& o) noexcept {
         moves = std::move(o.moves);
         copyLivePrefix(o);
-        o.size         = 0;
         o.currentIndex = 0;
     }
 };

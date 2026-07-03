@@ -210,7 +210,6 @@ MovePicker Sorter::sortLegalMoves(
     const int16_t* contHistEntry) noexcept {
 
     MovePicker picker;
-    picker.size  = moves.size;
     picker.moves = std::move(moves);
     if (picker.moves.is_empty()) [[unlikely]] {
         if (outHashMoveIsLegal != nullptr) *outHashMoveIsLegal = false;
@@ -276,7 +275,6 @@ MovePicker Sorter::sortLegalMoves(
     }
 
     picker.board = &b;
-    picker.hashMoveIsLegal = hashMoveFound;
     if (outHashMoveIsLegal != nullptr) *outHashMoveIsLegal = hashMoveFound;
     return picker;
 
@@ -337,7 +335,6 @@ MovePicker Sorter::sortTacticalMoves(
         ++filteredCount;
     }
 
-    picker.size = filteredCount;
     picker.moves.size = filteredCount;
     return picker;
 }

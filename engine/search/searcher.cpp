@@ -512,8 +512,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // that can actually be futility-pruned (its sole consumer below).
         bool preMoveGivesCheck = false;
         if (canFutilityPrune && isQuietMove && fromPieceType != chess::Board::KING) {
-            preMoveGivesCheck = Sorter::givesCheckFast(b, m, fromPieceType, oppKingSq,
-                                                       b.getPiecesBitMap());
+            preMoveGivesCheck = Sorter::givesCheckAfterQuietMoveFast(
+                b, m, fromPieceType, oppKingSq, b.getPiecesBitMap());
         }
 
         if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0
@@ -1015,7 +1015,6 @@ int32_t Searcher::quiescenceSearch(
     MovePicker movePicker;
     int32_t best;
     const int32_t alphaOrig = alpha;
-    const int32_t betaOrig = beta;
 
     if (inCheck) {
         movePicker = engine::MoveGenerator::generateQSearchEvasions(b, true, inDoubleCheck);
@@ -1079,12 +1078,6 @@ int32_t Searcher::quiescenceSearch(
             return Evaluator::evaluate(b);
         }
 
-        const int fromPiece = b.get(m.from);
-        const int pieceType = fromPiece & chess::Board::MASK_PIECE_TYPE;
-        if (!inCheck && pieceType == chess::Board::KING
-            && !b.isLegalPseudoMove(m.from, m.to, fromPiece))
-            continue;
-
         chess::Board::MoveState state;
         b.doMove(m, state);
         // Negamax: child is opponent to move -> negate + swap/negate window.
@@ -1104,7 +1097,7 @@ int32_t Searcher::quiescenceSearch(
     if (!inCheck && canUseTT && allowTTWrite) {
         runtime.transpositionTable->store(
             b.getHash(), 0, scoreToTT(best, ply),
-            static_cast<uint8_t>(determineFlag(best, alphaOrig, betaOrig)));
+            static_cast<uint8_t>(determineFlag(best, alphaOrig, beta)));
     }
 
     return best;
