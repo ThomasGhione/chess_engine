@@ -36,16 +36,17 @@ inline constexpr int32_t NMP_EVAL_DIV = 150;
 inline constexpr int32_t NMP_EVAL_MAX = 4;
 // Reverse futility pruning margin per remaining ply.
 inline constexpr int32_t RFP_MARGIN_PER_DEPTH = 90;
-// Futility / late-move-pruning in the move loop (depth gated to 1..2).
+// Futility pruning margins in the move loop (gated to depth 1..6).
 // FUTILITY_MARGINS[isLateEndgame][depth].
 inline constexpr int32_t FUTILITY_MARGINS[2][7] = {
     {0, 260, 520, 780, 1040, 1300, 1560},
     {0, 170, 350, 530,  710,  890, 1070},
 };
 // LMP_THRESHOLDS[improving][isLateEndgame][depth]: higher = more permissive.
-inline constexpr int LMP_THRESHOLDS[2][2][6] = {
-    {{0, 12, 20, 30, 42, 56}, {0, 16, 26, 38, 52, 68}},
-    {{0, 16, 26, 38, 52, 68}, {0, 20, 32, 46, 62, 80}},
+// Gated to depth 1..4.
+inline constexpr int LMP_THRESHOLDS[2][2][5] = {
+    {{0, 12, 20, 30, 42}, {0, 16, 26, 38, 52}},
+    {{0, 16, 26, 38, 52}, {0, 20, 32, 46, 62}},
 };
 // History-based quiet pruning: skip quiet moves with very negative history.
 // Indexed by depth (0..3); depth 0 unused.
@@ -67,7 +68,7 @@ inline constexpr int32_t PROBCUT_MIN_DEPTH = 3;
 // ===================================================
 inline constexpr double LMR_C        = 3.00;
 inline constexpr int    LMR_MAX_DEPTH = 20;  // engine never exceeds depth 14 in practice
-inline constexpr int    LMR_MAX_MOVES = 218; // theoretical maximum legal moves
+inline constexpr int    LMR_MAX_MOVES = 218; // theoretical maximum legal moves (== MAX_MOVES, movelist.hpp)
 
 // ===================================================
 // HISTORY HEURISTIC BOUNDS

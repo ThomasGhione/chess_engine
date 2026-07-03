@@ -165,7 +165,7 @@ public:
 
     inline void prefetch(uint64_t key) noexcept;
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
-    inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
+    inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) const noexcept;
     inline bool probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept;
     // bestMove == 0 means "no move to store" (a bound-only write): the existing
     // move in a matching entry is preserved rather than clobbered.
@@ -465,8 +465,8 @@ inline bool TT::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     return outBestMove != 0;
 }
 
-inline bool TT::probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, 
-                      int32_t& outScore) noexcept {
+inline bool TT::probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta,
+                      int32_t& outScore) const noexcept {
     EntrySnapshot entry;
     if (!findEntrySnapshot(key, entry)) return false;
     if (Entry::depthFromPayload(entry.payload) < clampDepth(depth)) return false;
