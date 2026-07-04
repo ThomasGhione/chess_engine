@@ -1,6 +1,7 @@
 #include "uci.hpp"
 
 #include "../engine/engine.hpp"
+#include "../nnue/nnue.hpp"
 
 #include <omp.h>
 
@@ -352,13 +353,14 @@ namespace uci {
 
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 1.2.1\n"
+            << "id name HydraY 1.3.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name BookFile type string default engine/komodo.bin\n"
             << "option name Opening type check default true\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            << "option name SearchApiMutexGuard type check default true\n";
+            << "option name SearchApiMutexGuard type check default true\n"
+            << "option name UseNNUE type check default false\n";
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
                   << " min 1 max " << hwThreads << "\n";
@@ -462,7 +464,8 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "opening" && normalizedName != "searchapimutexguard") {
+        if (normalizedName != "opening" && normalizedName != "searchapimutexguard"
+            && normalizedName != "usennue") {
             for (auto& option : kEvalOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
@@ -507,6 +510,19 @@ namespace uci {
         if (normalizedName == "opening") {
             engine.openingEnabled.store(enabled, std::memory_order_relaxed);
             std::cout << "info string Opening "
+                      << (enabled ? "enabled" : "disabled") << '\n';
+            return;
+        }
+
+        if (normalizedName == "usennue") {
+            if (enabled && !NNUE::networkLoaded()) {
+                NNUE::enabled = false;
+                std::cout << "info string UseNNUE unavailable: no network loaded"
+                             " (HCE stays active)\n";
+                return;
+            }
+            NNUE::enabled = enabled;
+            std::cout << "info string UseNNUE "
                       << (enabled ? "enabled" : "disabled") << '\n';
             return;
         }

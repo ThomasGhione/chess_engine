@@ -43,23 +43,29 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
 
 ## Fasi
 
-### Fase 0 — prerequisiti engine-side (fattibili ORA, senza GPU)
-- [ ] **Seam di valutazione**: punto unico `Evaluator::evaluate()` già c'è; aggiungere
-      opzione UCI `UseNNUE` (default false) che a runtime sceglie HCE/NNUE — serve per
-      A/B, SPRT e fallback.
-- [ ] **Modalità `datagen`**: `./chess datagen <out.bin> <threads> <nodes>` — loop
-      interno self-play (NO cutechess: overhead UCI/processo inutile):
-      * apertura: 8–10 ply casuali legali (con filtro |eval| < 400 cp a fine random)
-      * ogni mossa: search a **nodi fissi** (~8000 nodi) con la HCE attuale
-      * salva per posizione: FEN (o direttamente bulletformat), score cp side-to-move,
-        e a fine partita il risultato WDL propagato a tutte le posizioni
-      * filtri standard: skip posizioni in scacco, skip |score| > 3000 (mate range),
-        skip ply < 16
-      * adjudication: |score| > 2500 per 4 ply → win/loss; 50mosse/ripetizione → draw
-- [ ] **Contatore/verifica datagen**: target v1 ≈ **100M posizioni** (≈ 3.2 GB
-      bulletformat). Sul 4C/8T a ~8k nodi/mossa ≈ 2–4 settimane di background a
-      3 thread. → è QUESTO il motivo per preparare tutto ora: il datagen può girare
-      mentre si fa altro (#9, #21, tuning).
+### Fase 0 — prerequisiti engine-side (fattibili ORA, senza GPU) — ✅ FATTA 2026-07-04
+- [x] **Seam di valutazione**: opzione UCI `UseNNUE` (check, default false); rifiuta
+      l'attivazione finché `NNUE::networkLoaded()` è false (Fase 3). Branch
+      `[[unlikely]]` in cima a `Evaluator::evaluate()` → `nnue/nnue.hpp`.
+      Node-identity verificata: 5.782.300 (byte-identico al baseline).
+- [x] **Modalità `datagen`**: `./chess datagen [outPrefix] [threads] [nodes]`
+      (default `nnue/data/hydray 3 8000`) + `./chess datagen-dump <file.bin> [n]`
+      per verifica a occhio. Codice in `nnue/` (namespace `NNUE`):
+      * scrive **bulletformat diretto** (32 B/pos, trascrizione letterale di
+        `ChessBoard::from_raw`, `nnue/bulletformat.hpp`); file per-thread
+        `<prefix>.t<N>.bin` in append → stop/resume con Ctrl+C/SIGTERM sicuro
+      * apertura: 8–9 ply casuali, filtro |eval| ≤ 400 cp alla prima search
+      * search a nodi fissi via `runIterativeDeepening` + `maxNodes` (depth cap 32),
+        TT 64 MiB e SearchRuntime privati per thread
+      * filtri: come da piano + skip se la bestmove è cattura/promozione
+        (target statico rumoroso)
+      * adjudication: come da piano + draw se |score| ≤ 10 per 8 ply dopo ply 80,
+        e a 400 ply; partite interrotte da stop = scartate
+- [x] **Contatore/verifica**: progress ogni 30 s (posizioni, partite, pos/s, ETA 100M).
+      Validato su 9.861 record: 0 errori strutturali (occ/nibble/re/score/result),
+      distribuzione risultati simmetrica. **Rate misurato: ~193 pos/s con 2 thread**
+      → a 3 thread ≈ 280–290 pos/s ≈ **4–5 giorni per 100M** (molto meglio della
+      stima iniziale di 2–4 settimane).
 
 ### Fase 1 — dati
 - [ ] Lanciare datagen di fondo (3 thread, nice 19), monitorare tasso posizioni/ora.

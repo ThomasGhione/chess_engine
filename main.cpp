@@ -1,8 +1,10 @@
 #include <iostream>
+#include <string_view>
 
 #include "./engine/engine.hpp"
 #include "./driver/driver.hpp"
 #include "./uci/uci.hpp"
+#include "./nnue/datagen.hpp"
 
 #ifndef _WIN32
 #include <unistd.h> // isatty, STDIN_FILENO
@@ -28,6 +30,14 @@ int main(int argc, char *argv[]) {
 
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
+
+    // Dispatched before Engine is built: datagen needs no TT/book/ponder
+    // thread, only the magic tables (initialized inside runDatagen).
+    if (argc >= 2) {
+        const std::string_view mode = argv[1];
+        if (mode == "datagen")      return NNUE::runDatagen(argc, argv);
+        if (mode == "datagen-dump") return NNUE::runDatagenDump(argc, argv);
+    }
 
     Engine engine;
 

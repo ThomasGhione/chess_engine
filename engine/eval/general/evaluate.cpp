@@ -1,4 +1,5 @@
 #include "../evaluator.hpp"
+#include "../../../nnue/nnue.hpp"
 
 namespace engine {
 
@@ -21,6 +22,10 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
     if (board.kings_bb[0] == 0 || board.kings_bb[1] == 0) [[unlikely]] {
         if (board.kings_bb[0] == 0) return whiteToMove ? -POS_INF : POS_INF;
         return whiteToMove ? POS_INF : -POS_INF;
+    }
+
+    if (NNUE::enabled) [[unlikely]] {
+        return NNUE::evaluate(board);
     }
 
     thread_local std::array<EvalCacheEntry, EVAL_CACHE_SIZE> evalCache{};
