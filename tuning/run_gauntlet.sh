@@ -61,9 +61,9 @@ TC="${TC:-4+0.04}"
 THREADS="${THREADS:-1}"
 BOOK="${BOOK:-books/openings.pgn}"
 
-# The engine ignores the UCI "Threads" option (it sizes its OpenMP pool from
-# omp_get_max_threads()); pin it via the env so each game is actually
-# single-threaded and cutechess concurrency does not oversubscribe the cores.
+# The engine honours the UCI "Threads" option (Lazy SMP), but its auto default
+# is omp_get_max_threads(); pin the env so engines launched without a setoption
+# (this script sends none) stay at THREADS and concurrency never oversubscribes.
 export OMP_NUM_THREADS="${THREADS}"
 
 # --- preflight ----------------------------------------------------------------
@@ -162,6 +162,7 @@ rounds="$(( GAMES / 2 ))"
     -resign movecount=3 score=500 \
     -concurrency "${CONCURRENCY}" \
     -ratinginterval 20 \
+    -recover \
     -pgnout "${pgn_out}"
 
 echo
