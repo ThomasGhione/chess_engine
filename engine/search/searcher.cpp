@@ -721,26 +721,6 @@ int32_t Searcher::searchPosition(
     // evaluator can now differentiate between equally-winning moves, which
     // is what we need when Pyrrhic ranks every guaranteed win identically.
     // The root TB probe still handles the decisive Win/Loss choice.
-    if (runtime.syzygyProber != nullptr
-        && runtime.syzygyProber->isLoaded()
-        && depth >= runtime.syzygyProber->probeDepth
-        && runtime.syzygyProber->inTBRange(b)) {
-        if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
-            const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
-            if (tbScore == 0) {
-                // Draw: exact terminal — prevents picking a drawn move when
-                // a winning one exists (and vice versa).
-                if (runtime.transpositionTable != nullptr) {
-                    runtime.transpositionTable->store(
-                        b.getHash(), static_cast<uint8_t>(depth),
-                        tbScore, TT::Entry::EXACT);
-                }
-                return tbScore;
-            }
-            // Win/Loss: deliberately fall through (no cutoff, no bound store).
-        }
-    }
-
     const uint64_t hashKey = b.getHash();
     int32_t score = 0;
     const bool canUseTT = (runtime.transpositionTable != nullptr);
@@ -755,6 +735,29 @@ int32_t Searcher::searchPosition(
         && static_cast<int>(tte.depth) >= std::min(depth, static_cast<int>(TT::Entry::MAX_DEPTH))
         && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
         return scoreFromTT(tte.score, ply); // re-base mate scores to this node's ply
+    }
+
+    // TB probe sits AFTER the TT cutoff: in TB range most nodes cut on the
+    // (cheap, cached) TT entry — often the TB draw stored below — without
+    // paying the mmap'd table lookup.
+    if (runtime.syzygyProber != nullptr
+        && runtime.syzygyProber->isLoaded()
+        && depth >= runtime.syzygyProber->probeDepth
+        && runtime.syzygyProber->inTBRange(b)) {
+        if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
+            const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
+            if (tbScore == 0) {
+                // Draw: exact terminal — prevents picking a drawn move when
+                // a winning one exists (and vice versa).
+                if (canUseTT) {
+                    runtime.transpositionTable->store(
+                        hashKey, static_cast<uint8_t>(depth),
+                        tbScore, TT::Entry::EXACT);
+                }
+                return tbScore;
+            }
+            // Win/Loss: deliberately fall through (no cutoff, no bound store).
+        }
     }
 
     SearchNodeState node{};
