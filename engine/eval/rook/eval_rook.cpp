@@ -1,6 +1,4 @@
-#include <bit>
 #include "../evaluator.hpp"
-#include <algorithm>
 
 namespace engine {
 
@@ -13,8 +11,8 @@ inline PhaseValue Evaluator::evalRooksForColor(int color, uint64_t rooks, uint64
 
     while (rooks) {
         const int sq = popLSB(rooks);
-        const int file = chess::Board::file(sq);
-        const int rank = chess::Board::rank(sq);
+        const int file = chess::file(sq);
+        const int rank = chess::rank(sq);
         const uint64_t fm = FILE_MASKS[file];
         const uint64_t ownFilePawns = ownPawns & fm;
         const uint64_t oppFilePawns = oppPawns & fm;
@@ -69,13 +67,7 @@ inline PhaseValue Evaluator::evalRookEndgamePressureSide(const chess::Board& b, 
     if (!sideHasAdvantage) return {};
 
     const int oppSide = side ^ 1;
-    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppRooks2 = (side == 0) ? blackRooks : whiteRooks;
-    const int oppMaterial = oppQueens * 900 + oppRooks2 * 500 + oppBishops * 330 + oppKnights * 320;
-
-    if (oppMaterial > 400) return {};
+    if (nonPawnMaterial(b, oppSide) > 400) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
@@ -102,20 +94,15 @@ inline PhaseValue Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, in
     if (ourRooks < 2 || ourRooks <= oppRooks) return {};
 
     const int oppSide = side ^ 1;
-    const int oppQueens = std::popcount(b.queens_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppMaterial = oppQueens * 900 + oppRooks * 500 + oppBishops * 330 + oppKnights * 320;
-
-    if (oppMaterial > 500) return {};
+    if (nonPawnMaterial(b, oppSide) > 500) return {};
 
     const int sign = (side == 0) ? 1 : -1;
     const uint64_t enemyKingBB = b.kings_bb[side ^ 1];
     if (!enemyKingBB) return {};
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
-    const int rank = chess::Board::rank(enemyKingSq);
-    const int file = chess::Board::file(enemyKingSq);
+    const int rank = chess::rank(enemyKingSq);
+    const int file = chess::file(enemyKingSq);
 
     // Local constants (kept scalar; eg-side bonus magnitudes baked into raw nums).
     constexpr int32_t DOUBLE_ROOK_EDGE_BONUS    = 55;
@@ -127,22 +114,20 @@ inline PhaseValue Evaluator::evalDoubleRookEndgameSide(const chess::Board& b, in
     PhaseValue score{0, sign * edgeProximity(enemyKingSq) * DOUBLE_ROOK_EDGE_BONUS};
 
     uint64_t rooksBB = b.rooks_bb[side];
-    if ((rooksBB & (rooksBB - 1)) != 0ULL) {
-        const int rook1 = popLSB(rooksBB);
-        const int rook2 = std::countr_zero(rooksBB);
+    const int rook1 = popLSB(rooksBB);
+    const int rook2 = std::countr_zero(rooksBB);
 
-        const int r1_rank = chess::Board::rank(rook1);
-        const int r1_file = chess::Board::file(rook1);
-        const int r2_rank = chess::Board::rank(rook2);
-        const int r2_file = chess::Board::file(rook2);
+    const int r1_rank = chess::rank(rook1);
+    const int r1_file = chess::file(rook1);
+    const int r2_rank = chess::rank(rook2);
+    const int r2_file = chess::file(rook2);
 
-        if (r1_rank == r2_rank || r1_file == r2_file) {
-            score.eg += sign * DOUBLE_ROOK_RANKFILE_BONUS;
-        }
+    if (r1_rank == r2_rank || r1_file == r2_file) {
+        score.eg += sign * DOUBLE_ROOK_RANKFILE_BONUS;
+    }
 
-        if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
-            score.eg += sign * DOUBLE_ROOK_ON_KING_LINE;
-        }
+    if (r1_rank == rank || r2_rank == rank || r1_file == file || r2_file == file) {
+        score.eg += sign * DOUBLE_ROOK_ON_KING_LINE;
     }
 
     score.eg += sign * ownKingProximity(b.kings_bb[side], enemyKingSq) * DOUBLE_ROOK_PROX_SCALE;

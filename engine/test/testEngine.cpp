@@ -17,7 +17,7 @@ ut::suite engineSuite = [] {
     // the material delta stays between -3 and +3 (avoids coarse eval blunders)
     
     engine::Engine engine;
-    engine.depth = 8; // Moderate depth for test speed
+    engine.searchRuntime.depth = 8; // Moderate depth for test speed
     
     constexpr int MAX_MOVES = 10;
     constexpr int64_t MAX_DELTA = 300;
@@ -43,12 +43,12 @@ ut::suite engineSuite = [] {
       bool isWhiteTurn = (engine.board.getActiveColor() == chess::Board::WHITE);
       
       // Find best move through search
-      engine.search(engine.depth);
+      engine.search(8);
       auto bestMove = engine.getBestMove(legalMoves, isWhiteTurn);
       
       // Play the move
       (void)engine.board.moveBB(bestMove.from, bestMove.to);
-      moves += std::to_string(moveNum) + bestMove.from.toString() + bestMove.to.toString() + "\n";
+      moves += std::to_string(moveNum) + chess::squareToString(bestMove.from) + chess::squareToString(bestMove.to) + "\n";
       
       // Compute material delta after the move
       materialDelta = engine::Engine::getMaterialDelta(engine.board);
@@ -71,7 +71,7 @@ ut::suite engineSuite = [] {
 
     expect(e.isGameOver()) << "Expected game over in root stalemate\n";
     expect(e.isStalemate()) << "Expected stalemate at root\n";
-    expect(e.eval == static_cast<int64_t>(0)) << "Expected draw eval 0 for root stalemate, got " << e.eval << '\n';
+    expect(e.searchRuntime.eval == static_cast<int64_t>(0)) << "Expected draw eval 0 for root stalemate, got " << e.searchRuntime.eval << '\n';
   };
 
   "search root checkmate sets mate state"_test = [] {
@@ -82,7 +82,7 @@ ut::suite engineSuite = [] {
     expect(e.isGameOver()) << "Expected game over in root checkmate\n";
     expect(e.isMate()) << "Expected mate at root\n";
     expect(e.getGameResult() == engine::Engine::WHITE_WINS) << "Expected WHITE_WINS game result\n";
-    expect(e.eval > static_cast<int64_t>(1000000)) << "Expected large positive mate eval, got " << e.eval << '\n';
+    expect(e.searchRuntime.eval > static_cast<int64_t>(1000000)) << "Expected large positive mate eval, got " << e.searchRuntime.eval << '\n';
   };
 
 };

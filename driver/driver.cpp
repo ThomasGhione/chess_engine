@@ -2,22 +2,15 @@
 
 //FIXME Spostare gli include dentro .hpp non qui
 #include "../engine/engine.hpp"
-#include "../uci/uci.hpp"
 #include "../debug.hpp"
 
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
 #include <ctime>
-#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <limits>
 
 namespace driver {
 
-//FIXME Evitare namespace anonimi
 namespace {
 
 using chess::Board;
@@ -30,11 +23,6 @@ constexpr int32_t NO_ARGS = 1;
 [[noreturn]] void exitGame() noexcept {
     std::cout << "Thank you for playing! See you next time." << std::endl;
     std::exit(EXIT_SUCCESS);
-}
-
-//FIXME Mettere graffe, evitare tutto inline
-void ensureDirectory(const char* path) noexcept {
-    if (!std::filesystem::exists(path)) std::filesystem::create_directories(path);
 }
 
 //FIXME Tramutare da switch a:
@@ -57,48 +45,27 @@ char pieceToSymbol(uint8_t piece) noexcept {
     }
 }
 
-//FIXME Nome traviante, se legge non dovrebbe stampare un prompt.
-uint8_t readMenuChoice(const char* prompt, uint8_t minChoice, uint8_t maxChoice) noexcept {
-    std::cout << prompt;
-
-    uint8_t choice = 0;
-    std::cin >> choice;
-    while (choice < minChoice || choice > maxChoice) {
-        std::cout << "Invalid option. Please select a valid option (" << minChoice << "-" << maxChoice << "): ";
-        std::cin >> choice;
-    }
-    return choice;
-}
-
 //FIXME Invece che cambiare il parametro, ritorniamo un valore.
-bool parseColorOption(const char* colorArg, bool& outIsWhite) noexcept {
-    if (colorArg == nullptr || colorArg[0] == '\0' || colorArg[1] != '\0') return false;
-
-    switch (std::tolower(static_cast<unsigned char>(colorArg[0]))) {
-        case 'w': outIsWhite = true;  return true;
-        case 'b': outIsWhite = false; return true;
-        default:  return false;
-    }
-}
-
-bool parseRequiredColorArg(int argc, char* argv[], const char* missingArgMessage, bool& outIsWhite) noexcept {
+bool parseColorArg(int argc, char* argv[], bool& outIsWhite) noexcept {
     if (argc < MAX_PARAM_LENGTH) {
-        std::cout << missingArgMessage << "\n";
+        std::cout << "Error: Please specify 'w' for white or 'b' for black when playing against the engine.\n";
         return false;
     }
-
-    if (!parseColorOption(argv[COLOR], outIsWhite)) {
-        std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black. \n";
-        return false;
+    const char* arg = argv[COLOR];
+    if (arg != nullptr && arg[0] != '\0' && arg[1] == '\0') {
+        switch (std::tolower(static_cast<unsigned char>(arg[0]))) {
+            case 'w': outIsWhite = true;  return true;
+            case 'b': outIsWhite = false; return true;
+            default: break;
+        }
     }
-    return true;
+    std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black.\n";
+    return false;
 }
 
 } // namespace
 
 Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
-
-void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Please select a valid option.\n"; }
 
 [[noreturn]] void Driver::startGame(int argc, char* argv[]) noexcept {
     parse(argc, argv);
@@ -110,57 +77,45 @@ void Driver::printInvalidOption() noexcept { std::cout << "Invalid option. Pleas
         switch (mainMenu()) {
             case '1': {
                 switch (playWithEngineMenu()) {
-                    case '1': playGameVsEngine(true); break;
-                    case '2': playGameVsEngine(false); break;
-                    default:  break; // Back to main menu
+                    case '1': startSession(GameMode::PvE, true); break;
+                    case '2': startSession(GameMode::PvE, false); break;
+                    default:  break;
                 }
                 break;
             }
-            case '2': playGameVsHuman(); break;
+            case '2': startSession(GameMode::PvP); break;
             case '3':
                 if (!loadGame()) std::cout << "No saved game found. Returning to main menu.\n";
                 break;
             case '4': {
                 switch (extraMenu()) {
-                    case '1': botVsBot(); break;
-                    case '2': {
-                        uciInterface.mainLoop();
-                        break;
-                    }
-                    default: break; // Back to main menu
+                    case '1': startSession(GameMode::BvB); break;
+                    case '2': uciInterface.mainLoop(); break;
+                    default:  break;
                 }
                 break;
             }
             case '5': exitGame();
-            default:  printInvalidOption(); break;
+            default:  std::cout << "Invalid option. Please select a valid option.\n"; break;
         }
     }
 }
 
-// TODO: update for new modes
 void Driver::parse(int argc, char* argv[]) noexcept {
     if (argc == NO_ARGS || argc > MAX_PARAM_LENGTH) return;
 
     std::string mode = argv[MODE];
-    std::transform(mode.begin(), mode.end(), mode.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    for (char& c : mode) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
     //FIXME Evitare numeri magici
-    if (mode == "-bvb" || mode == "41") { botVsBot(); return; }
-    if (mode == "-pvp" || mode == "21") { playGameVsHuman(); return; }
+    if (mode == "-bvb" || mode == "41") { startSession(GameMode::BvB); return; }
+    if (mode == "-pvp" || mode == "21") { startSession(GameMode::PvP); return; }
 
     if (mode == "-pvb" || mode == "11") {
         bool isWhite = false;
         //FIXME Condizione non leggibile
-        if (!parseRequiredColorArg(
-                argc,
-                argv,
-                "Error: Please specify 'w' for white or 'b' for black when playing against the engine.",
-                isWhite)) {
-            std::exit(EXIT_FAILURE);
-        }
-        playGameVsEngine(isWhite);
+        if (!parseColorArg(argc, argv, isWhite)) std::exit(EXIT_FAILURE);
+        startSession(GameMode::PvE, isWhite);
         return;
     }
 
@@ -169,12 +124,12 @@ void Driver::parse(int argc, char* argv[]) noexcept {
         return;
     }
 
-    std::cout << "Error: Invalid mode. Use '-bvb' for bot vs bot, '-pvp' for player vs player, or '-pvb' for player vs bot. \n";
+    std::cout << "Error: Invalid mode. Use '-bvb' for bot vs bot, '-pvp' for player vs player, or '-pvb' for player vs bot.\n";
     std::exit(EXIT_FAILURE);
 }
 
 bool Driver::loadGame() noexcept {
-    ensureDirectory("saves");
+    std::filesystem::create_directories("saves");
 
     std::ifstream saveFile("saves/save.txt");
     if (!saveFile.is_open()) {
@@ -185,32 +140,27 @@ bool Driver::loadGame() noexcept {
     std::string line;
     if (std::getline(saveFile, line)) engine.board = chess::Board(line);
 
+    // TODO: add checks/exceptions for FEN parsing
     if (std::getline(saveFile, line)) {
-        vsBot = true;
         if (line == "w") engine.isPlayerWhite = false;
         else if (line == "b") engine.isPlayerWhite = true;
-    }
-
-    // TODO: add checks/exceptions for FEN parsing
-    if (vsBot) {
         const bool playerMovesNext =
             (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite;
-        playGameVsEngine(playerMovesNext);
+        startSession(GameMode::PvE, playerMovesNext);
     } else {
-        playGameVsHuman();
+        startSession(GameMode::PvP);
     }
     return true;
 }
 
 void Driver::saveGame() noexcept {
-    ensureDirectory("saves");
+    std::filesystem::create_directories("saves");
 
     if (std::filesystem::exists("saves/save.txt")) {
-        std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) ";
+        std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) " << std::flush;
         char ans = '\0';
         std::cin >> ans;
         if (ans != 'Y' && ans != 'y') return;
-        std::filesystem::remove("saves/save.txt");
     }
 
     std::ofstream saveFile("saves/save.txt");
@@ -220,9 +170,9 @@ void Driver::saveGame() noexcept {
     }
     saveFile << engine.board.fromBoardToFen();
 
-    // If playing against bot, then saveGame() is called by the player, so it saves the opposite active color to indicate
+    // If playing against bot, saveGame() is called by the player, so it saves the opposite active color to indicate
     // the color of the bot
-    if (vsBot) saveFile << '\n' << (engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
+    if (mode_ == GameMode::PvE) saveFile << '\n' << (engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
 
     saveFile.flush();
     if (!saveFile) {
@@ -234,7 +184,7 @@ void Driver::endGame() noexcept {
     if (!engine.isGameOver()) return;
 
     if (engine.isMate()) {
-        const uint8_t nextColor = engine.getActiveColor();
+        const uint8_t nextColor = engine.board.getActiveColor();
         std::cout << "\nCheckmate! " << (nextColor == chess::Board::WHITE ? "Black" : "White") << " wins.\n";
     } else if (engine.isStalemate()) {
         std::cout << "\nStalemate. Game drawn.\n";
@@ -242,7 +192,7 @@ void Driver::endGame() noexcept {
         std::cout << "\nDraw.\n";
     }
 
-    std::cout << "Press s to print the game on a file or any other key to return to the menu: ";
+    std::cout << "Press s to print the game on a file or any other key to return to the menu: " << std::flush;
 
     // Clear any pending input, then block for a full line to ensure Windows/Linux parity
     std::cin.clear();
@@ -255,58 +205,57 @@ void Driver::endGame() noexcept {
 }
 
 void Driver::printGameOnFile() noexcept {
-    ensureDirectory("games");
+    std::filesystem::create_directories("games");
     const std::string fileName = "games/game_" + std::to_string(std::time(nullptr)) + ".txt";
     std::ofstream gameFile(fileName);
     gameFile << engine.moveHistory;
 }
 
-bool Driver::playOneTurn(bool playerTurnFlag) noexcept {
-    if (playerTurnFlag) playerTurn(); else engineTurn();
-    if (!engine.isGameOver()) return false;
-    endGame();
-    return true;
-}
-
 void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept {
     const bool turns[2] = {firstPlayerTurn, secondPlayerTurn};
-    if (printBoard) std::cout << Driver::getBasicBoard(engine.board) << "\n";
+    if (printBoard) std::cout << getBasicBoard(engine.board) << "\n";
 
     while (!engine.isGameOver()) {
-        for (bool turn : turns) {
-            if (playOneTurn(turn)) return;
-            if (printBoard) std::cout << Driver::getBasicBoard(engine.board) << "\n";
+        for (const bool isPlayerTurn : turns) {
+            isPlayerTurn ? playerTurn() : engineTurn();
+            if (engine.isGameOver()) { endGame(); return; }
+            if (printBoard) std::cout << getBasicBoard(engine.board) << "\n";
         }
     }
 }
 
-void Driver::playGameVsHuman() noexcept { vsBot = false; playAlternatingTurns(true, true, false); }
-
-void Driver::playGameVsEngine(bool isFirstTurnOfPlayer) noexcept { vsBot = true; playAlternatingTurns(isFirstTurnOfPlayer, !isFirstTurnOfPlayer, false); }
-
-void Driver::botVsBot() noexcept { playAlternatingTurns(false, false, true); }
+void Driver::startSession(GameMode mode, bool playerIsWhite) noexcept {
+    mode_ = mode;
+    switch (mode) {
+        case GameMode::PvP: playAlternatingTurns(true, true, false); break;
+        case GameMode::PvE: playAlternatingTurns(playerIsWhite, !playerIsWhite, false); break;
+        case GameMode::BvB: playAlternatingTurns(false, false, true); break;
+    }
+}
 
 void Driver::playerTurn() noexcept {
     //FIXME Usare if invece di costrutto ternario inline.
-    std::cout << (engine.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
+    std::cout << (engine.board.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
 
     std::string playerInput;
 
     //FIXME Evitare while true
     //FIXME Usare funzioni helper per il copro della funzione, troppo alto
     while (true) {
-        std::cout << Driver::getBasicBoard(engine.board) << "\n";
-        std::cout << "Enter your move (type 's' to save or 'q' to quit): ";
+        std::cout << getBasicBoard(engine.board) << "\n";
+        std::cout << "Enter your move (type 's' to save or 'q' to quit): " << std::flush;
         std::cin >> playerInput;
 
         if (playerInput == "s") [[unlikely]] { saveGame(); continue; }
         if (playerInput == "q") [[unlikely]] exitGame();
 
         // Optional promotion character (5th char): e7e8q, e2e1N, ...
-        char promoChar = '\0';
+        // Normalise to lowercase in place so the move uses the validated form
+        // (the engine's promotion convention is lowercase q/r/b/n).
         if (playerInput.length() == 5) {
-            promoChar = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
-            if (promoChar != 'q' && promoChar != 'r' && promoChar != 'b' && promoChar != 'n') [[unlikely]] {
+            playerInput[4] = static_cast<char>(std::tolower(static_cast<unsigned char>(playerInput[4])));
+            const char promo = playerInput[4];
+            if (promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n') [[unlikely]] {
                 std::cout << "Invalid promotion piece. Use q, r, b or n.\n";
                 continue;
             }
@@ -317,9 +266,9 @@ void Driver::playerTurn() noexcept {
             continue;
         }
 
-        const chess::Coords fromCoords(playerInput.substr(0, 2));
-        const chess::Coords toCoords(playerInput.substr(2, 2));
-        if (!chess::Coords::isInBounds(fromCoords) || !chess::Coords::isInBounds(toCoords)) [[unlikely]] {
+        const chess::Square fromSquare = chess::parseSquare(playerInput.substr(0, 2));
+        const chess::Square toSquare = chess::parseSquare(playerInput.substr(2, 2));
+        if (!chess::isValidSquare(fromSquare) || !chess::isValidSquare(toSquare)) [[unlikely]] {
             std::cout << "Invalid move format. Please enter your move in the format 'e2e4'.\n";
             continue;
         }
@@ -327,14 +276,14 @@ void Driver::playerTurn() noexcept {
         DBG_TIMER_DECLARE(moveTimer);
         DBG_TIMER_START(moveTimer);
 
-        const uint8_t piece = engine.board.get(fromCoords);
+        const uint8_t piece = engine.board.get(fromSquare);
         const uint8_t pieceType = piece & chess::Board::MASK_PIECE_TYPE;
         const uint8_t pieceColor = piece & chess::Board::MASK_COLOR;
 
         const bool isPromotionCandidate =
             (pieceType == chess::Board::PAWN) &&
-            ((pieceColor == chess::Board::WHITE && toCoords.rank() == 0) ||
-             (pieceColor == chess::Board::BLACK && toCoords.rank() == 7));
+            ((pieceColor == chess::Board::WHITE && chess::rank(toSquare) == 0) ||
+             (pieceColor == chess::Board::BLACK && chess::rank(toSquare) == 7));
 
         if (isPromotionCandidate && playerInput.length() == 4) {
             // If user didn't specify, default to queen
@@ -342,27 +291,27 @@ void Driver::playerTurn() noexcept {
         }
 
         const char movePromotion = (playerInput.length() == 5) ? playerInput[4] : '\0';
-        if (!engine.movePiece(fromCoords, toCoords, movePromotion)) {
+        if (!engine.movePiece(fromSquare, toSquare, movePromotion)) {
             std::cout << "Illegal move.\n";
             continue;
         }
-        
+
         DBG_TIMER_US(moveTimer, "move executed");
 
-        std::cout << "\n" << Driver::getBasicBoard(engine.board) << "\n";
+        std::cout << "\n" << getBasicBoard(engine.board) << "\n";
         return;
     }
 }
 
 void Driver::engineTurn() noexcept {
-    std::cout << "Engine's thinking... \n";
+    std::cout << "Engine's thinking... \n" << std::flush;
     DBG_TIMER_DECLARE(engineSearchTimer);
     DBG_TIMER_START(engineSearchTimer);
-    
+
     engine.search(engine.DEFAULTDEPTH);
 
     DBG_TIMER_MS(engineSearchTimer, "Engine search");
-    DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.nodesSearched << "\n");
+    DBG_LOG_STREAM("[DEBUG] Nodes visited: " << engine.searchRuntime.nodesSearched << "\n");
 }
 
 std::string Driver::getBasicBoard(const Board& board) {
@@ -398,7 +347,13 @@ std::string Driver::getBasicBoard(const Board& board) {
 
 uint32_t Driver::showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoice, bool clearBefore) noexcept {
     if (clearBefore) clearScreen();
-    const uint8_t choice = readMenuChoice(prompt, minChoice, maxChoice);
+    std::cout << prompt << std::flush;
+    uint8_t choice = 0;
+    std::cin >> choice;
+    while (choice < minChoice || choice > maxChoice) {
+        std::cout << "Invalid option. Please select a valid option (" << minChoice << "-" << maxChoice << "): ";
+        std::cin >> choice;
+    }
     clearScreen();
     return choice;
 }

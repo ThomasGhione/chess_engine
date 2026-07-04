@@ -1,4 +1,3 @@
-#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -28,7 +27,7 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
     if (!enemyKingBB) [[unlikely]] return 0;
 
     const int enemyKingSq = std::countr_zero(enemyKingBB);
-    const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::bitMask(enemyKingSq);
+    const uint64_t kingZone = pieces::KING_ATTACKS[enemyKingSq] | chess::Board::BIT_MASKS[enemyKingSq];
 
     const uint64_t developedKnights = (side == 0)
         ? (b.knights_bb[side] & ~WHITE_MINOR_START)
@@ -60,16 +59,6 @@ int32_t Evaluator::evalKingAttackZoneSide(const chess::Board& b, const AttackDat
     attackDanger = std::min<int32_t>(attackDanger, engine::KING_ATTACK_DANGER_CAP);
 
     return sign * attackDanger;
-}
-
-int32_t Evaluator::evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept {
-    if (!b.kings_bb[0] || !b.kings_bb[1]) [[unlikely]] return 0;
-
-    const uint64_t occ = b.getPiecesBitMap();
-    const int whiteKingFile = chess::Board::file(std::countr_zero(b.kings_bb[0]));
-    const int blackKingFile = chess::Board::file(std::countr_zero(b.kings_bb[1]));
-    return evalKingAttackZoneSide(b, data, 0, occ, attackMaterialScalePercent(b, 0, blackKingFile, b.pawns_bb[1]))
-         + evalKingAttackZoneSide(b, data, 1, occ, attackMaterialScalePercent(b, 1, whiteKingFile, b.pawns_bb[0]));
 }
 
 inline void Evaluator::addAllKingCheckUnits(const chess::Board& b, int side, int enemyKingSq, uint64_t defenderMap, uint64_t occ, int32_t& attackUnits) noexcept {

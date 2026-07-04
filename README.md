@@ -1,43 +1,30 @@
 # HydraY Chess Engine
 
-HydraY is a C++23 chess engine with both a terminal interface and UCI support for
-GUIs, bots, and automated testing. The engine is built around bitboards, magic
-sliding-piece attacks, iterative deepening search, a cache-friendly
-transposition table, and a handcrafted evaluator.
+HydraY is a C++23 chess engine. It has a terminal interface and full UCI support
+for GUIs, bots, and automated testing.
 
-The project is mainly developed and tested on Linux/WSL, with a MinGW target for
-Windows builds.
+It is built around bitboards with magic sliding-piece attacks, an iterative
+deepening alpha-beta/PVS search, a cache-friendly transposition table, and a
+handcrafted evaluator. Development and testing happen mainly on Linux/WSL; a
+MinGW target exists for Windows builds.
 
 ## Requirements
 
 - `g++` with C++23 support
 - GNU `make`
-- OpenMP support (`-fopenmp`)
-- Linux/WSL recommended for the full tooling suite
-- Optional tools for analysis: `valgrind`, `clang-tidy`, `scan-build`,
-  `include-what-you-use`, `cppclean`, `bear`, `perf`
-- Optional for Windows cross-builds: `mingw-w64`
-- Optional for evaluator tuning: Python 3, `chess-tuning-tools`, `cutechess-cli`,
-  and an opening book under `tuning/books/`
+- OpenMP (`-fopenmp`)
+- Optional analysis tools: `valgrind`, `clang-tidy`, `scan-build`,
+  `include-what-you-use`, `cppclean`, `lizard`, `perf`
+- Optional for Windows builds: `mingw-w64`
+- Optional for tuning/testing: `chess-tuning-tools`, `cutechess-cli`,
+  `fastchess`, and `ordo`
 
 ## Quick Start
 
-Build the engine:
-
 ```sh
-make prod
-```
-
-Run the interactive terminal menu:
-
-```sh
-./chess
-```
-
-Run in UCI mode:
-
-```sh
-./chess uci
+make prod        # build the optimized engine -> ./chess
+./chess          # interactive terminal menu
+./chess uci      # UCI mode
 ```
 
 Example UCI session:
@@ -50,380 +37,234 @@ go depth 10
 quit
 ```
 
-The engine also auto-enters UCI mode when launched with piped stdin, which is
-useful for GUIs and bot runners.
+The engine also switches to UCI mode automatically when stdin is piped, which is
+what GUIs and bot runners do.
 
 ## Run Modes
 
 ```sh
 ./chess              # interactive menu
-./chess uci          # UCI protocol mode
-./chess -uci         # UCI alias
-./chess --uci        # UCI alias
+./chess uci          # UCI mode (-uci and --uci also work)
 ./chess -pvp         # human vs human
-./chess -pvb w       # human vs engine, human plays White
-./chess -pvb b       # human vs engine, human plays Black
+./chess -pvb w       # human (White) vs engine
+./chess -pvb b       # human (Black) vs engine
 ./chess -bvb         # engine vs engine
 ```
 
-In the terminal game mode, moves are entered with source and destination
-squares, for example `e2 e4`. Promotions are entered with the promotion piece
-when requested by the game flow.
+In terminal game mode, enter moves as source and destination squares, e.g.
+`e2 e4`. Promotions are entered when the game asks for them.
 
 ## Build Targets
 
 ```sh
-make                 # default build, produces ./chess
-make chess           # explicit binary target
-make prod            # optimized production build
-make parallel_prod   # alias for prod
-make prod_sequential # one-shot sequential production build
-make debug           # debug build with symbols and profiling flags
-make prod_windows    # cross-compile ./chess.exe with MinGW
-make cls             # remove generated binaries, objects, and temporary files
+make prod            # optimized production build -> ./chess
+make debug           # debug build with symbols and profiling
+make prod_windows    # cross-compile -> ./chess.exe (needs mingw-w64)
+make cls             # remove binaries, object files, and temp files
 make help            # show build-system help
 ```
 
-Production builds use `-O3`, `-march=native`, `-mtune=native`, OpenMP, LTO,
-loop unrolling, and section splitting. Object files are generated under
-`output/`.
+Production builds use `-O3 -march=native`, OpenMP, and LTO. Object files go to
+`output/` so incremental builds stay fast.
 
-## Testing and Benchmarks
-
-Build functional tests:
+## Testing
 
 ```sh
-make test
-./tests/test
+make test            # functional tests -> ./tests/test
+make perf            # performance tests -> ./tests/perf
+make sacrifice       # anti-sacrifice regression suite -> ./tests/sacrifice
+make all-tests       # build and run functional + performance tests
+make test-valgrind   # run functional tests under valgrind
 ```
 
-Build performance tests:
+Use `make perf` to compare node counts at a fixed depth before and after any
+change to a hot path. Functional tests alone do **not** catch search/eval
+strength regressions.
 
-```sh
-make perf
-./tests/perf
-```
+### SPRT (is the change really stronger?)
 
-Run both functional and performance tests:
-
-```sh
-make all-tests
-```
-
-### SPRT regression testing
-
-`tuning/run_sprt.sh` measures whether a search/eval change is a real ELO gain by
-playing the current build against a frozen baseline under a time control, using
-cutechess-cli's native SPRT (it stops automatically once an H0/H1 bound is hit).
-Search changes must be tested under a time control, never at fixed depth.
+`tuning/run_sprt.sh` plays the current build against a frozen baseline under a
+time control and runs a sequential test (SPRT) that stops as soon as the change
+is accepted (H1) or rejected (H0). Search changes must be tested under a time
+control, never at fixed depth.
 
 ```sh
 make prod && ./tuning/run_sprt.sh --snapshot   # freeze baseline BEFORE editing
 # ...make your change...
-make prod && ./tuning/run_sprt.sh              # new vs baseline; H1 = keep, H0 = discard
+make prod && ./tuning/run_sprt.sh              # new vs baseline
 ```
 
-Knobs via env vars (defaults shown): `TC=4+0.04`, `ELO0=0 ELO1=5` (gain test; use
-`ELO0=-3 ELO1=3` for non-regression of cleanups), `CONCURRENCY`, `HASH`, `THREADS`.
+The backend is **fastchess** when it is on your PATH (pentanomial model, needs
+fewer games for the same decision); it falls back to `cutechess-cli`. Force one
+with `SPRT_BACKEND=fastchess|cutechess`.
 
-Run Valgrind leak checks:
+Env knobs (defaults): `TC=4+0.04`, `ELO0=0 ELO1=5` (gain test; use
+`ELO0=-3 ELO1=3` to prove a cleanup is not a regression), `CONCURRENCY`,
+`HASH`, `THREADS`.
+
+Watch a running test live (the SPRT verdict comes from fastchess itself; ordo
+just shows Elo and error bars from the PGN):
 
 ```sh
-make test-valgrind
+watch -n 5 'ordo -q -s 1000 -J -p "$(ls -t tuning/sprt_*.pgn | head -1)"'
 ```
 
-Build and run the transposition-table huge-page benchmark:
+### Gauntlet (absolute Elo on a fixed scale)
+
+`tuning/run_gauntlet.sh` answers "how strong are we overall?" instead of "better
+than the last baseline?". The current build plays frozen release tags, then
+[ordo](https://github.com/michiguel/Ordo) turns the PGN into ratings with one
+old release pinned at a constant Elo, so runs stay comparable over time.
 
 ```sh
-make tt-huge-bench
-./tests/tt_hugepage_bench --depth 10 --repeats 3
-./tests/tt_hugepage_bench --depth 10 --repeats 3 --per-fen
+make prod && ./tuning/run_gauntlet.sh            # vs tag 1.2.0, 400 games
+REF_TAGS="1.2.0" GAMES=1000 ./tuning/run_gauntlet.sh
 ```
 
-Run the automated huge-page A/B benchmark:
+Reference binaries are built on demand in a throwaway `git worktree` (your
+checkout is never touched) and cached as `tuning/chess_ref_<tag>`. `ordo` must be
+on your PATH (the script also checks `~/.local/bin`).
 
-```sh
-./script/benchmark_tt_hugepages_ab.sh 10 3
-./script/benchmark_tt_hugepages_ab.sh 10 3 output/bench_custom_run
-```
+Env knobs (defaults): `REF_TAGS=1.2.0`, `ANCHOR_TAG` / `ANCHOR_ELO=2000` (the
+fixed yardstick — an internal value, not a CCRL rating), `GAMES=400` per
+opponent, `TC=4+0.04`, `CONCURRENCY`, `THREADS`.
 
-If `perf` is available and permitted by the OS, the A/B script also records TLB
-and CPU-counter metrics. On Linux, this may require:
+> A new anchor tag must have working time management. Tag 1.1.0 and older ignore
+> the clock and forfeit on time at any real TC — sanity-check first:
+> `printf 'position startpos\ngo wtime 4000 winc 40\n' | ./tuning/chess_ref_<tag> -uci`
+> should reply in about 100 ms, not seconds.
 
-```sh
-sudo sysctl -w kernel.perf_event_paranoid=-1
-```
+## Transposition Table and Huge Pages
 
-## Huge Pages and Transposition Table
-
-The transposition table stores 4 entries per 64-byte bucket and currently uses
-1M buckets, for roughly 64 MiB of TT entries. On Linux, the engine can try to
-allocate the table with explicit huge pages first, then transparent huge pages,
-then normal heap allocation.
+The transposition table holds 4 entries per 64-byte bucket, 1M buckets, about
+64 MiB total. On Linux it tries explicit huge pages first, then transparent huge
+pages, then normal heap allocation.
 
 Control this with `CHESS_TT_HUGEPAGE`:
 
 ```sh
-CHESS_TT_HUGEPAGE=auto ./chess      # default behavior
-CHESS_TT_HUGEPAGE=on   ./chess      # force/try huge pages
-CHESS_TT_HUGEPAGE=off  ./chess      # disable huge pages
+CHESS_TT_HUGEPAGE=auto ./chess   # default
+CHESS_TT_HUGEPAGE=on   ./chess   # force/try huge pages
+CHESS_TT_HUGEPAGE=off  ./chess   # disable huge pages
 ```
 
-Accepted enabled values are `on`, `1`, `true`, and `force`. Accepted disabled
-values are `off`, `0`, and `false`.
+Enabled values: `on`, `1`, `true`, `force`. Disabled values: `off`, `0`,
+`false`. A huge-page benchmark is available with `make tt-huge-bench`
+(`./tests/tt_hugepage_bench --depth 10 --repeats 3`).
 
 ## UCI Options
 
-The engine exposes general UCI options:
+General options:
 
 ```txt
 PonderDebug          check, default false
 SearchApiMutexGuard  check, default true
 ```
 
-Examples:
+`SearchApiMutexGuard` can also be set at startup with
+`CHESS_ENGINE_SEARCH_MUTEX_GUARD=false ./chess uci`.
+
+Most constants from `engine/eval_constants.hpp` are also exposed as `spin`
+options. UCI names are CamelCase (e.g. `PassedPawnBonus`); tuning configs may use
+the underscore form (e.g. `PASSED_PAWN_BONUS`).
+
+## Evaluator Tuning
+
+HydraY tunes evaluator constants through self-play with `chess-tuning-tools` and
+`cutechess-cli`. The workflow lives in `tuning/`:
 
 ```txt
-setoption name PonderDebug value true
-setoption name SearchApiMutexGuard value false
+tuning/base_config.json    shared engine, depth, rounds, and book settings
+tuning/groups/*.json       tracked parameter groups
+tuning/run_tune_local.sh   local launcher
+tuning/chess_uci.sh        starts the engine in UCI mode for the tuner
 ```
 
-`SearchApiMutexGuard` can also be controlled at startup with:
-
-```sh
-CHESS_ENGINE_SEARCH_MUTEX_GUARD=false ./chess uci
-```
-
-Most evaluator and search-ordering constants from `engine/eval_constants.hpp`
-are also exposed as UCI `spin` options. The displayed UCI names use CamelCase,
-for example `PassedPawnBonus`, while tuning configs may also use the constant
-names with underscores, for example `PASSED_PAWN_BONUS`.
-
-## Evaluator Fine Tuning
-
-HydraY can tune evaluator constants through self-play using
-`chess-tuning-tools` and `cutechess-cli`. The tuning workflow lives in:
-
-```txt
-tuning/base_config.json     shared engine, depth, rounds, and book settings
-tuning/groups/*.json        tracked parameter groups
-tuning/tuning_config.json   generated/active experiment configuration
-tuning/run_tune_local.sh    local launcher
-tuning/chess_uci.sh         launches the engine in UCI mode
-tuning/cutechess-cli        compatibility wrapper for local cutechess-cli
-tuning/books/openings.pgn   opening suite used by cutechess
-```
-
-Install the external tools in a Python environment:
-
-```sh
-python3 -m venv tuning/.venv
-source tuning/.venv/bin/activate
-pip install chess-tuning-tools
-```
-
-Install `cutechess-cli` with your system package manager or from its upstream
-build. Verify both tools are visible:
+The `tune` CLI must be on your PATH (it lives in a dedicated Python environment,
+not in `tuning/.venv`). Verify your tools:
 
 ```sh
 tune --help
 cutechess-cli --version
 ```
 
-Build the engine before starting a tuning run:
-
-```sh
-make prod
-```
-
-Run a tracked parameter group:
+Run a tracked parameter group (build first with `make prod`):
 
 ```sh
 cd tuning
-./run_tune_local.sh pawn_refine
-./run_tune_local.sh threats_direct
+./run_tune_local.sh pawn_structure
 ./run_tune_local.sh king_attack_units
 ```
 
-`run_tune_local.sh` tracks each dataset under `tuning/.tuning_state/` using the
-group's `data_path`, `model_path`, and full config hash. A new dataset or a
-changed config automatically gets `--no-resume --no-fast-resume`; an unchanged
-dataset resumes, even if other groups were run in between.
+See `tuning/groups/` for the full list of groups (pawn structure, mobility, king
+safety, threats, material, and more). `run_tune_local.sh` merges the chosen group
+with `base_config.json`, writes the active `tuning_config.json`, and tracks each
+dataset under `tuning/.tuning_state/` so unchanged runs resume and changed
+configs start fresh.
 
-### Tuning Config
-
-Common settings live in `tuning/base_config.json`. Each tracked tuning group
-lives under `tuning/groups/` and contains its own `parameter_ranges`,
-`data_path`, and `model_path`. `run_tune_local.sh` merges the selected group
-with the base config and writes the active `tuning_config.json`.
-
-Available group files include:
-
-```txt
-pawn_refine.json
-pawn_support_center.json
-pawn_forks.json
-material_values.json
-threats_direct.json
-threats_secondary.json
-mobility_outposts.json
-mobility_outpost_details.json
-pinned_pieces.json
-hanging_pawns.json
-hanging_pieces.json
-rook_activity.json
-opening_fundamentals.json
-phase_initiative.json
-king_shelter_files.json
-king_attack_units.json
-king_safety_residual.json
-king_activity_exposure.json
-stalemate_draw.json
-search_ordering.json
-```
-
-Keep each experiment focused: tune no more than about 8 related parameters at
-once, and use a separate data/model pair for each group.
-
-Example depth-limited experiment:
-
-```json
-{
-  "parameter_ranges": {
-    "LOW_MOBILITY_KNIGHT_PENALTY": "Integer(8, 12)",
-    "PINNED_KNIGHT_PENALTY": "Integer(32, 38)"
-  },
-  "engine1_depth": 6,
-  "engine2_depth": 6,
-  "rounds": 1,
-  "opening_file": "books/openings.pgn",
-  "data_path": "mobility_data.npz",
-  "model_path": "mobility_model.pkl"
-}
-```
-
-For slower but more realistic testing, replace depth limits with time controls:
-
-```json
-"engine1_tc": "10+0.5",
-"engine2_tc": "10+0.5"
-```
-
-Do not keep depth and time-control settings for the same engine at the same
-time. For quick exploration use depth 6 or a short TC; for confirmation runs use
-more rounds and a longer TC.
-
-### Monitoring
-
-Watch the tuner log:
-
-```sh
-tail -f log.txt
-```
-
-Watch games as PGN:
-
-```sh
-tail -f out.pgn
-```
-
-Check that processes are alive:
-
-```sh
-ps -ef | grep -E 'tune|cutechess|chess_uci|/chess' | grep -v grep
-```
-
-Generated tuning artifacts are intentionally ignored by git:
-
-```txt
-tuning/engines.json
-tuning/log.txt
-tuning/out.pgn
-tuning/*.npz
-tuning/*.pkl
-tuning/plots/
-```
+Keep each run focused: tune at most about 8 related parameters at once.
 
 ### Reading Results
 
-Important log lines:
+Watch progress with `tail -f tuning/log.txt`. Key lines:
 
 ```txt
-Testing {...}          parameter point currently being tested
-Got Elo: X +- Y        raw result of that tested point
-Current optimum: {...} best point estimated by the Bayesian model
-Estimated Elo: X +- Y  model estimate for the current optimum
+Testing {...}          parameter point being tested right now
+Current optimum: {...} best point the Bayesian model has found
+Estimated Elo: X +- Y  model estimate for that optimum
 ```
 
-Use `Current optimum`, not a single lucky `Got Elo`, when applying tuned values.
-If the 90% confidence interval includes zero, the result is still uncertain and
-should be confirmed with more games.
-
-To apply tuned values, stop the run with `Ctrl+C`, copy the latest stable
-`Current optimum` values into `engine/eval_constants.hpp`, rebuild with
-`make prod`, then validate with a separate self-play or test run.
+Apply `Current optimum`, not a single lucky `Got Elo`. If its 90% confidence
+interval includes zero, the result is still uncertain — confirm with more games.
+To apply: stop with `Ctrl+C`, copy the optimum into `engine/eval_constants.hpp`,
+rebuild with `make prod`, then re-validate with SPRT or a gauntlet.
 
 ## How the Engine Works
 
-The board is represented with compact square storage plus piece bitboards.
-Sliding attacks use precomputed magic bitboard tables initialized at engine
-startup. Zobrist hashing tracks positions for the transposition table and
-repetition detection.
+The board uses compact square storage plus piece bitboards, kept in sync at all
+times. Sliding attacks use magic bitboard tables built at startup. Zobrist
+hashing tracks positions for the transposition table and repetition detection.
 
-Search uses iterative deepening over alpha-beta/PVS. It includes quiescence
-search, transposition-table probing/storing, killer/history/countermove/capture
-history heuristics, move ordering, aspiration windows, null-move pruning,
-reverse futility pruning, draw handling for stalemate/repetition/fifty-move
-rules, and limited root parallelism.
+Search is iterative deepening over alpha-beta/PVS with: quiescence search,
+transposition-table probing/storing, aspiration windows, null-move pruning,
+reverse futility pruning, razoring, ProbCut, singular extensions, late move
+reductions and pruning, killer/history/countermove/capture-history move
+ordering, draw handling (stalemate, repetition, fifty-move, insufficient
+material), and root parallelism.
 
-The evaluator is handcrafted and split by piece/domain. It combines material,
-piece-square tables, pawn structure, passed pawns, candidate passers, king
-safety, king activity, rook and queen activity, mobility, outposts, threats,
-hanging pieces, trapped pieces, coordination, bishop pair, castling, and game
-phase blending. Constants live in:
-
-```txt
-engine/eval_constants.hpp
-```
+The evaluator is handcrafted and split by piece and domain. It combines
+material, piece-square tables, pawn structure, passed and candidate passed
+pawns, king safety and activity, rook and queen activity, mobility, outposts,
+threats, hanging and trapped pieces, coordination, bishop pair, castling, and
+game-phase blending. All constants live in `engine/eval_constants.hpp`.
 
 ## Static Analysis
 
-Run the full static-analysis suite:
-
 ```sh
-make analyze
+make analyze       # cppcheck, clang-tidy, iwyu, scan-build, GCC analyzer, cppclean, lizard
+make complexity    # lizard complexity only
 ```
 
-This can run cppcheck, clang-tidy, include-what-you-use, scan-build, GCC
-analyzer, cppclean, and lizard depending on what is installed locally. Reports
-are written to files such as:
-
-```txt
-analisi.log
-scan-build-report/
-complexity-report.csv
-```
-
-Run only complexity analysis:
-
-```sh
-make complexity
-```
+Reports are written to files such as `analysis.log`, `scan-build-report/`, and
+`complexity-report.csv` (depending on which tools are installed).
 
 ## Project Layout
 
 ```txt
-board/        board representation, FEN, move execution, legality, bitboards
-engine/       search, evaluation, engine runtime, constants
-engine/eval/  evaluator modules by piece and feature
-engine/search move generation, sorting, alpha-beta search
-tt/           Zobrist hashing and transposition table
-uci/          UCI protocol interface
-driver/       terminal UI and game modes
-tests/        functional, performance, and TT benchmark programs
-script/       benchmark and analysis helper scripts
+board/         board representation, FEN, move execution, legality, bitboards
+engine/        engine runtime and tunable constants
+engine/eval/   evaluator modules by piece and feature
+engine/search/ move generation, move ordering, alpha-beta search
+tt/            Zobrist hashing and transposition table
+uci/           UCI protocol interface
+driver/        terminal UI and game modes
+tests/         functional, performance, and benchmark programs
+tuning/        self-play tuning, SPRT, and gauntlet scripts
+script/        benchmark and analysis helpers
 ```
 
 ## License
 
 See `LICENSE`.
+</content>
+</invoke>

@@ -16,10 +16,10 @@ struct Limits {
     int64_t  btime     = 0;     // Black remaining time
     int64_t  winc      = 0;     // White increment per move
     int64_t  binc      = 0;     // Black increment per move
-    int      movestogo = 0;     // Moves until next time control (0 = sudden death)
     int64_t  movetime  = 0;     // Fixed time for this move (0 = not set)
     int64_t  maxDepth  = 0;     // `go depth N` (0 = not set)
     uint64_t maxNodes  = 0;     // `go nodes N` (0 = not set)
+    int      movestogo = 0;     // Moves until next time control (0 = sudden death)
     bool     infinite  = false; // `go infinite`
     bool     ponder    = false; // `go ponder`
     bool     hasClock  = false; // true once any of wtime/btime is supplied

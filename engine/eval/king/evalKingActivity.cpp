@@ -1,4 +1,3 @@
-#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -34,17 +33,15 @@ inline PhaseValue Evaluator::evalKingActivitySide(const chess::Board& b, int sid
     return (sign * enemiesNearKing) * engine::KING_SAFETY_PENALTY;
 }
 
-PhaseValue Evaluator::evalKingActivity(const chess::Board& b, bool isEndgame) noexcept {
-    return isEndgame
-        ? (evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1))
-        : (evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1));
+PhaseValue Evaluator::evalKingActivity(const chess::Board& b) noexcept {
+    return evalKingActivitySide<true>(b, 0) + evalKingActivitySide<true>(b, 1);
 }
 
 PhaseValue Evaluator::evalKingActivityPair(const chess::Board& b) noexcept {
     const PhaseValue mgPart = evalKingActivitySide<false>(b, 0) + evalKingActivitySide<false>(b, 1);
     const PhaseValue egPart = evalKingActivitySide<true>(b, 0)  + evalKingActivitySide<true>(b, 1);
     // Composite: mg-branch contributes only to mg side, eg-branch only to eg.
-    return PhaseValue{mgPart.mg, egPart.eg};
+    return {mgPart.mg, egPart.eg};
 }
 
 } // namespace engine

@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
-#include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -17,7 +17,7 @@
 #include "zobrist.hpp"
 #include "../ascii_utils.hpp"
 
-class TranspositionTable {
+class TT {
 
 public:
     enum class HugePageMode : uint8_t {
@@ -53,12 +53,6 @@ public:
         static constexpr uint8_t FLAG_SHIFT = DEPTH_BITS;
         static constexpr uint16_t FLAG_MASK = static_cast<uint16_t>((1u << FLAG_BITS) - 1u);
         static constexpr uint8_t AGE_SHIFT = DEPTH_BITS + FLAG_BITS;
-
-        struct DecodedMove {
-            uint8_t from = 0;
-            uint8_t to = 0;
-            char promo = '\0';
-        };
 
         static constexpr uint8_t promoCodeFromChar(char promo) noexcept {
             switch (promo) {
@@ -122,14 +116,14 @@ public:
                  | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
         }
 
-        static constexpr uint16_t encodeMove(uint8_t from, uint8_t to, char promo) noexcept {
-            return (static_cast<uint16_t>(from) & 0x3F)
-                 | ((static_cast<uint16_t>(to) & 0x3F) << 6)
-                 | ((static_cast<uint16_t>(promoCodeFromChar(promo)) & 0xF) << 12);
+        static constexpr uint16_t encodeMove(const chess::Move& m) noexcept {
+            return (static_cast<uint16_t>(m.from) & 0x3F)
+                 | ((static_cast<uint16_t>(m.to) & 0x3F) << 6)
+                 | ((static_cast<uint16_t>(promoCodeFromChar(m.promotionPiece)) & 0xF) << 12);
         }
 
-        static constexpr DecodedMove decodeMove(uint16_t encoded) noexcept {
-            return DecodedMove{
+        static constexpr chess::Move decodeMove(uint16_t encoded) noexcept {
+            return chess::Move{
                 static_cast<uint8_t>(encoded & 0x3F),
                 static_cast<uint8_t>((encoded >> 6) & 0x3F),
                 promoCharFromCode(static_cast<uint8_t>((encoded >> 12) & 0xF))
@@ -137,48 +131,84 @@ public:
         }
     };
 
-    static constexpr size_t BUCKET_COUNT = 1u << 20; // 1M buckets = 4M entries = 64 MiB, tests/perf tuned.
     static constexpr size_t ENTRIES_PER_BUCKET = 4;
-    static constexpr size_t TABLE_SIZE = BUCKET_COUNT * ENTRIES_PER_BUCKET;
-    static constexpr size_t TABLE_BYTES = sizeof(Entry) * TABLE_SIZE;
+    static constexpr size_t DEFAULT_BUCKET_COUNT = 1u << 20; // 1M buckets = 4M entries = 64 MiB of entries; tests/perf tuned.
+    static constexpr size_t MIN_BUCKET_COUNT = 1u << 14;     // 16K buckets ~= 1 MiB of entries (Hash min).
+    static constexpr size_t MAX_BUCKET_COUNT = 1u << 26;     // 64M buckets ~= 4 GiB of entries (Hash max).
+    static constexpr size_t DEFAULT_HASH_MB = 64;
+    static constexpr size_t MIN_HASH_MB = 1;
+    static constexpr size_t MAX_HASH_MB = 4096;
     static constexpr size_t HUGE_PAGE_MIN_BYTES = 32u * 1024u * 1024u; // 32 MiB, common huge page size on x86-64 Linux.
 
     static_assert(sizeof(Entry) == 16, "TT entry must be 16 bytes");
     static_assert((sizeof(Entry) * ENTRIES_PER_BUCKET) == 64, "Each bucket should be exactly one cache line");
-    static_assert((BUCKET_COUNT & (BUCKET_COUNT - 1)) == 0, "BUCKET_COUNT must be power of 2");
+    static_assert((DEFAULT_BUCKET_COUNT & (DEFAULT_BUCKET_COUNT - 1)) == 0, "DEFAULT_BUCKET_COUNT must be power of 2");
 
-    explicit TranspositionTable(HugePageMode mode = HugePageMode::Auto)
-        : table_(nullptr, TableDeleter{})
-        , generation_(0)
-        , hugePageMode_(resolveHugePageMode(mode))
-        , hugePagesBacked_(false) {
-        table_ = allocateTable(hugePageMode_, hugePagesBacked_);
-        clear();
+    // Map a requested Hash size in MiB to a power-of-two bucket count. The MiB
+    // figure sizes the entry array (the 64-byte-per-bucket cache lines); the
+    // per-bucket seqlock word is a small (~6%) overhead on top. Rounding down to
+    // a power of two keeps the index mask (`& (bucketCount - 1)`) valid.
+    [[nodiscard]] static constexpr size_t bucketCountForMB(size_t megabytes) noexcept {
+        const size_t clampedMB = std::clamp(megabytes, MIN_HASH_MB, MAX_HASH_MB);
+        const size_t targetBytes = clampedMB * 1024u * 1024u;
+        const size_t rawBuckets = targetBytes / (ENTRIES_PER_BUCKET * sizeof(Entry));
+        const size_t pow2 = std::bit_floor(rawBuckets == 0 ? size_t{1} : rawBuckets);
+        return std::clamp(pow2, MIN_BUCKET_COUNT, MAX_BUCKET_COUNT);
     }
+
+    explicit TT(HugePageMode mode = HugePageMode::Auto)
+        : hugePageMode_(resolveHugePageMode(mode)) {
+        if (!allocateInPlace(DEFAULT_BUCKET_COUNT)) {
+            throw std::bad_alloc{};
+        }
+    }
+
+    // Decoded snapshot of a probed entry. `hit == false` leaves the other
+    // fields at their zero defaults (flag INVALID, move 0).
+    struct ProbeResult {
+        int32_t  score = 0;
+        uint16_t move  = 0;
+        uint8_t  depth = 0;
+        uint8_t  flag  = Entry::INVALID;
+        bool     hit   = false;
+    };
 
     inline void prefetch(uint64_t key) noexcept;
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
-    inline bool probe(uint64_t key, uint8_t depth, int32_t alpha, int32_t beta, int32_t& outScore) noexcept;
-    inline bool probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept;
-    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept;
-    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept;
+    // Cold-path convenience: the stored move for `key`, decoded ({} = none).
+    [[nodiscard]] inline chess::Move probeDecodedMove(uint64_t key) const noexcept {
+        uint16_t encoded = 0;
+        return probeMove(key, encoded) ? Entry::decodeMove(encoded) : chess::Move{};
+    }
+    // The one hot-path read: a single bucket snapshot per node feeds the TT
+    // cutoff, static-eval tightening, singular-extension gate and hash-move
+    // ordering. Bound/depth gating is the caller's job.
+    [[nodiscard]] inline ProbeResult probeEntry(uint64_t key) const noexcept;
+    // bestMove == 0 means "no move to store" (a bound-only write): the existing
+    // move in a matching entry is preserved rather than clobbered.
+    inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove = 0) noexcept;
+
+    // Resize to approximately `megabytes` MiB (rounded down to a power-of-two
+    // bucket count) and clear all entries. NOT safe to call during a live
+    // search; the UCI layer stops the search before changing options. On
+    // allocation failure the existing table is left intact and false is
+    // returned.
+    inline bool resize(size_t megabytes) noexcept;
+    [[nodiscard]] size_t sizeMB() const noexcept {
+        return (bucketCount_ * ENTRIES_PER_BUCKET * sizeof(Entry)) / (1024u * 1024u);
+    }
 
     inline void incrementGeneration() noexcept { ++generation_; }
     inline void clear() noexcept;
 
-    TranspositionTable(const TranspositionTable&) = delete;
-    TranspositionTable& operator=(const TranspositionTable&) = delete;
-    TranspositionTable(TranspositionTable&&) = default;
-    TranspositionTable& operator=(TranspositionTable&&) = default;
+    TT(const TT&) = delete;
+    TT& operator=(const TT&) = delete;
+    TT(TT&&) = default;
+    TT& operator=(TT&&) = default;
 
 private:
     struct BucketSeq {
         std::atomic<uint32_t> value{0U};
-    };
-
-    struct alignas(64) TableStorage {
-        std::array<Entry, TABLE_SIZE> entries{};
-        std::array<BucketSeq, BUCKET_COUNT> bucketSeq{};
     };
 
     enum class AllocationKind : uint8_t {
@@ -186,34 +216,46 @@ private:
         MMap
     };
 
-    struct TableDeleter {
+    // Total bytes for one contiguous block holding the entry array followed by
+    // the per-bucket seqlock words. The entry array's size is a multiple of 64,
+    // so the seqlock sub-array starts cache-line aligned.
+    [[nodiscard]] static constexpr size_t allocBytesFor(size_t buckets) noexcept {
+        return buckets * ENTRIES_PER_BUCKET * sizeof(Entry) + buckets * sizeof(BucketSeq);
+    }
+
+    // Owns one raw contiguous block: [Entry[]][BucketSeq[]]. Both sub-arrays are
+    // trivially destructible, so the deleter only releases storage.
+    struct BlockDeleter {
         AllocationKind kind = AllocationKind::Heap;
         size_t mappedBytes = 0;
 
-        inline void operator()(TableStorage* ptr) const noexcept {
+        inline void operator()(void* ptr) const noexcept {
             if (ptr == nullptr) return;
-            ptr->~TableStorage();
 #if defined(__linux__)
             if (kind == AllocationKind::MMap) {
-                (void)::munmap(static_cast<void*>(ptr), mappedBytes);
+                (void)::munmap(ptr, mappedBytes);
                 return;
             }
 #endif
-            ::operator delete(static_cast<void*>(ptr), std::align_val_t(alignof(TableStorage)));
+            ::operator delete(ptr, std::align_val_t(64));
         }
     };
 
-    using TablePtr = std::unique_ptr<TableStorage, TableDeleter>;
+    using BlockPtr = std::unique_ptr<void, BlockDeleter>;
 
-    TablePtr table_;
-    uint8_t generation_;
+    BlockPtr table_{nullptr, BlockDeleter{}};
+    uint8_t generation_ = 0;
     HugePageMode hugePageMode_;
-    bool hugePagesBacked_;
+    bool hugePagesBacked_ = false;
+    Entry* entries_ = nullptr;
+    BucketSeq* bucketSeq_ = nullptr;
+    size_t bucketCount_ = 0;
+    size_t bucketMask_ = 0;
 
-    inline Entry* data() noexcept { return table_->entries.data(); }
-    inline const Entry* data() const noexcept { return table_->entries.data(); }
-    inline BucketSeq* seqData() noexcept { return table_->bucketSeq.data(); }
-    inline const BucketSeq* seqData() const noexcept { return table_->bucketSeq.data(); }
+    inline Entry* data() noexcept { return entries_; }
+    inline const Entry* data() const noexcept { return entries_; }
+    inline BucketSeq* seqData() noexcept { return bucketSeq_; }
+    inline const BucketSeq* seqData() const noexcept { return bucketSeq_; }
 
     struct EntrySnapshot {
         uint64_t key = 0ULL;
@@ -276,7 +318,7 @@ private:
     // snapshot read failed or no matching valid entry exists.
     [[nodiscard]] __attribute__((always_inline)) inline bool findEntrySnapshot(
         uint64_t key, EntrySnapshot& out) const noexcept {
-        const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+        const size_t bucketIndex = static_cast<size_t>(key) & bucketMask_;
         const Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
 
         const BucketSeq& bucketSeq = seqData()[bucketIndex];
@@ -317,90 +359,120 @@ private:
         return (value + alignment - 1u) & ~(alignment - 1u);
     }
 
-    [[nodiscard]] static inline TablePtr allocateHeapTable() {
-        void* raw = ::operator new(sizeof(TableStorage), std::align_val_t(alignof(TableStorage)));
-        auto* table = ::new (raw) TableStorage();
-        return TablePtr(table, TableDeleter{AllocationKind::Heap, 0});
+    [[nodiscard]] static inline BlockPtr allocateHeapBlock(size_t bytes) noexcept {
+        void* raw = ::operator new(bytes, std::align_val_t(64), std::nothrow);
+        return BlockPtr(raw, BlockDeleter{AllocationKind::Heap, 0});
     }
 
 #if defined(__linux__)
-    [[nodiscard]] static inline TablePtr makeMappedTable(void* mappedMemory, size_t mappedBytes) {
-        auto* table = ::new (mappedMemory) TableStorage();
-        return TablePtr(table, TableDeleter{AllocationKind::MMap, mappedBytes});
-    }
-
-    [[nodiscard]] static inline TablePtr tryAllocateExplicitHugePages(bool& outHugePagesBacked) {
+    [[nodiscard]] static inline BlockPtr tryAllocateExplicitHugePages(size_t bytes, bool& outHugePagesBacked) noexcept {
         constexpr size_t HugePageBytes = 2u * 1024u * 1024u;
-        const size_t mapBytes = alignUp(sizeof(TableStorage), HugePageBytes);
+        const size_t mapBytes = alignUp(bytes, HugePageBytes);
         int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB;
 #if defined(MAP_HUGE_2MB)
         flags |= MAP_HUGE_2MB;
 #endif
         void* mapped = ::mmap(nullptr, mapBytes, PROT_READ | PROT_WRITE, flags, -1, 0);
         if (mapped == MAP_FAILED) {
-            return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+            return BlockPtr(nullptr, BlockDeleter{AllocationKind::Heap, 0});
         }
 
         outHugePagesBacked = true;
-        return makeMappedTable(mapped, mapBytes);
+        return BlockPtr(mapped, BlockDeleter{AllocationKind::MMap, mapBytes});
     }
 
-    [[nodiscard]] static inline TablePtr tryAllocateTransparentHugePages(bool& outHugePagesBacked) {
-        const size_t mapBytes = sizeof(TableStorage);
+    [[nodiscard]] static inline BlockPtr tryAllocateTransparentHugePages(size_t bytes, bool& outHugePagesBacked) noexcept {
+        const size_t mapBytes = bytes;
         void* mapped = ::mmap(nullptr, mapBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (mapped == MAP_FAILED) {
-            return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+            return BlockPtr(nullptr, BlockDeleter{AllocationKind::Heap, 0});
         }
 
 #if defined(MADV_HUGEPAGE)
         if (::madvise(mapped, mapBytes, MADV_HUGEPAGE) == 0) {
             outHugePagesBacked = true;
-            return makeMappedTable(mapped, mapBytes);
+            return BlockPtr(mapped, BlockDeleter{AllocationKind::MMap, mapBytes});
         }
 #endif
 
         (void)::munmap(mapped, mapBytes);
-        return TablePtr(nullptr, TableDeleter{AllocationKind::Heap, 0});
+        return BlockPtr(nullptr, BlockDeleter{AllocationKind::Heap, 0});
     }
 #endif
 
-    [[nodiscard]] static inline TablePtr allocateTable(HugePageMode mode, bool& outHugePagesBacked) {
+    [[nodiscard]] static inline BlockPtr allocateBlock(HugePageMode mode, size_t buckets, bool& outHugePagesBacked) noexcept {
         outHugePagesBacked = false;
+        const size_t bytes = allocBytesFor(buckets);
 
-        const bool hugePageAllowed = (mode != HugePageMode::Off) && (TABLE_BYTES >= HUGE_PAGE_MIN_BYTES);
+        const bool hugePageAllowed = (mode != HugePageMode::Off) && (bytes >= HUGE_PAGE_MIN_BYTES);
         if (hugePageAllowed) {
 #if defined(__linux__)
-            TablePtr explicitHuge = tryAllocateExplicitHugePages(outHugePagesBacked);
+            BlockPtr explicitHuge = tryAllocateExplicitHugePages(bytes, outHugePagesBacked);
             if (explicitHuge) return explicitHuge;
 
-            TablePtr transparentHuge = tryAllocateTransparentHugePages(outHugePagesBacked);
+            BlockPtr transparentHuge = tryAllocateTransparentHugePages(bytes, outHugePagesBacked);
             if (transparentHuge) return transparentHuge;
 #endif
         }
 
-        return allocateHeapTable();
+        return allocateHeapBlock(bytes);
+    }
+
+    // Begin the lifetimes of the Entry[] and BucketSeq[] sub-arrays inside the
+    // raw block and hand back typed pointers. Value-initialization zeroes every
+    // field, leaving all entries INVALID and all seqlocks unlocked.
+    static inline void constructArrays(void* base, size_t buckets, Entry*& outEntries, BucketSeq*& outSeq) noexcept {
+        const size_t entryCount = buckets * ENTRIES_PER_BUCKET;
+        Entry* entries = reinterpret_cast<Entry*>(base);
+        for (size_t i = 0; i < entryCount; ++i) ::new (static_cast<void*>(&entries[i])) Entry{};
+
+        void* seqRaw = reinterpret_cast<std::byte*>(base) + entryCount * sizeof(Entry);
+        BucketSeq* seq = reinterpret_cast<BucketSeq*>(seqRaw);
+        for (size_t i = 0; i < buckets; ++i) ::new (static_cast<void*>(&seq[i])) BucketSeq{};
+
+        outEntries = entries;
+        outSeq = seq;
+    }
+
+    // Allocate a block for `buckets` buckets, construct its sub-arrays, and swap
+    // it in as the live table (freeing any previous block). Returns false and
+    // leaves the current table untouched on allocation failure.
+    [[nodiscard]] inline bool allocateInPlace(size_t buckets) noexcept {
+        bool huge = false;
+        BlockPtr block = allocateBlock(hugePageMode_, buckets, huge);
+        if (!block) return false;
+
+        Entry* newEntries = nullptr;
+        BucketSeq* newSeq = nullptr;
+        constructArrays(block.get(), buckets, newEntries, newSeq);
+
+        table_ = std::move(block); // releases the previous block via its deleter
+        entries_ = newEntries;
+        bucketSeq_ = newSeq;
+        bucketCount_ = buckets;
+        bucketMask_ = buckets - 1;
+        hugePagesBacked_ = huge;
+        return true;
     }
 
     [[nodiscard]] static constexpr uint8_t clampDepth(uint8_t depth) noexcept {
         return (depth <= Entry::MAX_DEPTH) ? depth : Entry::MAX_DEPTH;
     }
 
-    inline void storeImpl(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove, bool replaceBestMove) noexcept;
-
 };
 
-inline void TranspositionTable::prefetch(uint64_t key) noexcept {
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+inline void TT::prefetch(uint64_t key) noexcept {
+    const size_t bucketIndex = static_cast<size_t>(key) & bucketMask_;
     __builtin_prefetch(data() + (bucketIndex * ENTRIES_PER_BUCKET), 0, 3);
     __builtin_prefetch(seqData() + bucketIndex, 0, 3);
 }
 
-static_assert(TranspositionTable::Entry::encodeMove(12, 28, 'q') == TranspositionTable::Entry::encodeMove(12, 28, 'Q'), "promotion encoding should be case-insensitive");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).from == 12, "move decode from mismatch");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).to == 28, "move decode to mismatch");
-static_assert(TranspositionTable::Entry::decodeMove(TranspositionTable::Entry::encodeMove(12, 28, 'n')).promo == 'n', "move decode promotion mismatch");
+static_assert(TT::Entry::encodeMove(chess::Move{12, 28, 'q'}) == TT::Entry::encodeMove(chess::Move{12, 28, 'Q'}), "promotion encoding should be case-insensitive");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).from == 12, "move decode from mismatch");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).to == 28, "move decode to mismatch");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).promotionPiece == 'n', "move decode promotion mismatch");
 
-inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
+inline bool TT::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     EntrySnapshot entry;
     if (!findEntrySnapshot(key, entry)) {
         outBestMove = 0;
@@ -410,41 +482,26 @@ inline bool TranspositionTable::probeMove(uint64_t key, uint16_t& outBestMove) c
     return outBestMove != 0;
 }
 
-inline bool TranspositionTable::probe(uint64_t key, uint8_t depth,
-                                      int32_t alpha, int32_t beta, int32_t& outScore) noexcept {
+inline TT::ProbeResult TT::probeEntry(uint64_t key) const noexcept {
     EntrySnapshot entry;
-    if (!findEntrySnapshot(key, entry)) return false;
-    if (Entry::depthFromPayload(entry.payload) < clampDepth(depth)) return false;
-
-    const uint8_t flag = Entry::flagFromPayload(entry.payload);
-    const int32_t score = Entry::scoreFromPayload(entry.payload);
-    if (flag == Entry::EXACT
-        || (flag == Entry::LOWERBOUND && score >= beta)
-        || (flag == Entry::UPPERBOUND && score <= alpha)) {
-        outScore = score;
-        return true;
-    }
-    return false;
+    ProbeResult result;
+    if (!findEntrySnapshot(key, entry)) return result;
+    result.score = Entry::scoreFromPayload(entry.payload);
+    result.move  = Entry::bestMoveFromPayload(entry.payload);
+    result.depth = Entry::depthFromPayload(entry.payload);
+    result.flag  = Entry::flagFromPayload(entry.payload);
+    result.hit   = true;
+    return result;
 }
 
-inline bool TranspositionTable::probeSE(uint64_t key, uint8_t minDepth, int32_t& outScore, uint8_t& outFlag) const noexcept {
-    EntrySnapshot entry;
-    if (!findEntrySnapshot(key, entry)) return false;
-    if (Entry::depthFromPayload(entry.payload) < minDepth) return false;
-    outScore = Entry::scoreFromPayload(entry.payload);
-    outFlag  = Entry::flagFromPayload(entry.payload);
-    return true;
-}
-
-inline void TranspositionTable::storeImpl(
+inline void TT::store(
     uint64_t key,
     uint8_t depth,
     int32_t score,
     uint8_t flag,
-    uint16_t bestMove,
-    bool replaceBestMove) noexcept {
+    uint16_t bestMove) noexcept {
     const uint8_t storedDepth = clampDepth(depth);
-    const size_t bucketIndex = static_cast<size_t>(key) & (BUCKET_COUNT - 1);
+    const size_t bucketIndex = static_cast<size_t>(key) & bucketMask_;
     Entry* bucket = data() + (bucketIndex * ENTRIES_PER_BUCKET);
 
     BucketSeq& bucketSeq = seqData()[bucketIndex];
@@ -467,7 +524,8 @@ inline void TranspositionTable::storeImpl(
 
         if (entryKey == key) {
             if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
-                const uint16_t moveToStore = replaceBestMove ? bestMove : Entry::bestMoveFromPayload(entryPayload);
+                // Preserve the stored move on a bound-only write (bestMove == 0).
+                const uint16_t moveToStore = (bestMove != 0) ? bestMove : Entry::bestMoveFromPayload(entryPayload);
                 const uint64_t newPayload = Entry::encodePayload(score, moveToStore, storedDepth, generation_, flag);
                 atomicWord(entry.payload).store(newPayload, std::memory_order_relaxed);
             }
@@ -490,29 +548,37 @@ inline void TranspositionTable::storeImpl(
     unlockBucket(bucketSeq, lockBase);
 }
 
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag) noexcept {
-    storeImpl(key, depth, score, flag, 0, false);
-}
-
-inline void TranspositionTable::store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag, uint16_t bestMove) noexcept {
-    storeImpl(key, depth, score, flag, bestMove, true);
-}
-
-inline void TranspositionTable::clear() noexcept {
-    std::fill_n(data(), TABLE_SIZE, Entry{});
+inline void TT::clear() noexcept {
+    std::fill_n(data(), bucketCount_ * ENTRIES_PER_BUCKET, Entry{});
     BucketSeq* bucketSeq = seqData();
-    for (size_t i = 0; i < BUCKET_COUNT; ++i) {
+    for (size_t i = 0; i < bucketCount_; ++i) {
         bucketSeq[i].value.store(0U, std::memory_order_relaxed);
     }
 }
 
-inline constexpr TranspositionTable::Entry::Flag
-determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
-    if (score <= alphaOrig) return TranspositionTable::Entry::UPPERBOUND;
-    if (score >= beta) return TranspositionTable::Entry::LOWERBOUND;
-    return TranspositionTable::Entry::EXACT;
+inline bool TT::resize(size_t megabytes) noexcept {
+    const size_t newBuckets = bucketCountForMB(megabytes);
+
+    // Same bucket count: nothing to reallocate, just drop the contents.
+    if (newBuckets == bucketCount_ && entries_ != nullptr) {
+        clear();
+        return true;
+    }
+
+    // Allocate the replacement before releasing the current table, so a failed
+    // allocation leaves the existing table fully intact (allocateInPlace only
+    // swaps members after a successful allocation). Peak memory briefly holds
+    // both tables; resize is a rare, search-idle operation.
+    return allocateInPlace(newBuckets);
 }
 
-static_assert(determineFlag(100, 50, 200) == TranspositionTable::Entry::EXACT, "determineFlag logic error");
-static_assert(determineFlag(40, 50, 200) == TranspositionTable::Entry::UPPERBOUND, "determineFlag logic error");
-static_assert(determineFlag(250, 50, 200) == TranspositionTable::Entry::LOWERBOUND, "determineFlag logic error");
+inline constexpr TT::Entry::Flag
+determineFlag(int32_t score, int32_t alphaOrig, int32_t beta) noexcept {
+    if (score <= alphaOrig) return TT::Entry::UPPERBOUND;
+    if (score >= beta) return TT::Entry::LOWERBOUND;
+    return TT::Entry::EXACT;
+}
+
+static_assert(determineFlag(100, 50, 200) == TT::Entry::EXACT, "determineFlag logic error");
+static_assert(determineFlag(40, 50, 200) == TT::Entry::UPPERBOUND, "determineFlag logic error");
+static_assert(determineFlag(250, 50, 200) == TT::Entry::LOWERBOUND, "determineFlag logic error");

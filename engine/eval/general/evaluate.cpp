@@ -96,7 +96,7 @@ int32_t Evaluator::evaluateUnifiedPhase(const chess::Board& b, int32_t materialM
         acc += evalPieceCoordinationCached(b);
         acc += evalOutpostsCached(b);
         acc += evalKingSafetyWithAttackData(b, whitePawns, blackPawns, data);
-        acc += evalBlockedPawnByBishopsCached(b);
+        acc += evalBlockedPawnByBishops(b);
         acc += evalPawnForks(b);
         acc += evalBlockedCenterWithPieces(b, occ);
         acc += evalKingMiddlegame(b, whitePawns, blackPawns, data);
@@ -133,13 +133,13 @@ int32_t Evaluator::evaluatePawnOnlyEndgamePhase(const chess::Board& b, int32_t m
     // pawn-only endgame fast path.
     PhaseValue acc{0, materialAndEgPsqt};
     acc += evalHangingPieces(b, pawnAttacks);
-    acc += evalPawnStructureCached(b, whitePawns, blackPawns, true);
-    acc += evalKingActivity(b, true);
+    acc += evalPawnStructureCached(b, whitePawns, blackPawns);
+    acc += evalKingActivity(b);
     acc += evalEndgameKingActivity(b);
     acc += evalMopUp(b);
     acc += evalPassedPawnKeySquares(b, whitePawns, blackPawns);
     acc += evalRuleOfSquare(b, whitePawns, blackPawns);
-    acc += evalInitiative(b, true);
+    acc += evalInitiativePair(b);
     return acc.eg;
 }
 

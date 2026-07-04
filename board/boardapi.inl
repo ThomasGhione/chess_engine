@@ -48,13 +48,11 @@ constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept 
     uint32_t mask = 0;
 
     if constexpr (captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_MATERIAL_DELTA);
         mask |= evalCacheBit(EVAL_CACHE_BISHOP_PAIR_BONUS);
     }
 
     if constexpr (pawnRelated) {
         mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_MG);
-        mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_EG);
         mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
         mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
         mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
@@ -126,16 +124,16 @@ inline Board::MoveKind Board::classifyMoveKind(
     uint8_t fromIndex,
     uint8_t toIndex,
     uint8_t destBefore,
-    const Coords& prevEnPassant
+    const Square& prevEnPassant
 ) noexcept {
-    const uint8_t fromRank = rank(fromIndex);
-    const uint8_t toRank = rank(toIndex);
+    const uint8_t fromRank = chess::rank(fromIndex);
+    const uint8_t toRank = chess::rank(toIndex);
 
     //FIXME Riduci numero indetazioni ci sono degli IF annidati
     // In questo modo il secondo if diventa con una sola indentazione
     if (movingType == KING) {
         if (fromRank == toRank) {
-            const int df = file(toIndex) - file(fromIndex);
+            const int df = chess::file(toIndex) - chess::file(fromIndex);
             if (df == 2 || df == -2) {
                 return MoveKind::Castling;
             }
@@ -147,13 +145,13 @@ inline Board::MoveKind Board::classifyMoveKind(
         return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
     }
 
-    const uint8_t fromFile = file(fromIndex);
-    const uint8_t toFile = file(toIndex);
+    const uint8_t fromFile = chess::file(fromIndex);
+    const uint8_t toFile = chess::file(toIndex);
     //FIXME Usa funzione helper
     if (fromFile != toFile
         && destBefore == EMPTY
-        && Coords::isInBounds(prevEnPassant)
-        && toIndex == prevEnPassant.index) {
+        && isValidSquare(prevEnPassant)
+        && toIndex == prevEnPassant) {
         return MoveKind::EnPassant;
     }
 
@@ -210,6 +208,10 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
     st.prevHistoryHead   = currentHash;
+    // Default that keeps undo a no-op for moves that do not push a history slot
+    // (null moves); doMove overwrites this via updateRepetitionAfterMove with the
+    // value of the exact slot it clobbers. historySize >= 1 always.
+    st.prevHistorySlotValue = repetitionHistory[historySize - 1];
     st.prevEvalCache     = evalCache;
     st.prevLastMoveChangeFlags = lastMoveChangeFlags;
 }
@@ -251,6 +253,9 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     epHashFile    = st.prevEpHashFile;
     castle        = st.prevCastle;
     hasMoved      = st.prevHasMoved;
+    // Restore the one repetitionHistory slot doMove overwrote before shrinking
+    // historySize back (writeIndex == current historySize - 1).
+    repetitionHistory[historySize - 1] = st.prevHistorySlotValue;
     historySize   = st.prevHistorySize;
     currentHash   = st.prevHistoryHead;
     evalCache     = st.prevEvalCache;
@@ -336,7 +341,7 @@ inline void Board::doMoveByKind(
         const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
         const uint8_t capIndex = static_cast<uint8_t>(toIndex + captureOffset);
         const uint8_t capturedPiece = get(capIndex);
-        const uint64_t capBit = bitMask(capIndex);
+        const uint64_t capBit = BIT_MASKS[capIndex];
         st.capturedPiece = capturedPiece;
         st.enPassantCapturedIndex = capIndex;
 
@@ -358,9 +363,9 @@ inline void Board::doMoveByKind(
 
     if constexpr (Kind == MoveKind::Castling) {
         // Move the rook with the same index-based fast path used for the king.
-        const uint8_t fromFile = file(fromIndex);
-        const uint8_t toFile = file(toIndex);
-        const uint8_t rankBase = rank(toIndex) << 3;
+        const uint8_t fromFile = chess::file(fromIndex);
+        const uint8_t toFile = chess::file(toIndex);
+        const uint8_t rankBase = chess::rank(toIndex) << 3;
         const uint8_t rookFromFile = (toFile > fromFile) ? 7 : 0;
         const uint8_t rookToFile   = (toFile > fromFile) ? 5 : 3;
         const uint8_t rookFromIndex = rankBase | rookFromFile;
@@ -385,7 +390,7 @@ inline void Board::doMoveByKind(
     if constexpr (Kind == MoveKind::DoublePawnPush) {
         // Cache the en-passant square directly from the midpoint index.
         const uint8_t enPassantIndex = (fromIndex + toIndex) >> 1;
-        enPassant = Coords{enPassantIndex};
+        enPassant = enPassantIndex;
     }
 
     if constexpr (isPromotionKind(Kind)) {
@@ -424,14 +429,14 @@ inline void Board::undoMoveByKind(
     if constexpr (Kind == MoveKind::EnPassant) {
         // Put back the pawn captured en-passant on its original square.
         const uint8_t capIndex = st.enPassantCapturedIndex;
-        const uint64_t capBit = bitMask(capIndex);
+        const uint64_t capBit = BIT_MASKS[capIndex];
         set(capIndex, static_cast<piece_id>(st.capturedPiece));
         occupancy |= capBit;
         addPieceToBB(st.capturedPiece, capIndex);
     } else if constexpr (isCaptureKind(Kind)) {
         if (st.capturedPiece != EMPTY) {
             // Restore the captured piece on the destination square.
-            const uint64_t toBit = bitMask(toIndex);
+            const uint64_t toBit = BIT_MASKS[toIndex];
             set(toIndex, static_cast<piece_id>(st.capturedPiece));
             occupancy |= toBit;
             addPieceToBB(st.capturedPiece, toIndex);

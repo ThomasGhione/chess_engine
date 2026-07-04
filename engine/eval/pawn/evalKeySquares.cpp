@@ -1,4 +1,3 @@
-#include <bit>
 #include "../evaluator.hpp"
 
 namespace engine {
@@ -28,8 +27,8 @@ PhaseValue Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
             const int sq = std::countr_zero(pawns);
             pawns &= pawns - 1;
 
-            const int file = chess::Board::file(sq);
-            const int rank = chess::Board::rank(sq);
+            const int file = chess::file(sq);
+            const int rank = chess::rank(sq);
 
             if ((enemyPawns & ADJACENT_AND_FILE_MASKS[file] & fwd[sq]) != 0ULL) continue;
 
@@ -40,7 +39,7 @@ PhaseValue Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
             for (int step : {step1, step2}) {
                 if (step < 0 || step > 7) continue;
                 for (int f = std::max(0, file - 1); f <= std::min(7, file + 1); ++f) {
-                    keySqs |= chess::Board::bitMask(step * 8 + f);
+                    keySqs |= chess::Board::BIT_MASKS[step * 8 + f];
                 }
             }
 
@@ -65,7 +64,7 @@ PhaseValue Evaluator::evalPassedPawnKeySquares(const chess::Board& b,
 
     const int32_t total = evalSide(whitePawns, blackPawns, true)
                         + evalSide(blackPawns, whitePawns, false);
-    return PhaseValue{0, total};
+    return {0, total};
 }
 
 } // namespace engine

@@ -196,17 +196,17 @@ ut::suite boardSuite = [] {
   "knight_check_on_c2_is_not_false_mate"_test = []{
     chess::Board b{};
     b.fromFenToBoard("r1b1kb1r/ppp1qppp/8/8/4Q3/8/PPnN1PPP/R1B1KB1R w KQkq - 0 2");
-    const chess::Coords kingFrom("e1");
-    const chess::Coords escapeSq("d1");
+    const chess::Square kingFrom = chess::parseSquare("e1");
+    const chess::Square escapeSq = chess::parseSquare("d1");
 
     expect(b.inCheck(chess::Board::WHITE));
     expect(b.hasAnyLegalMove(chess::Board::WHITE));
     expect(!b.isCheckmate(chess::Board::WHITE));
 
     expect(b.isLegalPseudoMove(
-      kingFrom.index,
-      escapeSq.index,
-      b.get(kingFrom.index)
+      kingFrom,
+      escapeSq,
+      b.get(kingFrom)
     )) << "White can answer the knight check with Kd1\n";
   };
 

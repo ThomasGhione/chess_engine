@@ -27,14 +27,11 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
     hardMs_          = 0;
 
     // Modes that bypass time management entirely: the search runs until an
-    // external stop, a node cap, or a depth cap. No clock => no budget.
-    const bool depthOrNodeBound = limits.maxDepth > 0 || limits.maxNodes > 0;
+    // external stop, a node cap, or a depth cap. No clock and no movetime =>
+    // no budget. This also covers pure depth/node-bound `go` commands, since
+    // those carry neither a clock nor a movetime.
     if (limits.infinite || limits.ponder ||
         (!limits.hasClock && limits.movetime <= 0)) {
-        useTm_ = false;
-        return;
-    }
-    if (depthOrNodeBound && !limits.hasClock && limits.movetime <= 0) {
         useTm_ = false;
         return;
     }

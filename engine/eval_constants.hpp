@@ -41,13 +41,16 @@ inline int32_t PIECE_VALUES[8] = {
 // ===================================================
 inline PhaseValue DOUBLED_PAWN_PENALTY      = {-8, -8};
 inline PhaseValue ISOLATED_PAWN_PENALTY     = {-17, -17};
-inline PhaseValue PASSED_PAWN_BONUS         = {26, 26};
+inline PhaseValue PASSED_PAWN_BONUS         = {21, 36};   // tuned (pawn_passers)
 inline PhaseValue PAWN_ISLAND_PENALTY       = {-9, -9};
 inline PhaseValue PAWN_SUPPORT_BONUS        = {10, 10};
-inline PhaseValue CANDIDATE_PASSER_BONUS    = {10, 14};   // was +4 in EG
-inline PhaseValue CONNECTED_PASSER_BONUS    = {22, 28};   // was +6 in EG
+inline PhaseValue CANDIDATE_PASSER_BONUS    = {9, 11};    // tuned (pawn_passers)
+inline PhaseValue CONNECTED_PASSER_BONUS    = {17, 19};   // tuned (pawn_passers)
 inline PhaseValue BACKWARD_PAWN_PENALTY     = {-10, -10};
-inline PhaseValue PASSED_PAWN_BLOCKED_PENALTY = {-12, -12};
+inline PhaseValue PASSED_PAWN_BLOCKED_PENALTY = {-16, -16}; // tuned (pawn_passers)
+// Per enemy pawn on our bishop's colour complex: those pawns are targets for
+// the bishop -> bonus to the bishop's owner (evalWeakSquares). mg == eg.
+inline int32_t COLOR_COMPLEX_PENALTY        = 2;
 inline PhaseValue CENTER_CONTROL_BONUS      = {8, 8};
 
 // Passed-pawn rank scaling: previously isEndgame ? 10 : 2 and isEndgame ? 40 : 20.
@@ -83,15 +86,20 @@ inline PhaseValue LOW_MOBILITY_ROOK_PENALTY   = {30, 30};
 inline PhaseValue PINNED_ROOK_PENALTY         = {75, 75};
 inline PhaseValue LOW_MOBILITY_QUEEN_PENALTY  = {33, 33};
 inline PhaseValue PINNED_QUEEN_PENALTY        = {141, 141};
-inline PhaseValue MOBILITY_CENTER_BONUS       = {1, 1};
-inline PhaseValue MOBILITY_OWN_PAWN_BLOCKER_PENALTY = {4, 4};
-inline int32_t QUEEN_EARLY_MOBILITY_THRESHOLD = 8;      // scalar threshold
-inline PhaseValue QUEEN_EARLY_MOBILITY_PENALTY = {5, 5};
-inline PhaseValue OUTPOST_CENTER_FILE_BONUS    = {4, 4};
-inline PhaseValue OUTPOST_NEAR_CENTER_FILE_BONUS = {3, 3};
-inline PhaseValue OUTPOST_ADVANCED_RANK_BONUS = {5, 5};
-inline PhaseValue OUTPOST_KING_ZONE_BONUS     = {4, 4};
-inline PhaseValue OUTPOST_KEY_SQUARE_BONUS    = {1, 1};
+
+// Per-piece "safe mobility" term (evalMobility): bonus = (safeCount - ref) * weight,
+// mg/eg split. safeCount excludes own-occupied squares AND squares attacked by
+// enemy pawns. Refs sit near the typical safe count so the mean shift vs the old
+// flat term stays small; per-piece weights down-rank queen/rook squares (sliders
+// have naturally high counts) relative to knight/bishop. Tunable in 2 groups.
+inline int32_t   MOBILITY_KNIGHT_REF    = 2;   // tuned (mobility_minor)
+inline int32_t   MOBILITY_BISHOP_REF    = 2;   // tuned (mobility_minor)
+inline int32_t   MOBILITY_ROOK_REF      = 6;
+inline int32_t   MOBILITY_QUEEN_REF     = 11;
+inline PhaseValue MOBILITY_KNIGHT_WEIGHT = {7, 3};   // tuned (mobility_minor)
+inline PhaseValue MOBILITY_BISHOP_WEIGHT = {6, 9};   // tuned (mobility_minor)
+inline PhaseValue MOBILITY_ROOK_WEIGHT   = {2, 4};
+inline PhaseValue MOBILITY_QUEEN_WEIGHT  = {1, 2};
 inline PhaseValue COORDINATION_PENALTY        = {9, 9};
 inline PhaseValue OUTPOST_BISHOP_BONUS        = {11, 11};
 inline PhaseValue OUTPOST_KNIGHT_BONUS        = {17, 17};
@@ -172,7 +180,6 @@ inline PhaseValue KING_SHELTER_WEAK_BONUS       = {17, 17};
 inline PhaseValue KING_SHELTER_MISSING_PENALTY  = {32, 32};
 inline PhaseValue KING_PAWN_STORM_NEAR_PENALTY  = {18, 18};
 inline PhaseValue KING_PAWN_STORM_FAR_PENALTY   = {11, 11};
-inline PhaseValue KING_CASTLED_SHIELD_BREAK_PENALTY = {10, 10};
 inline PhaseValue KING_SHELTER_ADVANCE_ONE_PENALTY  = {3, 3};
 inline PhaseValue KING_SHELTER_ADVANCE_TWO_PENALTY  = {4, 4};
 inline PhaseValue KING_HOOK_PAWN_ATTACKED_PENALTY   = {13, 13};
@@ -181,7 +188,7 @@ inline PhaseValue KING_SEMI_OPEN_FILE_PENALTY       = {16, 16};
 inline PhaseValue KING_OPEN_FILE_PENALTY            = {14, 14};
 inline PhaseValue KING_FILE_PRESSURE_PENALTY        = {13, 13};
 inline PhaseValue KING_OPEN_DIAGONAL_PENALTY        = {8, 8};
-inline int32_t KING_SAFETY_SIDE_CAP                = 168;  // scalar cap
+inline int32_t KING_SAFETY_SIDE_CAP                = 130;  // scalar cap
 inline int32_t KING_ATTACK_MATERIAL_MIN_SCALE      = 38;
 inline int32_t KING_ATTACK_MATERIAL_MAX_SCALE      = 152;
 inline int32_t KING_ATTACK_WEIGHT_KNIGHT           = 9;
@@ -192,7 +199,7 @@ inline int32_t KING_SAFE_CONTACT_BONUS             = 7;
 inline int32_t KING_FORCING_CONTACT_BONUS          = 5;
 inline int32_t KING_SAFE_CHECK_BONUS               = 12;
 inline int32_t KING_FORCING_CHECK_BONUS            = 9;
-inline int32_t KING_ATTACK_DANGER_CAP              = 136;
+inline int32_t KING_ATTACK_DANGER_CAP              = 100;
 
 // Scalar tuning levers for king safety (internal multipliers/thresholds).
 inline int32_t KING_SHELTER_PAWN_MULTIPLIER        = 12;
@@ -201,6 +208,7 @@ inline int32_t KING_ATTACK_ROOK_WEIGHT             = 16;
 inline int32_t KING_ATTACK_MINOR_WEIGHT            = 8;
 inline int32_t KING_ATTACK_OPEN_FILE_INCREMENT     = 4;
 inline int32_t KING_ATTACK_HEAVY_FILE_INCREMENT    = 8;
+inline int32_t KING_ATTACK_DOWN_MATERIAL_PENALTY   = 24;
 inline int32_t KING_SHELTER_INIT_DISTANCE          = 99;
 inline int32_t KING_SHELTER_VERY_CLOSE             = 1;
 inline int32_t KING_SHELTER_CLOSE                  = 2;
@@ -219,13 +227,6 @@ inline PhaseValue SPACE_BONUS = {1, 1};
 inline int32_t STALEMATE_DRAW_PENALTY_MAJOR  = 450;
 inline int32_t STALEMATE_DRAW_PENALTY_MINOR  = 120;
 inline int32_t STALEMATE_MATERIAL_THRESHOLD  = 130;
-
-// ===================================================
-// MOVE ORDERING (SEARCH)
-// ===================================================
-inline int32_t CHECK_BONUS    = 50;
-inline int32_t KILLER1_BONUS  = 2000;
-inline int32_t KILLER2_BONUS  = 1900;
 
 // ===================================================
 // MVV (Most Valuable Victim) table for capture ordering

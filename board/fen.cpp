@@ -35,10 +35,10 @@ uint8_t Board::parseActiveColor(const std::string& activeSection) {
     return (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) ? BLACK : WHITE;
 }
 
-Coords Board::parseEnPassant(const std::string& ep) {
+Square Board::parseEnPassant(const std::string& ep) {
     //FIXME Creare funzione helper per codizione
-    if (ep.size() != 2 || ep == "-" || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return Coords{};
-    return Coords(ep[0] - 'a', '8' - ep[1]);
+    if (ep.size() != 2 || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return NO_SQUARE;
+    return squareFrom(ep[0] - 'a', '8' - ep[1]);
 }
 
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
@@ -75,7 +75,7 @@ void Board::fromFenToBoard(const std::string& fen) {
 
     clearEvalCache();
     lastMoveChangeFlags = MOVE_CHANGE_NONE;
-    updateOccupancyBB();
+    rebuildBitboardsFromSquares();
     rebuildRepetitionHistory();
 }
 
@@ -108,8 +108,8 @@ std::string Board::castlingToFen() const {
 
 //FIXME Rendere constexpr 
 std::string Board::enPassantToFen() const {
-    if (!Coords::isInBounds(enPassant)) return "-";
-    return std::string(1, 'a' + enPassant.file()) + static_cast<char>('8' - enPassant.rank());
+    if (!isValidSquare(enPassant)) return "-";
+    return std::string(1, 'a' + chess::file(enPassant)) + static_cast<char>('8' - chess::rank(enPassant));
 }
 
 //FIXME Rendere constexpr 

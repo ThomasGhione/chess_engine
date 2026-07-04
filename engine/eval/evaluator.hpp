@@ -1,3 +1,11 @@
+//FIXME Proposta FORTE: cambiare classe Evaluator da statica a non-statica.
+// const chess::Board& b compare molte volte come parametro
+// Altre informazioni possono essere passate quando viene costruito l'oggetto.
+// Es. Chi deve muovere, oppure altre informazioni sullo stato della board.
+//
+// Nota, alcune funzioni effettivamente sono statiche: quelle andrebbero messe in una classe NUOVA satatica
+// es. static_evaluation
+
 #pragma once
 
 #include <algorithm>
@@ -14,6 +22,16 @@
 
 namespace engine {
 
+// Fixed-weight non-pawn material (centipawns) for `side`: Q=900, R=500, B=330,
+// N=320. Deliberately independent of the tunable PIECE_VALUES so the material
+// thresholds in the piece-eval heuristics stay stable across tuning runs.
+inline int nonPawnMaterial(const chess::Board& b, int side) noexcept {
+    return std::popcount(b.queens_bb[side])  * 900
+         + std::popcount(b.rooks_bb[side])   * 500
+         + std::popcount(b.bishops_bb[side]) * 330
+         + std::popcount(b.knights_bb[side]) * 320;
+}
+
 class Evaluator final {
 public:
     Evaluator() = delete;
@@ -27,10 +45,10 @@ public:
     // --- Public eval helpers (used by tests/benchmarks) ---
     // Phase-aware: each returns (mg, eg) so callers can blend with the smooth
     // phase weight. Perf-test sinks may project to `.mg`.
-    static PhaseValue evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame = false) noexcept;
+    static PhaseValue evalPawnStructure(uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalKingSafety(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalRooks(uint64_t whiteRooks, uint64_t blackRooks, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalKingActivity(const chess::Board& b, bool isEndgame) noexcept;
+    static PhaseValue evalKingActivity(const chess::Board& b) noexcept;
     static PhaseValue evalKingActivityPair(const chess::Board& b) noexcept;
     static PhaseValue evalEndgameKingActivity(const chess::Board& b) noexcept;
     static PhaseValue evalBadBishop(uint64_t bishops, uint64_t pawns, int side) noexcept;
@@ -50,40 +68,27 @@ public:
     static inline const std::array<uint64_t, 64>& getPawnSupportMasks(bool isWhite) noexcept;
     static inline const std::array<uint64_t, 64>& getPawnOneStepMasks(bool isWhite) noexcept;
 
-    static bool tryPawnCacheHit(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame, int32_t& outScore) noexcept;
-    static void storePawnEvalCache(uint64_t whitePawns, uint64_t blackPawns, bool isEndgame, int32_t score) noexcept;
-
-    static PhaseValue evalPassedPawn(int sq, int rank, uint64_t ownPawns, uint64_t allPawns,
-                                      int file, const uint64_t& forwardFill,
+    // rank/file derive from sq; promotionRank/isWhite/pawnAttackerIndex derive
+    // from the sign (+1 white, -1 black), so none of them are passed.
+    static PhaseValue evalPassedPawn(int sq, uint64_t ownPawns, uint64_t allPawns,
+                                      const uint64_t& forwardFill,
                                       const std::array<uint64_t, 64>& oneStepMasks,
-                                      const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                      uint64_t enemyPawns,
-                                      PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                      PhaseValue connectedPasserBonus, int promotionRank, int sign) noexcept;
+                                      uint64_t enemyPawns, int sign) noexcept;
 
     static PhaseValue evalNonPassedPawn(int rank, uint64_t ownPawns, uint64_t enemyPawns,
                                          uint64_t allPawns, int file, bool hasSupport,
                                          const uint64_t& frontMask, const uint64_t& forwardFill,
-                                         uint8_t ownIsolatedFiles,
-                                         const std::array<uint64_t, 8>& ADJACENT_FILES_ONLY,
-                                         PhaseValue candidatePasserBonus, int pawnAttackerIndex,
-                                         bool isWhite, int sign) noexcept;
+                                         uint8_t ownIsolatedFiles, int sign) noexcept;
 
     static PhaseValue evalPawnsByColor(uint64_t ownPawns, uint64_t enemyPawns, uint64_t allPawns,
-                                        uint8_t ownIsolatedFiles,
-                                        PhaseValue passedAdvancementScale, PhaseValue passedNearPromotionBonus,
-                                        PhaseValue connectedPasserBonus, PhaseValue candidatePasserBonus,
-                                        int sign) noexcept;
+                                        uint8_t ownIsolatedFiles, int sign) noexcept;
 
 private:
     // --- Internal structures ---
     struct AttackData {
         uint64_t allAttacks = 0ULL;
-        // int16 reduces cache footprint; mobility values are tightly bounded.
-        int16_t knightMobility = 0;
-        int16_t bishopMobility = 0;
-        int16_t rookMobility  = 0;
-        int16_t queenMobility = 0;
+        // Per-piece safe-mobility score (mg/eg), accumulated in computeAttackData.
+        PhaseValue mobility{};
     };
 
     // Continuous phase descriptor. `w1024` is a fixed-point phase weight in
@@ -132,6 +137,7 @@ private:
 
     // --- Score limits ---
     // Negamax-safe: NEG_INF == -POS_INF (negating int32_min is UB).
+    //FIXME Esistono gia' questi dati altrove, sono variabili duplicate
     static inline constexpr int32_t POS_INF                  = std::numeric_limits<int32_t>::max();
     static inline constexpr int32_t NEG_INF                  = -POS_INF;
     static inline constexpr int32_t TRAPPED_EXTRA_SEVERITY   = 10;
@@ -151,10 +157,11 @@ private:
     // --- Attack data ---
     __attribute__((noinline))
     static void computeAttackData(AttackData data[2], const chess::Board& b, uint64_t occ) noexcept;
-    static inline void computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ) noexcept;
+    static inline void computeAttackDataForSide(int side, AttackData& data, const chess::Board& b, uint64_t occ, uint64_t enemyPawnAttacks) noexcept;
     static inline void processPawns(uint64_t pawns, AttackData& data, bool isWhite) noexcept;
-    template<uint64_t (*AttackFn)(uint8_t, uint64_t), int16_t Evaluator::AttackData::* MobilityField>
-    static inline void processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ) noexcept;
+    template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
+    static inline void processPieces(uint64_t piecesBb, AttackData& data, uint64_t mobilityMask, uint64_t occ,
+                                     PhaseValue weight, int32_t ref) noexcept;
     static inline uint64_t knightAttacksLookup(uint8_t sq, uint64_t) noexcept;
     static uint64_t collectPawnAttacks(uint64_t pawns, int side) noexcept;
     static uint64_t collectPawnPushAttacks(uint64_t pawns, int side, uint64_t occ) noexcept;
@@ -164,23 +171,14 @@ private:
     // --- King safety ---
     static PhaseValue evalKingSafetyWithAttackData(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
     static PhaseValue evalKingMiddlegame(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2]) noexcept;
-    static int32_t evalKingAttackZone(const chess::Board& b, const AttackData data[2]) noexcept;
+    static PhaseValue evalKingSafetyAndScales(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
+                                              int32_t& scaleWhiteAttackingBlack, int32_t& scaleBlackAttackingWhite) noexcept;
     static int32_t evalKingAttackZoneSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ, int32_t materialScale) noexcept;
-    static inline PhaseValue evalKingSafetySide(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, const AttackData data[2],
-                                                  bool whiteCastleKs, bool whiteCastleQs, bool blackCastleKs, bool blackCastleQs,
+    // pawns and castling rights are read from `b` (board.pawns_bb / getCastle);
+    // only `side` and the attacker material scale vary per call.
+    static inline PhaseValue evalKingSafetySide(const chess::Board& b, const AttackData data[2],
                                                   int side, int32_t materialScale) noexcept;
     static int32_t attackMaterialScalePercent(const chess::Board& b, int attackingSide, int targetKingFile, uint64_t targetPawns) noexcept;
-    static inline int32_t scaleKingDanger(int32_t value, int32_t scalePercent) noexcept;
-    static inline void applyNonCastledPenalties(int side, bool rightsLost, bool kingOnWing,
-                                                bool canCastleKingside, bool canCastleQueenside,
-                                                uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyKingShieldSupport(int side, int sq, uint64_t whitePawns, uint64_t blackPawns, int32_t& sideSafety) noexcept;
-    static inline void applyHookPawnPenalty(int side, int kingFile, uint64_t ownPawns,
-                                            uint64_t ownAttacks, uint64_t enemyAttacks, int32_t& sideSafety) noexcept;
-    static inline void applyShelterAndStorm(int side, int kingFile, int kingRank,
-                                            uint64_t ownPawns, uint64_t enemyPawns, bool kingOnWing,
-                                            uint64_t enemyHeavyPieces, int32_t& sideSafety) noexcept;
-    static inline void applyOpenDiagonalPenalty(const chess::Board& b, int kingFile, int kingRank, uint8_t sideColor, int32_t& sideSafety) noexcept;
     static inline void accumulateKingZoneAttackersAll(const chess::Board& b, int side, uint64_t kingZone, uint64_t occ,
                                                       uint64_t developedKnights, uint64_t developedBishops,
                                                       int& attackerCount, int32_t& attackWeight) noexcept;
@@ -204,14 +202,13 @@ private:
     // --- Mobility, threats, trapped pieces ---
     static PhaseValue evalMobility(const AttackData data[2]) noexcept;
     static PhaseValue evalHangingPieces(const chess::Board& b, const AttackData data[2]) noexcept;
-    static inline PhaseValue evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side, int sign) noexcept;
+    static inline PhaseValue evalHangingPiecesSide(const chess::Board& b, const AttackData data[2], int side) noexcept;
     static inline PhaseValue evalHangingPiecePenalty(uint64_t pieces, uint64_t enemyAttacks, uint64_t friendlyDef,
                                                       int sign, PhaseValue penalty) noexcept;
-    static PhaseValue evalThreats(const chess::Board& b, const AttackData data[2], uint64_t occ, bool isEndgame) noexcept;
     static PhaseValue evalThreatsPair(const chess::Board& b, const AttackData data[2], uint64_t occ) noexcept;
-    static inline PhaseValue evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, int sign, uint64_t occ) noexcept;
+    static inline PhaseValue evalThreatsSide(const chess::Board& b, const AttackData data[2], int side, uint64_t occ) noexcept;
     static PhaseValue evalTrappedPieces(const chess::Board& b, uint64_t occ) noexcept;
-    static inline PhaseValue evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side, int sign) noexcept;
+    static inline PhaseValue evalTrappedPiecesSide(const chess::Board& b, uint64_t occ, int side) noexcept;
     template<uint64_t (*AttackFn)(uint8_t, uint64_t)>
     static inline PhaseValue evalTrappedPiecesGeneric(uint64_t piecesBb, uint64_t occ, uint64_t mobilityMask,
                                                        int sign, PhaseValue pinnedPenalty, PhaseValue lowMobPenalty) noexcept;
@@ -219,7 +216,6 @@ private:
     // --- Pawns & space ---
     static PhaseValue evalPawnForks(const chess::Board& b) noexcept;
     static PhaseValue evalSpaceAdvantage(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalInitiative(const chess::Board& b, bool isEndgame) noexcept;
     static PhaseValue evalInitiativePair(const chess::Board& b) noexcept;
 
     // --- Piece activity ---
@@ -227,7 +223,7 @@ private:
     static inline PhaseValue evalPieceCoordinationForColor(const chess::Board& b, int color) noexcept;
     static PhaseValue evalOutposts(const chess::Board& b) noexcept;
     static inline PhaseValue evalOutpostsForColor(const chess::Board& b, int color) noexcept;
-    static inline PhaseValue evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
+    static inline PhaseValue evalOutpostsPieces(uint64_t piecesBb, int color,
                                                  const chess::Board& b, PhaseValue bonus) noexcept;
     static inline PhaseValue evalRooksForColor(int color, uint64_t rooks, uint64_t ownPawns, uint64_t oppPawns) noexcept;
     template<int Side>
@@ -251,14 +247,14 @@ private:
     static PhaseValue evalRuleOfSquare(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalRookEndgamePressure(const chess::Board& b) noexcept;
     static PhaseValue evalQueenEndgamePressure(const chess::Board& b) noexcept;
-    static inline PhaseValue evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept;
+    static inline PhaseValue evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens) noexcept;
     static PhaseValue evalDoubleRookEndgame(const chess::Board& b) noexcept;
 
     // --- Eval cache layer ---
     template<uint32_t Term, class Compute>
     __attribute__((always_inline))
     static inline PhaseValue cachedTerm(const chess::Board& b, Compute compute) noexcept;
-    static PhaseValue evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns, bool isEndgame) noexcept;
+    static PhaseValue evalPawnStructureCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalPawnStructureCachedPair(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalBishopPairBonusCached(const chess::Board& b) noexcept;
     static PhaseValue evalCastlingBonusCached(const chess::Board& b) noexcept;
@@ -270,7 +266,6 @@ private:
     static PhaseValue evalPieceCoordinationCached(const chess::Board& b) noexcept;
     static PhaseValue evalCentralControlCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
     static PhaseValue evalWeakSquaresCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
-    static PhaseValue evalBlockedPawnByBishopsCached(const chess::Board& b) noexcept;
     static PhaseValue evalBishopVsKnightCached(const chess::Board& b, uint64_t whitePawns, uint64_t blackPawns) noexcept;
 
 #ifdef DEBUG

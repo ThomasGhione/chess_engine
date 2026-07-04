@@ -11,11 +11,10 @@
 *.csv
 !auto_tuner.csv
 chess
-test
-perf
 chess.exe
 /tests/test
 /tests/perf
+/tests/sacrifice
 /tests/tt_hugepage_bench
 /games/
 /saves/
@@ -35,3 +34,10 @@ CLAUDE.md
 /tuning/plots/
 /tuning/chess_baseline
 /tuning/sprt_*.pgn
+# Gauntlet artifacts: on-demand reference binaries and per-run outputs
+/tuning/chess_ref_*
+/tuning/gauntlet_*.pgn
+/tuning/gauntlet_*.txt
+
+
+nodebench

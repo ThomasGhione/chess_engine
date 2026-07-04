@@ -23,16 +23,15 @@ int SyzygyProber::maxPieces() const noexcept {
     return TB_LARGEST;
 }
 
+uint64_t SyzygyProber::sideOccupancy(const chess::Board& b, int side) noexcept {
+    return b.pawns_bb[side] | b.knights_bb[side] | b.bishops_bb[side]
+         | b.rooks_bb[side] | b.queens_bb[side] | b.kings_bb[side];
+}
+
 bool SyzygyProber::inTBRange(const chess::Board& board) const noexcept {
     if (!loaded_) return false;
     // All pieces regardless of color — popcount of the full occupancy.
-    const int pieces = __builtin_popcountll(
-        board.pawns_bb[0]   | board.pawns_bb[1]   |
-        board.knights_bb[0] | board.knights_bb[1] |
-        board.bishops_bb[0] | board.bishops_bb[1] |
-        board.rooks_bb[0]   | board.rooks_bb[1]   |
-        board.queens_bb[0]  | board.queens_bb[1]  |
-        board.kings_bb[0]   | board.kings_bb[1]);
+    const int pieces = __builtin_popcountll(sideOccupancy(board, 0) | sideOccupancy(board, 1));
     return pieces <= TB_LARGEST;
 }
 
@@ -51,21 +50,17 @@ uint64_t SyzygyProber::toPyrrhicBB(uint64_t bb) noexcept {
     return __builtin_bswap64(bb);
 }
 
-unsigned SyzygyProber::toPyrrhicEP(chess::Coords ep) noexcept {
-    if (!ep.isValid()) return 0;
-    return static_cast<unsigned>(56 ^ ep.index);
+unsigned SyzygyProber::toPyrrhicEP(chess::Square ep) noexcept {
+    if (!chess::isValidSquare(ep)) return 0;
+    return static_cast<unsigned>(56 ^ ep);
 }
 
 // HydraY convention: bb[0] = White, bb[1] = Black (colorToIndex(WHITE) == 0).
 std::optional<WDL> SyzygyProber::probeWDL(const chess::Board& board) const {
     if (!loaded_) return std::nullopt;
 
-    const uint64_t allW = toPyrrhicBB(
-        board.pawns_bb[0] | board.knights_bb[0] | board.bishops_bb[0] |
-        board.rooks_bb[0] | board.queens_bb[0]  | board.kings_bb[0]);
-    const uint64_t allB = toPyrrhicBB(
-        board.pawns_bb[1] | board.knights_bb[1] | board.bishops_bb[1] |
-        board.rooks_bb[1] | board.queens_bb[1]  | board.kings_bb[1]);
+    const uint64_t allW = toPyrrhicBB(sideOccupancy(board, 0));
+    const uint64_t allB = toPyrrhicBB(sideOccupancy(board, 1));
 
     if (__builtin_popcountll(allW | allB) > TB_LARGEST) return std::nullopt;
 
@@ -89,12 +84,8 @@ std::optional<WDL> SyzygyProber::probeWDL(const chess::Board& board) const {
 std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
     if (!loaded_) return {};
 
-    const uint64_t allW = toPyrrhicBB(
-        board.pawns_bb[0] | board.knights_bb[0] | board.bishops_bb[0] |
-        board.rooks_bb[0] | board.queens_bb[0]  | board.kings_bb[0]);
-    const uint64_t allB = toPyrrhicBB(
-        board.pawns_bb[1] | board.knights_bb[1] | board.bishops_bb[1] |
-        board.rooks_bb[1] | board.queens_bb[1]  | board.kings_bb[1]);
+    const uint64_t allW = toPyrrhicBB(sideOccupancy(board, 0));
+    const uint64_t allB = toPyrrhicBB(sideOccupancy(board, 1));
 
     if (__builtin_popcountll(allW | allB) > TB_LARGEST) return {};
 
@@ -158,9 +149,9 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
         // TB_DRAW, TB_CURSED_WIN, TB_BLESSED_LOSS → rank 0.
 
         out.push_back({
-            chess::Board::Move{
-                chess::Coords{static_cast<uint8_t>(56 ^ from)},
-                chess::Coords{static_cast<uint8_t>(56 ^ to)},
+            chess::Move{
+                static_cast<uint8_t>(56 ^ from),
+                static_cast<uint8_t>(56 ^ to),
                 promo},
             rank});
     }

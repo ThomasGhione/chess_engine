@@ -7,10 +7,10 @@ namespace chess {
 // INCREMENTAL DO/UNDO MOVE (NO LEGALITY CHECKS)
 // ------------------------------------------------------------
 __attribute__((hot))
-void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept {
+void Board::doMove(const Move& m, MoveState& st) noexcept {
     //FIXME Eliminare costati magiche
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex   = m.to.index;
+    const uint8_t fromIndex = m.from;
+    const uint8_t toIndex   = m.to;
 
     const uint8_t moving      = get(fromIndex);
     const uint8_t movingType  = moving & MASK_PIECE_TYPE;
@@ -26,29 +26,29 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
     }
     newHash ^= zobrist::TABLES.pieces[moving][fromIndex];
 
-    enPassant = Coords{};
+    enPassant = NO_SQUARE;
 
     const MoveKind kind = st.moveKind;
     switch (kind) {
         case MoveKind::Capture:
             doMoveByKind<MoveKind::Capture>(st, moving, movingType, movingColor, destBefore,
-                                            fromIndex, toIndex, promotionChoice);
+                                            fromIndex, toIndex, m.promotionPiece);
             if (destBefore != EMPTY) {
                 newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
             }
             break;
         case MoveKind::DoublePawnPush:
             doMoveByKind<MoveKind::DoublePawnPush>(st, moving, movingType, movingColor, destBefore,
-                                                   fromIndex, toIndex, promotionChoice);
+                                                   fromIndex, toIndex, m.promotionPiece);
             break;
         case MoveKind::EnPassant:
             doMoveByKind<MoveKind::EnPassant>(st, moving, movingType, movingColor, destBefore,
-                                              fromIndex, toIndex, promotionChoice);
+                                              fromIndex, toIndex, m.promotionPiece);
             newHash ^= zobrist::TABLES.pieces[st.capturedPiece][st.enPassantCapturedIndex];
             break;
         case MoveKind::Castling:
             doMoveByKind<MoveKind::Castling>(st, moving, movingType, movingColor, destBefore,
-                                             fromIndex, toIndex, promotionChoice);
+                                             fromIndex, toIndex, m.promotionPiece);
             {
                 const uint8_t rook = get(st.rookToIndex);
                 newHash ^= zobrist::TABLES.pieces[rook][st.rookFromIndex];
@@ -57,7 +57,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             break;
         case MoveKind::PromotionQuiet:
             doMoveByKind<MoveKind::PromotionQuiet>(st, moving, movingType, movingColor, destBefore,
-                                                   fromIndex, toIndex, promotionChoice);
+                                                   fromIndex, toIndex, m.promotionPiece);
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
                 newHash ^= zobrist::TABLES.pieces[promotedPiece][toIndex];
@@ -65,7 +65,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
             break;
         case MoveKind::PromotionCapture:
             doMoveByKind<MoveKind::PromotionCapture>(st, moving, movingType, movingColor, destBefore,
-                                                     fromIndex, toIndex, promotionChoice);
+                                                     fromIndex, toIndex, m.promotionPiece);
             newHash ^= zobrist::TABLES.pieces[destBefore][toIndex];
             {
                 const uint8_t promotedPiece = promotedPieceFromChoice(st.promotionPieceType, movingColor);
@@ -75,7 +75,7 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         case MoveKind::Quiet:
         default:
             doMoveByKind<MoveKind::Quiet>(st, moving, movingType, movingColor, destBefore,
-                                          fromIndex, toIndex, promotionChoice);
+                                          fromIndex, toIndex, m.promotionPiece);
             break;
     }
     applyEvalCacheInvalidation(st);
@@ -101,22 +101,22 @@ void Board::doMove(const Move& m, MoveState& st, char promotionChoice) noexcept 
         newHash ^= zobrist::TABLES.castling[castle];
     }
     uint8_t newEpHashFile = 0xFF;
-    if (Coords::isInBounds(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
-        newEpHashFile = enPassant.file();
+    if (isValidSquare(enPassant) && zobrist::hasPseudoLegalEnPassantCapture(*this, enPassant)) {
+        newEpHashFile = chess::file(enPassant);
         newHash ^= zobrist::TABLES.enPassant[newEpHashFile];
     }
     epHashFile = newEpHashFile;
     currentHash = newHash;
 
-    updateRepetitionAfterMove(resetHistory, false);
+    updateRepetitionAfterMove(resetHistory, st);
 }
 
 __attribute__((hot))
 void Board::undoMove(const Move& m, const MoveState& st) noexcept {
-    const uint8_t fromIndex = m.from.index;
-    const uint8_t toIndex   = m.to.index;
+    const uint8_t fromIndex = m.from;
+    const uint8_t toIndex   = m.to;
 
-    uint8_t pieceOnTo = get(toIndex);  // use index-based access
+    uint8_t pieceOnTo = get(toIndex);
 
     switch (st.moveKind) {
         case MoveKind::Capture:
@@ -156,7 +156,7 @@ void Board::doNullMove(MoveState& st) noexcept {
         newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];
     }
 
-    enPassant = Coords{};
+    enPassant = NO_SQUARE;
     epHashFile = 0xFF;
 
     if (halfMoveClock < 255) {
@@ -176,4 +176,4 @@ __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
     restoreState(st);
 }
-} // namespace chess {
+} // namespace chess

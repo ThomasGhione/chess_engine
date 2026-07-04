@@ -1,26 +1,21 @@
+#include <iostream>
+
 #include "./engine/engine.hpp"
 #include "./driver/driver.hpp"
 #include "./uci/uci.hpp"
+
+#ifndef _WIN32
+#include <unistd.h> // isatty, STDIN_FILENO
+#else
+#include <io.h>     // _isatty, _fileno
+#endif
 
 using namespace chess;
 using namespace engine;
 using namespace driver;
 
-#ifndef _WIN32
-#include <unistd.h>   // isatty, STDIN_FILENO
-#else
-#include <io.h>        // _isatty, _fileno
-#endif
-
-// ./chess -> Goes to main menu
-// ./chess uci -> UCI mode (used by lichess-bot / GUIs)
-// ./chess bvb -> Bot vs Bot
-// ./chess pvp -> Player vs Player
-// ./chess pvb w -> Player vs Bot (player is white)
-// ./chess pvb b -> Player vs Bot (player is black)
-// ./chess 11 -> Option 1 (player vs bot) - Option 1 (white)
-// ./chess 12 -> Option 1 (player vs bot) - Option 2 (black)
-
+// UCI auto-detection: if stdin is a pipe (launched by a GUI / lichess-bot),
+// enter UCI mode immediately - this is the standard UCI protocol behaviour.
 static bool stdinIsPipe() noexcept {
 #ifndef _WIN32
     return !isatty(STDIN_FILENO);
@@ -30,18 +25,17 @@ static bool stdinIsPipe() noexcept {
 }
 
 int main(int argc, char *argv[]) {
-    // UCI auto-detection: if stdin is a pipe (launched by a GUI / lichess-bot),
-    // enter UCI mode immediately - this is the standard UCI protocol behaviour.
+
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
+    Engine engine;
+
     if (argc == 1 && stdinIsPipe()) {
-        Engine engine = Engine();
         uci::UCI uciInterface(engine);
-        uciInterface.mainLoop();
-        // mainLoop is [[noreturn]]
+        uciInterface.mainLoop(); //mainLoop() is [[noreturn]] so this will exit the program when done
     }
 
-    Engine engine = Engine();
-
-    Driver driver = Driver(engine);
+    Driver driver(engine);
     driver.startGame(argc, argv);
-    return 0;
 }

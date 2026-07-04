@@ -1,92 +1,40 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <cstdint>
 #include <cctype>
 
 namespace chess {
 
-inline constexpr uint8_t file(uint8_t sq) noexcept { return sq & 7; }
-inline constexpr uint8_t rank(uint8_t sq) noexcept { return sq >> 3; }
+// Board convention: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
+using Square = uint8_t;
 
-struct Coords {
+inline constexpr Square NO_SQUARE = 255;
 
-    constexpr static uint8_t INVALID_COORDS = 255;
+inline constexpr uint8_t file(Square sq) noexcept { return sq & 7; }
+inline constexpr uint8_t rank(Square sq) noexcept { return sq >> 3; }
+inline constexpr bool isValidSquare(Square sq) noexcept { return sq < 64; }
 
-    // Board convention: a8=0, b8=1, ..., h8=7, a7=8, ..., h1=63
+inline constexpr Square squareFrom(uint8_t f, uint8_t r) noexcept {
+    return (f < 8 && r < 8) ? static_cast<Square>(r * 8 + f) : NO_SQUARE;
+}
 
-    uint8_t index = INVALID_COORDS;
+inline Square parseSquare(std::string_view input) noexcept {
+    if (input.length() != 2) [[unlikely]] return NO_SQUARE;
 
-    // ============== CONSTRUCTORS ==============
+    const char fileChar = static_cast<char>(std::tolower(static_cast<unsigned char>(input[0])));
+    const char rankChar = input[1];
 
-    constexpr Coords() noexcept = default;
+    if (fileChar < 'a' || fileChar > 'h' || rankChar < '1' || rankChar > '8') [[unlikely]]
+        return NO_SQUARE;
 
-    //FIXME Mettere di base a INVALID_COORDS e poi effettuare i conti dentro
-    constexpr explicit Coords(uint8_t idx) noexcept
-        : index(idx < 64 ? idx : INVALID_COORDS) 
-    {}
+    return static_cast<Square>(('8' - rankChar) * 8 + (fileChar - 'a'));
+}
 
-    constexpr Coords(uint8_t f, uint8_t r) noexcept
-        : index((f < 8 && r < 8) ? (r * 8 + f) : INVALID_COORDS) 
-    {}
-
-    // Constructor from algebraic notation string (e.g. "e4", "a8")
-    explicit Coords(const std::string& input) noexcept 
-        : index(INVALID_COORDS) 
-    {
-        if (input.length() != 2) [[unlikely]] return;
-
-        const char fileChar = static_cast<char>(std::tolower(static_cast<unsigned char>(input[0])));
-        const char rankChar = input[1];
-
-        if (!isLetter(fileChar) || !isNumber(rankChar)) [[unlikely]] return;
-
-        const uint8_t f = fileChar - 'a';
-        const uint8_t r = '8' - rankChar;
-
-        this->index = r * 8 + f;
-    }
-
-    constexpr Coords(const Coords& other) noexcept = default;
-
-    // ============== ACCESS METHODS ==============
-
-    //FIXME Eliminare costati magiche
-    constexpr uint8_t file() const noexcept { return this->index & 7; }
-    constexpr uint8_t rank() const noexcept { return this->index >> 3; }
-    constexpr bool isValid() const noexcept { return this->index < 64; }
-
-    // ============== OPERATOR OVERLOADS ==============
-
-    constexpr bool operator==(const Coords& other) const noexcept { return this->index == other.index; }
-    constexpr bool operator!=(const Coords& other) const noexcept { return this->index != other.index; }
-    constexpr Coords& operator=(const Coords& other) noexcept = default;
-
-    // ============== SETTERS / UPDATERS ==============
-
-    // ============== UTILITY STATIC METHODS ==============
-
-    //FIXME Eliminare costati magiche
-    static constexpr bool isLetter(char c) noexcept { return (c >= 'a' && c <= 'h') || (c >= 'A' && c <= 'H'); }
-    static constexpr bool isNumber(char c) noexcept { return c >= '1' && c <= '8'; }
-    static constexpr bool isInBounds(const Coords& coords) noexcept { return coords.isValid(); }
-
-    // ============== CONVERSION METHODS ==============
-
-    // Convert to algebraic notation string (e.g. "e4")
-    std::string toString() const noexcept {
-        if (!this->isValid()) [[unlikely]] return "??";
-
-        std::string result(2, ' ');
-
-        result[0] = 'a' + this->file(); // file: 0-7 -> 'a'-'h'
-        result[1] = '8' - this->rank(); // rank: 0-7 -> '8'-'1' (a8=0, h1=63 convention)
-
-        return result;
-    }
-
-    static std::string toAlgebric(const Coords& c) noexcept { return c.toString(); }
-
-}; // class Coords
+inline std::string squareToString(Square sq) noexcept {
+    if (!isValidSquare(sq)) [[unlikely]] return "??";
+    return {static_cast<char>('a' + file(sq)), static_cast<char>('8' - rank(sq))};
+}
 
 } // namespace chess

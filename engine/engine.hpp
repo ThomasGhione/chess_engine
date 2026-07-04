@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -20,17 +21,13 @@
 
 namespace engine {
 
-
-
 static inline constexpr int32_t POS_INF = std::numeric_limits<int32_t>::max();
 // Negamax-safe: NEG_INF == -POS_INF so it can be negated without UB.
 static inline constexpr int32_t NEG_INF = -POS_INF;
 
-
-
 class Engine final {
 public:
-    enum GameResult : uint8_t {
+    enum class GameResult : uint8_t {
         ONGOING = 0,
         WHITE_WINS = 1,
         BLACK_WINS = 2,
@@ -48,46 +45,33 @@ public:
 
     // Gameplay API
     void reset() noexcept;
-    bool movePiece(const chess::Coords from, const chess::Coords to, const char promotionPiece = '\0') noexcept;
+    bool movePiece(const chess::Square from, const chess::Square to, const char promotionPiece = '\0') noexcept;
 
     // Search API
-    void search(uint64_t depth) noexcept;
-    chess::Board::Move searchUCI(uint64_t depth) noexcept;
-    chess::Board::Move searchUCI(const time::Limits& limits) noexcept;
+    void search(int depth) noexcept;
+    chess::Move searchUCI(const time::Limits& limits) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;
-    void setPonderDebugEnabled(bool enabled) noexcept;
-    bool isPonderDebugEnabled() const noexcept;
-    uint64_t getPonderCurrentDepth() const noexcept;
-    uint64_t getPonderLastCompletedDepth() const noexcept;
-    uint64_t getPonderInterruptedDepth() const noexcept;
 
     // Game state
-    bool isGameOver() const noexcept;
-    bool isMate() const noexcept;
-    bool isStalemate() const noexcept;
-    bool isDraw() const noexcept;
+    bool isGameOver() const noexcept { return gameResult != GameResult::ONGOING; }
+    bool isMate() const noexcept { return gameResult == GameResult::WHITE_WINS || gameResult == GameResult::BLACK_WINS; }
+    bool isStalemate() const noexcept { return gameResult == GameResult::DRAW && board.isStalemate(board.getActiveColor()); }
+    bool isDraw() const noexcept { return gameResult == GameResult::DRAW; }
     void updateGameResult() noexcept;
-    uint8_t getActiveColor() const noexcept;
-
-    // Shared bitboard init (all Engine instances)
-    static inline bool magicTablesInitialized = false;
-    static void ensureMagicTablesInitialized() noexcept;
 
     // Public state kept for compatibility with existing call-sites.
-    chess::Board::Move bestMove;
+    chess::Move bestMove;
     chess::Board board;
     bool isPlayerWhite = true;
 
     // Unified runtime state owned by Searcher.
     Searcher::SearchRuntime searchRuntime{};
 
-    // Compatibility aliases for existing call-sites.
-    uint64_t& depth;
-    int32_t& eval;
-    uint64_t& nodesSearched;
-    int& MAX_THREADS;
+    // UCI `Threads` override. 0 = auto (use omp_get_max_threads()). Persists
+    // across reset()/ucinewgame so a GUI/cutechess setting survives new games.
+    int requestedThreads = 0;
 
     static constexpr int32_t DEFAULTDEPTH = Searcher::DEFAULT_DEPTH;
     static constexpr int32_t MAX_PLY = Searcher::MAX_PLY;
@@ -105,7 +89,7 @@ public:
     syzygy::SyzygyProber syzygyProber;
 
     // Transposition table (shared by normal search and pondering)
-    TranspositionTable tt;
+    TT tt;
 
     // Per-move time budget + hard-deadline watchdog (UCI clock searches).
     time::TimeManager timeManager;
@@ -127,29 +111,31 @@ private:
     std::atomic<bool> searchInterrupted {false};
     std::mutex searchApiMutex;
     std::atomic<bool> searchApiMutexEnabled {true};
-    std::atomic<bool> ponderDebugEnabled {false};
-    std::atomic<uint64_t> ponderCurrentDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedDepth {0};
-    std::atomic<uint64_t> ponderLastCompletedEvenDepth {0};
-    std::atomic<uint64_t> ponderInterruptedDepth {0};
-    std::atomic<uint32_t> ponderAspirationResearches {0};
-    std::atomic<uint32_t> ponderAspirationFailLow {0};
-    std::atomic<uint32_t> ponderAspirationFailHigh {0};
     uint64_t ponderRootHash = 0;
-    uint64_t ponderResultDepth = 0;
+    int      ponderResultDepth = 0;
     int32_t ponderResultScore = 0;
-    chess::Board::Move ponderResultMove {};
+    chess::Move ponderResultMove {};
     bool ponderResultReady = false;
 
+    // Shared bitboard init (all Engine instances); only the ctor touches these.
+    static inline bool magicTablesInitialized = false;
+    static void ensureMagicTablesInitialized() noexcept;
+
     // Internal helpers
-    static char promotionChoiceForMove(const chess::Board& board, const chess::Board::Move& move) noexcept;
     void bindSearchRuntime() noexcept;
-    void appendMoveHistoryEntry(const chess::Coords& from, const chess::Coords& to, char promotionPiece) noexcept;
+    void appendMoveHistoryEntry(const chess::Square& from, const chess::Square& to, char promotionPiece) noexcept;
+    bool playMoveOnBoard(const chess::Move& move) noexcept;
     void clearPonderResult() noexcept;
+    void clearSearchStopFlags() noexcept;
+    std::optional<chess::Move> probeOpeningBook() noexcept;
+    std::optional<chess::Move> tryInstantMove(int targetDepth) noexcept;
+    chess::Move commitSearchResult(const chess::Move& candidate) noexcept;
+    std::unique_lock<std::mutex> acquireSearchApiLock() noexcept;
     void requestStopPondering() noexcept;
-    bool tryUsePonderResult(uint64_t requestedDepth, chess::Board::Move& outMove) noexcept;
+    bool tryUsePonderResult(int targetDepth, chess::Move& outMove) noexcept;
     void startPondering() noexcept;
     void stopPondering() noexcept;
+    bool waitForPonderJob(chess::Board& outBoard) noexcept;
     void ponderWorkerLoop() noexcept;
     void ponderLoop(chess::Board&& rootBoard) noexcept;
 };
@@ -157,4 +143,3 @@ private:
 } // namespace engine
 
 #include "inl/bitboard_helpers.inl"
-#include "inl/accessors.inl"

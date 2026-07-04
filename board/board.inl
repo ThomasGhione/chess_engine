@@ -1,19 +1,6 @@
 //FIXME Usare i this in chiamate
 
 // ==============================
-// Compile-Time Basic Utilities
-// ==============================
-
-//FIXME Eliminare costati magiche
-inline constexpr uint8_t Board::oppositeColor(uint8_t color) noexcept { return color ^ 0x8; }
-
-inline constexpr uint8_t Board::colorToIndex(uint8_t color) noexcept {
-    return ((color & MASK_COLOR) >> 3) ^ 0x1u;
-}
-
-inline constexpr uint8_t Board::promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; }
-
-// ==============================
 // Constructors
 // ==============================
 inline Board::Board() noexcept {
@@ -29,17 +16,6 @@ inline Board::Board(const Board& other) noexcept {
 }
 
 inline Board& Board::operator=(const Board& other) noexcept {
-    if (this != &other) {
-        copyFromBoard(other);
-    }
-    return *this;
-}
-
-inline Board::Board(Board&& other) noexcept {
-    copyFromBoard(other);
-}
-
-inline Board& Board::operator=(Board&& other) noexcept {
     if (this != &other) {
         copyFromBoard(other);
     }
@@ -86,85 +62,17 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 }
 
 // ==============================
-// Geometry Helpers
-// ==============================
-
-inline constexpr uint64_t Board::bitMask(uint8_t sq) noexcept { return BIT_MASKS[sq]; }
-
-inline constexpr uint8_t Board::file(uint8_t sq) noexcept { return chess::file(sq); } // Extract bits 0-2
-inline constexpr uint8_t Board::rank(uint8_t sq) noexcept { return chess::rank(sq); } // Extract bits 3-5
-
-// ==============================
-// Move Value Helpers
-// ==============================
-inline bool Board::Move::operator==(const Move& other) const noexcept {
-    return from == other.from && to == other.to && promotionPiece == other.promotionPiece;
-}
-
-template<typename MoveContainer>
-inline void Board::Move::rotate(MoveContainer& moves, size_t index) noexcept {
-    Move temp = moves[index];
-    // Shift all moves [0..index-1] one position to the right
-    for (size_t i = index; i > 0; --i) {
-        moves[i] = moves[i - 1];
-    }
-    moves[0] = temp;
-}
-
-inline std::string Board::Move::toUCIString() const noexcept {
-    std::string uciMove = from.toString() + to.toString();
-    if (promotionPiece != '\0') {
-        uciMove += std::tolower(promotionPiece);
-    }
-    return uciMove;
-}
-
-// ==============================
 // Public Board API
 // ==============================
-__attribute__((hot, always_inline))
-inline constexpr uint8_t Board::get(uint8_t index) const noexcept {
-    //FIXME Eliminare costati magiche
-    const uint8_t rank = index >> 3;  // index / 8 (Coords convention)
-    const uint8_t file = index & 7;   // index % 8
-    // Convert from Coords convention to Board storage
-    return (chessboard[7 - rank] >> (file << 2)) & MASK_PIECE;
-}
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::get(Coords coords) const noexcept {
-    return get(coords.index);
-}
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::get(uint8_t row, uint8_t col) const noexcept {
-    //FIXME Eliminare costati magiche
-    return (chessboard[row] >> (col << 2)) & MASK_PIECE;
-}
-
-inline int32_t Board::getIncrementalPsqtDelta(bool isEndgame) const noexcept {
-    const int32_t pawns = isEndgame ? incrementalPsqtPawnsEg : incrementalPsqtPawnsMg;
-    const int32_t kings = isEndgame ? incrementalPsqtKingsEg : incrementalPsqtKingsMg;
-    return incrementalPsqtPieces + pawns + kings;
-}
-
 inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
     outMg = incrementalPsqtPieces + incrementalPsqtPawnsMg + incrementalPsqtKingsMg;
     outEg = incrementalPsqtPieces + incrementalPsqtPawnsEg + incrementalPsqtKingsEg;
 }
 
 template<uint32_t Term>
-inline bool Board::hasEvalCacheTerm() const noexcept {
-    return (evalCache.validMask & evalCacheBit(Term)) != 0;
-}
-
-template<uint32_t Term>
 inline engine::PhaseValue Board::getEvalCacheTerm() const noexcept {
     static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
-    return engine::PhaseValue{
-        static_cast<int32_t>(evalCache.mgTerms[Term]),
-        static_cast<int32_t>(evalCache.egTerms[Term])
-    };
+    return {evalCache.mgTerms[Term], evalCache.egTerms[Term]};
 }
 
 template<uint32_t Term>
@@ -173,21 +81,6 @@ inline void Board::setEvalCacheTerm(engine::PhaseValue value) const noexcept {
     evalCache.mgTerms[Term] = static_cast<int16_t>(value.mg);
     evalCache.egTerms[Term] = static_cast<int16_t>(value.eg);
     evalCache.validMask |= evalCacheBit(Term);
-}
-
-inline void Board::invalidateEvalCacheTerms(uint32_t terms) noexcept {
-    evalCache.validMask &= ~terms;
-}
-
-inline void Board::clearEvalCache() noexcept {
-    evalCache.validMask = 0;
-}
-
-
-
-__attribute__((always_inline))
-inline constexpr uint8_t Board::getColor(uint8_t index) const noexcept {
-    return (get(index) & MASK_COLOR) ? WHITE : BLACK;
 }
 
 __attribute__((hot, always_inline))
@@ -202,7 +95,7 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
 // Board Internals
 // ==============================
 
-inline void Board::updateOccupancyBB() noexcept {
+inline void Board::rebuildBitboardsFromSquares() noexcept {
     // Reset all bitboards
     occupancy       = 0ULL;
     pawns_bb[0]     = pawns_bb[1]     = 0ULL;
@@ -222,7 +115,6 @@ inline void Board::updateOccupancyBB() noexcept {
     incrementalPsqtKingsMg = 0;
     incrementalPsqtKingsEg = 0;
 
-    //FIXME Contollare se non esiste qualche sistema per evitare il ciclo
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
     for (uint8_t index = 0; index < 64; ++index) {
@@ -230,8 +122,8 @@ inline void Board::updateOccupancyBB() noexcept {
         
         if (piece == EMPTY) continue;
         
-        const uint64_t bit = bitMask(index);
-        const uint8_t color = colorToIndex(piece & MASK_COLOR);
+        const uint64_t bit = BIT_MASKS[index];
+        const uint8_t color = colorToIndex(piece);
 
         occupancy |= bit;
         dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
@@ -240,8 +132,8 @@ inline void Board::updateOccupancyBB() noexcept {
 
 __attribute__((always_inline))
 inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-    occupancy |= bitMask(toIndex);  // Set the bit at 'to' position    
-    occupancy &= ~bitMask(fromIndex); // Clear the bit at 'from' position
+    occupancy |= BIT_MASKS[toIndex];  // Set the bit at 'to' position    
+    occupancy &= ~BIT_MASKS[fromIndex]; // Clear the bit at 'from' position
 }
 
 inline bool Board::isKingSafeAfterMove(
@@ -258,7 +150,7 @@ inline bool Board::isKingSafeAfterMove(
     const uint8_t kingSq = std::countr_zero(kingBB);
 
     const uint64_t occNew =
-        (occupancy & ~bitMask(fromIndex) & ~capturedMask) | bitMask(toIndex);
+        (occupancy & ~BIT_MASKS[fromIndex] & ~capturedMask) | BIT_MASKS[toIndex];
     const uint64_t keep = ~capturedMask;
 
     return !isKingAttackedCustom(kingSq, oppSide, occNew,
@@ -350,24 +242,10 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece & MASK_COLOR);
-    const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
+    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
 }
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-    if (piece == EMPTY) [[unlikely]] return;
-    const uint8_t color = colorToIndex(piece & MASK_COLOR);
-    const uint64_t bit = bitMask(index);
-    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, color, bit, index);
-}
-
-// ==============================
-// High-Level Game State API
-// ==============================
-
-inline bool Board::isDraw(uint8_t color) const noexcept {
-    return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw();
+    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
 }

@@ -17,6 +17,18 @@ namespace chess {
 
 using board = std::array<uint32_t, 8>;
 
+struct Move {
+    Square from = NO_SQUARE;
+    Square to   = NO_SQUARE;
+    char promotionPiece = '\0';
+
+    constexpr bool operator==(const Move&) const noexcept = default;
+    constexpr bool sameFromTo(const Move& other) const noexcept { return from == other.from && to == other.to; };
+    constexpr bool sameFromTo(int f, int t) const noexcept { return from == static_cast<uint8_t>(f) && to == static_cast<uint8_t>(t); };
+
+    std::string toUCIString() const noexcept { return squareToString(from) + squareToString(to) + (promotionPiece ? std::string(1, std::tolower(promotionPiece)) : std::string{}); }
+};
+
 class Board {
 public:
     // --- Enums ---
@@ -52,22 +64,19 @@ public:
     };
 
     enum EvalCacheTerm : uint32_t {
-        EVAL_CACHE_MATERIAL_DELTA          = 0,
-        EVAL_CACHE_PAWN_STRUCTURE_MG       = 1,
-        EVAL_CACHE_PAWN_STRUCTURE_EG       = 2,
-        EVAL_CACHE_BISHOP_PAIR_BONUS       = 3,
-        EVAL_CACHE_CASTLING_BONUS          = 4,
-        EVAL_CACHE_ROOKS                   = 5,
-        EVAL_CACHE_BAD_BISHOP              = 6,
-        EVAL_CACHE_BLOCKED_PAWN_BY_BISHOPS = 7,
-        EVAL_CACHE_MINOR_DEVELOPMENT       = 8,
-        EVAL_CACHE_EARLY_QUEEN             = 9,
-        EVAL_CACHE_OUTPOSTS                = 10,
-        EVAL_CACHE_PIECE_COORDINATION      = 11,
-        EVAL_CACHE_CENTRAL_CONTROL         = 12,
-        EVAL_CACHE_WEAK_SQUARES            = 13,
-        EVAL_CACHE_BISHOP_VS_KNIGHT        = 14,
-        EVAL_CACHE_COUNT                   = 15
+        EVAL_CACHE_PAWN_STRUCTURE_MG       = 0,
+        EVAL_CACHE_BISHOP_PAIR_BONUS       = 1,
+        EVAL_CACHE_CASTLING_BONUS          = 2,
+        EVAL_CACHE_ROOKS                   = 3,
+        EVAL_CACHE_BAD_BISHOP              = 4,
+        EVAL_CACHE_MINOR_DEVELOPMENT       = 5,
+        EVAL_CACHE_EARLY_QUEEN             = 6,
+        EVAL_CACHE_OUTPOSTS                = 7,
+        EVAL_CACHE_PIECE_COORDINATION      = 8,
+        EVAL_CACHE_CENTRAL_CONTROL         = 9,
+        EVAL_CACHE_WEAK_SQUARES            = 10,
+        EVAL_CACHE_BISHOP_VS_KNIGHT        = 11,
+        EVAL_CACHE_COUNT                   = 12
     };
 
     enum MoveChangeFlag : uint16_t {
@@ -95,45 +104,43 @@ public:
     // MoveState's 96-byte budget. Sub-eval term values comfortably fit
     // [-32768, 32767]; mate-scored positions skip the cache entirely.
     struct EvalCache {
-        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms{};
-        std::array<int16_t, EVAL_CACHE_COUNT> egTerms{};
-        uint32_t validMask = 0;
+        // Intentionally NOT default-zeroed: the live `evalCache{}` member and any
+        // value-init (EvalCache{}) still zero all members: skips a wasted ~52B zero-fill
+        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms;
+        std::array<int16_t, EVAL_CACHE_COUNT> egTerms;
+        uint32_t validMask;
     };
 
-    struct Move {
-        Coords from;
-        Coords to;
-        char promotionPiece = '\0';
-
-        bool operator==(const Move& other) const noexcept;
-
-        template<typename MoveContainer>
-        static void rotate(MoveContainer& moves, size_t index) noexcept;
-
-        std::string toUCIString() const noexcept;
-    };
-
+    // Members are intentionally NOT default-initialised: skips a full ~96B zero-fill per node.
+    // Value-init sites (`MoveState st{}`) still zero everything.
     struct MoveState {
-        uint64_t prevHistoryHead{};
-        EvalCache prevEvalCache{};
-        uint16_t prevLastMoveChangeFlags{MOVE_CHANGE_NONE};
+        uint64_t prevHistoryHead;
+        // Old value of the single repetitionHistory slot this move overwrites,
+        // so undoMove can restore it. Without this, an irreversible move during
+        // search (which resets historySize to 0 and rewrites from index 0)
+        // permanently clobbers earlier game-history entries even though
+        // historySize is restored: silently breaking repetition detection in
+        // every sibling line that follows a capture/pawn move.
+        uint64_t prevHistorySlotValue;
+        EvalCache prevEvalCache;
+        uint16_t prevLastMoveChangeFlags;
 
-        uint8_t prevHalfMoveClock{};
-        uint8_t prevFullMoveClock{};
-        uint8_t prevHistorySize{};
+        uint8_t prevHalfMoveClock;
+        uint8_t prevFullMoveClock;
+        uint8_t prevHistorySize;
 
-        Coords  prevEnPassant{};
-        uint8_t prevEpHashFile{0xFF};
-        uint8_t prevCastle{};
-        uint8_t prevHasMoved{};
+        Square  prevEnPassant;
+        uint8_t prevEpHashFile;
+        uint8_t prevCastle;
+        uint8_t prevHasMoved;
 
-        uint8_t capturedPiece{};
-        uint8_t fromPiece{};
-        uint8_t promotionPieceType{};
-        uint8_t enPassantCapturedIndex{};
-        uint8_t rookFromIndex{};
-        uint8_t rookToIndex{};
-        MoveKind moveKind{MoveKind::Quiet};
+        uint8_t capturedPiece;
+        uint8_t fromPiece;
+        uint8_t promotionPieceType;
+        uint8_t enPassantCapturedIndex;
+        uint8_t rookFromIndex;
+        uint8_t rookToIndex;
+        MoveKind moveKind;
     };
 
     static_assert(sizeof(MoveState) <= 96, "MoveState layout regressed; keep it compact for search stack usage.");
@@ -147,8 +154,7 @@ public:
     static constexpr uint8_t  BLACK_ROOK_A_START      = 0;
     static constexpr uint8_t  BLACK_ROOK_H_START      = 7;
     static constexpr uint8_t  CASTLING_RIGHTS_ALL     = 0x0F;
-    // 50-move rule bounds reversible plies to 100; +1 keeps the current position.
-    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 101;
+    static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 255; // must be 255 instead of 100 due to the 8-bit prevHistorySize in MoveState
 
     static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
 
@@ -194,22 +200,18 @@ public:
     explicit Board(const std::string& fen);
     Board(const Board& other) noexcept;
     Board& operator=(const Board& other) noexcept;
-    Board(Board&& other) noexcept;
-    Board& operator=(Board&& other) noexcept;
+    Board(Board&& other) noexcept = default;
+    Board& operator=(Board&& other) noexcept = default;
 
     // --- Static utilities ---
-    static constexpr uint8_t  oppositeColor(uint8_t color) noexcept;
-    static constexpr uint8_t  colorToIndex(uint8_t color) noexcept;
-    static constexpr uint8_t  promotionRank(bool isWhite) noexcept;
-    static constexpr uint64_t bitMask(uint8_t sq) noexcept;
-    static constexpr uint8_t  file(uint8_t sq) noexcept;
-    static constexpr uint8_t  rank(uint8_t sq) noexcept;
+    static constexpr uint8_t  oppositeColor(uint8_t color) noexcept { return color ^ 0x8; };
+    static constexpr uint8_t  colorToIndex(uint8_t color) noexcept { return ((color & MASK_COLOR) >> 3) ^ 0x1u; };
+    static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };
 
     // --- Board access ---
-    __attribute__((hot, always_inline)) constexpr inline uint8_t get(uint8_t index) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t get(Coords coords) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t get(uint8_t row, uint8_t col) const noexcept;
-    __attribute__((always_inline))      constexpr inline uint8_t getColor(uint8_t index) const noexcept;
+    __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return (chessboard[7 - (index >> 3)] >> ((index & 7) << 2)) & MASK_PIECE; }
+    __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard[row] >> (col << 2)) & MASK_PIECE; }
+    __attribute__((always_inline))      constexpr uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 
     __attribute__((always_inline)) void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;
@@ -217,28 +219,30 @@ public:
     __attribute__((always_inline)) void removePieceFromBB(uint8_t piece, uint8_t index) noexcept;
 
     // --- Move execution ---
-    void doMove(const Move& m, MoveState& state, char promotionChoice = 'q') noexcept;
+    void doMove(const Move& m, MoveState& state) noexcept;
     void undoMove(const Move& m, const MoveState& state) noexcept;
     void doNullMove(MoveState& state) noexcept;
     void undoNullMove(const MoveState& state) noexcept;
-    //FIXME Abbiamo la struttura dati Move, usiamola invece di passare parametri separati
-    bool move(const Coords& from, const Coords& to, char promotionChoice = '\0') noexcept;
+    bool move(Move move) noexcept;
 
     // --- Legality & attack queries ---
     bool isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPiece) const noexcept;
     bool isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare = 64) const noexcept;
     bool inCheck(uint8_t color) const noexcept;
-    bool isDoubleCheck(uint8_t color) const noexcept;
+    // Bitboard of enemy pieces giving check to `color`'s king (0 = no check).
+    // One scan answers inCheck (!=0), double check (>1 bit) and, via the
+    // checker square, the evasion mask — callers should reuse it.
+    uint64_t checkersTo(uint8_t color) const noexcept;
     [[nodiscard]] inline bool isKingSafeAfterMove(uint8_t movingColor, uint8_t fromIndex,
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
 
     // --- Game state queries ---
     __attribute__((hot)) bool isCheckmate(uint8_t color) const noexcept { return inCheck(color) && !hasAnyLegalMove(color); }
     bool hasAnyLegalMove(uint8_t color) const noexcept;
-    bool isStalemate(uint8_t color) const noexcept    { return !inCheck(color) && !hasAnyLegalMove(color); }
-    bool isFiftyMoveRule() const noexcept             { return halfMoveClock >= 100; }
-    bool isDraw(uint8_t color) const noexcept;
-    bool isThreefoldRepetition() const noexcept;
+    bool isStalemate(uint8_t color) const noexcept { return !inCheck(color) && !hasAnyLegalMove(color); }
+    bool isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
+    bool isDraw(uint8_t color) const noexcept { return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw(); }
+    bool isThreefoldRepetition() const noexcept { return countRepetitions() >= 3; }
     int  countRepetitions() const noexcept;
     bool hasInsufficientMaterialDraw() const noexcept;
 
@@ -247,10 +251,10 @@ public:
     constexpr bool     getCastle(uint8_t index) const noexcept { return (castle & (1u << index)); }
     constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
     constexpr uint8_t  getHalfMoveClock() const noexcept { return halfMoveClock; }
-    Coords             getEnPassant() const noexcept     { return enPassant; }
+    Square             getEnPassant() const noexcept     { return enPassant; }
     constexpr uint64_t getHash() const noexcept          { return currentHash; }
     uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }
-    void               updateOccupancyBB() noexcept;
+    void               rebuildBitboardsFromSquares() noexcept;
 
     // --- Incremental eval accessors ---
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
@@ -261,15 +265,14 @@ public:
     // Weighted phase units across both sides (N=B=1, R=2, Q=4). 0 = no
     // non-pawn pieces (pawn-only endgame), 24 = full opening material.
     constexpr int32_t getIncrementalPhaseWeight() const noexcept       { return incrementalPhaseWeight; }
-    int32_t           getIncrementalPsqtDelta(bool isEndgame) const noexcept;
     void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
 
     // --- Eval cache ---
-    template<uint32_t Term> bool             hasEvalCacheTerm() const noexcept;
+    template<uint32_t Term> bool hasEvalCacheTerm() const noexcept { return (evalCache.validMask & evalCacheBit(Term)) != 0; }
     template<uint32_t Term> engine::PhaseValue getEvalCacheTerm() const noexcept;
-    template<uint32_t Term> void             setEvalCacheTerm(engine::PhaseValue value) const noexcept;
-    void invalidateEvalCacheTerms(uint32_t terms) noexcept;
-    void clearEvalCache() noexcept;
+    template<uint32_t Term> void setEvalCacheTerm(engine::PhaseValue value) const noexcept;
+    void invalidateEvalCacheTerms(uint32_t terms) noexcept { evalCache.validMask &= ~terms; }
+    void clearEvalCache() noexcept { evalCache.validMask = 0; }
 
     // --- FEN ---
     void        fromFenToBoard(const std::string& fen);
@@ -309,11 +312,12 @@ private:
     // --- Private helpers: legality ---
     [[nodiscard]] inline bool isKingMoveLegal(uint8_t fromIndex, uint8_t toIndex,
                                                uint64_t toBit, uint8_t movingColor) const noexcept;
-    [[nodiscard]] inline bool verifyKingSafetyForSimplePiece(uint8_t fromIndex, uint8_t toIndex,
-                                                              uint8_t movingColor, uint8_t destPiece) const noexcept;
     template<uint8_t PieceType>
     [[nodiscard]] bool hasLegalMovesForPieceType(uint64_t pieceBB, uint64_t ownOcc,
                                                   uint64_t enemyOcc, uint8_t movingColor) const noexcept;
+    template<uint8_t PieceType>
+    [[nodiscard]] inline bool pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit,
+                                                    uint8_t movingColor, uint8_t destPiece) const noexcept;
     static bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                       uint64_t pawns, uint64_t knights, uint64_t bishops,
                                       uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
@@ -341,21 +345,21 @@ private:
     [[nodiscard]] static constexpr bool     isPromotionKind(MoveKind kind) noexcept;
     [[nodiscard]] static inline MoveKind    classifyMoveKind(uint8_t movingType, uint8_t movingColor,
                                                               uint8_t fromIndex, uint8_t toIndex,
-                                                              uint8_t destBefore, const Coords& prevEnPassant) noexcept;
+                                                              uint8_t destBefore, const Square& prevEnPassant) noexcept;
     [[nodiscard]] static inline uint8_t     normalizePromotionChoice(char choice) noexcept;
     [[nodiscard]] static inline uint8_t     promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
 
     // --- Private helpers: FEN & hash ---
     static bool    parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
     static uint8_t parseActiveColor(const std::string& activeSection);
-    static Coords  parseEnPassant(const std::string& enPassantSection);
+    static Square  parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
     std::string    boardToFenPieces() const;
     std::string    castlingToFen() const;
     std::string    enPassantToFen() const;
     void           recomputeHashAndEp() noexcept;
     void           rebuildRepetitionHistory() noexcept;
-    void           updateRepetitionAfterMove(bool resetHistory, bool recomputeHash = true) noexcept;
+    void           updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept;
     inline void    copyFromBoard(const Board& other) noexcept;
 
     // --- Private data ---
@@ -383,7 +387,7 @@ private:
     uint8_t  fullMoveClock       = 1;
     uint8_t  castle              = CASTLING_RIGHTS_ALL;
     uint8_t  hasMoved            = 0x00;
-    Coords   enPassant{};
+    Square   enPassant           = NO_SQUARE;
     uint8_t  epHashFile          = 0xFF;
     uint8_t  activeColor         = WHITE;
     uint8_t  historySize         = 0;

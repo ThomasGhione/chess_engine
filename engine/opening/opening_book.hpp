@@ -26,7 +26,7 @@ public:
 
     // Returns a book move for this position (weighted-random selection among
     // all candidates), or nullopt if the position is not in the book.
-    std::optional<chess::Board::Move> probe(const chess::Board& board) const;
+    std::optional<chess::Move> probe(const chess::Board& board) const;
 
 private:
     struct Entry {
@@ -40,8 +40,8 @@ private:
     // Compute the Polyglot Zobrist hash of the position.
     static uint64_t polyglotKey(const chess::Board& board) noexcept;
 
-    // Decode a 16-bit polyglot move word to a Board::Move.
-    static chess::Board::Move decodeMove(uint16_t pgMove) noexcept;
+    // Decode a 16-bit polyglot move word to a Move.
+    static chess::Move decodeMove(uint16_t pgMove) noexcept;
 
     // Binary-search for all entries matching key (file is sorted by key).
     std::span<const Entry> findEntries(uint64_t key) const noexcept;

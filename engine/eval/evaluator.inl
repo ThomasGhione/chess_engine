@@ -1,20 +1,20 @@
 inline constexpr int Evaluator::manhattan(int a, int b) noexcept {
-    const int fileA = chess::Board::file(a);
-    const int fileB = chess::Board::file(b);
-    const int rankA = chess::Board::rank(a);
-    const int rankB = chess::Board::rank(b);
+    const int fileA = chess::file(a);
+    const int fileB = chess::file(b);
+    const int rankA = chess::rank(a);
+    const int rankB = chess::rank(b);
     return std::abs(fileA - fileB) + std::abs(rankA - rankB);
 }
 
 inline constexpr int Evaluator::chebyshev(int a, int b) noexcept {
-    const int df = std::abs(chess::Board::file(a) - chess::Board::file(b));
-    const int dr = std::abs(chess::Board::rank(a) - chess::Board::rank(b));
+    const int df = std::abs(chess::file(a) - chess::file(b));
+    const int dr = std::abs(chess::rank(a) - chess::rank(b));
     return std::max(df, dr);
 }
 
 inline constexpr int Evaluator::edgeProximity(int sq) noexcept {
-    const int r = chess::Board::rank(sq);
-    const int f = chess::Board::file(sq);
+    const int r = chess::rank(sq);
+    const int f = chess::file(sq);
     return 7 - std::min({r, 7 - r, f, 7 - f});
 }
 
@@ -57,15 +57,15 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
     std::array<uint64_t, 64> masks{};
     for (int sq = 0; sq < 64; ++sq) {
         uint64_t mask = 0;
-        const int rank = chess::Board::rank(sq);
-        const int file = chess::Board::file(sq);
+        const int rank = chess::rank(sq);
+        const int file = chess::file(sq);
 
         for (int r = std::max(0, rank - 2); r <= std::min(7, rank + 2); ++r) {
             for (int f = std::max(0, file - 2); f <= std::min(7, file + 2); ++f) {
                 const int target = (r << 3) | f;
                 const int dist = std::abs(r - rank) + std::abs(f - file);
                 if (dist <= 2 && target != sq) {
-                    mask |= chess::Board::bitMask(target);
+                    mask |= chess::Board::BIT_MASKS[target];
                 }
             }
         }
@@ -77,8 +77,8 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initKingProximityMasks() no
 inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rank(sq);
-        result[sq] = (rank > 0) ? ((chess::Board::bitMask(rank * 8)) - 1ULL) : 0ULL;
+        const int rank = chess::rank(sq);
+        result[sq] = (rank > 0) ? ((chess::Board::BIT_MASKS[rank * 8]) - 1ULL) : 0ULL;
     }
     return result;
 }
@@ -86,7 +86,7 @@ inline constexpr std::array<uint64_t, 64> Evaluator::initWhiteForwardFill() {
 inline constexpr std::array<uint64_t, 64> Evaluator::initBlackForwardFill() {
     std::array<uint64_t, 64> result{};
     for (int sq = 0; sq < 64; ++sq) {
-        const int rank = chess::Board::rank(sq);
+        const int rank = chess::rank(sq);
         result[sq] = (rank < 7) ? (0xFFFFFFFFFFFFFFFFULL << ((rank + 1) * 8)) : 0ULL;
     }
     return result;

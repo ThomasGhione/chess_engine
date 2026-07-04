@@ -3,7 +3,7 @@
 #include <bit>
 #include "../../engine.hpp"
 #include "../../eval/evaluator.hpp"
-#include "../../search/move_generator.hpp"
+#include "../../sort/move_generator.hpp"
 #include "../../movelist.hpp"
 #include "../../../tests/ut.hpp"
 
@@ -12,46 +12,17 @@ namespace ut = boost::ut;
 ut::suite performanceEngineSuite = [] {
   using namespace ut;
 
-  /*
-  "critical position 18, avoid Qe3 hanging queen to bishop"_test = []{
-    constexpr const char* FEN = "2r1r1k1/1p3pp1/2b1p2p/p2p2b1/Pq1P4/2NQ1N2/RPP2PPP/4R1K1 w - - 4 20";
-    engine::Engine e(FEN);
-    e.depth = 10;
-
-    const chess::Board::Move bestMove = e.searchUCI(e.depth);
-    const bool playsHangingQueen = bestMove.from == chess::Coords("d3")
-      && bestMove.to == chess::Coords("e3");
-
-    expect(false && !playsHangingQueen)
-      << "Critical regression: engine played Qe3, hanging the queen to Bg5xe3. Got "
-      << bestMove.from.toString() << bestMove.to.toString() << '\n';
-  };
-  
-
-  "critical position 18, black sees Bg5xe3 after Qe3"_test = []{
-    engine::Engine e("2r1r1k1/1p3pp1/2b1p2p/p2p2b1/Pq1P4/2NQ1N2/RPP2PPP/4R1K1 w - - 4 20");
-    chess::Board::MoveState state;
-    e.board.doMove(chess::Board::Move{chess::Coords("d3"), chess::Coords("e3")}, state);
-
-    const chess::Board::Move reply = e.searchUCI(1);
-    expect(reply.from == chess::Coords("g5") && reply.to == chess::Coords("e3"))
-      << "Expected black to immediately punish Qe3 with Bg5xe3, got "
-      << reply.from.toString() << reply.to.toString() << '\n';
-  };
-  */
-
   "performance searchPosition depth 11"_test = []{
     engine::Engine e = engine::Engine();
     e.openingEnabled.store(false, std::memory_order_relaxed);
-    e.depth = 11;
+    constexpr int depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.searchUCI(e.depth);
+    e.searchUCI(engine::time::Limits{.maxDepth = depth});
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     printf("Depth 11 search completed in %lu ms\n", duration);
-    printf("Nodes searched: %lu\n\n", e.nodesSearched);
     expect(duration < 9000);
   };
 
@@ -59,22 +30,33 @@ ut::suite performanceEngineSuite = [] {
   "avg performance searchPosition depth 10 over 20 runs"_test = []{
     engine::Engine e = engine::Engine();
     e.openingEnabled.store(false, std::memory_order_relaxed);
-    e.depth = 10;
+    constexpr int depth = 10;
 
     constexpr int runs = 20;
     int64_t totalDuration = 0;
 
-    // plays against itself for "runs" moves
+    // Plays against itself for "runs" moves. searchUCI() searches a COPY of the
+    // board and does NOT advance it, so we must play the returned move on e.board
+    // ourselves — otherwise every run re-searches the identical root position and
+    // hits a fully warm TT (~0 ms at any depth), measuring nothing.
+    int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        e.searchUCI(e.depth);
+        const chess::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
         totalDuration += duration;
+        ++completedRuns;
+
+        // Advance the self-play game so the next run is a new position; stop if
+        // there is no legal move (checkmate / stalemate / terminal).
+        if (!chess::isValidSquare(move.from) || !chess::isValidSquare(move.to)) break;
+        chess::Board::MoveState state;
+        e.board.doMove(move, state);
     }
 
-    double avgDuration = static_cast<double>(totalDuration) / runs;
+    double avgDuration = static_cast<double>(totalDuration) / completedRuns;
 
     // Attesa che la ricerca media venga completata in meno di 500 millisecondi
     printf("Average Depth 10 search time over %d runs: %.2f ms\n\n", runs, avgDuration);
@@ -151,7 +133,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t pawnSink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i);
-      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns, static_cast<bool>(i & 1)).mg;
+      pawnSink += engine::Evaluator::evalPawnStructure(pos.whitePawns, pos.blackPawns).mg;
     }
     auto end2 = std::chrono::high_resolution_clock::now();
     auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
@@ -196,7 +178,7 @@ ut::suite performanceEngineSuite = [] {
     int64_t kingActivitySink = 0;
     for (int i = 0; i < EVAL_HELPER_FUNCTIONS_ITERATIONS; ++i) {
       const auto& pos = benchPosAt(i + 3);
-      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board, false).mg;
+      kingActivitySink += engine::Evaluator::evalKingActivity(pos.board).mg;
     }
     auto end8 = std::chrono::high_resolution_clock::now();
     auto duration8 = std::chrono::duration_cast<std::chrono::milliseconds>(end8 - start8).count();

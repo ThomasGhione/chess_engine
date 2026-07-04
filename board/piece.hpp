@@ -6,6 +6,10 @@
 #include "coords.hpp"
 #include "magic_numbers.hpp"
 
+#if defined(__BMI2__)
+#include <immintrin.h>
+#endif
+
 namespace pieces {
 
 using U64 = uint64_t;
@@ -40,6 +44,21 @@ struct MagicParams {
     uint32_t shift;
     uint32_t offset;
 };
+
+// Slider table index. On BMI2 the fancy-magic index (shift == 64 - popcount(mask),
+// so the magic index range equals 2^popcount(mask)) is exactly the PEXT index, so
+// PEXT is a drop-in for the same tables/offsets — one instruction instead of the
+// imul+and+shr magic chain. Used for BOTH table population and lookup, so the
+// ordering stays self-consistent. Falls back to magic off BMI2 (e.g. mingw build).
+__attribute__((always_inline))
+inline uint32_t sliderIndex(uint64_t occ, const MagicParams& p) noexcept {
+#if defined(__BMI2__)
+    (void)p.magic; (void)p.shift;
+    return static_cast<uint32_t>(_pext_u64(occ, p.mask));
+#else
+    return static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
+#endif
+}
 
 // Pre-computed params (constexpr, .rodata)
 template<typename MaskArray, typename MagicArray>
@@ -118,7 +137,7 @@ inline void populateAttackTable(int square, const MagicParams& p,
     const int numPatterns = 1 << bitCount;
     for (int i = 0; i < numPatterns; ++i) {
         uint64_t occupancy = generateOccupancyPattern(i, bitCount, p.mask);
-        uint32_t index = ((occupancy & p.mask) * p.magic) >> p.shift;
+        uint32_t index = sliderIndex(occupancy, p);
         lookup[p.offset + index] = attackFunc(square, occupancy);
     }
 }
@@ -141,14 +160,14 @@ inline void initMagicBitboards() noexcept {
 __attribute__((hot, always_inline))
 inline U64 getRookAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = ROOK_PARAMS[sq];
-    const uint32_t index = ((occ & p.mask) * p.magic) >> p.shift;
+    const uint32_t index = sliderIndex(occ, p);
     return ROOK_ATTACK_LOOKUP[p.offset + index];
 }
 
 __attribute__((hot, always_inline))
 inline U64 getBishopAttacks(uint8_t sq, U64 occ) noexcept {
     const MagicParams& p = BISHOP_PARAMS[sq];
-    const uint32_t index = ((occ & p.mask) * p.magic) >> p.shift;
+    const uint32_t index = sliderIndex(occ, p);
     return BISHOP_ATTACK_LOOKUP[p.offset + index];
 }
 
@@ -161,7 +180,7 @@ inline U64 getQueenAttacks(uint8_t sq, U64 occ) noexcept {
 inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite) noexcept {
 	int8_t file = chess::file(squareIndex), rank = chess::rank(squareIndex);
 	U64 attackBitboard = 0ULL;
-	// Coords convention: rank 0 = row 8, rank 7 = row 1
+	// Square convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack "forward" (rank decreases), Black pawns attack "backward" (rank increases)
 	int8_t newRank = rank + (isWhite ? -1 : 1);
 	
@@ -225,16 +244,6 @@ inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_DOUBLE_PUSH_TARGET
     return table;
 }();
 
-inline constexpr std::array<std::array<uint64_t, 64>, 2> PAWN_PUSH_TARGETS = []{
-    std::array<std::array<uint64_t, 64>, 2> table{};
-    for (int c = 0; c < 2; ++c) {
-        for (int sq = 0; sq < 64; ++sq) {
-            table[c][sq] = PAWN_SINGLE_PUSH_TARGETS[c][sq] | PAWN_DOUBLE_PUSH_TARGETS[c][sq];
-        }
-    }
-    return table;
-}();
-
 // Occupancy bits relevant to pawn forward pushes:
 // bit0 = one-step destination occupied
 // bit1 = two-step destination occupied
@@ -280,7 +289,7 @@ inline constexpr U64 getPawnForwardPushes(uint8_t squareIndex, bool isWhite, U64
 inline constexpr U64 getPawnAttackersTo(int8_t targetIndex, bool isWhite) noexcept {
 	int8_t tf = chess::file(targetIndex), tr = chess::rank(targetIndex);
 	U64 attackers = 0ULL;
-	// Coords convention: rank 0 = row 8, rank 7 = row 1
+	// Square convention: rank 0 = row 8, rank 7 = row 1
 	// White pawns attack from rank+1 (one rank "lower" numerically), Black pawns attack from rank-1
 	int8_t fromRank = tr + (isWhite ? 1 : -1);
 	if (fromRank >= 0 && fromRank < 8) {

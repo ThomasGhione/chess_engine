@@ -2,8 +2,10 @@
 
 namespace engine {
 
-inline PhaseValue Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, int opp, int sign,
+inline PhaseValue Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color,
                                                  const chess::Board& b, PhaseValue bonus) noexcept {
+    const int opp  = color ^ 1;
+    const int sign = (color == 0) ? 1 : -1;
     PhaseValue score{};
     while (piecesBb) {
         const int sq = popLSB(piecesBb);
@@ -18,12 +20,10 @@ inline PhaseValue Evaluator::evalOutpostsPieces(uint64_t piecesBb, int color, in
 
 inline PhaseValue Evaluator::evalOutpostsForColor(const chess::Board& b, int color) noexcept {
     PhaseValue score{};
-    const int sign = (color == 0) ? 1 : -1;
-    const int opp = color ^ 1;
 
-    score += evalOutpostsPieces(b.knights_bb[color], color, opp, sign, b, engine::OUTPOST_KNIGHT_BONUS);
+    score += evalOutpostsPieces(b.knights_bb[color], color, b, engine::OUTPOST_KNIGHT_BONUS);
     // Bishop bonus halved (preserves prior division by 2).
-    score += evalOutpostsPieces(b.bishops_bb[color], color, opp, sign, b,
+    score += evalOutpostsPieces(b.bishops_bb[color], color, b,
                                  PhaseValue{engine::OUTPOST_BISHOP_BONUS.mg / 2, engine::OUTPOST_BISHOP_BONUS.eg / 2});
 
     return score;

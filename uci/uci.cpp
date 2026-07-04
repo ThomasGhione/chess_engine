@@ -1,37 +1,23 @@
 #include "uci.hpp"
 
-#include "../board/board.hpp"
 #include "../engine/engine.hpp"
-#include "../engine/eval_constants.hpp"
-#include "../ascii_utils.hpp"
 
-#include <algorithm>
+#include <omp.h>
+
 #include <charconv>
-#include <cctype>
-#include <cstdlib>
 #include <iostream>
-#include <string>
-#include <string_view>
 
 namespace {
     using std::string_view;
 
-    static bool isSpace(const char c) noexcept {
-        return std::isspace(static_cast<unsigned char>(c)) != 0;
-    }
-
-    static char asciiLower(const char c) noexcept {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-
     static string_view trimLeft(string_view s) noexcept {
-        std::size_t i = 0;
-        while (i < s.size() && isSpace(s[i])) ++i;
+        size_t i = 0;
+        while (i < s.size() && std::isspace(s[i])) ++i;
         return s.substr(i);
     }
 
     static string_view trimRight(string_view s) noexcept {
-        while (!s.empty() && isSpace(s.back())) s.remove_suffix(1);
+        while (!s.empty() && std::isspace(s.back())) s.remove_suffix(1);
         return s;
     }
 
@@ -40,7 +26,7 @@ namespace {
         normalized.reserve(optionName.size());
         for (const char c : optionName) {
             if (c == ' ' || c == '_' || c == '-') continue;
-            normalized.push_back(asciiLower(c));
+            normalized.push_back(static_cast<char>(std::tolower(c)));
         }
         return normalized;
     }
@@ -54,8 +40,8 @@ namespace {
                 upperNext = true;
                 continue;
             }
-            display.push_back(upperNext ? static_cast<char>(std::toupper(static_cast<unsigned char>(c)))
-                                         : static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            display.push_back(upperNext ? static_cast<char>(std::toupper(c))
+                                        : static_cast<char>(std::tolower(c)));
             upperNext = false;
         }
         return display;
@@ -70,63 +56,48 @@ namespace {
         int32_t maxValue;
     };
 
-    static void defaultRangeFor(int32_t value, int32_t& minValue, int32_t& maxValue) noexcept {
-        // Wide auto-range so the tuner's sampled values land inside the
-        // engine's accepted bounds without each option needing an explicit
-        // hasRange entry. ±200% of magnitude with a floor of 10 covers the
-        // typical chess-tuning-tools parameter ranges used by the JSON groups.
+    // Wide auto-range so the tuner's sampled values land inside the engine's
+    // accepted bounds without each option needing an explicit hasRange entry.
+    // ±200% of magnitude with a floor of 10 covers the typical
+    // chess-tuning-tools parameter ranges used by the JSON groups.
+    static std::pair<int32_t, int32_t> defaultRangeFor(int32_t value) noexcept {
         const int64_t absValue = std::llabs(static_cast<int64_t>(value));
         const int64_t delta = std::max<int64_t>(10, absValue * 2);
-        const int64_t minCandidate = static_cast<int64_t>(value) - delta;
-        const int64_t maxCandidate = static_cast<int64_t>(value) + delta;
-        minValue = static_cast<int32_t>(std::clamp(minCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
-        maxValue = static_cast<int32_t>(std::clamp(maxCandidate, static_cast<int64_t>(INT32_MIN), static_cast<int64_t>(INT32_MAX)));
+        const auto toI32 = [](int64_t x) {
+            return static_cast<int32_t>(std::clamp<int64_t>(x, INT32_MIN, INT32_MAX));
+        };
+        return {toI32(value - delta), toI32(value + delta)};
+    }
+
+    // Resolved [min, max] range advertised and accepted for an eval option:
+    // its explicit bounds when given, otherwise the auto-range.
+    static std::pair<int32_t, int32_t> optionRange(const EvalOption& option) noexcept {
+        return option.hasRange ? std::pair{option.minValue, option.maxValue}
+                               : defaultRangeFor(*option.value);
     }
 
     static void refreshPieceTables() noexcept {
-        engine::PIECE_VALUES[0] = 0;
-        engine::PIECE_VALUES[1] = engine::PAWN_VALUE;
-        engine::PIECE_VALUES[2] = engine::KNIGHT_VALUE;
-        engine::PIECE_VALUES[3] = engine::BISHOP_VALUE;
-        engine::PIECE_VALUES[4] = engine::ROOK_VALUE;
-        engine::PIECE_VALUES[5] = engine::QUEEN_VALUE;
-        engine::PIECE_VALUES[6] = engine::KING_VALUE;
-        engine::PIECE_VALUES[7] = 0;
-
-        engine::MVV_TABLE[0] = 0;
-        engine::MVV_TABLE[1] = engine::PAWN_VALUE * 10;
-        engine::MVV_TABLE[2] = engine::KNIGHT_VALUE * 10;
-        engine::MVV_TABLE[3] = engine::BISHOP_VALUE * 10;
-        engine::MVV_TABLE[4] = engine::ROOK_VALUE * 10;
-        engine::MVV_TABLE[5] = engine::QUEEN_VALUE * 10;
-        engine::MVV_TABLE[6] = engine::KING_VALUE * 10;
-
-        chess::Board::MATERIAL_VALUES[0] = 0;
-        chess::Board::MATERIAL_VALUES[1] = engine::PAWN_VALUE;
-        chess::Board::MATERIAL_VALUES[2] = engine::KNIGHT_VALUE;
-        chess::Board::MATERIAL_VALUES[3] = engine::BISHOP_VALUE;
-        chess::Board::MATERIAL_VALUES[4] = engine::ROOK_VALUE;
-        chess::Board::MATERIAL_VALUES[5] = engine::QUEEN_VALUE;
-        chess::Board::MATERIAL_VALUES[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES[7] = 0;
-
-        chess::Board::MATERIAL_VALUES_MG[0] = 0;
-        chess::Board::MATERIAL_VALUES_MG[1] = engine::PAWN_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[2] = engine::KNIGHT_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[3] = engine::BISHOP_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[4] = engine::ROOK_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[5] = engine::QUEEN_VALUE_MG;
-        chess::Board::MATERIAL_VALUES_MG[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES_MG[7] = 0;
-
-        chess::Board::MATERIAL_VALUES_EG[0] = 0;
-        chess::Board::MATERIAL_VALUES_EG[1] = engine::PAWN_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[2] = engine::KNIGHT_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[3] = engine::BISHOP_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[4] = engine::ROOK_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[5] = engine::QUEEN_VALUE_EG;
-        chess::Board::MATERIAL_VALUES_EG[6] = engine::KING_VALUE;
-        chess::Board::MATERIAL_VALUES_EG[7] = 0;
+        // One row per piece slot (0=empty, 1=pawn … 6=king, 7=empty).
+        // King has no phase-split value, so mg/eg both use the base.
+        struct Slot { int32_t base, mg, eg; };
+        const Slot slots[] = {
+            {0,                    0,                       0                      },
+            {engine::PAWN_VALUE,   engine::PAWN_VALUE_MG,   engine::PAWN_VALUE_EG  },
+            {engine::KNIGHT_VALUE, engine::KNIGHT_VALUE_MG, engine::KNIGHT_VALUE_EG},
+            {engine::BISHOP_VALUE, engine::BISHOP_VALUE_MG, engine::BISHOP_VALUE_EG},
+            {engine::ROOK_VALUE,   engine::ROOK_VALUE_MG,   engine::ROOK_VALUE_EG  },
+            {engine::QUEEN_VALUE,  engine::QUEEN_VALUE_MG,  engine::QUEEN_VALUE_EG },
+            {engine::KING_VALUE,   engine::KING_VALUE,      engine::KING_VALUE     },
+            {0,                    0,                       0                      },
+        };
+        for (int i = 0; i < 8; ++i) {
+            engine::PIECE_VALUES[i] = slots[i].base;
+            chess::Board::MATERIAL_VALUES[i]    = slots[i].base;
+            chess::Board::MATERIAL_VALUES_MG[i] = slots[i].mg;
+            chess::Board::MATERIAL_VALUES_EG[i] = slots[i].eg;
+        }
+        for (int i = 0; i < 7; ++i)
+            engine::MVV_TABLE[i] = slots[i].base * 10;
     }
 
     // Macro to expand a PhaseValue constant into Mg + Eg UCI options. Tuners
@@ -158,6 +129,7 @@ namespace {
         PV_OPTS("BACKWARD_PAWN_PENALTY", engine::BACKWARD_PAWN_PENALTY),
         PV_OPTS("PASSED_PAWN_BLOCKED_PENALTY", engine::PASSED_PAWN_BLOCKED_PENALTY),
         PV_OPTS("CENTER_CONTROL_BONUS", engine::CENTER_CONTROL_BONUS),
+        {"COLOR_COMPLEX_PENALTY", &engine::COLOR_COMPLEX_PENALTY, false, false, 0, 0},
         PV_OPTS("PASSED_ADVANCEMENT_SCALE", engine::PASSED_ADVANCEMENT_SCALE),
         PV_OPTS("PASSED_NEAR_PROMOTION_BONUS", engine::PASSED_NEAR_PROMOTION_BONUS),
         PV_OPTS("BISHOP_PAIR_BONUS", engine::BISHOP_PAIR_BONUS),
@@ -174,15 +146,20 @@ namespace {
         PV_OPTS("PINNED_ROOK_PENALTY", engine::PINNED_ROOK_PENALTY),
         PV_OPTS("LOW_MOBILITY_QUEEN_PENALTY", engine::LOW_MOBILITY_QUEEN_PENALTY),
         PV_OPTS("PINNED_QUEEN_PENALTY", engine::PINNED_QUEEN_PENALTY),
-        PV_OPTS("MOBILITY_CENTER_BONUS", engine::MOBILITY_CENTER_BONUS),
-        PV_OPTS("MOBILITY_OWN_PAWN_BLOCKER_PENALTY", engine::MOBILITY_OWN_PAWN_BLOCKER_PENALTY),
-        {"QUEEN_EARLY_MOBILITY_THRESHOLD", &engine::QUEEN_EARLY_MOBILITY_THRESHOLD, false, false, 0, 0},
-        PV_OPTS("QUEEN_EARLY_MOBILITY_PENALTY", engine::QUEEN_EARLY_MOBILITY_PENALTY),
-        PV_OPTS("OUTPOST_CENTER_FILE_BONUS", engine::OUTPOST_CENTER_FILE_BONUS),
-        PV_OPTS("OUTPOST_NEAR_CENTER_FILE_BONUS", engine::OUTPOST_NEAR_CENTER_FILE_BONUS),
-        PV_OPTS("OUTPOST_ADVANCED_RANK_BONUS", engine::OUTPOST_ADVANCED_RANK_BONUS),
-        PV_OPTS("OUTPOST_KING_ZONE_BONUS", engine::OUTPOST_KING_ZONE_BONUS),
-        PV_OPTS("OUTPOST_KEY_SQUARE_BONUS", engine::OUTPOST_KEY_SQUARE_BONUS),
+        // Per-piece safe-mobility refs (scalar) and weights (PhaseValue). Explicit
+        // ranges so the tuner has room (defaultRangeFor would clamp small defaults).
+        {"MOBILITY_KNIGHT_REF", &engine::MOBILITY_KNIGHT_REF, false, true, 0, 16},
+        {"MOBILITY_BISHOP_REF", &engine::MOBILITY_BISHOP_REF, false, true, 0, 16},
+        {"MOBILITY_ROOK_REF",   &engine::MOBILITY_ROOK_REF,   false, true, 0, 16},
+        {"MOBILITY_QUEEN_REF",  &engine::MOBILITY_QUEEN_REF,  false, true, 0, 20},
+        {"MOBILITY_KNIGHT_WEIGHT_Mg", &engine::MOBILITY_KNIGHT_WEIGHT.mg, false, true, -4, 20},
+        {"MOBILITY_KNIGHT_WEIGHT_Eg", &engine::MOBILITY_KNIGHT_WEIGHT.eg, false, true, -4, 20},
+        {"MOBILITY_BISHOP_WEIGHT_Mg", &engine::MOBILITY_BISHOP_WEIGHT.mg, false, true, -4, 20},
+        {"MOBILITY_BISHOP_WEIGHT_Eg", &engine::MOBILITY_BISHOP_WEIGHT.eg, false, true, -4, 20},
+        {"MOBILITY_ROOK_WEIGHT_Mg",   &engine::MOBILITY_ROOK_WEIGHT.mg,   false, true, -4, 20},
+        {"MOBILITY_ROOK_WEIGHT_Eg",   &engine::MOBILITY_ROOK_WEIGHT.eg,   false, true, -4, 20},
+        {"MOBILITY_QUEEN_WEIGHT_Mg",  &engine::MOBILITY_QUEEN_WEIGHT.mg,  false, true, -4, 20},
+        {"MOBILITY_QUEEN_WEIGHT_Eg",  &engine::MOBILITY_QUEEN_WEIGHT.eg,  false, true, -4, 20},
         PV_OPTS("COORDINATION_PENALTY", engine::COORDINATION_PENALTY),
         PV_OPTS("OUTPOST_BISHOP_BONUS", engine::OUTPOST_BISHOP_BONUS),
         PV_OPTS("OUTPOST_KNIGHT_BONUS", engine::OUTPOST_KNIGHT_BONUS),
@@ -222,7 +199,6 @@ namespace {
         PV_OPTS("KING_SHELTER_MISSING_PENALTY", engine::KING_SHELTER_MISSING_PENALTY),
         PV_OPTS("KING_PAWN_STORM_NEAR_PENALTY", engine::KING_PAWN_STORM_NEAR_PENALTY),
         PV_OPTS("KING_PAWN_STORM_FAR_PENALTY", engine::KING_PAWN_STORM_FAR_PENALTY),
-        PV_OPTS("KING_CASTLED_SHIELD_BREAK_PENALTY", engine::KING_CASTLED_SHIELD_BREAK_PENALTY),
         PV_OPTS("KING_SHELTER_ADVANCE_ONE_PENALTY", engine::KING_SHELTER_ADVANCE_ONE_PENALTY),
         PV_OPTS("KING_SHELTER_ADVANCE_TWO_PENALTY", engine::KING_SHELTER_ADVANCE_TWO_PENALTY),
         PV_OPTS("KING_HOOK_PAWN_ATTACKED_PENALTY", engine::KING_HOOK_PAWN_ATTACKED_PENALTY),
@@ -247,9 +223,6 @@ namespace {
         {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, false, 0, 0},
         {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, false, 0, 0},
         {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, false, 0, 0},
-        {"CHECK_BONUS", &engine::CHECK_BONUS, false, false, 0, 0},
-        {"KILLER1_BONUS", &engine::KILLER1_BONUS, false, false, 0, 0},
-        {"KILLER2_BONUS", &engine::KILLER2_BONUS, false, false, 0, 0},
     };
     #undef PV_OPTS
 
@@ -269,25 +242,27 @@ namespace {
     static string_view nextToken(string_view& text) noexcept {
         text = trimLeft(text);
         if (text.empty()) return {};
-        std::size_t end = 0;
-        while (end < text.size() && !isSpace(text[end])) ++end;
+        size_t end = 0;
+        while (end < text.size() && !std::isspace(text[end])) ++end;
         const string_view token = text.substr(0, end);
         text.remove_prefix(end);
         return token;
     }
 
-    static bool parseInt(string_view token, int& out) noexcept {
+    // Parses a whole signed-integer token (optional leading '+'); the entire
+    // token must be consumed. Works for any integer type via std::from_chars.
+    template<typename T>
+    static bool parseInt(string_view token, T& out) noexcept {
         if (token.starts_with('+')) token.remove_prefix(1);
         if (token.empty()) return false;
         const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
         return err == std::errc{} && ptr == token.data() + token.size();
     }
 
-    static bool parseI64(string_view token, int64_t& out) noexcept {
-        if (token.starts_with('+')) token.remove_prefix(1);
-        if (token.empty()) return false;
-        const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
-        return err == std::errc{} && ptr == token.data() + token.size();
+    // Parses the first whitespace-delimited token of `text` as an integer.
+    template<typename T>
+    static bool parseFirstInt(string_view text, T& out) noexcept {
+        return parseInt(nextToken(text), out);
     }
 
     static bool splitCommand(string_view command, string_view name, string_view& args) noexcept {
@@ -296,43 +271,31 @@ namespace {
             args = {};
             return true;
         }
-        if (!isSpace(command[name.size()])) return false;
+        if (!std::isspace(command[name.size()])) return false;
         args = trimLeft(command.substr(name.size()));
         return true;
     }
 
-    static std::size_t findWord(string_view text, string_view word) noexcept {
-        std::size_t pos = text.find(word);
+    static size_t findWord(string_view text, string_view word) noexcept {
+        size_t pos = text.find(word);
         while (pos != string_view::npos) {
-            const std::size_t end = pos + word.size();
-            const bool leftOk = (pos == 0) || isSpace(text[pos - 1]);
-            const bool rightOk = (end == text.size()) || isSpace(text[end]);
+            const size_t end = pos + word.size();
+            const bool leftOk = (pos == 0) || std::isspace(text[pos - 1]);
+            const bool rightOk = (end == text.size()) || std::isspace(text[end]);
             if (leftOk && rightOk) return pos;
             pos = text.find(word, pos + 1);
         }
         return string_view::npos;
     }
 
-    static chess::Coords parseSquare(string_view sq) noexcept {
-        if (sq.size() != 2) return {};
-        const char file = asciiLower(sq[0]);
-        const char rank = sq[1];
-        if (file < 'a' || file > 'h' || rank < '1' || rank > '8') return {};
-        return chess::Coords(
-            static_cast<uint8_t>(file - 'a'),
-            static_cast<uint8_t>('8' - rank));
-    }
-
-    static std::string ponderSuffix(const engine::Engine& engine, const chess::Board::Move& bestMove) noexcept {
+    static std::string ponderSuffix(const engine::Engine& engine, const chess::Move& bestMove) noexcept {
         chess::Board board = engine.board;
-        if (!board.move(bestMove.from, bestMove.to, bestMove.promotionPiece)) return {};
+        if (!board.move(bestMove)) return {};
 
-        uint16_t encodedMove = 0;
-        if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
+        const chess::Move ponderMove = engine.tt.probeDecodedMove(board.getHash());
+        if (!chess::isValidSquare(ponderMove.from)) return {};
 
-        const auto move = TranspositionTable::Entry::decodeMove(encodedMove);
-        const chess::Board::Move ponderMove{chess::Coords{move.from}, chess::Coords{move.to}, move.promo};
-        return board.move(ponderMove.from, ponderMove.to, ponderMove.promotionPiece)
+        return board.move(ponderMove)
             ? (" ponder " + ponderMove.toUCIString())
             : std::string{};
     }
@@ -343,7 +306,7 @@ namespace uci {
     UCI::UCI(engine::Engine& e) : engine(e) {}
 
     UCI::~UCI() noexcept {
-        finishSearch(true, false);
+        stopSearch(false);
     }
 
     void UCI::emitBestMove(std::string_view move) noexcept {
@@ -352,8 +315,8 @@ namespace uci {
         searchPrinted = true;
     }
 
-    void UCI::finishSearch(bool requestStop, bool printBestMove) noexcept {
-        if (requestStop) engine.stopThinking();
+    void UCI::stopSearch(bool printBestMove) noexcept {
+        engine.stopThinking();
         if (searchThread.joinable()) searchThread.join();
 
         std::lock_guard<std::mutex> lock(searchMutex);
@@ -373,13 +336,13 @@ namespace uci {
     void UCI::parseCommand(std::string_view command) noexcept {
         string_view args;
         if (command == "quit") {
-            finishSearch(true, true);
-            return quit();
+            stopSearch(true);
+            std::exit(EXIT_SUCCESS);
         }
         if (command == "uci") return uci();
         if (command == "ucinewgame") return ucinewgame();
         if (command == "isready") return isready();
-        if (command == "stop") return stop();
+        if (command == "stop") return stopSearch(true);
         if (command == "ponderhit") return ponderhit();
         if (splitCommand(command, "setoption", args)) return setOption(args);
         if (splitCommand(command, "position", args)) return position(args);
@@ -387,26 +350,23 @@ namespace uci {
     }
 
 
-    void UCI::quit() noexcept {
-        std::exit(EXIT_SUCCESS);
-    }
-
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 1.1.0\n"
+            << "id name HydraY 1.2.1\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name BookFile type string default engine/komodo.bin\n"
             << "option name Opening type check default true\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            << "option name PonderDebug type check default false\n"
             << "option name SearchApiMutexGuard type check default true\n";
+        const int hwThreads = omp_get_max_threads();
+        std::cout << "option name Threads type spin default " << hwThreads
+                  << " min 1 max " << hwThreads << "\n";
+        std::cout << "option name Hash type spin default " << TT::DEFAULT_HASH_MB
+                  << " min " << TT::MIN_HASH_MB
+                  << " max " << TT::MAX_HASH_MB << "\n";
         for (const auto& option : kEvalOptions) {
-            int32_t minValue = option.minValue;
-            int32_t maxValue = option.maxValue;
-            if (!option.hasRange) {
-                defaultRangeFor(*option.value, minValue, maxValue);
-            }
+            const auto [minValue, maxValue] = optionRange(option);
             std::cout << "option name " << optionDisplayName(option.key)
                       << " type spin default " << *option.value
                       << " min " << minValue
@@ -425,12 +385,13 @@ namespace uci {
         // a worker reads is a data race and `refreshPieceTables` would also
         // leave the incremental material/PSQT deltas out of sync with the new
         // table until the next FEN re-parse.
-        finishSearch(true, false);
+        stopSearch(false);
 
         string_view rest = args;
         if (nextToken(rest) != "name") return;
+        rest = trimLeft(rest); // nextToken leaves the leading gap before the name
 
-        const std::size_t valuePos = findWord(rest, "value");
+        const size_t valuePos = findWord(rest, "value");
         const string_view optionName =
             (valuePos == string_view::npos) ? trimRight(rest) : trimRight(rest.substr(0, valuePos));
         const string_view optionValue =
@@ -461,8 +422,7 @@ namespace uci {
 
         if (normalizedName == "syzygyprobedepth") {
             int v = 0;
-            string_view tok = optionValue;
-            if (parseInt(nextToken(tok), v) && v >= 1 && v <= 100) {
+            if (parseFirstInt(optionValue, v) && v >= 1 && v <= 100) {
                 engine.syzygyProber.probeDepth = v;
                 std::cout << "info string SyzygyProbeDepth set to " << v << "\n";
             } else {
@@ -471,21 +431,46 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "opening" && normalizedName != "ponderdebug" && normalizedName != "searchapimutexguard") {
+        if (normalizedName == "threads") {
+            int v = 0;
+            const int maxT = omp_get_max_threads();
+            if (parseFirstInt(optionValue, v) && v >= 1) {
+                const int clamped = std::clamp(v, 1, maxT);
+                engine.requestedThreads = clamped;
+                engine.searchRuntime.maxThreads = clamped;
+                std::cout << "info string Threads set to " << clamped << "\n";
+            } else {
+                std::cout << "info string invalid value for Threads\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "hash") {
+            int v = 0;
+            if (parseFirstInt(optionValue, v) && v >= 1) {
+                const int clamped = std::clamp(v,
+                    static_cast<int>(TT::MIN_HASH_MB),
+                    static_cast<int>(TT::MAX_HASH_MB));
+                if (engine.tt.resize(static_cast<size_t>(clamped))) {
+                    std::cout << "info string Hash set to " << engine.tt.sizeMB() << " MB\n";
+                } else {
+                    std::cout << "info string Hash resize to " << clamped << " MB failed (out of memory)\n";
+                }
+            } else {
+                std::cout << "info string invalid value for Hash\n";
+            }
+            return;
+        }
+
+        if (normalizedName != "opening" && normalizedName != "searchapimutexguard") {
             for (auto& option : kEvalOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
-                string_view valueRest = optionValue;
-                string_view valueToken = nextToken(valueRest);
-                if (!parseInt(valueToken, parsedValue)) {
+                if (!parseFirstInt(optionValue, parsedValue)) {
                     std::cout << "info string invalid value for " << optionName << "\n";
                     return;
                 }
-                int32_t minValue = option.minValue;
-                int32_t maxValue = option.maxValue;
-                if (!option.hasRange) {
-                    defaultRangeFor(*option.value, minValue, maxValue);
-                }
+                const auto [minValue, maxValue] = optionRange(option);
                 if (parsedValue < minValue || parsedValue > maxValue) {
                     std::cout << "info string value out of range for " << optionName
                               << " (" << minValue << ".." << maxValue << ")\n";
@@ -499,8 +484,8 @@ namespace uci {
                     // this, deltas accumulated under the old values keep being
                     // used by Evaluator::evaluate() until the next `position`
                     // command re-parses a FEN.
-                    engine.board.updateOccupancyBB();
-                    // updateOccupancyBB() repopulates the incremental fields but
+                    engine.board.rebuildBitboardsFromSquares();
+                    // rebuildBitboardsFromSquares() repopulates the incremental fields but
                     // leaves any cached eval terms valid against the *old* table;
                     // drop them so the next evaluate() recomputes from scratch.
                     engine.board.clearEvalCache();
@@ -526,14 +511,6 @@ namespace uci {
             return;
         }
 
-        if (normalizedName == "ponderdebug") {
-            engine.setPonderDebugEnabled(enabled);
-            std::cout << "info string PonderDebug "
-                      << (engine.isPonderDebugEnabled() ? "enabled" : "disabled")
-                      << '\n';
-            return;
-        }
-
         engine.setSearchApiMutexEnabled(enabled);
         std::cout << "info string SearchApiMutexGuard "
                   << (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled")
@@ -541,16 +518,16 @@ namespace uci {
     }
 
     void UCI::position(std::string_view command) noexcept {
-        finishSearch(true, false);
+        stopSearch(false);
         string_view moves;
 
-        if (command.starts_with("startpos") && (command.size() == 8 || isSpace(command[8]))) {
+        if (command.starts_with("startpos") && (command.size() == 8 || std::isspace(command[8]))) {
             engine.board = chess::Board{};
-            const std::size_t movesPos = findWord(command, "moves");
+            const size_t movesPos = findWord(command, "moves");
             if (movesPos != string_view::npos) moves = command.substr(movesPos);
-        } else if (command.starts_with("fen") && (command.size() == 3 || isSpace(command[3]))) {
+        } else if (command.starts_with("fen") && (command.size() == 3 || std::isspace(command[3]))) {
             string_view fenPayload = trimLeft(command.substr(3));
-            const std::size_t movesPos = findWord(fenPayload, "moves");
+            const size_t movesPos = findWord(fenPayload, "moves");
             if (movesPos == string_view::npos) {
                 parseFEN(fenPayload);
             } else {
@@ -561,7 +538,7 @@ namespace uci {
             return;
         }
 
-        engine.bestMove = chess::Board::Move{};
+        engine.bestMove = chess::Move{};
         engine.moveHistory.clear();
         
         if (!moves.empty()) parseMoves(moves);
@@ -570,7 +547,7 @@ namespace uci {
     }
 
     void UCI::ucinewgame() noexcept {
-        finishSearch(true, false);
+        stopSearch(false);
         engine.reset();
     }
 
@@ -580,7 +557,7 @@ namespace uci {
     }
     
     void UCI::go(std::string_view args) noexcept {
-        finishSearch(true, false);
+        stopSearch(false);
         engine::time::Limits limits;
 
         while (!args.empty()) {
@@ -597,7 +574,7 @@ namespace uci {
             }
             if (token == "nodes") {
                 int64_t v = 0;
-                if (parseI64(nextToken(args), v) && v > 0) {
+                if (parseInt(nextToken(args), v) && v > 0) {
                     limits.maxNodes = static_cast<uint64_t>(v);
                 }
                 continue;
@@ -609,11 +586,11 @@ namespace uci {
             }
 
             int64_t v = 0;
-            if (token == "wtime"    && parseI64(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
-            if (token == "btime"    && parseI64(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
-            if (token == "winc"     && parseI64(nextToken(args), v)) { limits.winc = v;  continue; }
-            if (token == "binc"     && parseI64(nextToken(args), v)) { limits.binc = v;  continue; }
-            if (token == "movetime" && parseI64(nextToken(args), v)) { limits.movetime = v; continue; }
+            if (token == "wtime"    && parseInt(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
+            if (token == "btime"    && parseInt(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
+            if (token == "winc"     && parseInt(nextToken(args), v)) { limits.winc = v;  continue; }
+            if (token == "binc"     && parseInt(nextToken(args), v)) { limits.binc = v;  continue; }
+            if (token == "movetime" && parseInt(nextToken(args), v)) { limits.movetime = v; continue; }
             if (token == "mate")    { (void)nextToken(args); continue; }
         }
 
@@ -626,8 +603,9 @@ namespace uci {
             searchPrinted = false;
         }
         try {
+            engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
             searchThread = std::thread([this, limits, ponder] {
-                const chess::Board::Move move = engine.searchUCI(limits);
+                const chess::Move move = engine.searchUCI(limits);
                 std::string bestMove = move.toUCIString();
                 if (!ponder) bestMove += ponderSuffix(engine, move);
                 std::lock_guard<std::mutex> lock(searchMutex);
@@ -642,10 +620,6 @@ namespace uci {
         }
     }
     
-    void UCI::stop() noexcept {
-        finishSearch(true, true);
-    }
-
     void UCI::ponderhit() noexcept {
         std::lock_guard<std::mutex> lock(searchMutex);
         searchPonder = false;
@@ -653,20 +627,19 @@ namespace uci {
     }
 
     void UCI::parseMoves(std::string_view moves) noexcept {
+        // Precondition: caller passes the substring beginning at the "moves"
+        // keyword (position() locates it via findWord), so just drop it.
         moves = trimLeft(moves);
-        if (!moves.starts_with("moves")) return;
         moves.remove_prefix(5);
 
-        while (true) {
-            const string_view move = nextToken(moves);
-            if (move.empty()) break;
+        for (string_view move = nextToken(moves); !move.empty(); move = nextToken(moves)) {
             if (move.size() < 4) continue;
 
-            const chess::Coords from = parseSquare(move.substr(0, 2));
-            const chess::Coords to = parseSquare(move.substr(2, 2));
-            if (!chess::Coords::isInBounds(from) || !chess::Coords::isInBounds(to)) continue;
+            const chess::Square from = chess::parseSquare(move.substr(0, 2));
+            const chess::Square to = chess::parseSquare(move.substr(2, 2));
+            if (!chess::isValidSquare(from) || !chess::isValidSquare(to)) continue;
 
-            const char promo = (move.size() > 4) ? asciiLower(move[4]) : '\0';
+            const char promo = (move.size() > 4) ? static_cast<char>(std::tolower(move[4])) : '\0';
             engine.movePiece(from, to, promo);
         }
     }

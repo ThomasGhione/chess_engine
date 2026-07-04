@@ -1,33 +1,26 @@
-#include <bit>
 #include "../evaluator.hpp"
-#include <algorithm>
 
 namespace engine {
 
 PhaseValue Evaluator::evalEarlyQueen(const chess::Board& b) noexcept {
-    static constexpr uint64_t WHITE_QUEEN_START = chess::Board::bitMask(59);
-    static constexpr uint64_t BLACK_QUEEN_START = chess::Board::bitMask(3);
+    static constexpr uint64_t WHITE_QUEEN_START = chess::Board::BIT_MASKS[59];
+    static constexpr uint64_t BLACK_QUEEN_START = chess::Board::BIT_MASKS[3];
     static constexpr int32_t EARLY_QUEEN_DEV_PENALTY = 20;
 
     int32_t score = 0;
     score -= (b.queens_bb[0] && !(b.queens_bb[0] & WHITE_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
     score += (b.queens_bb[1] && !(b.queens_bb[1] & BLACK_QUEEN_START)) * EARLY_QUEEN_DEV_PENALTY;
 
-    return PhaseValue{score, 0};
+    return {score, 0};
 }
 
-inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens, int oppQueens) noexcept {
+inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b, int side, int ourQueens) noexcept {
     if (ourQueens == 0) return {};
 
     const int oppSide = side ^ 1;
 
     const int oppPawns = std::popcount(b.pawns_bb[oppSide]);
-    const int oppKnights = std::popcount(b.knights_bb[oppSide]);
-    const int oppBishops = std::popcount(b.bishops_bb[oppSide]);
-    const int oppRooks = std::popcount(b.rooks_bb[oppSide]);
-
-    const int oppMaterial = oppQueens * 900 + oppRooks * 500 +
-                            oppBishops * 330 + oppKnights * 320 + oppPawns * 100;
+    const int oppMaterial = nonPawnMaterial(b, oppSide) + oppPawns * 100;
     if (oppMaterial > 1300) return {};
 
     const uint64_t enemyKingBB = b.kings_bb[oppSide];
@@ -39,26 +32,23 @@ inline PhaseValue Evaluator::evalQueenEndgamePressureSide(const chess::Board& b,
     int32_t sideScore = edgeProximity(enemyKingSq) * QUEEN_EG_EDGE_BONUS;
     sideScore += ownKingProximity(b.kings_bb[side], enemyKingSq) * 14;
 
-    const uint64_t queenBB = b.queens_bb[side];
-    if (queenBB) {
-        uint64_t tempQueens = queenBB;
-        int bestQueenDist = 100;
-        while (tempQueens) {
-            bestQueenDist = std::min(bestQueenDist, manhattan(popLSB(tempQueens), enemyKingSq));
-        }
+    uint64_t tempQueens = b.queens_bb[side];
+    int bestQueenDist = 100;
+    while (tempQueens) {
+        bestQueenDist = std::min(bestQueenDist, manhattan(popLSB(tempQueens), enemyKingSq));
+    }
 
-        if (bestQueenDist >= 2 && bestQueenDist <= 5) {
-            sideScore += 24;
-        } else if (bestQueenDist <= 7) {
-            sideScore += 10;
-        }
+    if (bestQueenDist >= 2 && bestQueenDist <= 5) {
+        sideScore += 24;
+    } else if (bestQueenDist <= 7) {
+        sideScore += 10;
     }
 
     constexpr int32_t QUEEN_EG_PRESSURE_CAP = 180;
     sideScore = std::min(sideScore, QUEEN_EG_PRESSURE_CAP);
 
     const int sign = (side == 0) ? 1 : -1;
-    return PhaseValue{0, sign * sideScore};
+    return {0, sign * sideScore};
 }
 
 PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
@@ -67,8 +57,8 @@ PhaseValue Evaluator::evalQueenEndgamePressure(const chess::Board& b) noexcept {
 
     if (whiteQueens == 0 && blackQueens == 0) return {};
 
-    return evalQueenEndgamePressureSide(b, 0, whiteQueens, blackQueens)
-         + evalQueenEndgamePressureSide(b, 1, blackQueens, whiteQueens);
+    return evalQueenEndgamePressureSide(b, 0, whiteQueens)
+         + evalQueenEndgamePressureSide(b, 1, blackQueens);
 }
 
 } // namespace engine
