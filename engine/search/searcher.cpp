@@ -756,7 +756,6 @@ int32_t Searcher::searchPosition(
         && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
         return scoreFromTT(tte.score, ply); // re-base mate scores to this node's ply
     }
-    if (hasExcludedMove) allowTTWrite = false;
 
     SearchNodeState node{};
     node.activeColor = b.getActiveColor();
@@ -823,9 +822,12 @@ int32_t Searcher::searchPosition(
             const int32_t ttSeScore = scoreFromTT(tte.score, ply);
             const int32_t seBeta = ttSeScore - SE_BETA_MARGIN * depth;
 
+            // allowTTWrite stays on for the probe's DESCENDANTS (normal
+            // positions the main search revisits right after); only this
+            // node's own store is suppressed, via hasExcludedMove.
             const int32_t seScore = searchPosition(
                 b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
-                false, allowHeuristicUpdates,
+                allowTTWrite, allowHeuristicUpdates,
                 previousMove, counter, false, seExcluded);
 
             if (seScore < seBeta - SE_DOUBLE_MARGIN) {
@@ -952,7 +954,9 @@ int32_t Searcher::searchPosition(
         blendCorr(runtime.majorCorrHist[side][majorCorrIndex(b)]);
     }
 
-    if (canUseTT && allowTTWrite) {
+    // hasExcludedMove suppresses only THIS node's store (its score reflects a
+    // reduced move set under the same key); descendants store normally.
+    if (canUseTT && allowTTWrite && !hasExcludedMove) {
         runtime.transpositionTable->store(
             hashKey, static_cast<uint8_t>(ctx.depth),
             scoreToTT(best, ctx.ply),
