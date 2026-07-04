@@ -81,8 +81,17 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 
 - [ ] **9. Campagna SMAC3 sulle costanti di search** — Elo: **+15–40**
   Tutti i margini vinti a giugno (FUTILITY_MARGINS, LMP, HISTORY_PRUNE, SEE_CAPTURE, RFP,
-  NMP_EVAL_*, PROBCUT_*, SE_*) sono guessed, not tuned. Serve esporli temporaneamente come
-  UCI spin (oggi constexpr), tunare a gruppi di ≤8, ri-congelare.
+  NMP_EVAL_*, PROBCUT_*, SE_*) sono guessed, not tuned.
+  - [x] **Esposizione UCI FATTA 2026-07-05**: 16 spin (pattern eval_constants: globali
+        mutabili + `rebuildSearchDerivedTables()` per LMR/futility/LMP derivate; tabelle
+        parametrizzate da generatori che riproducono ESATTAMENTE i valori attuali —
+        node-identico 5.782.300 ai default, roundtrip set/restore verificato).
+        Gruppi pronti: `tuning/groups/search_pruning.json` (8 param margini) e
+        `search_shape.json` (8 param futility/LMP/LMR/SE).
+  - [ ] **RUN tuning**: `cd tuning && ./run_tune_local.sh search_pruning` poi
+        `search_shape` — SOLO a laptop libero (datagen NNUE occupa 3 core fino a
+        ~2026-07-09; partite a TC falsate fino ad allora). Poi ri-congelare gli optimum
+        nei default di search_constants.hpp + SPRT di conferma.
 
 - [x] **10. TB probe dopo il TT probe** — ✅ **FATTO** 2026-07-04
   Node-identico senza TB (blocco inerte); con TB attive = meno probeWDL a parità di cutoff.

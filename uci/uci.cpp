@@ -55,6 +55,9 @@ namespace {
         bool hasRange;
         int32_t minValue;
         int32_t maxValue;
+        // Rebuild the search-derived tables (LMR/futility/LMP) after writing.
+        // Defaulted so the eval entries below keep their 6-field initializers.
+        bool refreshSearchTables = false;
     };
 
     // Wide auto-range so the tuner's sampled values land inside the engine's
@@ -224,6 +227,24 @@ namespace {
         {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, false, 0, 0},
         {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, false, 0, 0},
         {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, false, 0, 0},
+        // --- Search constants (SMAC3 campaign, HOTPATH #9). Generators of the
+        // derived tables set refreshSearchTables so LMR/futility/LMP rebuild.
+        {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,        false, true,     30,  250},
+        {"NMP_EVAL_DIV",         &engine::NMP_EVAL_DIV,                false, true,     50,  400},
+        {"NMP_EVAL_MAX",         &engine::NMP_EVAL_MAX,                false, true,      0,   10},
+        {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,          false, true,     20,  200},
+        {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,              false, true,     30,  250},
+        {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,              false, true,      0,   16},
+        {"SE_DOUBLE_MARGIN",     &engine::SE_DOUBLE_MARGIN,            false, true,      4,   64},
+        {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1],  false, true, -16384,    0},
+        {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  false, true, -16384,    0},
+        {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  false, true, -16384,    0},
+        {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,           false, true,     80,  600, true},
+        {"FUTILITY_EG_BASE",     &engine::FUTILITY_EG_BASE,            false, true,     40,  500, true},
+        {"FUTILITY_EG_STEP",     &engine::FUTILITY_EG_STEP,            false, true,     40,  500, true},
+        {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            false, true,     40,  250, true},
+        {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            false, true,     40,  250, true},
+        {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               false, true,    150,  600, true},
     };
     #undef PV_OPTS
 
@@ -492,6 +513,9 @@ namespace uci {
                     // leaves any cached eval terms valid against the *old* table;
                     // drop them so the next evaluate() recomputes from scratch.
                     engine.board.clearEvalCache();
+                }
+                if (option.refreshSearchTables) {
+                    engine::rebuildSearchDerivedTables();
                 }
                 std::cout << "info string " << optionDisplayName(option.key)
                           << " set to " << *option.value << "\n";

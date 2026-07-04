@@ -30,43 +30,64 @@ inline constexpr int32_t MATE_BOUND = std::numeric_limits<int32_t>::max() - 2048
 // ===================================================
 // PRUNING / EXTENSION PARAMETERS
 // ===================================================
+// The margins below are plain globals (not constexpr) so the SMAC3 campaign
+// (#9) can drive them as UCI spins, same pattern as eval_constants.hpp. The
+// UCI layer stops any search before writing them. Derived tables
+// (FUTILITY_MARGINS, LMP_THRESHOLDS, the LMR table in searcher.cpp) are
+// rebuilt by rebuildSearchDerivedTables(); the defaults reproduce the frozen
+// June values exactly.
 inline constexpr int     NULL_MOVE_VERIFICATION_DEPTH = 10;
 // Null-move reduction eval scaling: deeper reduction the further eval beats beta.
-inline constexpr int32_t NMP_EVAL_DIV = 150;
-inline constexpr int32_t NMP_EVAL_MAX = 4;
+inline int32_t NMP_EVAL_DIV = 150;
+inline int32_t NMP_EVAL_MAX = 4;
 // Reverse futility pruning margin per remaining ply.
-inline constexpr int32_t RFP_MARGIN_PER_DEPTH = 90;
-// Futility pruning margins in the move loop (gated to depth 1..6).
-// FUTILITY_MARGINS[isLateEndgame][depth].
-inline constexpr int32_t FUTILITY_MARGINS[2][7] = {
+inline int32_t RFP_MARGIN_PER_DEPTH = 90;
+// Futility margin generators: mid row = MID_STEP*d, endgame row =
+// EG_BASE + EG_STEP*(d-1). FUTILITY_MARGINS[isLateEndgame][depth] is the
+// derived table consumed by the move loop (gated to depth 1..6).
+inline int32_t FUTILITY_MID_STEP = 260;
+inline int32_t FUTILITY_EG_BASE  = 170;
+inline int32_t FUTILITY_EG_STEP  = 180;
+inline int32_t FUTILITY_MARGINS[2][7] = {
     {0, 260, 520, 780, 1040, 1300, 1560},
     {0, 170, 350, 530,  710,  890, 1070},
 };
 // LMP_THRESHOLDS[improving][isLateEndgame][depth]: higher = more permissive.
-// Gated to depth 1..4.
-inline constexpr int LMP_THRESHOLDS[2][2][5] = {
+// Gated to depth 1..4. Derived: base table scaled by LMP_SCALE_PCT[improving].
+inline constexpr int LMP_BASE_THRESHOLDS[2][2][5] = {
+    {{0, 12, 20, 30, 42}, {0, 16, 26, 38, 52}},
+    {{0, 16, 26, 38, 52}, {0, 20, 32, 46, 62}},
+};
+inline int32_t LMP_SCALE_PCT[2] = {100, 100};
+inline int LMP_THRESHOLDS[2][2][5] = {
     {{0, 12, 20, 30, 42}, {0, 16, 26, 38, 52}},
     {{0, 16, 26, 38, 52}, {0, 20, 32, 46, 62}},
 };
 // History-based quiet pruning: skip quiet moves with very negative history.
 // Indexed by depth (0..3); depth 0 unused.
-inline constexpr int32_t HISTORY_PRUNE_THRESHOLD[4] = {0, -4096, -6144, -8192};
+inline int32_t HISTORY_PRUNE_THRESHOLD[4] = {0, -4096, -6144, -8192};
 
 // SEE capture pruning: skip captures with SEE < -SEE_CAPTURE_MARGIN * depth.
-inline constexpr int32_t SEE_CAPTURE_MARGIN = 70;
+inline int32_t SEE_CAPTURE_MARGIN = 70;
 // Singular extension.
 inline constexpr int SE_MIN_DEPTH     = 6;
 inline constexpr int SE_DEPTH_MARGIN  = 3;
-inline constexpr int SE_BETA_MARGIN   = 3;  // seBeta = ttScore - margin*depth
-inline constexpr int SE_DOUBLE_MARGIN = 16; // double-extend when seScore < seBeta - 16
+inline int32_t SE_BETA_MARGIN   = 3;  // seBeta = ttScore - margin*depth
+inline int32_t SE_DOUBLE_MARGIN = 16; // double-extend when seScore < seBeta - 16
 // ProbCut.
-inline constexpr int32_t PROBCUT_MARGIN    = 80;
+inline int32_t PROBCUT_MARGIN    = 80;
 inline constexpr int32_t PROBCUT_MIN_DEPTH = 3;
+
+// Rebuilds the derived tables above plus the LMR reduction table
+// (searcher.cpp) from the current generator values. Called by the UCI layer
+// after writing a generator option; never call during a live search.
+void rebuildSearchDerivedTables() noexcept;
 
 // ===================================================
 // LMR (late move reductions) table parameters
 // ===================================================
-inline constexpr double LMR_C        = 3.00;
+// LMR_C == LMR_C_PERCENT / 100.0 (int spin for the tuner).
+inline int32_t LMR_C_PERCENT = 300;
 inline constexpr int    LMR_MAX_DEPTH = 20;  // engine never exceeds depth 14 in practice
 inline constexpr int    LMR_MAX_MOVES = 218; // theoretical maximum legal moves (== MAX_MOVES, movelist.hpp)
 
