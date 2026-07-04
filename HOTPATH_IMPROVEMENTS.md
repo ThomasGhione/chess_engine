@@ -50,9 +50,10 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
 
 ## 🟠 Criticità MEDIA — leve Elo non ancora provate (SPRT)
 
-- [ ] **5. Riabilitare TT-write nei *discendenti* del probe singolare** — Elo: **+0–8** — ⏳ SPRT [0,5] in corso
-  Nota implementativa: passare `allowTTWrite` al call-site era inerte (il nodo excluded
-  azzerava il flag e lo propagava); fix vero = gate `!hasExcludedMove` sul solo store del nodo.
+- [x] **5. Riabilitare TT-write nei *discendenti* del probe singolare** — ✅ **KEPT** 2026-07-04
+  SPRT [0,5]: **+9.4 ±16.1 @ 1258, CFS 92** (precedente dd57d1f) + razionale Lazy-SMP.
+  Nota: passare `allowTTWrite` al call-site era inerte (il nodo excluded azzerava il flag
+  e lo propagava); fix vero = gate `!hasExcludedMove` sul solo store del nodo.
   La SE passa `allowTTWrite=false` che si propaga a tutto il sottoalbero; solo il nodo con
   `excludedMove` ha la chiave "sbagliata" (soppressione locale già presente via
   `hasExcludedMove`). Passare `true` alla ricorsione del probe SE.
@@ -83,7 +84,8 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   NMP_EVAL_*, PROBCUT_*, SE_*) sono guessed, not tuned. Serve esporli temporaneamente come
   UCI spin (oggi constexpr), tunare a gruppi di ≤8, ri-congelare.
 
-- [ ] **10. TB probe dopo il TT probe** — Elo: **+0–3** (solo endgame)
+- [x] **10. TB probe dopo il TT probe** — ✅ **FATTO** 2026-07-04
+  Node-identico senza TB (blocco inerte); con TB attive = meno probeWDL a parità di cutoff.
   Il probe Syzygy (mmap) avviene prima del TT cutoff: in TB-range ogni nodo lo paga anche
   quando il TT avrebbe tagliato. Spostare il blocco dopo il prelude.
 
@@ -126,7 +128,7 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   ✅ 2026-07-03, node-identico.
   `beta` non è mai modificato in qsearch; la copia è inutile.
 
-- [ ] **19. Passare `inCheck` a `sortLegalMoves`** — +NPS piccolo
+- [x] **19. Passare `inCheck` a `sortLegalMoves`** — assorbito da #24 (il ramo che lo usava è stato rimosso)
   sorter.cpp ricalcola `b.inCheck()` per nodo solo per il ramo opening-king;
   il chiamante lo conosce già. (Superato da #24 se si rimuove l'euristica.)
 
@@ -143,8 +145,8 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   Soluzione elegante: promo come piece-type (2 bit) nel `Move` — refactor dedicato
   (tocca UCI/driver/FEN), non en passant.
 
-- [ ] **22. Ponder-move da TT duplicato** — **−8 LOC** (cold path)
-  `engine.cpp:getTTPonderMove` e `uci.cpp:ponderSuffix` fanno lo stesso probe+decode.
+- [x] **22. Ponder-move da TT duplicato** — ✅ **FATTO** 2026-07-04
+  `TT::probeDecodedMove()` unifica i 3 siti probe+decode (engine.cpp, uci.cpp, buildPvFromTT).
 
 - [x] **23. Minori** — ✅ 2026-07-03 (1ad2d0f), node-identico
   - [x] `LMR_MAX_MOVES`/`MAX_MOVES`: cross-reference nel commento (unificarli costerebbe
