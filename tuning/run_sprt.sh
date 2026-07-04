@@ -87,9 +87,9 @@ ALPHA="${ALPHA:-0.05}"
 BETA="${BETA:-0.05}"
 HASH="${HASH:-64}"
 THREADS="${THREADS:-1}"
-# The engine does NOT honour the UCI "Threads" option: it sizes its OpenMP YBWC
-# pool from omp_get_max_threads(). Pin it via the env so a single-threaded SPRT is
-# actually single-threaded (otherwise every engine grabs all cores and oversubscribes).
+# The engine honours the UCI "Threads" option (Lazy SMP); its auto default is
+# omp_get_max_threads(). Pin the env too, as a belt-and-braces cap in case a
+# tool ever launches the engine without sending setoption Threads.
 export OMP_NUM_THREADS="${THREADS}"
 BOOK="${BOOK:-books/openings.pgn}"
 MAXGAMES="${MAXGAMES:-4000}"
@@ -142,6 +142,7 @@ if [[ "${SPRT_BACKEND}" == "fastchess" ]]; then
         -draw movenumber=40 movecount=8 score=8 \
         -concurrency "${CONCURRENCY}" \
         -ratinginterval 10 \
+        -recover \
         -pgnout file="${pgn_out}"
 fi
 

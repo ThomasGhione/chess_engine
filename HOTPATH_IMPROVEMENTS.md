@@ -89,9 +89,12 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   Il probe Syzygy (mmap) avviene prima del TT cutoff: in TB-range ogni nodo lo paga anche
   quando il TT avrebbe tagliato. Spostare il blocco dopo il prelude.
 
-- [ ] **11. Lazy SMP al posto di YBWC** — Elo: **+50–100** (4 core), più su 8/16
-  Già in piano (attesa hardware). SearchRuntime già pronto. Bonus: muoiono ~120 LOC di
-  getBestMove (thread arrays, chunking, deferred re-search) e `allowHeuristicUpdates`.
+- [x] **11. Lazy SMP al posto di YBWC** — ✅ **FATTO** 2026-07-04
+  YBWC root rimosso (~150 LOC); helper threads con SearchRuntime privati persistenti
+  (HelperSlot), TT condivisa, odd helpers partono a depth 2. TTD depth-13 4-pos:
+  Lazy 4T 17.6s vs YBWC 4T 19.2s (~9% più veloce) vs 1T 27.6s (1.57×).
+  Albero 1T −21% nodi (root loop PVS pulito con euristiche). SPRT 1T non-regression
+  [−3,3]: +~8 Elo trend, CFS 87 @ 1835 game → accettato.
 
 ## 🟡 Codice morto / duplicato — zero Elo, −LOC (node-count identico)
 
@@ -172,6 +175,15 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   Node-identico; **+5.05% NPS cumulato con #25** (5 round interleaved).
   killer0/killer1 dello stesso ply oggi distano 192 B (2 cache line). Micro, node-identico.
 
+## 🔍 Indagini aperte
+
+- [ ] **Stalli "engine not responsive" negli SPRT** (~1 ogni 200–900 partite dal 2026-07-03
+  sera): colpiscono ENTRAMBI i lati, anche binari pre-Lazy-SMP, a concurrency 2–4.
+  Iniziati coi run dove entrambi i lati includono #7 (stand-pat store) — correlazione
+  non dimostrata; alternative: carico macchina, pondering interno / SearchApiMutexGuard.
+  Mitigato con `-recover` in run_sprt.sh (partita persa al lato stallato). Da investigare:
+  riprodurre e attaccare gdb al processo bloccato.
+
 ## ⛔ Da NON rifare (già testato e bocciato — vedi memoria sessioni 2026-06)
 
 staged movegen (inerentemente non node-neutral) · razoring (×2) · cutNode / LMR-do-deeper ·
@@ -195,4 +207,6 @@ tactical 869.242 · open 2.055.698 — driver: `nodebench.py`, vedi memoria tool
 **Log:** 2026-07-03 — batch #14/#18/#15/#16/#17 (d1d1dfe), #13 (8ba81c1), #1/#2 (0e3303c),
 #23 (1ad2d0f), #3 (bb9f5f8), #12 (9928ca3): tutti node-identici (7.922.716 dopo ogni commit).
 NPS: **+3.45%** dai batch 1–3 (A/B interleaved); #3 neutro (−0.24%, tenuto per struttura/LOC).
-Prossimi: #20 checkersTo → SPRT batch (#4–#8, #24–#26).
+2026-07-04 — **#11 Lazy SMP committato**: SPRT 1T non-regression CFS 87 @ 1835 game,
+TTD 4T −9% vs YBWC, baseline node-count 1T nuova: **5.782.300**.
+Restano: #9 (SMAC3, serve esposizione UCI) e #21 (promo-as-piece-type, sessione dedicata).
