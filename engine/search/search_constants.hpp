@@ -117,10 +117,10 @@ inline constexpr int32_t DRAW_SCORE_WEIGHT_DENOMINATOR      = 100;
 inline constexpr int32_t REPETITION_CONTEMPT                = 80; // ~0.8 pawn
 
 // ===================================================
-// ROOT PARALLELISM (YBWC)
+// PARALLELISM (Lazy SMP)
 // ===================================================
-inline constexpr int YBWC_MIN_MOVES = 10;
-inline constexpr int YBWC_MIN_DEPTH = DEFAULT_DEPTH - 2;
+// Hard cap on helper threads (Threads option is already clamped to hwmax).
+inline constexpr int MAX_HELPER_THREADS = 63;
 
 // ===================================================
 // CONTINUATION HISTORY layout

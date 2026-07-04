@@ -1,7 +1,11 @@
 #include "searcher.hpp"
 
+#include <atomic>
 #include <iostream>
-#include <numeric>
+#include <memory>
+#include <thread>
+#include <utility>
+#include <vector>
 
 #include "../engine.hpp"
 #include "../eval/evaluator.hpp"
@@ -244,6 +248,26 @@ void Searcher::updateMinMax(
     updateBound(score, alpha);
 }
 
+namespace {
+
+// Lazy SMP helper state: one slot per helper thread, persistent across
+// searches so history/killers keep learning like the main runtime does.
+// searchBestMove is single-entrant (the UCI layer serializes searches),
+// so function-scope statics are safe. The Board lives here (not in a local
+// vector) so the worker thread's reference is stable by construction.
+struct HelperSlot {
+    ::engine::SearchRuntime runtime; // defaults are already helper-correct:
+                                     // maxThreads=1, emitUciInfo=false, timeManager=nullptr
+    chess::Board board;
+    std::atomic<bool> interrupted{false};
+
+    HelperSlot() noexcept { runtime.searchInterrupted = &interrupted; }
+};
+
+std::vector<std::unique_ptr<HelperSlot>> helperSlots;
+
+} // namespace
+
 chess::Move Searcher::searchBestMove(
     chess::Board& board,
     SearchRuntime& runtime,
@@ -260,7 +284,42 @@ chess::Move Searcher::searchBestMove(
     runtime.nodesSearched = 0;
     runtime.softResetHistory();
 
+    // Lazy SMP: helpers run their own full iterative deepening on private
+    // Boards and runtimes, sharing only the TT — and through it move ordering
+    // and cutoff knowledge — with the main thread. Odd helpers start one ply
+    // deeper so the pack doesn't lockstep over identical trees. The main
+    // thread's result is authoritative; helpers stop the moment it returns.
+    const int helperCount = std::clamp(runtime.maxThreads - 1, 0, MAX_HELPER_THREADS);
+    std::atomic<bool> helperStop{false};
+    std::vector<std::thread> helpers;
+    helpers.reserve(helperCount);
+
+    for (int i = 0; i < helperCount; ++i) {
+        if (std::cmp_greater_equal(i, helperSlots.size())) {
+            helperSlots.emplace_back(std::make_unique<HelperSlot>());
+        }
+        HelperSlot& slot = *helperSlots[i];
+        SearchRuntime& hr = slot.runtime;
+        hr.transpositionTable  = runtime.transpositionTable;
+        hr.syzygyProber        = runtime.syzygyProber;
+        hr.stopSearchRequested = &helperStop;
+        hr.maxNodes            = runtime.maxNodes;
+        hr.nodesSearched       = 0;
+        hr.clearInterrupted();
+        hr.softResetHistory();
+        slot.board = board;
+
+        const int startDepth = 1 + (i & 1);
+        helpers.emplace_back([&slot, startDepth, targetDepth] {
+            (void)runIterativeDeepening(slot.board, slot.runtime, startDepth, targetDepth);
+        });
+    }
+
     IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth);
+
+    helperStop.store(true, std::memory_order_release);
+    for (auto& helper : helpers) helper.join();
+
     runtime.depth = targetDepth;
 
     // Completed/terminal result, else a deterministic fallback move.
@@ -1133,165 +1192,46 @@ chess::Move Searcher::getBestMove(
         rootBoard,
         runtime,
         rootHashMove);
-    
-    // YBWC and Root iterations require fully sorted list upfront.
+
+    // Root iterations index the list directly, so resolve the full order upfront.
     orderedRootMoves.fullSort();
-    
+
     const MoveList& rootMoves = orderedRootMoves.moves;
 
-    const bool useYBWC = (rootMoves.size >= YBWC_MIN_MOVES
-        && runtime.depth >= YBWC_MIN_DEPTH);
-
-    if (!useYBWC) {
-        // First move uses the full PVS window with no scout/research; the rest
-        // use a null window plus research. Kept as one loop with isFirst gating;
-        // the first move deliberately skips the interrupt/beta-cutoff break so
-        // search-tree shape (and node count) is unchanged from the prior split.
-        for (int i = 0; i < rootMoves.size; ++i) {
-            if (runtime.shouldAbort()) {
-                runtime.markInterrupted();
-                break;
-            }
-
-            const auto& m = rootMoves[i];
-            const bool isFirst = (i == 0);
-
-            int32_t score;
-            if (isFirst) {
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
-            } else {
-                const int32_t nullBeta = saturatingAdd32(alpha, 1);
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, nullBeta, true, true, &localNodes);
-                if (shouldResearchPVS(score, alpha)) {
-                    score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
-                }
-            }
-
-            searchedAnyMove = true;
-            if (!isFirst && runtime.isInterrupted()) {
-                break;
-            }
-
-            updateMinMax(score, alpha, bestScore, bestMove, m);
-            if (!isFirst && isBetaCutoff(bestScore, beta)) break;
-        }
-
-        runtime.nodesSearched += localNodes;
-        if (searchedAnyMove) runtime.eval = bestScore;
-        return bestMove;
-    }
-    {
-        const auto& firstMove = rootMoves[0];
-        const int32_t score = searchRootMoveScore(rootBoard, firstMove, runtime, alpha, beta, true, true, &localNodes);
-        searchedAnyMove = true;
-        updateMinMax(score, alpha, bestScore, bestMove, firstMove);
-    }
-
-    if (runtime.isInterrupted() || rootMoves.size <= 1) [[unlikely]] {
-        runtime.nodesSearched += localNodes;
-        runtime.eval = bestScore;
-        return bestMove;
-    }
-
-    std::array<int32_t, MAX_MOVES> threadScores;
-    threadScores.fill(NEG_INF);
-    std::array<uint64_t, MAX_MOVES> threadNodeCounts {};
-    std::array<uint8_t, MAX_MOVES> threadNeedsResearch {};
-
-    int candidateThreads = std::max(1, rootMoves.size - 1);
-    const int threadsToUse = std::max(1, std::min(runtime.maxThreads, candidateThreads));
-
-    auto searchDeferredRootMove = [&](int i, chess::Board& threadBoard) noexcept {
-        const auto m = rootMoves[i];
-        uint64_t workerNodes = 0;
-        const int32_t nullBeta = saturatingAdd32(alpha, 1);
-        // allowTTWrite=true: deferred root subtrees memoise their own LMR
-        // re-searches (which otherwise re-expand from scratch, since the PVS
-        // scout and its full-depth re-search hit no shared entries).
-        const int32_t score = searchRootMoveScore(
-            threadBoard, m, runtime, alpha, nullBeta, true, false, &workerNodes);
-
-        threadScores[i] = score;
-        threadNodeCounts[i] = workerNodes;
-        threadNeedsResearch[i] = shouldResearchPVS(score, alpha);
-    };
-
-    if (threadsToUse <= 1) {
-        for (int i = 1; i < rootMoves.size; ++i) {
-            if (runtime.shouldAbort()) {
-                runtime.markInterrupted();
-                break;
-            }
-
-            chess::Board threadBoard = rootBoard;
-            searchDeferredRootMove(i, threadBoard);
-            if (runtime.isInterrupted()) {
-                break;
-            }
-        }
-    } else {
-        const int totalJobs = rootMoves.size - 1;
-        int estimatedChunk = std::max(1, totalJobs / (threadsToUse * 4));
-        const int chunk = std::min(16, estimatedChunk);
-
-        #pragma omp parallel num_threads(threadsToUse)
-        {
-            #pragma omp single nowait
-            {
-                #pragma omp taskgroup
-                {
-                    for (int start = 1; start <= totalJobs; start += chunk) {
-                        const int end = std::min(start + chunk, rootMoves.size);
-                        #pragma omp task firstprivate(start, end)
-                        {
-                            if (!runtime.shouldAbort()) {
-                                chess::Board threadBoard = rootBoard;
-                                for (int i = start; i < end; ++i) {
-                                    if (runtime.shouldAbort()) {
-                                        break;
-                                    }
-
-                                    searchDeferredRootMove(i, threadBoard);
-                                    if (runtime.isInterrupted()) {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (int i = 1; i < rootMoves.size; ++i) {
-        if (runtime.isInterrupted()) {
+    // Plain PVS root loop: full window for the first move, null-window scout
+    // plus research for the rest. Parallelism lives in searchBestMove (Lazy
+    // SMP helper threads run their own iterative deepening over a shared TT).
+    for (int i = 0; i < rootMoves.size; ++i) {
+        if (runtime.shouldAbort()) {
+            runtime.markInterrupted();
             break;
         }
-        if (threadNodeCounts[i] == 0) continue;
 
         const auto& m = rootMoves[i];
-        int32_t score = threadScores[i];
-        if (threadNeedsResearch[i] != 0U) {
-            uint64_t researchNodes = 0;
-            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &researchNodes);
-            localNodes += researchNodes;
-            if (runtime.isInterrupted()) {
-                break;
+        const bool isFirst = (i == 0);
+
+        int32_t score;
+        if (isFirst) {
+            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
+        } else {
+            const int32_t nullBeta = saturatingAdd32(alpha, 1);
+            score = searchRootMoveScore(rootBoard, m, runtime, alpha, nullBeta, true, true, &localNodes);
+            if (shouldResearchPVS(score, alpha)) {
+                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
             }
+        }
+
+        searchedAnyMove = true;
+        if (!isFirst && runtime.isInterrupted()) {
+            break;
         }
 
         updateMinMax(score, alpha, bestScore, bestMove, m);
-        searchedAnyMove = true;
-
-        if (isBetaCutoff(bestScore, beta)) {
-            break;
-        }
+        if (!isFirst && isBetaCutoff(bestScore, beta)) break;
     }
 
-    localNodes = std::accumulate(threadNodeCounts.begin() + 1, threadNodeCounts.begin() + rootMoves.size, localNodes);
     runtime.nodesSearched += localNodes;
-    runtime.eval = bestScore;
+    if (searchedAnyMove) runtime.eval = bestScore;
     return bestMove;
 }
 
