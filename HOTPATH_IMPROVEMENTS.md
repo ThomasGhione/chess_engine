@@ -142,11 +142,13 @@ board doMove/undoMove/inCheck), evaluator escluso (futuro NNUE). Ordinata per cr
   `computeCheckEvasionMasks` (ricalcola i checkers). Un unico bitboard risponde a tutte
   e tre (≠0, >1 bit, maschera evasioni).
 
-- [ ] **21. Conversione promo-char triplicata** — **−25/−40 LOC** (invasivo)
-  `Board::normalizePromotionChoice`+`promotedPieceFromChoice`, `Sorter::promotionPieceType`,
-  `TT::Entry::promoCodeFromChar/CharFromCode`: tre versioni della stessa tabella.
-  Soluzione elegante: promo come piece-type (2 bit) nel `Move` — refactor dedicato
-  (tocca UCI/driver/FEN), non en passant.
+- [x] **21. Conversione promo-char triplicata** — ✅ **FATTO** 2026-07-05, node-identico
+  `Move.promotionPiece: char` → `Move.promotionType: uint8_t` (piece-type Board, 0 = none).
+  Eliminate le 3 tabelle (`normalizePromotionChoice`+`promotedPieceFromChoice`,
+  `Sorter::promotionPieceType`, `TT::promoCodeFromChar/CharFromCode`); conversione char
+  solo ai boundary (`Move::promotionTypeFromChar`/`promotionChar`, static_assert vs
+  piece_id). doMove promo path: niente più compare di char, `promo | color` diretto.
+  −14 LOC nette, node-identico 5.782.300.
 
 - [x] **22. Ponder-move da TT duplicato** — ✅ **FATTO** 2026-07-04
   `TT::probeDecodedMove()` unifica i 3 siti probe+decode (engine.cpp, uci.cpp, buildPvFromTT).
@@ -209,4 +211,7 @@ tactical 869.242 · open 2.055.698 — driver: `nodebench.py`, vedi memoria tool
 NPS: **+3.45%** dai batch 1–3 (A/B interleaved); #3 neutro (−0.24%, tenuto per struttura/LOC).
 2026-07-04 — **#11 Lazy SMP committato**: SPRT 1T non-regression CFS 87 @ 1835 game,
 TTD 4T −9% vs YBWC, baseline node-count 1T nuova: **5.782.300**.
-Restano: #9 (SMAC3, serve esposizione UCI) e #21 (promo-as-piece-type, sessione dedicata).
+2026-07-05 — **#21 promo-as-piece-type committato**: node-identico (5.782.300), −14 LOC,
+promozioni verificate end-to-end (UCI parse + bestmove + book/syzygy boundary).
+Resta: #9 (SMAC3, serve esposizione UCI una-tantum; il RUN va fatto a laptop libero —
+il datagen NNUE occupa 3 core fino a ~2026-07-09, misure a tempo falsate fino ad allora).

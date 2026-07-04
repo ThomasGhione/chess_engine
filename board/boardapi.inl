@@ -167,32 +167,20 @@ inline Board::MoveKind Board::classifyMoveKind(
     return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
 }
 
+// Missing/garbage promotion type defaults to queen (same fallback the old
+// char-based normalization applied to unrecognized input).
 __attribute__((always_inline))
-inline uint8_t Board::normalizePromotionChoice(char choice) noexcept {
-    //FIXME Elimina costati magiche
-    if (choice >= 'A' && choice <= 'Z')
-        choice = choice | 0x20;
-    
-    if (choice == 'q' || choice == 'r' || choice == 'b' || choice == 'n') [[likely]] 
-        return choice;
-    
-    return 'q';
-}
-
-__attribute__((always_inline))
-inline uint8_t Board::promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept {
-    if (promo == 'r') return ROOK | movingColor;
-    if (promo == 'b') return BISHOP | movingColor;
-    if (promo == 'n') return KNIGHT | movingColor;
-    return QUEEN | movingColor;
+inline uint8_t Board::normalizePromotionType(uint8_t promoType) noexcept {
+    if (promoType >= KNIGHT && promoType <= QUEEN) [[likely]]
+        return promoType;
+    return QUEEN;
 }
 
 // This function assumes the caller has already validated that the piece being promoted is a pawn
-// and that the promotion choice is valid.
+// and that `promo` is a normalized promotion piece type.
 __attribute__((always_inline))
 inline void Board::promoteUnchecked(uint8_t atIndex, uint8_t pawnPiece, uint8_t promo) noexcept {
-    const uint8_t movingColor = pawnPiece & MASK_COLOR;
-    const uint8_t newPiece = promotedPieceFromChoice(promo, movingColor);
+    const uint8_t newPiece = static_cast<uint8_t>(promo | (pawnPiece & MASK_COLOR));
     removePieceFromBB(pawnPiece, atIndex);
     addPieceToBB(newPiece, atIndex);
     set(atIndex, static_cast<piece_id>(newPiece));
@@ -332,7 +320,7 @@ inline void Board::doMoveByKind(
     uint8_t destBefore,
     uint8_t fromIndex,
     uint8_t toIndex,
-    char promotionChoice
+    uint8_t promotionType
 ) noexcept {
     //FIXME La funzione ha troppi parametri
     //FIXME La funzione e' troppo alta
@@ -395,7 +383,7 @@ inline void Board::doMoveByKind(
 
     if constexpr (isPromotionKind(Kind)) {
         // Finalize the promotion with the dedicated unchecked helper used by the hot path.
-        const uint8_t promo = normalizePromotionChoice(promotionChoice);
+        const uint8_t promo = normalizePromotionType(promotionType);
         st.promotionPieceType = promo;
         promoteUnchecked(toIndex, moving, promo);
     }

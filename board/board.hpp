@@ -20,13 +20,32 @@ using board = std::array<uint32_t, 8>;
 struct Move {
     Square from = NO_SQUARE;
     Square to   = NO_SQUARE;
-    char promotionPiece = '\0';
+    // Board::piece_id type of the promotion piece (KNIGHT=2 .. QUEEN=5); 0 = not
+    // a promotion. Char conversion happens only at the UCI/user-input boundary.
+    uint8_t promotionType = 0;
 
     constexpr bool operator==(const Move&) const noexcept = default;
     constexpr bool sameFromTo(const Move& other) const noexcept { return from == other.from && to == other.to; };
     constexpr bool sameFromTo(int f, int t) const noexcept { return from == static_cast<uint8_t>(f) && to == static_cast<uint8_t>(t); };
 
-    std::string toUCIString() const noexcept { return squareToString(from) + squareToString(to) + (promotionPiece ? std::string(1, std::tolower(promotionPiece)) : std::string{}); }
+    // Literal values mirror Board::piece_id (declared below Move); the
+    // static_asserts after the Board definition pin the coupling.
+    static constexpr uint8_t promotionTypeFromChar(char c) noexcept {
+        switch (c) {
+            case 'q': case 'Q': return 5; // Board::QUEEN
+            case 'r': case 'R': return 4; // Board::ROOK
+            case 'b': case 'B': return 3; // Board::BISHOP
+            case 'n': case 'N': return 2; // Board::KNIGHT
+            default:            return 0;
+        }
+    }
+
+    constexpr char promotionChar() const noexcept {
+        constexpr char CHARS[8] = {'\0', '\0', 'n', 'b', 'r', 'q', '\0', '\0'};
+        return CHARS[promotionType & 7];
+    }
+
+    std::string toUCIString() const noexcept { return squareToString(from) + squareToString(to) + (promotionType ? std::string(1, promotionChar()) : std::string{}); }
 };
 
 class Board {
@@ -296,7 +315,7 @@ private:
     template<MoveKind Kind>
     inline void doMoveByKind(MoveState& st, uint8_t moving, uint8_t movingType,
                               uint8_t movingColor, uint8_t destBefore,
-                              uint8_t fromIndex, uint8_t toIndex, char promotionChoice) noexcept;
+                              uint8_t fromIndex, uint8_t toIndex, uint8_t promotionType) noexcept;
     template<MoveKind Kind>
     inline void undoMoveByKind(const MoveState& st, uint8_t& pieceOnTo,
                                 uint8_t fromIndex, uint8_t toIndex) noexcept;
@@ -346,8 +365,7 @@ private:
     [[nodiscard]] static inline MoveKind    classifyMoveKind(uint8_t movingType, uint8_t movingColor,
                                                               uint8_t fromIndex, uint8_t toIndex,
                                                               uint8_t destBefore, const Square& prevEnPassant) noexcept;
-    [[nodiscard]] static inline uint8_t     normalizePromotionChoice(char choice) noexcept;
-    [[nodiscard]] static inline uint8_t     promotedPieceFromChoice(uint8_t promo, uint8_t movingColor) noexcept;
+    [[nodiscard]] static inline uint8_t     normalizePromotionType(uint8_t promoType) noexcept;
 
     // --- Private helpers: FEN & hash ---
     static bool    parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
@@ -395,6 +413,14 @@ private:
     static constexpr const char* STARTING_FEN =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 };
+
+static_assert(Move::promotionTypeFromChar('q') == Board::QUEEN
+           && Move::promotionTypeFromChar('r') == Board::ROOK
+           && Move::promotionTypeFromChar('b') == Board::BISHOP
+           && Move::promotionTypeFromChar('n') == Board::KNIGHT
+           && Move{0, 0, Board::QUEEN}.promotionChar() == 'q'
+           && Move{0, 0, Board::KNIGHT}.promotionChar() == 'n',
+    "Move promotion helpers must mirror Board::piece_id");
 
 #include "board.inl"
 #include "boardapi.inl"

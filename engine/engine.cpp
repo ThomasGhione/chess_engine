@@ -157,7 +157,7 @@ bool Engine::playMoveOnBoard(const chess::Move& move) noexcept {
     if (!chess::isValidSquare(move.from) || !chess::isValidSquare(move.to)) return false;
     if (!this->board.move(move)) return false;
 
-    this->appendMoveHistoryEntry(move.from, move.to, move.promotionPiece);
+    this->appendMoveHistoryEntry(move.from, move.to, move.promotionChar());
     this->updateGameResult();
     return true;
 }
@@ -165,7 +165,8 @@ bool Engine::playMoveOnBoard(const chess::Move& move) noexcept {
 __attribute__((hot))
 bool Engine::movePiece(const chess::Square from, const chess::Square to, const char promotionPiece) noexcept {
     this->requestStopPondering();
-    return this->playMoveOnBoard(chess::Move{from, to, promotionPiece});
+    return this->playMoveOnBoard(
+        chess::Move{from, to, chess::Move::promotionTypeFromChar(promotionPiece)});
 }
 
 void Engine::appendMoveHistoryEntry(const chess::Square& from, const chess::Square& to, char promotionPiece) noexcept {
@@ -391,8 +392,8 @@ void Engine::search(int requestedDepth) noexcept {
 
     DBG_ONLY(
         std::string moveStr = chess::squareToString(candidate.from) + chess::squareToString(candidate.to);
-        if (candidate.promotionPiece != '\0') {
-            moveStr += candidate.promotionPiece;
+        if (candidate.promotionType != 0) {
+            moveStr += candidate.promotionChar();
         }
         DBG_LOG_STREAM("Engine plays: " << moveStr << " (score: " << this->searchRuntime.eval << ")\n");
     );

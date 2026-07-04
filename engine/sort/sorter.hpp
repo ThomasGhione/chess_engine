@@ -22,24 +22,11 @@ public:
     // All scoring constants live in search_constants.hpp (namespace engine).
     // MovePicker (lazy selection-sort picker + deferred SEE) lives in movepicker.hpp.
 
-    // Inlined here so callers (in header-included contexts) get guaranteed inlining.
-    // Returns EMPTY (0) as a sentinel for unrecognised input so SEE / move-ordering
-    // can detect garbage instead of silently treating it as QUEEN. Legitimate move
-    // sources (MoveGenerator, TT decode) only ever produce q/r/b/n.
-    static inline constexpr uint8_t promotionPieceType(char promotionPiece) noexcept {
-        switch (promotionPiece) {
-            case 'q': case 'Q': return chess::Board::QUEEN;
-            case 'r': case 'R': return chess::Board::ROOK;
-            case 'b': case 'B': return chess::Board::BISHOP;
-            case 'n': case 'N': return chess::Board::KNIGHT;
-            default:            return chess::Board::EMPTY;
-        }
-    }
-
-    static inline constexpr int32_t getPromotionValueDelta(char promotionPiece) noexcept {
-        const uint8_t pt = promotionPieceType(promotionPiece);
-        return (pt == chess::Board::EMPTY) ? 0
-                                           : PIECE_VALUES[pt] - PIECE_VALUES[chess::Board::PAWN];
+    // Move::promotionType is already the Board piece type; 0 (not a promotion /
+    // garbage sentinel) contributes no delta instead of silently acting as QUEEN.
+    static inline constexpr int32_t getPromotionValueDelta(uint8_t promotionType) noexcept {
+        return (promotionType == chess::Board::EMPTY) ? 0
+                : PIECE_VALUES[promotionType] - PIECE_VALUES[chess::Board::PAWN];
     }
 
     // encodedHashMove is the TT move from the caller's node probe (0 = none);

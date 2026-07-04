@@ -130,7 +130,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove) {
         const bool isCapture = (b.get(best.to) != Board::EMPTY)
             || ((b.get(best.from) & Board::MASK_PIECE_TYPE) == Board::PAWN
                 && best.to == b.getEnPassant());
-        const bool isTactical = isCapture || best.promotionPiece != '\0';
+        const bool isTactical = isCapture || best.promotionType != 0;
         if (searchOk && ply >= MIN_RECORD_PLY && !isTactical && !b.inCheck(active)
             && std::abs(whiteScore) <= MAX_RECORD_SCORE_CP) {
             pending.push_back(packPosition(b, static_cast<int16_t>(whiteScore)));

@@ -137,11 +137,13 @@ chess::Move OpeningBook::decodeMove(uint16_t pgMove) noexcept {
         to_idx = static_cast<uint8_t>((7u - to_rank) * 8u + kingToFile);
     }
 
-    // Promotion char: '\0' = none, 'n','b','r','q'
-    static constexpr char PROMO_CHARS[5] = {'\0', 'n', 'b', 'r', 'q'};
-    const char promo_char = (promo < 5) ? PROMO_CHARS[promo] : '\0';
+    // Polyglot promo code (0=none,1=N,2=B,3=R,4=Q) → Board piece type.
+    static constexpr uint8_t PROMO_TYPES[5] = {
+        0, chess::Board::KNIGHT, chess::Board::BISHOP,
+        chess::Board::ROOK, chess::Board::QUEEN};
+    const uint8_t promoType = (promo < 5) ? PROMO_TYPES[promo] : 0;
 
-    return { from_idx, to_idx, promo_char };
+    return { from_idx, to_idx, promoType };
 }
 
 // ── book probe ──────────────────────────────────────────────────────────────

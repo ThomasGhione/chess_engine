@@ -129,12 +129,12 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
         const unsigned to   = TB_GET_TO(res);
         const unsigned promotes = TB_GET_PROMOTES(res);
 
-        char promo = '\0';
+        uint8_t promo = 0;
         switch (promotes) {
-            case PYRRHIC_FLAG_QPROMO: promo = 'q'; break;
-            case PYRRHIC_FLAG_RPROMO: promo = 'r'; break;
-            case PYRRHIC_FLAG_BPROMO: promo = 'b'; break;
-            case PYRRHIC_FLAG_NPROMO: promo = 'n'; break;
+            case PYRRHIC_FLAG_QPROMO: promo = chess::Board::QUEEN;  break;
+            case PYRRHIC_FLAG_RPROMO: promo = chess::Board::ROOK;   break;
+            case PYRRHIC_FLAG_BPROMO: promo = chess::Board::BISHOP; break;
+            case PYRRHIC_FLAG_NPROMO: promo = chess::Board::KNIGHT; break;
             default: break;
         }
 
