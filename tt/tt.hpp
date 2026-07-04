@@ -175,6 +175,11 @@ public:
 
     inline void prefetch(uint64_t key) noexcept;
     inline bool probeMove(uint64_t key, uint16_t& outBestMove) const noexcept;
+    // Cold-path convenience: the stored move for `key`, decoded ({} = none).
+    [[nodiscard]] inline chess::Move probeDecodedMove(uint64_t key) const noexcept {
+        uint16_t encoded = 0;
+        return probeMove(key, encoded) ? Entry::decodeMove(encoded) : chess::Move{};
+    }
     // The one hot-path read: a single bucket snapshot per node feeds the TT
     // cutoff, static-eval tightening, singular-extension gate and hash-move
     // ordering. Bound/depth gating is the caller's job.

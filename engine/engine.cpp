@@ -20,13 +20,6 @@ namespace {
     return !(ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false"));
 }
 
-[[nodiscard]] chess::Move getTTPonderMove(const chess::Board& board, const TT& tt) noexcept {
-    uint16_t encodedMove = 0;
-    if (!tt.probeMove(board.getHash(), encodedMove)) return {};
-
-    return TT::Entry::decodeMove(encodedMove);
-}
-
 [[nodiscard]] chess::Move getFallbackPonderMove(
     chess::Board& board,
     const Searcher::SearchRuntime& sourceRuntime) noexcept {
@@ -258,7 +251,7 @@ void Engine::startPondering() noexcept {
     this->clearPonderResult();
 
     chess::Board rootBoard = this->board;
-    auto ponderMove = getTTPonderMove(rootBoard, this->tt);
+    auto ponderMove = this->tt.probeDecodedMove(rootBoard.getHash());
     if (!chess::isValidSquare(ponderMove.from)) { // did the TT fail?
         ponderMove = getFallbackPonderMove(rootBoard, this->searchRuntime);
     }

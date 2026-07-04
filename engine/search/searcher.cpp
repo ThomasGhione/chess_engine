@@ -1307,10 +1307,8 @@ std::string buildPvFromTT(chess::Board& board, const TT* tt, int maxLen) noexcep
     std::string pv;
 
     for (int i = 0; i < maxLen && applied < MAX_PLY; ++i) {
-        uint16_t encoded = 0;
-        if (!tt->probeMove(board.getHash(), encoded) || encoded == 0) break;
-
-        const auto mv = TT::Entry::decodeMove(encoded);
+        const auto mv = tt->probeDecodedMove(board.getHash());
+        if (!chess::isValidSquare(mv.from)) break;
 
         const MoveList legal = engine::MoveGenerator::generateLegalMoves(board);
         bool legalMove = false;

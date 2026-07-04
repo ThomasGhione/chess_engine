@@ -292,10 +292,9 @@ namespace {
         chess::Board board = engine.board;
         if (!board.move(bestMove)) return {};
 
-        uint16_t encodedMove = 0;
-        if (!engine.tt.probeMove(board.getHash(), encodedMove)) return {};
+        const chess::Move ponderMove = engine.tt.probeDecodedMove(board.getHash());
+        if (!chess::isValidSquare(ponderMove.from)) return {};
 
-        const chess::Move ponderMove = TT::Entry::decodeMove(encodedMove);
         return board.move(ponderMove)
             ? (" ponder " + ponderMove.toUCIString())
             : std::string{};
