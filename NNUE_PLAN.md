@@ -1,0 +1,122 @@
+# NNUE — piano di implementazione
+
+Obiettivo: sostituire la valutazione handcrafted (HCE) con una rete NNUE addestrata
+su self-play HydraY. Guadagno atteso: **+150–300 Elo** con la prima rete seria,
+altri +100–200 con iterazioni successive (v2, più dati). È il singolo passo più
+grande verso i 3000.
+
+Principio guida: **v1 minimale che funziona end-to-end**, poi iterare. Niente
+HalfKA/bucket alla prima rete: ogni pezzo di complessità in più è un posto in più
+dove il primo tentativo può fallire senza capire perché.
+
+---
+
+## Architettura v1 (decisa, salvo sorprese)
+
+```
+input:  768 feature × 2 prospettive     (pieceType[6] × color[2] × square[64])
+        accumulatore per prospettiva (side-to-move / non-stm)
+L1:     768 → 256, int16, CReLU
+output: (256+256) → 1, side-to-move relative, centipawn-scaled
+```
+
+- **Perché 768 semplice e non HalfKP/HalfKA**: nessuna dipendenza dal re → niente
+  refresh dell'accumulatore alla mossa di re, solo add/sub incrementali. L'infra
+  incrementale esiste già in `doMove`/`undoMove` (`updateIncrementalEvalForPiece`):
+  l'update NNUE si aggancia negli stessi punti.
+- Quantizzazione standard bullet: pesi L1 int16 (QA=255), output int16 (QB=64).
+- Inferenza: AVX2 (i7-8650U la ha; `-march=native` già nel build). 256×int16 =
+  512 B per accumulatore → sta in L1 cache.
+- v2 (dopo che v1 è in produzione): HalfKAv2 con king-bucket, output bucket per
+  material count, 512-1024 hidden. Ogni step ri-validato via SPRT.
+
+## Trainer: bullet
+
+https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-Stockfish.
+- Addestra su GPU (Colab T4 gratis basta per una 768→256: ore, non giorni) o CPU
+  (fattibile ma lento, ~giorni per run piccola).
+- Formato dati: **bulletformat** (`ChessBoard`, 32 byte/posizione) — compatto,
+  convertibile da testo `FEN | eval_cp | wdl`.
+- Loss: blend `lambda * eval + (1-lambda) * wdl`; partire con lambda 0.7–1.0.
+
+---
+
+## Fasi
+
+### Fase 0 — prerequisiti engine-side (fattibili ORA, senza GPU)
+- [ ] **Seam di valutazione**: punto unico `Evaluator::evaluate()` già c'è; aggiungere
+      opzione UCI `UseNNUE` (default false) che a runtime sceglie HCE/NNUE — serve per
+      A/B, SPRT e fallback.
+- [ ] **Modalità `datagen`**: `./chess datagen <out.bin> <threads> <nodes>` — loop
+      interno self-play (NO cutechess: overhead UCI/processo inutile):
+      * apertura: 8–10 ply casuali legali (con filtro |eval| < 400 cp a fine random)
+      * ogni mossa: search a **nodi fissi** (~8000 nodi) con la HCE attuale
+      * salva per posizione: FEN (o direttamente bulletformat), score cp side-to-move,
+        e a fine partita il risultato WDL propagato a tutte le posizioni
+      * filtri standard: skip posizioni in scacco, skip |score| > 3000 (mate range),
+        skip ply < 16
+      * adjudication: |score| > 2500 per 4 ply → win/loss; 50mosse/ripetizione → draw
+- [ ] **Contatore/verifica datagen**: target v1 ≈ **100M posizioni** (≈ 3.2 GB
+      bulletformat). Sul 4C/8T a ~8k nodi/mossa ≈ 2–4 settimane di background a
+      3 thread. → è QUESTO il motivo per preparare tutto ora: il datagen può girare
+      mentre si fa altro (#9, #21, tuning).
+
+### Fase 1 — dati
+- [ ] Lanciare datagen di fondo (3 thread, nice 19), monitorare tasso posizioni/ora.
+- [ ] Milestone intermedia a ~30M: allenare una rete "sacrificabile" per validare
+      la pipeline end-to-end (datagen → bullet → export → inferenza) PRIMA di
+      aspettare i 100M. Se la pipeline ha un bug, meglio scoprirlo a 30M.
+
+### Fase 2 — training (serve GPU: Colab T4 gratis o noleggio)
+- [ ] Setup bullet, config: 768→256 CReLU, batch 16384, ~40 superbatch, lr step decay,
+      lambda 0.7. Output: file rete quantizzata (~400 KB).
+- [ ] Loss curve sana + sanity check: eval(startpos) ≈ 20–50 cp, simmetria
+      bianco/nero (eval(pos) ≈ -eval(mirror(pos))).
+
+### Fase 3 — inferenza engine-side
+- [ ] Accumulatore int16[2][256] su Board (o struct affiancata), update add/sub in
+      `doMove`/`undoMove` accanto agli update PSQT incrementali; snapshot/restore in
+      `MoveState` come gli altri campi incrementali.
+- [ ] Forward pass AVX2 (CReLU + dot product int16→int32). Target: NNUE eval
+      ≤ 2× il costo dell'HCE attuale (la rete recupera in qualità ciò che perde in NPS).
+- [ ] Caricamento rete: file esterno con path UCI option + **embed nel binario**
+      (incbin) come default, così `./chess` resta self-contained.
+- [ ] Verifica correttezza: eval NNUE incrementale ≡ eval NNUE from-scratch su
+      10k posizioni random (stesso pattern del check dual-representation di Board).
+
+### Fase 4 — validazione e switch
+- [ ] SPRT `[0, 5]` NNUE vs HCE (stesso binario, opzione on/off) — atteso largamente
+      positivo; se < +50 c'è un bug (dati, quantizzazione o inferenza).
+- [ ] Gauntlet assoluto vs 1.2.0 + 1.3.0.
+- [ ] Switch default `UseNNUE=true`, release 1.4.0 (o 2.0.0). HCE resta nel codice
+      finché non parte il datagen v2 (le reti successive si allenano su dati generati
+      DALLA rete precedente, non più dall'HCE).
+
+### Fase 5 — iterazione (v2+)
+- [ ] Datagen v2 con la rete v1 (qualità etichette migliore → rete migliore).
+- [ ] Architettura v2: HalfKAv2 + bucket. Richiede refresh accumulatore su mossa
+      di re + `FinnyTable` (cache di accumulatori per bucket) — solo quando v1 è solida.
+- [ ] EvalCache/pawn-cache HCE: rimuovere quando l'HCE esce dal hot path (−LOC).
+
+---
+
+## Rischi / note
+
+- **GPU**: unico anello esterno. Colab T4 gratis basta per v1; in alternativa
+  bullet-CPU su una notte. Nessun blocco reale.
+- **NPS**: sulla AVX2 del laptop una 768→256 costa ~1-2 µs/eval; l'HCE attuale con
+  cache ne costa meno, quindi NPS calerà (~20-40%). È atteso e ampiamente ripagato:
+  non farsi ingannare dal node-count — vale solo SPRT/gauntlet.
+- **Dati > architettura**: la qualità/quantità dei dati domina. Meglio 100M posizioni
+  pulite su rete semplice che 20M su architettura sofisticata.
+- **Niente dati Stockfish/Lc0**: self-play only — reti "proprie" e nessun problema
+  di licenza/identità del motore.
+- Il tuning HCE (gruppi `tuning/`) perde valore col passaggio a NNUE: non investire
+  altro tempo in tuning eval oltre a ciò che serve per etichette datagen migliori.
+
+## Ordine consigliato di partenza
+
+1. Fase 0 completa (seam UCI + datagen mode) — ~1 sessione di lavoro
+2. Datagen di fondo ON (Fase 1) — poi si continua con #9/#21/altro mentre accumula
+3. A 30M: pipeline di prova end-to-end (Fase 2+3 su rete sacrificabile)
+4. A 100M: rete v1 vera, Fase 4
