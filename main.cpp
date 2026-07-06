@@ -5,6 +5,7 @@
 #include "./driver/driver.hpp"
 #include "./uci/uci.hpp"
 #include "./nnue/datagen.hpp"
+#include "./nnue/selftest.hpp"
 
 #ifndef _WIN32
 #include <unistd.h> // isatty, STDIN_FILENO
@@ -35,8 +36,9 @@ int main(int argc, char *argv[]) {
     // thread, only the magic tables (initialized inside runDatagen).
     if (argc >= 2) {
         const std::string_view mode = argv[1];
-        if (mode == "datagen")      return NNUE::runDatagen(argc, argv);
-        if (mode == "datagen-dump") return NNUE::runDatagenDump(argc, argv);
+        if (mode == "datagen")       return NNUE::runDatagen(argc, argv);
+        if (mode == "datagen-dump")  return NNUE::runDatagenDump(argc, argv);
+        if (mode == "nnue-selftest") return NNUE::runSelfTest(argc, argv);
     }
 
     Engine engine;

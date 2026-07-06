@@ -381,6 +381,7 @@ namespace uci {
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"
+            << "option name EvalFile type string default <empty>\n"
             << "option name UseNNUE type check default false\n";
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
@@ -428,6 +429,17 @@ namespace uci {
                 std::cout << "info string BookFile loaded: " << path << "\n";
             } else {
                 std::cout << "info string BookFile error: could not load '" << path << "'\n";
+            }
+            return;
+        }
+
+        if (normalizedName == "evalfile") {
+            const std::string path(optionValue);
+            if (NNUE::loadNetwork(path)) {
+                // The board may already hold a position: bring the accumulator
+                // in sync now; later `position` commands refresh via FEN load.
+                engine.board.refreshNnueAccumulator();
+                std::cout << "info string EvalFile loaded: " << path << "\n";
             }
             return;
         }
@@ -542,10 +554,11 @@ namespace uci {
             if (enabled && !NNUE::networkLoaded()) {
                 NNUE::enabled = false;
                 std::cout << "info string UseNNUE unavailable: no network loaded"
-                             " (HCE stays active)\n";
+                             " (set EvalFile first; HCE stays active)\n";
                 return;
             }
             NNUE::enabled = enabled;
+            if (enabled) engine.board.refreshNnueAccumulator();
             std::cout << "info string UseNNUE "
                       << (enabled ? "enabled" : "disabled") << '\n';
             return;

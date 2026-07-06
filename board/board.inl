@@ -51,6 +51,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     incrementalPsqtKingsMg = other.incrementalPsqtKingsMg;
     incrementalPsqtKingsEg = other.incrementalPsqtKingsEg;
     evalCache = other.evalCache;
+    nnueAccumulator = other.nnueAccumulator;
     lastMoveChangeFlags = other.lastMoveChangeFlags;
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
@@ -128,6 +129,8 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
         occupancy |= bit;
         dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
     }
+
+    refreshNnueAccumulator();
 }
 
 __attribute__((always_inline))
@@ -243,9 +246,27 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
+    if (NNUE::activeNetwork != nullptr) [[unlikely]] {
+        nnueAccumulator.update<true>(piece, index);
+    }
 }
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
+    if (NNUE::activeNetwork != nullptr) [[unlikely]] {
+        nnueAccumulator.update<false>(piece, index);
+    }
+}
+
+// From-scratch accumulator rebuild. Note rebuildBitboardsFromSquares goes
+// through dispatchPieceBBUpdate directly (NOT addPieceToBB), so bulk rebuilds
+// never double-count: they land here once at the end instead.
+inline void Board::refreshNnueAccumulator() noexcept {
+    if (NNUE::activeNetwork == nullptr) return;
+    nnueAccumulator.reset();
+    for (uint8_t index = 0; index < 64; ++index) {
+        const uint8_t piece = get(index);
+        if (piece != EMPTY) nnueAccumulator.update<true>(piece, index);
+    }
 }

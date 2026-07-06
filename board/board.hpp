@@ -10,6 +10,7 @@
 
 #include "../engine/eval_constants.hpp"
 #include "../engine/piecevaluetables.hpp"
+#include "../nnue/accumulator.hpp"
 #include "./coords.hpp"
 #include "./piece.hpp"
 
@@ -274,6 +275,9 @@ public:
     constexpr uint64_t getHash() const noexcept          { return currentHash; }
     uint64_t           getPiecesBitMap() const noexcept  { return occupancy; }
     void               rebuildBitboardsFromSquares() noexcept;
+    // From-scratch NNUE accumulator recompute (no-op when no net is loaded).
+    // Incremental maintenance happens in addPieceToBB/removePieceFromBB.
+    inline void        refreshNnueAccumulator() noexcept;
 
     // --- Incremental eval accessors ---
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
@@ -304,6 +308,11 @@ public:
     std::array<uint64_t, 2> rooks_bb   = {0ULL, 0ULL};
     std::array<uint64_t, 2> queens_bb  = {0ULL, 0ULL};
     std::array<uint64_t, 2> kings_bb   = {0ULL, 0ULL};
+
+    // NNUE dual-perspective accumulator; kept in sync with the bitboards by
+    // the same add/remove piece functions whenever a network is loaded.
+    // Contains garbage until the first refreshNnueAccumulator() after load.
+    NNUE::Accumulator nnueAccumulator;
 
 private:
     // --- Private helpers: move execution ---

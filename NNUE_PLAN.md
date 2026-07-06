@@ -86,20 +86,27 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       bullet moderno NON ha backend CPU); `sanity.rs` = lettore standalone di
       `quantised.bin` (pure std) che fa da **specifica per il loader C++ di Fase 3**.
       Notebook pronto: `nnue/trainer/colab_shakedown.ipynb`.
-- [ ] RUN shakedown su Colab (manuale: upload .zst su Drive, eseguire il notebook).
-      Loss curve sana + sanity: eval(startpos) ≈ 20–50 cp, coppia mirror identica,
-      ±donna enorme.
+- [x] **RUN shakedown su Colab FATTO** (2026-07-06, 16.4M pos × 10 superbatch, T4).
+      Sanity sulla rete scaricata: startpos **+33 cp** ✓, coppia mirror **identica**
+      (456=456) ✓, ±donna ±1300 ✓. Rete: `nnue/data/hydray-v1-shakedown.bin`.
 
-### Fase 3 — inferenza engine-side
-- [ ] Accumulatore int16[2][256] su Board (o struct affiancata), update add/sub in
-      `doMove`/`undoMove` accanto agli update PSQT incrementali; snapshot/restore in
-      `MoveState` come gli altri campi incrementali.
-- [ ] Forward pass AVX2 (CReLU + dot product int16→int32). Target: NNUE eval
-      ≤ 2× il costo dell'HCE attuale (la rete recupera in qualità ciò che perde in NPS).
-- [ ] Caricamento rete: file esterno con path UCI option + **embed nel binario**
-      (incbin) come default, così `./chess` resta self-contained.
-- [ ] Verifica correttezza: eval NNUE incrementale ≡ eval NNUE from-scratch su
-      10k posizioni random (stesso pattern del check dual-representation di Board).
+### Fase 3 — inferenza engine-side — ✅ FATTA 2026-07-06
+- [x] **Accumulatore** `NNUE::Accumulator` (int16[2][256], `nnue/accumulator.hpp`) su
+      Board, agganciato in `addPieceToBB`/`removePieceFromBB` (ogni evento pezzo di
+      doMove/undoMove passa di lì — stesso principio della dual representation).
+      **Niente snapshot in MoveState**: add/sub sono inverse esatte, undo = update
+      opposto. Refresh from-scratch nei rebuild (`refreshNnueAccumulator`); il bulk
+      rebuild passa da `dispatchPieceBBUpdate` direttamente → zero doppi conteggi.
+- [x] **Forward AVX2** (`nnue/nnue.cpp`): SCReLU via mullo+madd (esatto: |w|≤128
+      verificato al load), fallback scalare identico a sanity.rs. Eval C++ ≡ sanity.rs
+      al centipawn su tutte le posizioni di riferimento. NPS con NNUE ~1.36M (vs ~2M
+      HCE): nel range atteso.
+- [x] **Caricamento**: opzione UCI `EvalFile` (+ refresh accumulatore su load e su
+      UseNNUE=true). L'embed incbin arriva in Fase 4 con la rete v1 vera.
+- [x] **Verifica**: `./chess nnue-selftest <net> [games]` — incrementale ≡ scratch
+      byte-per-byte su **61.815 posizioni** (300 partite random: catture/EP/arrocco/
+      promozioni), do+undo inclusi; coppia mirror asserita. Node-identity a NNUE
+      spento: 5.782.300 ✓.
 
 ### Fase 4 — validazione e switch
 - [ ] SPRT `[0, 5]` NNUE vs HCE (stesso binario, opzione on/off) — atteso largamente

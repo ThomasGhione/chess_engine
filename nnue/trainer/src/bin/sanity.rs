@@ -36,10 +36,14 @@ fn load(path: &str) -> Network {
         bytes.len(),
         expected_bytes
     );
-    // Everything past the payload must be zero padding.
+    // bullet pads the file to 64 bytes with the repeating ASCII string
+    // "bullet" — anything else in the tail means the layout drifted.
     assert!(
-        bytes[expected_bytes..].iter().all(|&b| b == 0),
-        "non-zero padding tail — layout drift?"
+        bytes[expected_bytes..]
+            .iter()
+            .zip(b"bullet".iter().cycle())
+            .all(|(a, b)| a == b),
+        "unexpected padding tail — layout drift?"
     );
 
     let mut it = bytes
