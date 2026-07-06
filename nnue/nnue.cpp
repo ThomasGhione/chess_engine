@@ -16,6 +16,10 @@
 #include "accumulator.hpp"
 #include "network.hpp"
 
+// Symbols from nnue/embedded.cpp (.incbin of nnue/net/hydray.nnue).
+extern "C" const unsigned char g_hydrayEmbeddedNetStart[];
+extern "C" const unsigned char g_hydrayEmbeddedNetEnd[];
+
 namespace NNUE {
 
 const Network* activeNetwork = nullptr;
@@ -28,6 +32,32 @@ std::unique_ptr<Network> ownedNetwork;
 // int16: |w| must stay <= 32767/QA or mullo_epi16 wraps. bullet's AdamW clips
 // weights to [-1.98, 1.98] (so |w| <= ~127 at QB=64); reject anything looser.
 constexpr int32_t MAX_OUTPUT_WEIGHT = 32767 / QA; // 128
+
+// Shared validation for file and embedded blobs (raw bytes: no alignment
+// assumptions). Returns nullptr on success, an error message otherwise.
+const char* validateNetworkBlob(const unsigned char* data, size_t size) noexcept {
+    if (size < NETWORK_PAYLOAD_BYTES || size % 64 != 0) {
+        return "unexpected size";
+    }
+    // bullet pads quantised.bin to 64 bytes with the repeating ASCII string
+    // "bullet"; anything else means the layout drifted.
+    static constexpr unsigned char SIG[6] = {'b', 'u', 'l', 'l', 'e', 't'};
+    for (size_t i = NETWORK_PAYLOAD_BYTES; i < size; ++i) {
+        if (data[i] != SIG[(i - NETWORK_PAYLOAD_BYTES) % 6]) {
+            return "bad padding signature (layout drift?)";
+        }
+    }
+    constexpr size_t OW_OFFSET = offsetof(Network, outputWeights);
+    for (size_t i = 0; i < 2 * static_cast<size_t>(HIDDEN); ++i) {
+        const auto w = static_cast<int16_t>(
+            static_cast<uint16_t>(data[OW_OFFSET + 2 * i])
+            | (static_cast<uint16_t>(data[OW_OFFSET + 2 * i + 1]) << 8));
+        if (std::abs(static_cast<int32_t>(w)) > MAX_OUTPUT_WEIGHT) {
+            return "output weight exceeds the AVX2-safe bound";
+        }
+    }
+    return nullptr;
+}
 
 // One half of the output layer: sum of screlu(acc[i]) * w[i].
 // Scalar version is the reference (identical to trainer/src/bin/sanity.rs).
@@ -69,50 +99,42 @@ bool loadNetwork(const std::string& path) {
         return false;
     }
     const auto fileSize = static_cast<size_t>(in.tellg());
-    if (fileSize < NETWORK_PAYLOAD_BYTES || fileSize % 64 != 0) {
-        std::cout << "info string EvalFile error: size " << fileSize
-                  << " (expected " << NETWORK_PAYLOAD_BYTES << " padded to 64)\n";
-        return false;
-    }
     in.seekg(0);
 
-    auto net = std::make_unique<Network>();
-    if (!in.read(reinterpret_cast<char*>(net.get()),
-                 static_cast<std::streamsize>(NETWORK_PAYLOAD_BYTES))) {
+    std::vector<unsigned char> blob(fileSize);
+    if (!in.read(reinterpret_cast<char*>(blob.data()),
+                 static_cast<std::streamsize>(fileSize))) {
         std::cout << "info string EvalFile error: short read\n";
         return false;
     }
-
-    // bullet pads quantised.bin to 64 bytes with the repeating ASCII string
-    // "bullet"; anything else means the layout drifted.
-    std::vector<char> tail(fileSize - NETWORK_PAYLOAD_BYTES);
-    static constexpr char SIG[6] = {'b', 'u', 'l', 'l', 'e', 't'};
-    if (in.read(tail.data(), static_cast<std::streamsize>(tail.size()))) {
-        for (size_t i = 0; i < tail.size(); ++i) {
-            if (tail[i] != SIG[i % 6]) {
-                std::cout << "info string EvalFile error: bad padding signature (layout drift?)\n";
-                return false;
-            }
-        }
+    if (const char* error = validateNetworkBlob(blob.data(), blob.size())) {
+        std::cout << "info string EvalFile error: " << error << "\n";
+        return false;
     }
 
-    for (const int16_t w : net->outputWeights[0]) {
-        if (std::abs(static_cast<int32_t>(w)) > MAX_OUTPUT_WEIGHT) {
-            std::cout << "info string EvalFile error: output weight " << w
-                      << " exceeds AVX2-safe bound " << MAX_OUTPUT_WEIGHT << "\n";
-            return false;
-        }
-    }
-    for (const int16_t w : net->outputWeights[1]) {
-        if (std::abs(static_cast<int32_t>(w)) > MAX_OUTPUT_WEIGHT) {
-            std::cout << "info string EvalFile error: output weight " << w
-                      << " exceeds AVX2-safe bound " << MAX_OUTPUT_WEIGHT << "\n";
-            return false;
-        }
-    }
-
+    auto net = std::make_unique<Network>();
+    std::memcpy(net.get(), blob.data(), NETWORK_PAYLOAD_BYTES);
     ownedNetwork = std::move(net);
     activeNetwork = ownedNetwork.get();
+    return true;
+}
+
+const Network* embeddedNetwork() noexcept {
+    // Validated once; the blob is 64-byte aligned (.balign in embedded.cpp),
+    // so the Network overlay satisfies the AVX2 aligned loads.
+    static const Network* const validated = []() -> const Network* {
+        const auto size = static_cast<size_t>(g_hydrayEmbeddedNetEnd - g_hydrayEmbeddedNetStart);
+        if (validateNetworkBlob(g_hydrayEmbeddedNetStart, size) != nullptr) return nullptr;
+        return reinterpret_cast<const Network*>(g_hydrayEmbeddedNetStart);
+    }();
+    return validated;
+}
+
+bool activateEmbedded() noexcept {
+    const Network* net = embeddedNetwork();
+    if (net == nullptr) return false;
+    ownedNetwork.reset();
+    activeNetwork = net;
     return true;
 }
 

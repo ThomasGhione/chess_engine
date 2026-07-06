@@ -201,6 +201,10 @@ $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
 
+# embedded.cpp pulls the network blob in via the assembler's .incbin, which
+# -MMD cannot track: declare the data dependency explicitly.
+$(OUTPUT_DIR)/nnue/embedded.o: $(ROOT_DIR)/nnue/net/hydray.nnue
+
 # tbprobe.c compiled as C (not C++) to avoid name mangling issues
 $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
 	@printf "\nCompiling $<..."

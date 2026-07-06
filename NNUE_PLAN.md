@@ -119,8 +119,16 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
 - [ ] A 100M: training v1 (40 superbatch) su Colab, poi Fase 4.
 
 ### Fase 4 — validazione e switch
+- [x] **incbin FATTO** (2026-07-06, in anticipo): rete embedded nel binario via
+      `.incbin` GNU as (`nnue/embedded.cpp` ← `nnue/net/hydray.nnue`, path stabile
+      committato — per ora la shakedown, si sostituirà il file con la v1).
+      `UseNNUE=true` senza EvalFile attiva l'embedded → binario self-contained
+      (+395 KB). Validazione blob condivisa file/embedded. `run_sprt.sh` ora accetta
+      `NEW_OPTS`/`BASE_OPTS` (opzioni UCI per-engine): lo SPRT formale è
+      `NEW_OPTS="UseNNUE=true" ./tuning/run_sprt.sh`. Smoke 4 game: 4-0 NNUE.
 - [ ] SPRT `[0, 5]` NNUE vs HCE (stesso binario, opzione on/off) — atteso largamente
       positivo; se < +50 c'è un bug (dati, quantizzazione o inferenza).
+      Probe già fatto con la shakedown: +458 ±95 @ 180 game.
 - [ ] Gauntlet assoluto vs 1.2.0 + 1.3.0.
 - [ ] Switch default `UseNNUE=true`, release 1.4.0 (o 2.0.0). HCE resta nel codice
       finché non parte il datagen v2 (le reti successive si allenano su dati generati

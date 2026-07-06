@@ -551,10 +551,11 @@ namespace uci {
         }
 
         if (normalizedName == "usennue") {
-            if (enabled && !NNUE::networkLoaded()) {
+            // No EvalFile set: fall back to the network embedded in the binary.
+            if (enabled && !NNUE::networkLoaded() && !NNUE::activateEmbedded()) {
                 NNUE::enabled = false;
-                std::cout << "info string UseNNUE unavailable: no network loaded"
-                             " (set EvalFile first; HCE stays active)\n";
+                std::cout << "info string UseNNUE unavailable: embedded network"
+                             " invalid and no EvalFile loaded (HCE stays active)\n";
                 return;
             }
             NNUE::enabled = enabled;

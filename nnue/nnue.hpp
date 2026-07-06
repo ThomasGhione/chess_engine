@@ -14,6 +14,8 @@ namespace chess { class Board; }
 
 namespace NNUE {
 
+struct Network;
+
 // Flipped only by the UCI layer while no search is running (setOption stops
 // any in-flight search first), so a plain bool is race-free.
 inline bool enabled = false;
@@ -21,6 +23,13 @@ inline bool enabled = false;
 // Loads a bullet quantised.bin (validates size, padding signature and the
 // output-weight bound the AVX2 forward relies on). Not for use mid-search.
 [[nodiscard]] bool loadNetwork(const std::string& path);
+
+// The network compiled into the binary (nnue/net/hydray.nnue via
+// nnue/embedded.cpp); nullptr if the blob fails validation.
+[[nodiscard]] const Network* embeddedNetwork() noexcept;
+
+// Makes the embedded network active (UseNNUE with no EvalFile set).
+[[nodiscard]] bool activateEmbedded() noexcept;
 
 [[nodiscard]] bool networkLoaded() noexcept;
 

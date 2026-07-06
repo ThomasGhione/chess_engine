@@ -28,11 +28,15 @@
 #   THREADS     search threads per engine                     (default 1)
 #   BOOK        opening book PGN                              (default books/openings.pgn)
 #   MAXGAMES    hard cap on games (safety net)                (default 4000)
+#   NEW_OPTS    extra UCI options for the NEW engine, space-separated
+#               "Name=Value" pairs (e.g. "UseNNUE=true EvalFile=/abs/net.bin")
+#   BASE_OPTS   same, for the BASELINE engine
 #
 # Examples:
 #   ./tuning/run_sprt.sh                          # default [0,5] gain test
 #   ELO0=-3 ELO1=3 ./tuning/run_sprt.sh           # non-regression test (for cleanups)
 #   TC=10+0.1 CONCURRENCY=4 ./tuning/run_sprt.sh
+#   NEW_OPTS="UseNNUE=true" ./tuning/run_sprt.sh  # NNUE (embedded net) vs HCE
 # ---------------------------------------------------------------------------
 
 set -euo pipefail
@@ -93,6 +97,13 @@ THREADS="${THREADS:-1}"
 export OMP_NUM_THREADS="${THREADS}"
 BOOK="${BOOK:-books/openings.pgn}"
 MAXGAMES="${MAXGAMES:-4000}"
+# Per-engine UCI options ("Name=Value" pairs) -> backend option.Name=Value args.
+NEW_OPTS="${NEW_OPTS:-}"
+BASE_OPTS="${BASE_OPTS:-}"
+new_opt_args=()
+for kv in ${NEW_OPTS}; do new_opt_args+=("option.${kv}"); done
+base_opt_args=()
+for kv in ${BASE_OPTS}; do base_opt_args+=("option.${kv}"); done
 # Time-controlled games need 1 searcher per *physical* core (HT siblings sharing
 # a core distort the clock), leaving one core for the OS/cutechess. Fall back to
 # nproc/2 if lscpu is unavailable.
@@ -130,10 +141,9 @@ if [[ "${SPRT_BACKEND}" == "fastchess" ]]; then
     [[ -n "${fastchess_bin}" ]] || { echo "error: SPRT_BACKEND=fastchess but fastchess not on PATH (~/.local/bin)." >&2; exit 127; }
     echo " backend: fastchess (pentanomial, model=normalized)"
     echo "=============================================================="
-    # No option.Hash: the engine has no UCI Hash option (TT is fixed-size).
     exec "${fastchess_bin}" \
-        -engine name=new  cmd="${new_bin}"  args="-uci" proto=uci option.Threads="${THREADS}" \
-        -engine name=base cmd="${base_bin}" args="-uci" proto=uci option.Threads="${THREADS}" \
+        -engine name=new  cmd="${new_bin}"  args="-uci" proto=uci option.Threads="${THREADS}" ${new_opt_args[@]+"${new_opt_args[@]}"} \
+        -engine name=base cmd="${base_bin}" args="-uci" proto=uci option.Threads="${THREADS}" ${base_opt_args[@]+"${base_opt_args[@]}"} \
         -each tc="${TC}" \
         -openings file="${BOOK}" format=pgn order=random plies=16 \
         -repeat -games 2 -rounds "$(( MAXGAMES / 2 ))" \
@@ -151,8 +161,8 @@ echo "=============================================================="
 # -repeat: each opening played from both sides for fairness.
 # adjudication speeds up decided games without biasing Elo.
 exec "${real_cutechess}" \
-    -engine name=new  cmd="${new_bin}"  arg=-uci \
-    -engine name=base cmd="${base_bin}" arg=-uci \
+    -engine name=new  cmd="${new_bin}"  arg=-uci ${new_opt_args[@]+"${new_opt_args[@]}"} \
+    -engine name=base cmd="${base_bin}" arg=-uci ${base_opt_args[@]+"${base_opt_args[@]}"} \
     -each proto=uci tc="${TC}" \
         option.Threads="${THREADS}" option.Hash="${HASH}" \
     -openings file="${BOOK}" format=pgn order=random plies=16 \
