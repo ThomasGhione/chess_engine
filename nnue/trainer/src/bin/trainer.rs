@@ -1,0 +1,107 @@
+// HydraY NNUE v1 trainer (NNUE_PLAN.md, Fase 2).
+//
+// Architecture: (768 -> 256)x2 -> 1, dual perspective, SCReLU, QA=255/QB=64 —
+// adapted from bullet's examples/simple.rs (same API, pinned bullet rev in
+// Cargo.toml). Data: bulletformat produced by `./chess datagen`.
+//
+// Usage: cargo run -r --bin trainer --features cuda -- <data.bin> [superbatches] [net_id]
+//   shakedown: ~10 superbatches; full v1 run: ~40.
+
+use bullet_lib::{
+    game::inputs::Chess768,
+    nn::optimiser::AdamW,
+    trainer::{
+        save::SavedFormat,
+        schedule::{lr, wdl, TrainingSchedule, TrainingSteps},
+        settings::LocalSettings,
+    },
+    value::{loader, ValueTrainerBuilder},
+};
+
+const HIDDEN_SIZE: usize = 256;
+const SCALE: i32 = 400;
+const QA: i16 = 255;
+const QB: i16 = 64;
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let data_path = args
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "../data/hydray_16M_interleaved.bin".to_string());
+    let superbatches: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(10);
+    let net_id = args
+        .get(3)
+        .cloned()
+        .unwrap_or_else(|| "hydray-v1-shakedown".to_string());
+
+    let mut trainer = ValueTrainerBuilder::default()
+        .dual_perspective()
+        .optimiser(AdamW)
+        .inputs(Chess768)
+        // Quantised layout consumed by sanity.rs and the engine loader:
+        // l0w (768x256 col-major, QA) | l0b (256, QA) | l1w (512, QB) | l1b (1, QA*QB)
+        .save_format(&[
+            SavedFormat::id("l0w").round().quantise::<i16>(QA),
+            SavedFormat::id("l0b").round().quantise::<i16>(QA),
+            SavedFormat::id("l1w").round().quantise::<i16>(QB),
+            SavedFormat::id("l1b").round().quantise::<i16>(QA * QB),
+        ])
+        .loss_fn(|output, target| output.sigmoid().squared_error(target))
+        .build(|builder, stm_inputs, ntm_inputs| {
+            let l0 = builder.new_affine("l0", 768, HIDDEN_SIZE);
+            let l1 = builder.new_affine("l1", 2 * HIDDEN_SIZE, 1);
+
+            let stm_hidden = l0.forward(stm_inputs).screlu();
+            let ntm_hidden = l0.forward(ntm_inputs).screlu();
+            let hidden_layer = stm_hidden.concat(ntm_hidden);
+            l1.forward(hidden_layer)
+        });
+
+    let schedule = TrainingSchedule {
+        net_id,
+        eval_scale: SCALE as f32,
+        steps: TrainingSteps {
+            batch_size: 16_384,
+            batches_per_superbatch: 6104, // ~100M samples per superbatch
+            start_superbatch: 1,
+            end_superbatch: superbatches,
+        },
+        // NNUE_PLAN lambda = 0.7 on the search score; bullet's `wdl` weights the
+        // game RESULT, so wdl = 1 - lambda = 0.3.
+        wdl_scheduler: wdl::ConstantWDL { value: 0.3 },
+        lr_scheduler: lr::StepLR {
+            start: 0.001,
+            gamma: 0.1,
+            step: (superbatches / 2).max(1),
+        },
+        save_rate: superbatches.max(1),
+    };
+
+    let settings = LocalSettings {
+        threads: 2,
+        test_set: None,
+        output_directory: "checkpoints",
+        batch_queue_size: 64,
+    };
+
+    let data_loader = loader::DirectSequentialDataLoader::new(&[data_path.as_str()]);
+
+    trainer.run(&schedule, &settings, &data_loader);
+
+    // Post-training sanity (values in cp-ish units via eval_scale):
+    //  - startpos should land around +20..50 for the side to move
+    //  - the mirrored pair must print (near-)identical values
+    //  - the up-a-queen positions must be hugely positive/negative
+    println!("=== sanity evals (stm-relative) ===");
+    for (label, fen) in [
+        ("startpos (w)", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"),
+        ("startpos (b)", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 1"),
+        ("wN e4 extra (w)", "rnbqkbnr/pppppppp/8/8/4N3/8/PPPPPPPP/RNBQKBNR w - - 0 1"),
+        ("bN e5 extra (b) [mirror of previous]", "rnbqkbnr/pppppppp/8/4n3/8/8/PPPPPPPP/RNBQKBNR b - - 0 1"),
+        ("stm up a queen (w)", "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"),
+        ("stm down a queen (w)", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w - - 0 1"),
+    ] {
+        println!("{label}: {:.1}", trainer.eval(fen));
+    }
+}

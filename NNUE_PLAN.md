@@ -68,16 +68,27 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       stima iniziale di 2–4 settimane).
 
 ### Fase 1 — dati
-- [ ] Lanciare datagen di fondo (3 thread, nice 19), monitorare tasso posizioni/ora.
-- [ ] Milestone intermedia a ~30M: allenare una rete "sacrificabile" per validare
-      la pipeline end-to-end (datagen → bullet → export → inferenza) PRIMA di
-      aspettare i 100M. Se la pipeline ha un bug, meglio scoprirlo a 30M.
+- [x] Datagen di fondo ATTIVO dal 2026-07-04 (3 thread, nice 19, ~280 pos/s a laptop
+      scarico → ETA 100M ≈ 3.5 giorni, molto meglio della stima 2–4 settimane).
+- [x] **Formato validato dal consumatore reale a 16.4M** (2026-07-06, anticipato dai
+      30M previsti — prima si trova un bug di pipeline, meno compute si butta):
+      `bullet-utils validate` su tutti e tre i file → **"No invalid positions!"**
+      su 16.48M posizioni, W/D/L 38/22/39. Interleave ok
+      (`nnue/data/hydray_16M_interleaved.bin.zst`, 243 MiB per Colab).
+- [ ] Rete sacrificabile sui 16M (shakedown end-to-end, vedi Fase 2) — poi la
+      v1 vera sui 100M.
 
 ### Fase 2 — training (serve GPU: Colab T4 gratis o noleggio)
-- [ ] Setup bullet, config: 768→256 CReLU, batch 16384, ~40 superbatch, lr step decay,
-      lambda 0.7. Output: file rete quantizzata (~400 KB).
-- [ ] Loss curve sana + sanity check: eval(startpos) ≈ 20–50 cp, simmetria
-      bianco/nero (eval(pos) ≈ -eval(mirror(pos))).
+- [x] **Setup bullet FATTO** (2026-07-06): crate `nnue/trainer/` (rev bullet pinnata,
+      compila verificato). Arch: 768→256 **SCReLU** (standard bullet moderno, al posto
+      del CReLU inizialmente scritto qui), batch 16384, lambda 0.7 (= bullet wdl 0.3),
+      lr step decay, QA=255/QB=64. `trainer.rs` = training (Colab, `--features cuda` —
+      bullet moderno NON ha backend CPU); `sanity.rs` = lettore standalone di
+      `quantised.bin` (pure std) che fa da **specifica per il loader C++ di Fase 3**.
+      Notebook pronto: `nnue/trainer/colab_shakedown.ipynb`.
+- [ ] RUN shakedown su Colab (manuale: upload .zst su Drive, eseguire il notebook).
+      Loss curve sana + sanity: eval(startpos) ≈ 20–50 cp, coppia mirror identica,
+      ±donna enorme.
 
 ### Fase 3 — inferenza engine-side
 - [ ] Accumulatore int16[2][256] su Board (o struct affiancata), update add/sub in

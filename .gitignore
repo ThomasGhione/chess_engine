@@ -43,3 +43,4 @@ CLAUDE.md
 nodebench
 # NNUE training data (datagen output, GB-sized)
 /nnue/data/
+/nnue/trainer/target/
