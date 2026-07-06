@@ -5,8 +5,10 @@
 
 namespace NNUE {
 
-// ./chess datagen [outPrefix] [threads] [nodesPerMove]
-//   defaults: nnue/data/hydray  3  8000
+// ./chess datagen [outPrefix] [threads] [nodesPerMove] [netPath]
+//   defaults: nnue/data/hydray  3  8000  (no net -> HCE labels)
+// With netPath, positions are labeled by NNUE search with that network
+// (reinforcement loop: regenerate with the strongest net available).
 // Each thread appends bulletformat records to <outPrefix>.t<N>.bin (append =
 // safe to stop with Ctrl+C / SIGTERM and resume later).
 int runDatagen(int argc, char* argv[]);

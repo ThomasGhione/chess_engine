@@ -22,6 +22,7 @@
 #include "../engine/sort/move_generator.hpp"
 #include "../tt/tt.hpp"
 #include "bulletformat.hpp"
+#include "nnue.hpp"
 
 namespace NNUE {
 
@@ -204,6 +205,17 @@ int runDatagen(int argc, char* argv[]) {
         ? std::max<uint64_t>(std::strtoull(argv[4], nullptr, 10), 256)
         : DEFAULT_NODES_PER_MOVE;
 
+    // Optional NNUE labeler. Fail hard on a bad path: silently falling back
+    // to HCE would poison days of generation with weaker labels.
+    const char* netPath = (argc >= 6) ? argv[5] : nullptr;
+    if (netPath != nullptr) {
+        if (!loadNetwork(netPath)) {
+            std::cerr << "datagen: cannot load network '" << netPath << "'\n";
+            return 1;
+        }
+        enabled = true;
+    }
+
     const std::filesystem::path parent =
         std::filesystem::path(outPrefix).parent_path();
     if (!parent.empty()) {
@@ -221,6 +233,7 @@ int runDatagen(int argc, char* argv[]) {
 
     std::cout << "HydraY datagen — bulletformat self-play data\n"
               << "  output : " << outPrefix << ".t<0.." << (threads - 1) << ">.bin (append)\n"
+              << "  labels : " << (enabled ? std::string("NNUE (") + netPath + ")" : "HCE") << "\n"
               << "  threads: " << threads << "  nodes/move: " << nodesPerMove << "\n"
               << "  filters: ply>=" << MIN_RECORD_PLY << ", not in check, quiet bestmove, |cp|<="
               << MAX_RECORD_SCORE_CP << "\n"

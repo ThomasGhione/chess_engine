@@ -108,6 +108,16 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       promozioni), do+undo inclusi; coppia mirror asserita. Node-identity a NNUE
       spento: 5.782.300 ✓.
 
+### Fase 3.5 — datagen v1.5 (decisione 2026-07-06)
+- [x] **Probe di forza shakedown-vs-HCE: +458 ±95 Elo (LOS 100%) @ 180 game** —
+      la rete da 16M già domina l'HCE. Di conseguenza (scelta utente): datagen HCE
+      fermato a 18.1M; **riavviato con etichette dalla rete shakedown**
+      (`./chess datagen ... [netPath]`, nuovo prefisso `nnue/data/hydray2`).
+      La v1 vera si allena su questi dati (loop di rinforzo: rigenera sempre col
+      valutatore più forte). Bonus: **439 pos/s** (più veloce dell'HCE: adjudication
+      più precoce) → ETA 100M ≈ **2.6 giorni**. Formato ri-validato con bullet-utils.
+- [ ] A 100M: training v1 (40 superbatch) su Colab, poi Fase 4.
+
 ### Fase 4 — validazione e switch
 - [ ] SPRT `[0, 5]` NNUE vs HCE (stesso binario, opzione on/off) — atteso largamente
       positivo; se < +50 c'è un bug (dati, quantizzazione o inferenza).
