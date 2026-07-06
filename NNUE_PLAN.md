@@ -146,9 +146,15 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
 
 - **GPU**: unico anello esterno. Colab T4 gratis basta per v1; in alternativa
   bullet-CPU su una notte. Nessun blocco reale.
-- **NPS**: sulla AVX2 del laptop una 768→256 costa ~1-2 µs/eval; l'HCE attuale con
-  cache ne costa meno, quindi NPS calerà (~20-40%). È atteso e ampiamente ripagato:
-  non farsi ingannare dal node-count — vale solo SPRT/gauntlet.
+- **NPS**: MISURATO 2026-07-06 (CPU pulita, datagen congelato): NNUE-on ≈ **2.0M NPS**
+  vs ~2.2M HCE → solo **−9%**, non il −20/40% stimato qui. Due micro-ottimizzazioni
+  provate e SCARTATE con misure: eval-cache hash davanti al forward NNUE (−2.7%: il
+  probe costa più del forward AVX2; il costo vero — gli update accumulatore — sta in
+  doMove comunque) e update fuso a delta-list (−11%: l'auto-vettorizzazione GCC dei
+  loop immediati batte il passaggio fuso con branch). L'implementazione "naive" era
+  già ottimale. Da fare ALLO SWITCH: flip degli hint `[[unlikely]]` sui branch NNUE.
+  ⚠️ Protocollo bench NPS: congelare il datagen (`kill -STOP/-CONT`) — sotto carico
+  le misure oscillano ±13% e producono guadagni fantasma.
 - **Dati > architettura**: la qualità/quantità dei dati domina. Meglio 100M posizioni
   pulite su rete semplice che 20M su architettura sofisticata.
 - **Niente dati Stockfish/Lc0**: self-play only — reti "proprie" e nessun problema
