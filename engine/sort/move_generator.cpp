@@ -8,7 +8,9 @@ namespace {
 
 __attribute__((always_inline))
 inline void appendPromotionSetByIndex(MoveList& moves, int from, int to) noexcept {
-    for (char p : {'q', 'r', 'b', 'n'}) {
+    // Queen first: keeps the pre-sort promo ordering the sorter relies on.
+    for (const uint8_t p : {chess::Board::QUEEN, chess::Board::ROOK,
+                            chess::Board::BISHOP, chess::Board::KNIGHT}) {
         moves.emplace_back(from, to, p);
     }
 }

@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "../engine.hpp"
-#include "../eval/evaluator.hpp"
+#include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
 
 namespace engine {
@@ -21,22 +21,47 @@ const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
+// Built at startup and rebuilt by rebuildSearchDerivedTables() when the UCI
+// layer changes LMR_C_PERCENT (search is stopped first).
 struct LMRTable {
     int8_t data[LMR_MAX_DEPTH][LMR_MAX_MOVES]{};
-    constexpr LMRTable() noexcept {
+    void rebuild() noexcept {
+        const double lmrC = static_cast<double>(LMR_C_PERCENT) / 100.0;
         for (int d = 0; d < LMR_MAX_DEPTH; ++d) {
             for (int m = 0; m < LMR_MAX_MOVES; ++m) {
                 if (d == 0 || m == 0) { data[d][m] = 1; continue; }
                 const double raw = __builtin_log(static_cast<double>(d))
                                  * __builtin_log(static_cast<double>(m))
-                                 / LMR_C;
+                                 / lmrC;
                 const int r = static_cast<int>(raw);
                 data[d][m] = static_cast<int8_t>(std::max(1, std::min(r, d - 3)));
             }
         }
     }
+    LMRTable() noexcept { rebuild(); }
 };
-static constexpr LMRTable LMR_REDUCTION_TABLE;
+static LMRTable LMR_REDUCTION_TABLE;
+
+} // namespace
+
+void rebuildSearchDerivedTables() noexcept {
+    LMR_REDUCTION_TABLE.rebuild();
+    for (int d = 1; d <= 6; ++d) {
+        FUTILITY_MARGINS[0][d] = FUTILITY_MID_STEP * d;
+        FUTILITY_MARGINS[1][d] = FUTILITY_EG_BASE + FUTILITY_EG_STEP * (d - 1);
+    }
+    for (int improving = 0; improving < 2; ++improving) {
+        for (int lateEndgame = 0; lateEndgame < 2; ++lateEndgame) {
+            for (int d = 1; d <= 4; ++d) {
+                LMP_THRESHOLDS[improving][lateEndgame][d] =
+                    LMP_BASE_THRESHOLDS[improving][lateEndgame][d]
+                    * LMP_SCALE_PCT[improving] / 100;
+            }
+        }
+    }
+}
+
+namespace {
 
 inline size_t corrHistIndex(uint64_t a, uint64_t c) noexcept {
     const uint64_t k = a * 0x9E3779B97F4A7C15ULL + c * 0xD6E8FEB86659FD93ULL;

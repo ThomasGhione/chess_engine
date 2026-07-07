@@ -63,7 +63,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         // Captures are scored provisionally as "good" here; the losing-capture
         // (SEE < 0) demotion is applied lazily by MovePicker::finalizeSee.
         int32_t score = CAPTURE_BASE_SCORE + MVV_TABLE[victimType];
-        if (isPromotionCandidate) score += getPromotionValueDelta(m.promotionPiece);
+        if (isPromotionCandidate) score += getPromotionValueDelta(m.promotionType);
         score += std::min<int32_t>(500,
             (ctx.runtime.captureHistory[ctx.usSide][m.to][victimType][0]
              + (ctx.runtime.captureHistory[ctx.usSide][m.to][victimType][1] >> 1)) / 20);
@@ -82,7 +82,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
     }
 
     if (isPromotionCandidate) {
-        return PROMOTION_BASE_SCORE + PIECE_VALUES[promotionPieceType(m.promotionPiece)];
+        return PROMOTION_BASE_SCORE + PIECE_VALUES[m.promotionType];
     }
 
     int32_t score = std::clamp(static_cast<int32_t>(ctx.runtime.history[ctx.usSide][m.from][m.to]),
@@ -135,14 +135,11 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
 
     int32_t initialGain = PIECE_VALUES[capturedType];
 
-    if (m.promotionPiece != '\0') {
-        const int promoType = promotionPieceType(m.promotionPiece);
-        // Defensive: an unrecognised promo char (sentinel EMPTY) used to fall
-        // through to QUEEN, applying a phantom +Q-P gain in SEE. Skip cleanly.
-        if (promoType != chess::Board::EMPTY) {
-            initialGain += PIECE_VALUES[promoType] - PIECE_VALUES[chess::Board::PAWN];
-            capturedOnTargetType = promoType;
-        }
+    // Defensive range check: a garbage promotion type must not apply a phantom
+    // gain (or index PIECE_VALUES out of bounds); legal sources emit N..Q only.
+    if (m.promotionType >= chess::Board::KNIGHT && m.promotionType <= chess::Board::QUEEN) {
+        initialGain += PIECE_VALUES[m.promotionType] - PIECE_VALUES[chess::Board::PAWN];
+        capturedOnTargetType = m.promotionType;
     }
 
     constexpr int MAX_SEE_DEPTH = 16;
@@ -275,7 +272,7 @@ MovePicker Sorter::sortTacticalMoves(
 
         if (cap.isCapture) {
             int32_t capturedValue = PIECE_VALUES[victimType];
-            if (isPromotion) capturedValue += getPromotionValueDelta(m.promotionPiece);
+            if (isPromotion) capturedValue += getPromotionValueDelta(m.promotionType);
 
             // Delta prune: capture cannot improve standPat past alpha. Matches
             // Searcher::shouldDeltaPrune semantics (<=, fails low on equal too).

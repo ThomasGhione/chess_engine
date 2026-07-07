@@ -54,26 +54,6 @@ public:
         static constexpr uint16_t FLAG_MASK = static_cast<uint16_t>((1u << FLAG_BITS) - 1u);
         static constexpr uint8_t AGE_SHIFT = DEPTH_BITS + FLAG_BITS;
 
-        static constexpr uint8_t promoCodeFromChar(char promo) noexcept {
-            switch (promo) {
-                case 'q': case 'Q': return 1;
-                case 'r': case 'R': return 2;
-                case 'b': case 'B': return 3;
-                case 'n': case 'N': return 4;
-                default: return 0;
-            }
-        }
-
-        static constexpr char promoCharFromCode(uint8_t promoCode) noexcept {
-            switch (promoCode) {
-                case 1: return 'q';
-                case 2: return 'r';
-                case 3: return 'b';
-                case 4: return 'n';
-                default: return '\0';
-            }
-        }
-
         static constexpr uint16_t packedMeta(uint8_t depthValue, uint8_t ageValue, uint8_t flagValue) noexcept {
             const uint16_t d = static_cast<uint16_t>(depthValue);
             const uint16_t a = static_cast<uint16_t>(ageValue);
@@ -116,17 +96,18 @@ public:
                  | static_cast<uint64_t>(packedMeta(depthValue, ageValue, flagValue));
         }
 
+        // Move::promotionType (0 or KNIGHT..QUEEN) fits the 4 promo bits as-is.
         static constexpr uint16_t encodeMove(const chess::Move& m) noexcept {
             return (static_cast<uint16_t>(m.from) & 0x3F)
                  | ((static_cast<uint16_t>(m.to) & 0x3F) << 6)
-                 | ((static_cast<uint16_t>(promoCodeFromChar(m.promotionPiece)) & 0xF) << 12);
+                 | ((static_cast<uint16_t>(m.promotionType) & 0xF) << 12);
         }
 
         static constexpr chess::Move decodeMove(uint16_t encoded) noexcept {
             return chess::Move{
                 static_cast<uint8_t>(encoded & 0x3F),
                 static_cast<uint8_t>((encoded >> 6) & 0x3F),
-                promoCharFromCode(static_cast<uint8_t>((encoded >> 12) & 0xF))
+                static_cast<uint8_t>((encoded >> 12) & 0xF)
             };
         }
     };
@@ -470,7 +451,9 @@ inline void TT::prefetch(uint64_t key) noexcept {
 static_assert(TT::Entry::encodeMove(chess::Move{12, 28, 'q'}) == TT::Entry::encodeMove(chess::Move{12, 28, 'Q'}), "promotion encoding should be case-insensitive");
 static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).from == 12, "move decode from mismatch");
 static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).to == 28, "move decode to mismatch");
-static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(chess::Move{12, 28, 'n'})).promotionPiece == 'n', "move decode promotion mismatch");
+static_assert(TT::Entry::decodeMove(TT::Entry::encodeMove(
+    chess::Move{12, 28, chess::Board::KNIGHT})).promotionType == chess::Board::KNIGHT,
+    "move decode promotion mismatch");
 
 inline bool TT::probeMove(uint64_t key, uint16_t& outBestMove) const noexcept {
     EntrySnapshot entry;

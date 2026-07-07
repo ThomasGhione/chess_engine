@@ -65,18 +65,20 @@ SYZYGY_C_OBJ = $(OUTPUT_DIR)/engine/syzygy/tbprobe.o
 DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
 BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
 UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
+NNUE_SRCS = $(wildcard $(ROOT_DIR)/nnue/*.cpp)
 
 # Module source paths in a single variable
-ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS)
+ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS) $(NNUE_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
 ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/sort/*.hpp) $(wildcard $(ROOT_DIR)/engine/time/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp) $(wildcard $(ROOT_DIR)/engine/opening/*.hpp)
 DRIVER_HDRS = $(wildcard $(ROOT_DIR)/driver/*.hpp)
 BOARD_HDRS = $(wildcard $(ROOT_DIR)/board/*.hpp)
 UCI_HDRS = $(wildcard $(ROOT_DIR)/uci/*.hpp)
+NNUE_HDRS = $(wildcard $(ROOT_DIR)/nnue/*.hpp)
 
 # All header paths
-ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS)
+ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS) $(NNUE_HDRS)
 
 # All files to analyze (.cpp and .hpp)
 ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) \
@@ -198,6 +200,10 @@ $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
+
+# embedded.cpp pulls the network blob in via the assembler's .incbin, which
+# -MMD cannot track: declare the data dependency explicitly.
+$(OUTPUT_DIR)/nnue/embedded.o: $(ROOT_DIR)/nnue/net/hydray.nnue
 
 # tbprobe.c compiled as C (not C++) to avoid name mangling issues
 $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)

@@ -41,3 +41,8 @@ CLAUDE.md
 
 
 nodebench
+# NNUE training data (datagen output, GB-sized)
+/nnue/data/
+/nnue/trainer/target/
+# fastchess auto-generated resume configs
+config.json
