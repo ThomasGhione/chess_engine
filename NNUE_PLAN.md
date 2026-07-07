@@ -58,11 +58,14 @@ SPRT prima del merge. Obiettivo: 3000 Elo.
 
 In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
 
-- [ ] **Adjudication Syzygy**: il motore ha già il prober (`engine/syzygy/`,
-      file 3-4-5 in `engine/syzygy/files`). Nel loop datagen, a ≤5 pezzi
-      chiudere la partita col WDL del TB invece di giocarla fino in fondo:
-      risultati esatti (niente endgame mal convertiti nei label) e partite
-      più corte → più pos/s. Modifica contenuta in `datagen.cpp`.
+- [x] **Adjudication Syzygy FATTA (2119165, 2026-07-07)**: a ≤5 pezzi la partita
+      si chiude col WDL del TB → etichette di risultato esatte e partite più
+      corte (smoke: ~24% delle partite adjudicate). Guard: niente diritti di
+      arrocco; risultati decisivi solo con halfmove clock ≤ 60 (il WDL ignora
+      la regola delle 50 mosse; cursed/blessed → patta). Arg opzionale
+      `[tbPath]` (default `engine/syzygy/files`); senza TB si disattiva da sola
+      (il banner dice quale modalità è attiva); progress riporta `tb-adj`.
+      ⚠️ I TB NON sono in git (939 MB): copiarli a mano sulle altre macchine.
 - [ ] **Nodi per mossa**: 8000 è il compromesso attuale. Con la v1 l'eval è
       più forte a parità di nodi; salire a 10-12k migliora le etichette a
       costo di ~25-40% di velocità. Da provare su UNA macchina e confrontare
