@@ -7,11 +7,13 @@
 # engine's replies (uciok / readyok / bestmove) before sending the next command.
 #
 # Usage (run from repo root):
-#   .claude/skills/run-hydray/driver.sh smoke                     # handshake + short search, HCE + NNUE
-#   .claude/skills/run-hydray/driver.sh bench [depth] [hce|nnue]  # startpos node count (default: 12 hce)
-#   .claude/skills/run-hydray/driver.sh bench6 [depth] [hce|nnue] # canonical 6-position node-count bench
-#   .claude/skills/run-hydray/driver.sh search "<uci moves>" [depth] [hce|nnue]
-#   .claude/skills/run-hydray/driver.sh tui [outfile]             # tmux-driven terminal game smoke
+#   .claude/skills/run-hydray/driver.sh smoke                # handshake + short search
+#   .claude/skills/run-hydray/driver.sh bench [depth]        # startpos node count (default: 12)
+#   .claude/skills/run-hydray/driver.sh bench6 [depth]       # canonical 6-position node-count bench
+#   .claude/skills/run-hydray/driver.sh search "<uci moves>" [depth]
+#   .claude/skills/run-hydray/driver.sh tui [outfile]        # tmux-driven terminal game smoke
+#
+# Eval is always NNUE (embedded net) — the HCE evaluator was removed (2.0.0).
 set -u
 BIN="${HYDRAY_BIN:-./chess}"
 DIE() { echo "FAIL: $*" >&2; exit 1; }
@@ -50,17 +52,8 @@ uci_close() {
     wait "$ENG_PID_" 2>/dev/null
 }
 
-setup_for() { # <hce|nnue>
-    # NNUE is the engine default: both modes set UseNNUE explicitly so the
-    # bench measures what its label says regardless of the built-in default.
-    local s='setoption name Threads value 1
-setoption name Opening value false'
-    if [[ $1 == nnue ]]; then
-        s+=$'\nsetoption name UseNNUE value true'
-    else
-        s+=$'\nsetoption name UseNNUE value false'
-    fi
-    printf '%s' "$s"
+setup_common() {
+    printf 'setoption name Threads value 1\nsetoption name Opening value false'
 }
 
 nodes_of() { # <info-line>
@@ -69,30 +62,28 @@ nodes_of() { # <info-line>
 
 # --- commands --------------------------------------------------------------
 cmd_smoke() {
-    local out eval
-    for eval in hce nnue; do
-        uci_open "$(setup_for $eval)"
-        out=$(uci_go 'position startpos' 'go depth 8' 60) || exit 1
-        uci_close
-        grep -q '^bestmove [a-h][1-8][a-h][1-8]' <<<"$out" || DIE "$eval: malformed bestmove: $(tail -1 <<<"$out")"
-        echo "OK $eval: $(grep '^bestmove' <<<"$out")"
-    done
+    local out
+    uci_open "$(setup_common)"
+    out=$(uci_go 'position startpos' 'go depth 8' 60) || exit 1
+    uci_close
+    grep -q '^bestmove [a-h][1-8][a-h][1-8]' <<<"$out" || DIE "malformed bestmove: $(tail -1 <<<"$out")"
+    echo "OK: $(grep '^bestmove' <<<"$out")"
     echo "SMOKE PASS"
 }
 
 cmd_bench() {
-    local depth=${1:-12} eval=${2:-hce} out info
-    uci_open "$(setup_for "$eval")"
+    local depth=${1:-12} out info
+    uci_open "$(setup_common)"
     out=$(uci_go 'position startpos' "go depth $depth" 300) || exit 1
     uci_close
     info=$(grep "^info depth $depth " <<<"$out" | tail -1)
     [[ -n $info ]] || DIE "no 'info depth $depth' line"
     echo "$info"
-    echo "nodes=$(nodes_of "$info") eval=$eval depth=$depth"
+    echo "nodes=$(nodes_of "$info") depth=$depth"
 }
 
 # Canonical 6-position set (see memory/tooling-nodebench.md).
-# Baselines @ depth 12: HCE 5,782,300 (post-Lazy-SMP 2fe3ce7) · NNUE 4,129,406 (2026-07-06).
+# Baseline @ depth 12: 4,735,578 (NNUE v1 net, 2026-07-07).
 BENCH6_NAMES=(startpos kiwipete kp-endgame midgame tactical open)
 BENCH6_POS=(
     'position startpos'
@@ -104,8 +95,8 @@ BENCH6_POS=(
 )
 
 cmd_bench6() {
-    local depth=${1:-12} eval=${2:-hce} i out info n total=0
-    uci_open "$(setup_for "$eval")"
+    local depth=${1:-12} i out info n total=0
+    uci_open "$(setup_common)"
     for i in "${!BENCH6_POS[@]}"; do
         out=$(uci_go "${BENCH6_POS[$i]}" "go depth $depth" 300) || exit 1
         info=$(grep "^info depth $depth " <<<"$out" | tail -1)
@@ -115,12 +106,12 @@ cmd_bench6() {
         total=$((total + n))
     done
     uci_close
-    echo "TOTAL nodes=$total eval=$eval depth=$depth"
+    echo "TOTAL nodes=$total depth=$depth"
 }
 
 cmd_search() {
-    local moves=$1 depth=${2:-12} eval=${3:-hce}
-    uci_open "$(setup_for "$eval")"
+    local moves=$1 depth=${2:-12}
+    uci_open "$(setup_common)"
     uci_go "position startpos moves $moves" "go depth $depth" 300
     uci_close
 }
@@ -150,7 +141,7 @@ case ${1:-} in
     smoke)  cmd_smoke ;;
     bench)  shift; cmd_bench "$@" ;;
     bench6) shift; cmd_bench6 "$@" ;;
-    search) shift; [[ $# -ge 1 ]] || DIE "usage: driver.sh search \"<uci moves>\" [depth] [hce|nnue]"; cmd_search "$@" ;;
+    search) shift; [[ $# -ge 1 ]] || DIE "usage: driver.sh search \"<uci moves>\" [depth]"; cmd_search "$@" ;;
     tui)    shift; cmd_tui "$@" ;;
     *)      grep '^#   ' "$0" | sed 's/^#   //'; exit 2 ;;
 esac

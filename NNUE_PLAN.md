@@ -152,10 +152,17 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       etichetta con la rete v1, non più con l'HCE) — vedi Fase 5.
 
 ### Fase 5 — iterazione (v2+)
+- [x] **Rimozione HCE COMPLETA (2026-07-07, prima della release 2.0.0 — scelta
+      utente)**: via `engine/eval/` (~2400 LOC), pesi da `eval_constants.hpp`
+      (restano piece values/MVV/stalemate per SEE e search), spin UCI eval,
+      `UseNNUE` (NNUE è l'unica eval; `EvalFile` per override), EvalCache +
+      MoveChangeFlags + PSQT/MG-EG/phaseWeight incrementali su Board (MoveState
+      più piccolo), `piecevaluetables.hpp`. `Evaluator` = shim → `NNUE::evaluate`.
+      Datagen senza netPath usa l'embedded. Verifica: **bench6 4.735.578
+      byte-identico**, selftest 61.815 pos ✓, NPS invariato (entro rumore).
 - [ ] Datagen v2 con la rete v1 (qualità etichette migliore → rete migliore).
 - [ ] Architettura v2: HalfKAv2 + bucket. Richiede refresh accumulatore su mossa
       di re + `FinnyTable` (cache di accumulatori per bucket) — solo quando v1 è solida.
-- [ ] EvalCache/pawn-cache HCE: rimuovere quando l'HCE esce dal hot path (−LOC).
 
 ---
 

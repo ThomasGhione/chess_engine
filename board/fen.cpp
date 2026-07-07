@@ -73,8 +73,6 @@ void Board::fromFenToBoard(const std::string& fen) {
     halfMoveClock = safeParseInt(half, 0, 255, 0);
     fullMoveClock = safeParseInt(full, 1, 255, 1);
 
-    clearEvalCache();
-    lastMoveChangeFlags = MOVE_CHANGE_NONE;
     rebuildBitboardsFromSquares();
     rebuildRepetitionHistory();
 }

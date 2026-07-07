@@ -78,8 +78,6 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
                                           fromIndex, toIndex, m.promotionType);
             break;
     }
-    applyEvalCacheInvalidation(st);
-
     if (!isPromotionKind(kind)) {
         newHash ^= zobrist::TABLES.pieces[moving][toIndex];
     }
@@ -150,7 +148,6 @@ __attribute__((hot))
 void Board::doNullMove(MoveState& st) noexcept {
     //FIXME Eliminare costati magiche
     prepareNullMoveState(st);
-    lastMoveChangeFlags = MOVE_CHANGE_NONE;
     uint64_t newHash = currentHash;
     if (st.prevEpHashFile < 8) {
         newHash ^= zobrist::TABLES.enPassant[st.prevEpHashFile];

@@ -48,15 +48,13 @@ namespace {
         return display;
     }
 
-    struct EvalOption final {
+    struct SpinOption final {
         const char* key;
         int32_t* value;
-        bool refreshPieceTables;
         bool hasRange;
         int32_t minValue;
         int32_t maxValue;
         // Rebuild the search-derived tables (LMR/futility/LMP) after writing.
-        // Defaulted so the eval entries below keep their 6-field initializers.
         bool refreshSearchTables = false;
     };
 
@@ -73,180 +71,36 @@ namespace {
         return {toI32(value - delta), toI32(value + delta)};
     }
 
-    // Resolved [min, max] range advertised and accepted for an eval option:
+    // Resolved [min, max] range advertised and accepted for a spin option:
     // its explicit bounds when given, otherwise the auto-range.
-    static std::pair<int32_t, int32_t> optionRange(const EvalOption& option) noexcept {
+    static std::pair<int32_t, int32_t> optionRange(const SpinOption& option) noexcept {
         return option.hasRange ? std::pair{option.minValue, option.maxValue}
                                : defaultRangeFor(*option.value);
     }
 
-    static void refreshPieceTables() noexcept {
-        // One row per piece slot (0=empty, 1=pawn … 6=king, 7=empty).
-        // King has no phase-split value, so mg/eg both use the base.
-        struct Slot { int32_t base, mg, eg; };
-        const Slot slots[] = {
-            {0,                    0,                       0                      },
-            {engine::PAWN_VALUE,   engine::PAWN_VALUE_MG,   engine::PAWN_VALUE_EG  },
-            {engine::KNIGHT_VALUE, engine::KNIGHT_VALUE_MG, engine::KNIGHT_VALUE_EG},
-            {engine::BISHOP_VALUE, engine::BISHOP_VALUE_MG, engine::BISHOP_VALUE_EG},
-            {engine::ROOK_VALUE,   engine::ROOK_VALUE_MG,   engine::ROOK_VALUE_EG  },
-            {engine::QUEEN_VALUE,  engine::QUEEN_VALUE_MG,  engine::QUEEN_VALUE_EG },
-            {engine::KING_VALUE,   engine::KING_VALUE,      engine::KING_VALUE     },
-            {0,                    0,                       0                      },
-        };
-        for (int i = 0; i < 8; ++i) {
-            engine::PIECE_VALUES[i] = slots[i].base;
-            chess::Board::MATERIAL_VALUES[i]    = slots[i].base;
-            chess::Board::MATERIAL_VALUES_MG[i] = slots[i].mg;
-            chess::Board::MATERIAL_VALUES_EG[i] = slots[i].eg;
-        }
-        for (int i = 0; i < 7; ++i)
-            engine::MVV_TABLE[i] = slots[i].base * 10;
-    }
-
-    // Macro to expand a PhaseValue constant into Mg + Eg UCI options. Tuners
-    // can drive each side independently to fit the smooth phase curve.
-    #define PV_OPTS(NAME, REF) \
-        {NAME "_Mg", &(REF).mg, false, false, 0, 0}, \
-        {NAME "_Eg", &(REF).eg, false, false, 0, 0}
-
-    static EvalOption kEvalOptions[] = {
-        {"PAWN_VALUE_Mg",   &engine::PAWN_VALUE_MG,   true, false, 0, 0},
-        {"PAWN_VALUE_Eg",   &engine::PAWN_VALUE_EG,   true, false, 0, 0},
-        {"KNIGHT_VALUE_Mg", &engine::KNIGHT_VALUE_MG, true, false, 0, 0},
-        {"KNIGHT_VALUE_Eg", &engine::KNIGHT_VALUE_EG, true, false, 0, 0},
-        {"BISHOP_VALUE_Mg", &engine::BISHOP_VALUE_MG, true, false, 0, 0},
-        {"BISHOP_VALUE_Eg", &engine::BISHOP_VALUE_EG, true, false, 0, 0},
-        {"ROOK_VALUE_Mg",   &engine::ROOK_VALUE_MG,   true, false, 0, 0},
-        {"ROOK_VALUE_Eg",   &engine::ROOK_VALUE_EG,   true, false, 0, 0},
-        {"QUEEN_VALUE_Mg",  &engine::QUEEN_VALUE_MG,  true, false, 0, 0},
-        {"QUEEN_VALUE_Eg",  &engine::QUEEN_VALUE_EG,  true, false, 0, 0},
-        {"KING_VALUE", &engine::KING_VALUE, true, false, 0, 0},
-        {"MATE_SCORE", &engine::MATE_SCORE, false, true, 0, 2'147'483'647},
-        PV_OPTS("DOUBLED_PAWN_PENALTY", engine::DOUBLED_PAWN_PENALTY),
-        PV_OPTS("ISOLATED_PAWN_PENALTY", engine::ISOLATED_PAWN_PENALTY),
-        PV_OPTS("PASSED_PAWN_BONUS", engine::PASSED_PAWN_BONUS),
-        PV_OPTS("PAWN_ISLAND_PENALTY", engine::PAWN_ISLAND_PENALTY),
-        PV_OPTS("PAWN_SUPPORT_BONUS", engine::PAWN_SUPPORT_BONUS),
-        PV_OPTS("CANDIDATE_PASSER_BONUS", engine::CANDIDATE_PASSER_BONUS),
-        PV_OPTS("CONNECTED_PASSER_BONUS", engine::CONNECTED_PASSER_BONUS),
-        PV_OPTS("BACKWARD_PAWN_PENALTY", engine::BACKWARD_PAWN_PENALTY),
-        PV_OPTS("PASSED_PAWN_BLOCKED_PENALTY", engine::PASSED_PAWN_BLOCKED_PENALTY),
-        PV_OPTS("CENTER_CONTROL_BONUS", engine::CENTER_CONTROL_BONUS),
-        {"COLOR_COMPLEX_PENALTY", &engine::COLOR_COMPLEX_PENALTY, false, false, 0, 0},
-        PV_OPTS("PASSED_ADVANCEMENT_SCALE", engine::PASSED_ADVANCEMENT_SCALE),
-        PV_OPTS("PASSED_NEAR_PROMOTION_BONUS", engine::PASSED_NEAR_PROMOTION_BONUS),
-        PV_OPTS("BISHOP_PAIR_BONUS", engine::BISHOP_PAIR_BONUS),
-        PV_OPTS("KING_NON_CASTLING_PENALTY", engine::KING_NON_CASTLING_PENALTY),
-        PV_OPTS("KING_LOST_CASTLING_RIGHTS_PENALTY", engine::KING_LOST_CASTLING_RIGHTS_PENALTY),
-        PV_OPTS("LOSS_OF_CASTLING_PENALTY", engine::LOSS_OF_CASTLING_PENALTY),
-        PV_OPTS("INIT_BONUS", engine::INIT_BONUS),
-        PV_OPTS("DEVELOPMENT_BONUS", engine::DEVELOPMENT_BONUS),
-        PV_OPTS("LOW_MOBILITY_KNIGHT_PENALTY", engine::LOW_MOBILITY_KNIGHT_PENALTY),
-        PV_OPTS("PINNED_KNIGHT_PENALTY", engine::PINNED_KNIGHT_PENALTY),
-        PV_OPTS("LOW_MOBILITY_BISHOP_PENALTY", engine::LOW_MOBILITY_BISHOP_PENALTY),
-        PV_OPTS("PINNED_BISHOP_PENALTY", engine::PINNED_BISHOP_PENALTY),
-        PV_OPTS("LOW_MOBILITY_ROOK_PENALTY", engine::LOW_MOBILITY_ROOK_PENALTY),
-        PV_OPTS("PINNED_ROOK_PENALTY", engine::PINNED_ROOK_PENALTY),
-        PV_OPTS("LOW_MOBILITY_QUEEN_PENALTY", engine::LOW_MOBILITY_QUEEN_PENALTY),
-        PV_OPTS("PINNED_QUEEN_PENALTY", engine::PINNED_QUEEN_PENALTY),
-        // Per-piece safe-mobility refs (scalar) and weights (PhaseValue). Explicit
-        // ranges so the tuner has room (defaultRangeFor would clamp small defaults).
-        {"MOBILITY_KNIGHT_REF", &engine::MOBILITY_KNIGHT_REF, false, true, 0, 16},
-        {"MOBILITY_BISHOP_REF", &engine::MOBILITY_BISHOP_REF, false, true, 0, 16},
-        {"MOBILITY_ROOK_REF",   &engine::MOBILITY_ROOK_REF,   false, true, 0, 16},
-        {"MOBILITY_QUEEN_REF",  &engine::MOBILITY_QUEEN_REF,  false, true, 0, 20},
-        {"MOBILITY_KNIGHT_WEIGHT_Mg", &engine::MOBILITY_KNIGHT_WEIGHT.mg, false, true, -4, 20},
-        {"MOBILITY_KNIGHT_WEIGHT_Eg", &engine::MOBILITY_KNIGHT_WEIGHT.eg, false, true, -4, 20},
-        {"MOBILITY_BISHOP_WEIGHT_Mg", &engine::MOBILITY_BISHOP_WEIGHT.mg, false, true, -4, 20},
-        {"MOBILITY_BISHOP_WEIGHT_Eg", &engine::MOBILITY_BISHOP_WEIGHT.eg, false, true, -4, 20},
-        {"MOBILITY_ROOK_WEIGHT_Mg",   &engine::MOBILITY_ROOK_WEIGHT.mg,   false, true, -4, 20},
-        {"MOBILITY_ROOK_WEIGHT_Eg",   &engine::MOBILITY_ROOK_WEIGHT.eg,   false, true, -4, 20},
-        {"MOBILITY_QUEEN_WEIGHT_Mg",  &engine::MOBILITY_QUEEN_WEIGHT.mg,  false, true, -4, 20},
-        {"MOBILITY_QUEEN_WEIGHT_Eg",  &engine::MOBILITY_QUEEN_WEIGHT.eg,  false, true, -4, 20},
-        PV_OPTS("COORDINATION_PENALTY", engine::COORDINATION_PENALTY),
-        PV_OPTS("OUTPOST_BISHOP_BONUS", engine::OUTPOST_BISHOP_BONUS),
-        PV_OPTS("OUTPOST_KNIGHT_BONUS", engine::OUTPOST_KNIGHT_BONUS),
-        PV_OPTS("HANGING_PAWN_PENALTY", engine::HANGING_PAWN_PENALTY),
-        PV_OPTS("HANGING_PAWN_NEAR_KING_PENALTY", engine::HANGING_PAWN_NEAR_KING_PENALTY),
-        PV_OPTS("HANGING_HOOK_PAWN_PENALTY", engine::HANGING_HOOK_PAWN_PENALTY),
-        PV_OPTS("HANGING_MINOR_PENALTY", engine::HANGING_MINOR_PENALTY),
-        PV_OPTS("HANGING_ROOK_PENALTY", engine::HANGING_ROOK_PENALTY),
-        PV_OPTS("HANGING_QUEEN_PENALTY", engine::HANGING_QUEEN_PENALTY),
-        PV_OPTS("THREAT_PAWN_ATTACK_MINOR_PENALTY", engine::THREAT_PAWN_ATTACK_MINOR_PENALTY),
-        PV_OPTS("THREAT_PAWN_ATTACK_ROOK_PENALTY", engine::THREAT_PAWN_ATTACK_ROOK_PENALTY),
-        PV_OPTS("THREAT_PAWN_ATTACK_QUEEN_PENALTY", engine::THREAT_PAWN_ATTACK_QUEEN_PENALTY),
-        PV_OPTS("THREAT_MINOR_ATTACK_ROOK_PENALTY", engine::THREAT_MINOR_ATTACK_ROOK_PENALTY),
-        PV_OPTS("THREAT_MINOR_ATTACK_QUEEN_PENALTY", engine::THREAT_MINOR_ATTACK_QUEEN_PENALTY),
-        PV_OPTS("THREAT_ROOK_ATTACK_QUEEN_PENALTY", engine::THREAT_ROOK_ATTACK_QUEEN_PENALTY),
-        PV_OPTS("THREAT_PAWN_PUSH_MINOR_PENALTY", engine::THREAT_PAWN_PUSH_MINOR_PENALTY),
-        PV_OPTS("THREAT_PAWN_PUSH_ROOK_PENALTY", engine::THREAT_PAWN_PUSH_ROOK_PENALTY),
-        PV_OPTS("THREAT_PAWN_PUSH_QUEEN_PENALTY", engine::THREAT_PAWN_PUSH_QUEEN_PENALTY),
-        PV_OPTS("THREAT_LOOSE_MINOR_PENALTY", engine::THREAT_LOOSE_MINOR_PENALTY),
-        PV_OPTS("THREAT_LOOSE_ROOK_PENALTY", engine::THREAT_LOOSE_ROOK_PENALTY),
-        PV_OPTS("THREAT_LOOSE_QUEEN_PENALTY", engine::THREAT_LOOSE_QUEEN_PENALTY),
-        PV_OPTS("PAWN_FORK_BASE_BONUS", engine::PAWN_FORK_BASE_BONUS),
-        PV_OPTS("PAWN_FORK_MAJOR_BONUS", engine::PAWN_FORK_MAJOR_BONUS),
-        PV_OPTS("PAWN_FORK_ROYAL_BONUS", engine::PAWN_FORK_ROYAL_BONUS),
-        PV_OPTS("OPEN_FILE_ROOK_BONUS", engine::OPEN_FILE_ROOK_BONUS),
-        PV_OPTS("SEMI_OPEN_FILE_ROOK_BONUS", engine::SEMI_OPEN_FILE_ROOK_BONUS),
-        PV_OPTS("ROOK_ON_SEVENTH_BONUS", engine::ROOK_ON_SEVENTH_BONUS),
-        PV_OPTS("ROOK_BEHIND_OWN_PASSER_BONUS", engine::ROOK_BEHIND_OWN_PASSER_BONUS),
-        PV_OPTS("ROOK_BEHIND_ENEMY_PASSER_BONUS", engine::ROOK_BEHIND_ENEMY_PASSER_BONUS),
-        PV_OPTS("ROOK_EG_EDGE_BONUS", engine::ROOK_EG_EDGE_BONUS),
-        PV_OPTS("ROOK_EG_PRESSURE_BONUS", engine::ROOK_EG_PRESSURE_BONUS),
-        PV_OPTS("KING_SAFETY_PENALTY", engine::KING_SAFETY_PENALTY),
-        PV_OPTS("KING_ACTIVITY_BONUS", engine::KING_ACTIVITY_BONUS),
-        PV_OPTS("CASTLE_PAWN_SUPPORT_BONUS", engine::CASTLE_PAWN_SUPPORT_BONUS),
-        PV_OPTS("KING_SHELTER_STRONG_BONUS", engine::KING_SHELTER_STRONG_BONUS),
-        PV_OPTS("KING_SHELTER_WEAK_BONUS", engine::KING_SHELTER_WEAK_BONUS),
-        PV_OPTS("KING_SHELTER_MISSING_PENALTY", engine::KING_SHELTER_MISSING_PENALTY),
-        PV_OPTS("KING_PAWN_STORM_NEAR_PENALTY", engine::KING_PAWN_STORM_NEAR_PENALTY),
-        PV_OPTS("KING_PAWN_STORM_FAR_PENALTY", engine::KING_PAWN_STORM_FAR_PENALTY),
-        PV_OPTS("KING_SHELTER_ADVANCE_ONE_PENALTY", engine::KING_SHELTER_ADVANCE_ONE_PENALTY),
-        PV_OPTS("KING_SHELTER_ADVANCE_TWO_PENALTY", engine::KING_SHELTER_ADVANCE_TWO_PENALTY),
-        PV_OPTS("KING_HOOK_PAWN_ATTACKED_PENALTY", engine::KING_HOOK_PAWN_ATTACKED_PENALTY),
-        PV_OPTS("KING_HOOK_PAWN_HANGING_PENALTY", engine::KING_HOOK_PAWN_HANGING_PENALTY),
-        PV_OPTS("KING_SEMI_OPEN_FILE_PENALTY", engine::KING_SEMI_OPEN_FILE_PENALTY),
-        PV_OPTS("KING_OPEN_FILE_PENALTY", engine::KING_OPEN_FILE_PENALTY),
-        PV_OPTS("KING_FILE_PRESSURE_PENALTY", engine::KING_FILE_PRESSURE_PENALTY),
-        PV_OPTS("KING_OPEN_DIAGONAL_PENALTY", engine::KING_OPEN_DIAGONAL_PENALTY),
-        {"KING_SAFETY_SIDE_CAP", &engine::KING_SAFETY_SIDE_CAP, false, false, 0, 0},
-        {"KING_ATTACK_MATERIAL_MIN_SCALE", &engine::KING_ATTACK_MATERIAL_MIN_SCALE, false, false, 0, 0},
-        {"KING_ATTACK_MATERIAL_MAX_SCALE", &engine::KING_ATTACK_MATERIAL_MAX_SCALE, false, false, 0, 0},
-        {"KING_ATTACK_WEIGHT_KNIGHT", &engine::KING_ATTACK_WEIGHT_KNIGHT, false, false, 0, 0},
-        {"KING_ATTACK_WEIGHT_BISHOP", &engine::KING_ATTACK_WEIGHT_BISHOP, false, false, 0, 0},
-        {"KING_ATTACK_WEIGHT_ROOK", &engine::KING_ATTACK_WEIGHT_ROOK, false, false, 0, 0},
-        {"KING_ATTACK_WEIGHT_QUEEN", &engine::KING_ATTACK_WEIGHT_QUEEN, false, false, 0, 0},
-        {"KING_SAFE_CONTACT_BONUS", &engine::KING_SAFE_CONTACT_BONUS, false, false, 0, 0},
-        {"KING_FORCING_CONTACT_BONUS", &engine::KING_FORCING_CONTACT_BONUS, false, false, 0, 0},
-        {"KING_SAFE_CHECK_BONUS", &engine::KING_SAFE_CHECK_BONUS, false, false, 0, 0},
-        {"KING_FORCING_CHECK_BONUS", &engine::KING_FORCING_CHECK_BONUS, false, false, 0, 0},
-        {"KING_ATTACK_DANGER_CAP", &engine::KING_ATTACK_DANGER_CAP, false, false, 0, 0},
-        PV_OPTS("SPACE_BONUS", engine::SPACE_BONUS),
-        {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, false, 0, 0},
-        {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, false, 0, 0},
-        {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, false, 0, 0},
+    static SpinOption kSpinOptions[] = {
+        {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, 0, 0},
+        {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, 0, 0},
+        {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, 0, 0},
         // --- Search constants (SMAC3 campaign, HOTPATH #9). Generators of the
         // derived tables set refreshSearchTables so LMR/futility/LMP rebuild.
-        {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,        false, true,     30,  250},
-        {"NMP_EVAL_DIV",         &engine::NMP_EVAL_DIV,                false, true,     50,  400},
-        {"NMP_EVAL_MAX",         &engine::NMP_EVAL_MAX,                false, true,      0,   10},
-        {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,          false, true,     20,  200},
-        {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,              false, true,     30,  250},
-        {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,              false, true,      0,   16},
-        {"SE_DOUBLE_MARGIN",     &engine::SE_DOUBLE_MARGIN,            false, true,      4,   64},
-        {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1],  false, true, -16384,    0},
-        {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  false, true, -16384,    0},
-        {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  false, true, -16384,    0},
-        {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,           false, true,     80,  600, true},
-        {"FUTILITY_EG_BASE",     &engine::FUTILITY_EG_BASE,            false, true,     40,  500, true},
-        {"FUTILITY_EG_STEP",     &engine::FUTILITY_EG_STEP,            false, true,     40,  500, true},
-        {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            false, true,     40,  250, true},
-        {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            false, true,     40,  250, true},
-        {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               false, true,    150,  600, true},
+        {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,        true,     30,  250},
+        {"NMP_EVAL_DIV",         &engine::NMP_EVAL_DIV,                true,     50,  400},
+        {"NMP_EVAL_MAX",         &engine::NMP_EVAL_MAX,                true,      0,   10},
+        {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,          true,     20,  200},
+        {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,              true,     30,  250},
+        {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,              true,      0,   16},
+        {"SE_DOUBLE_MARGIN",     &engine::SE_DOUBLE_MARGIN,            true,      4,   64},
+        {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1],  true, -16384,    0},
+        {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  true, -16384,    0},
+        {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  true, -16384,    0},
+        {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,           true,     80,  600, true},
+        {"FUTILITY_EG_BASE",     &engine::FUTILITY_EG_BASE,            true,     40,  500, true},
+        {"FUTILITY_EG_STEP",     &engine::FUTILITY_EG_STEP,            true,     40,  500, true},
+        {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            true,     40,  250, true},
+        {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            true,     40,  250, true},
+        {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               true,    150,  600, true},
     };
-    #undef PV_OPTS
 
     static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {
         const string_view value = trimLeft(rawValue);
@@ -381,15 +235,14 @@ namespace uci {
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"
-            << "option name EvalFile type string default <empty>\n"
-            << "option name UseNNUE type check default true\n";
+            << "option name EvalFile type string default <empty>\n";
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
                   << " min 1 max " << hwThreads << "\n";
         std::cout << "option name Hash type spin default " << TT::DEFAULT_HASH_MB
                   << " min " << TT::MIN_HASH_MB
                   << " max " << TT::MAX_HASH_MB << "\n";
-        for (const auto& option : kEvalOptions) {
+        for (const auto& option : kSpinOptions) {
             const auto [minValue, maxValue] = optionRange(option);
             std::cout << "option name " << optionDisplayName(option.key)
                       << " type spin default " << *option.value
@@ -403,12 +256,9 @@ namespace uci {
     void UCI::setOption(std::string_view args) noexcept {
         if (args.empty()) return;
 
-        // Stop any in-flight search before mutating shared engine state. The
-        // option backing storage is plain `int32_t` (engine::* globals,
-        // PIECE_VALUES, MVV_TABLE, Board::MATERIAL_VALUES); writing them while
-        // a worker reads is a data race and `refreshPieceTables` would also
-        // leave the incremental material/PSQT deltas out of sync with the new
-        // table until the next FEN re-parse.
+        // Stop any in-flight search before mutating shared engine state: the
+        // option backing storage is plain `int32_t` (engine::* globals) and
+        // writing it while a worker reads is a data race.
         stopSearch(false);
 
         string_view rest = args;
@@ -497,9 +347,8 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "opening" && normalizedName != "searchapimutexguard"
-            && normalizedName != "usennue") {
-            for (auto& option : kEvalOptions) {
+        if (normalizedName != "opening" && normalizedName != "searchapimutexguard") {
+            for (auto& option : kSpinOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
                 if (!parseFirstInt(optionValue, parsedValue)) {
@@ -513,19 +362,6 @@ namespace uci {
                     return;
                 }
                 *option.value = parsedValue;
-                if (option.refreshPieceTables) {
-                    refreshPieceTables();
-                    // Rebuild the board's incremental material / PSQT deltas
-                    // against the freshly-written MATERIAL_VALUES table. Without
-                    // this, deltas accumulated under the old values keep being
-                    // used by Evaluator::evaluate() until the next `position`
-                    // command re-parses a FEN.
-                    engine.board.rebuildBitboardsFromSquares();
-                    // rebuildBitboardsFromSquares() repopulates the incremental fields but
-                    // leaves any cached eval terms valid against the *old* table;
-                    // drop them so the next evaluate() recomputes from scratch.
-                    engine.board.clearEvalCache();
-                }
                 if (option.refreshSearchTables) {
                     engine::rebuildSearchDerivedTables();
                 }
@@ -546,21 +382,6 @@ namespace uci {
         if (normalizedName == "opening") {
             engine.openingEnabled.store(enabled, std::memory_order_relaxed);
             std::cout << "info string Opening "
-                      << (enabled ? "enabled" : "disabled") << '\n';
-            return;
-        }
-
-        if (normalizedName == "usennue") {
-            // No EvalFile set: fall back to the network embedded in the binary.
-            if (enabled && !NNUE::networkLoaded() && !NNUE::activateEmbedded()) {
-                NNUE::enabled = false;
-                std::cout << "info string UseNNUE unavailable: embedded network"
-                             " invalid and no EvalFile loaded (HCE stays active)\n";
-                return;
-            }
-            NNUE::enabled = enabled;
-            if (enabled) engine.board.refreshNnueAccumulator();
-            std::cout << "info string UseNNUE "
                       << (enabled ? "enabled" : "disabled") << '\n';
             return;
         }

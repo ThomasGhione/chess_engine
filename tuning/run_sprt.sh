@@ -29,14 +29,14 @@
 #   BOOK        opening book PGN                              (default books/openings.pgn)
 #   MAXGAMES    hard cap on games (safety net)                (default 4000)
 #   NEW_OPTS    extra UCI options for the NEW engine, space-separated
-#               "Name=Value" pairs (e.g. "UseNNUE=true EvalFile=/abs/net.bin")
+#               "Name=Value" pairs (e.g. "EvalFile=/abs/net.bin")
 #   BASE_OPTS   same, for the BASELINE engine
 #
 # Examples:
 #   ./tuning/run_sprt.sh                          # default [0,5] gain test
 #   ELO0=-3 ELO1=3 ./tuning/run_sprt.sh           # non-regression test (for cleanups)
 #   TC=10+0.1 CONCURRENCY=4 ./tuning/run_sprt.sh
-#   NEW_OPTS="UseNNUE=true" ./tuning/run_sprt.sh  # NNUE (embedded net) vs HCE
+#   NEW_OPTS="EvalFile=/abs/new.nnue" ./tuning/run_sprt.sh  # test a candidate net
 # ---------------------------------------------------------------------------
 
 set -euo pipefail

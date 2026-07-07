@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "../engine.hpp"
-#include "../eval/evaluator.hpp"
+#include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
 
 namespace engine {

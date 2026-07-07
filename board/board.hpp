@@ -9,7 +9,6 @@
 #include <cstring>
 
 #include "../engine/eval_constants.hpp"
-#include "../engine/piecevaluetables.hpp"
 #include "../nnue/accumulator.hpp"
 #include "./coords.hpp"
 #include "./piece.hpp"
@@ -83,55 +82,9 @@ public:
         PromotionCapture
     };
 
-    enum EvalCacheTerm : uint32_t {
-        EVAL_CACHE_PAWN_STRUCTURE_MG       = 0,
-        EVAL_CACHE_BISHOP_PAIR_BONUS       = 1,
-        EVAL_CACHE_CASTLING_BONUS          = 2,
-        EVAL_CACHE_ROOKS                   = 3,
-        EVAL_CACHE_BAD_BISHOP              = 4,
-        EVAL_CACHE_MINOR_DEVELOPMENT       = 5,
-        EVAL_CACHE_EARLY_QUEEN             = 6,
-        EVAL_CACHE_OUTPOSTS                = 7,
-        EVAL_CACHE_PIECE_COORDINATION      = 8,
-        EVAL_CACHE_CENTRAL_CONTROL         = 9,
-        EVAL_CACHE_WEAK_SQUARES            = 10,
-        EVAL_CACHE_BISHOP_VS_KNIGHT        = 11,
-        EVAL_CACHE_COUNT                   = 12
-    };
-
-    enum MoveChangeFlag : uint16_t {
-        MOVE_CHANGE_NONE        = 0u,
-        MOVE_CHANGE_CAPTURE     = 1u << 0,
-        MOVE_CHANGE_PROMOTION   = 1u << 1,
-        MOVE_CHANGE_PAWN_MOVE   = 1u << 2,
-        MOVE_CHANGE_KNIGHT_MOVE = 1u << 3,
-        MOVE_CHANGE_BISHOP_MOVE = 1u << 4,
-        MOVE_CHANGE_ROOK_MOVE   = 1u << 5,
-        MOVE_CHANGE_QUEEN_MOVE  = 1u << 6,
-        MOVE_CHANGE_KING_MOVE   = 1u << 7,
-        MOVE_CHANGE_CASTLING    = 1u << 8,
-        MOVE_CHANGE_ALL         = MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION
-                                | MOVE_CHANGE_PAWN_MOVE | MOVE_CHANGE_KNIGHT_MOVE
-                                | MOVE_CHANGE_BISHOP_MOVE | MOVE_CHANGE_ROOK_MOVE
-                                | MOVE_CHANGE_QUEEN_MOVE | MOVE_CHANGE_KING_MOVE
-                                | MOVE_CHANGE_CASTLING
-    };
-
     // --- Public structs ---
 
-    //FIXME Spostare struct in file appositi
-    // Compact PhaseValue storage: int16 each so the whole struct stays within
-    // MoveState's 96-byte budget. Sub-eval term values comfortably fit
-    // [-32768, 32767]; mate-scored positions skip the cache entirely.
-    struct EvalCache {
-        // Intentionally NOT default-zeroed: the live `evalCache{}` member and any
-        // value-init (EvalCache{}) still zero all members: skips a wasted ~52B zero-fill
-        std::array<int16_t, EVAL_CACHE_COUNT> mgTerms;
-        std::array<int16_t, EVAL_CACHE_COUNT> egTerms;
-        uint32_t validMask;
-    };
-
-    // Members are intentionally NOT default-initialised: skips a full ~96B zero-fill per node.
+    // Members are intentionally NOT default-initialised: skips a full zero-fill per node.
     // Value-init sites (`MoveState st{}`) still zero everything.
     struct MoveState {
         uint64_t prevHistoryHead;
@@ -142,8 +95,6 @@ public:
         // historySize is restored: silently breaking repetition detection in
         // every sibling line that follows a capture/pawn move.
         uint64_t prevHistorySlotValue;
-        EvalCache prevEvalCache;
-        uint16_t prevLastMoveChangeFlags;
 
         uint8_t prevHalfMoveClock;
         uint8_t prevFullMoveClock;
@@ -176,8 +127,6 @@ public:
     static constexpr uint8_t  CASTLING_RIGHTS_ALL     = 0x0F;
     static constexpr uint16_t REPETITION_HISTORY_CAPACITY = 255; // must be 255 instead of 100 due to the 8-bit prevHistorySize in MoveState
 
-    static constexpr uint32_t evalCacheBit(uint32_t term) noexcept { return 1u << term; }
-
     static constexpr std::array<uint64_t, 64> BIT_MASKS = []() constexpr {
         std::array<uint64_t, 64> masks{};
         for (int i = 0; i < 64; ++i) masks[i] = (1ULL << i);
@@ -200,18 +149,6 @@ public:
         0,
         engine::PAWN_VALUE, engine::KNIGHT_VALUE, engine::BISHOP_VALUE,
         engine::ROOK_VALUE, engine::QUEEN_VALUE,  engine::KING_VALUE,
-        0
-    };
-    inline static std::array<int32_t, 8> MATERIAL_VALUES_MG = {
-        0,
-        engine::PAWN_VALUE_MG, engine::KNIGHT_VALUE_MG, engine::BISHOP_VALUE_MG,
-        engine::ROOK_VALUE_MG, engine::QUEEN_VALUE_MG,  engine::KING_VALUE,
-        0
-    };
-    inline static std::array<int32_t, 8> MATERIAL_VALUES_EG = {
-        0,
-        engine::PAWN_VALUE_EG, engine::KNIGHT_VALUE_EG, engine::BISHOP_VALUE_EG,
-        engine::ROOK_VALUE_EG, engine::QUEEN_VALUE_EG,  engine::KING_VALUE,
         0
     };
 
@@ -279,23 +216,11 @@ public:
     // Incremental maintenance happens in addPieceToBB/removePieceFromBB.
     inline void        refreshNnueAccumulator() noexcept;
 
-    // --- Incremental eval accessors ---
+    // --- Incremental search-heuristic accessors ---
+    // White-minus-black material in centipawns (stalemate scoring in search).
     constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
-    constexpr int32_t getIncrementalMaterialMg()    const noexcept     { return incrementalMaterialMg; }
-    constexpr int32_t getIncrementalMaterialEg()    const noexcept     { return incrementalMaterialEg; }
     // Unweighted count of {N, B, R, Q} across both sides (used by search heuristics).
     constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
-    // Weighted phase units across both sides (N=B=1, R=2, Q=4). 0 = no
-    // non-pawn pieces (pawn-only endgame), 24 = full opening material.
-    constexpr int32_t getIncrementalPhaseWeight() const noexcept       { return incrementalPhaseWeight; }
-    void              getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept;
-
-    // --- Eval cache ---
-    template<uint32_t Term> bool hasEvalCacheTerm() const noexcept { return (evalCache.validMask & evalCacheBit(Term)) != 0; }
-    template<uint32_t Term> engine::PhaseValue getEvalCacheTerm() const noexcept;
-    template<uint32_t Term> void setEvalCacheTerm(engine::PhaseValue value) const noexcept;
-    void invalidateEvalCacheTerms(uint32_t terms) noexcept { evalCache.validMask &= ~terms; }
-    void clearEvalCache() noexcept { evalCache.validMask = 0; }
 
     // --- FEN ---
     void        fromFenToBoard(const std::string& fen);
@@ -319,7 +244,6 @@ private:
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
     inline void prepareNullMoveState(MoveState& st) const noexcept;
-    inline void applyEvalCacheInvalidation(const MoveState& st) noexcept;
     inline void restoreState(const MoveState& st) noexcept;
     template<MoveKind Kind>
     inline void doMoveByKind(MoveState& st, uint8_t moving, uint8_t movingType,
@@ -358,16 +282,6 @@ private:
     template<uint8_t PieceType, bool Add>
     inline void updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept;
 
-    // --- Private helpers: eval cache ---
-    // (evalCacheTermRef removed: storage is split between mgTerms/egTerms arrays.)
-    [[nodiscard]] static inline uint16_t computeMoveChangeFlags(const MoveState& st) noexcept;
-    [[nodiscard]] static inline uint32_t evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept;
-    template<uint16_t MoveFlags>
-    [[nodiscard]] static constexpr uint32_t evalInvalidationMaskFromMoveFlagsConstexpr() noexcept;
-    template<uint16_t... MoveFlags>
-    [[nodiscard]] static constexpr std::array<uint32_t, sizeof...(MoveFlags)>
-    buildEvalInvalidationMaskLut(std::integer_sequence<uint16_t, MoveFlags...>) noexcept;
-
     // --- Private helpers: move classification ---
     [[nodiscard]] static constexpr bool     isCaptureKind(MoveKind kind) noexcept;
     [[nodiscard]] static constexpr bool     isPromotionKind(MoveKind kind) noexcept;
@@ -396,20 +310,9 @@ private:
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{};
     uint64_t occupancy   = 0ULL;
 
-    //FIXME trovare nome piu' significativo per queste variabili
     int32_t incrementalMaterialDelta    = 0;
-    int32_t incrementalMaterialMg       = 0;
-    int32_t incrementalMaterialEg       = 0;
     int32_t incrementalNonPawnMajorCount = 0;
-    int32_t incrementalPhaseWeight      = 0;
-    int32_t incrementalPsqtPawnsMg      = 0;
-    int32_t incrementalPsqtPawnsEg      = 0;
-    int32_t incrementalPsqtPieces       = 0;
-    int32_t incrementalPsqtKingsMg      = 0;
-    int32_t incrementalPsqtKingsEg      = 0;
 
-    mutable EvalCache evalCache{};
-    uint16_t lastMoveChangeFlags = MOVE_CHANGE_NONE;
     uint8_t  halfMoveClock       = 0;
     uint8_t  fullMoveClock       = 1;
     uint8_t  castle              = CASTLING_RIGHTS_ALL;

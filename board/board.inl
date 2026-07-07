@@ -41,18 +41,8 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 
     occupancy = other.occupancy;
     incrementalMaterialDelta = other.incrementalMaterialDelta;
-    incrementalMaterialMg = other.incrementalMaterialMg;
-    incrementalMaterialEg = other.incrementalMaterialEg;
     incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
-    incrementalPhaseWeight = other.incrementalPhaseWeight;
-    incrementalPsqtPawnsMg = other.incrementalPsqtPawnsMg;
-    incrementalPsqtPawnsEg = other.incrementalPsqtPawnsEg;
-    incrementalPsqtPieces = other.incrementalPsqtPieces;
-    incrementalPsqtKingsMg = other.incrementalPsqtKingsMg;
-    incrementalPsqtKingsEg = other.incrementalPsqtKingsEg;
-    evalCache = other.evalCache;
     nnueAccumulator = other.nnueAccumulator;
-    lastMoveChangeFlags = other.lastMoveChangeFlags;
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
     castle = other.castle;
@@ -65,25 +55,6 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 // ==============================
 // Public Board API
 // ==============================
-inline void Board::getIncrementalPsqtMgEg(int32_t& outMg, int32_t& outEg) const noexcept {
-    outMg = incrementalPsqtPieces + incrementalPsqtPawnsMg + incrementalPsqtKingsMg;
-    outEg = incrementalPsqtPieces + incrementalPsqtPawnsEg + incrementalPsqtKingsEg;
-}
-
-template<uint32_t Term>
-inline engine::PhaseValue Board::getEvalCacheTerm() const noexcept {
-    static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
-    return {evalCache.mgTerms[Term], evalCache.egTerms[Term]};
-}
-
-template<uint32_t Term>
-inline void Board::setEvalCacheTerm(engine::PhaseValue value) const noexcept {
-    static_assert(Term < EVAL_CACHE_COUNT, "Unsupported eval cache term");
-    evalCache.mgTerms[Term] = static_cast<int16_t>(value.mg);
-    evalCache.egTerms[Term] = static_cast<int16_t>(value.eg);
-    evalCache.validMask |= evalCacheBit(Term);
-}
-
 __attribute__((hot, always_inline))
 inline void Board::set(uint8_t index, piece_id value) noexcept {
     const uint8_t internal_row = 7 - (index >> 3);
@@ -106,15 +77,7 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
     incrementalMaterialDelta = 0;
-    incrementalMaterialMg = 0;
-    incrementalMaterialEg = 0;
     incrementalNonPawnMajorCount = 0;
-    incrementalPhaseWeight = 0;
-    incrementalPsqtPawnsMg = 0;
-    incrementalPsqtPawnsEg = 0;
-    incrementalPsqtPieces = 0;
-    incrementalPsqtKingsMg = 0;
-    incrementalPsqtKingsEg = 0;
 
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
@@ -192,41 +155,14 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index)
 }
 
 template<uint8_t PieceType, bool Add>
-inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept {
+inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t /*index*/) noexcept {
     const int32_t sideSign = (color == 0) ? 1 : -1;
     const int32_t signedDelta = Add ? sideSign : -sideSign;
-    const uint8_t psqtIndex = (color == 0) ? index : engine::mirrorIndex(index);
 
     incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
-    incrementalMaterialMg    += signedDelta * MATERIAL_VALUES_MG[PieceType];
-    incrementalMaterialEg    += signedDelta * MATERIAL_VALUES_EG[PieceType];
-    
+
     if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
         incrementalNonPawnMajorCount += (Add ? 1 : -1);
-    }
-    // PeSTO-style weighted phase units: N=B=1, R=2, Q=4 (max 24 across both sides).
-    if constexpr (PieceType == KNIGHT || PieceType == BISHOP) {
-        incrementalPhaseWeight += (Add ? 1 : -1);
-    } else if constexpr (PieceType == ROOK) {
-        incrementalPhaseWeight += (Add ? 2 : -2);
-    } else if constexpr (PieceType == QUEEN) {
-        incrementalPhaseWeight += (Add ? 4 : -4);
-    }
-
-    if constexpr (PieceType == PAWN) {
-        incrementalPsqtPawnsMg += signedDelta * engine::PAWN_VALUES_TABLE[psqtIndex];
-        incrementalPsqtPawnsEg += signedDelta * engine::PAWN_END_GAME_VALUES_TABLE[psqtIndex];
-    } else if constexpr (PieceType == KNIGHT) {
-        incrementalPsqtPieces += signedDelta * engine::KNIGHT_VALUES_TABLE[psqtIndex];
-    } else if constexpr (PieceType == BISHOP) {
-        incrementalPsqtPieces += signedDelta * engine::BISHOP_VALUES_TABLE[psqtIndex];
-    } else if constexpr (PieceType == ROOK) {
-        incrementalPsqtPieces += signedDelta * engine::ROOK_VALUES_TABLE[psqtIndex];
-    } else if constexpr (PieceType == QUEEN) {
-        incrementalPsqtPieces += signedDelta * engine::QUEEN_VALUES_TABLE[psqtIndex];
-    } else if constexpr (PieceType == KING) {
-        incrementalPsqtKingsMg += signedDelta * engine::KING_MIDDLE_GAME_VALUES_TABLE[psqtIndex];
-        incrementalPsqtKingsEg += signedDelta * engine::KING_END_GAME_VALUES_TABLE[psqtIndex];
     }
 }
 

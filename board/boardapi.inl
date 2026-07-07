@@ -12,112 +12,6 @@ inline constexpr bool Board::isPromotionKind(MoveKind kind) noexcept {
     return kind == MoveKind::PromotionQuiet || kind == MoveKind::PromotionCapture;
 }
 
-inline uint16_t Board::computeMoveChangeFlags(const MoveState& st) noexcept {
-    uint16_t flags = MOVE_CHANGE_NONE;
-
-    if (isCaptureKind(st.moveKind) || st.moveKind == MoveKind::EnPassant) {
-        flags |= MOVE_CHANGE_CAPTURE;
-    }
-    if (isPromotionKind(st.moveKind)) {
-        flags |= MOVE_CHANGE_PROMOTION;
-    }
-    if (st.moveKind == MoveKind::Castling) {
-        flags |= MOVE_CHANGE_CASTLING;
-        // Castling also moves a rook, which affects rook/file and coordination terms.
-        flags |= MOVE_CHANGE_ROOK_MOVE;
-    }
-
-    switch (st.fromPiece & MASK_PIECE_TYPE) {
-        case PAWN:   flags |= MOVE_CHANGE_PAWN_MOVE; break;
-        case KNIGHT: flags |= MOVE_CHANGE_KNIGHT_MOVE; break;
-        case BISHOP: flags |= MOVE_CHANGE_BISHOP_MOVE; break;
-        case ROOK:   flags |= MOVE_CHANGE_ROOK_MOVE; break;
-        case QUEEN:  flags |= MOVE_CHANGE_QUEEN_MOVE; break;
-        case KING:   flags |= MOVE_CHANGE_KING_MOVE; break;
-        default: break;
-    }
-
-    return flags;
-}
-
-template<uint16_t MoveFlags>
-constexpr uint32_t Board::evalInvalidationMaskFromMoveFlagsConstexpr() noexcept {
-    constexpr bool captureOrPromotion = (MoveFlags & (MOVE_CHANGE_CAPTURE | MOVE_CHANGE_PROMOTION)) != 0;
-    constexpr bool pawnRelated = ((MoveFlags & MOVE_CHANGE_PAWN_MOVE) != 0) || captureOrPromotion;
-
-    uint32_t mask = 0;
-
-    if constexpr (captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_BISHOP_PAIR_BONUS);
-    }
-
-    if constexpr (pawnRelated) {
-        mask |= evalCacheBit(EVAL_CACHE_PAWN_STRUCTURE_MG);
-        mask |= evalCacheBit(EVAL_CACHE_CENTRAL_CONTROL);
-        mask |= evalCacheBit(EVAL_CACHE_BAD_BISHOP);
-        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
-        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
-    }
-
-    if constexpr (((MoveFlags & MOVE_CHANGE_BISHOP_MOVE) != 0) || captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_WEAK_SQUARES);
-        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
-    }
-
-    if constexpr ((MoveFlags & MOVE_CHANGE_KNIGHT_MOVE) != 0) {
-        mask |= evalCacheBit(EVAL_CACHE_BISHOP_VS_KNIGHT);
-    }
-
-    if constexpr (((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0) || pawnRelated) {
-        mask |= evalCacheBit(EVAL_CACHE_ROOKS);
-    }
-
-    if constexpr (((MoveFlags & MOVE_CHANGE_KING_MOVE) != 0)
-                  || ((MoveFlags & MOVE_CHANGE_ROOK_MOVE) != 0)
-                  || ((MoveFlags & MOVE_CHANGE_CASTLING) != 0)
-                  || ((MoveFlags & MOVE_CHANGE_CAPTURE) != 0)) {
-        mask |= evalCacheBit(EVAL_CACHE_CASTLING_BONUS);
-    }
-
-    if constexpr (((MoveFlags & (MOVE_CHANGE_KNIGHT_MOVE | MOVE_CHANGE_BISHOP_MOVE)) != 0) || captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_MINOR_DEVELOPMENT);
-        mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
-    }
-    if constexpr (pawnRelated) {
-        mask |= evalCacheBit(EVAL_CACHE_OUTPOSTS);
-    }
-
-    if constexpr (((MoveFlags & MOVE_CHANGE_QUEEN_MOVE) != 0) || captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_EARLY_QUEEN);
-    }
-
-    if constexpr (((MoveFlags & (MOVE_CHANGE_PAWN_MOVE
-                               | MOVE_CHANGE_KNIGHT_MOVE
-                               | MOVE_CHANGE_BISHOP_MOVE
-                               | MOVE_CHANGE_ROOK_MOVE
-                               | MOVE_CHANGE_QUEEN_MOVE)) != 0)
-                              || captureOrPromotion) {
-        mask |= evalCacheBit(EVAL_CACHE_PIECE_COORDINATION);
-    }
-
-    return mask;
-}
-
-template<uint16_t... MoveFlags>
-constexpr std::array<uint32_t, sizeof...(MoveFlags)>
-Board::buildEvalInvalidationMaskLut(std::integer_sequence<uint16_t, MoveFlags...>) noexcept {
-    return { evalInvalidationMaskFromMoveFlagsConstexpr<MoveFlags>()... };
-}
-
-inline uint32_t Board::evalInvalidationMaskFromMoveFlags(uint32_t moveFlags) noexcept {
-    static_assert((MOVE_CHANGE_ALL + 1u) == (1u << 9), "MoveChangeFlag layout changed; update eval invalidation LUT sizing.");
-    static constexpr auto INVALIDATION_MASK_LUT = buildEvalInvalidationMaskLut(
-        std::make_integer_sequence<uint16_t, MOVE_CHANGE_ALL + 1u>{}
-    );
-
-    return INVALIDATION_MASK_LUT[moveFlags & MOVE_CHANGE_ALL];
-}
-
 inline Board::MoveKind Board::classifyMoveKind(
     uint8_t movingType,
     uint8_t movingColor,
@@ -200,8 +94,6 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     // (null moves); doMove overwrites this via updateRepetitionAfterMove with the
     // value of the exact slot it clobbers. historySize >= 1 always.
     st.prevHistorySlotValue = repetitionHistory[historySize - 1];
-    st.prevEvalCache     = evalCache;
-    st.prevLastMoveChangeFlags = lastMoveChangeFlags;
 }
 
 __attribute__((always_inline))
@@ -227,11 +119,6 @@ inline void Board::prepareNullMoveState(MoveState& st) const noexcept {
     st.rookToIndex = 0;
 }
 
-inline void Board::applyEvalCacheInvalidation(const MoveState& st) noexcept {
-    lastMoveChangeFlags = computeMoveChangeFlags(st);
-    invalidateEvalCacheTerms(evalInvalidationMaskFromMoveFlags(lastMoveChangeFlags));
-}
-
 __attribute__((always_inline))
 inline void Board::restoreState(const MoveState& st) noexcept {
     activeColor   = oppositeColor(activeColor);
@@ -246,8 +133,6 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     repetitionHistory[historySize - 1] = st.prevHistorySlotValue;
     historySize   = st.prevHistorySize;
     currentHash   = st.prevHistoryHead;
-    evalCache     = st.prevEvalCache;
-    lastMoveChangeFlags = st.prevLastMoveChangeFlags;
 }
 
 __attribute__((always_inline))
