@@ -75,8 +75,13 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       `bullet-utils validate` su tutti e tre i file → **"No invalid positions!"**
       su 16.48M posizioni, W/D/L 38/22/39. Interleave ok
       (`nnue/data/hydray_16M_interleaved.bin.zst`, 243 MiB per Colab).
-- [ ] Rete sacrificabile sui 16M (shakedown end-to-end, vedi Fase 2) — poi la
+- [x] Rete sacrificabile sui 16M (shakedown end-to-end, vedi Fase 2) — poi la
       v1 vera sui 100M.
+- [x] **Dataset v1 COMPLETO (2026-07-07): 121.017.428 posizioni**, tutte con
+      etichette shakedown, da 4 macchine (laptop 30.2M + fisso Thomas 27.3M +
+      portatile Thomas 23.1M + fisso Simone 40.4M). Tutti i 33 file validati
+      con bullet-utils (0 invalidi, W/D/L 33/31/34), interleaved in
+      `nnue/data/hydray_v1_121M_interleaved.bin` (+ `.zst` 1.8 GiB per Colab).
 
 ### Fase 2 — training (serve GPU: Colab T4 gratis o noleggio)
 - [x] **Setup bullet FATTO** (2026-07-06): crate `nnue/trainer/` (rev bullet pinnata,
@@ -85,7 +90,8 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       lr step decay, QA=255/QB=64. `trainer.rs` = training (Colab, `--features cuda` —
       bullet moderno NON ha backend CPU); `sanity.rs` = lettore standalone di
       `quantised.bin` (pure std) che fa da **specifica per il loader C++ di Fase 3**.
-      Notebook pronto: `nnue/trainer/colab_shakedown.ipynb`.
+      Notebook pronto: `nnue/trainer/colab_v1.ipynb` (ex colab_shakedown,
+      aggiornato per il run v1 da 40 superbatch sui 121M).
 - [x] **RUN shakedown su Colab FATTO** (2026-07-06, 16.4M pos × 10 superbatch, T4).
       Sanity sulla rete scaricata: startpos **+33 cp** ✓, coppia mirror **identica**
       (456=456) ✓, ±donna ±1300 ✓. Rete: `nnue/data/hydray-v1-shakedown.bin`.
@@ -116,7 +122,8 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       La v1 vera si allena su questi dati (loop di rinforzo: rigenera sempre col
       valutatore più forte). Bonus: **439 pos/s** (più veloce dell'HCE: adjudication
       più precoce) → ETA 100M ≈ **2.6 giorni**. Formato ri-validato con bullet-utils.
-- [ ] A 100M: training v1 (40 superbatch) su Colab, poi Fase 4.
+- [x] Datagen distribuito su 4 macchine, fermato a **121M totali** (2026-07-07).
+- [ ] Training v1 (40 superbatch, `colab_v1.ipynb`) su Colab, poi Fase 4.
 
 ### Fase 4 — validazione e switch
 - [x] **incbin FATTO** (2026-07-06, in anticipo): rete embedded nel binario via

@@ -75,7 +75,9 @@ fn main() {
             gamma: 0.1,
             step: (superbatches / 2).max(1),
         },
-        save_rate: superbatches.max(1),
+        // Intermediate checkpoints: a Colab session can die mid-run; a sb-30
+        // checkpoint is still a usable net, a lost 4h run is not.
+        save_rate: superbatches.clamp(1, 10),
     };
 
     let settings = LocalSettings {

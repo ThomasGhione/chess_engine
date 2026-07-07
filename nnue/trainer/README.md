@@ -12,7 +12,7 @@ Vedi `NNUE_PLAN.md` alla root del repo.
    bullet-utils interleave t0.bin t1.bin t2.bin --output hydray_interleaved.bin
    bullet-utils validate --input hydray_interleaved.bin
    ```
-2. **Training** (Colab T4, gratis): apri `colab_shakedown.ipynb` su Colab,
+2. **Training** (Colab T4, gratis): apri `colab_v1.ipynb` su Colab,
    runtime GPU, esegui le celle. Oppure a mano su una macchina CUDA:
    ```sh
    cargo run -r --bin trainer --features cuda -- <data.bin> [superbatches] [net_id]
