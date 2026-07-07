@@ -140,14 +140,16 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
 - [x] **SPRT `[0, 5]` NNUE-v1 vs HCE PASSATO (2026-07-07)**: H1 accettata a 300 game,
       **292W-5L-3D (97.8%), Elo +662 ±155, LOS 100%** (stesso binario, embedded net,
       TC 4+0.04).
-- [ ] Gauntlet assoluto vs 1.2.0 + 1.3.0.
+- [x] Gauntlet assoluto vs 1.2.0 + 1.3.0 (2026-07-07): fermato SATURO a **80-0-0**
+      (100%, Elo `inf`) — gli anchor sono surclassati, la scala interna non arriva
+      a misurare la v1. Il prossimo yardstick utile sarà il tag 2.0.0 stesso.
 - [x] **Switch default `UseNNUE=true` (2026-07-07)**: attivazione embedded all'avvio in
       main.cpp (prima della costruzione di Engine, fallback HCE se blob invalido),
       `UseNNUE=false` per tornare a HCE; flip hint `[[likely]]` su branch eval e hook
       accumulatore; driver bench6 ora setta UseNNUE esplicito in entrambe le modalità.
       Node-identity post-switch: nnue 4.735.578 ✓, hce 5.782.300 ✓, default ≡ esplicito ✓.
-- [ ] Release 2.0.0. HCE rimovibile da subito dopo (il datagen v2 etichetta con la
-      rete v1, non più con l'HCE) — vedi Fase 5.
+- [x] **Release 2.0.0** (2026-07-07). HCE rimovibile da subito dopo (il datagen v2
+      etichetta con la rete v1, non più con l'HCE) — vedi Fase 5.
 
 ### Fase 5 — iterazione (v2+)
 - [ ] Datagen v2 con la rete v1 (qualità etichette migliore → rete migliore).

@@ -374,7 +374,7 @@ namespace uci {
 
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 1.3.0\n"
+            << "id name HydraY 2.0.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
             << "option name BookFile type string default engine/komodo.bin\n"
             << "option name Opening type check default true\n"
