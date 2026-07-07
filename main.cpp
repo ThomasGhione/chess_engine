@@ -5,6 +5,7 @@
 #include "./driver/driver.hpp"
 #include "./uci/uci.hpp"
 #include "./nnue/datagen.hpp"
+#include "./nnue/nnue.hpp"
 #include "./nnue/selftest.hpp"
 
 #ifndef _WIN32
@@ -39,6 +40,13 @@ int main(int argc, char *argv[]) {
         if (mode == "datagen")       return NNUE::runDatagen(argc, argv);
         if (mode == "datagen-dump")  return NNUE::runDatagenDump(argc, argv);
         if (mode == "nnue-selftest") return NNUE::runSelfTest(argc, argv);
+    }
+
+    // NNUE is the default evaluator (UCI `UseNNUE=false` reverts to HCE).
+    // Activated before Engine is built so the Board constructor already
+    // fills the accumulator; falls back to HCE if the embedded blob is bad.
+    if (NNUE::activateEmbedded()) {
+        NNUE::enabled = true;
     }
 
     Engine engine;

@@ -382,7 +382,7 @@ namespace uci {
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"
             << "option name EvalFile type string default <empty>\n"
-            << "option name UseNNUE type check default false\n";
+            << "option name UseNNUE type check default true\n";
         const int hwThreads = omp_get_max_threads();
         std::cout << "option name Threads type spin default " << hwThreads
                   << " min 1 max " << hwThreads << "\n";

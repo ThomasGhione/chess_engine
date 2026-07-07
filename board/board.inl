@@ -246,7 +246,7 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
-    if (NNUE::activeNetwork != nullptr) [[unlikely]] {
+    if (NNUE::activeNetwork != nullptr) [[likely]] {
         nnueAccumulator.update<true>(piece, index);
     }
 }
@@ -254,7 +254,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
-    if (NNUE::activeNetwork != nullptr) [[unlikely]] {
+    if (NNUE::activeNetwork != nullptr) [[likely]] {
         nnueAccumulator.update<false>(piece, index);
     }
 }

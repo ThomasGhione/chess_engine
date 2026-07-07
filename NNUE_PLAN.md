@@ -133,13 +133,21 @@ https://github.com/jw1912/bullet — Rust, lo standard de-facto per motori non-S
       (+395 KB). Validazione blob condivisa file/embedded. `run_sprt.sh` ora accetta
       `NEW_OPTS`/`BASE_OPTS` (opzioni UCI per-engine): lo SPRT formale è
       `NEW_OPTS="UseNNUE=true" ./tuning/run_sprt.sh`. Smoke 4 game: 4-0 NNUE.
-- [ ] SPRT `[0, 5]` NNUE vs HCE (stesso binario, opzione on/off) — atteso largamente
-      positivo; se < +50 c'è un bug (dati, quantizzazione o inferenza).
-      Probe già fatto con la shakedown: +458 ±95 @ 180 game.
+- [x] **Rete v1 addestrata e installata (2026-07-07)**: 121M × 40 superbatch su Colab
+      T4. Sanity: startpos +34, mirror esatto (573=573), ±donna ±1700. Selftest:
+      61.815 posizioni incrementale ≡ scratch. Bench6 v1 @ d12: **4.735.578 nodi**
+      (nuovo baseline deterministico NNUE); HCE intatto a 5.782.300.
+- [x] **SPRT `[0, 5]` NNUE-v1 vs HCE PASSATO (2026-07-07)**: H1 accettata a 300 game,
+      **292W-5L-3D (97.8%), Elo +662 ±155, LOS 100%** (stesso binario, embedded net,
+      TC 4+0.04).
 - [ ] Gauntlet assoluto vs 1.2.0 + 1.3.0.
-- [ ] Switch default `UseNNUE=true`, release 1.4.0 (o 2.0.0). HCE resta nel codice
-      finché non parte il datagen v2 (le reti successive si allenano su dati generati
-      DALLA rete precedente, non più dall'HCE).
+- [x] **Switch default `UseNNUE=true` (2026-07-07)**: attivazione embedded all'avvio in
+      main.cpp (prima della costruzione di Engine, fallback HCE se blob invalido),
+      `UseNNUE=false` per tornare a HCE; flip hint `[[likely]]` su branch eval e hook
+      accumulatore; driver bench6 ora setta UseNNUE esplicito in entrambe le modalità.
+      Node-identity post-switch: nnue 4.735.578 ✓, hce 5.782.300 ✓, default ≡ esplicito ✓.
+- [ ] Release 2.0.0. HCE rimovibile da subito dopo (il datagen v2 etichetta con la
+      rete v1, non più con l'HCE) — vedi Fase 5.
 
 ### Fase 5 — iterazione (v2+)
 - [ ] Datagen v2 con la rete v1 (qualità etichette migliore → rete migliore).

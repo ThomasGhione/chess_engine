@@ -24,7 +24,7 @@ int32_t Evaluator::evaluate(const chess::Board& board) noexcept {
         return whiteToMove ? POS_INF : -POS_INF;
     }
 
-    if (NNUE::enabled) [[unlikely]] {
+    if (NNUE::enabled) [[likely]] {
         return NNUE::evaluate(board);
     }
 
