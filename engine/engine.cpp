@@ -6,6 +6,7 @@
 #include <omp.h>
 
 #include "../debug.hpp"
+#include "../nnue/nnue.hpp"
 
 namespace engine {
 
@@ -49,6 +50,15 @@ void Engine::ensureMagicTablesInitialized() noexcept {
 Engine::Engine() {
 
     ensureMagicTablesInitialized();
+
+    // NNUE is the only evaluator: guarantee an active network before any
+    // search from this Engine. Test harnesses construct Engine directly and
+    // bypass main()'s activation; searching with no network would crash.
+    // The board member is built before this body runs, so refresh its
+    // accumulator after activating.
+    if (!NNUE::networkLoaded() && NNUE::activateEmbedded()) {
+        this->board.refreshNnueAccumulator();
+    }
 
     searchApiMutexEnabled.store(resolveSearchApiMutexGuardDefault(), std::memory_order_relaxed);
     searchRuntime.maxThreads = omp_get_max_threads();
