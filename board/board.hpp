@@ -291,13 +291,7 @@ private:
     [[nodiscard]] static inline uint8_t     normalizePromotionType(uint8_t promoType) noexcept;
 
     // --- Private helpers: FEN & hash ---
-    static bool    parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard);
-    static uint8_t parseActiveColor(const std::string& activeSection);
-    static Square  parseEnPassant(const std::string& enPassantSection);
     static uint8_t safeParseInt(const std::string& section, int min, int max, int defaultValue);
-    std::string    boardToFenPieces() const;
-    std::string    castlingToFen() const;
-    std::string    enPassantToFen() const;
     void           recomputeHashAndEp() noexcept;
     void           rebuildRepetitionHistory() noexcept;
     void           updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept;

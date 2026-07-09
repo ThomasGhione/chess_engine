@@ -5,42 +5,6 @@
 
 namespace chess {
 
-//FIXME Evitare namespace anonimo
-namespace {
-
-constexpr std::array<char, 8> PIECE_TYPE_TO_CHAR = {
-    '.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'
-};
-
-} // namespace
-
-bool Board::parseBoardSection(const std::string& boardSection, std::array<uint32_t, 8>& parsedBoard) {
-    int rank = 7, file = 0;
-    for (char c : boardSection) {
-	//FIXME Creare funzione heleper per gestire questa logica
-        if (c == '/') { --rank; file = 0; }
-        else if (std::isdigit(static_cast<unsigned char>(c))) file += c - '0';
-        else {
-            if (rank < 0 || file > 7) return false;
-            uint8_t p = Board::CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
-            if (p == EMPTY) return false;
-            parsedBoard[rank] |= static_cast<uint32_t>(p) << (file++ * 4);
-        }
-    }
-    return rank == 0 && file == 8;
-}
-
-uint8_t Board::parseActiveColor(const std::string& activeSection) {
-    //FIXME Mettere codizione in variabile costante booleana per aumentare la leggibilita' dell'operatore ternario
-    return (!activeSection.empty() && (activeSection[0] == 'b' || activeSection[0] == 'B')) ? BLACK : WHITE;
-}
-
-Square Board::parseEnPassant(const std::string& ep) {
-    //FIXME Creare funzione helper per codizione
-    if (ep.size() != 2 || ep[0] < 'a' || ep[0] > 'h' || ep[1] < '1' || ep[1] > '8') return NO_SQUARE;
-    return squareFrom(ep[0] - 'a', '8' - ep[1]);
-}
-
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
     if (section.empty()) return defaultValue;
     int v = 0;
@@ -54,22 +18,31 @@ void Board::fromFenToBoard(const std::string& fen) {
     if (!(fenStream >> board >> active >> castling >> ep >> half >> full)) return;
 
     std::array<uint32_t, 8> parsedBoard{};
-    if (!parseBoardSection(board, parsedBoard)) return;
-
-    chessboard = parsedBoard;
-    activeColor = parseActiveColor(active);
-    
-    //FIXME Elimina costati magiche
-    //FIXME Aggiungere this
-    castle = 0;
-    for (char c : castling) {
-        if (c == 'K') castle |= 1;
-        else if (c == 'Q') castle |= 2;
-        else if (c == 'k') castle |= 4;
-        else if (c == 'q') castle |= 8;
+    {
+        int rank = 7, file = 0;
+        for (char c : board) {
+            if (c == '/') { --rank; file = 0; }
+            else if (std::isdigit(static_cast<unsigned char>(c))) file += c - '0';
+            else {
+                if (rank < 0 || file > 7) return;
+                const uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
+                if (p == EMPTY) return;
+                parsedBoard[rank] |= static_cast<uint32_t>(p) << (file++ * 4);
+            }
+        }
+        if (rank != 0 || file != 8) return;
     }
 
-    enPassant = parseEnPassant(ep);
+    chessboard = parsedBoard;
+    activeColor = (!active.empty() && (active[0] == 'b' || active[0] == 'B')) ? BLACK : WHITE;
+
+    castle = 0;
+    for (char c : castling)
+        if (const auto i = std::string_view("KQkq").find(c); i != std::string_view::npos)
+            castle |= uint8_t(1 << i);
+
+    enPassant = (ep.size() == 2 && ep[0] >= 'a' && ep[0] <= 'h' && ep[1] >= '1' && ep[1] <= '8')
+        ? squareFrom(ep[0] - 'a', '8' - ep[1]) : NO_SQUARE;
     halfMoveClock = safeParseInt(half, 0, 255, 0);
     fullMoveClock = safeParseInt(full, 1, 255, 1);
 
@@ -77,43 +50,33 @@ void Board::fromFenToBoard(const std::string& fen) {
     rebuildRepetitionHistory();
 }
 
-std::string Board::boardToFenPieces() const {
+std::string Board::fromBoardToFen() const {
+    constexpr std::array<char, 8> pieceChar = {'.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'};
     std::string fen;
     for (int rank = 7; rank >= 0; --rank) {
         int emptySq = 0;
         for (int file = 0; file < 8; ++file) {
-            uint8_t p = (chessboard[rank] >> (file * 4)) & MASK_PIECE;
+            const uint8_t p = (chessboard[rank] >> (file * 4)) & MASK_PIECE;
             if (p == EMPTY) { ++emptySq; continue; }
-            if (emptySq) { fen += std::to_string(emptySq); emptySq = 0; }
-            char sym = PIECE_TYPE_TO_CHAR[p & Board::MASK_PIECE_TYPE];
-            fen += (p & MASK_COLOR) == BLACK ? static_cast<char>(std::tolower(static_cast<unsigned char>(sym))) : sym;
+            if (emptySq) { fen += char('0' + emptySq); emptySq = 0; }
+            const char sym = pieceChar[p & MASK_PIECE_TYPE];
+            fen += (p & MASK_COLOR) == BLACK ? char(sym | 0x20) : sym;
         }
-        if (emptySq) fen += std::to_string(emptySq);
+        if (emptySq) fen += char('0' + emptySq);
         if (rank > 0) fen += '/';
     }
+    fen += activeColor == WHITE ? " w " : " b ";
+    const size_t castleStart = fen.size();
+    for (int i = 0; i < 4; ++i)
+        if (castle & (1 << i)) fen += "KQkq"[i];
+    if (fen.size() == castleStart) fen += '-';
+    if (!isValidSquare(enPassant)) fen += " -";
+    else { fen += ' '; fen += char('a' + chess::file(enPassant)); fen += char('8' - chess::rank(enPassant)); }
+    fen += ' ';
+    fen += std::to_string(halfMoveClock);
+    fen += ' ';
+    fen += std::to_string(fullMoveClock);
     return fen;
-}
-
-//FIXME Rendere constexpr 
-std::string Board::castlingToFen() const {
-    std::string s;
-    if (castle & 1) s += 'K';
-    if (castle & 2) s += 'Q';
-    if (castle & 4) s += 'k';
-    if (castle & 8) s += 'q';
-    return s.empty() ? "-" : s;
-}
-
-//FIXME Rendere constexpr 
-std::string Board::enPassantToFen() const {
-    if (!isValidSquare(enPassant)) return "-";
-    return std::string(1, 'a' + chess::file(enPassant)) + static_cast<char>('8' - chess::rank(enPassant));
-}
-
-//FIXME Rendere constexpr 
-//FIXME Evitare monoriga per aumentare leggibilita'
-std::string Board::fromBoardToFen() const {
-    return boardToFenPieces() + " " + (activeColor == WHITE ? "w " : "b ") + castlingToFen() + " " + enPassantToFen() + " " + std::to_string(halfMoveClock) + " " + std::to_string(fullMoveClock);
 }
 
 }
