@@ -20,6 +20,7 @@
 #include "../board/piece.hpp"
 #include "../engine/search/searcher.hpp"
 #include "../engine/sort/move_generator.hpp"
+#include "../engine/syzygy/syzygy.hpp"
 #include "../tt/tt.hpp"
 #include "bulletformat.hpp"
 #include "nnue.hpp"
@@ -44,11 +45,20 @@ constexpr int32_t  DRAW_ADJ_CP              = 10;
 constexpr int      DRAW_ADJ_PLIES           = 8;
 constexpr int      DRAW_ADJ_MIN_PLY         = 80;
 constexpr int      MAX_GAME_PLIES           = 400;
-constexpr uint64_t TARGET_POSITIONS         = 100'000'000; // for the ETA line only
+constexpr uint64_t TARGET_POSITIONS         = 250'000'000; // for the ETA line only
+// WDL probes ignore the 50-move counter: with a high clock a "won" table
+// position can still be drawn by the rule before conversion. Draw results
+// are always safe; decisive ones are trusted only below this clock.
+constexpr int      DECISIVE_TB_ADJ_MAX_HMC  = 60;
 
 std::atomic<bool>     g_stop{false};
 std::atomic<uint64_t> g_totalPositions{0};
 std::atomic<uint64_t> g_totalGames{0};
+std::atomic<uint64_t> g_totalTbAdjudications{0};
+
+// Shared, read-only after load; pyrrhic WDL probes are thread-safe post-init
+// (the search already probes from concurrent Lazy SMP threads).
+syzygy::SyzygyProber g_syzygy;
 
 void onStopSignal(int) { g_stop.store(true, std::memory_order_release); }
 
@@ -108,6 +118,32 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove) {
             || b.hasInsufficientMaterialDraw() || ply >= MAX_GAME_PLIES) {
             whiteResultX2 = 1;
             break;
+        }
+
+        // Syzygy adjudication: as soon as the position enters TB range, close
+        // the game with the exact tablebase result — every record collected so
+        // far gets a perfect outcome label and the game ends sooner. Tables
+        // assume no castling rights (guard below); cursed wins / blessed
+        // losses are draws under the 50-move rule and map to draw here.
+        if (g_syzygy.isLoaded() && g_syzygy.inTBRange(b)
+            && !(b.getCastle(0) || b.getCastle(1) || b.getCastle(2) || b.getCastle(3))) {
+            if (const auto wdl = g_syzygy.probeWDL(b)) {
+                const bool stmWin  = (*wdl == syzygy::WDL::Win);
+                const bool stmLoss = (*wdl == syzygy::WDL::Loss);
+                if (!stmWin && !stmLoss) {
+                    whiteResultX2 = 1;
+                    g_totalTbAdjudications.fetch_add(1, std::memory_order_relaxed);
+                    break;
+                }
+                if (b.getHalfMoveClock() <= DECISIVE_TB_ADJ_MAX_HMC) {
+                    const int stmResultX2 = stmWin ? 2 : 0;
+                    whiteResultX2 = (active == Board::WHITE) ? stmResultX2 : 2 - stmResultX2;
+                    g_totalTbAdjudications.fetch_add(1, std::memory_order_relaxed);
+                    break;
+                }
+                // High 50-move clock on a decisive WDL: play on instead of
+                // risking a mislabel.
+            }
         }
 
         w.tt.incrementGeneration();
@@ -234,12 +270,21 @@ int runDatagen(int argc, char* argv[]) {
     std::signal(SIGINT, onStopSignal);
     std::signal(SIGTERM, onStopSignal);
 
+    // Optional tablebase adjudication: exact result labels + shorter endgames.
+    // Missing tables are not an error — endgames are simply played out.
+    const char* tbPath = (argc >= 7) ? argv[6] : "engine/syzygy/files";
+    const bool tbOn = g_syzygy.load(tbPath) && g_syzygy.maxPieces() >= 3;
+
     std::cout << "HydraY datagen — bulletformat self-play data\n"
               << "  output : " << outPrefix << ".t<0.." << (threads - 1) << ">.bin (append)\n"
               << "  labels : NNUE (" << (netPath != nullptr ? netPath : "embedded") << ")\n"
               << "  threads: " << threads << "  nodes/move: " << nodesPerMove << "\n"
               << "  filters: ply>=" << MIN_RECORD_PLY << ", not in check, quiet bestmove, |cp|<="
               << MAX_RECORD_SCORE_CP << "\n"
+              << "  syzygy : " << (tbOn
+                     ? std::string("adjudication ON (") + tbPath + ", "
+                       + std::to_string(g_syzygy.maxPieces()) + "-man)"
+                     : "OFF (no tablebases found - endgames played out)") << "\n"
               << "  stop   : Ctrl+C / SIGTERM (partial games are discarded)\n"
               << std::flush;
 
@@ -266,13 +311,15 @@ int runDatagen(int argc, char* argv[]) {
             : 0.0;
         std::cout << "[datagen] positions " << positions
                   << "  games " << g_totalGames.load(std::memory_order_relaxed)
+                  << "  tb-adj " << g_totalTbAdjudications.load(std::memory_order_relaxed)
                   << "  pos/s " << static_cast<uint64_t>(rate)
-                  << "  ETA(100M) " << etaDays << " days\n" << std::flush;
+                  << "  ETA(250M) " << etaDays << " days\n" << std::flush;
     }
 
     for (std::thread& t : workers) t.join();
     std::cout << "[datagen] stopped. total positions " << g_totalPositions.load()
-              << "  games " << g_totalGames.load() << "\n";
+              << "  games " << g_totalGames.load()
+              << "  tb-adj " << g_totalTbAdjudications.load() << "\n";
     return 0;
 }
 

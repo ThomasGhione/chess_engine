@@ -39,7 +39,8 @@ PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=na
 
 # Windows cross-compiler (requires mingw-w64)
 WIN_CXX = x86_64-w64-mingw32-g++
-WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -static -static-libgcc -static-libstdc++ -fopenmp -flto=4 -fext-numeric-literals
+WIN_CC = x86_64-w64-mingw32-gcc
+WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -march=x86-64-v3 -static -static-libgcc -static-libstdc++ -fopenmp -flto=4 -fext-numeric-literals
 
 # Local static-analysis tools
 CPPCHECK = $(SCRIPT_DIR)/cppcheck-2.19.0/cppcheck
@@ -148,9 +149,11 @@ prod: $(NAME_APP)
 parallel_prod: prod
 
 # Windows production build (cross-compile from Linux)
+# tbprobe.c compiled separately as C (not C++) to avoid name mangling issues
 prod_windows:
 	@printf "\nCompiling Windows binary..."
-	$(WIN_CXX) $(WIN_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP_WIN)
+	$(WIN_CC) -O3 -std=c11 -Wall -c $(SYZYGY_C_SRC) -o $(OUTPUT_DIR)/tbprobe_win.o
+	$(WIN_CXX) $(WIN_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) $(OUTPUT_DIR)/tbprobe_win.o -o $(NAME_APP_WIN)
 	@printf "\nBuild completed: $(NAME_APP_WIN)\n\n"
 
 # Sequential production build
