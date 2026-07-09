@@ -15,30 +15,31 @@ SPRT prima del merge. Obiettivo: 3000 Elo.
 
 ## Ciclo v2 (in corso)
 
-### 1. Datagen v2 — dati etichettati dalla rete v1
-- [ ] Lanciare su tutte le macchine disponibili (branch `dev`, prefissi NUOVI
-      per macchina, niente netPath: etichetta con la v1 embedded):
-      ```sh
-      git clone -b dev https://github.com/ThomasGhione/chess_engine.git && cd chess_engine && make prod
-      setsid nohup ./chess datagen nnue/data/<nome-macchina> <threads> 8000 > nnue/data/datagen.log 2>&1 &
-      ```
-- [ ] **Target: ~250M posizioni totali** (≈4-5 giorni con 4 macchine; fermarsi
-      a ~150M va bene per un ciclo più rapido). Stop/resume con Ctrl+C sicuro.
-- [ ] Raccolta identica alla v1: zip/7z dei `data/` → laptop → estrarre in
-      cartelle separate → `bullet-utils validate` su ogni file → `interleave`
-      → validate del merged → `zstd -T0 -5` → Drive.
-      (bullet-utils: ricompilare con `cargo b -r --package bullet-utils` in un
-      clone di bullet — il binario della sessione scorsa era in scratchpad.)
+### 1. Datagen v2 — dati etichettati dalla rete v1 ✅ COMPLETO (2026-07-09)
+- [x] Lanciato su tutte le macchine (branch `dev`, label v1 embedded, syzygy
+      adjudication ON ovunque, tb-adj ~28% delle partite). Laptop sbloccato
+      alzando il PL1 15→25W (464→675 pos/s).
+- [x] **Target superato: 366.170.252 posizioni** (target era ~250M):
+      fisso 10,3M+12,1M+28,7M · fisso2 97,5M · fede 103,3M · portatile2 114,3M.
+- [x] Raccolta: validate per-file → interleave dei 61 file → validate del
+      merged (0 invalidi, W/D/L 37/23/38) → zstd.
+      **Pronto per Drive: `nnue/data/hydray_v2_366M_interleaved.bin.zst` (5,7 GiB).**
+      ⚠️ I file portatile2 avevano 384 record azzerati (power-loss del laptop
+      a metà scrittura): ripuliti con filtro re/occupancy PRIMA dell'interleave
+      — validare sempre, il crash sporca i dati in modo silenzioso.
 
-### 2. Training v2 — hidden 512
-- [ ] Adattare `trainer.rs`: `HIDDEN_SIZE = 512` (il resto invariato: SCReLU,
-      QA=255/QB=64, SCALE=400, wdl 0.3, StepLR). Aggiornare gli static_assert
-      di layout in `nnue/network.hpp` + `sanity.rs` (NETWORK_PAYLOAD_BYTES
-      cambia) e il forward C++ (i loop sono già generici sulla dimensione;
-      verificare solo le costanti).
-- [ ] Notebook `colab_v1.ipynb` → `colab_v2.ipynb`: nuovo file dati, 40 SB,
-      net_id `hydray-v2-512`. Su T4 la 512 costa ~2x la 256: se non sta in una
-      sessione, i checkpoint intermedi ogni 10 SB già ci sono.
+### 2. Training v2 — hidden 512 (in corso)
+- [x] `trainer.rs` `HIDDEN_SIZE = 512` + `sanity.rs` allineato (b2845c9,
+      cargo check ✓). Resto invariato: SCReLU, QA=255/QB=64, SCALE=400,
+      wdl 0.3, StepLR.
+- [x] Notebook `colab_v2.ipynb` (b2845c9): dataset 366M, 40 SB, net_id
+      `hydray-v2-512`, clona branch `dev`. Su T4 la 512 costa ~2x la 256
+      (~4-8 h); checkpoint intermedi ogni 10 SB già attivi.
+- [ ] **USER: upload .zst su Drive → run colab_v2.ipynb → download quantised.bin.**
+- [ ] All'arrivo della rete: aggiornare gli static_assert di layout in
+      `nnue/network.hpp` (NETWORK_PAYLOAD_BYTES cambia) e verificare le
+      costanti del forward C++ (i loop sono già generici sulla dimensione).
+      NON prima: il binario attuale embedda la 256 e smetterebbe di caricarla.
 - [ ] (fallback economico) run parallelo a 256 sugli stessi dati: se la 512
       perdesse troppo NPS, la 256-su-dati-v2 è comunque un upgrade quasi gratis.
 
@@ -119,3 +120,5 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
   spostano via scp/zip, MAI via git (`nnue/data` è gitignored).
 - **Solo self-play**: niente dati Stockfish/Lc0 (identità del motore e licenze).
 - Dataset v1 archiviato: `nnue/data/hydray_v1_121M_interleaved.bin.zst` (1.8 GiB).
+- Dataset v2 archiviato: `nnue/data/hydray_v2_366M_interleaved.bin.zst` (5.7 GiB);
+  i sorgenti (`ext_*`, `portatile2.*`) restano finché la v2 non è validata.
