@@ -2,19 +2,19 @@
 // REFERENCE IMPLEMENTATION for HydraY's engine-side loader/inference
 // (NNUE_PLAN.md Fase 3). Keep the C++ code byte-for-byte consistent with this.
 //
-// Net: (768 -> 256)x2 -> 1, dual perspective, SCReLU, QA=255 QB=64 SCALE=400.
+// Net: (768 -> HIDDEN)x2 -> 1, dual perspective, SCReLU, QA=255 QB=64 SCALE=400.
 // File layout (little-endian i16, col-major, padded to a multiple of 64 B):
-//   l0w: 768 columns x 256 rows  (feature -> accumulator weights, QA)
-//   l0b: 256                     (accumulator bias, QA)
-//   l1w: 512                     (output weights, stm half then ntm half, QB)
-//   l1b: 1                       (output bias, QA*QB)
+//   l0w: 768 columns x HIDDEN rows  (feature -> accumulator weights, QA)
+//   l0b: HIDDEN                     (accumulator bias, QA)
+//   l1w: 2*HIDDEN                   (output weights, stm half then ntm half, QB)
+//   l1b: 1                          (output bias, QA*QB)
 //
 // Feature index from perspective X: isOpp(piece,X)*384 + type*64 + sqFromX
 // with type P=0..K=5, sq LERF (a1=0), sqFromX = sq^56 when X is Black.
 //
 // Usage: cargo run -r --bin sanity -- <quantised.bin> [fen]...
 
-const HIDDEN: usize = 256;
+const HIDDEN: usize = 512;
 const QA: i32 = 255;
 const QB: i32 = 64;
 const SCALE: i32 = 400;

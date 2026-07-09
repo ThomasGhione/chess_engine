@@ -1,11 +1,11 @@
-// HydraY NNUE v1 trainer (NNUE_PLAN.md, Fase 2).
+// HydraY NNUE v2 trainer (NNUE_PLAN.md, ciclo v2).
 //
-// Architecture: (768 -> 256)x2 -> 1, dual perspective, SCReLU, QA=255/QB=64 —
+// Architecture: (768 -> 512)x2 -> 1, dual perspective, SCReLU, QA=255/QB=64 —
 // adapted from bullet's examples/simple.rs (same API, pinned bullet rev in
 // Cargo.toml). Data: bulletformat produced by `./chess datagen`.
 //
 // Usage: cargo run -r --bin trainer --features cuda -- <data.bin> [superbatches] [net_id]
-//   shakedown: ~10 superbatches; full v1 run: ~40.
+//   shakedown: ~10 superbatches; full run: ~40.
 
 use bullet_lib::{
     game::inputs::Chess768,
@@ -18,7 +18,7 @@ use bullet_lib::{
     value::{loader, ValueTrainerBuilder},
 };
 
-const HIDDEN_SIZE: usize = 256;
+const HIDDEN_SIZE: usize = 512;
 const SCALE: i32 = 400;
 const QA: i16 = 255;
 const QB: i16 = 64;
@@ -40,7 +40,7 @@ fn main() {
         .optimiser(AdamW)
         .inputs(Chess768)
         // Quantised layout consumed by sanity.rs and the engine loader:
-        // l0w (768x256 col-major, QA) | l0b (256, QA) | l1w (512, QB) | l1b (1, QA*QB)
+        // l0w (768xH col-major, QA) | l0b (H, QA) | l1w (2H, QB) | l1b (1, QA*QB)
         .save_format(&[
             SavedFormat::id("l0w").round().quantise::<i16>(QA),
             SavedFormat::id("l0b").round().quantise::<i16>(QA),
