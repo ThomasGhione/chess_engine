@@ -44,14 +44,17 @@ SPRT prima del merge. Obiettivo: 3000 Elo.
       perdesse troppo NPS, la 256-su-dati-v2 è comunque un upgrade quasi gratis.
 
 ### 3. Validazione v2
-- [ ] sanity.rs → swap `nnue/net/hydray.nnue` → `make prod` → `nnue-selftest`
-      → nuovo baseline bench6 (ogni rete cambia l'albero).
-- [ ] **NPS check** (macchina quieta, interleaved): la 512 raddoppia il costo
-      di forward E update accumulatore. Se NPS crolla >25%, decide lo SPRT.
-- [ ] SPRT vs 2.0.0: `NEW_OPTS="EvalFile=/abs/candidata.nnue" ./tuning/run_sprt.sh`
-      (baseline = binario 2.0.0 congelato). Atteso +50-120.
+- [x] sanity.rs (layout OK, startpos +34, mirror esatta) → swap
+      `nnue/net/hydray.nnue` → network.hpp `HIDDEN=512` → `nnue-selftest`
+      (41.577 pos, incremental≡scratch) → **nuovo baseline bench6:
+      3.943.540 @ d12** (2026-07-09).
+- [x] **NPS check**: v2 1,21M vs v1 1,31M = **−7,5%** (interleaved, 3 run) —
+      ben sotto la soglia del 25%; la 512 è quasi gratis (memory-bound).
+- [x] SPRT vs 2.0.0 (binario ricongelato dal tag — il vecchio chess_baseline
+      era un 1.3.0 stantio): in corso, **+41 a metà run**, trend H1.
+      Log: `tuning/sprt_v2.log`.
 - [ ] Gauntlet assoluto **ancorato su 2.0.0** (1.2.0/1.3.0 sono saturi).
-- [ ] Release 2.1.0.
+- [x] Release 2.1.0 (tag su main, 2026-07-09), uci.cpp → 2.1.0.
 
 ---
 

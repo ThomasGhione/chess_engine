@@ -83,7 +83,7 @@ cmd_bench() {
 }
 
 # Canonical 6-position set (see memory/tooling-nodebench.md).
-# Baseline @ depth 12: 4,735,578 (NNUE v1 net, 2026-07-07).
+# Baseline @ depth 12: 3,943,540 (NNUE v2 net 512, 2026-07-09); v1 net was 4,735,578.
 BENCH6_NAMES=(startpos kiwipete kp-endgame midgame tactical open)
 BENCH6_POS=(
     'position startpos'

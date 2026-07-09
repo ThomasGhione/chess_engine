@@ -1,6 +1,6 @@
 #pragma once
 
-// Quantised network for NNUE v1: (768 -> 256)x2 -> 1, SCReLU, QA=255 QB=64.
+// Quantised network for NNUE v2: (768 -> 512)x2 -> 1, SCReLU, QA=255 QB=64.
 //
 // The struct mirrors bullet's quantised.bin byte-for-byte (little-endian i16,
 // column-major); nnue/trainer/src/bin/sanity.rs is the reference reader and
@@ -13,7 +13,7 @@
 namespace NNUE {
 
 inline constexpr int INPUTS = 768;
-inline constexpr int HIDDEN = 256;
+inline constexpr int HIDDEN = 512;
 inline constexpr int32_t QA = 255;
 inline constexpr int32_t QB = 64;
 inline constexpr int32_t SCALE = 400;
