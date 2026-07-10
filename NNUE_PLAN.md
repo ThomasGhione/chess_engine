@@ -53,7 +53,10 @@ SPRT prima del merge. Obiettivo: 3000 Elo.
 - [x] SPRT vs 2.0.0 (binario ricongelato dal tag — il vecchio chess_baseline
       era un 1.3.0 stantio): in corso, **+41 a metà run**, trend H1.
       Log: `tuning/sprt_v2.log`.
-- [ ] Gauntlet assoluto **ancorato su 2.0.0** (1.2.0/1.3.0 sono saturi).
+- [x] Gauntlet assoluto **ancorato su 2.0.0** (1.2.0/1.3.0 sono saturi):
+      **2.1.0 = 3055 ±18** (1000 game TC 4+0.04, 2026-07-10). Nuova scala:
+      2.0.0 = 3000 fisso (agganciata via SPRT +662 vs HCE≈1.3.0≈2366);
+      la vecchia scala 1.2.0=2000 resta valida per i tag pre-2.0.0.
 - [x] Release 2.1.0 (tag su main, 2026-07-09), uci.cpp → 2.1.0.
 
 ---
@@ -107,7 +110,8 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
 - [ ] `.claude/commands/hydray.md` (skill /hydray) è ferma all'era HCE
       (~2000 Elo, YBWC, evaluator handcrafted): riscriverla sullo stato 2.0.0.
 - [ ] `make test`: da riscrivere da zero (deciso 2026-07-06, non urgente).
-- [ ] Gauntlet: aggiornare la convenzione degli anchor a 2.0.0 nello script/uso.
+- [x] Gauntlet: convenzione anchor aggiornata a 2.0.0=3000 (default dello script,
+      2026-07-10).
 
 ---
 
