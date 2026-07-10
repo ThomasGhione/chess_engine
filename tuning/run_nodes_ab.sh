@@ -42,6 +42,8 @@ host="$(hostname -s)"
 THREADS="${THREADS:-3}"
 ARMS="${ARMS:-8000 12000}"
 
+mkdir -p -- "${data_dir}"   # /nnue/data/ è gitignored: sui clone freschi non esiste
+
 arm_tag() { # 8000 -> ab8k
     echo "ab$(( $1 / 1000 ))k"
 }
