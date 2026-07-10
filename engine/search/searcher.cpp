@@ -286,7 +286,10 @@ struct HelperSlot {
     chess::Board board;
     std::atomic<bool> interrupted{false};
 
-    HelperSlot() noexcept { runtime.searchInterrupted = &interrupted; }
+    HelperSlot() noexcept {
+        runtime.searchInterrupted = &interrupted;
+        runtime.isHelper = true;
+    }
 };
 
 std::vector<std::unique_ptr<HelperSlot>> helperSlots;
@@ -1389,7 +1392,12 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     // Sanity check: only play the TB move if it appears in HydraY's own
     // legal-move list. If somehow it doesn't (encoding mismatch, etc.),
     // skip the TB branch and let the normal search take over.
-    if (runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
+    // Helpers skip the whole block: tb_probe_root is main-thread-only in
+    // Fathom, and a helper printing the info line below would interleave
+    // with the main thread's output and corrupt the UCI stream (seen live:
+    // a mangled `bestmove` hung lichess-bot in a tablebase-won endgame).
+    if (!runtime.isHelper
+        && runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
         && runtime.syzygyProber->inTBRange(rootBoard)) {
         const auto tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
@@ -1411,9 +1419,12 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 result.bestMove  = tbBest;
                 result.bestScore = tbScore;
                 runtime.eval     = tbScore;
-                std::cout << "info depth 1 score cp " << tbScore
-                          << " tbrank " << bestRank
-                          << " pv " << tbBest.toUCIString() << "\n";
+                if (runtime.emitUciInfo) {
+                    std::cout << "info depth 1 score cp " << tbScore
+                              << " tbrank " << bestRank
+                              << " pv " << tbBest.toUCIString() << "\n";
+                    std::cout.flush();
+                }
                 return result;
             }
             // Fall through to search if the TB move isn't legal in our move list.

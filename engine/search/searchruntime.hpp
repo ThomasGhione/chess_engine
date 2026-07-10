@@ -19,6 +19,9 @@ struct SearchRuntime {
     int32_t  eval          = 0;
     int      maxThreads    = 1;
     bool     emitUciInfo   = false;
+    // Lazy SMP helper thread: skips the Syzygy root probe (tb_probe_root is
+    // main-thread-only in Fathom) and never writes to stdout.
+    bool     isHelper      = false;
     // UCI `go nodes N`: 0 = unlimited. Checked per-node against
     // (runtime.nodesSearched + *counter), so the total across IDS iterations
     // is bounded. In YBWC each worker also bounds itself by the same value;
