@@ -49,6 +49,11 @@ int runSelfTest(int argc, char* argv[]) {
         {"bN e5 extra (b)", "rnbqkbnr/pppppppp/8/4n3/8/8/PPPPPPPP/RNBQKBNR b - - 0 1"},
         {"stm up a queen (w)", "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"},
         {"stm down a queen (w)", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w - - 0 1"},
+        // Reduced-material refs: exercise different OUTPUT buckets (the six
+        // above all sit in the top material bucket).
+        {"middlegame ~24 pieces (w)", "r1bq1rk1/pp3ppp/2n1pn2/3p4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 0 1"},
+        {"KRPvKR (w)", "8/8/4k3/8/2r5/2K5/4P3/3R4 w - - 0 1"},
+        {"KQvK (w)", "8/8/8/4k3/8/8/8/KQ6 w - - 0 1"},
     };
     int32_t mirrorPair[2] = {0, 0};
     for (size_t i = 0; i < std::size(refs); ++i) {

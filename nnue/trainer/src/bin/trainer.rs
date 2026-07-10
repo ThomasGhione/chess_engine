@@ -1,14 +1,16 @@
-// HydraY NNUE v2 trainer (NNUE_PLAN.md, ciclo v2).
+// HydraY NNUE v3 trainer (NNUE_PLAN.md, ciclo v3: output buckets).
 //
-// Architecture: (768 -> 512)x2 -> 1, dual perspective, SCReLU, QA=255/QB=64 —
-// adapted from bullet's examples/simple.rs (same API, pinned bullet rev in
-// Cargo.toml). Data: bulletformat produced by `./chess datagen`.
+// Architecture: (768 -> 512)x2 -> 8, dual perspective, SCReLU, QA=255/QB=64,
+// 8 material-count output buckets (bucket = (popcount(occ)-2)/4, bullet's
+// MaterialCount<8>) — adapted from bullet's examples/progression/
+// 2_output_buckets.rs (pinned bullet rev in Cargo.toml). Data: bulletformat
+// produced by `./chess datagen`.
 //
 // Usage: cargo run -r --bin trainer --features cuda -- <data.bin> [superbatches] [net_id]
 //   shakedown: ~10 superbatches; full run: ~40.
 
 use bullet_lib::{
-    game::inputs::Chess768,
+    game::{inputs::Chess768, outputs::MaterialCount},
     nn::optimiser::AdamW,
     trainer::{
         save::SavedFormat,
@@ -19,6 +21,7 @@ use bullet_lib::{
 };
 
 const HIDDEN_SIZE: usize = 512;
+const OUTPUT_BUCKETS: usize = 8;
 const SCALE: i32 = 400;
 const QA: i16 = 255;
 const QB: i16 = 64;
@@ -33,29 +36,32 @@ fn main() {
     let net_id = args
         .get(3)
         .cloned()
-        .unwrap_or_else(|| "hydray-v1-shakedown".to_string());
+        .unwrap_or_else(|| "hydray-ob-shakedown".to_string());
 
     let mut trainer = ValueTrainerBuilder::default()
         .dual_perspective()
         .optimiser(AdamW)
         .inputs(Chess768)
+        .output_buckets(MaterialCount::<OUTPUT_BUCKETS>)
         // Quantised layout consumed by sanity.rs and the engine loader:
-        // l0w (768xH col-major, QA) | l0b (H, QA) | l1w (2H, QB) | l1b (1, QA*QB)
+        // l0w (768xH col-major, QA) | l0b (H, QA) |
+        // l1w (OBx2H, QB, TRANSPOSED: each bucket's 2H weights contiguous,
+        // for fast CPU inference) | l1b (OB, QA*QB)
         .save_format(&[
             SavedFormat::id("l0w").round().quantise::<i16>(QA),
             SavedFormat::id("l0b").round().quantise::<i16>(QA),
-            SavedFormat::id("l1w").round().quantise::<i16>(QB),
+            SavedFormat::id("l1w").round().quantise::<i16>(QB).transpose(),
             SavedFormat::id("l1b").round().quantise::<i16>(QA * QB),
         ])
         .loss_fn(|output, target| output.sigmoid().squared_error(target))
-        .build(|builder, stm_inputs, ntm_inputs| {
+        .build(|builder, stm_inputs, ntm_inputs, output_buckets| {
             let l0 = builder.new_affine("l0", 768, HIDDEN_SIZE);
-            let l1 = builder.new_affine("l1", 2 * HIDDEN_SIZE, 1);
+            let l1 = builder.new_affine("l1", 2 * HIDDEN_SIZE, OUTPUT_BUCKETS);
 
             let stm_hidden = l0.forward(stm_inputs).screlu();
             let ntm_hidden = l0.forward(ntm_inputs).screlu();
             let hidden_layer = stm_hidden.concat(ntm_hidden);
-            l1.forward(hidden_layer)
+            l1.forward(hidden_layer).select(output_buckets)
         });
 
     let schedule = TrainingSchedule {

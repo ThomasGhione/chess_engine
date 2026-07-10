@@ -87,7 +87,19 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
 
 ## Ciclo v3+ (dopo la v2)
 
+- [ ] **Output bucket (8, material-count)** — deciso 2026-07-10, PRIMA di HalfKA:
+      costo di codice minimo (zero impatto sull'accumulatore), +15-30 Elo tipici,
+      e roda l'infra bucket nel trainer. **Codice COMPLETO sul branch
+      `output-buckets`**: trainer/sanity 512x2→8 (`.select`, l1w salvato
+      trasposto), network.hpp/nnue.cpp (bucket = (popcount(occ)−2)/4),
+      cross-check C++≡sanity.rs esatto su rete sintetica (9 FEN, bucket
+      diversi), selftest 10k pos OK. Il branch NON può caricare la embedded
+      512 single-output: si mergia solo con la rete nuova dentro.
+      **Next: push del branch → Colab `colab_ob.ipynb` (dataset v2 366M già
+      su Drive, 40 SB, ~4-8h) → sanity → swap hydray.nnue → selftest →
+      nuovo baseline bench6 → SPRT vs 2.1.0.**
 - [ ] **Datagen v3** con la rete v2 (loop di rinforzo, ormai standard).
+      A/B nodi/mossa 8k-vs-12k in corso (`tuning/run_nodes_ab.sh`, desktop).
 - [ ] **Architettura HalfKAv2 + king bucket** (input dipendenti dal re):
       richiede refresh accumulatore su mossa di re + FinnyTable (cache di
       accumulatori per bucket). Guadagno tipico +80-150 sull'arch semplice.
