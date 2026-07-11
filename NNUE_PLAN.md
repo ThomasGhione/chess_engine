@@ -73,11 +73,10 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
       `[tbPath]` (default `engine/syzygy/files`); senza TB si disattiva da sola
       (il banner dice quale modalità è attiva); progress riporta `tb-adj`.
       ⚠️ I TB NON sono in git (939 MB): copiarli a mano sulle altre macchine.
-- [ ] **Nodi per mossa**: 8000 è il compromesso attuale. Con la v1 l'eval è
-      più forte a parità di nodi; salire a 10-12k migliora le etichette a
-      costo di ~25-40% di velocità. Da provare su UNA macchina e confrontare
-      (due dataset piccoli, due reti shakedown, SPRT) — non cambiarlo alla
-      cieca su tutte.
+- [x] **Nodi per mossa: RISOLTO 2026-07-11, si resta a 8000.** Il test da
+      manuale (parità di wall-clock, due shakedown, SPRT) ha dato 12k = −85
+      ±23 vs 8k: il −37% di posizioni non è ripagato dalle etichette
+      migliori. Dettagli nel Ciclo v3.
 - [ ] **Diversità aperture**: oggi 8-9 ply casuali con filtro |eval| ≤ 400.
       Alternativa: seed dal book `books/openings.pgn` + 2-4 ply casuali.
       Valore incerto, misurarlo solo se v2 mostra segni di overfitting
@@ -96,8 +95,12 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
       ⚠️ Scoperto bug LATENTE preesistente: ~0,1-0,2% di partite a TC 4+0.04
       finiscono in 'connection stalls' (anche nello SPRT v2: 4+5 crash sui
       DUE lati); non riproducibile in replay singolo — caccia dedicata da fare.
-- [ ] **Datagen v3** con la rete v2 (loop di rinforzo, ormai standard).
-      A/B nodi/mossa 8k-vs-12k in corso (`tuning/run_nodes_ab.sh`, desktop).
+- [ ] **Datagen v3** con la rete ob (loop di rinforzo, ormai standard).
+      **A/B nodi/mossa DECISO 2026-07-11: si resta a 8k.** Test a parità di
+      tempo macchina (4h/braccio sul fisso, 14,6M pos @ 8k vs 9,2M @ 12k),
+      due shakedown ob da 10 SB, SPRT: **12k = −85 ±23 vs 8k, H0 in 822
+      game** — più posizioni > etichette migliori, senza appello.
+      (`tuning/run_nodes_ab.sh`; log `tuning/sprt_ab_nodes.log`.)
 - [ ] **Architettura HalfKAv2 + king bucket** (input dipendenti dal re):
       richiede refresh accumulatore su mossa di re + FinnyTable (cache di
       accumulatori per bucket). Guadagno tipico +80-150 sull'arch semplice.
