@@ -217,47 +217,17 @@ bool Searcher::checkDrawTerminalConditions(
 }
 
 
-int32_t Searcher::stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept {
-    if (std::abs(matDelta) <= STALEMATE_MATERIAL_THRESHOLD) return 0;
-    const int32_t advantage = std::abs(matDelta);
-    const int32_t scaledPenalty =
-        STALEMATE_DRAW_PENALTY_MINOR + (advantage - STALEMATE_MATERIAL_THRESHOLD) / 2;
-    const int32_t stalematePenalty = std::clamp<int32_t>(
-        scaledPenalty, STALEMATE_DRAW_PENALTY_MINOR, STALEMATE_DRAW_PENALTY_MAJOR);
-    return (matDelta > 0) ? -stalematePenalty : stalematePenalty;
-}
-
-bool Searcher::tryStalemateScore(const chess::Board& b, const SearchNodeState& node, int32_t& outScore) noexcept {
-    if (b.hasAnyLegalMove(node.activeColor)) return false;
-    const int32_t md = b.getIncrementalMaterialDelta();
-    outScore = stalemateScoreFromMaterialDelta((node.activeColor == chess::Board::WHITE) ? md : -md);
-    return true;
-}
-
-int32_t Searcher::drawAdvantageScore(const chess::Board& b) noexcept {
-    // Negamax: make the white-centric material delta side-to-move relative;
-    // Evaluator::evaluate() is already STM-relative.
-    const int32_t mdWhite = b.getIncrementalMaterialDelta();
-    const int32_t materialDelta =
-        (b.getActiveColor() == chess::Board::WHITE) ? mdWhite : -mdWhite;
-    const int32_t staticEval = Evaluator::evaluate(b);
-    const int64_t blendedScore =
-        static_cast<int64_t>(materialDelta) * DRAW_SCORE_MATERIAL_WEIGHT_PERCENT
-        + static_cast<int64_t>(staticEval) * DRAW_SCORE_EVAL_WEIGHT_PERCENT;
-
-    return static_cast<int32_t>(std::clamp<int64_t>(blendedScore / DRAW_SCORE_WEIGHT_DENOMINATOR, NEG_INF, POS_INF));
-}
-
 int32_t Searcher::repetitionDrawScore(const chess::Board& b) noexcept {
-    const int32_t drawDelta = drawAdvantageScore(b);
-    if (std::abs(drawDelta) <= REPETITION_DRAW_ADVANTAGE_THRESHOLD) {
+    // Evaluator::evaluate() is already side-to-move relative (negamax).
+    const int32_t staticEval = Evaluator::evaluate(b);
+    if (std::abs(staticEval) <= REPETITION_DRAW_ADVANTAGE_THRESHOLD) {
         return 0;
     }
 
     // Modest fixed contempt: enough that the engine prefers to keep playing
     // when winning, but smaller than any meaningful material amount so it
     // won't trade a piece just to avoid the repetition.
-    return (drawDelta > 0) ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT;
+    return (staticEval > 0) ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT;
 }
 
 void Searcher::updateMinMax(
@@ -426,10 +396,6 @@ bool Searcher::tryNullMovePruning(
         return false;
     }
 
-    if (tryStalemateScore(b, node, outScore)) {
-        return true;
-    }
-
     // Fail-soft: return the null-search score (a heuristic lower bound), but
     // never propagate an unproven mate found behind a null move.
     outScore = (nullScore >= MATE_BOUND) ? beta : nullScore;
@@ -437,7 +403,6 @@ bool Searcher::tryNullMovePruning(
 }
 
 bool Searcher::tryReverseFutilityPruning(
-    const chess::Board& b,
     const SearchNodeState& node,
     int depth,
     int32_t beta,
@@ -451,10 +416,6 @@ bool Searcher::tryReverseFutilityPruning(
     const int32_t rfpScore = node.staticEval - rfpMargin;
     if (!isBetaCutoff(rfpScore, beta)) {
         return false;
-    }
-
-    if (tryStalemateScore(b, node, outScore)) {
-        return true;
     }
 
     outScore = node.staticEval;
@@ -951,7 +912,7 @@ int32_t Searcher::searchPosition(
     const bool canReverseFutilityPrune =
         !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
     if (canReverseFutilityPrune
-        && tryReverseFutilityPruning(b, node, depth, beta, score)) {
+        && tryReverseFutilityPruning(node, depth, beta, score)) {
         return score;
     }
 
@@ -994,10 +955,9 @@ int32_t Searcher::searchPosition(
         ? engine::MoveGenerator::generateLegalEvasions(b, checkers)
         : engine::MoveGenerator::generateLegalMoves(b, /*knownNotInCheck=*/true);
     if (moves.is_empty()) {
-        const int32_t mdW = b.getIncrementalMaterialDelta();
         return node.inCheck
             ? (NEG_INF + ply)  // side to move is checkmated (negamax)
-            : stalemateScoreFromMaterialDelta((node.activeColor == chess::Board::WHITE) ? mdW : -mdW);
+            : 0;               // stalemate
     }
 
     bool hasHashMove = false;

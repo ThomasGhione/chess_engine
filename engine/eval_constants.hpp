@@ -5,8 +5,8 @@
 
 // Piece values and search-scoring constants. This is what survives of the
 // handcrafted evaluator's constant set (removed in the NNUE era): these
-// values feed SEE, MVV capture ordering, the incremental material delta used
-// for stalemate scoring, and a few search thresholds — not evaluation.
+// values feed SEE, MVV capture ordering, and a few search thresholds — not
+// evaluation.
 
 namespace engine {
 
@@ -25,13 +25,6 @@ inline int32_t MATE_SCORE   = std::numeric_limits<int32_t>::max();
 inline int32_t PIECE_VALUES[8] = {
     0, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE, 0
 };
-
-// ===================================================
-// STALEMATE SCORING (search: stalemateScoreFromMaterialDelta)
-// ===================================================
-inline int32_t STALEMATE_DRAW_PENALTY_MAJOR  = 450;
-inline int32_t STALEMATE_DRAW_PENALTY_MINOR  = 120;
-inline int32_t STALEMATE_MATERIAL_THRESHOLD  = 130;
 
 // ===================================================
 // MVV (Most Valuable Victim) table for capture ordering

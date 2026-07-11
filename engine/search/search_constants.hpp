@@ -132,10 +132,7 @@ inline constexpr int     MAX_ASP_RESEARCHES = 6;
 // ===================================================
 // DRAW / CONTEMPT SCORING
 // ===================================================
-inline constexpr int32_t DRAW_SCORE_MATERIAL_WEIGHT_PERCENT = 40;
-inline constexpr int32_t DRAW_SCORE_EVAL_WEIGHT_PERCENT     = 60;
-inline constexpr int32_t DRAW_SCORE_WEIGHT_DENOMINATOR      = 100;
-inline constexpr int32_t REPETITION_CONTEMPT                = 80; // ~0.8 pawn
+inline constexpr int32_t REPETITION_CONTEMPT = 80; // ~0.8 pawn
 
 // ===================================================
 // PARALLELISM (Lazy SMP)

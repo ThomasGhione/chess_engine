@@ -155,12 +155,6 @@ private:
         const chess::Board& b, int32_t& outScore, bool atRoot = false) noexcept;
 
     // --- Draw scoring ---
-    static int32_t stalemateScoreFromMaterialDelta(int32_t matDelta) noexcept;
-    // When `node`'s side has no legal move, sets outScore to the stalemate score
-    // and returns true; otherwise returns false. Shared by the NMP/RFP fail-high
-    // paths, which must not claim a cutoff on a stalemated node.
-    static bool tryStalemateScore(const chess::Board& b, const SearchNodeState& node, int32_t& outScore) noexcept;
-    static int32_t drawAdvantageScore(const chess::Board& b) noexcept;
     static int32_t repetitionDrawScore(const chess::Board& b) noexcept;
 
     // --- Root search helpers ---
@@ -182,7 +176,7 @@ private:
         bool allowTTWrite, bool allowHeuristicUpdates,
         uint64_t* nodeCounter, int32_t& outScore) noexcept;
     static bool tryReverseFutilityPruning(
-        const chess::Board& b, const SearchNodeState& node,
+        const SearchNodeState& node,
         int depth, int32_t beta, int32_t& outScore) noexcept;
     static SearchMoveResult searchMoves(
         chess::Board& b, MovePicker& movePicker,

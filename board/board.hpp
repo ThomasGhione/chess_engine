@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <cstring>
 
-#include "../engine/eval_constants.hpp"
 #include "../nnue/accumulator.hpp"
 #include "./coords.hpp"
 #include "./piece.hpp"
@@ -145,13 +144,6 @@ public:
         return table;
     }();
 
-    inline static std::array<int32_t, 8> MATERIAL_VALUES = {
-        0,
-        engine::PAWN_VALUE, engine::KNIGHT_VALUE, engine::BISHOP_VALUE,
-        engine::ROOK_VALUE, engine::QUEEN_VALUE,  engine::KING_VALUE,
-        0
-    };
-
     // --- Constructors ---
     Board() noexcept;
     explicit Board(const std::string& fen);
@@ -217,8 +209,6 @@ public:
     inline void        refreshNnueAccumulator() noexcept;
 
     // --- Incremental search-heuristic accessors ---
-    // White-minus-black material in centipawns (stalemate scoring in search).
-    constexpr int32_t getIncrementalMaterialDelta() const noexcept     { return incrementalMaterialDelta; }
     // Unweighted count of {N, B, R, Q} across both sides (used by search heuristics).
     constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
 
@@ -274,13 +264,11 @@ private:
                                       uint64_t pawns, uint64_t knights, uint64_t bishops,
                                       uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
 
-    // --- Private helpers: bitboards & incremental eval ---
+    // --- Private helpers: bitboards & incremental counters ---
     template<uint8_t PieceType, bool Add>
-    inline void updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index) noexcept;
+    inline void updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept;
     template<bool Add>
-    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept;
-    template<uint8_t PieceType, bool Add>
-    inline void updateIncrementalEvalForPiece(uint8_t color, uint8_t index) noexcept;
+    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept;
 
     // --- Private helpers: move classification ---
     [[nodiscard]] static constexpr bool     isCaptureKind(MoveKind kind) noexcept;
@@ -304,7 +292,6 @@ private:
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{};
     uint64_t occupancy   = 0ULL;
 
-    int32_t incrementalMaterialDelta    = 0;
     int32_t incrementalNonPawnMajorCount = 0;
 
     uint8_t  halfMoveClock       = 0;

@@ -40,7 +40,6 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     }
 
     occupancy = other.occupancy;
-    incrementalMaterialDelta = other.incrementalMaterialDelta;
     incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
     nnueAccumulator = other.nnueAccumulator;
     halfMoveClock = other.halfMoveClock;
@@ -76,7 +75,6 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
     rooks_bb[0]     = rooks_bb[1]     = 0ULL;
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
-    incrementalMaterialDelta = 0;
     incrementalNonPawnMajorCount = 0;
 
     // Single loop: iterate all 64 squares directly
@@ -90,7 +88,7 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
         const uint8_t color = colorToIndex(piece);
 
         occupancy |= bit;
-        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit, index);
+        dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, color, bit);
     }
 
     refreshNnueAccumulator();
@@ -129,7 +127,7 @@ inline bool Board::isKingSafeAfterMove(
 }
 
 template<uint8_t PieceType, bool Add>
-inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index) noexcept {
+inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
     if constexpr (PieceType == PAWN) {
         if constexpr (Add) pawns_bb[color] |= bit;
         else pawns_bb[color] &= ~bit;
@@ -150,38 +148,27 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit, uint8_t index)
         else kings_bb[color] &= ~bit;
     }
 
-    //FIXME Usare this
-    updateIncrementalEvalForPiece<PieceType, Add>(color, index);
-}
-
-template<uint8_t PieceType, bool Add>
-inline void Board::updateIncrementalEvalForPiece(uint8_t color, uint8_t /*index*/) noexcept {
-    const int32_t sideSign = (color == 0) ? 1 : -1;
-    const int32_t signedDelta = Add ? sideSign : -sideSign;
-
-    incrementalMaterialDelta += signedDelta * MATERIAL_VALUES[PieceType];
-
     if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
         incrementalNonPawnMajorCount += (Add ? 1 : -1);
     }
 }
 
 template<bool Add>
-inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit, uint8_t index) noexcept {
+inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept {
     switch (pieceType) {
-        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit, index); break;
-        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit, index); break;
-        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit, index); break;
-        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit, index); break;
-        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit, index); break;
-        case KING:   updatePieceTypeBB<KING, Add>(color, bit, index); break;
+        case PAWN:   updatePieceTypeBB<PAWN, Add>(color, bit); break;
+        case KNIGHT: updatePieceTypeBB<KNIGHT, Add>(color, bit); break;
+        case BISHOP: updatePieceTypeBB<BISHOP, Add>(color, bit); break;
+        case ROOK:   updatePieceTypeBB<ROOK, Add>(color, bit); break;
+        case QUEEN:  updatePieceTypeBB<QUEEN, Add>(color, bit); break;
+        case KING:   updatePieceTypeBB<KING, Add>(color, bit); break;
         default: break;
     }
 }
 
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
+    dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index]);
     if (NNUE::activeNetwork != nullptr) [[likely]] {
         nnueAccumulator.update<true>(piece, index);
     }
@@ -189,7 +176,7 @@ inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
 
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index], index);
+    dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index]);
     if (NNUE::activeNetwork != nullptr) [[likely]] {
         nnueAccumulator.update<false>(piece, index);
     }

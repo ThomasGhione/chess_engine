@@ -79,9 +79,6 @@ namespace {
     }
 
     static SpinOption kSpinOptions[] = {
-        {"STALEMATE_DRAW_PENALTY_MAJOR", &engine::STALEMATE_DRAW_PENALTY_MAJOR, false, 0, 0},
-        {"STALEMATE_DRAW_PENALTY_MINOR", &engine::STALEMATE_DRAW_PENALTY_MINOR, false, 0, 0},
-        {"STALEMATE_MATERIAL_THRESHOLD", &engine::STALEMATE_MATERIAL_THRESHOLD, false, 0, 0},
         // --- Search constants (SMAC3 campaign, HOTPATH #9). Generators of the
         // derived tables set refreshSearchTables so LMR/futility/LMP rebuild.
         {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,        true,     30,  250},
