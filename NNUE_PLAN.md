@@ -101,7 +101,10 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
       due shakedown ob da 10 SB, SPRT: **12k = −85 ±23 vs 8k, H0 in 822
       game** — più posizioni > etichette migliori, senza appello.
       (`tuning/run_nodes_ab.sh`; log `tuning/sprt_ab_nodes.log`.)
-- [ ] **Architettura HalfKAv2 + king bucket** (input dipendenti dal re):
+- [ ] **Architettura HalfKA + king bucket** — design COMPLETO in
+      `HALFKA_PLAN.md` (2026-07-11): 768×4kb_hm → 512 → 8ob, mappa 4 bucket
+      mirrorata, factoriser, Finny in fase 2, sei fasi con validazioni.
+      Vecchia nota di contesto:
       richiede refresh accumulatore su mossa di re + FinnyTable (cache di
       accumulatori per bucket). Guadagno tipico +80-150 sull'arch semplice.
       Solo quando il pipeline v2 è rodato.
