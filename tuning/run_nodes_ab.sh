@@ -18,8 +18,9 @@
 #        Tronca a multipli di 32 B, scarta i record azzerati (power-loss),
 #        shuffle globale, statistiche W/D/L, comprime in .zst pronti per Drive.
 #   3. Training su Colab (manuale, 2 run shakedown da 10 superbatch):
-#        colab_v2.ipynb con dataset ab8k_shuffled.bin.zst  → net_id ab8k
-#        colab_v2.ipynb con dataset ab12k_shuffled.bin.zst → net_id ab12k
+#        colab_ob.ipynb (branch output-buckets — arch corrente) con dataset
+#        ab8k_shuffled.bin.zst → net_id ab8k; poi ab12k_shuffled → ab12k.
+#        Le reti devono pesare 803.904 B (789.568 = arch vecchia, run errato).
 #        Scaricare i due quantised.bin.
 #   4. ./tuning/run_nodes_ab.sh sprt <ab8k.bin> <ab12k.bin>
 #        Stesso binario da entrambi i lati, solo EvalFile diverso.
@@ -141,7 +142,7 @@ PYEOF
         echo "  pronto per Drive: ${out}.zst ($(du -h "${out}.zst" | cut -f1))"
     done
     echo
-    echo "Prossimo passo: 2 run shakedown su Colab (colab_v2.ipynb, 10 superbatch,"
+    echo "Prossimo passo: 2 run shakedown su Colab (colab_ob.ipynb, 10 superbatch,"
     echo "net_id ab8k / ab12k), poi: ./tuning/run_nodes_ab.sh sprt <ab8k.bin> <ab12k.bin>"
 }
 
