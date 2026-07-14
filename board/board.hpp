@@ -208,10 +208,6 @@ public:
     // Incremental maintenance happens in addPieceToBB/removePieceFromBB.
     inline void        refreshNnueAccumulator() noexcept;
 
-    // --- Incremental search-heuristic accessors ---
-    // Unweighted count of {N, B, R, Q} across both sides (used by search heuristics).
-    constexpr int32_t getIncrementalNonPawnMajorCount() const noexcept { return incrementalNonPawnMajorCount; }
-
     // --- FEN ---
     void        fromFenToBoard(const std::string& fen);
     std::string fromBoardToFen() const;
@@ -291,8 +287,6 @@ private:
     uint64_t currentHash = 0ULL;
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{};
     uint64_t occupancy   = 0ULL;
-
-    int32_t incrementalNonPawnMajorCount = 0;
 
     uint8_t  halfMoveClock       = 0;
     uint8_t  fullMoveClock       = 1;
