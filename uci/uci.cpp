@@ -92,8 +92,6 @@ namespace {
         {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  true, -16384,    0},
         {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  true, -16384,    0},
         {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,           true,     80,  600, true},
-        {"FUTILITY_EG_BASE",     &engine::FUTILITY_EG_BASE,            true,     40,  500, true},
-        {"FUTILITY_EG_STEP",     &engine::FUTILITY_EG_STEP,            true,     40,  500, true},
         {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            true,     40,  250, true},
         {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            true,     40,  250, true},
         {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               true,    150,  600, true},

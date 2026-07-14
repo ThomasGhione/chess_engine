@@ -42,26 +42,21 @@ inline int32_t NMP_EVAL_DIV = 150;
 inline int32_t NMP_EVAL_MAX = 4;
 // Reverse futility pruning margin per remaining ply.
 inline int32_t RFP_MARGIN_PER_DEPTH = 90;
-// Futility margin generators: mid row = MID_STEP*d, endgame row =
-// EG_BASE + EG_STEP*(d-1). FUTILITY_MARGINS[isLateEndgame][depth] is the
-// derived table consumed by the move loop (gated to depth 1..6).
+// Futility margin generator: FUTILITY_MARGINS[depth] = MID_STEP*d, consumed
+// by the move loop (gated to depth 1..6). The HCE-era endgame row (phase split
+// on nonPawnMajors) was removed — see HCE_RESIDUE_AUDIT.md section 1b.
 inline int32_t FUTILITY_MID_STEP = 260;
-inline int32_t FUTILITY_EG_BASE  = 170;
-inline int32_t FUTILITY_EG_STEP  = 180;
-inline int32_t FUTILITY_MARGINS[2][7] = {
-    {0, 260, 520, 780, 1040, 1300, 1560},
-    {0, 170, 350, 530,  710,  890, 1070},
-};
-// LMP_THRESHOLDS[improving][isLateEndgame][depth]: higher = more permissive.
+inline int32_t FUTILITY_MARGINS[7] = {0, 260, 520, 780, 1040, 1300, 1560};
+// LMP_THRESHOLDS[improving][depth]: higher = more permissive.
 // Gated to depth 1..4. Derived: base table scaled by LMP_SCALE_PCT[improving].
-inline constexpr int LMP_BASE_THRESHOLDS[2][2][5] = {
-    {{0, 12, 20, 30, 42}, {0, 16, 26, 38, 52}},
-    {{0, 16, 26, 38, 52}, {0, 20, 32, 46, 62}},
+inline constexpr int LMP_BASE_THRESHOLDS[2][5] = {
+    {0, 12, 20, 30, 42},
+    {0, 16, 26, 38, 52},
 };
 inline int32_t LMP_SCALE_PCT[2] = {100, 100};
-inline int LMP_THRESHOLDS[2][2][5] = {
-    {{0, 12, 20, 30, 42}, {0, 16, 26, 38, 52}},
-    {{0, 16, 26, 38, 52}, {0, 20, 32, 46, 62}},
+inline int LMP_THRESHOLDS[2][5] = {
+    {0, 12, 20, 30, 42},
+    {0, 16, 26, 38, 52},
 };
 // History-based quiet pruning: skip quiet moves with very negative history.
 // Indexed by depth (0..3); depth 0 unused.

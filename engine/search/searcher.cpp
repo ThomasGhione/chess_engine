@@ -47,16 +47,12 @@ static LMRTable LMR_REDUCTION_TABLE;
 void rebuildSearchDerivedTables() noexcept {
     LMR_REDUCTION_TABLE.rebuild();
     for (int d = 1; d <= 6; ++d) {
-        FUTILITY_MARGINS[0][d] = FUTILITY_MID_STEP * d;
-        FUTILITY_MARGINS[1][d] = FUTILITY_EG_BASE + FUTILITY_EG_STEP * (d - 1);
+        FUTILITY_MARGINS[d] = FUTILITY_MID_STEP * d;
     }
     for (int improving = 0; improving < 2; ++improving) {
-        for (int lateEndgame = 0; lateEndgame < 2; ++lateEndgame) {
-            for (int d = 1; d <= 4; ++d) {
-                LMP_THRESHOLDS[improving][lateEndgame][d] =
-                    LMP_BASE_THRESHOLDS[improving][lateEndgame][d]
-                    * LMP_SCALE_PCT[improving] / 100;
-            }
+        for (int d = 1; d <= 4; ++d) {
+            LMP_THRESHOLDS[improving][d] =
+                LMP_BASE_THRESHOLDS[improving][d] * LMP_SCALE_PCT[improving] / 100;
         }
     }
 }
@@ -497,16 +493,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     CaptureEntry searchedCaptures[MAX_CAPTURES_TRACKED];
     int numSearchedCaptures = 0;
 
-    const int nonPawnMajorsForLMR = b.getIncrementalNonPawnMajorCount();
-    const bool isLateEndgame = (nonPawnMajorsForLMR <= 5);
-
     const bool canFutilityPrune =
         !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6 && !ctx.improving;
-    const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[isLateEndgame][ctx.depth] : 0;
+    const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
 
     const bool canLMP =
         !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 4;
-    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][isLateEndgame][ctx.depth] : 999;
+    const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
     const int oppKingSq = std::countr_zero(b.kings_bb[usSide ^ 1]);
