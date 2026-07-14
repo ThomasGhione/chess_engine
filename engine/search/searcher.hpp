@@ -109,11 +109,10 @@ private:
     };
 
     struct SearchNodeState {
-        uint8_t activeColor             = chess::Board::WHITE;
-        bool    inCheck                 = false;
-        bool    isPVNode                = false;
-        bool    isPawnEndgameForPruning = false;
-        int32_t staticEval              = 0;
+        uint8_t activeColor = chess::Board::WHITE;
+        bool    inCheck     = false;
+        bool    isPVNode    = false;
+        int32_t staticEval  = 0;
     };
 
     // --- Score utilities ---

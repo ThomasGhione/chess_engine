@@ -408,7 +408,7 @@ bool Searcher::tryReverseFutilityPruning(
     int32_t beta,
     int32_t& outScore) noexcept {
     // Precondition (guaranteed by the only caller's canReverseFutilityPrune):
-    // !isPVNode && !inCheck && !isPawnEndgameForPruning && ply > 0 && depth <= 3.
+    // !isPVNode && !inCheck && ply > 0 && depth <= 3.
 
     // Negamax: staticEval is side-to-move relative; fail high if it beats
     // beta even after subtracting the margin.
@@ -815,8 +815,6 @@ int32_t Searcher::searchPosition(
     const uint64_t checkers = b.checkersTo(node.activeColor);
     node.inCheck = (checkers != 0ULL);
     node.isPVNode = isPVNode;
-    node.isPawnEndgameForPruning =
-        ((b.pawns_bb[0] | b.pawns_bb[1]) != 0ULL) && (b.getIncrementalNonPawnMajorCount() <= 4);
 
     // Compute static eval at every ply (including the root) so that the
     // `improving` heuristic can compare evalStack[ply-2] vs current eval
@@ -910,7 +908,7 @@ int32_t Searcher::searchPosition(
     }
 
     const bool canReverseFutilityPrune =
-        !node.isPVNode && !node.inCheck && !node.isPawnEndgameForPruning && ply > 0 && depth <= 3;
+        !node.isPVNode && !node.inCheck && ply > 0 && depth <= 3;
     if (canReverseFutilityPrune
         && tryReverseFutilityPruning(node, depth, beta, score)) {
         return score;
