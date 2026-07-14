@@ -95,7 +95,15 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
       ⚠️ Scoperto bug LATENTE preesistente: ~0,1-0,2% di partite a TC 4+0.04
       finiscono in 'connection stalls' (anche nello SPRT v2: 4+5 crash sui
       DUE lati); non riproducibile in replay singolo — caccia dedicata da fare.
-- [ ] **Datagen v3** con la rete ob (loop di rinforzo, ormai standard).
+- [x] **Datagen v3 COMPLETO 2026-07-14: 464.480.686 posizioni** (target 300M
+      superato), etichette ob, 8k nodi, 4 sorgenti: portatile2 122,4M +
+      fisso_v3 267,8M + fisso 40,3M (run con netPath esplicito, confermato
+      post-merge dall'utente) + fisso2 34,0M. Qualità (datastats): 0 azzerati,
+      0 code parziali, dup 1,74% (< soglia 5% → niente dedup, vedi
+      DATAGEN_QUALITY_PLAN), W/D/L 37/25/38. Merge = **shuffle globale a
+      shard** (`datashuffle.rs`, seed fisso; bullet-utils della rev pinnata
+      non ha più validate/interleave) → verifica identità sul merged →
+      `nnue/data/hydray_v3_464M_shuffled.bin.zst` pronto per Drive.
       **A/B nodi/mossa DECISO 2026-07-11: si resta a 8k.** Test a parità di
       tempo macchina (4h/braccio sul fisso, 14,6M pos @ 8k vs 9,2M @ 12k),
       due shakedown ob da 10 SB, SPRT: **12k = −85 ±23 vs 8k, H0 in 822
