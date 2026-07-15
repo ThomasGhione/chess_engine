@@ -32,7 +32,7 @@ void controlExpect(const chess::Board b, std::array<uint8_t, 64> expectPos){
   int indexArray = 0;
   for(int i = 1; i <= 8; i++){
     for(char colll : coll){
-      expect(b.get(colll + std::to_string(i)) == expectPos.at(indexArray));
+      expect(b.get(chess::parseSquare(colll + std::to_string(i))) == expectPos.at(indexArray));
 
       indexArray++;
     }
@@ -163,8 +163,8 @@ ut::suite boardSuite = [] {
   "fromBoardToFen_starting_position"_test = []{
     chess::Board b{}; // default ctor loads the starting FEN
     const std::string expected = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    expect(b.getCurrentFen() == expected) 
-      << "Current fen: " << b.getCurrentFen() << "\n" 
+    expect(b.fromBoardToFen() == expected) 
+      << "Current fen: " << b.fromBoardToFen() << "\n" 
       << "expected fen: " << expected << "\n";
   };
   
@@ -172,8 +172,8 @@ ut::suite boardSuite = [] {
     chess::Board b{};
     const std::string expected = "r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
     b.fromFenToBoard(expected);
-    expect(b.getCurrentFen() == expected) 
-      << "Current fen: " << b.getCurrentFen() << "\n" 
+    expect(b.fromBoardToFen() == expected) 
+      << "Current fen: " << b.fromBoardToFen() << "\n" 
       << "expected fen: " << expected << "\n";
   };
   
@@ -181,7 +181,7 @@ ut::suite boardSuite = [] {
     chess::Board b{};
     const std::string expected = "r3kb1r/pp1n1ppp/1qpp4/8/2P2B2/2Q2BP1/PP2P2P/R3K2R b KQkq - 5 15";
     b.fromFenToBoard(expected);
-    expect(b.getCurrentFen() == expected);
+    expect(b.fromBoardToFen() == expected);
   };
 
 
@@ -190,7 +190,7 @@ ut::suite boardSuite = [] {
     // Includes en passant square and maintains active color and clocks
     const std::string expected = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e4 0 1";
     b.fromFenToBoard(expected);
-    expect(b.getCurrentFen() == expected);
+    expect(b.fromBoardToFen() == expected);
   };
 
   "knight_check_on_c2_is_not_false_mate"_test = []{
