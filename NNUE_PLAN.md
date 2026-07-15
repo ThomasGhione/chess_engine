@@ -109,6 +109,16 @@ In ordine di valore atteso; nessuno è bloccante per il ciclo v2:
       due shakedown ob da 10 SB, SPRT: **12k = −85 ±23 vs 8k, H0 in 822
       game** — più posizioni > etichette migliori, senza appello.
       (`tuning/run_nodes_ab.sh`; log `tuning/sprt_ab_nodes.log`.)
+- [x] **Rete v3 ADOTTATA 2026-07-14** (`hydray-v3-464M`, Colab 40 SB sul
+      dataset v3): sanity startpos +44, mirror esatta; selftest 41.577 pos;
+      bench6 nuovo baseline **4.911.596 @ d12**. SPRT vs ob: cap 4000 game
+      senza bound (LLR 1,74), **+11,5 ±9,5, LOS 99,1%** → adottata (swap di
+      rete a costo zero, il segno è certo al 99%).
+      ⚠️ Scoperta: **bucket materiale minimo affamato dall'adjudication** —
+      KQvK = −13 cp (!), le partite si chiudono via TB appena entrano in ≤5
+      pezzi e il bucket 0 (2-5 pezzi) non vede quasi esempi. In gioco lo
+      copre il probe Syzygy; fix dati al prossimo ciclo (quota di partite
+      seedate da finali — vedi DATAGEN_QUALITY_PLAN).
 - [ ] **Architettura HalfKA + king bucket** — design COMPLETO in
       `HALFKA_PLAN.md` (2026-07-11): 768×4kb_hm → 512 → 8ob, mappa 4 bucket
       mirrorata, factoriser, Finny in fase 2, sei fasi con validazioni.

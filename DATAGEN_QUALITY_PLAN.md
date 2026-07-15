@@ -86,3 +86,18 @@ Se il dup-rate è basso non serve: dedup <2-3% è sotto la risoluzione dell'SPRT
 Variante salvabile del cancello A, solo come esperimento a protocollo §3:
 *oversampling additivo* (duplicare, non selezionare) delle posizioni quiet ad
 alta divergenza — preserva la distribuzione, enfatizza i gap posizionali veri.
+
+---
+
+## 5. Scoperta 2026-07-14: l'adjudication affama i bucket a basso materiale
+
+La rete v3 (464M) valuta **KQvK = −13 cp**: l'adjudication Syzygy chiude le
+partite appena entrano in ≤5 pezzi, quindi il bucket di output 0 (2-5 pezzi)
+riceve ~zero esempi e resta ai pesi iniziali. (La ob v2 dava +1437 sulla stessa
+posizione: fortuna dell'init, non training.) In partita il danno è mascherato
+dal probe Syzygy, ma senza TB caricate l'eval dei finali minimi è rumore.
+
+Fix candidato per il ciclo v4 (da misurare col protocollo §3): **quota di
+partite seedate da finali** (8-16 pezzi, es. 5-10% dei game) — popola i bucket
+bassi E genera esempi 6-7 pezzi fuori TB; in alternativa, registrare la
+posizione terminale adjudicata con lo score TB come etichetta extra.
