@@ -492,7 +492,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     int numSearchedCaptures = 0;
 
     const bool canFutilityPrune =
-        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6 && !ctx.improving;
+        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6;
     const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
 
     const bool canLMP =
