@@ -40,7 +40,6 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     }
 
     occupancy = other.occupancy;
-    incrementalNonPawnMajorCount = other.incrementalNonPawnMajorCount;
     nnueAccumulator = other.nnueAccumulator;
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
@@ -75,7 +74,6 @@ inline void Board::rebuildBitboardsFromSquares() noexcept {
     rooks_bb[0]     = rooks_bb[1]     = 0ULL;
     queens_bb[0]    = queens_bb[1]    = 0ULL;
     kings_bb[0]     = kings_bb[1]     = 0ULL;
-    incrementalNonPawnMajorCount = 0;
 
     // Single loop: iterate all 64 squares directly
     // index = rank * 8 + file, where rank 0 = row 8, rank 7 = row 1
@@ -146,10 +144,6 @@ inline void Board::updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept {
     } else if constexpr (PieceType == KING) {
         if constexpr (Add) kings_bb[color] |= bit;
         else kings_bb[color] &= ~bit;
-    }
-
-    if constexpr (PieceType == KNIGHT || PieceType == BISHOP || PieceType == ROOK || PieceType == QUEEN) {
-        incrementalNonPawnMajorCount += (Add ? 1 : -1);
     }
 }
 
