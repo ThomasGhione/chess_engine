@@ -15,9 +15,7 @@ namespace engine {
 
 namespace {
 
-// PAWN_VALUE is a runtime-mutable eval global, so this stays a (non-constexpr)
-// local; every other search parameter lives in search_constants.hpp.
-const int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
+constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
@@ -739,7 +737,8 @@ int32_t Searcher::searchPosition(
     }
 
     // Actual draw terminals must be recognized before qsearch. Otherwise a
-    // horizon node that completes a repetition is scored by static material.
+    // horizon node that completes a repetition is scored by the static eval
+    // instead of as a draw.
     int32_t drawScore = 0;
     if (checkDrawTerminalConditions(b, drawScore)) {
         return drawScore;
@@ -1089,10 +1088,10 @@ int32_t Searcher::quiescenceSearch(
         }
 
         // standPat is already side-to-move relative (negamax eval).
-        if (standPat < QSEARCH_MATERIAL_BAD) {
-            deltaMargin += QSEARCH_MATERIAL_BAD_DELTA;
-        } else if (standPat < QSEARCH_MATERIAL_WORSE) {
-            deltaMargin += QSEARCH_MATERIAL_WORSE_DELTA;
+        if (standPat < QSEARCH_STANDPAT_BAD) {
+            deltaMargin += QSEARCH_STANDPAT_BAD_DELTA;
+        } else if (standPat < QSEARCH_STANDPAT_WORSE) {
+            deltaMargin += QSEARCH_STANDPAT_WORSE_DELTA;
         }
 
         const int qsearchDepth = std::max(0, ply - runtime.depth);

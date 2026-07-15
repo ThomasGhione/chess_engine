@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <limits>
 
-// All tunable search + move-ordering parameters, centralized here the same way
-// eval_constants.hpp centralizes evaluation weights. These are compile-time
-// constants (not UCI options): the search relies on several of them for array
-// dimensions, so they are constexpr rather than mutable inline globals.
+// All tunable search + move-ordering parameters, centralized here. Most are
+// compile-time constants; the plain (non-constexpr) globals are exposed as
+// UCI spins for the tuning campaigns (see kSpinOptions in uci/uci.cpp).
 //
 // Purely structural constants that are tied to a specific local data structure
 // (SEE cache size, history flat-array cell counts, tracked-quiet buffer sizes,
@@ -107,10 +106,12 @@ inline constexpr int32_t CORR_TOTAL_CAP    = CORR_HIST_LIMIT / CORR_HIST_DIVISOR
 // ===================================================
 inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
 inline constexpr int32_t QSEARCH_PAWN_PROMO_DELTA          = 150;
-inline constexpr int32_t QSEARCH_MATERIAL_BAD              = -400;
-inline constexpr int32_t QSEARCH_MATERIAL_WORSE            = -200;
-inline constexpr int32_t QSEARCH_MATERIAL_BAD_DELTA        = 150;
-inline constexpr int32_t QSEARCH_MATERIAL_WORSE_DELTA      = 75;
+// Stand-pat (NNUE static eval) thresholds widening the delta-pruning margin
+// when the side to move is already losing.
+inline constexpr int32_t QSEARCH_STANDPAT_BAD              = -400;
+inline constexpr int32_t QSEARCH_STANDPAT_WORSE            = -200;
+inline constexpr int32_t QSEARCH_STANDPAT_BAD_DELTA        = 150;
+inline constexpr int32_t QSEARCH_STANDPAT_WORSE_DELTA      = 75;
 inline constexpr int32_t QSEARCH_DEPTH_REDUCTION_THRESHOLD = 5;
 inline constexpr int32_t QSEARCH_DEPTH_REDUCTION_PER_5     = 50;
 inline constexpr int32_t QSEARCH_DELTAMARGIN_MIN           = 960; // == QUEEN_VALUE

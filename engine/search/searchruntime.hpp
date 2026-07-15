@@ -24,7 +24,7 @@ struct SearchRuntime {
     bool     isHelper      = false;
     // UCI `go nodes N`: 0 = unlimited. Checked per-node against
     // (runtime.nodesSearched + *counter), so the total across IDS iterations
-    // is bounded. In YBWC each worker also bounds itself by the same value;
+    // is bounded. Each Lazy SMP helper also bounds itself by the same value;
     // total nodes are at most ~maxNodes * threads in multi-threaded searches.
     uint64_t maxNodes      = 0;
 
