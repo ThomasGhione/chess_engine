@@ -100,6 +100,9 @@ Quello che invece È testabile è la **policy** sul 3-fold:
 
 ## 3. `eval_constants.hpp`: costante morta + constexpr mancanti — **REFACTOR**
 
+> **✅ FATTO 2026-07-15** (`dfa1db5`, insieme a §5): piece values/PIECE_VALUES/MVV_TABLE
+> constexpr, MATE_SCORE rimosso, commenti sistemati. bench6 identico (4.894.324).
+
 - **`MATE_SCORE` è morto**: [eval_constants.hpp:22](engine/eval_constants.hpp#L22) — l'unico
   riferimento nel progetto è un *commento* in [syzygy.hpp:34](engine/syzygy/syzygy.hpp#L34)
   (il codice vero usa `POS_INF`/`NEG_INF`/`MATE_BOUND`). Rimuovere entrambi.
@@ -134,6 +137,9 @@ Quello che invece È testabile è la **policy** sul 3-fold:
 
 ## 5. Rename / commenti stantii — **RENAME/DOC** (zero rischio)
 
+> **✅ FATTO 2026-07-15** (`dfa1db5`): QSEARCH_STANDPAT_*, via i riferimenti YBWC e gli
+> altri commenti stantii della tabella.
+
 | Dove | Problema |
 |---|---|
 | [search_constants.hpp:115-118](engine/search/search_constants.hpp#L115-L118) `QSEARCH_MATERIAL_BAD/WORSE(_DELTA)` | Nome fuorviante: confrontano lo **standPat NNUE**, non il materiale. Rinominare tipo `QSEARCH_STANDPAT_BAD/WORSE`. |
@@ -144,6 +150,12 @@ Quello che invece È testabile è la **policy** sul 3-fold:
 | `search_constants.hpp:8-9` | «…the same way eval_constants.hpp centralizes evaluation weights» — eval_constants non contiene più pesi eval. |
 
 ## 6. Test suite: rotta da riferimenti HCE — **RIMUOVERE/RISCRIVERE**
+
+> **✅ FATTO 2026-07-15** (`88fc82d`): potati i 4 file engine/test bit-rotted (−753 righe),
+> mainTest riparato (include HCE, attivazione rete embedded, posizione threefold spostata
+> dal bucket-0 affamato, contratto root-draw aggiornato), testBoard su API attuali.
+> **`make test` è di nuovo VERDE** (393 assert / 12 test) — aggiornare la nota
+> "make test is broken" in memoria/doc.
 
 `make test` non compila, e la causa primaria è proprio l'HCE rimosso:
 
@@ -170,6 +182,19 @@ Finché non si fa, il protocollo resta «make + bench, MAI make test» (già in 
   d'uso rinviata (fuori scope HCE).
 
 ---
+
+## 7-bis. Secondo passaggio 2026-07-15 — nessun nuovo residuo
+
+Ri-sweep mirato dopo il merge di §1/§3/§5/§6 (pattern: termini eval classici, penalty/bonus/
+weight fuori dalle history, duplicati di costanti): **nessun residuo HCE nuovo**. Ciò che
+resta di "DNA HCE" nel motore è, per intero: §2 (policy contempt — decisione utente),
+§7 (opening book — decisione utente, non-HCE), i *numeri* dei piece value (344/359/502/960,
+tarati per l'HCE ma oggi solo SEE/MVV/delta — ritararli è micro-tuning SMAC3, non pulizia)
+e le costanti di search tarate a giugno sul tree HCE → la retune SMAC3 #9 è ora ancora più
+motivata (rete nuova + RFP ovunque + futility a riga singola = albero molto diverso).
+Note minori senza azione: `Engine::DEFAULTDEPTH` alias ridondante di `DEFAULT_DEPTH`;
+`QSEARCH_DELTAMARGIN_MIN = 960 // == QUEEN_VALUE` resta letterale (un include in più non
+vale la sostituzione).
 
 ## 8. Piano di esecuzione proposto (quando si deciderà di procedere)
 
