@@ -580,19 +580,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && !isPromotionCandidate;
 
         const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3);
-        const bool needsCheckInfo =
-            (ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate) || lmrStructuralCandidate;
+        const bool needsCheckInfo = ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
         const bool shouldCheckExtend = givesCheck && forcingCandidate && ctx.depth >= 2 && ctx.depth <= 4;
         const int childDepth = ctx.depth - 1 + (shouldCheckExtend ? 1 : 0)
                              + (isFirstMove ? ctx.singularExtension : 0);
-        const auto& km0 = runtime.killerMoves[ctx.ply][0];
-        const auto& km1 = runtime.killerMoves[ctx.ply][1];
-        const bool isKiller = m.sameFromTo(km0) || m.sameFromTo(km1);
-        const bool canReduce = lmrStructuralCandidate
-                           && !givesCheck
-                           && !isKiller;
+        const bool canReduce = lmrStructuralCandidate;
 
         // Negamax PVS scout window: full [alpha,beta] for the first move,
         // null window [alpha, alpha+1] for the rest.
