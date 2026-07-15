@@ -17,6 +17,11 @@ Legenda verdetti:
 
 ## 1. Catena principale: `incrementalNonPawnMajorCount` e i suoi due unici consumer
 
+> **✅ FATTO 2026-07-15** (merge `bf71fe1`): 1a+1b+1c testati in un unico SPRT vs dev@d5b7ba5
+> (rete v3): **+17,57 ±10,13, LOS 99,97%, H1 @ 2592 partite** — guadagno vero, non solo
+> non-regression. Nuovo baseline bench6 @ d12: **4.894.324**. Non re-aggiungere il gate
+> pawn-endgame a RFP né la riga endgame dei margini futility senza un nuovo SPRT.
+
 È la fotocopia della catena `incrementalMaterialDelta` appena demolita. Il campo incrementale
 mantenuto in `doMove`/`undoMove` ([board.inl:152](board/board.inl#L152)) ha **esattamente due
 consumer**, entrambi sospetti; il gate NMP (searcher.cpp:860) NON lo usa (fa un popcount locale
