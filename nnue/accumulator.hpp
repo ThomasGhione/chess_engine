@@ -60,8 +60,11 @@ struct alignas(64) Accumulator {
         dirty[p] = false;
     }
 
+    // Adds/removes one piece feature on an arbitrary accumulator row under a
+    // fixed basis — shared by the live perspectives and the Finny cache rows.
     template<bool Add>
-    inline void updatePerspective(int p, uint8_t piece, uint8_t index) noexcept {
+    static inline void updateRow(int16_t* __restrict row, int rowBase, int rowFlip,
+                                 int p, uint8_t piece, uint8_t index) noexcept {
         const Network& net = *activeNetwork;
         const int type = (piece & 0x7) - 1;      // P..K -> 0..5
         const bool black = (piece & 0x8) == 0;   // Board::WHITE = 0x8
@@ -69,11 +72,16 @@ struct alignas(64) Accumulator {
         const int sqView = (p == 1) ? (lerf ^ 56) : lerf;
         const bool isOpp = (p == 1) ? !black : black;
         const int feat768 = (isOpp ? 384 : 0) + type * 64 + sqView;
-        const int16_t* __restrict w = net.featureWeights[base[p] + (feat768 ^ flip[p])];
+        const int16_t* __restrict w = net.featureWeights[rowBase + (feat768 ^ rowFlip)];
         for (int i = 0; i < HIDDEN; ++i) {
-            if constexpr (Add) v[p][i] = static_cast<int16_t>(v[p][i] + w[i]);
-            else               v[p][i] = static_cast<int16_t>(v[p][i] - w[i]);
+            if constexpr (Add) row[i] = static_cast<int16_t>(row[i] + w[i]);
+            else               row[i] = static_cast<int16_t>(row[i] - w[i]);
         }
+    }
+
+    template<bool Add>
+    inline void updatePerspective(int p, uint8_t piece, uint8_t index) noexcept {
+        updateRow<Add>(v[p], base[p], flip[p], p, piece, index);
     }
 
     // piece = Board nibble (WHITE=0x8 color bit | type 1..6), index = engine
@@ -84,25 +92,78 @@ struct alignas(64) Accumulator {
         const bool black = (piece & 0x8) == 0;
         const int lerf = index ^ 56;
 
-        for (int p = 0; p < 2; ++p) {
-            if (dirty[p]) continue;
-            // A king ADD of this perspective's own king that lands on a
-            // square with a different basis invalidates every feature of
-            // this perspective: mark dirty, the next ensureClean rebuilds.
-            // (The matching REMOVE is always applied under the stored basis,
-            // which by the invariant is the basis the king was added with.)
-            if constexpr (Add) {
-                if (type == 5 && black == (p == 1)) {
+        // A king ADD landing on a square with a different basis invalidates
+        // every feature of its own perspective: mark dirty, the next
+        // ensureClean rebuilds. (The matching REMOVE is always applied under
+        // the stored basis, which by the invariant is the basis the king was
+        // added with.)
+        if constexpr (Add) {
+            if (type == 5) [[unlikely]] {
+                const int p = black ? 1 : 0;
+                if (!dirty[p]) {
                     const int kView = (p == 1) ? (lerf ^ 56) : lerf;
                     if (kingFeatureBase(kView) != base[p]
                         || kingFlip(kView) != flip[p]) {
                         dirty[p] = true;
-                        continue;
                     }
                 }
             }
-            updatePerspective<Add>(p, piece, index);
         }
+
+        // Fast path (the overwhelming majority): both perspectives clean —
+        // one fused loop updates both rows, same ILP as the pre-HalfKA code.
+        if (!dirty[0] && !dirty[1]) [[likely]] {
+            const Network& net = *activeNetwork;
+            const int featW = (black ? 384 : 0) + type * 64 + lerf;
+            const int featB = (black ? 0 : 384) + type * 64 + (lerf ^ 56);
+            const int16_t* __restrict w0 = net.featureWeights[base[0] + (featW ^ flip[0])];
+            const int16_t* __restrict w1 = net.featureWeights[base[1] + (featB ^ flip[1])];
+            for (int i = 0; i < HIDDEN; ++i) {
+                if constexpr (Add) {
+                    v[0][i] = static_cast<int16_t>(v[0][i] + w0[i]);
+                    v[1][i] = static_cast<int16_t>(v[1][i] + w1[i]);
+                } else {
+                    v[0][i] = static_cast<int16_t>(v[0][i] - w0[i]);
+                    v[1][i] = static_cast<int16_t>(v[1][i] - w1[i]);
+                }
+            }
+            return;
+        }
+        if (!dirty[0]) updatePerspective<Add>(0, piece, index);
+        if (!dirty[1]) updatePerspective<Add>(1, piece, index);
+    }
+};
+
+// Finny table: one cached accumulator row per (perspective, king bucket,
+// mirror flip) plus the piece bitboards it was computed from. A lazy refresh
+// becomes a DIFF against the cached state (typically a handful of piece
+// updates) instead of a ~30-piece rebuild. Any cached content is a correct
+// starting point as long as the entry's basis matches — even from another
+// game — so the table lives per-thread (Lazy SMP helpers each get their own)
+// and never needs invalidation. The bias-initialised entry with empty
+// bitboards is itself a valid state ("diff from the empty board").
+struct FinnyEntry {
+    alignas(64) int16_t v[HIDDEN];
+    uint64_t bb[2][6]; // [colorIndex][type-1], engine bit convention
+};
+
+struct FinnyTable {
+    FinnyEntry entry[2][INPUT_BUCKETS][2]; // [perspective][bucket][flip?1:0]
+    // Cache rows are only valid diff bases for the network they were built
+    // with: re-initialise whenever the active network identity changes
+    // (EvalFile swap at runtime).
+    const Network* builtFor = nullptr;
+
+    inline void ensureInitialised() noexcept {
+        if (builtFor == activeNetwork) [[likely]] return;
+        const Network& net = *activeNetwork;
+        for (auto& perPersp : entry)
+            for (auto& perBucket : perPersp)
+                for (auto& e : perBucket) {
+                    std::memcpy(e.v, net.featureBias, sizeof(e.v));
+                    std::memset(e.bb, 0, sizeof(e.bb));
+                }
+        builtFor = activeNetwork;
     }
 };
 
