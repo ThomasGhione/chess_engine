@@ -181,9 +181,35 @@ inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
 // never double-count: they land here once at the end instead.
 inline void Board::refreshNnueAccumulator() noexcept {
     if (NNUE::activeNetwork == nullptr) return;
-    nnueAccumulator.reset();
+    // No kings (unit-test fragments, mid-load states): leave the accumulator
+    // as-is; evaluation is guarded upstream by the kings-missing check.
+    if (kings_bb[0] == 0 || kings_bb[1] == 0) return;
+    const int wKingLerf      = std::countr_zero(kings_bb[0]) ^ 56;
+    const int bKingLerfView  = std::countr_zero(kings_bb[1]); // lerf ^ 56
+    nnueAccumulator.resetWithKings(wKingLerf, bKingLerfView);
     for (uint8_t index = 0; index < 64; ++index) {
         const uint8_t piece = get(index);
         if (piece != EMPTY) nnueAccumulator.update<true>(piece, index);
+    }
+}
+
+// HalfKA lazy refresh: rebuild only the perspectives whose own king crossed
+// bucket/flip since the last clean state. Called from consistent-board
+// points only (NNUE::evaluate, selftest) — never mid-doMove.
+inline void Board::ensureNnueAccumulatorClean() const noexcept {
+    if (NNUE::activeNetwork == nullptr) return;
+    if (!(nnueAccumulator.dirty[0] || nnueAccumulator.dirty[1])) [[likely]] return;
+    if (kings_bb[0] == 0 || kings_bb[1] == 0) return;
+    for (int p = 0; p < 2; ++p) {
+        if (!nnueAccumulator.dirty[p]) continue;
+        // Own king square from this perspective's view: lerf for white,
+        // lerf ^ 56 for black — which folds back to the raw engine index.
+        const int engineKing = std::countr_zero(kings_bb[p]);
+        const int ownKingView = (p == 1) ? engineKing : (engineKing ^ 56);
+        nnueAccumulator.resetPerspective(p, ownKingView);
+        for (uint8_t index = 0; index < 64; ++index) {
+            const uint8_t piece = get(index);
+            if (piece != EMPTY) nnueAccumulator.updatePerspective<true>(p, piece, index);
+        }
     }
 }
