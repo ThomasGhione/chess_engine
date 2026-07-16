@@ -85,7 +85,6 @@ Production builds use `-O3 -march=native`, OpenMP, and LTO. Object files go to
 ```sh
 make test            # functional tests -> ./tests/test
 make perf            # performance tests -> ./tests/perf
-make sacrifice       # anti-sacrifice regression suite -> ./tests/sacrifice
 make all-tests       # build and run functional + performance tests
 make test-valgrind   # run functional tests under valgrind
 ```
