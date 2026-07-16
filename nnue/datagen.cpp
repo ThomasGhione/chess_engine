@@ -45,7 +45,7 @@ constexpr int32_t  DRAW_ADJ_CP              = 10;
 constexpr int      DRAW_ADJ_PLIES           = 8;
 constexpr int      DRAW_ADJ_MIN_PLY         = 80;
 constexpr int      MAX_GAME_PLIES           = 400;
-constexpr uint64_t TARGET_POSITIONS         = 250'000'000; // for the ETA line only
+constexpr uint64_t TARGET_POSITIONS         = 5'000'000'000; // v4 target (ETA line only)
 // WDL probes ignore the 50-move counter: with a high clock a "won" table
 // position can still be drawn by the rule before conversion. Draw results
 // are always safe; decisive ones are trusted only below this clock.
@@ -313,7 +313,7 @@ int runDatagen(int argc, char* argv[]) {
                   << "  games " << g_totalGames.load(std::memory_order_relaxed)
                   << "  tb-adj " << g_totalTbAdjudications.load(std::memory_order_relaxed)
                   << "  pos/s " << static_cast<uint64_t>(rate)
-                  << "  ETA(250M) " << etaDays << " days\n" << std::flush;
+                  << "  ETA(5B) " << etaDays << " days\n" << std::flush;
     }
 
     for (std::thread& t : workers) t.join();
