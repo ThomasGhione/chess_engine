@@ -4,10 +4,8 @@
 #include "../engine/engine.hpp"
 #include "../debug.hpp"
 
-#include <ctime>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <limits>
 
 namespace driver {
 
@@ -76,11 +74,10 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
             "\n\n==================== MAIN MENU ====================\n\n"
             "1. One Player\n"
             "2. Two Players\n"
-            "3. Load Game\n"
-            "4. Extra Modes\n"
-            "5. Quit Game\n\n"
-            "Select an option (1-5): ";
-        switch (showMenu(MAIN_PROMPT, '1', '5')) {
+            "3. Extra Modes\n"
+            "4. Quit Game\n\n"
+            "Select an option (1-4): ";
+        switch (showMenu(MAIN_PROMPT, '1', '4')) {
             case '1': {
                 static constexpr const char* PVE_PROMPT =
                     "\n\n==================== ONE PLAYER MENU ====================\n\n"
@@ -97,25 +94,6 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
             }
             case '2': startSession(GameMode::PvP); break;
             case '3': {
-                std::filesystem::create_directories("saves");
-                if (std::ifstream saveFile("saves/save.txt"); !saveFile.is_open()) {
-                    std::cerr << "Error: Unable to open save file.\n";
-                    std::cout << "No saved game found. Returning to main menu.\n";
-                } else {
-                    std::string line;
-                    if (std::getline(saveFile, line)) engine.board = chess::Board(line);
-                    // TODO: add checks/exceptions for FEN parsing
-                    if (std::getline(saveFile, line)) {
-                        if (line == "w") engine.isPlayerWhite = false;
-                        else if (line == "b") engine.isPlayerWhite = true;
-                        startSession(GameMode::PvE, (engine.board.getActiveColor() == chess::Board::WHITE) == engine.isPlayerWhite);
-                    } else {
-                        startSession(GameMode::PvP);
-                    }
-                }
-                break;
-            }
-            case '4': {
                 static constexpr const char* EXTRA_PROMPT =
                     "\n\n==================== EXTRA MODES MENU ====================\n\n"
                     "1. Bot Vs Bot\n"
@@ -129,14 +107,13 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
                 }
                 break;
             }
-            case '5': exitGame();
+            case '4': exitGame();
             default:  std::cout << "Invalid option. Please select a valid option.\n"; break;
         }
     }
 }
 
 void Driver::startSession(GameMode mode, bool playerIsWhite) noexcept {
-    mode_ = mode;
     switch (mode) {
         case GameMode::PvP: playAlternatingTurns(true, true, false); break;
         case GameMode::PvE: playAlternatingTurns(playerIsWhite, !playerIsWhite, false); break;
@@ -155,29 +132,9 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
                 //FIXME Evitare while true
                 while (true) {
                     std::cout << getBasicBoard(engine.board) << "\n";
-                    std::cout << "Enter your move (type 's' to save or 'q' to quit): " << std::flush;
+                    std::cout << "Enter your move (type 'q' to quit): " << std::flush;
                     std::cin >> playerInput;
 
-                    if (playerInput == "s") [[unlikely]] {
-                        std::filesystem::create_directories("saves");
-                        bool canWrite = !std::filesystem::exists("saves/save.txt");
-                        if (!canWrite) {
-                            std::cout << "An existing save file has been detected, do you want to overwrite it? (Y/N) " << std::flush;
-                            char ans = '\0'; std::cin >> ans;
-                            canWrite = (ans == 'Y' || ans == 'y');
-                        }
-                        if (canWrite) {
-                            if (std::ofstream saveFile("saves/save.txt"); !saveFile.is_open()) {
-                                std::cerr << "Error: cannot open 'saves/save.txt' for writing.\n";
-                            } else {
-                                saveFile << engine.board.fromBoardToFen();
-                                if (mode_ == GameMode::PvE) saveFile << '\n' << (engine.board.getActiveColor() == chess::Board::WHITE ? 'b' : 'w');
-                                saveFile.flush();
-                                if (!saveFile) std::cerr << "Error: failed to write 'saves/save.txt' (state corrupted, partial write).\n";
-                            }
-                        }
-                        continue;
-                    }
                     if (playerInput == "q") [[unlikely]] exitGame();
 
                     // Optional promotion character (5th char): e7e8q, e2e1N, ...
@@ -239,19 +196,13 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
                 else if (engine.isDraw())
                     std::cout << "\nDraw.\n";
 
-                std::cout << "Press s to print the game on a file or any other key to return to the menu: " << std::flush;
+                std::cout << "Press any key to return to the menu: " << std::flush;
 
                 // Clear any pending input, then block for a full line to ensure Windows/Linux parity
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 std::string line;
                 std::getline(std::cin, line);
-                if (!line.empty() && (line[0] == 's' || line[0] == 'S')) {
-                    std::filesystem::create_directories("games");
-                    const std::string fileName = "games/game_" + std::to_string(std::time(nullptr)) + ".txt";
-                    std::ofstream gameFile(fileName);
-                    gameFile << engine.moveHistory;
-                }
 
                 engine.reset();
                 return;

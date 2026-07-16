@@ -26,8 +26,6 @@ public:
 
 private:
 
-    GameMode mode_ = GameMode::PvP;
-
     void startSession(GameMode mode, bool playerIsWhite = true) noexcept;
     void playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept;
 
