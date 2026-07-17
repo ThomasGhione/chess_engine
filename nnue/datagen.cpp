@@ -229,6 +229,34 @@ std::string withThreadSuffix(const std::string& prefix, int threadId) {
     return prefix + ".t" + std::to_string(threadId) + ".bin";
 }
 
+// Positions already on disk for this prefix (any thread count of past runs):
+// the counters resume from the true total instead of restarting at 0.
+uint64_t countExistingPositions(const std::string& outPrefix) {
+    namespace fs = std::filesystem;
+    const fs::path p(outPrefix);
+    const fs::path dir = p.parent_path().empty() ? fs::path(".") : p.parent_path();
+    const std::string stem = p.filename().string() + ".t";
+    uint64_t bytes = 0;
+    std::error_code ec;
+    for (const auto& entry : fs::directory_iterator(dir, ec)) {
+        const std::string name = entry.path().filename().string();
+        if (name.starts_with(stem) && name.ends_with(".bin")) {
+            std::error_code sizeEc;
+            const uint64_t sz = fs::file_size(entry.path(), sizeEc);
+            if (!sizeEc) bytes += sz;
+        }
+    }
+    return bytes / sizeof(BulletRecord);
+}
+
+// 1234567 -> "1234K", 464480686 -> "464M": coarse on purpose, the progress
+// line is for humans (exact totals stay derivable from the file sizes).
+std::string fmtCount(uint64_t n) {
+    if (n >= 10'000'000) return std::to_string(n / 1'000'000) + "M";
+    if (n >= 10'000)     return std::to_string(n / 1'000) + "K";
+    return std::to_string(n);
+}
+
 } // namespace
 
 int runDatagen(int argc, char* argv[]) {
@@ -275,8 +303,12 @@ int runDatagen(int argc, char* argv[]) {
     const char* tbPath = (argc >= 7) ? argv[6] : "engine/syzygy/files";
     const bool tbOn = g_syzygy.load(tbPath) && g_syzygy.maxPieces() >= 3;
 
+    const uint64_t resumedPositions = countExistingPositions(outPrefix);
+
     std::cout << "HydraY datagen — bulletformat self-play data\n"
               << "  output : " << outPrefix << ".t<0.." << (threads - 1) << ">.bin (append)\n"
+              << "  resume : " << fmtCount(resumedPositions)
+              << " positions already on disk for this prefix\n"
               << "  labels : NNUE (" << (netPath != nullptr ? netPath : "embedded") << ")\n"
               << "  threads: " << threads << "  nodes/move: " << nodesPerMove << "\n"
               << "  filters: ply>=" << MIN_RECORD_PLY << ", not in check, quiet bestmove, |cp|<="
@@ -302,24 +334,30 @@ int runDatagen(int argc, char* argv[]) {
         if (now - lastReport < std::chrono::seconds(30)) continue;
         lastReport = now;
 
-        const uint64_t positions = g_totalPositions.load(std::memory_order_relaxed);
+        const uint64_t generated = g_totalPositions.load(std::memory_order_relaxed);
+        const uint64_t total = resumedPositions + generated;
         const double elapsed = std::chrono::duration<double>(now - start).count();
-        const double rate = (elapsed > 0.0) ? static_cast<double>(positions) / elapsed : 0.0;
+        // Rate (and thus the ETA) reflects THIS run only; the total includes
+        // everything already on disk for the prefix.
+        const double rate = (elapsed > 0.0) ? static_cast<double>(generated) / elapsed : 0.0;
         const double etaDays = (rate > 0.0)
-            ? static_cast<double>(TARGET_POSITIONS - std::min(positions, TARGET_POSITIONS))
+            ? static_cast<double>(TARGET_POSITIONS - std::min(total, TARGET_POSITIONS))
                 / rate / 86400.0
             : 0.0;
-        std::cout << "[datagen] positions " << positions
-                  << "  games " << g_totalGames.load(std::memory_order_relaxed)
-                  << "  tb-adj " << g_totalTbAdjudications.load(std::memory_order_relaxed)
+        std::cout << "[datagen] positions " << fmtCount(total)
+                  << " (+" << fmtCount(generated) << " run)"
+                  << "  games " << fmtCount(g_totalGames.load(std::memory_order_relaxed))
+                  << "  tb-adj " << fmtCount(g_totalTbAdjudications.load(std::memory_order_relaxed))
                   << "  pos/s " << static_cast<uint64_t>(rate)
-                  << "  ETA(5B) " << etaDays << " days\n" << std::flush;
+                  << "  ETA(5B) " << std::round(etaDays * 10.0) / 10.0 << " days\n" << std::flush;
     }
 
     for (std::thread& t : workers) t.join();
-    std::cout << "[datagen] stopped. total positions " << g_totalPositions.load()
-              << "  games " << g_totalGames.load()
-              << "  tb-adj " << g_totalTbAdjudications.load() << "\n";
+    std::cout << "[datagen] stopped. total positions "
+              << fmtCount(resumedPositions + g_totalPositions.load())
+              << " (+" << fmtCount(g_totalPositions.load()) << " this run)"
+              << "  games " << fmtCount(g_totalGames.load())
+              << "  tb-adj " << fmtCount(g_totalTbAdjudications.load()) << "\n";
     return 0;
 }
 
