@@ -257,6 +257,26 @@ std::string fmtCount(uint64_t n) {
     return std::to_string(n);
 }
 
+// games/tb-adj are not derivable from the .bin files (positions are), so
+// their lifetime totals live in a tiny <prefix>.meta sidecar, rewritten at
+// every report tick. Losing it only resets these two display counters.
+struct MetaCounters {
+    uint64_t games = 0;
+    uint64_t tbAdjudications = 0;
+};
+
+MetaCounters loadMeta(const std::string& metaPath) {
+    MetaCounters m;
+    std::ifstream in(metaPath);
+    if (in) in >> m.games >> m.tbAdjudications;
+    return m;
+}
+
+void saveMeta(const std::string& metaPath, const MetaCounters& m) {
+    std::ofstream out(metaPath, std::ios::trunc);
+    if (out) out << m.games << " " << m.tbAdjudications << "\n";
+}
+
 } // namespace
 
 int runDatagen(int argc, char* argv[]) {
@@ -304,6 +324,8 @@ int runDatagen(int argc, char* argv[]) {
     const bool tbOn = g_syzygy.load(tbPath) && g_syzygy.maxPieces() >= 3;
 
     const uint64_t resumedPositions = countExistingPositions(outPrefix);
+    const std::string metaPath = outPrefix + ".meta";
+    const MetaCounters resumedMeta = loadMeta(metaPath);
 
     std::cout << "HydraY datagen — bulletformat self-play data\n"
               << "  output : " << outPrefix << ".t<0.." << (threads - 1) << ">.bin (append)\n"
@@ -344,20 +366,28 @@ int runDatagen(int argc, char* argv[]) {
             ? static_cast<double>(TARGET_POSITIONS - std::min(total, TARGET_POSITIONS))
                 / rate / 86400.0
             : 0.0;
+        const MetaCounters meta{
+            resumedMeta.games + g_totalGames.load(std::memory_order_relaxed),
+            resumedMeta.tbAdjudications
+                + g_totalTbAdjudications.load(std::memory_order_relaxed)};
+        saveMeta(metaPath, meta);
         std::cout << "[datagen] positions " << fmtCount(total)
                   << " (+" << fmtCount(generated) << " run)"
-                  << "  games " << fmtCount(g_totalGames.load(std::memory_order_relaxed))
-                  << "  tb-adj " << fmtCount(g_totalTbAdjudications.load(std::memory_order_relaxed))
+                  << "  games " << fmtCount(meta.games)
+                  << "  tb-adj " << fmtCount(meta.tbAdjudications)
                   << "  pos/s " << static_cast<uint64_t>(rate)
                   << "  ETA(5B) " << std::round(etaDays * 10.0) / 10.0 << " days\n" << std::flush;
     }
 
     for (std::thread& t : workers) t.join();
+    const MetaCounters finalMeta{resumedMeta.games + g_totalGames.load(),
+                                 resumedMeta.tbAdjudications + g_totalTbAdjudications.load()};
+    saveMeta(metaPath, finalMeta);
     std::cout << "[datagen] stopped. total positions "
               << fmtCount(resumedPositions + g_totalPositions.load())
               << " (+" << fmtCount(g_totalPositions.load()) << " this run)"
-              << "  games " << fmtCount(g_totalGames.load())
-              << "  tb-adj " << fmtCount(g_totalTbAdjudications.load()) << "\n";
+              << "  games " << fmtCount(finalMeta.games)
+              << "  tb-adj " << fmtCount(finalMeta.tbAdjudications) << "\n";
     return 0;
 }
 
