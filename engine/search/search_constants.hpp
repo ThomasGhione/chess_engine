@@ -19,7 +19,7 @@ namespace engine {
 // ===================================================
 inline constexpr int32_t  MAX_PLY                = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
-inline constexpr int32_t  PAWN_CORR_HISTORY_SIZE = 1 << 14;
+inline constexpr int32_t  CORR_HISTORY_SIZE      = 1 << 14;
 inline constexpr int DEFAULT_DEPTH               = 11;
 
 // Scores within MATE_BOUND of ±INF encode a forced mate at a ply distance and

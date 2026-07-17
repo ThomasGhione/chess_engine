@@ -57,31 +57,6 @@ void rebuildSearchDerivedTables() noexcept {
 
 namespace {
 
-inline size_t corrHistIndex(uint64_t a, uint64_t c) noexcept {
-    const uint64_t k = a * 0x9E3779B97F4A7C15ULL + c * 0xD6E8FEB86659FD93ULL;
-    return static_cast<size_t>(k >> 48) & (PAWN_CORR_HISTORY_SIZE - 1);
-}
-
-inline size_t pawnCorrIndex(const chess::Board& b) noexcept {
-    return corrHistIndex(b.pawns_bb[0], b.pawns_bb[1]);
-}
-inline size_t minorCorrIndex(const chess::Board& b) noexcept {
-    return corrHistIndex(b.knights_bb[0] | b.bishops_bb[0],
-                         b.knights_bb[1] | b.bishops_bb[1]);
-}
-inline size_t majorCorrIndex(const chess::Board& b) noexcept {
-    return corrHistIndex(b.rooks_bb[0] | b.queens_bb[0],
-                         b.rooks_bb[1] | b.queens_bb[1]);
-}
-
-inline int32_t evalCorrection(const SearchRuntime& runtime, const chess::Board& b) noexcept {
-    const int side = chess::Board::colorToIndex(b.getActiveColor());
-    const int32_t c = runtime.pawnCorrHist[side][pawnCorrIndex(b)]  / CORR_HIST_DIVISOR
-                    + runtime.minorCorrHist[side][minorCorrIndex(b)] / CORR_HIST_DIVISOR
-                    + runtime.majorCorrHist[side][majorCorrIndex(b)] / CORR_HIST_DIVISOR;
-    return std::clamp(c, -CORR_TOTAL_CAP, CORR_TOTAL_CAP);
-}
-
 } // namespace
 
 
@@ -819,7 +794,7 @@ int32_t Searcher::searchPosition(
             }
         }
         // Nudge the static eval by the learned correction-history signal.
-        node.staticEval = std::clamp(node.staticEval + evalCorrection(runtime, b),
+        node.staticEval = std::clamp(node.staticEval + runtime.corrHist.correction(b),
                                      -MATE_BOUND + 1, MATE_BOUND - 1);
     }
 
@@ -969,23 +944,16 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
-    // Pawn correction history: learn the (search - corrected static eval) residual,
+    // Correction history: learn the (search - corrected static eval) residual,
     // but only from TRUSTWORTHY nodes — deep enough, quiet best move, non-mate, and
     // the search must genuinely contradict the static eval rather than merely confirm
-    // a cutoff bound. Deeper nodes weigh more; shallow noise is suppressed.
+    // a cutoff bound.
     const bool corrLearn = (best > node.staticEval)
                         || (best < node.staticEval && best < beta);
     if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
         && std::abs(best) < MATE_BOUND && chess::isValidSquare(result.move.from)
         && (b.get(result.move.to) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
-        const int32_t residual = std::clamp(best - node.staticEval, -CORR_HIST_LIMIT, CORR_HIST_LIMIT);
-        const int w = std::min(depth, CORR_HIST_MAX_W);
-        auto blendCorr = [&](int16_t& cell) noexcept {
-            cell = static_cast<int16_t>((cell * (CORR_HIST_BLEND - w) + residual * w) / CORR_HIST_BLEND);
-        };
-        blendCorr(runtime.pawnCorrHist[side][pawnCorrIndex(b)]);
-        blendCorr(runtime.minorCorrHist[side][minorCorrIndex(b)]);
-        blendCorr(runtime.majorCorrHist[side][majorCorrIndex(b)]);
+        runtime.corrHist.update(b, best, node.staticEval, depth);
     }
 
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
@@ -1053,7 +1021,7 @@ int32_t Searcher::quiescenceSearch(
         }
         best = NEG_INF;
     } else {
-        const int32_t standPat = Evaluator::evaluate(b) + evalCorrection(runtime, b);
+        const int32_t standPat = Evaluator::evaluate(b) + runtime.corrHist.correction(b);
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling
             // qsearch nodes can then cut on this stand-pat without re-evaluating.
