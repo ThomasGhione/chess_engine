@@ -55,10 +55,6 @@ void rebuildSearchDerivedTables() noexcept {
     }
 }
 
-namespace {
-
-} // namespace
-
 
 constexpr int32_t Searcher::saturatingAdd32(int32_t lhs, int32_t rhs) noexcept {
     const int64_t sum = static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs);
