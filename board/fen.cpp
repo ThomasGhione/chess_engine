@@ -42,8 +42,7 @@ void Board::fenToBoard(const std::string& fen) {
         if (const auto i = std::string_view("KQkq").find(c); i != std::string_view::npos)
             castle |= uint8_t(1 << i);
 
-    enPassant = (ep.size() == 2 && ep[0] >= 'a' && ep[0] <= 'h' && ep[1] >= '1' && ep[1] <= '8')
-        ? squareFrom(ep[0] - 'a', '8' - ep[1]) : NO_SQUARE;
+    enPassant = parseSquare(ep);
     halfMoveClock = safeParseInt(half, 0, 255, 0);
     fullMoveClock = safeParseInt(full, 1, 255, 1);
 
@@ -72,7 +71,7 @@ std::string Board::boardToFen() const {
         if (castle & (1 << i)) fen += "KQkq"[i];
     if (fen.size() == castleStart) fen += '-';
     if (!isValidSquare(enPassant)) fen += " -";
-    else { fen += ' '; fen += char('a' + chess::file(enPassant)); fen += char('8' - chess::rank(enPassant)); }
+    else { fen += ' '; fen += squareToString(enPassant); }
     fen += ' ';
     fen += std::to_string(halfMoveClock);
     fen += ' ';
