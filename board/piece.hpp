@@ -6,9 +6,10 @@
 #include "coords.hpp"
 #include "magic_numbers.hpp"
 
-#if defined(__BMI2__)
-#include <immintrin.h>
+#if !defined(__BMI2__)
+#error "HydraY requires BMI2 (PEXT) for sliding-piece attacks; build with -march=native or -march=x86-64-v3."
 #endif
+#include <immintrin.h>
 
 namespace pieces {
 
@@ -40,44 +41,33 @@ inline std::array<uint64_t, BISHOP_LOOKUP_SIZE> BISHOP_ATTACK_LOOKUP;
 
 struct MagicParams {
     uint64_t mask;
-    uint64_t magic;
-    uint32_t shift;
     uint32_t offset;
 };
 
-// Slider table index. On BMI2 the fancy-magic index (shift == 64 - popcount(mask),
-// so the magic index range equals 2^popcount(mask)) is exactly the PEXT index, so
-// PEXT is a drop-in for the same tables/offsets — one instruction instead of the
-// imul+and+shr magic chain. Used for BOTH table population and lookup, so the
-// ordering stays self-consistent. Falls back to magic off BMI2 (e.g. mingw build).
+// Slider table index via PEXT: gather the mask bits of the occupancy into a
+// dense index. With these fancy masks the index range equals 2^popcount(mask),
+// which is exactly the range the attack tables are built against — one
+// instruction, no magic multiplier. (BMI2 is required; guarded at file top.)
 __attribute__((always_inline))
 inline uint32_t sliderIndex(uint64_t occ, const MagicParams& p) noexcept {
-#if defined(__BMI2__)
-    (void)p.magic; (void)p.shift;
     return static_cast<uint32_t>(_pext_u64(occ, p.mask));
-#else
-    return static_cast<uint32_t>(((occ & p.mask) * p.magic) >> p.shift);
-#endif
 }
 
-// Pre-computed params (constexpr, .rodata)
-template<typename MaskArray, typename MagicArray>
-inline constexpr std::array<MagicParams, 64> buildMagicParams(const MaskArray& masks, const MagicArray& magics) {
+// Pre-computed params (constexpr, .rodata): mask + running table offset.
+template<typename MaskArray>
+inline constexpr std::array<MagicParams, 64> buildMagicParams(const MaskArray& masks) {
     std::array<MagicParams, 64> table{};
     uint32_t runningOffset = 0;
     for (int sq = 0; sq < 64; ++sq) {
         table[sq].mask = masks[sq];
-        table[sq].magic = magics[sq];
-        int bits = std::popcount(masks[sq]);
-        table[sq].shift = 64 - bits;
         table[sq].offset = runningOffset;
-        runningOffset += (1 << bits);
+        runningOffset += (1u << std::popcount(masks[sq]));
     }
     return table;
 }
 
-inline constexpr std::array<MagicParams, 64> ROOK_PARAMS = buildMagicParams(ROOK_MASKS, ROOK_MAGICS);
-inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = buildMagicParams(BISHOP_MASKS, BISHOP_MAGICS);
+inline constexpr std::array<MagicParams, 64> ROOK_PARAMS = buildMagicParams(ROOK_MASKS);
+inline constexpr std::array<MagicParams, 64> BISHOP_PARAMS = buildMagicParams(BISHOP_MASKS);
 
 // ===================================================
 // MAGIC BITBOARDS - HELPER FUNCTIONS
