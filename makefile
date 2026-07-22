@@ -126,7 +126,7 @@ DEPFILES = $(ALL_OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(TEST_MAIN_OBJ:.o=.d) $(PERF_OB
 .PHONY: all prod prod_windows parallel_prod prod_sequential debug test perf tt-huge-bench all-tests analyze analyze-setup analyze-cppcheck analyze-clang-tidy analyze-iwyu analyze-scan-build analyze-gcc-analyzer analyze-cppclean analyze-lizard analyze-summary complexity test-valgrind cls cls-compile-files get-image help debug-vars
 
 # Default target for plain `make`
-all: PRODFLAGS += -DDEBUG -fomit-frame-pointer -O3
+all: PRODFLAGS += -DDEBUG -fomit-frame-pointer
 all: prod
 
 chess: $(NAME_APP)
