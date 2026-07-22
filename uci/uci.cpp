@@ -226,8 +226,6 @@ namespace uci {
         std::cout
             << "id name HydraY 2.1.0\n"
             << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
-            << "option name BookFile type string default engine/komodo.bin\n"
-            << "option name Opening type check default true\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"
@@ -269,16 +267,6 @@ namespace uci {
 
         if (optionName.empty()) return;
         const std::string normalizedName = normalizedOptionName(optionName);
-        if (normalizedName == "bookfile") {
-            const std::string path(optionValue);
-            if (engine.openingBook.load(path)) {
-                std::cout << "info string BookFile loaded: " << path << "\n";
-            } else {
-                std::cout << "info string BookFile error: could not load '" << path << "'\n";
-            }
-            return;
-        }
-
         if (normalizedName == "evalfile") {
             const std::string path(optionValue);
             if (NNUE::loadNetwork(path)) {
@@ -343,7 +331,7 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "opening" && normalizedName != "searchapimutexguard") {
+        if (normalizedName != "searchapimutexguard") {
             for (auto& option : kSpinOptions) {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
@@ -372,13 +360,6 @@ namespace uci {
         if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
             std::cout << "info string invalid value for " << optionName << ": '" << optionValue
                       << "' (use true/false)\n";
-            return;
-        }
-
-        if (normalizedName == "opening") {
-            engine.openingEnabled.store(enabled, std::memory_order_relaxed);
-            std::cout << "info string Opening "
-                      << (enabled ? "enabled" : "disabled") << '\n';
             return;
         }
 
