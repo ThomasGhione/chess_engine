@@ -20,11 +20,8 @@ inline Board::MoveKind Board::classifyMoveKind(
     uint8_t destBefore,
     const Square& prevEnPassant
 ) noexcept {
-    const uint8_t fromRank = chess::rank(fromIndex);
-    const uint8_t toRank = chess::rank(toIndex);
-
     if (movingType == KING) {
-        if (fromRank == toRank) {
+        if (chess::rank(fromIndex) == chess::rank(toIndex)) {
             const int df = chess::file(toIndex) - chess::file(fromIndex);
             if (df == 2 || df == -2) {
                 return MoveKind::Castling;
@@ -37,20 +34,19 @@ inline Board::MoveKind Board::classifyMoveKind(
         return (destBefore != EMPTY) ? MoveKind::Capture : MoveKind::Quiet;
     }
 
-    const uint8_t fromFile = chess::file(fromIndex);
-    const uint8_t toFile = chess::file(toIndex);
-    if (fromFile != toFile
+    if (chess::file(fromIndex) != chess::file(toIndex)
         && destBefore == EMPTY
         && isValidSquare(prevEnPassant)
         && toIndex == prevEnPassant) {
         return MoveKind::EnPassant;
     }
 
+    const uint8_t toRank = chess::rank(toIndex);
     if (toRank == promotionRank(movingColor == WHITE)) {
         return (destBefore != EMPTY) ? MoveKind::PromotionCapture : MoveKind::PromotionQuiet;
     }
 
-    const int dr = toRank - fromRank;
+    const int dr = toRank - chess::rank(fromIndex);
     if (dr == 2 || dr == -2) {
         return MoveKind::DoublePawnPush;
     }

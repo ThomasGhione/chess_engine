@@ -17,7 +17,7 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
     const uint8_t destBefore  = get(toIndex);
 
     prepareMoveState(st, moving, destBefore);
-    st.moveKind          = classifyMoveKind(movingType, movingColor, fromIndex, toIndex, destBefore, st.prevEnPassant);
+    st.moveKind = classifyMoveKind(movingType, movingColor, fromIndex, toIndex, destBefore, st.prevEnPassant);
 
     uint64_t newHash = currentHash;
     if (st.prevEpHashFile < 8) {
