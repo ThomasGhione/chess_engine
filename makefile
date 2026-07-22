@@ -42,10 +42,11 @@ WIN_CXX = x86_64-w64-mingw32-g++
 WIN_CC = x86_64-w64-mingw32-gcc
 WIN_PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -march=x86-64-v3 -static -static-libgcc -static-libstdc++ -fopenmp -flto=4 -fext-numeric-literals
 
-# Local static-analysis tools
-CPPCHECK = $(SCRIPT_DIR)/cppcheck-2.19.0/cppcheck
+# Static-analysis tools: cppcheck and lizard come from the system now
+# (install: apt/brew cppcheck, `pip install lizard`). gprof2dot stays vendored.
+CPPCHECK = cppcheck
 COMPILATION_DB = $(ROOT_DIR)/compile_commands.json
-LIZARD = $(SCRIPT_DIR)/lizard-1.19.0/lizard.py
+LIZARD = lizard
 GPROF2DOT = $(SCRIPT_DIR)/gprof2dot.py
 LLM_ANALYSIS_PROMPT = $(DOC_DIR)/static-analysis-summary-prompt.txt
 
@@ -247,8 +248,13 @@ analyze-cppcheck:
 	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
 	@printf "1. CPPCHECK ANALYSIS\n" >> $(ANALYSIS_LOG)
 	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
-	@$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> $(ANALYSIS_LOG) 2>&1
-	@printf "[1/7] Running cppcheck terminated\n"
+	@if command -v $(CPPCHECK) >/dev/null 2>&1; then \
+		$(CPPCHECK) $(ALL_ANALYSIS_FILES) --check-level=exhaustive --enable=all --suppress=missingIncludeSystem --inline-suppr --std=c++23 --quiet >> $(ANALYSIS_LOG) 2>&1; \
+		printf "[1/7] Running cppcheck terminated\n"; \
+	else \
+		printf "cppcheck not found - skipping (install it or 'pip install'/apt)\n" >> $(ANALYSIS_LOG); \
+		printf "[1/7] Running cppcheck skipped\n"; \
+	fi
 
 analyze-clang-tidy:
 	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
@@ -306,12 +312,12 @@ analyze-lizard:
 	@printf "\n========================================\n" >> $(ANALYSIS_LOG)
 	@printf "7. LIZARD COMPLEXITY ANALYSIS\n" >> $(ANALYSIS_LOG)
 	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
-	@if [ -f $(LIZARD) ]; then \
-		python3 $(LIZARD) -l cpp -w -L 60 -C 15 --csv $(ROOT_DIR) > $(COMPLEXITY_REPORT) 2>&1 || true; \
-		python3 $(LIZARD) -l cpp -w -L 60 -C 15 $(ROOT_DIR) >> $(ANALYSIS_LOG) 2>&1 || true; \
+	@if command -v $(LIZARD) >/dev/null 2>&1; then \
+		$(LIZARD) -l cpp -w -L 60 -C 15 --csv $(ROOT_DIR) > $(COMPLEXITY_REPORT) 2>&1 || true; \
+		$(LIZARD) -l cpp -w -L 60 -C 15 $(ROOT_DIR) >> $(ANALYSIS_LOG) 2>&1 || true; \
 		printf "[7/7] Running lizard terminated\n"; \
 	else \
-		printf "Lizard not found - skipping\n" >> $(ANALYSIS_LOG); \
+		printf "Lizard not found - skipping ('pip install lizard')\n" >> $(ANALYSIS_LOG); \
 		printf "[7/7] Running lizard skipped\n"; \
 	fi
 

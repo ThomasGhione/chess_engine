@@ -18,8 +18,8 @@ a MinGW target exists for Windows builds.
 - OpenMP (`-fopenmp`)
 - x86-64 CPU; AVX2 strongly recommended (the NNUE forward pass has a scalar
   fallback, but it is much slower)
-- Optional analysis tools: `valgrind`, `clang-tidy`, `scan-build`,
-  `include-what-you-use`, `cppclean`, `lizard`, `perf`
+- Optional analysis tools: `valgrind`, `cppcheck`, `clang-tidy`, `scan-build`,
+  `include-what-you-use`, `cppclean`, `lizard` (`pip install lizard`), `perf`
 - Optional for Windows builds: `mingw-w64`
 - Optional for tuning/testing: `chess-tuning-tools`, `cutechess-cli`,
   `fastchess`, and `ordo`
