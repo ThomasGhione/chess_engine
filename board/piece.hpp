@@ -70,7 +70,10 @@ static_assert(BISHOP_MASKS[0] == 0x0040201008040200ULL && BISHOP_MASKS[27] == 0x
 
 // Table index via PEXT: with these fancy masks the index range equals
 // 2^popcount(mask), exactly the range the attack tables are built against.
-struct MagicParams { uint64_t mask; uint32_t offset; };
+struct MagicParams { 
+    uint64_t mask; 
+    uint32_t offset; 
+};
 
 __attribute__((always_inline))
 inline uint32_t sliderIndex(uint64_t occ, const MagicParams& p) noexcept {
