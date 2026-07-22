@@ -65,7 +65,6 @@ template<typename MaskArray, typename MagicArray>
 inline constexpr std::array<MagicParams, 64> buildMagicParams(const MaskArray& masks, const MagicArray& magics) {
     std::array<MagicParams, 64> table{};
     uint32_t runningOffset = 0;
-    //FIXME Fare il cliclo in modo parallelo
     for (int sq = 0; sq < 64; ++sq) {
         table[sq].mask = masks[sq];
         table[sq].magic = magics[sq];
@@ -127,7 +126,6 @@ inline constexpr uint64_t calculateBishopAttacksClassical(int8_t square, uint64_
     return calculateSlidingAttacks(square, occupancy, BISHOP_DIRS);
 }
 
-//FIXME Troppi parametri
 // Fill attack table for one square - works for both rook and bishop
 template<size_t N, typename AttackFunc>
 inline void populateAttackTable(int square, const MagicParams& p,
@@ -144,7 +142,6 @@ inline void populateAttackTable(int square, const MagicParams& p,
 
 // Initialize all magic bitboards (call at program startup)
 inline void initMagicBitboards() noexcept {
-    //FIXME Aggiungere this
     for (int sq = 0; sq < 64; ++sq) {
         populateAttackTable(sq, ROOK_PARAMS[sq], ROOK_ATTACK_LOOKUP, calculateRookAttacksClassical);
         populateAttackTable(sq, BISHOP_PARAMS[sq], BISHOP_ATTACK_LOOKUP, calculateBishopAttacksClassical);
@@ -184,7 +181,6 @@ inline constexpr U64 getPawnAttacks(const int8_t squareIndex, const bool isWhite
 	// White pawns attack "forward" (rank decreases), Black pawns attack "backward" (rank increases)
 	int8_t newRank = rank + (isWhite ? -1 : 1);
 	
-	//FIXME Rendere constexpr 
 	if (newRank >= 0 && newRank < 8) {
 		if (file - 1 >= 0) {
 			attackBitboard |= ONE << (newRank * 8 + (file - 1));

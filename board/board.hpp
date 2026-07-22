@@ -51,7 +51,6 @@ class Board {
 public:
     // --- Enums ---
 
-    //FIXME Spostare enum in classi enum
     enum CastlingBits : uint8_t {
         WHITE_KINGSIDE  = 0,
         WHITE_QUEENSIDE = 1,
@@ -282,7 +281,6 @@ private:
     inline void    copyFromBoard(const Board& other) noexcept;
 
     // --- Private data ---
-    //FIXME Dentro board abbiamo board?
     board    chessboard;
     uint64_t currentHash = 0ULL;
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{};

@@ -1,6 +1,5 @@
 #include "driver.hpp"
 
-//FIXME Spostare gli include dentro .hpp non qui
 #include "../engine/engine.hpp"
 #include "../debug.hpp"
 
@@ -12,7 +11,6 @@ namespace driver {
 namespace {
 
 using chess::Board;
-//FIXME Mettere questi parametri dentro classe
 constexpr int32_t MAX_PARAM_LENGTH = 3;
 constexpr int32_t MODE = 1;
 constexpr int32_t COLOR = 2;
@@ -52,7 +50,6 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
     if (argc != NO_ARGS && argc <= MAX_PARAM_LENGTH) {
         std::string mode = argv[MODE];
         for (char& c : mode) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        //FIXME Evitare numeri magici
         if (mode == "-bvb" || mode == "41") startSession(GameMode::BvB);
         else if (mode == "-pvp" || mode == "21") startSession(GameMode::PvP);
         else if (mode == "-pvb" || mode == "11") {
@@ -67,7 +64,6 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
         }
     }
 
-    //FIXME Evitare while true
     while (true) {
         engine.reset();
         static constexpr const char* MAIN_PROMPT =
@@ -129,7 +125,6 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
             if (isPlayerTurn) {
                 std::cout << (engine.board.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
                 std::string playerInput;
-                //FIXME Evitare while true
                 while (true) {
                     std::cout << getBasicBoard(engine.board) << "\n";
                     std::cout << "Enter your move (type 'q' to quit): " << std::flush;
@@ -255,7 +250,6 @@ uint32_t Driver::showMenu(const char* prompt, uint8_t minChoice, uint8_t maxChoi
 }
 
 void Driver::clearScreen() {
-//FIXME Da aggiungere il controllo sul valore di ritorno
 #ifdef _WIN32
     [[maybe_unused]] const int result = std::system("cls");
 #else
