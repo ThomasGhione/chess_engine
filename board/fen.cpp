@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include "../ascii_utils.hpp"
 #include <algorithm>
 #include <charconv>
 #include <sstream>
@@ -22,7 +23,7 @@ void Board::fenToBoard(const std::string& fen) {
         int rank = 7, file = 0;
         for (char c : board) {
             if (c == '/') { --rank; file = 0; }
-            else if (std::isdigit(static_cast<unsigned char>(c))) file += c - '0';
+            else if (ascii::isDigit(c)) file += c - '0';
             else {
                 if (rank < 0 || file > 7) return;
                 const uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];

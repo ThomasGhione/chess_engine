@@ -17,6 +17,10 @@ namespace ascii {
     return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
 
+[[nodiscard]] constexpr bool isDigit(char c) noexcept {
+    return c >= '0' && c <= '9';
+}
+
 [[nodiscard]] constexpr bool iequals(std::string_view lhs, std::string_view rhs) noexcept {
     if (lhs.size() != rhs.size()) return false;
     for (std::size_t i = 0; i < lhs.size(); ++i) {

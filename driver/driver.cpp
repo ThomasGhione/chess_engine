@@ -1,5 +1,6 @@
 #include "driver.hpp"
 
+#include "../ascii_utils.hpp"
 #include "../engine/engine.hpp"
 #include "../debug.hpp"
 
@@ -35,7 +36,7 @@ bool parseColorArg(int argc, char* argv[], bool& outIsWhite) noexcept {
     }
     const char* arg = argv[COLOR];
     if (arg != nullptr && arg[0] != '\0' && arg[1] == '\0') {
-        const char c = char(std::tolower(static_cast<unsigned char>(arg[0])));
+        const char c = ascii::toLower(arg[0]);
         if (c == 'w' || c == 'b') { outIsWhite = (c == 'w'); return true; }
     }
     std::cout << "Error: Invalid color option. Use 'w' for white or 'b' for black.\n";
@@ -49,7 +50,7 @@ Driver::Driver(engine::Engine& e) : engine(e), uciInterface(e) {}
 [[noreturn]] void Driver::startGame(int argc, char* argv[]) noexcept {
     if (argc != NO_ARGS && argc <= MAX_PARAM_LENGTH) {
         std::string mode = argv[MODE];
-        for (char& c : mode) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (char& c : mode) c = ascii::toLower(c);
         if (mode == "-bvb" || mode == "41") startSession(GameMode::BvB);
         else if (mode == "-pvp" || mode == "21") startSession(GameMode::PvP);
         else if (mode == "-pvb" || mode == "11") {
