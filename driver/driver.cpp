@@ -118,7 +118,7 @@ void Driver::startSession(GameMode mode, bool playerIsWhite) noexcept {
 }
 
 void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, bool printBoard) noexcept {
-    if (printBoard) std::cout << getBasicBoard(engine.board) << "\n";
+    if (printBoard) std::cout << boardToString(engine.board) << "\n";
 
     while (!engine.isGameOver()) {
         for (const bool isPlayerTurn : {firstPlayerTurn, secondPlayerTurn}) {
@@ -126,7 +126,7 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
                 std::cout << (engine.board.getActiveColor() == chess::Board::WHITE ? "\nWhite's turn.\n\n" : "\nBlack's turn.\n\n");
                 std::string playerInput;
                 while (true) {
-                    std::cout << getBasicBoard(engine.board) << "\n";
+                    std::cout << boardToString(engine.board) << "\n";
                     std::cout << "Enter your move (type 'q' to quit): " << std::flush;
                     std::cin >> playerInput;
 
@@ -171,7 +171,7 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
                     }
 
                     DBG_TIMER_US(moveTimer, "move executed");
-                    std::cout << "\n" << getBasicBoard(engine.board) << "\n";
+                    std::cout << "\n" << boardToString(engine.board) << "\n";
                     break;
                 }
             } else {
@@ -202,37 +202,28 @@ void Driver::playAlternatingTurns(bool firstPlayerTurn, bool secondPlayerTurn, b
                 engine.reset();
                 return;
             }
-            if (printBoard) std::cout << getBasicBoard(engine.board) << "\n";
+            if (printBoard) std::cout << boardToString(engine.board) << "\n";
         }
     }
 }
 
-std::string Driver::getBasicBoard(const Board& board) {
-    static constexpr char FILES_ROW[] = "  a b c d e f g h\n";
-    static constexpr std::size_t FILES_ROW_LEN = sizeof(FILES_ROW) - 1;
-    static constexpr std::size_t RANK_ROW_LEN = 21;
-    static constexpr std::size_t BOARD_STR_LEN = FILES_ROW_LEN + (8 * RANK_ROW_LEN) + FILES_ROW_LEN;
+std::string Driver::boardToString(const Board& board) {
+    static constexpr std::string_view FILES_ROW = "  a b c d e f g h\n";
 
-    std::string result(BOARD_STR_LEN, '\0');
-    char* out = result.data();
-
-    std::memcpy(out, FILES_ROW, FILES_ROW_LEN);
-    out += FILES_ROW_LEN;
-
+    std::string result(FILES_ROW);
     for (int row = 7; row >= 0; --row) {
         const char rankChar = static_cast<char>('1' + row);
-        *out++ = rankChar;
-        *out++ = ' ';
+        result += rankChar;
+        result += ' ';
         for (int col = 0; col < 8; ++col) {
-            *out++ = pieceToSymbol(board.get(row, col));
-            *out++ = ' ';
+            result += pieceToSymbol(board.get(row, col));
+            result += ' ';
         }
-        *out++ = ' ';
-        *out++ = rankChar;
-        *out++ = '\n';
+        result += ' ';
+        result += rankChar;
+        result += '\n';
     }
-
-    std::memcpy(out, FILES_ROW, FILES_ROW_LEN);
+    result += FILES_ROW;
     return result;
 }
 

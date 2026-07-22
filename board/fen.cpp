@@ -12,7 +12,7 @@ uint8_t Board::safeParseInt(const std::string& section, int min, int max, int de
     return (res.ec == std::errc{} && res.ptr == section.data() + section.size()) ? std::clamp(v, min, max) : defaultValue;
 }
 
-void Board::fromFenToBoard(const std::string& fen) {
+void Board::fenToBoard(const std::string& fen) {
     std::istringstream fenStream(fen);
     std::string board, active, castling, ep, half, full;
     if (!(fenStream >> board >> active >> castling >> ep >> half >> full)) return;
@@ -50,7 +50,7 @@ void Board::fromFenToBoard(const std::string& fen) {
     rebuildRepetitionHistory();
 }
 
-std::string Board::fromBoardToFen() const {
+std::string Board::boardToFen() const {
     constexpr std::array<char, 8> pieceChar = {'.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'};
     std::string fen;
     for (int rank = 7; rank >= 0; --rank) {

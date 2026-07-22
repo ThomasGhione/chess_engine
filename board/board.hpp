@@ -208,8 +208,8 @@ public:
     inline void        refreshNnueAccumulator() noexcept;
 
     // --- FEN ---
-    void        fromFenToBoard(const std::string& fen);
-    std::string fromBoardToFen() const;
+    void        fenToBoard(const std::string& fen);
+    std::string boardToFen() const;
 
     // --- Public bitboards (direct access for eval/search hot paths) ---
     std::array<uint64_t, 2> pawns_bb   = {0ULL, 0ULL};

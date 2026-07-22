@@ -4,11 +4,11 @@
 // Constructors
 // ==============================
 inline Board::Board() noexcept {
-    fromFenToBoard(STARTING_FEN);
+    fenToBoard(STARTING_FEN);
 }
 
 inline Board::Board(const std::string& fen) {
-    fromFenToBoard(fen);
+    fenToBoard(fen);
 }
 
 inline Board::Board(const Board& other) noexcept {
