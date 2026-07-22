@@ -111,8 +111,8 @@ void playGame(Engine& engine, bool whiteHuman, bool blackHuman) {
 
     std::cout << boardToString(engine.board);
     if (engine.isMate())
-        std::cout << "Checkmate — " << (engine.board.getActiveColor() == Board::WHITE ? "Black" : "White") << " wins.\n";
-    else if (engine.isStalemate()) std::cout << "Stalemate — draw.\n";
+        std::cout << "Checkmate - " << (engine.board.getActiveColor() == Board::WHITE ? "Black" : "White") << " wins.\n";
+    else if (engine.isStalemate()) std::cout << "Stalemate - draw.\n";
     else                           std::cout << "Draw.\n";
 
     std::cout << "\nPress Enter to return to the menu..." << std::flush;
