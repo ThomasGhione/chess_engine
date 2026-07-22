@@ -23,8 +23,6 @@ inline Board::MoveKind Board::classifyMoveKind(
     const uint8_t fromRank = chess::rank(fromIndex);
     const uint8_t toRank = chess::rank(toIndex);
 
-    //FIXME Riduci numero indetazioni ci sono degli IF annidati
-    // In questo modo il secondo if diventa con una sola indentazione
     if (movingType == KING) {
         if (fromRank == toRank) {
             const int df = chess::file(toIndex) - chess::file(fromIndex);
@@ -41,7 +39,6 @@ inline Board::MoveKind Board::classifyMoveKind(
 
     const uint8_t fromFile = chess::file(fromIndex);
     const uint8_t toFile = chess::file(toIndex);
-    //FIXME Usa funzione helper
     if (fromFile != toFile
         && destBefore == EMPTY
         && isValidSquare(prevEnPassant)
@@ -147,7 +144,6 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
 }
 
 inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {
-    //FIXME Elimina costati magiche
     static constexpr std::array<uint8_t, 4> ROOK_CASTLE_CLEAR_MASKS = {
         1u << WHITE_QUEENSIDE,
         1u << WHITE_KINGSIDE,
@@ -207,8 +203,6 @@ inline void Board::doMoveByKind(
     uint8_t toIndex,
     uint8_t promotionType
 ) noexcept {
-    //FIXME La funzione ha troppi parametri
-    //FIXME La funzione e' troppo alta
     if constexpr (Kind == MoveKind::EnPassant) {
         // Remove the captured pawn from board storage and bitboards before moving.
         const int8_t captureOffset = (movingColor == WHITE) ? 8 : -8;
@@ -281,7 +275,6 @@ inline void Board::undoMoveByKind(
     uint8_t fromIndex,
     uint8_t toIndex
 ) noexcept {
-    //FIXME Aggiungere this
     if constexpr (isPromotionKind(Kind)) {
         // Rebuild the pawn on the destination square before rewinding the move.
         const uint8_t color = pieceOnTo & MASK_COLOR;

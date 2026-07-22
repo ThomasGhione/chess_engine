@@ -1,5 +1,3 @@
-//FIXME Usare i this in chiamate
-
 // ==============================
 // Constructors
 // ==============================
@@ -23,7 +21,6 @@ inline Board& Board::operator=(const Board& other) noexcept {
 }
 
 inline void Board::copyFromBoard(const Board& other) noexcept {
-    //FIXME Creare 3 funzioni helper per racchiudere i blocchi di logica.
     pawns_bb = other.pawns_bb;
     knights_bb = other.knights_bb;
     bishops_bb = other.bishops_bb;
