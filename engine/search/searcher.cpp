@@ -235,9 +235,7 @@ chess::Move Searcher::searchBestMove(
     chess::Board& board,
     SearchRuntime& runtime,
     int requestedDepth) noexcept {
-    const int targetDepth = (requestedDepth == 0)
-        ? DEFAULT_DEPTH
-        : requestedDepth;
+    const int targetDepth = (requestedDepth == 0) ? DEFAULT_DEPTH : requestedDepth;
 
     runtime.clearInterrupted();
 
@@ -248,8 +246,8 @@ chess::Move Searcher::searchBestMove(
     runtime.softResetHistory();
 
     // Lazy SMP: helpers run their own full iterative deepening on private
-    // Boards and runtimes, sharing only the TT — and through it move ordering
-    // and cutoff knowledge — with the main thread. Odd helpers start one ply
+    // Boards and runtimes, sharing only the TT, and through it move ordering
+    // and cutoff knowledge, with the main thread. Odd helpers start one ply
     // deeper so the pack doesn't lockstep over identical trees. The main
     // thread's result is authoritative; helpers stop the moment it returns.
     const int helperCount = std::clamp(runtime.maxThreads - 1, 0, MAX_HELPER_THREADS);
