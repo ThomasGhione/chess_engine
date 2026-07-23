@@ -462,12 +462,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     CaptureEntry searchedCaptures[MAX_CAPTURES_TRACKED];
     int numSearchedCaptures = 0;
 
-    const bool canFutilityPrune =
-        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 6;
+    // Interior non-PV node past the root: shared gate for futility, LMP, history pruning and SEE capture pruning below.
+    const bool interiorNonPv = !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0;
+
+    const bool canFutilityPrune = interiorNonPv && ctx.depth >= 1 && ctx.depth <= 6;
     const int32_t futilityMargin = canFutilityPrune ? FUTILITY_MARGINS[ctx.depth] : 0;
 
-    const bool canLMP =
-        !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth >= 1 && ctx.depth <= 4;
+    const bool canLMP = interiorNonPv && ctx.depth >= 1 && ctx.depth <= 4;
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
@@ -519,8 +520,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         // History-based quiet pruning: skip late quiet moves with very negative
         // history at low depth — they reliably fail to improve alpha.
-        if (isQuietMove && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0
-            && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
+        if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
             const int32_t histScore = runtime.history[usSide][m.from][m.to];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
                 continue;
@@ -530,8 +530,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // SEE pruning: skip clearly losing captures at shallow non-PV nodes.
         // Move 0 (a winning or hash capture) is always searched; the margin
         // scales with depth so deeper nodes tolerate slightly worse trades.
-        if (wasCapture && !isPromotionCandidate && moveIndex > 0
-            && !ctx.isPVNode && !ctx.inCheck && ctx.ply > 0 && ctx.depth <= 3
+        if (wasCapture && !isPromotionCandidate && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
             && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
             continue;
         }
@@ -846,16 +845,14 @@ int32_t Searcher::searchPosition(
         }
     }
 
+    // Interior non-PV node past the root: shared gate for NMP, reverse futility and probcut.
+    const bool interiorNonPv = !node.isPVNode && !node.inCheck && ply > 0;
+
     // Negamax NMP gate: allow a null move when the static eval is within
     // ~100cp of beta (giving the opponent a free move likely still fails high).
     const int32_t nmpEvalGate = node.staticEval + 100;
-    const bool canNullMove = allowNullMove
-        && !node.isPVNode
-        && !node.inCheck
-        && ply > 0
-        && depth >= 4
-        && nonPawnMajors >= 2
-        && isBetaCutoff(nmpEvalGate, beta);
+    const bool canNullMove = allowNullMove && interiorNonPv
+        && depth >= 4 && nonPawnMajors >= 2 && isBetaCutoff(nmpEvalGate, beta);
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
@@ -864,9 +861,7 @@ int32_t Searcher::searchPosition(
         return score;
     }
 
-    const bool canReverseFutilityPrune =
-        !node.isPVNode && !node.inCheck && ply > 0 && depth <= 3;
-    if (canReverseFutilityPrune
+    if (interiorNonPv && depth <= 3
         && tryReverseFutilityPruning(node, depth, beta, score)) {
         return score;
     }
@@ -874,7 +869,7 @@ int32_t Searcher::searchPosition(
     // Probcut (negamax): if a winning capture, searched shallow with a null
     // window above beta+margin, still beats beta+margin, this node likely
     // fails high. SEE is side-to-move relative so the filter is one-sided.
-    if (!node.isPVNode && !node.inCheck && depth >= PROBCUT_MIN_DEPTH && ply > 0
+    if (interiorNonPv && depth >= PROBCUT_MIN_DEPTH
         && std::abs(beta) < POS_INF - 1000) {
         const int32_t probcutBound = saturatingAdd32(beta, PROBCUT_MARGIN);
         const int32_t pcAlpha = probcutBound - 1;
@@ -1037,13 +1032,8 @@ int32_t Searcher::quiescenceSearch(
         int32_t deltaMargin = QUEEN_VALUE;
         const int side = chess::Board::colorToIndex(activeColor);
         const uint64_t ourPawns = b.pawns_bb[side];
-        
-        const uint64_t nearPromoPawns = usIsWhite
-            ? (ourPawns & WHITE_NEAR_PROMO_PAWNS)
-            : (ourPawns & BLACK_NEAR_PROMO_PAWNS);
-        if (nearPromoPawns) {
-            deltaMargin += QSEARCH_PAWN_PROMO_DELTA;
-        }
+        const uint64_t nearPromoMask = usIsWhite ? WHITE_NEAR_PROMO_PAWNS : BLACK_NEAR_PROMO_PAWNS;
+        if (ourPawns & nearPromoMask) deltaMargin += QSEARCH_PAWN_PROMO_DELTA;
 
         // standPat is already side-to-move relative (negamax eval).
         if (standPat < QSEARCH_STANDPAT_BAD) {
@@ -1134,6 +1124,10 @@ chess::Move Searcher::getBestMove(
 
     const MoveList& rootMoves = orderedRootMoves.moves;
 
+    const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b) {
+        return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, true, &localNodes);
+    };
+
     // Plain PVS root loop: full window for the first move, null-window scout
     // plus research for the rest. Parallelism lives in searchBestMove (Lazy
     // SMP helper threads run their own iterative deepening over a shared TT).
@@ -1148,13 +1142,10 @@ chess::Move Searcher::getBestMove(
 
         int32_t score;
         if (isFirst) {
-            score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
+            score = scoreMove(m, alpha, beta);
         } else {
-            const int32_t nullBeta = saturatingAdd32(alpha, 1);
-            score = searchRootMoveScore(rootBoard, m, runtime, alpha, nullBeta, true, true, &localNodes);
-            if (shouldResearchPVS(score, alpha)) {
-                score = searchRootMoveScore(rootBoard, m, runtime, alpha, beta, true, true, &localNodes);
-            }
+            score = scoreMove(m, alpha, saturatingAdd32(alpha, 1));
+            if (shouldResearchPVS(score, alpha)) score = scoreMove(m, alpha, beta);
         }
 
         searchedAnyMove = true;

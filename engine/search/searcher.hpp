@@ -33,17 +33,17 @@ public:
     // --- Result structs ---
     struct SearchMoveResult {
         chess::Move move;
-        int32_t            score;
+        int32_t     score;
     };
 
     struct IterativeSearchResult {
-        bool     hasLegalMoves      = false;
-        bool     completedAnyDepth  = false;
-        bool     terminalRoot       = false;
-        int      completedDepth     = 0;
+        bool    hasLegalMoves     {};
+        bool    completedAnyDepth {};
+        bool    terminalRoot      {};
+        int     completedDepth    {};
         TT::Entry::Flag rootScoreBound = TT::Entry::EXACT;
-        chess::Move bestMove{};
-        int32_t            bestScore = 0;
+        chess::Move bestMove      {};
+        int32_t bestScore         {};
     };
 
     // --- Public interface ---
@@ -74,12 +74,12 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        bool allowTTWrite                   = true,
-        bool allowHeuristicUpdates          = true,
+        bool allowTTWrite               = true,
+        bool allowHeuristicUpdates      = true,
         const chess::Move* previousMove = nullptr,
-        uint64_t* nodeCounter               = nullptr,
-        bool allowNullMove                  = true,
-        chess::Move excludedMove     = {}) noexcept;
+        uint64_t* nodeCounter           = nullptr,
+        bool allowNullMove              = true,
+        chess::Move excludedMove        = {}) noexcept;
 
     static int32_t quiescenceSearch(
         chess::Board& b,
@@ -91,28 +91,28 @@ public:
         bool allowTTWrite     = true) noexcept;
 
 private:
-    // --- Private context structs ---
+
     struct SearchContext {
-        const chess::Move* previousMove = nullptr;
-        uint64_t* nodeCounter      = nullptr;
-        int16_t* contHistEntry     = nullptr;
+        const chess::Move* previousMove {};
+        uint64_t* nodeCounter           {};
+        int16_t* contHistEntry          {};
         int      depth;
         int      ply;
-        int32_t  staticEval        = 0;
-        int      singularExtension = 0;
-        chess::Move excludedMove = {};
+        int32_t  staticEval             {};
+        int      singularExtension      {};
+        chess::Move excludedMove        {};
         uint8_t activeColor;
-        bool     inCheck           = false;
-        bool     isPVNode          = false;
-        bool     iirActive         = false;
-        bool     improving         = false;
+        bool     inCheck                {};
+        bool     isPVNode               {};
+        bool     iirActive              {};
+        bool     improving              {};
     };
 
     struct SearchNodeState {
         uint8_t activeColor = chess::Board::WHITE;
-        bool    inCheck     = false;
-        bool    isPVNode    = false;
-        int32_t staticEval  = 0;
+        bool    inCheck     {};
+        bool    isPVNode    {};
+        int32_t staticEval  {};
     };
 
     // --- Score utilities ---
@@ -125,8 +125,8 @@ private:
     // (scores are raw TT scores; mate rebasing happens after the cutoff check).
     static constexpr bool ttBoundCutoff(uint8_t flag, int32_t score, int32_t alpha, int32_t beta) noexcept {
         return flag == TT::Entry::EXACT
-            || (flag == TT::Entry::LOWERBOUND && score >= beta)
-            || (flag == TT::Entry::UPPERBOUND && score <= alpha);
+           || (flag == TT::Entry::LOWERBOUND && score >= beta)
+           || (flag == TT::Entry::UPPERBOUND && score <= alpha);
     }
     static constexpr int32_t saturatingAdd32(int32_t lhs, int32_t rhs) noexcept;
     static constexpr int32_t saturatingSub32(int32_t lhs, int32_t rhs) noexcept;
