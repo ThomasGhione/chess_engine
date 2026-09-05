@@ -76,12 +76,20 @@ public:
         const chess::Board& b) noexcept;
 
 private:
+    // Everything the per-move scorer needs, with the node-invariant parts
+    // resolved once by the caller. killerMoves[ply][0..1] and the countermove
+    // slot depend only on the node, not on the move being scored, so reading
+    // them inside the loop re-walked SearchRuntime once per move -- ~33 moves
+    // per node, tens of millions of redundant dependent loads per search.
     struct MoveOrderingContext {
         const chess::Move* previousMove;
         const SearchRuntime& runtime;
         const int16_t* contHistEntry;
         int ply;
         int usSide;
+        chess::Move killer0;
+        chess::Move killer1;
+        uint16_t counterMove;   // 0 = none
     };
 
     // square == 64 means "no attacker" (type then unspecified).

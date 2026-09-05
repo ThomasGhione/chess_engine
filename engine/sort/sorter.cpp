@@ -1,5 +1,7 @@
 #include "sorter.hpp"
 
+#include <algorithm>  // std::clamp, std::min, std::max
+
 #include "../engine.hpp"
 
 namespace engine {
@@ -11,10 +13,9 @@ int32_t computeSeeForPicker(const chess::Board& b, const chess::Move& m) noexcep
 Sorter::CaptureInfo Sorter::classifyCapture(
         const chess::Move& m, int fromPieceType, int toPieceType,
         const chess::Square& enPassant) noexcept {
-    const bool isEpCapture = chess::isValidSquare(enPassant)
+    const bool isEpCapture = (m.to == enPassant)
         && fromPieceType == chess::Board::PAWN
         && toPieceType   == chess::Board::EMPTY
-        && (m.to == enPassant)
         && (chess::file(m.from) != chess::file(m.to));
     const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
     const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
@@ -70,15 +71,11 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return score;
     }
 
-    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][0])) return KILLER_1_SCORE;
-    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][1])) return KILLER_2_SCORE;
+    if (m.sameFromTo(ctx.killer0)) return KILLER_1_SCORE;
+    if (m.sameFromTo(ctx.killer1)) return KILLER_2_SCORE;
 
-    if (ctx.previousMove != nullptr) {
-        const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from][ctx.previousMove->to];
-        if (counter != 0
-            && counter == TT::Entry::encodeMove(m)) {
-            return COUNTER_MOVE_SCORE;
-        }
+    if (ctx.counterMove != 0 && ctx.counterMove == TT::Entry::encodeMove(m)) {
+        return COUNTER_MOVE_SCORE;
     }
 
     if (isPromotionCandidate) {
@@ -196,8 +193,14 @@ MovePicker Sorter::sortLegalMoves(
     const chess::Square enPassant   = b.getEnPassant();
 
     const MoveOrderingContext orderingCtx{
-        previousMove, runtime, contHistEntry, ply, usSide
+        previousMove, runtime, contHistEntry, ply, usSide,
+        runtime.killerMoves[ply][0],
+        runtime.killerMoves[ply][1],
+        (previousMove != nullptr)
+            ? runtime.counterMoves[previousMove->from][previousMove->to]
+            : uint16_t{0}
     };
+
 
     // Hash move handed down from the caller's single TT probe (0 = none).
     const bool hasEncodedHashMove = (encodedHashMove != 0);
@@ -308,15 +311,24 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Move& m, const
     if (chess::rank(m.to) == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE))
         return true;
 
-    return chess::isValidSquare(enPassant) && (m.to == enPassant);
+    return m.to == enPassant; // NO_SQUARE is 255 and m.to is a real square, so this alone is the ep test
 }
 
 MoveList Sorter::sortEvasionsForcingFirst(MoveList evasions, const chess::Board& b) noexcept {
     const auto enPassant = b.getEnPassant();
 
-    std::ranges::stable_partition(evasions,
-        [&](const auto& m) { return isForcingEvasion(b, m, enPassant);
-    });
+    int write = 0;
+    for (int i = 0; i < evasions.size; ++i) {
+        if (!isForcingEvasion(b, evasions[i], enPassant)) continue;
+        // Rotate evasions[i] down to `write`, preserving the order of the
+        // non-forcing moves it passes -- this is what makes the split stable.
+        const chess::Move forcing = evasions[i];
+        for (int j = i; j > write; --j) {
+            evasions[j] = evasions[j - 1];
+        }
+        evasions[write] = forcing;
+        ++write;
+    }
 
     return evasions;
 }
