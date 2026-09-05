@@ -48,8 +48,10 @@ struct SearchRuntime {
     // (side, pieceType, toSq); the trailing [pieceType][toSq] block records the
     // CURRENT move (see contHistIndex). Piece-type indexing on BOTH ends (a knight
     // to e5 != a pawn to e5; a reply to Nf3 != a reply to a pawn landing on f3) is
-    // far sharper than a plain prevTo->curTo table. The ~49x cell growth is worth
+    // far sharper than a plain prevTo->curTo table. The ~36x cell growth is worth
     // it: a 24-position fixed-depth bench dropped ~6% nodes vs the old layout.
+    // Both dimensions are 1..6 biased down to 0..5 (see contHistIndex): 576 KiB
+    // per SearchRuntime, and there is one per Lazy-SMP thread.
     int16_t  contHist[2][CONT_HIST_PIECE_TYPES][64][CONT_HIST_PIECE_TYPES][64] {};
     // Correction history: see corrhist.hpp for the design.
     CorrectionHistory corrHist {};

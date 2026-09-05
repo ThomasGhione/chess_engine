@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "../../debug.hpp"
 #include "../engine.hpp"
 #include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
@@ -942,7 +943,12 @@ int32_t Searcher::searchPosition(
     int16_t* contHistEntry = nullptr;
     if (previousMove != nullptr && previousMove->to < 64) {
         const int prevPiece = b.get(previousMove->to) & chess::Board::MASK_PIECE_TYPE;
-        contHistEntry = &runtime.contHist[side ^ 1][prevPiece][previousMove->to][0][0];
+        DBG_ONLY(
+            if (prevPiece == 0) {
+                DBG_LOG_STREAM("contHist: EMPTY square under previousMove->to\n");
+            }
+        );
+        contHistEntry = &runtime.contHist[side ^ 1][prevPiece - 1][previousMove->to][0][0];
     }
 
     SearchContext ctx{

@@ -412,6 +412,66 @@ nothing.
 | NNUE training budget past 320 SB | +29.4 → +9.9 → +2.7, exhausted |
 | More same-distribution data | −7.30 ±8.61 |
 | SEE PEXT-gating micro-opt | node-identical, NPS-neutral |
+| `fullMoveClock` uint8 saturation | **provably 0 Elo** — see §9 |
+| `MAX_QSEARCH_DEPTH` vs absolute ply | **0 firings in 36.5M qsearch calls** — see §9 |
+| contHist dead row removed (7→6) | node-identical, NPS-neutral — see §9 |
+
+---
+
+## 9. The "obvious waste" sweep — three items, zero Elo
+
+All three read like defects. None of them is worth an SPRT. Recorded so they are
+not re-litigated.
+
+**`fullMoveClock` is `uint8_t` and saturates at 255 — 0 Elo, no measurement
+needed.** Its only consumer is `movesPlayed` in `Engine::searchUCI`, which feeds
+exactly two things: `estimateMovesToGo() = max(20, 50 - movesPlayed)`, constant
+from move 30 on, and the opening ramp, live only below move 6 and only without an
+increment. The value is *ignored* from move 30 onward, so a clamp at 255 cannot
+change a decision. Widening the type is cosmetic.
+
+**`MAX_QSEARCH_DEPTH = 48` is compared against absolute `ply`, not qsearch depth
+— real, and completely dead.** Instrumented over a 10-position sweep:
+
+| depth | qsearch calls | `ply >= 48` | max ply reached |
+|---|---|---|---|
+| 14 | 4,098,853 | **0** | 36 |
+| 18 | 36,513,640 | **0** | 40 |
+
+Max ply grows ~1 per depth, so the gate would first bite somewhere past depth 25 —
+beyond anything reached at any TC we play. The real recursion backstop is
+`ply >= MAX_PLY - 1` (`searcher.cpp:143`). Same class as the repetition-contempt
+branch: a genuine unit confusion guarding a case that never occurs.
+
+**contHist row 0 was unreachable on both ends — removed, and it bought nothing.**
+`int16_t contHist[2][7][64][7][64]` indexed by piece type at both ends, where both
+ends are a piece that just moved and so can never be EMPTY. That left
+`1 - (6/7)^2 = 26.5%` of the table allocated, decayed by `softResetHistory`, never
+read. Verified before touching it: **386,349,984 block lookups and 12,723,846
+context builds at depth 18, zero with piece type 0 at either end.** Shrunk to
+`[2][6][64][6][64]`, biasing indices down by one: **784 KiB → 576 KiB per thread**,
+bench6 byte-identical at 1,953,820.
+
+The speed it bought, measured interleaved on identical trees:
+
+| config | result |
+|---|---|
+| 1 thread, depth 13, 15 reps | median −0.52%, min +0.29% — **signs disagree** |
+| 8 threads, 2.5 s fixed, 15 reps | paired ratio 95% CI **[0.887, 1.064]**, 8/15 wins |
+
+**Nothing.** The dead rows were never *touched*, so they never occupied a cache
+line — they cost address space, not bandwidth. Kept for hygiene and the smaller
+footprint, not for Elo.
+
+⚠️ The 8-thread rig cannot resolve better than ±9%: Lazy SMP varied tree size 2×
+at fixed depth (1.7M–4.2M nodes), and sustained 8-thread load throttles this
+machine (nodes drifted 8.2M → 3.9M across one run). Use 1-thread node-identical
+timing for micro-optimisations; do not trust an 8-thread median.
+
+**The pattern across all three:** "obviously wasteful" and "obviously wrong" are
+statements about the code, not about the search. Each was true as written and
+worth nothing as an Elo play. Measure the firing rate first — it cost ~40 minutes
+here and saved three SPRTs.
 
 **Two measurement laws earned the hard way.** (1) The fixed-depth node profile
 does **not** predict the sign — the LMR gate won +13.36 *with* tactical +26%.

@@ -165,11 +165,23 @@ inline constexpr int MAX_HELPER_THREADS = 63;
 // ===================================================
 // contHist is keyed by the previous move's (side, pieceType, toSq); each context
 // holds a [PIECE_TYPES][64] PieceTo block indexed by the CURRENT move's
-// (pieceType, toSq). Piece types are 0..6 (EMPTY..KING), so the block is 7*64.
-inline constexpr int CONT_HIST_PIECE_TYPES   = 7;
+// (pieceType, toSq).
+//
+// Both piece-type ends are the piece that MADE a move, so neither can ever be
+// EMPTY: the context piece is read off the square the previous move landed on,
+// and the block index is the current move's mover. Sizing the dimensions 0..6
+// therefore left row 0 of both unreachable -- 1 - (6/7)^2 = 26.5% of the table
+// allocated, decayed by softResetHistory, and never read. Measured before
+// shrinking: 386,349,984 block lookups and 12,723,846 context builds over a
+// 10-position depth-18 sweep, ZERO with a piece type of 0 at either end.
+//
+// So store types 1..6 (PAWN..KING) and subtract the bias. Anything that reaches
+// here with pieceType 0 would index out of bounds, hence the debug assert on
+// the one path that reads a piece off the board.
+inline constexpr int CONT_HIST_PIECE_TYPES   = 6;
 inline constexpr int CONT_HIST_PIECE_STRIDE  = 64;
 inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
-    return pieceType * CONT_HIST_PIECE_STRIDE + toSq;
+    return (pieceType - 1) * CONT_HIST_PIECE_STRIDE + toSq;
 }
 
 // ===================================================
