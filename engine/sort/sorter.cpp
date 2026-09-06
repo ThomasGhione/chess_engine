@@ -224,9 +224,31 @@ MovePicker Sorter::sortLegalMoves(
         // Lazy SEE: 1 = capture, 2 = quiet that could be SEE-demoted, 0 = score is
         // already final. The actual SEE is deferred to the picker (finalizeSee) so
         // moves a beta cutoff never reaches don't pay for it.
+        //
+        // Quiet PAWN moves are excluded from the hanging-quiet demotion, for the
+        // same reason king moves already were: the demotion has to earn its SEE,
+        // and for a pawn it does not. Measured over a 10-position depth-14 sweep,
+        // quiet SEE is 15,342,554 calls -- 68% of ALL SEE in the engine and ~4.7%
+        // of runtime by profile. Pawns are 25.8% of those calls but only 15.6% of
+        // the demotions (18.1% hit rate against 29.9% for quiets overall), and a
+        // hanging pawn is the cheapest blunder there is to mis-order.
+        //
+        // Dropping the demotion for ALL quiets was tried first and LOST: nodes
+        // rose 8.2% and ate the whole speed gain, -0.90% end to end. The demotion
+        // is worth its cost in general; it is the pawn slice specifically that is
+        // not. Do not "simplify" this back to one condition.
+        //
+        // Honest status: this is a MEASUREMENT, not a demonstrated gain.
+        // 30,000 games at 4+0.04 gave +1.70 +/- 2.49 Elo, LOS 91.0%, and the
+        // interval includes zero; the LLR wandered in [-0.59, +1.00] over the
+        // last 15,000 games and never approached a bound. Adopted because it
+        // strictly removes work and the point estimate agrees in sign with the
+        // local speed measurement -- not because it was proven.
         const SeePending pending = isHashMove ? SeePending::Final
             : (isCapture ? SeePending::Capture
-              : ((!isPromotionCandidate && fromPieceType != chess::Board::KING) ? SeePending::Quiet : SeePending::Final));
+              : ((!isPromotionCandidate
+                  && fromPieceType != chess::Board::KING
+                  && fromPieceType != chess::Board::PAWN) ? SeePending::Quiet : SeePending::Final));
 
         // Score provisionally: captures rank as good, quiets as their base score.
         // finalizeSee later applies the good/bad split and the hanging demotion.
