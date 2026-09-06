@@ -545,16 +545,13 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
-        // Pre-move check detection, computed lazily only on the quiet moves
-        // that can actually be futility-pruned (its sole consumer below).
-        bool preMoveGivesCheck = false;
-        if (canFutilityPrune && isQuietMove && fromPieceType != chess::Board::KING) {
-            preMoveGivesCheck = Sorter::givesCheckAfterQuietMoveFast(
-                b, m, fromPieceType, oppKingSq, b.getPiecesBitMap());
-        }
-
-        if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0
-            && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)) {
+        // givesCheck is the last term: it costs two magic lookups, and every
+        // cheaper term rejects far more often.
+        if (canFutilityPrune && isQuietMove && moveIndex > 0
+            && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)
+            && (fromPieceType == chess::Board::KING
+                || !Sorter::givesCheckAfterQuietMoveFast(
+                       b, m, fromPieceType, oppKingSq, b.getPiecesBitMap()))) {
             continue;
         }
 
@@ -858,9 +855,6 @@ int32_t Searcher::searchPosition(
         && (node.staticEval > evalStack[ply - 2]);
 
     const int side = chess::Board::colorToIndex(node.activeColor);
-    const int nonPawnMajors = std::popcount(
-        b.knights_bb[side] | b.bishops_bb[side] |
-        b.rooks_bb[side]   | b.queens_bb[side]);
     int singularExtension = 0;
     if (!hasExcludedMove && !node.inCheck && depth >= SE_MIN_DEPTH && ply > 0) {
         if (tte.hit
@@ -899,7 +893,9 @@ int32_t Searcher::searchPosition(
     // ~100cp of beta (giving the opponent a free move likely still fails high).
     const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove && interiorNonPv
-        && depth >= 4 && nonPawnMajors >= 2 && isBetaCutoff(nmpEvalGate, beta);
+        && depth >= 4 && isBetaCutoff(nmpEvalGate, beta)
+        && std::popcount(b.knights_bb[side] | b.bishops_bb[side] |
+                         b.rooks_bb[side]   | b.queens_bb[side]) >= 2;
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
