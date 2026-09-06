@@ -478,3 +478,58 @@ does **not** predict the sign — the LMR gate won +13.36 *with* tactical +26%.
 (2) LLR is a random walk with drift: today it went 2.09 → 1.91 → 2.30 → 2.98 and
 crossed. Neither a dip nor a plateau is diagnostic; compare LLR at equal N before
 citing a precedent.
+
+---
+
+## 10. searcher.cpp sweep (2026-09-06)
+
+Profile first: `searchPosition` 11.7% self, `quiescenceSearch` 1.7%, movegen 5.4%
+total, `sortLegalMoves` 3.3%.
+
+**Shipped (8647ad7), +0.79% pooled over 57 paired reps, node-identical.** Two
+sites computed expensive things before the tests that gate their only consumer:
+
+| site | calls before | after | cut |
+|---|---|---|---|
+| `givesCheckAfterQuietMoveFast` | 7,766,182 | 1,593,879 | 79.5% |
+| `nonPawnMajors` popcount | 5,238,439 nodes | 352,377 | 93.3% |
+
+Both are pure reorderings of short-circuit terms. Runs: +1.19% (CI [+0.29%,
++2.10%], 12/15), +0.68% ([-0.49%, +1.86%], 9/17), +0.62% ([-0.34%, +1.58%],
+14/25).
+
+**Measured and rejected:**
+
+| idea | result |
+|---|---|
+| Drop per-move `shouldAbort()` (redundant with the child's `enterNode` + the `isInterrupted()` break) | **-0.78%**, CI [-1.90%, +0.34%]. The atomic is an L1-resident load with a perfectly predicted branch. |
+| Prefetch the three corrHist cells early | **0.00%** median, CI [-1.23%, +0.97%]. Out-of-order execution already covered them. |
+| movegen: drop redundant `isValidSquare(ep)`, pass `ownOcc` into `computePinRays`, gate castling on rights | CI [-1.32%, +0.80%] and [-1.67%, +0.83%]. Predicted prize ~0.05-0.1%, an order of magnitude under the harness floor. |
+| SEE magic lookups behind pseudo-attack tables | **-2.66%**, CI [-3.44%, -1.89%], faster in 1/15 |
+
+**Dead branches, measured, NOT removed.** All in the per-node path, all firing
+zero times, all left alone because the gain is below the ±0.5% measurement floor
+and they are correctness guards:
+
+| branch | firings |
+|---|---|
+| king-capture terminal in `enterNode` | 0 / 13,045,297 |
+| `ply >= MAX_PLY - 1` | 0 / 13,045,297 |
+| `maxNodes` cap | 0 / 13,045,297 |
+| mate-narrowing `alpha >= beta` | 1 / 5,540,173 |
+
+**The one structural opportunity left: staged move generation.** 53.4% of nodes
+consume exactly one move while generating and scoring ~33. What that one move is:
+good capture 53.5%, killer 29.6%, hash 13.8%, countermove 1.1%, quiet 1.8%. So
+**98.1% of single-move cutoffs need no quiet generation at all**, and staging
+would skip quiet generation plus quiet scoring at ~52% of nodes. Against the 8.7%
+that generation and scoring cost, that is worth roughly **3% of runtime**.
+
+⚠️ The cheap version does NOT work: "try the TT move before generating" covers
+only the 13.8% hash slice, 7.4% of nodes, ~0.6% of runtime. The value is in the
+capture and killer stages.
+
+⚠️ It changes node counts, so it needs an SPRT, not a bench. And it cannot assume
+captures outrank quiets: a quiet scores `clamp(history) + clamp(contHist)/2`,
+reaching 11250 against `CAPTURE_BASE_SCORE` 10000. Measured at 0.097% of cutoff
+nodes today, so harmless, but the bands are not separated by construction.
