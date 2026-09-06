@@ -507,16 +507,29 @@ Both are pure reorderings of short-circuit terms. Runs: +1.19% (CI [+0.29%,
 | movegen: drop redundant `isValidSquare(ep)`, pass `ownOcc` into `computePinRays`, gate castling on rights | CI [-1.32%, +0.80%] and [-1.67%, +0.83%]. Predicted prize ~0.05-0.1%, an order of magnitude under the harness floor. |
 | SEE magic lookups behind pseudo-attack tables | **-2.66%**, CI [-3.44%, -1.89%], faster in 1/15 |
 
-**Dead branches, measured, NOT removed.** All in the per-node path, all firing
-zero times, all left alone because the gain is below the ±0.5% measurement floor
-and they are correctness guards:
+**Four per-node branches that fired zero times. NONE should be deleted, and two
+of them are not dead at all** (an earlier revision of this section mislabelled
+them; the zero counts are real, the "dead" reading was not):
 
-| branch | firings |
-|---|---|
-| king-capture terminal in `enterNode` | 0 / 13,045,297 |
-| `ply >= MAX_PLY - 1` | 0 / 13,045,297 |
-| `maxNodes` cap | 0 / 13,045,297 |
-| mate-narrowing `alpha >= beta` | 1 / 5,540,173 |
+| branch | firings | verdict |
+|---|---|---|
+| king-capture terminal in `enterNode` | 0 / 13,045,297 | genuinely redundant, but deleting it **measured -0.73%** |
+| `ply >= MAX_PLY - 1` | 0 / 13,045,297 | **live guard.** Protects `evalStack[MAX_PLY]` and `killerMoves[MAX_PLY][2]`. The probe reached max ply 40 against a limit of 64; infinite mode sets targetDepth = MAX_PLY, so it is reachable |
+| `maxNodes` cap | 0 / 13,045,297 | **not dead, it is the UCI `go nodes` feature.** Zero because the probe used `go depth` |
+| mate-narrowing `alpha >= beta` | 1 / 5,540,173 | one compare; the narrowing above it does the work |
+
+The king guard is redundant rather than merely cold: every entry into the
+recursion goes through `runIterativeDeepening` (`searchBestMove`, `ponderLoop`,
+`datagen` are the only three), which guards missing kings at the root, and a king
+cannot vanish mid-search because movegen is fully legal and the hash move is
+validated against the generated list. Removing it anyway measured **-0.73%**
+(95% CI [-1.65%, +0.19%], faster in 4/17 pairs), so it stays. It also prevents an
+out-of-bounds `KING_ATTACKS[64]` read if that invariant is ever broken.
+
+📌 Generalisation: **a zero firing count does not imply removable.** Check whether
+the branch is (a) a guard for an invariant, (b) an inactive feature, or (c) truly
+unreachable, before calling it dead. And even for (c), deleting a
+perfectly-predicted branch from a hot path is as likely to cost as to gain.
 
 **The one structural opportunity left: staged move generation.** 53.4% of nodes
 consume exactly one move while generating and scoring ~33. What that one move is:
