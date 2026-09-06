@@ -27,17 +27,24 @@ show() {
         return
     fi
 
-    local elo los llr games
-    elo=$(sed 's/.*://' <<<"$(grep '^Elo:'   "${log}" | tail -1)")
+    local elo nelo los llr games ptnml
+    # The result line is "Elo: X +/- Y, nElo: Z +/- W" -- take the field BEFORE
+    # the comma. Trailing-colon matching silently reports nElo as Elo, which
+    # reads ~1.6x larger and has already caused one misreported result.
+    elo=$(grep '^Elo:'   "${log}" | tail -1 | sed 's/^Elo: //; s/,.*//')
+    nelo=$(grep '^Elo:'  "${log}" | tail -1 | sed 's/.*nElo: //')
     los=$(grep '^LOS:'   "${log}" | tail -1 | sed 's/LOS: //; s/,.*//')
     games=$(grep '^Games:' "${log}" | tail -1 | sed 's/Games: //')
     llr=$(grep '^LLR:'   "${log}" | tail -1 | sed 's/LLR: //')
+    ptnml=$(grep '^Ptnml' "${log}" | tail -1)
 
     echo "=== ${log##*/}  @ $(date +%H:%M:%S) ==="
-    echo "  Elo   :${elo}"
+    echo "  Elo   : ${elo}       <- this is the Elo"
+    echo "  nElo  : ${nelo}   (normalised; larger by construction, not the Elo)"
     echo "  LOS   : ${los}"
     echo "  LLR   : ${llr}"
     echo "  Games : ${games}"
+    [[ -n "${ptnml}" ]] && echo "  ${ptnml}"
 
     # Verdict: LLR crossing a bound is the decision; Elo sign is only a hint.
     local llrval lo hi
