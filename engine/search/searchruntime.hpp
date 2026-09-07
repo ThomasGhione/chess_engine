@@ -6,7 +6,6 @@
 #include "../../board/board.hpp"
 #include "../../tt/tt.hpp"
 #include "../syzygy/syzygy.hpp"
-#include "corrhist.hpp"
 #include "search_constants.hpp"
 
 namespace engine {
@@ -53,8 +52,6 @@ struct SearchRuntime {
     // Both dimensions are 1..6 biased down to 0..5 (see contHistIndex): 576 KiB
     // per SearchRuntime, and there is one per Lazy-SMP thread.
     int16_t  contHist[2][CONT_HIST_PIECE_TYPES][64][CONT_HIST_PIECE_TYPES][64] {};
-    // Correction history: see corrhist.hpp for the design.
-    CorrectionHistory corrHist {};
     // evalStack is thread_local in searchPosition — NOT here: Lazy-SMP races
     // on a shared array would corrupt the `improving` hard-prune heuristic.
 

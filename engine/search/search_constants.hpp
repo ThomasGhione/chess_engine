@@ -19,7 +19,6 @@ namespace engine {
 // ===================================================
 inline constexpr int32_t  MAX_PLY                = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
-inline constexpr int32_t  CORR_HISTORY_SIZE      = 1 << 14;
 inline constexpr int DEFAULT_DEPTH               = 11;
 
 // Score scale. A forced mate `n` plies away scores ±(MATE_VALUE - n), so every
@@ -105,16 +104,6 @@ inline constexpr int    LMR_MAX_MOVES = 218; // theoretical maximum legal moves 
 // ===================================================
 inline constexpr int32_t MAX_HISTORY         = 16384;
 inline constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
-
-// ===================================================
-// CORRECTION HISTORY (search - static eval residual)
-// ===================================================
-inline constexpr int32_t CORR_HIST_LIMIT   = 1024; // bound on the smoothed residual (cp)
-inline constexpr int32_t CORR_HIST_DIVISOR = 4;    // applied fraction of each residual
-inline constexpr int32_t CORR_HIST_BLEND   = 256;  // weighted-average denominator
-inline constexpr int32_t CORR_HIST_MAX_W   = 16;   // per-update weight cap (grows with depth)
-// Cap on the SUM of the pawn/minor/major corrections, kept at the old pawn-only 256 cp.
-inline constexpr int32_t CORR_TOTAL_CAP    = CORR_HIST_LIMIT / CORR_HIST_DIVISOR;
 
 // ===================================================
 // QUIESCENCE SEARCH

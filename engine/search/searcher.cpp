@@ -812,8 +812,8 @@ int32_t Searcher::searchPosition(
     // `improving` heuristic can compare evalStack[ply-2] vs current eval
     // starting from ply >= 2. Previously the root left evalStack[0] at its
     // zero-initialised value, biasing `improving` to (staticEval > 0) at ply 2.
-    // The raw eval of this position, before the TT-bound tightening and the
-    // corrHist nudge below. That is what goes back into the TT: a later visit
+    // The raw eval of this position, before the TT-bound tightening below.
+    // That is what goes back into the TT: a later visit
     // then skips the NNUE forward pass entirely. NO_EVAL while in check, where
     // there is no meaningful static eval to record.
     int32_t rawStaticEval = TT::Entry::NO_EVAL;
@@ -832,9 +832,7 @@ int32_t Searcher::searchPosition(
                 node.staticEval = ttStaticScore;
             }
         }
-        // Nudge the static eval by the learned correction-history signal.
-        node.staticEval = std::clamp(node.staticEval + runtime.corrHist.correction(b),
-                                     -MATE_BOUND + 1, MATE_BOUND - 1);
+        node.staticEval = std::clamp(node.staticEval, -MATE_BOUND + 1, MATE_BOUND - 1);
     }
 
     // Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
@@ -987,18 +985,6 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
-    // Correction history: learn the (search - corrected static eval) residual,
-    // but only from TRUSTWORTHY nodes — deep enough, quiet best move, non-mate, and
-    // the search must genuinely contradict the static eval rather than merely confirm
-    // a cutoff bound.
-    const bool corrLearn = (best > node.staticEval)
-                        || (best < node.staticEval && best < beta);
-    if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
-        && std::abs(best) < MATE_BOUND && chess::isValidSquare(result.move.from)
-        && (b.get(result.move.to) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
-        runtime.corrHist.update(b, best, node.staticEval, depth);
-    }
-
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
@@ -1070,7 +1056,7 @@ int32_t Searcher::quiescenceSearch(
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
             : Evaluator::evaluate(b);
-        const int32_t standPat = rawStaticEval + runtime.corrHist.correction(b);
+        const int32_t standPat = rawStaticEval;
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling
             // qsearch nodes can then cut on this stand-pat without re-evaluating.
