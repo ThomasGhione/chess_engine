@@ -745,7 +745,7 @@ int32_t Searcher::searchPosition(
     }
 
     if (depth <= 0) {
-        return quiescenceSearch(b, runtime, alpha, beta, ply, counter);
+        return quiescenceSearch(b, runtime, alpha, beta, ply, counter, /*alreadyEntered=*/true);
     }
 
     // TB WDL probe (in-search): only return Draw as exact. Returning Win or
@@ -1005,14 +1005,17 @@ int32_t Searcher::quiescenceSearch(
     int32_t alpha,
     int32_t beta,
     int ply,
-    uint64_t* nodeCounter) noexcept {
+    uint64_t* nodeCounter,
+    bool alreadyEntered) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
-    int32_t earlyScore = 0;
-    if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
+    if (!alreadyEntered) {
+        int32_t earlyScore = 0;
+        if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
 
-    int32_t drawScore = 0;
-    if (checkDrawTerminalConditions(b, drawScore)) {
-        return drawScore;
+        int32_t drawScore = 0;
+        if (checkDrawTerminalConditions(b, drawScore)) {
+            return drawScore;
+        }
     }
 
     const bool canUseTT = (runtime.transpositionTable != nullptr);

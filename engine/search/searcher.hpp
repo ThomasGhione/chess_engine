@@ -83,7 +83,8 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        uint64_t* nodeCounter = nullptr) noexcept;
+        uint64_t* nodeCounter = nullptr,
+        bool alreadyEntered = false) noexcept;
 
 private:
 
