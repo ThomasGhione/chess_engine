@@ -17,10 +17,6 @@ inline constexpr uint8_t file(Square sq) noexcept { return sq & 7; }
 inline constexpr uint8_t rank(Square sq) noexcept { return sq >> 3; }
 inline constexpr bool isValidSquare(Square sq) noexcept { return sq < 64; }
 
-inline constexpr Square squareFrom(uint8_t f, uint8_t r) noexcept {
-    return (f < 8 && r < 8) ? static_cast<Square>(r * 8 + f) : NO_SQUARE;
-}
-
 inline Square parseSquare(std::string_view input) noexcept {
     if (input.length() != 2) [[unlikely]] return NO_SQUARE;
 

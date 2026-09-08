@@ -102,15 +102,6 @@ struct alignas(64) Accumulator {
         return net.featureWeights[base[p] + (feat ^ flip[p])];
     }
 
-    // Rebuild helpers for a single perspective (lazy refresh path).
-    inline void resetPerspective(int p, int ownKingLerfView) noexcept {
-        const Network& net = *activeNetwork;
-        std::memcpy(v[p], net.featureBias, sizeof(net.featureBias));
-        base[p] = kingFeatureBase(ownKingLerfView);
-        flip[p] = static_cast<uint8_t>(kingFlip(ownKingLerfView));
-        dirty[p] = false;
-    }
-
     // Adds/removes one piece feature on an arbitrary accumulator row under a
     // fixed basis — shared by the live perspectives and the Finny cache rows.
     template<bool Add>

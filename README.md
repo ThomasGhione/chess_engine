@@ -261,8 +261,7 @@ CHESS_TT_HUGEPAGE=off  ./chess   # disable huge pages
 ```
 
 Enabled values: `on`, `1`, `true`, `force`. Disabled values: `off`, `0`,
-`false`. A huge-page benchmark is available with `make tt-huge-bench`
-(`./tests/tt_hugepage_bench --depth 10 --repeats 3`).
+`false`.
 
 ## UCI Options
 
