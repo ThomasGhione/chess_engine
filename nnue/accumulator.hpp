@@ -32,6 +32,23 @@
 
 namespace NNUE {
 
+// One deferred accumulator mutation. doMove records these instead of touching
+// the 1024-wide rows; evaluate replays them in order, which reproduces the
+// eager sequence exactly (the dirty/basis transitions depend on that order).
+// A do/undo pair that never reaches an evaluate cancels here and costs nothing.
+struct AccDelta {
+    enum Kind : uint8_t { Add, Remove, Move };
+    uint8_t kind;
+    uint8_t piece;
+    uint8_t from;   // Add/Remove: the square
+    uint8_t to;     // Move only
+};
+
+// Deepest chain of moves that can be made without an evaluate is bounded by
+// MAX_PLY + the qsearch cap, at most three deltas each. The queue overflowing
+// only forces an early replay, so correctness never rests on this number.
+inline constexpr int MAX_ACC_PENDING = 512;
+
 struct alignas(64) Accumulator {
     int16_t v[2][HIDDEN];
     int32_t base[2];   // 768 * king bucket, per perspective

@@ -38,6 +38,11 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 
     occupancy = other.occupancy;
     nnueAccumulator = other.nnueAccumulator;
+    accPendingCount = other.accPendingCount;
+    if (accPendingCount > 0) {
+        std::memcpy(accPending, other.accPending,
+                    static_cast<size_t>(accPendingCount) * sizeof(NNUE::AccDelta));
+    }
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
     castle = other.castle;
@@ -157,11 +162,64 @@ inline void Board::dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint6
     }
 }
 
+// The queue cancels a delta against the pending one it inverts. undoMove emits
+// exactly the inverse operations in reverse order, so a do/undo pair that never
+// reached an evaluate annihilates here and never touches a row.
+inline void Board::queueAccAdd(uint8_t piece, uint8_t index) const noexcept {
+    if (accPendingCount > 0) {
+        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
+        if (d.kind == NNUE::AccDelta::Remove && d.piece == piece && d.from == index) {
+            --accPendingCount;
+            return;
+        }
+    }
+    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
+    accPending[accPendingCount++] = {NNUE::AccDelta::Add, piece, index, 0};
+}
+
+inline void Board::queueAccRemove(uint8_t piece, uint8_t index) const noexcept {
+    if (accPendingCount > 0) {
+        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
+        if (d.kind == NNUE::AccDelta::Add && d.piece == piece && d.from == index) {
+            --accPendingCount;
+            return;
+        }
+    }
+    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
+    accPending[accPendingCount++] = {NNUE::AccDelta::Remove, piece, index, 0};
+}
+
+inline void Board::queueAccMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) const noexcept {
+    if (accPendingCount > 0) {
+        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
+        if (d.kind == NNUE::AccDelta::Move && d.piece == piece
+            && d.from == toIndex && d.to == fromIndex) {
+            --accPendingCount;
+            return;
+        }
+    }
+    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
+    accPending[accPendingCount++] = {NNUE::AccDelta::Move, piece, fromIndex, toIndex};
+}
+
+inline void Board::flushAccPending() const noexcept {
+    const int n = accPendingCount;
+    accPendingCount = 0;   // set first: update<> must not re-enter the queue
+    for (int i = 0; i < n; ++i) {
+        const NNUE::AccDelta& d = accPending[i];
+        switch (d.kind) {
+            case NNUE::AccDelta::Add:    nnueAccumulator.update<true>(d.piece, d.from); break;
+            case NNUE::AccDelta::Remove: nnueAccumulator.update<false>(d.piece, d.from); break;
+            default:                     nnueAccumulator.updateMove(d.piece, d.from, d.to); break;
+        }
+    }
+}
+
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<true>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index]);
     if (NNUE::activeNetwork != nullptr) [[likely]] {
-        nnueAccumulator.update<true>(piece, index);
+        queueAccAdd(piece, index);
     }
 }
 
@@ -169,7 +227,7 @@ __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     dispatchPieceBBUpdate<false>(piece & MASK_PIECE_TYPE, colorToIndex(piece), BIT_MASKS[index]);
     if (NNUE::activeNetwork != nullptr) [[likely]] {
-        nnueAccumulator.update<false>(piece, index);
+        queueAccRemove(piece, index);
     }
 }
 
@@ -180,7 +238,7 @@ inline void Board::movePieceOnBB(uint8_t piece, uint8_t fromIndex, uint8_t toInd
     dispatchPieceBBUpdate<false>(type, color, BIT_MASKS[fromIndex]);
     dispatchPieceBBUpdate<true>(type, color, BIT_MASKS[toIndex]);
     if (NNUE::activeNetwork != nullptr) [[likely]] {
-        nnueAccumulator.updateMove(piece, fromIndex, toIndex);
+        queueAccMove(piece, fromIndex, toIndex);
     }
 }
 
@@ -189,6 +247,7 @@ inline void Board::movePieceOnBB(uint8_t piece, uint8_t fromIndex, uint8_t toInd
 // never double-count: they land here once at the end instead.
 inline void Board::refreshNnueAccumulator() noexcept {
     if (NNUE::activeNetwork == nullptr) return;
+    accPendingCount = 0;   // rebuilt from the squares below; queued work is moot
     // No kings (unit-test fragments, mid-load states): leave the accumulator
     // as-is; evaluation is guarded upstream by the kings-missing check.
     if (kings_bb[0] == 0 || kings_bb[1] == 0) return;
@@ -207,6 +266,7 @@ inline void Board::refreshNnueAccumulator() noexcept {
 // consistent-board points only (NNUE::evaluate, selftest) — never mid-doMove.
 inline void Board::ensureNnueAccumulatorClean() const noexcept {
     if (NNUE::activeNetwork == nullptr) return;
+    flushAccPending();
     if (!(nnueAccumulator.dirty[0] || nnueAccumulator.dirty[1])) [[likely]] return;
     if (kings_bb[0] == 0 || kings_bb[1] == 0) return;
 

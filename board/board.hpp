@@ -235,7 +235,21 @@ public:
     // from const evaluation paths — it is a cache, not board state.
     mutable NNUE::Accumulator nnueAccumulator;
 
+    // Deferred accumulator work. The rows are only touched when something
+    // actually reads them, so a node cut before it evaluates pays nothing:
+    // its delta and the matching undo cancel here. Kept outside Accumulator so
+    // the selftest's whole-struct memcmp keeps comparing only real state.
+    mutable NNUE::AccDelta accPending[NNUE::MAX_ACC_PENDING];
+    mutable int            accPendingCount = 0;
+
 private:
+    // Replays every queued delta in order, leaving the rows consistent with
+    // the current position. Called before anything reads the accumulator.
+    inline void flushAccPending() const noexcept;
+    inline void queueAccAdd(uint8_t piece, uint8_t index) const noexcept;
+    inline void queueAccRemove(uint8_t piece, uint8_t index) const noexcept;
+    inline void queueAccMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) const noexcept;
+
     // --- Private helpers: move execution ---
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
