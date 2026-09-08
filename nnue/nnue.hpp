@@ -15,24 +15,15 @@ namespace NNUE {
 
 struct Network;
 
-// Loads a bullet quantised.bin (validates size, padding signature and the
-// output-weight bound the AVX2 forward relies on). Not for use mid-search.
+// Loads a bullet quantised.bin (validates size and padding signature). Not for
+// use mid-search.
 [[nodiscard]] bool loadNetwork(const std::string& path);
 
-// The network compiled into the binary (nnue/net/hydray.nnue via
-// nnue/embedded.cpp); nullptr if the blob fails validation.
-[[nodiscard]] const Network* embeddedNetwork() noexcept;
-
-// Makes the embedded network active (UseNNUE with no EvalFile set).
+// Makes the network compiled into the binary active (nnue/net/hydray.nnue via
+// nnue/embedded.cpp); false if the blob fails validation.
 [[nodiscard]] bool activateEmbedded() noexcept;
 
 [[nodiscard]] bool networkLoaded() noexcept;
-
-// True when the active network is a DEEP one (1024 -> 16 -> 1). Selected
-// automatically by loadNetwork() from the file size; the embedded net is always
-// the single-layer one. Exposed for `info string` diagnostics: loading the
-// wrong format silently would be the worst way to lose an SPRT.
-[[nodiscard]] bool deepNetworkActive() noexcept;
 
 // stm-relative centipawns from the board's incrementally-maintained
 // accumulator. Requires networkLoaded().
