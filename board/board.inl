@@ -205,6 +205,22 @@ inline void Board::queueAccMove(uint8_t piece, uint8_t fromIndex, uint8_t toInde
 inline void Board::flushAccPending() const noexcept {
     const int n = accPendingCount;
     accPendingCount = 0;   // set first: update<> must not re-enter the queue
+
+    // The queue is [previous sibling undone, this move done] far more often
+    // than anything else; fold that pair into one traversal of the rows. Kings
+    // can move the basis and a dirty perspective is skipped by update<>, so
+    // both keep the one-at-a-time replay.
+    if (n == 2
+        && accPending[0].kind == NNUE::AccDelta::Move
+        && accPending[1].kind == NNUE::AccDelta::Move
+        && (accPending[0].piece & MASK_PIECE_TYPE) != KING
+        && (accPending[1].piece & MASK_PIECE_TYPE) != KING
+        && !nnueAccumulator.dirty[0] && !nnueAccumulator.dirty[1]) {
+        nnueAccumulator.updateMove2(accPending[0].piece, accPending[0].from, accPending[0].to,
+                                    accPending[1].piece, accPending[1].from, accPending[1].to);
+        return;
+    }
+
     for (int i = 0; i < n; ++i) {
         const NNUE::AccDelta& d = accPending[i];
         switch (d.kind) {
