@@ -206,19 +206,43 @@ inline void Board::flushAccPending() const noexcept {
     const int n = accPendingCount;
     accPendingCount = 0;   // set first: update<> must not re-enter the queue
 
-    // The queue is [previous sibling undone, this move done] far more often
-    // than anything else; fold that pair into one traversal of the rows. Kings
-    // can move the basis and a dirty perspective is skipped by update<>, so
-    // both keep the one-at-a-time replay.
+    // Fold a two-delta queue into a single traversal. Kings can move the
+    // perspective basis and a dirty perspective is skipped entirely by
+    // update<>, so both keep the one-at-a-time replay below.
     if (n == 2
-        && accPending[0].kind == NNUE::AccDelta::Move
-        && accPending[1].kind == NNUE::AccDelta::Move
         && (accPending[0].piece & MASK_PIECE_TYPE) != KING
         && (accPending[1].piece & MASK_PIECE_TYPE) != KING
         && !nnueAccumulator.dirty[0] && !nnueAccumulator.dirty[1]) {
-        nnueAccumulator.updateMove2(accPending[0].piece, accPending[0].from, accPending[0].to,
-                                    accPending[1].piece, accPending[1].from, accPending[1].to);
-        return;
+        const int16_t* sub[2][2];
+        const int16_t* add[2][2];
+        int ns = 0;
+        int na = 0;
+        for (int i = 0; i < 2; ++i) {
+            const NNUE::AccDelta& d = accPending[i];
+            if (d.kind != NNUE::AccDelta::Add) {
+                sub[0][ns] = nnueAccumulator.featureRow(0, d.piece, d.from);
+                sub[1][ns] = nnueAccumulator.featureRow(1, d.piece, d.from);
+                ++ns;
+            }
+            if (d.kind == NNUE::AccDelta::Move) {
+                add[0][na] = nnueAccumulator.featureRow(0, d.piece, d.to);
+                add[1][na] = nnueAccumulator.featureRow(1, d.piece, d.to);
+                ++na;
+            } else if (d.kind == NNUE::AccDelta::Add) {
+                add[0][na] = nnueAccumulator.featureRow(0, d.piece, d.from);
+                add[1][na] = nnueAccumulator.featureRow(1, d.piece, d.from);
+                ++na;
+            }
+        }
+        switch (ns * 4 + na) {
+            case 2 * 4 + 2: nnueAccumulator.updateFused<2, 2>(sub, add); return;
+            case 2 * 4 + 1: nnueAccumulator.updateFused<2, 1>(sub, add); return;
+            case 1 * 4 + 2: nnueAccumulator.updateFused<1, 2>(sub, add); return;
+            case 1 * 4 + 1: nnueAccumulator.updateFused<1, 1>(sub, add); return;
+            case 2 * 4 + 0: nnueAccumulator.updateFused<2, 0>(sub, add); return;
+            case 0 * 4 + 2: nnueAccumulator.updateFused<0, 2>(sub, add); return;
+            default: break;
+        }
     }
 
     for (int i = 0; i < n; ++i) {

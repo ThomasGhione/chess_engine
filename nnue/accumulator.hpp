@@ -68,34 +68,38 @@ struct alignas(64) Accumulator {
         dirty[0] = dirty[1] = false;
     }
 
-    // Two queued piece moves folded into one traversal. The queue after a
-    // sibling is searched is exactly [previous move undone, this move done], and
-    // replaying those separately reads and writes both rows twice. The weights
-    // still have to be read either way; the rows do not. int16 is modular, so
-    // the order the contributions are summed in does not change the result.
-    inline void updateMove2(uint8_t pieceA, uint8_t fromA, uint8_t toA,
-                            uint8_t pieceB, uint8_t fromB, uint8_t toB) noexcept {
-        const Network& net = *activeNetwork;
-        const auto row = [&](int p, uint8_t piece, uint8_t index) noexcept {
-            const int type = (piece & 0x7) - 1;
-            const bool black = (piece & 0x8) == 0;
-            const int lerf = index ^ 56;
-            const int feat = (p == 0) ? ((black ? 384 : 0) + type * 64 + lerf)
-                                      : ((black ? 0 : 384) + type * 64 + (lerf ^ 56));
-            return net.featureWeights[base[p] + (feat ^ flip[p])];
-        };
-        const int16_t* __restrict sA0 = row(0, pieceA, fromA);
-        const int16_t* __restrict aA0 = row(0, pieceA, toA);
-        const int16_t* __restrict sB0 = row(0, pieceB, fromB);
-        const int16_t* __restrict aB0 = row(0, pieceB, toB);
-        const int16_t* __restrict sA1 = row(1, pieceA, fromA);
-        const int16_t* __restrict aA1 = row(1, pieceA, toA);
-        const int16_t* __restrict sB1 = row(1, pieceB, fromB);
-        const int16_t* __restrict aB1 = row(1, pieceB, toB);
+    // A pair of queued deltas folded into one traversal of the rows. The queue
+    // at a flush is almost always the previous sibling's move undone followed by
+    // this move done, so replaying entry by entry reads and writes both rows
+    // twice. The weight rows must be read either way; the accumulator rows need
+    // not be. int16 is modular, so the order the contributions are summed in
+    // does not change the result, the same argument updateMove relies on.
+    //
+    // The counts are template parameters so the inner loops unroll: a version
+    // with runtime bounds measured 50% SLOWER than replaying one at a time.
+    template<int NS, int NA>
+    inline void updateFused(const int16_t* const (&sub)[2][2],
+                            const int16_t* const (&add)[2][2]) noexcept {
         for (int i = 0; i < HIDDEN; ++i) {
-            v[0][i] = static_cast<int16_t>(v[0][i] - sA0[i] + aA0[i] - sB0[i] + aB0[i]);
-            v[1][i] = static_cast<int16_t>(v[1][i] - sA1[i] + aA1[i] - sB1[i] + aB1[i]);
+            int s0 = v[0][i];
+            int s1 = v[1][i];
+            for (int k = 0; k < NS; ++k) { s0 -= sub[0][k][i]; s1 -= sub[1][k][i]; }
+            for (int k = 0; k < NA; ++k) { s0 += add[0][k][i]; s1 += add[1][k][i]; }
+            v[0][i] = static_cast<int16_t>(s0);
+            v[1][i] = static_cast<int16_t>(s1);
         }
+    }
+
+    // Weight row for one piece feature under this accumulator's current basis;
+    // mirrors the index maths in update<>/updateMove.
+    [[nodiscard]] inline const int16_t* featureRow(int p, uint8_t piece, uint8_t index) const noexcept {
+        const Network& net = *activeNetwork;
+        const int type = (piece & 0x7) - 1;
+        const bool black = (piece & 0x8) == 0;
+        const int lerf = index ^ 56;
+        const int feat = (p == 0) ? ((black ? 384 : 0) + type * 64 + lerf)
+                                  : ((black ? 0 : 384) + type * 64 + (lerf ^ 56));
+        return net.featureWeights[base[p] + (feat ^ flip[p])];
     }
 
     // Rebuild helpers for a single perspective (lazy refresh path).
