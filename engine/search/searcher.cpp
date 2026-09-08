@@ -25,6 +25,12 @@ void clearEvalCache() noexcept { sharedEvalCache().clear(); }
 
 namespace {
 
+// Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
+// `improving` prune. Each ancestor writes evalStack[ply] before its grandchild
+// two plies down reads it on the same thread's stack. Slot 0 is the root, which
+// never runs through searchPosition, so getBestMove seeds it.
+thread_local int32_t evalStack[MAX_PLY] = {};
+
 // Raw static eval for a position not carried by its TT entry.
 int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
     int32_t cached = 0;
@@ -827,10 +833,6 @@ int32_t Searcher::searchPosition(
     node.inCheck = (checkers != 0ULL);
     node.isPVNode = isPVNode;
 
-    // Compute static eval at every ply (including the root) so that the
-    // `improving` heuristic can compare evalStack[ply-2] vs current eval
-    // starting from ply >= 2. Previously the root left evalStack[0] at its
-    // zero-initialised value, biasing `improving` to (staticEval > 0) at ply 2.
     // The raw eval of this position, before the TT-bound tightening below.
     // That is what goes back into the TT: a later visit
     // then skips the NNUE forward pass entirely. NO_EVAL while in check, where
@@ -853,12 +855,6 @@ int32_t Searcher::searchPosition(
         }
         node.staticEval = std::clamp(node.staticEval, -MATE_BOUND + 1, MATE_BOUND - 1);
     }
-
-    // Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
-    // `improving` prune. Each ancestor writes evalStack[ply] (line below)
-    // before its grandchild 2 plies down reads it on the same thread's stack,
-    // so a thread_local array (no per-search reset needed) is correct.
-    static thread_local int32_t evalStack[MAX_PLY] = {};
 
     // Store staticEval in ply stack and compute improving flag.
     // In-check nodes have no meaningful static eval, so store a sentinel
@@ -1166,6 +1162,12 @@ chess::Move Searcher::getBestMove(
     orderedRootMoves.fullSort();
 
     const MoveList& rootMoves = orderedRootMoves.moves;
+
+    // ply 2 compares against the root, which is reached at ply 1 and so never
+    // writes slot 0 itself. Left unseeded, `improving` there means eval > 0.
+    evalStack[0] = (rootBoard.checkersTo(rootBoard.getActiveColor()) != 0ULL)
+        ? NEG_INF
+        : Evaluator::evaluate(rootBoard);
 
     const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b) {
         return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &localNodes);
