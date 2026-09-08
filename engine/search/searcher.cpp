@@ -11,10 +11,29 @@
 #include "../engine.hpp"
 #include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
+#include "evalcache.hpp"
 
 namespace engine {
 
+static EvalCache& sharedEvalCache() noexcept {
+    static EvalCache cache;
+    [[maybe_unused]] static const bool allocated = cache.resize(EvalCache::DEFAULT_SLOTS);
+    return cache;
+}
+
+void clearEvalCache() noexcept { sharedEvalCache().clear(); }
+
 namespace {
+
+// Raw static eval for a position not carried by its TT entry.
+int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
+    int32_t cached = 0;
+    EvalCache& cache = sharedEvalCache();
+    if (cache.probe(hashKey, cached)) return cached;
+    const int32_t value = Evaluator::evaluate(b);
+    cache.store(hashKey, value);
+    return value;
+}
 
 // "Is the position level enough that a repetition is acceptable?" The intent is
 // half a pawn, but the comparison is against a static eval, and material and
@@ -820,7 +839,7 @@ int32_t Searcher::searchPosition(
     if (!node.inCheck) {
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
-            : Evaluator::evaluate(b);
+            : cachedEval(hashKey, b);
         node.staticEval = rawStaticEval;
         if (tte.hit) {
             const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
@@ -1058,7 +1077,7 @@ int32_t Searcher::quiescenceSearch(
         // static eval is free here and this is where 50-80% of all nodes are.
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
-            : Evaluator::evaluate(b);
+            : cachedEval(b.getHash(), b);
         const int32_t standPat = rawStaticEval;
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling

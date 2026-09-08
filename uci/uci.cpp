@@ -270,6 +270,7 @@ namespace uci {
         if (normalizedName == "evalfile") {
             const std::string path(optionValue);
             if (NNUE::loadNetwork(path)) {
+                engine::clearEvalCache();
                 // The board may already hold a position: bring the accumulator
                 // in sync now; later `position` commands refresh via FEN load.
                 engine.board.refreshNnueAccumulator();
