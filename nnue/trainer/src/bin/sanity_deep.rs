@@ -40,13 +40,12 @@
 
 const HIDDEN: usize = 1024;
 const L1_SIZE: usize = 16;
-const INPUT_BUCKETS: usize = 4;
 const OUTPUT_BUCKETS: usize = 8;
 const QA: i32 = 255;
 const QB: i32 = 64;
 const SCALE: f32 = 400.0;
 
-// Keep in sync with trainer_deep.rs BUCKET_LAYOUT e nnue/network.hpp.
+// Keep in sync with trainer_deep.rs BUCKET_LAYOUT and nnue/network.hpp.
 #[rustfmt::skip]
 const BUCKET_LAYOUT: [usize; 32] = [
     0, 0, 1, 1,
@@ -59,13 +58,25 @@ const BUCKET_LAYOUT: [usize; 32] = [
     3, 3, 3, 3,
 ];
 
+// Derived, not restated: this file is the oracle, and a bucket count that
+// disagreed with the layout would make it validate the wrong payload size.
+// Same rule bullet's get_num_buckets uses.
+const INPUT_BUCKETS: usize = {
+    let (mut max, mut i) = (0, 0);
+    while i < BUCKET_LAYOUT.len() {
+        if BUCKET_LAYOUT[i] > max { max = BUCKET_LAYOUT[i]; }
+        i += 1;
+    }
+    max + 1
+};
+
 fn king_bucket(ksq: usize) -> usize {
     const FILE_FOLD: [usize; 8] = [0, 1, 2, 3, 3, 2, 1, 0];
     BUCKET_LAYOUT[(ksq / 8) * 4 + FILE_FOLD[ksq % 8]]
 }
 
 pub struct Network {
-    pub l0w: Vec<i16>,  // [4*768 * HIDDEN]
+    pub l0w: Vec<i16>,  // [INPUT_BUCKETS*768 * HIDDEN]
     pub l0b: Vec<i16>,  // [HIDDEN]
     pub l1w: Vec<i8>,   // [OB * L1 * HIDDEN]
     pub l1b: Vec<f32>,  // [OB * L1]

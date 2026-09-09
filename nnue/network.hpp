@@ -19,6 +19,7 @@
 // The struct mirrors the leading bytes of bullet's quantised.bin (little-endian
 // i16; l0f factoriser already merged into l0w at save).
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -26,21 +27,41 @@ namespace NNUE {
 
 inline constexpr int INPUTS = 768;
 inline constexpr int HIDDEN = 1024;
-inline constexpr int INPUT_BUCKETS = 4;
 
-// Keep in sync with trainer.rs/sanity.rs BUCKET_LAYOUT (32-entry half-board
-// map, files a-d per rank starting at rank 1; e-h fold onto d-a). Expanded
-// here to 64 LERF squares exactly like bullet's ChessBucketsMirrored::new.
-inline constexpr uint8_t KING_BUCKET_MAP[64] = {
-    0, 0, 1, 1, 1, 1, 0, 0,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
+// The king-bucket map, in the SAME 32-entry half-board form the trainer uses:
+// columns are the mirrored file classes a/h, b/g, c/f, d/e, rows are ranks 1 to
+// 8 from the perspective's own side. This is the authority for the C++ side and
+// must equal BUCKET_LAYOUT in trainer_deep.rs and sanity_deep.rs. It used to be
+// kept here hand-expanded to 64 squares as well, which meant two encodings of
+// one fact and, on the last 8-bucket attempt, copies that drifted apart.
+inline constexpr int BUCKET_LAYOUT[32] = {
+    0, 0, 1, 1,
+    2, 2, 2, 2,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
 };
+
+inline constexpr int INPUT_BUCKETS = [] {
+    int max = 0;
+    for (const int b : BUCKET_LAYOUT) if (b > max) max = b;
+    return max + 1;
+}();
+
+// Expansion to 64 LERF squares, the same one bullet's ChessBucketsMirrored::new
+// performs: expanded[sq] = layout[(sq / 8) * 4 + FILE_FOLD[sq % 8]].
+inline constexpr std::array<uint8_t, 64> KING_BUCKET_MAP = [] {
+    constexpr int FILE_FOLD[8] = {0, 1, 2, 3, 3, 2, 1, 0};
+    std::array<uint8_t, 64> map{};
+    for (int sq = 0; sq < 64; ++sq) {
+        map[static_cast<size_t>(sq)] =
+            static_cast<uint8_t>(BUCKET_LAYOUT[(sq / 8) * 4 + FILE_FOLD[sq % 8]]);
+    }
+    return map;
+}();
 
 // Feature base (= 768 * bucket) and file-flip mask for a perspective whose
 // own king, seen from that perspective, sits on `lerfKsq`.

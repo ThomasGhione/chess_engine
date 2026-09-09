@@ -87,7 +87,7 @@ const SCALE: i32 = 400;
 const QA: i16 = 255;
 const QB: i16 = 64;
 
-// Keep in sync with nnue/network.hpp KING_BUCKET_MAP e sanity.rs.
+// Keep in sync with nnue/network.hpp BUCKET_LAYOUT and sanity_deep.rs.
 #[rustfmt::skip]
 const BUCKET_LAYOUT: [usize; 32] = [
     0, 0, 1, 1,

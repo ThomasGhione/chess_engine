@@ -38,6 +38,13 @@ namespace {
 constexpr int     INPUTS        = 768;
 constexpr int     HIDDEN        = 1024;
 constexpr int     INPUT_BUCKETS = 4;
+
+// Every net in this format has four king buckets, and the accumulator this tool
+// borrows from fen_accumulator.hpp uses the map compiled into network.hpp. On a
+// branch whose map has a different bucket count the two disagree and the reads
+// run past the file, so refuse to build rather than print wrong evaluations.
+static_assert(NNUE::INPUT_BUCKETS == INPUT_BUCKETS,
+              "single-layer nets are all 4-bucket: this tool is for a 4-bucket build");
 constexpr int     OUTPUT_BUCKETS = 8;
 constexpr int32_t QA = 255;
 constexpr int32_t QB = 64;

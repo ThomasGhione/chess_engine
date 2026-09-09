@@ -9,6 +9,7 @@
 // copie e stavano per diventare tre. Se sbaglia, i confronti con l'oracolo
 // falliscono e lo si scopre subito.
 
+#include "../network.hpp"
 #include "../network_deep.hpp"
 
 #include <algorithm>
@@ -19,20 +20,10 @@
 
 namespace NNUE::Deep::tools {
 
-constexpr int BUCKET_LAYOUT[32] = {
-    0, 0, 1, 1,
-    2, 2, 2, 2,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-};
-
+// The map lives in network.hpp. This used to be a fourth copy of it, and on the
+// last 8-bucket attempt the copies drifted.
 int kingBucket(int ksq) {
-    static constexpr int FILE_FOLD[8] = {0, 1, 2, 3, 3, 2, 1, 0};
-    return BUCKET_LAYOUT[(ksq / 8) * 4 + FILE_FOLD[ksq % 8]];
+    return NNUE::KING_BUCKET_MAP[static_cast<size_t>(ksq)];
 }
 
 struct Piece { int type; bool black; int sq; };

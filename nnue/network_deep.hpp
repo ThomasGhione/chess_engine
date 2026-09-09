@@ -7,7 +7,7 @@
 // ONE hidden layer only: see trainer_deep.rs for why bullet's 16->32->1 example
 // was not copied.
 //
-// The INPUTS are identical to the single-layer net (network.hpp): the same 4
+// The INPUTS are identical to the single-layer net (network.hpp): the same
 // mirrored king buckets, the same feature formula, the same i16 accumulator.
 // Only what happens AFTER the accumulator differs, so accumulator.hpp needs no
 // changes.
@@ -42,6 +42,8 @@
 // not an oversight, it is what the oracle does. Making them uniform would
 // change the results.
 
+#include "network.hpp"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -50,7 +52,9 @@ namespace NNUE::Deep {
 inline constexpr int INPUTS        = 768;
 inline constexpr int HIDDEN        = 1024;
 inline constexpr int L1_SIZE       = 16;
-inline constexpr int INPUT_BUCKETS = 4;
+// The accumulator reinterprets this struct's l0 prefix as an NNUE::Network, so
+// the two bucket counts are required to be equal. Derive rather than restate.
+inline constexpr int INPUT_BUCKETS = NNUE::INPUT_BUCKETS;
 inline constexpr int OUTPUT_BUCKETS = 8;
 inline constexpr int32_t QA    = 255;
 inline constexpr int32_t QB    = 64;
@@ -111,7 +115,7 @@ inline constexpr size_t PAYLOAD_BYTES =
     + static_cast<size_t>(OUTPUT_BUCKETS) * L1_SIZE * sizeof(float)
     + static_cast<size_t>(OUTPUT_BUCKETS) * L1_SIZE * sizeof(float)
     + static_cast<size_t>(OUTPUT_BUCKETS) * sizeof(float);
-static_assert(PAYLOAD_BYTES == 6'425'632, "layout cambiato: aggiorna sanity_deep.rs");
+static_assert(PAYLOAD_BYTES == 6'425'632, "layout changed: update sanity_deep.rs");
 
 // Scalar forward, from the two perspectives' accumulators to the evaluation in
 // centipawns. The correctness reference for the vectorised version.
