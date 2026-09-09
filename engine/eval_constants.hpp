@@ -4,12 +4,12 @@
 
 // Piece values, the last survivors of the handcrafted evaluator's constant
 // set (removed in the NNUE era). They feed SEE, MVV capture ordering and the
-// qsearch delta-pruning margins — search bookkeeping, not evaluation.
+// qsearch delta-pruning margins - search bookkeeping, not evaluation.
 
 namespace engine {
 
 // ===================================================
-// PIECE BASE VALUES (scalar — used for SEE, MVV, qsearch delta margins)
+// PIECE BASE VALUES (scalar - used for SEE, MVV, qsearch delta margins)
 // ===================================================
 inline constexpr int32_t PAWN_VALUE   =    100;
 inline constexpr int32_t KNIGHT_VALUE =    344;

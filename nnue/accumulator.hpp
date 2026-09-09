@@ -2,8 +2,8 @@
 
 // Dual-perspective NNUE accumulator: v[0] = white's view, v[1] = black's view.
 //
-// HalfKA king buckets (HALFKA_PLAN.md): every feature index of perspective X
-// depends on the (bucket, flip) of X's OWN king — the "basis". The basis of
+// HalfKA king buckets: every feature index of perspective X
+// depends on the (bucket, flip) of X's OWN king - the "basis". The basis of
 // each perspective is cached here (base = 768*bucket, flip), and the class
 // keeps this invariant:
 //
@@ -17,7 +17,7 @@
 // perspective is marked DIRTY and stops applying updates: its features
 // would need the new basis for the whole board, not a delta. The lazy
 // refresh happens in Board::ensureNnueAccumulatorClean() (called by
-// NNUE::evaluate and the selftest), where the Board is consistent —
+// NNUE::evaluate and the selftest), where the Board is consistent -
 // mid-doMove refreshes would read a half-updated position. Undo needs no
 // special case: while dirty everything is skipped and the next refresh
 // rebuilds from the real board; while clean the inverse deltas are exact.
@@ -103,7 +103,7 @@ struct alignas(64) Accumulator {
     }
 
     // Adds/removes one piece feature on an arbitrary accumulator row under a
-    // fixed basis — shared by the live perspectives and the Finny cache rows.
+    // fixed basis - shared by the live perspectives and the Finny cache rows.
     template<bool Add>
     static inline void updateRow(int16_t* __restrict row, int rowBase, int rowFlip,
                                  int p, uint8_t piece, uint8_t index) noexcept {
@@ -152,7 +152,7 @@ struct alignas(64) Accumulator {
             }
         }
 
-        // Fast path (the overwhelming majority): both perspectives clean —
+        // Fast path (the overwhelming majority): both perspectives clean -
         // one fused loop updates both rows, same ILP as the pre-HalfKA code.
         if (!dirty[0] && !dirty[1]) [[likely]] {
             const Network& net = *activeNetwork;
@@ -221,8 +221,8 @@ struct alignas(64) Accumulator {
 // mirror flip) plus the piece bitboards it was computed from. A lazy refresh
 // becomes a DIFF against the cached state (typically a handful of piece
 // updates) instead of a ~30-piece rebuild. Any cached content is a correct
-// starting point as long as the entry's basis matches — even from another
-// game — so the table lives per-thread (Lazy SMP helpers each get their own)
+// starting point as long as the entry's basis matches - even from another
+// game - so the table lives per-thread (Lazy SMP helpers each get their own)
 // and never needs invalidation. The bias-initialised entry with empty
 // bitboards is itself a valid state ("diff from the empty board").
 struct FinnyEntry {

@@ -1,5 +1,5 @@
 // Lettore di riferimento (pure-std, niente GPU) per il quantised.bin prodotto
-// da trainer_deep.rs — la rete con layer intermedi.
+// da trainer_deep.rs - la rete con layer intermedi.
 //
 // Come sanity.rs sta alla rete a un layer, questo sta alla rete profonda: e'
 // l'ORACOLO. Il C++ deve concordare con questo file, non viceversa, e va
@@ -93,7 +93,7 @@ pub fn load(path: &str) -> Network {
     // significa che il layout e' andato alla deriva.
     assert!(
         bytes[PAYLOAD..].iter().zip(b"bullet".iter().cycle()).all(|(a, b)| a == b),
-        "unexpected padding tail — layout drift?"
+        "unexpected padding tail - layout drift?"
     );
 
     let mut off = 0usize;

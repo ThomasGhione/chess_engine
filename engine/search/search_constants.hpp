@@ -22,7 +22,7 @@ inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
 inline constexpr int DEFAULT_DEPTH               = 11;
 
 // Score scale. A forced mate `n` plies away scores ±(MATE_VALUE - n), so every
-// score the search can produce fits in int16_t — the precondition for packing a
+// score the search can produce fits in int16_t - the precondition for packing a
 // static eval next to the score in the TT payload. Scores at or beyond
 // MATE_BOUND carry a ply distance and are rebased on TT store/load (see
 // scoreToTT / scoreFromTT).
@@ -55,9 +55,9 @@ inline int32_t NMP_EVAL_MAX = 4;
 inline int32_t RFP_MARGIN_PER_DEPTH = 70;
 // Futility margin generator: FUTILITY_MARGINS[depth] = MID_STEP*d, consumed
 // by the move loop (gated to depth 1..6). The HCE-era endgame row (phase split
-// on nonPawnMajors) was removed — see HCE_RESIDUE_AUDIT.md section 1b.
+// on nonPawnMajors) was removed as a handcrafted-evaluator residue.
 // NOTE: rebuildSearchDerivedTables() only runs on a UCI option change, so this
-// row is what a plain build actually uses — keep it == MID_STEP * d by hand.
+// row is what a plain build actually uses - keep it == MID_STEP * d by hand.
 inline int32_t FUTILITY_MID_STEP = 176;
 inline int32_t FUTILITY_MARGINS[7] = {0, 176, 352, 528, 704, 880, 1056};
 // LMP_THRESHOLDS[improving][depth]: higher = more permissive.
@@ -174,7 +174,7 @@ inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
 }
 
 // ===================================================
-// MOVE ORDERING (sorter) — score buckets
+// MOVE ORDERING (sorter) - score buckets
 // ===================================================
 inline constexpr int32_t HASH_MOVE_SCORE      = 100000;
 inline constexpr int32_t CAPTURE_BASE_SCORE   = 10000;

@@ -1,6 +1,6 @@
 #pragma once
 
-// Self-play training-data generation (NNUE_PLAN.md, Fase 0/1).
+// Self-play training-data generation.
 // Both entry points are dispatched from main() before Engine is constructed.
 
 namespace NNUE {

@@ -581,7 +581,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         }
 
         // History-based quiet pruning: skip late quiet moves with very negative
-        // history at low depth — they reliably fail to improve alpha.
+        // history at low depth - they reliably fail to improve alpha.
         if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
             const int32_t histScore = runtime.history[usSide][m.from][m.to];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
@@ -643,7 +643,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             if (!ctx.improving) {
                 reduction += 1;
             }
-            // History adjustment (quiet moves only — quiet history is meaningless
+            // History adjustment (quiet moves only - quiet history is meaningless
             // for captures, which the ordering already ranks by SEE/capture history).
             if (!wasCapture) {
                 const int32_t histScore = runtime.history[usSide][m.from][m.to];
@@ -774,7 +774,7 @@ int32_t Searcher::searchPosition(
     }
 
     // TB WDL probe (in-search): only return Draw as exact. Returning Win or
-    // Loss anywhere — even guarded by alpha/beta — collapses move ordering:
+    // Loss anywhere - even guarded by alpha/beta - collapses move ordering:
     // every TB-winning subtree at root produces the same TB_WIN_SCORE-ply
     // score because aspiration windows around small eval-derived scores trip
     // the alpha/beta cutoff at every TB-Loss child node, and PVS scout then
@@ -803,7 +803,7 @@ int32_t Searcher::searchPosition(
     }
 
     // TB probe sits AFTER the TT cutoff: in TB range most nodes cut on the
-    // (cheap, cached) TT entry — often the TB draw stored below — without
+    // (cheap, cached) TT entry - often the TB draw stored below - without
     // paying the mmap'd table lookup.
     if (runtime.syzygyProber != nullptr
         && runtime.syzygyProber->isLoaded()
@@ -812,7 +812,7 @@ int32_t Searcher::searchPosition(
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
             if (tbScore == 0) {
-                // Draw: exact terminal — prevents picking a drawn move when
+                // Draw: exact terminal - prevents picking a drawn move when
                 // a winning one exists (and vice versa).
                 if (canUseTT) {
                     runtime.transpositionTable->store(
@@ -828,7 +828,7 @@ int32_t Searcher::searchPosition(
     SearchNodeState node{};
     node.activeColor = b.getActiveColor();
     // One attack scan answers inCheck, double check and (in movegen) the
-    // evasion mask — the bitboard is reused at move generation below.
+    // evasion mask - the bitboard is reused at move generation below.
     const uint64_t checkers = b.checkersTo(node.activeColor);
     node.inCheck = (checkers != 0ULL);
     node.isPVNode = isPVNode;
@@ -935,7 +935,7 @@ int32_t Searcher::searchPosition(
             const auto& mc = captures[i];
             const int32_t see = Sorter::staticExchangeEvaluation(b, mc);
             // PROBCUT_MARGIN is an eval-scale quantity (it is added to beta
-            // above), so the SEE it gates has to be converted first — comparing
+            // above), so the SEE it gates has to be converted first - comparing
             // raw material against it makes the filter ~MATERIAL_TO_EVAL_PCT
             // too strict and discards captures that would clear the bound.
             if (materialToEval(see) < PROBCUT_MARGIN) continue;
@@ -1326,7 +1326,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     result.hasLegalMoves = true;
 
     // TB root probe: probeRoot returns moves with rank derived from actual
-    // DTZ — higher rank is faster win / slower loss / preserved draw. The
+    // DTZ - higher rank is faster win / slower loss / preserved draw. The
     // optimal play in any TB-known endgame is just to follow that ranking,
     // so return immediately for all three outcomes without running a search.
     // Searching adds nothing here: TB already proves the result and orders

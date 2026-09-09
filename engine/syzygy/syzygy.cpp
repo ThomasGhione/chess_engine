@@ -32,7 +32,7 @@ uint64_t SyzygyProber::sideOccupancy(const chess::Board& b, int side) noexcept {
 
 bool SyzygyProber::inTBRange(const chess::Board& board) const noexcept {
     if (!loaded_) return false;
-    // All pieces regardless of color — popcount of the full occupancy.
+    // All pieces regardless of color - popcount of the full occupancy.
     const int pieces = __builtin_popcountll(sideOccupancy(board, 0) | sideOccupancy(board, 1));
     return pieces <= TB_LARGEST;
 }
@@ -95,7 +95,7 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
 
     // Use tb_probe_root (not tb_probe_root_dtz) because we need per-move DTZ.
     // tb_probe_root_dtz collapses every "guaranteed win" to TB_MAX_DTZ when
-    // cnt50 + dtz <= 99, which is the common case — that erases the
+    // cnt50 + dtz <= 99, which is the common case - that erases the
     // distinction between "promote in 1" and "shuffle the king for 30 plies".
     // The probe_root results[] array carries the actual DTZ per move, which
     // lets the search pick the fastest conversion.
@@ -143,7 +143,7 @@ std::vector<RootMove> SyzygyProber::probeRoot(const chess::Board& board) const {
         // tbRank: higher is better. Smaller DTZ beats larger DTZ on the
         // winning side; larger DTZ (slower loss) beats smaller DTZ on the
         // losing side. Cursed Win (WDL=3) and Blessed Loss (WDL=1) are
-        // 50-move-rule draws — score them as draws to avoid trading a
+        // 50-move-rule draws - score them as draws to avoid trading a
         // real win for one.
         int32_t rank = 0;
         if (wdl == TB_WIN)        rank = WIN_BASE  - static_cast<int32_t>(dtz);

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# watch_calibration.sh — live absolute-Elo viewer for an in-progress
+# watch_calibration.sh - live absolute-Elo viewer for an in-progress
 # run_sf_calibration.sh gauntlet.
 #
 # ordo's -m (multi-anchor) hard-fails if ANY named anchor has zero finished
-# games in the PGN yet — which is normal for the first minute or two of a
+# games in the PGN yet - which is normal for the first minute or two of a
 # run, before every SF-<elo> level has completed at least one game. This
 # filters the anchors file down to whichever anchors already appear in the
 # PGN, so early polls degrade gracefully instead of erroring out.

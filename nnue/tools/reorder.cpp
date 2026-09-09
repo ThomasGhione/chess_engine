@@ -4,7 +4,7 @@
 //   g++ -std=c++23 -O2 -march=native nnue/tools/reorder.cpp nnue/nnue_deep.cpp -o /tmp/reorder
 //   /tmp/reorder <in.nnue> <posizioni.fen> <out.nnue>
 //
-// Il file di posizioni e' un elenco di FEN, una per riga, da partite VERE — si
+// Il file di posizioni e' un elenco di FEN, una per riga, da partite VERE - si
 // ricava da un PGN con python-chess. Servono alcune migliaia di posizioni; il
 // guadagno regge su posizioni mai viste (misurato: 67,3% in calibrazione contro
 // 66,6% su un insieme separato).
@@ -15,7 +15,7 @@
 // sono TUTTI nulli. Nell'ordine in cui la rete esce dall'addestramento i
 // neuroni sono disposti a caso, e la quota di gruppi nulli e' esattamente
 // quella che ci si aspetta da neuroni indipendenti: con l'85,6% di byte nulli,
-// 0,856^4 = 53,7%. Ma i neuroni NON sono indipendenti — alcuni tacciono
+// 0,856^4 = 53,7%. Ma i neuroni NON sono indipendenti - alcuni tacciono
 // insieme. Raggruppandoli per co-occorrenza si arriva al 67%, cioe' un quinto
 // di lavoro in meno nel layer.
 //
@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
                 != forwardSimd(back, pa.data(), pb.data(), bk)) ++bad;
     }
     if (bad != 0) {
-        std::fprintf(stderr, "\nCOLLAUDO FALLITO: %ld divergenze su %ld — file NON valido\n", bad, checks);
+        std::fprintf(stderr, "\nCOLLAUDO FALLITO: %ld divergenze su %ld - file NON valido\n", bad, checks);
         return 1;
     }
     std::printf("collaudo: %ld confronti, valutazioni identiche\n", checks);

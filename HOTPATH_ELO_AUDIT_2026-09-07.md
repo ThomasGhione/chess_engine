@@ -72,7 +72,7 @@ I documenti storici riportano `searchPosition` 11,7% self, qsearch 1,7% self, mo
 
 ## 3. Search: difetti concreti e correzioni prioritarie
 
-### S01 — Il confronto TT deve usare il punteggio già ribasato
+### S01 - Il confronto TT deve usare il punteggio già ribasato
 
 **P0 · C · costo S · rischio basso di implementazione, albero diverso.** `searcher.cpp:774` e `:1036` passano `tte.score` grezzo a `ttBoundCutoff`, poi fanno `scoreFromTT` soltanto nel return. Anche il commento di `searcher.hpp` codifica l'ordine sbagliato.
 
@@ -80,7 +80,7 @@ Controesempio: entry LOWERBOUND con score memorizzato **31990**, nodo a **ply 8*
 
 Il codice di riferimento Stockfish converte il valore prima di usarlo nei cutoff. È un riscontro del contratto, non una giustificazione per copiarne le costanti. [Sorgente primaria](https://raw.githubusercontent.com/official-stockfish/Stockfish/master/src/search.cpp).
 
-### S02 — `improving` a ply 2 legge uno zero, non la valutazione della radice
+### S02 - `improving` a ply 2 legge uno zero, non la valutazione della radice
 
 **P1 · C · S–M · rischio medio.** L'unica scrittura di `evalStack` è `searcher.cpp:850`, dentro `searchPosition`. La radice percorre `runIterativeDeepening → getBestMove → searchRootMoveScore`, che chiama `searchPosition` a **ply 1** (`:354`). Non passa da `searchPosition(..., ply=0)`.
 
@@ -90,7 +90,7 @@ Usare uno stack esplicito per worker/ricerca, inizializzare la radice con una st
 
 Inoltre SE e verifica null rientrano **allo stesso ply** e possono riscrivere lo slot dell'antenato (`:395`, `:874`). Occorre decidere quali valori rimangono validi dopo questi probe e ripristinarli quando necessario. Registrare decisioni improving cambiate e nodi, poi SPRT.
 
-### S03 — Il primo fail-high alla radice non interrompe il loop
+### S03 - Il primo fail-high alla radice non interrompe il loop
 
 **P0/P1 · C · S · rischio medio.** `getBestMove`, `searcher.cpp:1191`: `if (!isFirst && isBetaCutoff(bestScore, beta)) break;`.
 
@@ -98,13 +98,13 @@ Se la prima mossa supera beta durante aspiration, il codice cerca almeno un'altr
 
 Questo intervento è distinto dal precedente esperimento, fallito, di **allargare** l'aspiration window.
 
-### S04 — Interruzioni possono produrre store TT o apprendimento da risultati incompleti
+### S04 - Interruzioni possono produrre store TT o apprendimento da risultati incompleti
 
 **P0 · C · S–M · rischio medio.** Nella qsearch, dopo la ricorsione e `undoMove` (`:1112`), manca il controllo `runtime.isInterrupted()`: il valore di fallback può aggiornare best/alpha e raggiungere lo store `:1125`. Il loop principale lo controlla correttamente a `:655`, ma troppo tardi per annullare gli store già fatti dentro qsearch. ProbCut e SE controllano il risultato senza una barriera esplicita immediatamente dopo il probe.
 
 Ripristinare la Board, verificare interruption e propagare l'abort **prima** di usare score, TT o history. Evitare forward NNUE di emergenza durante lo srotolamento quando un risultato numerico verrà comunque scartato; preservare il contratto delle API senza flag d'interruzione. Test: arresto deterministico dentro qsearch, ProbCut, SE; niente nuovi bound derivati dall'iterazione troncata; scelta dell'ultima iterazione completata; latenza stop→bestmove.
 
-### S05 — Excluded search: identità della mossa e contratto del sottoalbero
+### S05 - Excluded search: identità della mossa e contratto del sottoalbero
 
 **P0/P1 · C · M · rischio medio-alto.** `searcher.cpp:530` esclude usando `sameFromTo`, quindi escludere `a7a8q` esclude anche `a7a8n/r/b`. Una prova di singolarità deve escludere la **mossa completa**, promozione compresa.
 
@@ -117,7 +117,7 @@ Altri punti da correggere o rendere espliciti:
 
 Testare promozioni alternative, una sola alternativa, tutte le alternative potabili, hash move non valida, SE sotto stop e verifica che solo il nodo excluded eviti lo store ordinario.
 
-### S06 — Patta per 50 mosse, stallo e contesto storico della TT
+### S06 - Patta per 50 mosse, stallo e contesto storico della TT
 
 **P0 per correttezza; P2 per Elo atteso · C · M.** `checkDrawTerminalConditions` precede la verifica del matto. A halfmove clock 100 restituisce zero anche se la posizione è matto. Predisporre un caso quale `7k/6Q1/5K2/8/8/8/8/8 b - - 100 1` e verificare col generatore: controllo manuale, non eseguito oggi con il motore.
 
@@ -127,7 +127,7 @@ La chiave TT non include il halfmove clock. Due posizioni uguali, con clock dive
 
 Un'altra incoerenza del risultato root: il ramo `moves.is_empty()` di iterative deepening (`:1304`) calcola matto/stallo ma non imposta `terminalRoot` o `completedAnyDepth`. `searchBestMove` ricade quindi nel fallback (`:337`), rigenera la lista e sostituisce runtime.eval con NNUE. La mossa resta vuota, ma lo score terminale viene perso. Un risultato terminale esplicito risolve anche il lavoro duplicato; è distinto dal caso TB/voto M03.
 
-### S07 — Null move e ripetizioni hanno un confine storico incompleto
+### S07 - Null move e ripetizioni hanno un confine storico incompleto
 
 **P1 per audit di correttezza · C · M.** `doNullMove` incrementa `nullPly` senza inserire history; `countRepetitions` sottrae `nullPly & 1` al punto di partenza (`board.cpp:330`). Questo corregge la parità subito dopo la null, ma dopo una **mossa reale** nel suo sottoalbero esiste di nuovo una entry corrente: con nullPly dispari il conteggio parte una entry prima e non conta neppure la posizione corrente.
 
@@ -137,7 +137,7 @@ Predisporre test di null→quiet→quiet, null→cattura che azzera la history, 
 
 ## 4. NNUE: ridurre il lavoro del feature transformer
 
-### N01 — Accumulator stack realmente lazy: investimento principale
+### N01 - Accumulator stack realmente lazy: investimento principale
 
 **P1 · C/H · L · rischio alto, risultato numerico da mantenere identico.** `Board::movePieceOnBB` e add/remove (`board.inl:160`) aggiornano subito l'accumulatore. Solo il cambio king bucket/flip rinvia il lavoro. Un figlio che esce per TT, draw, limiti o altra condizione può avere pagato tutti gli update, più l'inverso nell'undo, pur non chiamando mai evaluate.
 
@@ -155,7 +155,7 @@ Contatori necessari: do/undo per MoveKind, eval invocate, NNUE forward effettivi
 
 Il progetto di uno stack con `push/pop`, flag computed e aggiornamenti differiti è riscontrabile nell'implementazione NNUE di Stockfish. L'adattamento e il vantaggio per HydraY restano da dimostrare. [Sorgente primaria](https://raw.githubusercontent.com/official-stockfish/Stockfish/master/src/nnue/nnue_accumulator.h).
 
-### N02 — Fondere catture, EP e promozioni
+### N02 - Fondere catture, EP e promozioni
 
 **P1 · C/H · M · rischio medio.** `boardapi.inl:216` sottrae la vittima, poi `:224` sposta l'attaccante: due passate. La promozione sposta il pedone e poi lo rimuove dalla destinazione per aggiungere il pezzo promosso (`:257`, `:69`): fino a quattro passate in promotion capture.
 
@@ -170,19 +170,19 @@ promotion capture: A' = A - W(pedone,from) - W(vittima,to) + W(promosso,to)
 
 Per una cattura a basi pulite, l'attuale traffico logico sull'accumulatore è 2×(4 KiB letti + 4 KiB scritti) per make, altrettanto per undo. La fusione lo dimezza; i pesi rimangono da leggere. Questi sono byte dell'algoritmo, **non traffico DRAM misurato né speedup del 50%**. Per re/cambio base mantenere un fallback per prospettiva. Il kernel è riutilizzabile dentro N01: non sono due guadagni da sommare.
 
-### N03 — Fusione dei diff Finny e aggiornamento del re nella stessa base
+### N03 - Fusione dei diff Finny e aggiornamento del re nella stessa base
 
 **P2 · C/H · M.** Il Finny attuale (`board.inl:235`) compie una passata HIDDEN per ogni pezzo aggiunto/rimosso e poi copia la riga. Raccogliere un piccolo elenco di delta e applicarlo a tile di neuroni, caricando la riga una sola volta per tile; scegliere rebuild da bias se il diff supera il costo dei pezzi attivi.
 
 `updateMove` tratta **ogni** re come caso lento (`accumulator.hpp:153`), anche se bucket e flip rimangono invariati. Il caso stessa-base potrebbe usare la fusione ordinaria; misurare la frequenza per fase, soprattutto nei finali. Evitare di sporcare preventivamente prospettive che restano valide.
 
-### N04 — Separare NNUE dalla mutazione generica della Board
+### N04 - Separare NNUE dalla mutazione generica della Board
 
 **P2 · C/H · M–L.** Un delta NNUE esplicito consente di saltare gli update durante ricostruzioni PV, perft, validazioni, parsing di sequenze e root fallback. Il risparmio competitivo di questi siti è secondario; il vantaggio strutturale è impedire che ogni nuovo uso della Board paghi HIDDEN involontariamente. Non introdurre un flag globale che disabilita NNUE durante search concorrenti.
 
 ## 5. NNUE forward: cosa cambiare e cosa conservare
 
-### N05 — Ottimizzare per gruppi non nulli sui nodi della search
+### N05 - Ottimizzare per gruppi non nulli sui nodi della search
 
 **P1/P2 · C/D/H · M.** Il riordino `nnue/tools/reorder.cpp` usa FEN da partite. Il forward gira soprattutto su **posizioni interne alla ricerca**, comprese tattiche, non sulle sole posizioni effettivamente giocate. Campionare una piccola frazione dei forward effettivi, separata per output bucket e fase, e riordinare usando quel carico; validazione su partite/nodi esclusi dalla calibrazione.
 
@@ -190,7 +190,7 @@ La metrica utile è il numero di **gruppi da quattro** non nulli, non il numero 
 
 Si può sperimentare un obiettivo pesato per bucket/costo reale e ottimizzazione della coattivazione durante training, ma quest'ultima **cambia la funzione** e richiede una nuova rete/SPRT.
 
-### N06 — Fallback AVX2 sparso senza saturazione errata
+### N06 - Fallback AVX2 sparso senza saturazione errata
 
 **P2, P1 se la distribuzione importante usa solo AVX2 · C/H · M–L.** `nnue_deep.cpp:278` usa L1 dense in i16, mentre la via VNNI è sparsa. Un singolo `maddubs_epi16` su attivazioni 0..255 sarebbe scorretto per saturazione: il commento attuale ha ragione.
 
@@ -198,7 +198,7 @@ Esiste però una variante esatta da provare: separare `x` in `x & 127` e `x & 12
 
 Questo permette di usare i gruppi sparsi e `l1wT` anche senza VNNI. Costa più istruzioni per gruppo; vince solo se i gruppi saltati ripagano scansione e broadcast. Confrontare dense e sparse sul target Windows/AVX2, includendo posizioni dense. Non diminuire QA a 127 sulla rete corrente per rendere facile maddubs: cambierebbe l'eval.
 
-### N07 — Pairwise e dot: microarchitettura, non semplificazioni algebriche arbitrarie
+### N07 - Pairwise e dot: microarchitettura, non semplificazioni algebriche arbitrarie
 
 **P2 · C/H · M.** Nella via VNNI esistono già packus, divisione intera esatta via moltiplicatore, NNZ raccolti nella stessa passata, pesi trasposti e otto accumulatori indipendenti (`nnue_deep.cpp:165–275`). Conservare queste proprietà.
 
@@ -206,7 +206,7 @@ Esperimenti sensati: streaming pairwise→dot per blocchi evitando h8/nnz comple
 
 La coda float ha due divisioni vettoriali (`:137`) e una riduzione seriale di 16 prodotti (`:316`). Reciproco precalcolato, FMA, somma ad albero e conversione diversa da `lround` **non garantiscono stessi bit**. Trattarle come approssimazioni numeriche finché non si dimostra altrimenti; confrontare output quantizzato, soglie e search, non solo errore medio.
 
-### N08 — Layout e dispatch della rete
+### N08 - Layout e dispatch della rete
 
 **P2/P3 · C/H · S–M.** Il branch deep è `[[unlikely]]` (`nnue.cpp:227`) pur essendo deep la rete incorporata. Correggere o rimuovere l'hint nel prossimo intervento sul file; impatto probabilmente modesto e dipendente da layout/LTO. Una specializzazione al caricamento può evitare dispatch nel forward, ma una chiamata indiretta può costare di più: non assumere un guadagno.
 
@@ -214,7 +214,7 @@ La coda float ha due divisioni vettoriali (`:137`) e una riduzione seriale di 16
 
 Il forward shallow ha una sola catena di accumulo per metà (`nnue.cpp:94`): unroll con 2–4 somme è testabile per l'uso di reti shallow, ma non è la priorità della rete incorporata.
 
-### N09 — Contratti C++ del caricamento e dell'accesso ai pesi
+### N09 - Contratti C++ del caricamento e dell'accesso ai pesi
 
 **P0 per validità del codice, P2 come leva Elo · C · M.** `nnue.cpp:142/:195` converte `NetworkDeep*` a `Network*`. Uguaglianza di offset e dimensioni non crea un oggetto `Network` né rende lecita in generale l'accessibilità tramite un tipo estraneo. Usare un vero membro comune `FeatureTransformer` o una vista con puntatori ai reali array, condivisa dai due formati.
 
@@ -222,13 +222,13 @@ Il forward shallow ha una sola catena di accumulo per metà (`nnue.cpp:94`): unr
 
 Anche l'overlay shallow sul blob incorporato va trattato con un lifetime esplicito, oppure copiato in un oggetto tipizzato al load. Non ho riprodotto una miscompilazione e non attribuisco a questi punti i crash storici. [Regole C++ sull'accesso attraverso tipi](https://eel.is/c++draft/basic.lval).
 
-### N10 — Cambio EvalFile: invalidare tutte le cache dipendenti dalla rete
+### N10 - Cambio EvalFile: invalidare tutte le cache dipendenti dalla rete
 
 **P0 per cambio rete, P3 durante una partita a rete fissa · C · S–M.** `uci.cpp:270` refresha la Board dopo load ma non svuota la TT, che contiene score e raw eval della rete precedente. Anche la correction history apprende rispetto alla rete vecchia. Invalidare TT e stato appreso pertinente a tutti i worker dopo un load riuscito, senza perdere configurazione/limiti.
 
 Finny usa l'indirizzo `activeNetwork` come identità. La successione A→B→C può riutilizzare l'indirizzo A; se Finny non è stato usato durante B, può scambiare C per A. Preferire una generation monotona della rete. Il loader deve inoltre validare i dati **prima** di pubblicare lo stato, controllare finitezza della coda float e avere un formato/versione esplicito per le future architetture. La sola lunghezza del file non distingue due reti diverse con payload di pari dimensione.
 
-### N11 — Limiti numerici e selftest
+### N11 - Limiti numerici e selftest
 
 **P1 per abilitare refactor NNUE · C · M.** Il forward deep L1 somma al massimo `1024×255×128` in valore assoluto: i32 è sufficiente. Il forward shallow ha invece `sum(t*t*w)` su 1024 neuroni per metà; il limite per singolo prodotto i16 verificato dal loader non dimostra che la **somma i32** non trabocchi. Né `Evaluator::evaluate` limita universalmente la raw eval alla banda non-matto. Validare separatamente FT, dot, scala finale, output e conversione TT. Nessuna evidenza oggi di overflow della rete incorporata.
 
@@ -236,13 +236,13 @@ Il selftest corrente confronta tutto `Accumulator` con `memcmp`, inclusa la coda
 
 ## 6. Search: modifiche strutturali e potature da sperimentare
 
-### S08 — Un solo ingresso logico al nodo di orizzonte
+### S08 - Un solo ingresso logico al nodo di orizzonte
 
 **P1/P2 · C/H · M · rischio medio.** A depth<=0 `searchPosition` ha già contato il nodo e controllato limiti, terminali e patte (`:729–748`); chiama qsearch che conta e controlla di nuovo (`:1024–1028`). È lavoro duplicato, e anche doppio conteggio di una parte delle posizioni visitate.
 
 Unificare il prologo oppure separare qsearch pubblica e corpo «nodo già entrato». Conservare ordine dei terminali e mate-distance narrowing. Se si cambia la contabilità, gli NPS prima/dopo **non sono comparabili direttamente**: misurare tempo e veri nodi espansi, confrontare score/bestmove/PV a depth fisso senza node cap, poi ricalibrare `go nodes` e budget datagen. Il doppio conteggio non dimostra doppio costo della qsearch: vale solo sulla transizione dalla search principale.
 
-### S09 — ProbCut: prima ridurre il costo dei tentativi inutili
+### S09 - ProbCut: prima ridurre il costo dei tentativi inutili
 
 **P1 · C/H · M.** `searcher.cpp:915–936` genera tutte le tattiche, le visita nell'ordine del generatore, calcola SEE completo e cerca a `depth-4`. Non usa una lista ordinata per probabilità di cutoff, non filtra con informazione TT negativa sufficiente, non esegue una qsearch preliminare separata prima della ricerca ridotta. La TT viene prefetchata nei loop ordinari, ma non nei figli di ProbCut o null.
 
@@ -260,7 +260,7 @@ Misurare: opportunità, tentativi, successi, nodi spesi nei fallimenti, successo
 
 Il log della precedente modifica di scala è incompleto: non trasformare il vecchio +5,39 ±12,21 in un guadagno provato. Decidere separatamente se chiudere quel debito prima di aggiungere altra logica.
 
-### S10 — Generation e MovePicker per stadi
+### S10 - Generation e MovePicker per stadi
 
 **P1 come prototipo misurato, non adozione automatica · C/D/H · L.** Il codice genera e valuta circa tutte le mosse prima di consumare la prima (`searcher.cpp:956`, `sorter.cpp:211`); lazy SEE ha già ridotto parte del costo ma non generazione/history scoring.
 
@@ -270,7 +270,7 @@ Il dato storico è favorevole al **meccanismo**: 53,4% dei nodi osservati consum
 
 Due vincoli specifici: il progetto documenta un precedente staged movegen respinto; e le bande attuali si sovrappongono (quiet fino a 11250, capture base 10000). Lo staging modifica l'albero per costruzione. Ha senso riaprirlo soltanto come implementazione diversa, con ablation del costo effettivamente evitato e SPRT, non come patch dichiarata node-identical. Il solo «TT prima di tutto» copre una frazione piccola e non realizza l'intero beneficio.
 
-### S11 — Qsearch: ordinare e filtrare soltanto ciò che viene consumato
+### S11 - Qsearch: ordinare e filtrare soltanto ciò che viene consumato
 
 **P2 · C/H · M.** `sortTacticalMoves` (`sorter.cpp:286`) fa SEE su tutte le catture sopravvissute al primo delta gate; poi il picker potrebbe consumarne una sola. Spostare finalizzazione/filtro nel picker tattico e aggiornare il delta pruning con l'alpha corrente. Possibile risparmio di SEE e make/undo; ordine e albero cambiano se il punteggio definitivo determina una nuova selezione.
 
@@ -280,7 +280,7 @@ La lista passa da generatore a sorter e poi viene move-assegnata alla qsearch. U
 
 Non aggiungere automaticamente la best move nei TT store qsearch: quell'esperimento ha già perso. Eventuali prove di **lettura** della hash capture per ordinare vanno tenute separate dagli store di mosse.
 
-### S12 — LMR/PVS/IIR: intervenire su categorie dimostrate, non sulle costanti già sconfitte
+### S12 - LMR/PVS/IIR: intervenire su categorie dimostrate, non sulle costanti già sconfitte
 
 **P2 · C/H · M–L.** Lo schema attuale riduce anche late captures, mosse evasive e quiet check non riconosciuti dal gate ristretto; reduction è sempre almeno uno. `iirActive` aumenta la riduzione delle mosse tardive, non riduce direttamente la profondità del nodo. Sono scelte, non errori solo perché diverse da altri motori.
 
@@ -295,7 +295,7 @@ Prima dei cambi raccogliere re-search rate, fail-high dopo LMR, profondità ragg
 
 La tabella LMR è limitata a depth 19, ma il motore può essere invocato più in profondità. Estenderla ha interesse per TC lunghi/infinite, subordinato alla frequenza reale; non è una giustificazione per aumentare MAX_PLY alla cieca.
 
-### S13 — SEE a soglia e riuso del risultato
+### S13 - SEE a soglia e riuso del risultato
 
 **P1/P2 · C/H · M.** `staticExchangeEvaluation` ricostruisce il least valuable attacker a ogni scambio, con lookup slider, produce un numero completo e limita la sequenza a 16 (`sorter.cpp:121`). Nei chiamanti di pruning serve spesso soltanto `SEE >= soglia`.
 
@@ -303,7 +303,7 @@ Introdurre `seeGe(move, threshold)` con uscite anticipate e insieme di attaccant
 
 La SEE attuale considera attaccanti geometrici: non tratta esplicitamente ricatture inchiodate, ricattura del re su casa difesa o promozioni durante gli scambi successivi. È una approssimazione; quando alimenta pruning può rigettare sacrifici validi o ammettere scambi falsamente buoni. Costruire casi per queste categorie e scegliere un compromesso a soglia. Non serve trasformarla in una mini-ricerca legale completa. [Esempio primario di SEE a soglia](https://raw.githubusercontent.com/official-stockfish/Stockfish/master/src/position.cpp).
 
-### S14 — History: informazione più precisa prima di più tabelle
+### S14 - History: informazione più precisa prima di più tabelle
 
 **P2 · C/H · M.** Capture history è indicizzata da `[side][to][victim][2]`: due attaccanti diversi sulla stessa vittima/casa condividono la statistica. Testare `[side][attackerType][to][victim]` con singola cella e gravity calibrata, oppure rimuovere il secondo slot con ablation. I due slot attuali sono due statistiche molto correlate, non una classifica esplicita di due mosse.
 
@@ -311,7 +311,7 @@ Le history quiet/contHist vengono aggiornate solo sui cutoff, con bonus quadrati
 
 C'è anche un piccolo difetto nel tracking: quando `searchedQuiets[64]` o `searchedCaptures[32]` è pieno, il cutoff corrente non viene inserito, ma il calcolo del malus sottrae comunque uno (`searcher.cpp:681/:693`). Si risparmia erroneamente l'ultima mossa precedentemente registrata. Tenere traccia se la mossa cutoff è stata effettivamente inserita. Caso raro, priorità P3 per Elo.
 
-### S15 — RFP/NMP, fail-soft e scala delle valutazioni
+### S15 - RFP/NMP, fail-soft e scala delle valutazioni
 
 **P2 · C/H · S–M.** Conservare i gate e i margini correnti finché non c'è un segnale. RFP depth più ampio, razoring, estensioni di check generalizzate e allargamento dell'aspiration hanno già perso. Non «correggere» automaticamente tutte le costanti moltiplicandole per 2,6.
 
@@ -394,7 +394,7 @@ L'I/O UCI e la ricostruzione PV sono percorsi per iterazione, non per nodo. Il P
 
 ## 11. NNUE: qualità dei dati, training e architettura
 
-### D01 — La validation dichiarata non viene eseguita
+### D01 - La validation dichiarata non viene eseguita
 
 **P1 · C/D · M.** `nnue/trainer/Cargo.toml:12` fissa Bullet a `cebc78a…`. In quella revisione il parametro test_set produce solo un messaggio di funzionalità non implementata. Il trainer shallow lo documenta (`trainer.rs:45`) e il deep passa None (`trainer_deep.rs:193`). Non è una nuova scoperta ignorata dal codice: è un limite già riconosciuto, che resta da colmare. [Sorgente Bullet della revisione effettivamente usata](https://raw.githubusercontent.com/jw1912/bullet/cebc78a093d92cbc87e56cfef049184c225270b0/crates/bullet_lib/src/value.rs).
 
@@ -402,7 +402,7 @@ Serve un valutatore esterno dei checkpoint con loss holdout e forward quantizzat
 
 Non aggiornare Bullet soltanto per avere un flag validation: cambierebbe anche il backend e potenzialmente il training. Il confronto esterno permette prima un A/B controllato. Miglior loss è un filtro economico per decidere quali checkpoint giocare, non una prova Elo.
 
-### D02 — Migliorare il teacher e la distribuzione visitata
+### D02 - Migliorare il teacher e la distribuzione visitata
 
 **P1/P2 · C/H · XL.** Datagen usa per default 8000 nodi/mossa e target depth cap 32. Il target fonde 70% score del teacher e 30% risultato della partita; le adjudication dipendono in parte dallo stesso motore. Esiste quindi un circuito di autoapprendimento che può conservare errori del teacher. Non equivale a dire che self-play non funzioni: significa che ripetere lo stesso processo più a lungo può esaurire il beneficio.
 
@@ -416,7 +416,7 @@ Interventi da confrontare a budget dati/GPU definito:
 
 Datagen include già 8/9 ply casuali, global shuffle del corpus e seeding di finali. Proporre «aggiungere shuffle» o «aggiungere finali» come se mancassero sarebbe errato. Il seeding è una partita ogni otto, 3–6 pezzi, 65% sbilanciato e massimo otto record; questo **non implica** 12,5% dei record nel bucket 0. I commenti sull'antico bucket mai addestrato descrivono una rete precedente: verificare distribuzione e residui della rete corrente, senza ripetere la vecchia ipotesi di buco dati già smentita nei documenti recenti.
 
-### D03 — Quantizzazione e checkpoint devono ottimizzare il motore esportato
+### D03 - Quantizzazione e checkpoint devono ottimizzare il motore esportato
 
 **P1/P2 · C/H · M–XL.** Training deep: MSE dopo sigmoid, feature factorizer, CReLU pairwise, L1 e testa; export FT i16, L1 i8, testa float. In produzione il pairwise usa divisione/troncamento intero esatto per 255, oltre a clipping e quantizzazione dei pesi. Confrontare:
 
@@ -428,7 +428,7 @@ Il confronto 2↔3 deve essere esatto per una ottimizzazione aritmeticamente equ
 
 Lo schedule attuale usa batch 16.384, 6104 batch per superbatch, WDL 0,3 e StepLR con salto a metà budget. Lo stage/resume conserva gli indici globali e il progetto ha già corretto vecchi problemi di ripartenza: non riproporli come bug attuali. In una nuova campagna, confrontare a budget campioni simile uno schedule più graduale, checkpoint intermedi selezionati su holdout e più seed dove serve stimare la variabilità. Budget 320→640 senza nuovo segnale non è la prima spesa utile.
 
-### D04 — Architettura: frontiera fra accuratezza e costo dell'intera ricerca
+### D04 - Architettura: frontiera fra accuratezza e costo dell'intera ricerca
 
 **P2/P3 · H · L–XL.** Le opzioni ragionevoli rimaste non hanno tutte la stessa priorità:
 
@@ -448,31 +448,31 @@ Il precedente passaggio a più input king bucket ha perso; non riproporre generi
 
 ## 12. Build, benchmark e affidabilità degli esperimenti
 
-### I01 — Hash del ramo fastchess non viene passato
+### I01 - Hash del ramo fastchess non viene passato
 
 **P1 per validità esperimenti · C · S.** `tuning/run_sprt.sh:126` stampa HASH, ma le due specifiche motore `:145–146` passano Threads e opzioni aggiuntive, senza `option.Hash`. Il ramo cutechess lo passa a `:167`; `run_sprt_hash.sh` configura esplicitamente i due valori e non ha questo difetto.
 
 Con fastchess viene quindi usato il default UCI del binario, salvo override in NEW_OPTS/BASE_OPTS. Se coincide con HASH non cambia il test; se differisce, il riepilogo mente sulla configurazione. Non ne consegue che tutti i risultati storici Hash siano invalidi. Correzione futura: default Hash esplicito per entrambi i motori con precedenza documentata degli override e manifest delle opzioni effettive. Lo script e lo SPRT attivi restano intatti.
 
-### I02 — Rendere riproducibile ciò che si confronta
+### I02 - Rendere riproducibile ciò che si confronta
 
 **P1/P2 · C/H · S–M.** Ogni A/B dovrebbe conservare due binari immutabili, SHA della rete incorporata/esterna, commit **e diff locale**, compilatore/flag/ISA, Hash/Threads/TB, TC/book, seed, modello SPRT e adjudication. Il commit da solo oggi ometterebbe proprio la nuova corrHist. Non riutilizzare `./chess` come artefatto mutabile di un test mentre una build successiva lo rimpiazza.
 
 Il backend fastchess seleziona `model=normalized`: i parametri di ipotesi del modello e l'Elo riportato in una diversa calibrazione non vanno scambiati. Una calibrazione contro livelli Stockfish UCI_Elo non è una misura FIDE assoluta. Per trend interni usare lo stesso protocollo e opponent; per generalizzazione aggiungere in seguito un piccolo pool indipendente e TC più lungo.
 
-### I03 — Build già aggressiva; niente PGO rituale
+### I03 - Build già aggressiva; niente PGO rituale
 
 **P2/P3 · C/D · M.** Sono già presenti O3, LTO, native/mtune, funroll-loops e requisiti BMI2. PGO ha perso due volte. Prima di riprovarlo servono dati nuovi: corpus di profilo rappresentativo, ISA effettiva e attribuzione del precedente peggioramento. Anche togliere `-funroll-loops`, limitare inline freddo, separare loader/diagnostica e generare varianti ISA sono ipotesi da verificare su dimensione testo, frontend stalls e tempo totale. Non presumere che più unrolling o più inline equivalgano a più Elo.
 
 Per il kernel sparse AVX2/VNNI, controllare disassembly e spill a macchina libera. Non eseguire tuning microarchitetturale insieme allo SPRT: frequenza, temperatura e pressione sulle cache renderebbero difficile interpretare entrambi.
 
-### I04 — I test esistono, ma vanno associati al contratto cambiato
+### I04 - I test esistono, ma vanno associati al contratto cambiato
 
 Perft suite verifica legal movegen/do-undo, non TT bound, stop o forza. NNUE selftest e deepcheck coprono parte dell'incrementalità e dell'equivalenza SIMD; vanno integrati con le sequenze N11 prima dello stack. Il target perf registra le suite di `engine/test/performance-test/performanceEngine.cpp`: ricerca depth 11, self-play depth 10, eval e movegen. Il microbench eval ripete 16 Board immutate otto milioni di volte: misura forward caldo, non il costo NNUE incrementale nella ricerca. Le soglie assolute di durata dipendono da CPU/carico; non sostituiscono un A/B. Non ho eseguito questi test.
 
 Parsing FEN/UCI, driver ASCII, script di plotting, serialization dei dati e shuffle sono stati considerati nel percorso complessivo: non consumano la ricorsione di una ricerca UCI normale. Migliorarli può ridurre setup/training wall time o errori dei test, ma non giustifica una promessa NPS. Il perft attuale aggiorna comunque NNUE nei do/undo: separare i consumatori Board-only aiuta gli strumenti, senza contarlo automaticamente come guadagno competitivo.
 
-### I05 — Configurazioni di build condividono oggetti e binario
+### I05 - Configurazioni di build condividono oggetti e binario
 
 **P1 per validità esperimenti · C · M.** `makefile:3`, `:155–158`, `:187–192`: debug e prod usano lo stesso output/ e lo stesso chess, ma debug aggiunge `-DDEBUG -g -pg -O1`. Make segue timestamp, non la variazione dei flag: un passaggio di configurazione può non ricompilare o riutilizzare oggetti incompatibili con il nome del target. Separare directory/binari per configurazione, oppure introdurre una dipendenza dal fingerprint del comando. La dipendenza esplicita della rete embedded è invece già presente e va conservata.
 

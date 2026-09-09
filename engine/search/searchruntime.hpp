@@ -52,7 +52,7 @@ struct SearchRuntime {
     // Both dimensions are 1..6 biased down to 0..5 (see contHistIndex): 576 KiB
     // per SearchRuntime, and there is one per Lazy-SMP thread.
     int16_t  contHist[2][CONT_HIST_PIECE_TYPES][64][CONT_HIST_PIECE_TYPES][64] {};
-    // evalStack is thread_local in searchPosition — NOT here: Lazy-SMP races
+    // evalStack is thread_local in searchPosition - NOT here: Lazy-SMP races
     // on a shared array would corrupt the `improving` hard-prune heuristic.
 
     // --- External coordination ---

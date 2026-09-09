@@ -30,7 +30,7 @@ namespace NNUE {
 
 namespace {
 
-// Defaults and filters per NNUE_PLAN.md (Fase 0). The bestmove-is-tactical
+// Datagen defaults and quality filters. The bestmove-is-tactical
 // skip is the one addition: a position whose search score hinges on an
 // unresolved capture/promotion is a noisy static-eval target.
 constexpr int      DEFAULT_THREADS          = 3;
@@ -57,15 +57,15 @@ uint64_t           g_targetPositions        = TARGET_POSITIONS_DEFAULT;
 // are always safe; decisive ones are trusted only below this clock.
 constexpr int      DECISIVE_TB_ADJ_MAX_HMC  = 60;
 
-// Endgame seeding — DATAGEN_QUALITY_PLAN.md §5. Output bucket 0 covers 2..5
+// Endgame seeding. Output bucket 0 covers 2..5
 // men and was left at its initial weights by every dataset so far: the v3 net
 // scored KQvK at -13 cp, and the 768 net trained on the 2B v4 data still
 // scores it at 0. Three filters had to be lifted together, which is why
-// seeding alone (the original §5 proposal) would not have fixed it:
+// seeding alone would not have fixed it:
 //   1. Syzygy adjudication ends a game the moment it enters TB range, so a
 //      <=5-man position is never reached in normal play;
 //   2. a won endgame produces a mate score, which MAX_RECORD_SCORE_CP then
-//      discards — KQvK could not be recorded even with the tables unloaded;
+//      discards - KQvK could not be recorded even with the tables unloaded;
 //   3. MIN_RECORD_PLY skips the first 16 plies, and a seeded endgame is
 //      usually decided before that.
 // Seeded games therefore record from ply 0, keep out-of-range scores by
@@ -74,8 +74,8 @@ constexpr int      DECISIVE_TB_ADJ_MAX_HMC  = 60;
 // Overridable via CHESS_DATAGEN_EG_EVERY (same convention as
 // CHESS_TT_HUGEPAGE). The default mixes ~12% seeded games into a normal run;
 // setting it to 1 seeds every game, which is how a short dedicated batch is
-// produced. Mixed runs are slow at filling bucket 0 — the seven ordinary games
-// around each seeded one contribute ~30 records each and dilute it to ~1.4% —
+// produced. Mixed runs are slow at filling bucket 0 - the seven ordinary games
+// around each seeded one contribute ~30 records each and dilute it to ~1.4% -
 // so a dedicated pass is worth far more per hour than a longer mixed one.
 constexpr int      ENDGAME_SEED_EVERY_DEFAULT = 8;
 int                g_endgameSeedEvery = ENDGAME_SEED_EVERY_DEFAULT;
@@ -84,7 +84,7 @@ constexpr int      ENDGAME_SEED_MAX_MEN = 6; // kept inside bucket 0 (2-5 men) p
 constexpr int      ENDGAME_SEED_TRIES = 64;
 // Giving each man an independent colour yields balanced material, and balanced
 // low-piece positions are almost all draws: a first run came out 70% draws with
-// 96% of bucket-0 records under 100 cp, which teaches "everything is equal" —
+// 96% of bucket-0 records under 100 cp, which teaches "everything is equal" -
 // barely better than the zero the bucket learns today. Most seeds therefore
 // hand every extra man to one side, producing the KQvK / KRvK cases that are
 // the whole point.
@@ -247,7 +247,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
         }
 
         // Syzygy adjudication: as soon as the position enters TB range, close
-        // the game with the exact tablebase result — every record collected so
+        // the game with the exact tablebase result - every record collected so
         // far gets a perfect outcome label and the game ends sooner. Tables
         // assume no castling rights (guard below); cursed wins / blessed
         // losses are draws under the 50-move rule and map to draw here.
@@ -339,7 +339,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
                     static_cast<std::streamsize>(flat.size() * sizeof(BulletRecord)));
         w.out.flush();
         if (!w.out) {
-            std::cerr << "datagen: write failed (disk full?) — stopping.\n";
+            std::cerr << "datagen: write failed (disk full?) - stopping.\n";
             g_stop.store(true, std::memory_order_release);
             return 0;
         }
@@ -478,7 +478,7 @@ int runDatagen(int argc, char* argv[]) {
     std::signal(SIGTERM, onStopSignal);
 
     // Optional tablebase adjudication: exact result labels + shorter endgames.
-    // Missing tables are not an error — endgames are simply played out.
+    // Missing tables are not an error - endgames are simply played out.
     const char* tbPath = (argc >= 7) ? argv[6] : "engine/syzygy/files";
     const bool tbOn = g_syzygy.load(tbPath) && g_syzygy.maxPieces() >= 3;
 
@@ -486,7 +486,7 @@ int runDatagen(int argc, char* argv[]) {
     const std::string metaPath = outPrefix + ".meta";
     const MetaCounters resumedMeta = loadMeta(metaPath);
 
-    std::cout << "HydraY datagen — bulletformat self-play data\n"
+    std::cout << "HydraY datagen - bulletformat self-play data\n"
               << "  output : " << outPrefix << ".t<0.." << (threads - 1) << ">.bin (append)\n"
               << "  resume : " << fmtCount(resumedPositions)
               << " positions already on disk for this prefix\n"

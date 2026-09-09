@@ -1,5 +1,5 @@
 /*
- * tbconfig.h — Pyrrhic configuration for HydraY.
+ * tbconfig.h - Pyrrhic configuration for HydraY.
  *
  * Pyrrhic square convention: a1=0 (LSB) .. h8=63 (MSB), rank-minor.
  * All attack functions use this convention internally.

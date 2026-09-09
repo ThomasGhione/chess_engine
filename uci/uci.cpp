@@ -224,8 +224,8 @@ namespace uci {
 
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 3.1.0\n"
-            << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
+            << "id name HydraY 4.0.0\n"
+            << "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"

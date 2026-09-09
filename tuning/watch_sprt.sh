@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# watch_sprt.sh — compact live view of a run_sprt.sh log.
+# watch_sprt.sh - compact live view of a run_sprt.sh log.
 #
 # run_sprt.sh's log is dominated by per-game PV dumps; this pulls out just the
 # latest result block (Elo / LOS / LLR / game count) and says who is winning.
@@ -53,8 +53,8 @@ show() {
     hi=$(sed -E 's/.*\(([-0-9.]+), ([-0-9.]+)\).*/\2/' <<<"${llr}")
     if [[ -n "${llrval}" && -n "${hi}" ]]; then
         awk -v v="${llrval}" -v lo="${lo}" -v hi="${hi}" 'BEGIN{
-            if (v >= hi)      print "  VERDICT: H1 accepted — the change is a GAIN, keep it.";
-            else if (v <= lo) print "  VERDICT: H0 accepted — no measurable gain, discard it.";
+            if (v >= hi)      print "  VERDICT: H1 accepted - the change is a GAIN, keep it.";
+            else if (v <= lo) print "  VERDICT: H0 accepted - no measurable gain, discard it.";
             else {
                 pct = (hi != 0) ? 100*v/hi : 0;
                 printf "  VERDICT: still running (LLR %.0f%% of the way to H1)\n", pct;

@@ -303,7 +303,7 @@ inline void Board::refreshNnueAccumulator() noexcept {
 // HalfKA lazy refresh: rebuild only the perspectives whose own king crossed
 // bucket/flip since the last clean state, as a Finny-table diff against the
 // cached accumulator for the target (bucket, flip). Called from
-// consistent-board points only (NNUE::evaluate, selftest) — never mid-doMove.
+// consistent-board points only (NNUE::evaluate, selftest) - never mid-doMove.
 inline void Board::ensureNnueAccumulatorClean() const noexcept {
     if (NNUE::activeNetwork == nullptr) return;
     flushAccPending();
@@ -312,7 +312,7 @@ inline void Board::ensureNnueAccumulatorClean() const noexcept {
 
     // Per-thread cache (Lazy SMP: each helper searches its own Board on its
     // own thread). Stale entries from other positions are still correct diff
-    // bases — no invalidation needed, ever.
+    // bases - no invalidation needed, ever.
     static thread_local NNUE::FinnyTable finny;
     finny.ensureInitialised();
 
@@ -324,7 +324,7 @@ inline void Board::ensureNnueAccumulatorClean() const noexcept {
     for (int p = 0; p < 2; ++p) {
         if (!nnueAccumulator.dirty[p]) continue;
         // Own king square from this perspective's view: lerf for white,
-        // lerf ^ 56 for black — which folds back to the raw engine index.
+        // lerf ^ 56 for black - which folds back to the raw engine index.
         const int engineKing = std::countr_zero(kings_bb[p]);
         const int ownKingView = (p == 1) ? engineKing : (engineKing ^ 56);
         const int rowBase = NNUE::kingFeatureBase(ownKingView);

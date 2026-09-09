@@ -1,13 +1,13 @@
 #pragma once
 
-// Feature space and l0 prefix shared by every net format (HALFKA_PLAN.md):
+// Feature space and l0 prefix shared by every net format:
 //   768x4kb_hm -> 1024 per perspective.
 //
 // What comes AFTER l0 lives in network_deep.hpp; this header stops at the
 // accumulator, which is all board.hpp needs for the hot-path hooks.
 //
 // Input features are king-bucketed and horizontally mirrored (bullet
-// ChessBucketsMirrored semantics — sanity.rs is the reference):
+// ChessBucketsMirrored semantics - sanity.rs is the reference):
 //   for perspective X with own king on ksq_X (LERF, from X's own view):
 //     flip_X   = 7 if file(ksq_X) > 3 else 0
 //     bucket_X = KING_BUCKET_MAP[ksq_X]

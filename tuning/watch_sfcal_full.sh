@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname -- "${BASH_SOURCE[0]}")"
 # Default to the most recently modified calibration log, NOT a hardcoded name:
 # ordo (above) always fits the newest PGN, so a stale default here silently
-# pairs a live rating with a previous run's per-level table — which reads as a
+# pairs a live rating with a previous run's per-level table - which reads as a
 # real result and is not obviously wrong. Pass a filename to pin one run.
 log="${1:-$(ls -t log_sfcal_*.txt 2>/dev/null | head -1)}"
 if [[ -z "${log}" || ! -f "${log}" ]]; then

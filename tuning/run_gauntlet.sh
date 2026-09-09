@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# run_gauntlet.sh — absolute-strength gauntlet for HydraY using ordo.
+# run_gauntlet.sh - absolute-strength gauntlet for HydraY using ordo.
 #
 # Plays the current build (./chess) as the gauntlet engine against one or more
 # FROZEN reference versions (old git tags), then feeds the PGN to `ordo` with a
@@ -10,24 +10,25 @@
 # than the immediately-frozen baseline?". It cannot tell you if you are globally
 # stronger or weaker, and it has no fixed yardstick. The gauntlet pins an old
 # release at a constant Elo (ANCHOR_ELO) so every run is comparable on one scale
-# — the right tool for measuring the march toward 3000.
+# - the right tool for measuring the march toward 3000.
 #
-# NOTE: this script does NOT rebuild ./chess — run `make prod` yourself first.
+# NOTE: this script does NOT rebuild ./chess - run `make prod` yourself first.
 # Reference binaries for old tags are built ON DEMAND in a throwaway git
 # worktree (your working tree / current checkout is never touched) and cached as
 # tuning/chess_ref_<tag>.
 #
 # ---------------------------------------------------------------------------
 # TUNABLE KNOBS (env vars; sensible defaults below)
-#   REF_TAGS    space-separated git tags to use as fixed anchors  (default "2.0.0")
-#               NOTE: tag 1.1.0 (and older) has BROKEN time management — it
+#   REF_TAGS    space-separated git tags to use as fixed anchors
+#               (default: the NNUE release ladder "2.0.0 2.1.0 3.0.0 3.1.0")
+#               NOTE: tag 1.1.0 (and older) has BROKEN time management - it
 #               ignores wtime/btime/movetime and dumps ~3s on every move, so it
 #               flags instantly at any real TC. Always time-sanity-check a new
 #               anchor tag first:  printf 'position startpos\ngo wtime 4000 winc 40\n'
 #               | ./tuning/chess_ref_<tag> -uci   should return in ~100ms, not seconds.
 #   ANCHOR_TAG  which REF_TAG ordo pins to ANCHOR_ELO             (default: first of REF_TAGS)
 #   ANCHOR_ELO  fixed internal Elo for the anchor (yardstick, NOT (default 3000)
-#               a CCRL rating — only consistency across runs matters)
+#               a CCRL rating - only consistency across runs matters)
 #   GAMES       games played PER reference opponent               (default 400)
 #   TC          time control "moves/sec+inc" or "sec+inc"         (default 4+0.04)
 #   CONCURRENCY parallel games                                    (default: phys_cores-1)
@@ -35,8 +36,8 @@
 #   BOOK        opening book PGN                                  (default books/openings.pgn)
 #
 # Examples:
-#   ./tuning/run_gauntlet.sh                              # dev vs 1.2.0, 400 games
-#   REF_TAGS="1.2.0" GAMES=1000 ./tuning/run_gauntlet.sh  # more games, one anchor
+#   ./tuning/run_gauntlet.sh                              # dev vs the NNUE ladder, 400 games each
+#   REF_TAGS="3.1.0" GAMES=1000 ./tuning/run_gauntlet.sh  # more games, one anchor
 #   GAMES=1000 TC=10+0.1 ./tuning/run_gauntlet.sh
 # ---------------------------------------------------------------------------
 
@@ -52,10 +53,11 @@ export PATH="${HOME}/.local/bin:${PATH}"
 new_bin="${repo_root}/chess"
 
 # --- knobs --------------------------------------------------------------------
-# Scale: 2.0.0 = 3000 (since 2026-07-10; chained to the old 1.2.0=2000 scale
-# via 2.0.0's SPRT +662 vs HCE ≈ 1.3.0 ≈ 2366). 1.2.0/1.3.0 are saturated —
-# only anchor on them to rate pre-2.0.0 tags.
-REF_TAGS="${REF_TAGS:-2.0.0}"
+# Scale: 2.0.0 = 3000 (since 2026-07-10). The NNUE releases 2.1.0/3.0.0/3.1.0
+# are intermediate rungs so ordo chains the rating instead of saturating on a
+# single far-apart anchor. Pre-2.0.0 tags are saturated; only anchor on them to
+# rate pre-2.0.0 builds.
+REF_TAGS="${REF_TAGS:-2.0.0 2.1.0 3.0.0 3.1.0}"
 read -ra ref_tag_arr <<< "${REF_TAGS}"
 ANCHOR_TAG="${ANCHOR_TAG:-${ref_tag_arr[0]}}"
 ANCHOR_ELO="${ANCHOR_ELO:-3000}"
@@ -71,7 +73,7 @@ export OMP_NUM_THREADS="${THREADS}"
 
 # --- preflight ----------------------------------------------------------------
 if [[ ! -x "${new_bin}" ]]; then
-    echo "error: ${new_bin} not found — run 'make prod' first." >&2
+    echo "error: ${new_bin} not found - run 'make prod' first." >&2
     exit 1
 fi
 if ! command -v ordo >/dev/null 2>&1; then

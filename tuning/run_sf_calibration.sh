@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# run_sf_calibration.sh — absolute-strength calibration for HydraY against
+# run_sf_calibration.sh - absolute-strength calibration for HydraY against
 # real Stockfish, using ordo with MULTIPLE fixed anchors.
 #
 # WHY THIS EXISTS (vs run_gauntlet.sh): run_gauntlet.sh pins an old HydraY tag
-# at an arbitrary internal Elo (ANCHOR_ELO=3000 for 2.0.0) — a self-consistent
+# at an arbitrary internal Elo (ANCHOR_ELO=3000 for 2.0.0) - a self-consistent
 # scale, but not tied to any external, independently-known rating. This script
 # anchors on Stockfish's own UCI_Elo strength limiter instead, at several
 # levels bracketing HydraY's estimated strength, so the fit is well-conditioned
@@ -19,7 +19,7 @@
 # sanity-check by comparing the fitted gap between two SF anchors against
 # their nominal gap in the output.
 #
-# NOTE: this script does NOT rebuild ./chess — run `make prod` yourself first.
+# NOTE: this script does NOT rebuild ./chess - run `make prod` yourself first.
 #
 # ---------------------------------------------------------------------------
 # TUNABLE KNOBS (env vars; sensible defaults below)
@@ -67,7 +67,7 @@ export OMP_NUM_THREADS="${THREADS}"
 
 # --- preflight ----------------------------------------------------------------
 if [[ ! -x "${new_bin}" ]]; then
-    echo "error: ${new_bin} not found — run 'make prod' first." >&2
+    echo "error: ${new_bin} not found - run 'make prod' first." >&2
     exit 1
 fi
 if [[ ! -x "${SF_BIN}" ]]; then
@@ -124,7 +124,7 @@ echo "=============================================================="
 # -tournament gauntlet: the FIRST engine plays every other engine.
 engine_args=( -engine name="${engine_name}" cmd="${new_bin}" arg=-uci )
 for elo in "${sf_elo_arr[@]}"; do
-    # Unlike HydraY, Stockfish auto-detects UCI over stdin — no "-uci" arg
+    # Unlike HydraY, Stockfish auto-detects UCI over stdin - no "-uci" arg
     # (passing one makes it choke trying to execute "-uci" as a UCI command).
     engine_args+=(
         -engine name="SF-${elo}" cmd="${SF_BIN}"
@@ -149,7 +149,7 @@ rounds="$(( GAMES / 2 ))"
 echo
 echo "Watch live absolute Elo in another terminal (updates as games finish;"
 echo "handles anchors with zero finished games yet, e.g. right at startup;"
-echo "-s is omitted for speed — the final pass below computes real error bars):"
+echo "-s is omitted for speed - the final pass below computes real error bars):"
 echo "  watch -n 15 ${script_dir}/watch_calibration.sh"
 echo
 
@@ -205,4 +205,4 @@ echo
 echo "Sanity check: every SF-<n> row above must show EXACTLY its nominal Elo"
 echo "(${SF_ELOS}). If one doesn't, ordo's anchor mechanism silently failed"
 echo "(see the -m single-anchor caveat in this script's ordo-invocation"
-echo "comment) — don't trust HydraY-dev's number until that's fixed."
+echo "comment) - don't trust HydraY-dev's number until that's fixed."

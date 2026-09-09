@@ -183,7 +183,7 @@ public:
     bool inCheck(uint8_t color) const noexcept;
     // Bitboard of enemy pieces giving check to `color`'s king (0 = no check).
     // One scan answers inCheck (!=0), double check (>1 bit) and, via the
-    // checker square, the evasion mask — callers should reuse it.
+    // checker square, the evasion mask - callers should reuse it.
     uint64_t checkersTo(uint8_t color) const noexcept;
     [[nodiscard]] inline bool isKingSafeAfterMove(uint8_t movingColor, uint8_t fromIndex,
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
@@ -232,7 +232,7 @@ public:
     // the same add/remove piece functions whenever a network is loaded.
     // Contains garbage until the first refreshNnueAccumulator() after load.
     // mutable: ensureNnueAccumulatorClean() settles the HalfKA lazy state
-    // from const evaluation paths — it is a cache, not board state.
+    // from const evaluation paths - it is a cache, not board state.
     mutable NNUE::Accumulator nnueAccumulator;
 
     // Deferred accumulator work. The rows are only touched when something

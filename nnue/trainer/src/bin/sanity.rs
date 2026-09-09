@@ -1,8 +1,8 @@
-// Standalone (pure-std, no GPU) reader for bullet's quantised.bin — the
+// Standalone (pure-std, no GPU) reader for bullet's quantised.bin - the
 // REFERENCE IMPLEMENTATION for HydraY's engine-side loader/inference.
 // Keep the C++ code byte-for-byte consistent with this.
 //
-// Net (HALFKA_PLAN.md): (768x4kb_hm -> HIDDEN)x2 -> OB, dual perspective,
+// Net: (768x4kb_hm -> HIDDEN)x2 -> OB, dual perspective,
 // SCReLU, QA=255 QB=64 SCALE=400.
 //  - 4 mirrored king input buckets (bullet ChessBucketsMirrored semantics):
 //      for perspective X with own king on ksq_X (LERF, from X's own view):
@@ -69,13 +69,13 @@ fn load(path: &str) -> Network {
         expected_bytes
     );
     // bullet pads the file to 64 bytes with the repeating ASCII string
-    // "bullet" — anything else in the tail means the layout drifted.
+    // "bullet" - anything else in the tail means the layout drifted.
     assert!(
         bytes[expected_bytes..]
             .iter()
             .zip(b"bullet".iter().cycle())
             .all(|(a, b)| a == b),
-        "unexpected padding tail — layout drift?"
+        "unexpected padding tail - layout drift?"
     );
 
     let mut it = bytes
@@ -196,7 +196,7 @@ fn main() {
         ("both castled short (w)", "r4rk1/ppp2ppp/2n1bn2/2bpp3/4P3/2NP1N2/PPP1BPPP/R1BQ1RK1 w - - 0 1"),
         // White castled long (c1: bucket 1), black king still on e8 (bucket 1).
         ("white long castle vs e8 king (w)", "r3kb1r/ppp2ppp/2n1bn2/3qp3/8/2NP1N2/PPPBQPPP/2KR3R w kq - 0 1"),
-        // Kings on 2nd rank (bucket 2) — pre/post-castling geometry gone.
+        // Kings on 2nd rank (bucket 2) - pre/post-castling geometry gone.
         ("kings on 2nd rank (w)", "8/1k3ppp/1p6/p1p5/P1P5/1P4P1/1K3P1P/8 w - - 0 1"),
         // Active endgame kings in the center (bucket 3), mirrored files.
         ("active kings endgame (w)", "8/8/3k4/8/2p5/2P1K3/8/8 w - - 0 1"),

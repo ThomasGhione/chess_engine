@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         if (mode == "nnue-selftest") return NNUE::runSelfTest(argc, argv);
     }
 
-    // NNUE is the only evaluator (HCE removed, NNUE_PLAN.md Fase 5).
+    // NNUE is the only evaluator (HCE removed in 2.0.0).
     // Activated before Engine is built so the Board constructor already
     // fills the accumulator. An invalid embedded blob means a broken build:
     // fail fast instead of searching with garbage evals.

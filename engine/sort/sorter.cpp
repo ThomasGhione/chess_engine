@@ -100,7 +100,7 @@ Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
     mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
     if (mask) return {std::countr_zero(mask), chess::Board::KNIGHT};
 
-    // Cache sliding attack rays — shared by bishop/queen and rook/queen lookups.
+    // Cache sliding attack rays - shared by bishop/queen and rook/queen lookups.
     const uint64_t bishopRays = pieces::getBishopAttacks(sq, occLocal);
     const uint64_t rookRays   = pieces::getRookAttacks(sq, occLocal);
 

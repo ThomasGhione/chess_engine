@@ -1,11 +1,11 @@
-// HydraY NNUE v8 — rete con layer intermedi (progetto "layer intermedio").
+// HydraY NNUE v8 - rete con layer intermedi (progetto "layer intermedio").
 //
 // Architettura: (768x4kb_hm -> 1024)x2 -> pairwise -> 1024 -> 16 -> 1,
 // con 8 output bucket su ENTRAMBI i layer dopo il feature transformer.
 //
 // UN SOLO layer intermedio, non due. L'esempio di bullet ne usa due
-// (16 -> 32 -> 1) e il secondo costa pochissimo — 544 moltiplicazioni contro le
-// 16.384 del primo — ma e' un elemento in piu' non validato su questa rete, che
+// (16 -> 32 -> 1) e il secondo costa pochissimo - 544 moltiplicazioni contro le
+// 16.384 del primo - ma e' un elemento in piu' non validato su questa rete, che
 // e' un terzo di quelle per cui quella proporzione e' stata trovata. La prima
 // prova porta gia' tre cambiamenti inseparabili (layer intermedio, CReLU al
 // posto di SCReLU, init con fan-in 32): un quarto allungherebbe la lista dei

@@ -5,7 +5,7 @@ edition = "2021"
 
 # bullet is GPU-only (cuda/rocm/metal): the `trainer` binary is meant to run on
 # Colab (T4, --features cuda). The `sanity` binary is pure std and always
-# buildable locally — it is the reference reader for quantised.bin and the
+# buildable locally - it is the reference reader for quantised.bin and the
 # specification for the engine-side C++ loader (NNUE Fase 3).
 
 [dependencies]

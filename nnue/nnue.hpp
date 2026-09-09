@@ -1,7 +1,7 @@
 #pragma once
 
-// NNUE evaluation (NNUE_PLAN.md, Fase 3) — the engine's only evaluator since
-// the HCE removal (Fase 5). A network must be active before any evaluate():
+// NNUE evaluation - the engine's only evaluator since the HCE removal in
+// 2.0.0. A network must be active before any evaluate():
 // main() activates the embedded net at startup; EvalFile can override it;
 // datagen/selftest load theirs explicitly. The accumulator maintenance on
 // Board activates as soon as a network is loaded.

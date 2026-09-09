@@ -7,7 +7,7 @@
 namespace engine {
 
 // NNUE-only evaluation seam (the handcrafted evaluator was removed once the
-// v1 net shipped — see NNUE_PLAN.md, Fase 5). Requires an active network:
+// v1 net shipped in 2.0.0). Requires an active network:
 // the embedded net is activated at startup in main(); datagen and selftest
 // load theirs explicitly.
 class Evaluator final {

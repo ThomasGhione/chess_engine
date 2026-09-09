@@ -4,7 +4,7 @@ BASE_URL="http://tablebase.sesse.net/syzygy/3-4-5/"
 DEST_DIR="$(dirname "$(realpath "$0")")"
 
 echo "Downloading Syzygy 3-4-5 tablebases to: $DEST_DIR"
-echo "Press Ctrl+C to pause — re-run to resume."
+echo "Press Ctrl+C to pause - re-run to resume."
 
 # Fetch the file list directly and download each file with -c (resume)
 wget -q -O - "$BASE_URL" \

@@ -7,7 +7,7 @@ It is built around bitboards with magic sliding-piece attacks, an iterative
 deepening alpha-beta/PVS search with Lazy SMP parallelism, a cache-friendly
 transposition table, Syzygy tablebase probing, and a neural network evaluator
 (HalfKA king-bucketed, dual-perspective, embedded in the binary). The handcrafted evaluator
-was removed in 2.0.0 — evaluation strength now improves by training better
+was removed in 2.0.0 - evaluation strength now improves by training better
 nets, not by editing C++. Development and testing happen mainly on Linux/WSL;
 a MinGW target exists for Windows builds.
 
@@ -16,7 +16,7 @@ a MinGW target exists for Windows builds.
 - `g++` with C++23 support
 - GNU `make`
 - OpenMP (`-fopenmp`)
-- x86-64 CPU with **BMI2 (PEXT)** — a hard requirement: sliding-piece attacks
+- x86-64 CPU with **BMI2 (PEXT)** - a hard requirement: sliding-piece attacks
   use PEXT indexing and the build fails outright without it (`-march=native` or
   `-march=x86-64-v3` provide it). AVX2 is strongly recommended on top: the NNUE
   forward pass has a scalar fallback, but it is much slower
@@ -107,14 +107,14 @@ position on both builds and read the `nodes` field of the last `info` line:
 printf 'position startpos\ngo depth 12\nquit\n' | ./chess uci
 ```
 
-Functional tests alone do **not** catch search/eval strength regressions —
+Functional tests alone do **not** catch search/eval strength regressions -
 use SPRT for that.
 
 ### Perft (move-generation correctness)
 
 Perft ("performance test") counts the leaf nodes of the legal-move tree at a
 fixed depth. The counts for the standard positions are published, so a single
-wrong number proves a defect in move generation, legality, or make/unmake —
+wrong number proves a defect in move generation, legality, or make/unmake -
 with no evaluation or search involved.
 
 ```sh
@@ -170,28 +170,31 @@ than the last baseline?". The current build plays frozen release tags, then
 old release pinned at a constant Elo, so runs stay comparable over time.
 
 ```sh
-make prod && REF_TAGS="2.0.0" ./tuning/run_gauntlet.sh
-REF_TAGS="2.0.0" GAMES=1000 ./tuning/run_gauntlet.sh
+make prod && ./tuning/run_gauntlet.sh
+REF_TAGS="3.1.0" GAMES=1000 ./tuning/run_gauntlet.sh
 ```
 
 Reference binaries are built on demand in a throwaway `git worktree` (your
 checkout is never touched) and cached as `tuning/chess_ref_<tag>`. `ordo` must
 be on your PATH (the script also checks `~/.local/bin`).
 
-Env knobs (defaults): `REF_TAGS=1.2.0`, `ANCHOR_TAG` / `ANCHOR_ELO=2000` (the
-fixed yardstick — an internal value, not a CCRL rating), `GAMES=400` per
-opponent, `TC=4+0.04`, `CONCURRENCY`, `THREADS`.
+Env knobs (defaults): `REF_TAGS="2.0.0 2.1.0 3.0.0 3.1.0"` (the NNUE release
+ladder; the intermediate rungs keep ordo from saturating on one far anchor),
+`ANCHOR_TAG` / `ANCHOR_ELO=3000` (the fixed yardstick, an internal value, not a
+CCRL rating), `GAMES=400` per opponent, `TC=4+0.04`, `CONCURRENCY`, `THREADS`.
 
 > Since the NNUE switch, pre-2.0.0 tags are saturated (the current engine
-> scores near 100% against them, which makes ratings meaningless) — anchor on
+> scores near 100% against them, which makes ratings meaningless) - anchor on
 > `2.0.0` or newer. Also, tag 1.1.0 and older have broken time management and
 > forfeit at any real TC.
 
 ## NNUE Evaluation
 
-The evaluator is a quantised neural network: (768x4kb_hm -> 512)*2 dual-perspective
-accumulator with SCReLU activation and 8 output buckets. Inputs are king-bucketed
-and horizontally mirrored, so each perspective is indexed by its own king square;
+The evaluator is a quantised neural network: a `(768x4kb_hm -> 1024)*2`
+dual-perspective accumulator, pairwise-multiplied and run through a
+`1024 -> 16 -> 1` hidden layer with SCReLU, 8 output buckets. Inputs are
+king-bucketed and horizontally mirrored, so each perspective is indexed by its
+own king square;
 a king move crossing a bucket boundary triggers a lazy refresh of that
 perspective, absorbed by a thread-local Finny table. Trained with
 [bullet](https://github.com/jw1912/bullet) on self-play data. The first net
@@ -202,7 +205,7 @@ previous release instead.
 - The net ships **embedded in the binary** (`nnue/net/hydray.nnue` via
   `.incbin`) and is activated at startup. To ship a new net, replace that file
   and rebuild.
-- The UCI option `EvalFile` loads an external `.nnue` file instead — useful
+- The UCI option `EvalFile` loads an external `.nnue` file instead - useful
   for A/B-testing candidate nets without rebuilding.
 - The accumulator is updated incrementally in the board's piece add/remove
   hooks; `./chess nnue-selftest <net>` verifies that the incremental
@@ -227,9 +230,8 @@ with Ctrl+C is safe. Inspect a file with
 
 The trainer lives in `nnue/trainer/` (Rust, bullet-based), with a Colab
 notebook for GPU runs. `nnue/trainer/src/bin/sanity.rs` is the reference
-reader for the quantised net layout — run it on any new net before swapping it
-in. See `NNUE_PLAN.md` for the current roadmap (dataset targets, architecture
-steps, validation gates).
+reader for the quantised net layout - run it on any new net before swapping it
+in.
 
 ## Syzygy Tablebases
 
@@ -325,7 +327,7 @@ Estimated Elo: X +- Y  model estimate for that optimum
 ```
 
 Apply `Current optimum`, not a single lucky `Got Elo`. If its 90% confidence
-interval includes zero, the result is still uncertain — confirm with more
+interval includes zero, the result is still uncertain - confirm with more
 games. To apply: stop with `Ctrl+C`, copy the optimum into
 `engine/search/search_constants.hpp`, rebuild with `make prod`, then
 re-validate with SPRT or a gauntlet.

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# HydraY interaction driver — talks UCI to ./chess over a coproc.
+# HydraY interaction driver - talks UCI to ./chess over a coproc.
 #
 # Why this exists: piping a fixed command list (`printf '...go depth 12\nquit' | ./chess`)
-# is RACY — the UCI loop handles `quit` mid-search by aborting (uci.cpp `stopSearch(true)`),
+# is RACY - the UCI loop handles `quit` mid-search by aborting (uci.cpp `stopSearch(true)`),
 # so under CPU load the search dies before printing `bestmove`. This driver waits for the
 # engine's replies (uciok / readyok / bestmove) before sending the next command.
 #
@@ -13,17 +13,17 @@
 #   script/engine_driver.sh search "<uci moves>" [depth]
 #   script/engine_driver.sh tui [outfile]        # tmux-driven terminal game smoke
 #
-# Eval is always NNUE (embedded net) — the HCE evaluator was removed (2.0.0).
+# Eval is always NNUE (embedded net) - the HCE evaluator was removed (2.0.0).
 set -u
 BIN="${HYDRAY_BIN:-./chess}"
 DIE() { echo "FAIL: $*" >&2; exit 1; }
 
-[[ -x $BIN ]] || DIE "$BIN not found or not executable — run 'make prod' first"
+[[ -x $BIN ]] || DIE "$BIN not found or not executable - run 'make prod' first"
 
 # --- UCI session over a coproc -------------------------------------------
 ENG_IN= ENG_OUT= ENG_PID_=
 
-uci_open() { # <setup-commands>  — spawn engine, handshake, apply options
+uci_open() { # <setup-commands>  - spawn engine, handshake, apply options
     local line ok=0
     coproc ENG { "$BIN" 2>/dev/null; }
     ENG_IN=${ENG[1]} ENG_OUT=${ENG[0]} ENG_PID_=$ENG_PID
@@ -37,7 +37,7 @@ uci_open() { # <setup-commands>  — spawn engine, handshake, apply options
     [[ $ok == 1 ]] || DIE "no readyok within 20s"
 }
 
-uci_go() { # <position-cmd> <go-cmd> <timeout-s>  — one fresh-TT search; prints output up to bestmove
+uci_go() { # <position-cmd> <go-cmd> <timeout-s>  - one fresh-TT search; prints output up to bestmove
     local line ok=0
     printf 'ucinewgame\n%s\n%s\n' "$1" "$2" >&"$ENG_IN"
     while IFS= read -r -t "$3" line <&"$ENG_OUT"; do
@@ -87,7 +87,7 @@ cmd_bench() {
 # must leave it identical, a pruning/ordering change moves it.
 # Baseline @ depth 12 depends on the embedded net:
 # 4,595,112 (v3, current) · 3,943,540 (v2) · 4,735,578 (v1, release 2.0.0).
-# NB: the usage banner is built from lines matching '^#   ' — keep other
+# NB: the usage banner is built from lines matching '^#   ' - keep other
 # comments off that exact indentation.
 BENCH6_NAMES=(startpos kiwipete kp-endgame midgame tactical open)
 BENCH6_POS=(

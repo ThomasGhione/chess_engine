@@ -28,7 +28,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bin="${script_dir}/../chess"
 
-[[ -x "${bin}" ]] || { echo "error: ${bin} not found — run 'make prod' first." >&2; exit 1; }
+[[ -x "${bin}" ]] || { echo "error: ${bin} not found - run 'make prod' first." >&2; exit 1; }
 
 fastchess_bin="$(command -v fastchess || true)"
 [[ -n "${fastchess_bin}" ]] || { echo "error: fastchess not on PATH (~/.local/bin)." >&2; exit 127; }

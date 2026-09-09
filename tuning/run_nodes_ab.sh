@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# run_nodes_ab.sh — A/B test: datagen a 8k vs 12k nodi/mossa, a PARITÀ DI TEMPO.
+# run_nodes_ab.sh - A/B test: datagen a 8k vs 12k nodi/mossa, a PARITÀ DI TEMPO.
 #
 # Domanda a cui risponde: un'ora di datagen rende di più a 8k (più posizioni)
 # o a 12k (meno posizioni, etichette migliori)? Le due opzioni si confrontano
@@ -18,7 +18,7 @@
 #        Tronca a multipli di 32 B, scarta i record azzerati (power-loss),
 #        shuffle globale, statistiche W/D/L, comprime in .zst pronti per Drive.
 #   3. Training su Colab (manuale, 2 run shakedown da 10 superbatch):
-#        colab_ob.ipynb (branch output-buckets — arch corrente) con dataset
+#        colab_ob.ipynb (branch output-buckets - arch corrente) con dataset
 #        ab8k_shuffled.bin.zst → net_id ab8k; poi ab12k_shuffled → ab12k.
 #        Le reti devono pesare 803.904 B (789.568 = arch vecchia, run errato).
 #        Scaricare i due quantised.bin.
@@ -52,7 +52,7 @@ arm_tag() { # 8000 -> ab8k
 # --- datagen [ore] -----------------------------------------------------------
 cmd_datagen() {
     local hours="${1:-6}"
-    [[ -x "${chess_bin}" ]] || { echo "errore: ${chess_bin} mancante — make prod" >&2; exit 1; }
+    [[ -x "${chess_bin}" ]] || { echo "errore: ${chess_bin} mancante - make prod" >&2; exit 1; }
 
     echo "== A/B datagen: $(echo ${ARMS} | wc -w) bracci × ${hours}h, ${THREADS} thread, host ${host} =="
     echo "   (macchina il più possibile scarica: i bracci girano in sequenza per essere comparabili)"
@@ -153,7 +153,7 @@ cmd_sprt() {
     net8k="$(realpath "$1")"
     net12k="$(realpath "$2")"
     [[ -f "${net8k}" && -f "${net12k}" ]] || { echo "errore: rete mancante" >&2; exit 1; }
-    [[ -x "${chess_bin}" ]] || { echo "errore: ${chess_bin} mancante — make prod" >&2; exit 1; }
+    [[ -x "${chess_bin}" ]] || { echo "errore: ${chess_bin} mancante - make prod" >&2; exit 1; }
 
     # Stesso binario da entrambi i lati: conta solo la rete.
     cp -- "${chess_bin}" "${script_dir}/chess_baseline"
