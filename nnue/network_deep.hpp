@@ -2,7 +2,7 @@
 
 // Quantised network with a hidden layer.
 //
-//   (768x4kb_hm -> 1024)x2 -> pairwise -> 1024 -> 16 -> 1
+//   (768x8kb_hm -> 1024)x2 -> pairwise -> 1024 -> 16 -> 1
 //
 // ONE hidden layer only: see trainer_deep.rs for why bullet's 16->32->1 example
 // was not copied.
@@ -21,13 +21,13 @@
 //
 // FILE LAYOUT (little-endian, padded to 64 B with "bullet" repeated):
 //
-//   l0w [4*768][1024]  i16  QA=255   (factoriser already folded in at save)
+//   l0w [8*768][1024]  i16  QA=255   (factoriser already folded in at save)
 //   l0b [1024]         i16  QA
 //   l1w [8][16][1024]  i8   QB=64    (transposed: each bucket contiguous)
 //   l1b [8][16]        f32  real scale
 //   l2w [8][1][16]     f32
 //   l2b [8]            f32
-//   payload 6,425,632 B, file 6,425,664 B
+//   payload 12,717,088 B, file 12,717,120 B
 //
 // ARITHMETIC (must match sanity_deep.rs line for line):
 //
@@ -115,7 +115,7 @@ inline constexpr size_t PAYLOAD_BYTES =
     + static_cast<size_t>(OUTPUT_BUCKETS) * L1_SIZE * sizeof(float)
     + static_cast<size_t>(OUTPUT_BUCKETS) * L1_SIZE * sizeof(float)
     + static_cast<size_t>(OUTPUT_BUCKETS) * sizeof(float);
-static_assert(PAYLOAD_BYTES == 6'425'632, "layout changed: update sanity_deep.rs");
+static_assert(PAYLOAD_BYTES == 12'717'088, "layout changed: update sanity_deep.rs");
 
 // Scalar forward, from the two perspectives' accumulators to the evaluation in
 // centipawns. The correctness reference for the vectorised version.

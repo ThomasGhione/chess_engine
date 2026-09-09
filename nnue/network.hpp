@@ -1,7 +1,7 @@
 #pragma once
 
 // Feature space and l0 prefix shared by every net format:
-//   768x4kb_hm -> 1024 per perspective.
+//   768x8kb_hm -> 1024 per perspective.
 //
 // What comes AFTER l0 lives in network_deep.hpp; this header stops at the
 // accumulator, which is all board.hpp needs for the hot-path hooks.
@@ -34,15 +34,28 @@ inline constexpr int HIDDEN = 1024;
 // must equal BUCKET_LAYOUT in trainer_deep.rs and sanity_deep.rs. It used to be
 // kept here hand-expanded to 64 squares as well, which meant two encodings of
 // one fact and, on the last 8-bucket attempt, copies that drifted apart.
+//
+// This is a STRICT REFINEMENT of the four-bucket map: every boundary that map
+// drew is still here, and the new ones only subdivide its cells. That is
+// deliberate. The 2026-08-01 post-mortem left "adjacent king squares in buckets
+// with independent weights, and the map subdivided rank 1 where the king almost
+// always sits" as the surviving explanation for why eight buckets lost, and
+// said a retry should move the boundaries away from the castling squares. The
+// share of perspective lookups per cell, over 16M sampled from v7, says the
+// same thing quantitatively: rank 1 b/g alone is 23.0% of all lookups and a/h
+// is 4.9%, so a map that separates them spends a bucket on 4.9% while cutting
+// it off from the adjacent cell holding the castled king.
+//
+// Resulting share per bucket: 27.9 / 7.5 / 16.0 / 11.2 / 10.6 / 11.0 / 6.1 / 9.7.
 inline constexpr int BUCKET_LAYOUT[32] = {
-    0, 0, 1, 1,
-    2, 2, 2, 2,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
+    0, 0, 1, 2,
+    3, 3, 4, 4,
+    5, 5, 5, 5,
+    6, 6, 6, 6,
+    7, 7, 7, 7,
+    7, 7, 7, 7,
+    7, 7, 7, 7,
+    7, 7, 7, 7,
 };
 
 inline constexpr int INPUT_BUCKETS = [] {
