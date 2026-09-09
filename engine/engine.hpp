@@ -44,7 +44,10 @@ public:
 
     // Search API
     void search(int depth) noexcept;
-    chess::Move searchUCI(const time::Limits& limits) noexcept;
+
+    void prepareSearchRequest() noexcept;
+
+    chess::Move searchUCI(const time::Limits& limits, bool prepared = false) noexcept;
     void stopThinking() noexcept;
     void setSearchApiMutexEnabled(bool enabled) noexcept;
     bool isSearchApiMutexEnabled() const noexcept;

@@ -1,4 +1,4 @@
-// Offline dataset stats — Fase 0 di DATAGEN_QUALITY_PLAN.md.
+// Offline dataset stats.
 //
 // Scansiona file bulletformat (32 B/record) e riporta:
 //  - anomalie strutturali per file: coda parziale (byte non multipli di 32),
@@ -11,7 +11,7 @@
 // Pure std, niente GPU. Uso:
 //   cargo run -r --bin datastats -- <file.bin> [file2.bin ...]
 //
-// RAM: 8 B per record (Vec<u64> degli hash) — ~4 GB a 500M record.
+// RAM: 8 B per record (Vec<u64> degli hash) - ~4 GB a 500M record.
 
 use std::io::Read;
 

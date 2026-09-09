@@ -165,6 +165,10 @@ public:
     __attribute__((always_inline)) void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;
     __attribute__((always_inline)) void addPieceToBB(uint8_t piece, uint8_t index) noexcept;
     __attribute__((always_inline)) void removePieceFromBB(uint8_t piece, uint8_t index) noexcept;
+    // Un pezzo che si sposta: stessa cosa di remove+add, ma l'accumulatore fa
+    // una passata invece di due (vedi Accumulator::updateMove).
+    __attribute__((always_inline)) void movePieceOnBB(uint8_t piece, uint8_t fromIndex,
+                                                      uint8_t toIndex) noexcept;
 
     // --- Move execution ---
     void doMove(const Move& m, MoveState& state) noexcept;
@@ -179,7 +183,7 @@ public:
     bool inCheck(uint8_t color) const noexcept;
     // Bitboard of enemy pieces giving check to `color`'s king (0 = no check).
     // One scan answers inCheck (!=0), double check (>1 bit) and, via the
-    // checker square, the evasion mask — callers should reuse it.
+    // checker square, the evasion mask - callers should reuse it.
     uint64_t checkersTo(uint8_t color) const noexcept;
     [[nodiscard]] inline bool isKingSafeAfterMove(uint8_t movingColor, uint8_t fromIndex,
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
@@ -228,10 +232,24 @@ public:
     // the same add/remove piece functions whenever a network is loaded.
     // Contains garbage until the first refreshNnueAccumulator() after load.
     // mutable: ensureNnueAccumulatorClean() settles the HalfKA lazy state
-    // from const evaluation paths — it is a cache, not board state.
+    // from const evaluation paths - it is a cache, not board state.
     mutable NNUE::Accumulator nnueAccumulator;
 
+    // Deferred accumulator work. The rows are only touched when something
+    // actually reads them, so a node cut before it evaluates pays nothing:
+    // its delta and the matching undo cancel here. Kept outside Accumulator so
+    // the selftest's whole-struct memcmp keeps comparing only real state.
+    mutable NNUE::AccDelta accPending[NNUE::MAX_ACC_PENDING];
+    mutable int            accPendingCount = 0;
+
 private:
+    // Replays every queued delta in order, leaving the rows consistent with
+    // the current position. Called before anything reads the accumulator.
+    inline void flushAccPending() const noexcept;
+    inline void queueAccAdd(uint8_t piece, uint8_t index) const noexcept;
+    inline void queueAccRemove(uint8_t piece, uint8_t index) const noexcept;
+    inline void queueAccMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) const noexcept;
+
     // --- Private helpers: move execution ---
     inline void snapshotState(MoveState& st) const noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t moving, uint8_t destBefore) const noexcept;
@@ -301,6 +319,7 @@ private:
     uint8_t  epHashFile          = 0xFF;
     uint8_t  activeColor         = WHITE;
     uint8_t  historySize         = 0;
+    uint8_t  nullPly             = 0;
 
     static constexpr const char* STARTING_FEN =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -1,10 +1,10 @@
-// HydraY NNUE v4 trainer (HALFKA_PLAN.md: HalfKA + king bucket).
+// HydraY NNUE trainer (HalfKA + king bucket).
 //
-// Architecture: (768x4kb_hm -> 1024)x2 -> 8ob — 4 mirrored king buckets on the
+// Architecture: (768x4kb_hm -> 1024)x2 -> 8ob - 4 mirrored king buckets on the
 // inputs (bullet ChessBucketsMirrored: feature = 768*bucket[ksq] + (feat768 ^
 // flip), flip = 7 iff file(ksq) > d), material-count output buckets as in the
 // ob cycle, SCReLU, QA=255/QB=64. Input-layer factoriser l0f (shared 768xH
-// component summed onto every bucket) — merged into l0w at save time via
+// component summed onto every bucket) - merged into l0w at save time via
 // SavedFormat::transform, so quantised.bin needs no factoriser awareness.
 // Weight clipping tightened to ±0.99 on l0w/l0f: the SAVED weight is the sum
 // of the two, and |sum| must stay <= ~1.98 for i16 quantisation at QA=255.
@@ -16,7 +16,7 @@
 //
 // STAGED TRAINING (start_sb + resume_ckpt) exists because the free Colab
 // runtime has ~66 GB of local disk while the full dataset is 88 GB, and the
-// Drive mount caches locally everything it reads — so streaming a 40-superbatch
+// Drive mount caches locally everything it reads - so streaming a 40-superbatch
 // run fills the disk around superbatch 28. Instead, train on one slice at a
 // time: each stage exits (releasing the cache), the local file is replaced with
 // the next slice, and training resumes from the checkpoint. The net ends up
@@ -26,7 +26,7 @@
 // stage can only resume from a checkpoint that was actually written. Four
 // slices of a quarter of the dataset each therefore fit the 40-superbatch
 // schedule exactly, and 10 superbatches consume 1B samples against a 688M
-// slice — the same 1.45 epochs the whole run would do over the whole dataset:
+// slice - the same 1.45 epochs the whole run would do over the whole dataset:
 //
 //   STAGE_END=10 stage 1:  <slice A> 40 hydray-x
 //   STAGE_END=20 stage 2:  <slice B> 40 hydray-x 11 checkpoints/hydray-x-10
@@ -42,10 +42,19 @@
 // says; and `load_from_checkpoint` restores `optimiser_state`, so AdamW's
 // moments carry across a stage boundary instead of restarting cold.
 //
-// TEST_PATH (env var) points at a held-out slice and turns on validation loss.
-// Without it only training loss is reported, which cannot show overfitting —
-// the 8-bucket map had a BETTER training loss than the 4-bucket one while
-// playing 12 Elo worse, and that was only diagnosable by elimination.
+// TEST_PATH (env var) points at a held-out slice and is passed to bullet as a
+// TestDataset. ⚠️ IT DOES NOTHING on the pinned rev: bullet's value.rs only
+// checks `test_set.is_some()` to print "Validation data not currently
+// implemented", and never reads the slice. Every run that set TEST_PATH - the
+// 4-bucket runs, the 512, both 1024s - reported training loss only, and the
+// notebooks that claimed otherwise were wrong.
+//
+// So the one number that separates "under-trained" from "out of data" is not
+// available here, and training loss cannot stand in for it: the 8-bucket map
+// had a BETTER training loss than the 4-bucket one while playing 12 Elo worse.
+// Until bullet implements it, overfitting is diagnosed by SPRT or not at all -
+// and bumping the pinned rev to get the feature would change training
+// semantics mid-campaign, which costs more than the number is worth.
 
 use bullet_lib::{
     game::{
@@ -102,7 +111,7 @@ fn main() {
     let resume_from = args.get(5).cloned();
     let test_path = std::env::var("TEST_PATH").ok();
     // Last superbatch of THIS stage. Without it a stage runs to `superbatches`
-    // on its own slice — which still ends up correct, since each stage resumes
+    // on its own slice - which still ends up correct, since each stage resumes
     // from the previous boundary and overwrites the later checkpoints, but it
     // burns 2.5x the GPU time on data that gets thrown away. The learning-rate
     // schedule below keys off `superbatches` regardless, so bounding the stage
@@ -163,7 +172,7 @@ fn main() {
             start_superbatch,
             end_superbatch: stage_end,
         },
-        // NNUE_PLAN lambda = 0.7 on the search score; bullet's `wdl` weights the
+        // lambda = 0.7 on the search score; bullet's `wdl` weights the
         // game RESULT, so wdl = 1 - lambda = 0.3.
         wdl_scheduler: wdl::ConstantWDL { value: 0.3 },
         lr_scheduler: lr::StepLR {

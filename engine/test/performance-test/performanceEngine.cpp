@@ -36,7 +36,7 @@ ut::suite performanceEngineSuite = [] {
 
     // Plays against itself for "runs" moves. searchUCI() searches a COPY of the
     // board and does NOT advance it, so we must play the returned move on e.board
-    // ourselves — otherwise every run re-searches the identical root position and
+    // ourselves - otherwise every run re-searches the identical root position and
     // hits a fully warm TT (~0 ms at any depth), measuring nothing.
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {

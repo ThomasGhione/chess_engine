@@ -1,7 +1,6 @@
 # HydraY NNUE trainer (bullet)
 
 Rete v1: `(768 -> 256)x2 -> 1`, dual perspective, SCReLU, QA=255 QB=64, SCALE=400.
-Vedi `NNUE_PLAN.md` alla root del repo.
 
 ## Pipeline
 

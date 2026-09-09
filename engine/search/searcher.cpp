@@ -7,15 +7,52 @@
 #include <utility>
 #include <vector>
 
+#include "../../debug.hpp"
 #include "../engine.hpp"
 #include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
+#include "evalcache.hpp"
 
 namespace engine {
 
+static EvalCache& sharedEvalCache() noexcept {
+    static EvalCache cache;
+    [[maybe_unused]] static const bool allocated = cache.resize(EvalCache::DEFAULT_SLOTS);
+    return cache;
+}
+
+void clearEvalCache() noexcept { sharedEvalCache().clear(); }
+
 namespace {
 
-constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = PAWN_VALUE / 2;
+// Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
+// `improving` prune. Each ancestor writes evalStack[ply] before its grandchild
+// two plies down reads it on the same thread's stack. Slot 0 is the root, which
+// never runs through searchPosition, so getBestMove seeds it.
+thread_local int32_t evalStack[MAX_PLY] = {};
+
+// Raw static eval for a position not carried by its TT entry.
+int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
+    int32_t cached = 0;
+    EvalCache& cache = sharedEvalCache();
+    if (cache.probe(hashKey, cached)) return cached;
+    const int32_t value = Evaluator::evaluate(b);
+    cache.store(hashKey, value);
+    return value;
+}
+
+// "Is the position level enough that a repetition is acceptable?" The intent is
+// half a pawn, but the comparison is against a static eval, and material and
+// evaluation are different units (see MATERIAL_TO_EVAL_PCT). Converting keeps
+// the threshold at the half-pawn it was written to mean; the raw value fires at
+// roughly a fifth of one.
+//
+// Measured before changing it: this branch is cold. Over a 200-search sample of
+// late-game positions replayed with full move history -- 137M repetition scans,
+// 9.3M of them hitting the twofold path -- the threefold path ran ONCE, and the
+// conversion changed the outcome zero times. Correctness only; no Elo is
+// claimed and an SPRT would be measuring nothing.
+constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = materialToEval(PAWN_VALUE / 2);
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
@@ -207,6 +244,10 @@ struct HelperSlot {
                                      // maxThreads=1, emitUciInfo=false, timeManager=nullptr
     chess::Board board;
     std::atomic<bool> interrupted{false};
+    // Root result of this helper's last search, read by the vote in
+    // searchBestMove. Slots are persistent, so this must be cleared at the
+    // start of every search or a stale result would cast a vote.
+    ::engine::Searcher::IterativeSearchResult result{};
 
     HelperSlot() noexcept {
         runtime.searchInterrupted = &interrupted;
@@ -256,10 +297,19 @@ chess::Move Searcher::searchBestMove(
         hr.clearInterrupted();
         hr.softResetHistory();
         slot.board = board;
+        slot.result = {};
+
+        // Spread the helpers over the depth sequence. The pattern repeats every
+        // 20 helpers: with few threads the early entries alternate depths, with
+        // many the later ones sit further apart.
+        static constexpr int SKIP_SIZE[20]  = {1,1,2,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4};
+        static constexpr int SKIP_PHASE[20] = {0,1,0,1,2,3,0,1,2,3,4,5,0,1,2,3,4,5,6,7};
+        hr.depthSkipSize  = SKIP_SIZE[i % 20];
+        hr.depthSkipPhase = SKIP_PHASE[i % 20];
 
         const int startDepth = 1 + (i & 1);
         helpers.emplace_back([&slot, startDepth, targetDepth] {
-            (void)runIterativeDeepening(slot.board, slot.runtime, startDepth, targetDepth);
+            slot.result = runIterativeDeepening(slot.board, slot.runtime, startDepth, targetDepth);
         });
     }
 
@@ -269,6 +319,39 @@ chess::Move Searcher::searchBestMove(
     for (auto& helper : helpers) helper.join();
 
     runtime.depth = targetDepth;
+
+    // Thread voting: among the threads that completed the deepest iteration,
+    // take the highest root score. The helpers' root results used to be thrown
+    // away here; they are the only output of the diversification above that the
+    // main thread cannot already see through the shared TT.
+    //
+    // Comparing SCORES is sound only at equal depth, and equal depth is what
+    // actually happens: measured over 199 searches at 8 threads, the deepest
+    // helper matched the main thread's depth 78% of the time. Helpers skip
+    // depths, so they reach a given depth sooner -- but they are cut off the
+    // moment the main thread returns, so they do not finish any deeper.
+    //
+    // That measurement is also why this is not a majority vote: a plain
+    // majority never overrode the main thread once in those 199 searches (the
+    // shared TT makes the pack converge on it), and weighting the votes by
+    // depth weights them by a near-constant. This rule overrides in ~7.5%.
+    //
+    // Starting from the main thread's own result means it keeps the move on
+    // ties.
+    if (helperCount > 0 && result.completedAnyDepth && !result.terminalRoot) {
+        const IterativeSearchResult* best = &result;
+        for (int i = 0; i < helperCount; ++i) {
+            const IterativeSearchResult& hres = helperSlots[i]->result;
+            if (!hres.completedAnyDepth || hres.bestMove == chess::Move{}) continue;
+            if (hres.completedDepth > best->completedDepth
+                || (hres.completedDepth == best->completedDepth
+                    && hres.bestScore > best->bestScore)) {
+                best = &hres;
+            }
+        }
+        result.bestMove  = best->bestMove;
+        result.bestScore = best->bestScore;
+    }
 
     // Completed/terminal result, else a deterministic fallback move.
     if (result.terminalRoot || result.completedAnyDepth) {
@@ -487,21 +570,18 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             continue;
         }
 
-        // Pre-move check detection, computed lazily only on the quiet moves
-        // that can actually be futility-pruned (its sole consumer below).
-        bool preMoveGivesCheck = false;
-        if (canFutilityPrune && isQuietMove && fromPieceType != chess::Board::KING) {
-            preMoveGivesCheck = Sorter::givesCheckAfterQuietMoveFast(
-                b, m, fromPieceType, oppKingSq, b.getPiecesBitMap());
-        }
-
-        if (canFutilityPrune && isQuietMove && !preMoveGivesCheck && moveIndex > 0
-            && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)) {
+        // givesCheck is the last term: it costs two magic lookups, and every
+        // cheaper term rejects far more often.
+        if (canFutilityPrune && isQuietMove && moveIndex > 0
+            && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)
+            && (fromPieceType == chess::Board::KING
+                || !Sorter::givesCheckAfterQuietMoveFast(
+                       b, m, fromPieceType, oppKingSq, b.getPiecesBitMap()))) {
             continue;
         }
 
         // History-based quiet pruning: skip late quiet moves with very negative
-        // history at low depth — they reliably fail to improve alpha.
+        // history at low depth - they reliably fail to improve alpha.
         if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
             const int32_t histScore = runtime.history[usSide][m.from][m.to];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
@@ -527,7 +607,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         // Late captures are reduced too: move ordering ranks good captures early,
         // so a capture reaching this index is almost always a bad/losing one.
-        const bool lmrStructuralCandidate = (ctx.depth >= 4)
+        const bool lmrStructuralCandidate = (ctx.depth >= 3)
             && (moveIndex >= 4)
             && !isPromotionCandidate;
 
@@ -563,7 +643,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             if (!ctx.improving) {
                 reduction += 1;
             }
-            // History adjustment (quiet moves only — quiet history is meaningless
+            // History adjustment (quiet moves only - quiet history is meaningless
             // for captures, which the ordering already ranks by SEE/capture history).
             if (!wasCapture) {
                 const int32_t histScore = runtime.history[usSide][m.from][m.to];
@@ -690,11 +770,11 @@ int32_t Searcher::searchPosition(
     }
 
     if (depth <= 0) {
-        return quiescenceSearch(b, runtime, alpha, beta, ply, counter);
+        return quiescenceSearch(b, runtime, alpha, beta, ply, counter, /*alreadyEntered=*/true);
     }
 
     // TB WDL probe (in-search): only return Draw as exact. Returning Win or
-    // Loss anywhere — even guarded by alpha/beta — collapses move ordering:
+    // Loss anywhere - even guarded by alpha/beta - collapses move ordering:
     // every TB-winning subtree at root produces the same TB_WIN_SCORE-ply
     // score because aspiration windows around small eval-derived scores trip
     // the alpha/beta cutoff at every TB-Loss child node, and PVS scout then
@@ -723,7 +803,7 @@ int32_t Searcher::searchPosition(
     }
 
     // TB probe sits AFTER the TT cutoff: in TB range most nodes cut on the
-    // (cheap, cached) TT entry — often the TB draw stored below — without
+    // (cheap, cached) TT entry - often the TB draw stored below - without
     // paying the mmap'd table lookup.
     if (runtime.syzygyProber != nullptr
         && runtime.syzygyProber->isLoaded()
@@ -732,7 +812,7 @@ int32_t Searcher::searchPosition(
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
             if (tbScore == 0) {
-                // Draw: exact terminal — prevents picking a drawn move when
+                // Draw: exact terminal - prevents picking a drawn move when
                 // a winning one exists (and vice versa).
                 if (canUseTT) {
                     runtime.transpositionTable->store(
@@ -748,24 +828,20 @@ int32_t Searcher::searchPosition(
     SearchNodeState node{};
     node.activeColor = b.getActiveColor();
     // One attack scan answers inCheck, double check and (in movegen) the
-    // evasion mask — the bitboard is reused at move generation below.
+    // evasion mask - the bitboard is reused at move generation below.
     const uint64_t checkers = b.checkersTo(node.activeColor);
     node.inCheck = (checkers != 0ULL);
     node.isPVNode = isPVNode;
 
-    // Compute static eval at every ply (including the root) so that the
-    // `improving` heuristic can compare evalStack[ply-2] vs current eval
-    // starting from ply >= 2. Previously the root left evalStack[0] at its
-    // zero-initialised value, biasing `improving` to (staticEval > 0) at ply 2.
-    // The raw eval of this position, before the TT-bound tightening and the
-    // corrHist nudge below. That is what goes back into the TT: a later visit
+    // The raw eval of this position, before the TT-bound tightening below.
+    // That is what goes back into the TT: a later visit
     // then skips the NNUE forward pass entirely. NO_EVAL while in check, where
     // there is no meaningful static eval to record.
     int32_t rawStaticEval = TT::Entry::NO_EVAL;
     if (!node.inCheck) {
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
-            : Evaluator::evaluate(b);
+            : cachedEval(hashKey, b);
         node.staticEval = rawStaticEval;
         if (tte.hit) {
             const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
@@ -777,16 +853,8 @@ int32_t Searcher::searchPosition(
                 node.staticEval = ttStaticScore;
             }
         }
-        // Nudge the static eval by the learned correction-history signal.
-        node.staticEval = std::clamp(node.staticEval + runtime.corrHist.correction(b),
-                                     -MATE_BOUND + 1, MATE_BOUND - 1);
+        node.staticEval = std::clamp(node.staticEval, -MATE_BOUND + 1, MATE_BOUND - 1);
     }
-
-    // Per-thread (Lazy SMP): a shared evalStack would race and corrupt the
-    // `improving` prune. Each ancestor writes evalStack[ply] (line below)
-    // before its grandchild 2 plies down reads it on the same thread's stack,
-    // so a thread_local array (no per-search reset needed) is correct.
-    static thread_local int32_t evalStack[MAX_PLY] = {};
 
     // Store staticEval in ply stack and compute improving flag.
     // In-check nodes have no meaningful static eval, so store a sentinel
@@ -800,9 +868,6 @@ int32_t Searcher::searchPosition(
         && (node.staticEval > evalStack[ply - 2]);
 
     const int side = chess::Board::colorToIndex(node.activeColor);
-    const int nonPawnMajors = std::popcount(
-        b.knights_bb[side] | b.bishops_bb[side] |
-        b.rooks_bb[side]   | b.queens_bb[side]);
     int singularExtension = 0;
     if (!hasExcludedMove && !node.inCheck && depth >= SE_MIN_DEPTH && ply > 0) {
         if (tte.hit
@@ -841,7 +906,9 @@ int32_t Searcher::searchPosition(
     // ~100cp of beta (giving the opponent a free move likely still fails high).
     const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove && interiorNonPv
-        && depth >= 4 && nonPawnMajors >= 2 && isBetaCutoff(nmpEvalGate, beta);
+        && depth >= 4 && isBetaCutoff(nmpEvalGate, beta)
+        && std::popcount(b.knights_bb[side] | b.bishops_bb[side] |
+                         b.rooks_bb[side]   | b.queens_bb[side]) >= 2;
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
@@ -867,7 +934,11 @@ int32_t Searcher::searchPosition(
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
             const int32_t see = Sorter::staticExchangeEvaluation(b, mc);
-            if (see < PROBCUT_MARGIN) continue;
+            // PROBCUT_MARGIN is an eval-scale quantity (it is added to beta
+            // above), so the SEE it gates has to be converted first - comparing
+            // raw material against it makes the filter ~MATERIAL_TO_EVAL_PCT
+            // too strict and discards captures that would clear the bound.
+            if (materialToEval(see) < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
             b.doMove(mc, pcState);
             // Negamax child: negate result and swap/negate the scout window.
@@ -881,7 +952,12 @@ int32_t Searcher::searchPosition(
     int16_t* contHistEntry = nullptr;
     if (previousMove != nullptr && previousMove->to < 64) {
         const int prevPiece = b.get(previousMove->to) & chess::Board::MASK_PIECE_TYPE;
-        contHistEntry = &runtime.contHist[side ^ 1][prevPiece][previousMove->to][0][0];
+        DBG_ONLY(
+            if (prevPiece == 0) {
+                DBG_LOG_STREAM("contHist: EMPTY square under previousMove->to\n");
+            }
+        );
+        contHistEntry = &runtime.contHist[side ^ 1][prevPiece - 1][previousMove->to][0][0];
     }
 
     SearchContext ctx{
@@ -924,18 +1000,6 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
-    // Correction history: learn the (search - corrected static eval) residual,
-    // but only from TRUSTWORTHY nodes — deep enough, quiet best move, non-mate, and
-    // the search must genuinely contradict the static eval rather than merely confirm
-    // a cutoff bound.
-    const bool corrLearn = (best > node.staticEval)
-                        || (best < node.staticEval && best < beta);
-    if (corrLearn && !node.inCheck && !hasExcludedMove && depth >= 3
-        && std::abs(best) < MATE_BOUND && chess::isValidSquare(result.move.from)
-        && (b.get(result.move.to) & chess::Board::MASK_PIECE_TYPE) == chess::Board::EMPTY) {
-        runtime.corrHist.update(b, best, node.staticEval, depth);
-    }
-
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
@@ -956,14 +1020,17 @@ int32_t Searcher::quiescenceSearch(
     int32_t alpha,
     int32_t beta,
     int ply,
-    uint64_t* nodeCounter) noexcept {
+    uint64_t* nodeCounter,
+    bool alreadyEntered) noexcept {
     uint64_t* counter = (nodeCounter != nullptr) ? nodeCounter : &runtime.nodesSearched;
-    int32_t earlyScore = 0;
-    if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
+    if (!alreadyEntered) {
+        int32_t earlyScore = 0;
+        if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
 
-    int32_t drawScore = 0;
-    if (checkDrawTerminalConditions(b, drawScore)) {
-        return drawScore;
+        int32_t drawScore = 0;
+        if (checkDrawTerminalConditions(b, drawScore)) {
+            return drawScore;
+        }
     }
 
     const bool canUseTT = (runtime.transpositionTable != nullptr);
@@ -1006,8 +1073,8 @@ int32_t Searcher::quiescenceSearch(
         // static eval is free here and this is where 50-80% of all nodes are.
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
-            : Evaluator::evaluate(b);
-        const int32_t standPat = rawStaticEval + runtime.corrHist.correction(b);
+            : cachedEval(b.getHash(), b);
+        const int32_t standPat = rawStaticEval;
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling
             // qsearch nodes can then cut on this stand-pat without re-evaluating.
@@ -1020,7 +1087,7 @@ int32_t Searcher::quiescenceSearch(
         }
         updateBound(standPat, alpha);
 
-        if (shouldDeltaPrune(standPat, QSEARCH_DELTA_MARGIN, alpha)) {
+        if (shouldDeltaPrune(standPat, materialToEval(QSEARCH_DELTA_MARGIN), alpha)) {
             return alpha; // negamax delta-prune fail-low
         }
 
@@ -1095,6 +1162,12 @@ chess::Move Searcher::getBestMove(
     orderedRootMoves.fullSort();
 
     const MoveList& rootMoves = orderedRootMoves.moves;
+
+    // ply 2 compares against the root, which is reached at ply 1 and so never
+    // writes slot 0 itself. Left unseeded, `improving` there means eval > 0.
+    evalStack[0] = (rootBoard.checkersTo(rootBoard.getActiveColor()) != 0ULL)
+        ? NEG_INF
+        : Evaluator::evaluate(rootBoard);
 
     const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b) {
         return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &localNodes);
@@ -1253,7 +1326,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     result.hasLegalMoves = true;
 
     // TB root probe: probeRoot returns moves with rank derived from actual
-    // DTZ — higher rank is faster win / slower loss / preserved draw. The
+    // DTZ - higher rank is faster win / slower loss / preserved draw. The
     // optimal play in any TB-known endgame is just to follow that ranking,
     // so return immediately for all three outcomes without running a search.
     // Searching adds nothing here: TB already proves the result and orders
@@ -1311,6 +1384,12 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     for (int currentDepth = firstDepth; currentDepth <= maxDepth; ++currentDepth) {
         if (runtime.shouldAbort()) {
             break;
+        }
+
+        // Depth diversification (helpers only; size 0 on the main thread).
+        if (runtime.depthSkipSize > 0
+            && (((currentDepth + runtime.depthSkipPhase) / runtime.depthSkipSize) & 1) != 0) {
+            continue;
         }
 
         // Soft limit: once a move is in hand, do not open a depth we almost

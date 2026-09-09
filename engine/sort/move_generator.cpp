@@ -196,7 +196,7 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b, CheckContex
     const int kingFrom = std::countr_zero(v.kings);
     const chess::Square kingFromC = static_cast<uint8_t>(kingFrom);
 
-    // Macro-step 2: single-check evasion targets — capture the checker or
+    // Macro-step 2: single-check evasion targets - capture the checker or
     // block the ray (BETWEEN is empty for contact and knight checks).
     const uint64_t evasionMask = singleCheck
         ? (checkers | BETWEEN_EXCLUSIVE_LUT[kingFrom][std::countr_zero(checkers)])
@@ -223,7 +223,7 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b, CheckContex
     if (inDoubleCheck) return moves;
 
     // Macro-step 4: pin rays restrict non-king mobility. Not zero-initialised
-    // for performance — only read where pinnedMask has a bit set.
+    // for performance - only read where pinnedMask has a bit set.
     std::array<uint64_t, 64> pinRayBySquare;
     const uint64_t pinnedMask = (v.pawns | v.knights | v.bishops | v.rooks | v.queens)
         ? computePinRays<IsWhite>(b, kingFromC, pinRayBySquare.data()) : 0ULL;
@@ -277,7 +277,7 @@ MoveList MoveGenerator::generateTacticalMovesFor(const chess::Board& b) noexcept
 
     // King captures must be verified for legality. The non-king tactical paths
     // above already filter pinned movers via pinRayBySquare, but king moves
-    // cannot be pinned — they are illegal when stepping into a square attacked
+    // cannot be pinned - they are illegal when stepping into a square attacked
     // by another enemy piece. Without this filter Probcut would happily search
     // illegal "king captures own attacker" positions and contaminate the TT
     // with mate-like scores derived from the opponent's immediate king

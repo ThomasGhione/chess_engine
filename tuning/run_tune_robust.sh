@@ -62,7 +62,7 @@ start_watchdog() {
       if [[ "${current_size}" -eq "${last_size}" ]]; then
         stale=$(( stale + 60 ))
         if (( stale >= watchdog_timeout )); then
-          echo "[robust-watchdog] $(date '+%F %T') log.txt silent for ${watchdog_timeout}s — killing frozen run (pid ${target_pid})"
+          echo "[robust-watchdog] $(date '+%F %T') log.txt silent for ${watchdog_timeout}s - killing frozen run (pid ${target_pid})"
           kill -- "-${target_pid}" 2>/dev/null || kill "${target_pid}" 2>/dev/null || true
           watchdog_killed=1
           exit 0

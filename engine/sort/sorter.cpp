@@ -1,5 +1,7 @@
 #include "sorter.hpp"
 
+#include <algorithm>  // std::clamp, std::min, std::max
+
 #include "../engine.hpp"
 
 namespace engine {
@@ -11,10 +13,9 @@ int32_t computeSeeForPicker(const chess::Board& b, const chess::Move& m) noexcep
 Sorter::CaptureInfo Sorter::classifyCapture(
         const chess::Move& m, int fromPieceType, int toPieceType,
         const chess::Square& enPassant) noexcept {
-    const bool isEpCapture = chess::isValidSquare(enPassant)
+    const bool isEpCapture = (m.to == enPassant)
         && fromPieceType == chess::Board::PAWN
         && toPieceType   == chess::Board::EMPTY
-        && (m.to == enPassant)
         && (chess::file(m.from) != chess::file(m.to));
     const bool isCapture = (toPieceType != chess::Board::EMPTY) || isEpCapture;
     const int victimType = isEpCapture ? chess::Board::PAWN : toPieceType;
@@ -70,15 +71,11 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
         return score;
     }
 
-    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][0])) return KILLER_1_SCORE;
-    if (m.sameFromTo(ctx.runtime.killerMoves[ctx.ply][1])) return KILLER_2_SCORE;
+    if (m.sameFromTo(ctx.killer0)) return KILLER_1_SCORE;
+    if (m.sameFromTo(ctx.killer1)) return KILLER_2_SCORE;
 
-    if (ctx.previousMove != nullptr) {
-        const uint16_t counter = ctx.runtime.counterMoves[ctx.previousMove->from][ctx.previousMove->to];
-        if (counter != 0
-            && counter == TT::Entry::encodeMove(m)) {
-            return COUNTER_MOVE_SCORE;
-        }
+    if (ctx.counterMove != 0 && ctx.counterMove == TT::Entry::encodeMove(m)) {
+        return COUNTER_MOVE_SCORE;
     }
 
     if (isPromotionCandidate) {
@@ -103,7 +100,7 @@ Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
     mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
     if (mask) return {std::countr_zero(mask), chess::Board::KNIGHT};
 
-    // Cache sliding attack rays — shared by bishop/queen and rook/queen lookups.
+    // Cache sliding attack rays - shared by bishop/queen and rook/queen lookups.
     const uint64_t bishopRays = pieces::getBishopAttacks(sq, occLocal);
     const uint64_t rookRays   = pieces::getRookAttacks(sq, occLocal);
 
@@ -196,8 +193,14 @@ MovePicker Sorter::sortLegalMoves(
     const chess::Square enPassant   = b.getEnPassant();
 
     const MoveOrderingContext orderingCtx{
-        previousMove, runtime, contHistEntry, ply, usSide
+        previousMove, runtime, contHistEntry, ply, usSide,
+        runtime.killerMoves[ply][0],
+        runtime.killerMoves[ply][1],
+        (previousMove != nullptr)
+            ? runtime.counterMoves[previousMove->from][previousMove->to]
+            : uint16_t{0}
     };
+
 
     // Hash move handed down from the caller's single TT probe (0 = none).
     const bool hasEncodedHashMove = (encodedHashMove != 0);
@@ -221,9 +224,31 @@ MovePicker Sorter::sortLegalMoves(
         // Lazy SEE: 1 = capture, 2 = quiet that could be SEE-demoted, 0 = score is
         // already final. The actual SEE is deferred to the picker (finalizeSee) so
         // moves a beta cutoff never reaches don't pay for it.
+        //
+        // Quiet PAWN moves are excluded from the hanging-quiet demotion, for the
+        // same reason king moves already were: the demotion has to earn its SEE,
+        // and for a pawn it does not. Measured over a 10-position depth-14 sweep,
+        // quiet SEE is 15,342,554 calls -- 68% of ALL SEE in the engine and ~4.7%
+        // of runtime by profile. Pawns are 25.8% of those calls but only 15.6% of
+        // the demotions (18.1% hit rate against 29.9% for quiets overall), and a
+        // hanging pawn is the cheapest blunder there is to mis-order.
+        //
+        // Dropping the demotion for ALL quiets was tried first and LOST: nodes
+        // rose 8.2% and ate the whole speed gain, -0.90% end to end. The demotion
+        // is worth its cost in general; it is the pawn slice specifically that is
+        // not. Do not "simplify" this back to one condition.
+        //
+        // Honest status: this is a MEASUREMENT, not a demonstrated gain.
+        // 30,000 games at 4+0.04 gave +1.70 +/- 2.49 Elo, LOS 91.0%, and the
+        // interval includes zero; the LLR wandered in [-0.59, +1.00] over the
+        // last 15,000 games and never approached a bound. Adopted because it
+        // strictly removes work and the point estimate agrees in sign with the
+        // local speed measurement -- not because it was proven.
         const SeePending pending = isHashMove ? SeePending::Final
             : (isCapture ? SeePending::Capture
-              : ((!isPromotionCandidate && fromPieceType != chess::Board::KING) ? SeePending::Quiet : SeePending::Final));
+              : ((!isPromotionCandidate
+                  && fromPieceType != chess::Board::KING
+                  && fromPieceType != chess::Board::PAWN) ? SeePending::Quiet : SeePending::Final));
 
         // Score provisionally: captures rank as good, quiets as their base score.
         // finalizeSee later applies the good/bad split and the hanging demotion.
@@ -276,11 +301,11 @@ MovePicker Sorter::sortTacticalMoves(
 
             // Delta prune: capture cannot improve standPat past alpha. Matches
             // Searcher::shouldDeltaPrune semantics (<=, fails low on equal too).
-            if (standPat + capturedValue + FUTILITY_MARGIN <= alpha) continue;
+            if (standPat + materialToEval(capturedValue) + FUTILITY_MARGIN <= alpha) continue;
 
             const int32_t see = staticExchangeEvaluation(b, m);
             if (see < seeThreshold) continue;
-            if (standPat + see + MOVE_DELTA_MARGIN <= alpha) continue;
+            if (standPat + materialToEval(see) + MOVE_DELTA_MARGIN <= alpha) continue;
 
             score = CAPTURE_BASE_SCORE + see + MVV_TABLE[victimType];
         } else {
@@ -308,15 +333,24 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Move& m, const
     if (chess::rank(m.to) == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE))
         return true;
 
-    return chess::isValidSquare(enPassant) && (m.to == enPassant);
+    return m.to == enPassant; // NO_SQUARE is 255 and m.to is a real square, so this alone is the ep test
 }
 
 MoveList Sorter::sortEvasionsForcingFirst(MoveList evasions, const chess::Board& b) noexcept {
     const auto enPassant = b.getEnPassant();
 
-    std::ranges::stable_partition(evasions,
-        [&](const auto& m) { return isForcingEvasion(b, m, enPassant);
-    });
+    int write = 0;
+    for (int i = 0; i < evasions.size; ++i) {
+        if (!isForcingEvasion(b, evasions[i], enPassant)) continue;
+        // Rotate evasions[i] down to `write`, preserving the order of the
+        // non-forcing moves it passes -- this is what makes the split stable.
+        const chess::Move forcing = evasions[i];
+        for (int j = i; j > write; --j) {
+            evasions[j] = evasions[j - 1];
+        }
+        evasions[write] = forcing;
+        ++write;
+    }
 
     return evasions;
 }

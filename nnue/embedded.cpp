@@ -5,7 +5,7 @@
 // The blob is the verbatim quantised.bin (payload + "bullet" padding), 64-byte
 // aligned so the Network reinterpret in nnue.cpp satisfies the AVX2 loads.
 // The .incbin path is resolved from the compiler's working directory (the
-// repo root — see the explicit makefile rule that also declares the data
+// repo root - see the explicit makefile rule that also declares the data
 // dependency, since -MMD cannot track .incbin includes).
 
 __asm__(

@@ -19,11 +19,10 @@ namespace engine {
 // ===================================================
 inline constexpr int32_t  MAX_PLY                = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
-inline constexpr int32_t  CORR_HISTORY_SIZE      = 1 << 14;
 inline constexpr int DEFAULT_DEPTH               = 11;
 
 // Score scale. A forced mate `n` plies away scores ±(MATE_VALUE - n), so every
-// score the search can produce fits in int16_t — the precondition for packing a
+// score the search can produce fits in int16_t - the precondition for packing a
 // static eval next to the score in the TT payload. Scores at or beyond
 // MATE_BOUND carry a ply distance and are rebased on TT store/load (see
 // scoreToTT / scoreFromTT).
@@ -56,9 +55,9 @@ inline int32_t NMP_EVAL_MAX = 4;
 inline int32_t RFP_MARGIN_PER_DEPTH = 70;
 // Futility margin generator: FUTILITY_MARGINS[depth] = MID_STEP*d, consumed
 // by the move loop (gated to depth 1..6). The HCE-era endgame row (phase split
-// on nonPawnMajors) was removed — see HCE_RESIDUE_AUDIT.md section 1b.
+// on nonPawnMajors) was removed as a handcrafted-evaluator residue.
 // NOTE: rebuildSearchDerivedTables() only runs on a UCI option change, so this
-// row is what a plain build actually uses — keep it == MID_STEP * d by hand.
+// row is what a plain build actually uses - keep it == MID_STEP * d by hand.
 inline int32_t FUTILITY_MID_STEP = 176;
 inline int32_t FUTILITY_MARGINS[7] = {0, 176, 352, 528, 704, 880, 1056};
 // LMP_THRESHOLDS[improving][depth]: higher = more permissive.
@@ -107,16 +106,6 @@ inline constexpr int32_t MAX_HISTORY         = 16384;
 inline constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
 
 // ===================================================
-// CORRECTION HISTORY (search - static eval residual)
-// ===================================================
-inline constexpr int32_t CORR_HIST_LIMIT   = 1024; // bound on the smoothed residual (cp)
-inline constexpr int32_t CORR_HIST_DIVISOR = 4;    // applied fraction of each residual
-inline constexpr int32_t CORR_HIST_BLEND   = 256;  // weighted-average denominator
-inline constexpr int32_t CORR_HIST_MAX_W   = 16;   // per-update weight cap (grows with depth)
-// Cap on the SUM of the pawn/minor/major corrections, kept at the old pawn-only 256 cp.
-inline constexpr int32_t CORR_TOTAL_CAP    = CORR_HIST_LIMIT / CORR_HIST_DIVISOR;
-
-// ===================================================
 // QUIESCENCE SEARCH
 // ===================================================
 inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
@@ -126,6 +115,22 @@ inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
 // thresholds, depth taper) sat behind this and fired 2 times in 4.6M nodes,
 // because each of its widenings pushed the margin above this value.
 inline constexpr int32_t QSEARCH_DELTA_MARGIN = 1010; // == QUEEN_VALUE + 50
+
+// Material and evaluation are denominated in DIFFERENT units. PIECE_VALUES and
+// SEE are handcrafted-era centipawns; the NNUE output runs hotter, so adding a
+// raw material amount to a stand-pat and comparing against alpha understates
+// what a capture can recover, and over-prunes.
+//
+// Measured on the shipped net (177 piece-removal pairs, depth 8): deleting a
+// piece moves the score by 1.9x its piece value overall, and the per-piece
+// ratio runs 2.7 (pawn) to 1.4 (queen); the high end is eval saturation in
+// already-won positions, so the honest figure for the regime that matters
+// (roughly level positions, where pruning decisions bite) is ~2.2x.
+inline constexpr int32_t MATERIAL_TO_EVAL_PCT = 260;
+
+constexpr int32_t materialToEval(int32_t material) noexcept {
+    return material * MATERIAL_TO_EVAL_PCT / 100;
+}
 
 // ===================================================
 // ASPIRATION WINDOW
@@ -149,15 +154,27 @@ inline constexpr int MAX_HELPER_THREADS = 63;
 // ===================================================
 // contHist is keyed by the previous move's (side, pieceType, toSq); each context
 // holds a [PIECE_TYPES][64] PieceTo block indexed by the CURRENT move's
-// (pieceType, toSq). Piece types are 0..6 (EMPTY..KING), so the block is 7*64.
-inline constexpr int CONT_HIST_PIECE_TYPES   = 7;
+// (pieceType, toSq).
+//
+// Both piece-type ends are the piece that MADE a move, so neither can ever be
+// EMPTY: the context piece is read off the square the previous move landed on,
+// and the block index is the current move's mover. Sizing the dimensions 0..6
+// therefore left row 0 of both unreachable -- 1 - (6/7)^2 = 26.5% of the table
+// allocated, decayed by softResetHistory, and never read. Measured before
+// shrinking: 386,349,984 block lookups and 12,723,846 context builds over a
+// 10-position depth-18 sweep, ZERO with a piece type of 0 at either end.
+//
+// So store types 1..6 (PAWN..KING) and subtract the bias. Anything that reaches
+// here with pieceType 0 would index out of bounds, hence the debug assert on
+// the one path that reads a piece off the board.
+inline constexpr int CONT_HIST_PIECE_TYPES   = 6;
 inline constexpr int CONT_HIST_PIECE_STRIDE  = 64;
 inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
-    return pieceType * CONT_HIST_PIECE_STRIDE + toSq;
+    return (pieceType - 1) * CONT_HIST_PIECE_STRIDE + toSq;
 }
 
 // ===================================================
-// MOVE ORDERING (sorter) — score buckets
+// MOVE ORDERING (sorter) - score buckets
 // ===================================================
 inline constexpr int32_t HASH_MOVE_SCORE      = 100000;
 inline constexpr int32_t CAPTURE_BASE_SCORE   = 10000;

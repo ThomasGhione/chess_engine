@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# run_sprt.sh — Sequential Probability Ratio Test for HydraY search/eval changes.
+# run_sprt.sh - Sequential Probability Ratio Test for HydraY search/eval changes.
 #
 # Plays the current build (./chess) against a frozen baseline (./chess_baseline)
 # under a time control, and lets cutechess-cli's native -sprt decide merge/no-merge:
 # it stops automatically as soon as an H0/H1 bound is crossed.
 #
 # WHY TIME CONTROL (not fixed depth): a search/pruning change that cuts nodes shows
-# no benefit at fixed depth — the win is reaching greater depth in the same time.
+# no benefit at fixed depth - the win is reaching greater depth in the same time.
 # Always SPRT search changes under tc=, never under fixed depth.
 #
 # ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ base_bin="${script_dir}/chess_baseline"
 # --- --snapshot: freeze the current ./chess as the baseline and exit ----------
 if [[ "${1:-}" == "--snapshot" ]]; then
     if [[ ! -x "${new_bin}" ]]; then
-        echo "error: ${new_bin} not found — run 'make prod' first." >&2
+        echo "error: ${new_bin} not found - run 'make prod' first." >&2
         exit 1
     fi
     cp -- "${new_bin}" "${base_bin}"
@@ -62,7 +62,7 @@ fi
 
 # --- preflight ----------------------------------------------------------------
 if [[ ! -x "${new_bin}" ]]; then
-    echo "error: ${new_bin} not found — run 'make prod' first." >&2
+    echo "error: ${new_bin} not found - run 'make prod' first." >&2
     exit 1
 fi
 if [[ ! -x "${base_bin}" ]]; then

@@ -90,8 +90,6 @@ public:
     void stop() noexcept;
 
     bool    useTimeManagement() const noexcept { return useTm_; }
-    int64_t softLimitMs()       const noexcept { return softMs_; }
-    int64_t hardLimitMs()       const noexcept { return hardMs_; }
     int64_t elapsedMs()         const noexcept;
 
     // Called at the top of the ID loop: false => stop, the next depth almost

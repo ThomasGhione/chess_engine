@@ -13,6 +13,10 @@
 
 namespace engine {
 
+// Drops every cached NNUE static eval. Must be called whenever the active
+// network changes: the cached values belong to the previous net.
+void clearEvalCache() noexcept;
+
 class Searcher final {
 public:
     Searcher() = delete;
@@ -83,7 +87,8 @@ public:
         int32_t alpha,
         int32_t beta,
         int ply,
-        uint64_t* nodeCounter = nullptr) noexcept;
+        uint64_t* nodeCounter = nullptr,
+        bool alreadyEntered = false) noexcept;
 
 private:
 

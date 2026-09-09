@@ -224,8 +224,8 @@ namespace uci {
 
     void UCI::uci() noexcept {
         std::cout
-            << "id name HydraY 3.1.0\n"
-            << "id author Thomas Ghione, Daniele Ferretti, Simone Tomasella\n"
+            << "id name HydraY 4.0.0\n"
+            << "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
             << "option name SyzygyPath type string default <empty>\n"
             << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             << "option name SearchApiMutexGuard type check default true\n"
@@ -270,6 +270,7 @@ namespace uci {
         if (normalizedName == "evalfile") {
             const std::string path(optionValue);
             if (NNUE::loadNetwork(path)) {
+                engine::clearEvalCache();
                 // The board may already hold a position: bring the accumulator
                 // in sync now; later `position` commands refresh via FEN load.
                 engine.board.refreshNnueAccumulator();
@@ -456,8 +457,15 @@ namespace uci {
         }
         try {
             engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
+            // Clear the stop flags HERE, on the reader thread, while no search
+            // is running. UCI commands are serialized through parseCommand, so
+            // any `stop` is processed strictly after this point and its
+            // stopSearchRequested=true survives -- the search thread never
+            // writes false. Doing this inside the search thread instead loses
+            // every `stop` that lands in the startup window.
+            engine.prepareSearchRequest();
             searchThread = std::thread([this, limits, ponder] {
-                const chess::Move move = engine.searchUCI(limits);
+                const chess::Move move = engine.searchUCI(limits, /*prepared=*/true);
                 std::string bestMove = move.toUCIString();
                 if (!ponder) bestMove += ponderSuffix(engine, move);
                 std::lock_guard<std::mutex> lock(searchMutex);

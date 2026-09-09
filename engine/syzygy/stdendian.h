@@ -1,5 +1,5 @@
 /*
- * stdendian.h shim — provides _BYTE_ORDER, bswap16/32/64 for systems
+ * stdendian.h shim - provides _BYTE_ORDER, bswap16/32/64 for systems
  * that don't yet have glibc 2.41's <stdendian.h>.
  */
 #pragma once

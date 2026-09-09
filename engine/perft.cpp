@@ -43,7 +43,7 @@ constexpr std::array<PerftCase, 7> STANDARD_CASES = {{
      {44, 1486, 62379, 2103487, 89941194, 0}},
     // Note the bishop colours on g5/g4: white on g5, black on g4. The variant
     // with both pairs unswapped is a different (also legal) position whose
-    // counts are 46/2060/88933 — an easy transcription slip to make.
+    // counts are 46/2060/88933 - an easy transcription slip to make.
     {"position 6", "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
      {46, 2079, 89890, 3894594, 164075551, 0}},
 }};
@@ -124,7 +124,7 @@ bool runPerftSuite(int maxDepth, bool verbose) {
 
             chess::Board b(tc.fen);
             if (!boardLooksValid(b)) {
-                std::cout << tc.name << ": FAIL — FEN rejected by the parser\n";
+                std::cout << tc.name << ": FAIL - FEN rejected by the parser\n";
                 allPassed = false;
                 break;
             }
@@ -150,7 +150,7 @@ bool runPerftSuite(int maxDepth, bool verbose) {
 
     const auto suiteMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         clock::now() - suiteStart).count();
-    std::cout << "\nperft suite " << (allPassed ? "PASSED" : "FAILED") << " — "
+    std::cout << "\nperft suite " << (allPassed ? "PASSED" : "FAILED") << " - "
               << totalNodes << " nodes in " << suiteMs << " ms\n";
     return allPassed;
 }

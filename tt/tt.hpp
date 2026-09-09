@@ -35,7 +35,7 @@ public:
         // their writes to the same slot, a reader sees one thread's key against
         // the other's payload, the XOR does not reproduce the probed key, and the
         // entry is skipped as a miss. Losing an entry costs search efficiency
-        // only, never correctness — which is why no lock is needed here at all.
+        // only, never correctness - which is why no lock is needed here at all.
         // Each 64-bit word is still read and written atomically (atomic_ref) so
         // neither can tear on its own.
         //
@@ -194,7 +194,7 @@ public:
     [[nodiscard]] inline ProbeResult probeEntry(uint64_t key) const noexcept;
     // bestMove == 0 means "no move to store" (a bound-only write): the existing
     // move in a matching entry is preserved rather than clobbered. staticEval ==
-    // Entry::NO_EVAL is preserved the same way — the static eval is a property
+    // Entry::NO_EVAL is preserved the same way - the static eval is a property
     // of the position alone, so an older one stays valid regardless of the
     // depth or window this write came from.
     inline void store(uint64_t key, uint8_t depth, int32_t score, uint8_t flag,

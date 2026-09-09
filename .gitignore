@@ -26,7 +26,10 @@
 # Local tuning artifacts
 /tuning/engines.json
 /tuning/log.txt
+/tuning/log_*.txt
 /tuning/out.pgn
+/tuning/*.pgn
+/tuning/*.CONTAMINATO
 /tuning/*.npz
 /tuning/*.pkl
 /tuning/.last_tuning_dataset

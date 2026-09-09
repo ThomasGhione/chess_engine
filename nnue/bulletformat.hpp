@@ -1,6 +1,6 @@
 #pragma once
 
-// bulletformat writer/decoder for NNUE training data (NNUE_PLAN.md, Fase 0/1).
+// bulletformat writer/decoder for NNUE training data.
 //
 // BulletRecord mirrors bulletformat::ChessBoard byte-for-byte (32 bytes); the
 // packing below is a literal transcription of ChessBoard::from_raw from

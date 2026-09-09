@@ -41,7 +41,7 @@ constexpr std::array<std::array<uint64_t, 64>, 2> sideSquareTable(Gen gen) noexc
 }
 
 // =============================================================================
-// SLIDING PIECES (rook / bishop / queen) — PEXT magic bitboards
+// SLIDING PIECES (rook / bishop / queen) - PEXT magic bitboards
 // =============================================================================
 
 // Relevant-occupancy masks, generated at compile time: rook = its rank+file,
@@ -158,7 +158,7 @@ inline uint64_t getQueenAttacks(uint8_t sq, uint64_t occ) noexcept {
 }
 
 // =============================================================================
-// STEP PIECES (pawn / knight / king) — precomputed attack & push tables
+// STEP PIECES (pawn / knight / king) - precomputed attack & push tables
 // =============================================================================
 // Square convention: rank 0 = row 8 (top), rank 7 = row 1. White pawns move to
 // a lower rank number, black to a higher one.
@@ -173,7 +173,7 @@ constexpr uint64_t pawnAttacks(int sq, bool isWhite) noexcept {
     }
     return a;
 }
-// Pawn squares (of colour isWhite) that attack `sq` — the mirror of pawnAttacks.
+// Pawn squares (of colour isWhite) that attack `sq` - the mirror of pawnAttacks.
 constexpr uint64_t pawnAttackersTo(int sq, bool isWhite) noexcept {
     const int f = chess::file(sq);
     const int r = chess::rank(sq) + (isWhite ? 1 : -1);

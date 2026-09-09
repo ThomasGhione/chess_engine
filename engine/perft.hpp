@@ -9,7 +9,7 @@ namespace engine {
 // Perft ("performance test"): the exact number of leaf nodes of the legal-move
 // tree at fixed depth. The counts for the standard positions are published, so
 // a single wrong number proves a defect in move generation, legality, or
-// doMove/undoMove — with no evaluation or search involved.
+// doMove/undoMove - with no evaluation or search involved.
 //
 // Depth 1 is answered by the move count alone (standard bulk counting). Every
 // move is still generated; each one also gets played at an internal node of any

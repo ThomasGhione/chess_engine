@@ -317,17 +317,20 @@ void Engine::stopThinking() noexcept {
     this->requestStopPondering();
 }
 
-chess::Move Engine::searchUCI(const time::Limits& limits) noexcept {
+void Engine::prepareSearchRequest() noexcept {
+    this->stopPondering();
+    this->clearSearchStopFlags();
+}
+
+chess::Move Engine::searchUCI(const time::Limits& limits, bool prepared) noexcept {
     auto searchApiGuard = acquireSearchApiLock();
 
-    this->stopPondering();
+    if (!prepared) this->prepareSearchRequest();
 
     const bool sideIsWhite =
         this->board.getActiveColor() == chess::Board::WHITE;
     const int movesPlayed = static_cast<int>(
         this->board.getFullMoveClock() > 0 ? this->board.getFullMoveClock() - 1 : 0);
-
-    this->clearSearchStopFlags();
 
     this->timeManager.init(limits, sideIsWhite, movesPlayed,
                            &this->stopSearchRequested);
