@@ -405,6 +405,9 @@ namespace uci {
     }
 
     void UCI::isready() noexcept {
+        // std::cout is unsynchronized and the search thread flushes bestmove
+        // under this mutex: unlocked, the reply can be wiped mid-flush.
+        std::lock_guard<std::mutex> lock(searchMutex);
         std::cout << "readyok\n";
         std::cout.flush();
     }
