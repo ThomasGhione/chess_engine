@@ -78,6 +78,46 @@ struct LMRTable {
 };
 static LMRTable LMR_REDUCTION_TABLE;
 
+// Once LMP prunes one quiet at a node it prunes every later quiet too, so the
+// rest of the picker matters only for its tactical moves. If those are all
+// finalised losing captures, each ranks below every quiet (a quiet never scores
+// under -3000 - QUEEN_VALUE), so the selection would extract all the quiets
+// first and then these in score order: jump straight to them. Equal scores keep
+// the normal path, because their order depends on the swaps of the quiet picks.
+// Returns false, leaving the picker untouched, when that cannot be guaranteed.
+bool skipToLosingCaptures(MovePicker& picker, const chess::Board& b,
+                          chess::Square enPassant, int promotionRank) noexcept {
+    chess::Move tailMoves[MAX_MOVES];
+    int32_t tailScores[MAX_MOVES];
+    int n = 0;
+    for (int i = picker.currentIndex; i < picker.moves.size; ++i) {
+        const chess::Move& mv = picker.moves[i];
+        const int fromType = b.get(mv.from) & chess::Board::MASK_PIECE_TYPE;
+        const int toType   = b.get(mv.to)   & chess::Board::MASK_PIECE_TYPE;
+        const bool promotion = (fromType == chess::Board::PAWN) && (chess::rank(mv.to) == promotionRank);
+        if (!promotion && !Sorter::classifyCapture(mv, fromType, toType, enPassant).isCapture) continue;
+        const int32_t score = picker.score(i);
+        if (picker.seePending[i] != SeePending::Final || score >= -CAPTURE_BASE_SCORE) return false;
+        // Insertion by descending score; n stays tiny.
+        int j = n++;
+        for (; j > 0 && tailScores[j - 1] < score; --j) {
+            tailMoves[j] = tailMoves[j - 1];
+            tailScores[j] = tailScores[j - 1];
+        }
+        if (j > 0 && tailScores[j - 1] == score) return false;
+        tailMoves[j] = mv;
+        tailScores[j] = score;
+    }
+    const int start = picker.moves.size - n;
+    for (int k = 0; k < n; ++k) {
+        picker.moves[start + k] = tailMoves[k];
+        picker.setScore(start + k, tailScores[k]);
+        picker.seePending[start + k] = SeePending::Final;
+    }
+    picker.currentIndex = start;
+    return true;
+}
+
 } // namespace
 
 void rebuildSearchDerivedTables() noexcept {
@@ -587,6 +627,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
     bool prunedAny = false;
+    bool lmpSkipTried = false;
 
     while (movePicker.hasNext()) {
         const int moveIndex = movePicker.currentIndex;
@@ -613,6 +654,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
             prunedAny = true;
+            if (!lmpSkipTried) {
+                lmpSkipTried = true;
+                skipToLosingCaptures(movePicker, b, enPassant, promotionRank);
+            }
             continue;
         }
 

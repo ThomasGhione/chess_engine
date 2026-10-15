@@ -21,7 +21,7 @@ void Board::fenToBoard(const std::string& fen) {
     // en passant square, and missing fields read as "- - 0 1".
     fenStream >> castling >> ep >> half >> full;
 
-    std::array<uint32_t, 8> parsedBoard{};
+    std::array<uint8_t, 64> parsedBoard{};
     {
         int rank = 7, file = 0;
         for (char c : board) {
@@ -31,7 +31,7 @@ void Board::fenToBoard(const std::string& fen) {
                 if (rank < 0 || file > 7) return;
                 const uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
                 if (p == EMPTY) return;
-                parsedBoard[rank] |= static_cast<uint32_t>(p) << (file++ * 4);
+                parsedBoard[(7 - rank) * 8 + file++] = p;
             }
         }
         if (rank != 0 || file != 8) return;
@@ -59,7 +59,7 @@ std::string Board::boardToFen() const {
     for (int rank = 7; rank >= 0; --rank) {
         int emptySq = 0;
         for (int file = 0; file < 8; ++file) {
-            const uint8_t p = (chessboard[rank] >> (file * 4)) & MASK_PIECE;
+            const uint8_t p = chessboard[(7 - rank) * 8 + file];
             if (p == EMPTY) { ++emptySq; continue; }
             if (emptySq) { fen += char('0' + emptySq); emptySq = 0; }
             const char sym = pieceChar[p & MASK_PIECE_TYPE];

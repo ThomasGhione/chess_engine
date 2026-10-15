@@ -46,7 +46,6 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
     castle = other.castle;
-    hasMoved = other.hasMoved;
     enPassant = other.enPassant;
     epHashFile = other.epHashFile;
     activeColor = other.activeColor;
@@ -58,9 +57,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
 // ==============================
 __attribute__((hot, always_inline))
 inline void Board::set(uint8_t index, piece_id value) noexcept {
-    const uint8_t internal_row = 7 - (index >> 3);
-    const uint8_t shift = (index & 7) << 2; // file * 4
-    chessboard[internal_row] = (chessboard[internal_row] & ~(MASK_PIECE << shift)) | ((value & MASK_PIECE) << shift);
+    chessboard[index] = static_cast<uint8_t>(value & MASK_PIECE);
 }
 
 
@@ -304,12 +301,19 @@ inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     }
 }
 
+// Piece bitboards by Board::piece_id type - 1 (PAWN .. KING).
+inline constexpr std::array<std::array<uint64_t, 2> Board::*, 6> PIECE_BB_BY_TYPE = {
+    &Board::pawns_bb, &Board::knights_bb, &Board::bishops_bb,
+    &Board::rooks_bb, &Board::queens_bb, &Board::kings_bb,
+};
+
 __attribute__((always_inline))
 inline void Board::movePieceOnBB(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept {
     const uint8_t type = piece & MASK_PIECE_TYPE;
     const uint8_t color = colorToIndex(piece);
-    dispatchPieceBBUpdate<false>(type, color, BIT_MASKS[fromIndex]);
-    dispatchPieceBBUpdate<true>(type, color, BIT_MASKS[toIndex]);
+    // The mover's own bitboard never holds the destination, so one XOR clears
+    // the source and sets the destination, without the per-type switch.
+    (this->*PIECE_BB_BY_TYPE[type - 1])[color] ^= BIT_MASKS[fromIndex] | BIT_MASKS[toIndex];
     if (NNUE::activeNetwork != nullptr) [[likely]] {
         queueAccMove(piece, fromIndex, toIndex);
     }

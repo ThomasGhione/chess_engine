@@ -256,7 +256,7 @@ MovePicker Sorter::sortLegalMoves(
             orderingCtx, m, isCapture, cap.victimType,
             isPromotionCandidate, isHashMove, fromPieceType);
 
-        picker.scores[i] = score;
+        picker.setScore(i, score);
         picker.seePending[i] = pending;
     }
 
@@ -314,7 +314,7 @@ MovePicker Sorter::sortTacticalMoves(
         }
 
         picker.moves[filteredCount]  = m;
-        picker.scores[filteredCount] = score;
+        picker.setScore(filteredCount, score);
         // Tactical moves carry their final score (SEE already applied above);
         // mark Final so finalizeSee is a no-op. MovePicker no longer zero-inits.
         picker.seePending[filteredCount] = SeePending::Final;
