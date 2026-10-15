@@ -3,6 +3,7 @@
 #include "../ascii_utils.hpp"
 #include "../engine/engine.hpp"
 #include "../nnue/nnue.hpp"
+#include "output.hpp"
 
 #include <omp.h>
 
@@ -182,8 +183,7 @@ namespace uci {
     }
 
     void UCI::emitBestMove(std::string_view move) noexcept {
-        std::cout << "bestmove " << move << '\n';
-        std::cout.flush();
+        emit("bestmove " + std::string(move) + '\n');
         searchPrinted = true;
     }
 
@@ -223,28 +223,28 @@ namespace uci {
 
 
     void UCI::uci() noexcept {
-        std::cout
-            << "id name HydraY 4.0.0\n"
-            << "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
-            << "option name SyzygyPath type string default <empty>\n"
-            << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            << "option name SearchApiMutexGuard type check default true\n"
-            << "option name EvalFile type string default <empty>\n";
-        const int hwThreads = omp_get_max_threads();
-        std::cout << "option name Threads type spin default " << hwThreads
-                  << " min 1 max " << hwThreads << "\n";
-        std::cout << "option name Hash type spin default " << TT::DEFAULT_HASH_MB
-                  << " min " << TT::MIN_HASH_MB
-                  << " max " << TT::MAX_HASH_MB << "\n";
+        std::string out =
+            "id name HydraY 4.0.0\n"
+            "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
+            "option name SyzygyPath type string default <empty>\n"
+            "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
+            "option name SearchApiMutexGuard type check default true\n"
+            "option name EvalFile type string default <empty>\n";
+        const std::string hwThreads = std::to_string(omp_get_max_threads());
+        out += "option name Threads type spin default " + hwThreads
+             + " min 1 max " + hwThreads + "\n";
+        out += "option name Hash type spin default " + std::to_string(TT::DEFAULT_HASH_MB)
+             + " min " + std::to_string(TT::MIN_HASH_MB)
+             + " max " + std::to_string(TT::MAX_HASH_MB) + "\n";
         for (const auto& option : kSpinOptions) {
             const auto [minValue, maxValue] = optionRange(option);
-            std::cout << "option name " << optionDisplayName(option.key)
-                      << " type spin default " << *option.value
-                      << " min " << minValue
-                      << " max " << maxValue << "\n";
+            out += "option name " + optionDisplayName(option.key)
+                 + " type spin default " + std::to_string(*option.value)
+                 + " min " + std::to_string(minValue)
+                 + " max " + std::to_string(maxValue) + "\n";
         }
-        std::cout << "uciok\n";
-        std::cout.flush();
+        out += "uciok\n";
+        emit(out);
     }
 
     void UCI::setOption(std::string_view args) noexcept {
@@ -274,7 +274,7 @@ namespace uci {
                 // The board may already hold a position: bring the accumulator
                 // in sync now; later `position` commands refresh via FEN load.
                 engine.board.refreshNnueAccumulator();
-                std::cout << "info string EvalFile loaded: " << path << "\n";
+                emit("info string EvalFile loaded: " + path + "\n");
             }
             return;
         }
@@ -282,10 +282,10 @@ namespace uci {
         if (normalizedName == "syzygypath") {
             const std::string path(optionValue);
             if (engine.syzygyProber.load(path)) {
-                std::cout << "info string SyzygyPath loaded: " << path
-                          << " (max pieces: " << engine.syzygyProber.maxPieces() << ")\n";
+                emit("info string SyzygyPath loaded: " + path + " (max pieces: "
+                     + std::to_string(engine.syzygyProber.maxPieces()) + ")\n");
             } else {
-                std::cout << "info string SyzygyPath error: could not load '" << path << "'\n";
+                emit("info string SyzygyPath error: could not load '" + path + "'\n");
             }
             return;
         }
@@ -294,9 +294,9 @@ namespace uci {
             int v = 0;
             if (parseFirstInt(optionValue, v) && v >= 1 && v <= 100) {
                 engine.syzygyProber.probeDepth = v;
-                std::cout << "info string SyzygyProbeDepth set to " << v << "\n";
+                emit("info string SyzygyProbeDepth set to " + std::to_string(v) + "\n");
             } else {
-                std::cout << "info string invalid value for SyzygyProbeDepth\n";
+                emit("info string invalid value for SyzygyProbeDepth\n");
             }
             return;
         }
@@ -308,9 +308,9 @@ namespace uci {
                 const int clamped = std::clamp(v, 1, maxT);
                 engine.requestedThreads = clamped;
                 engine.searchRuntime.maxThreads = clamped;
-                std::cout << "info string Threads set to " << clamped << "\n";
+                emit("info string Threads set to " + std::to_string(clamped) + "\n");
             } else {
-                std::cout << "info string invalid value for Threads\n";
+                emit("info string invalid value for Threads\n");
             }
             return;
         }
@@ -322,12 +322,13 @@ namespace uci {
                     static_cast<int>(TT::MIN_HASH_MB),
                     static_cast<int>(TT::MAX_HASH_MB));
                 if (engine.tt.resize(static_cast<size_t>(clamped))) {
-                    std::cout << "info string Hash set to " << engine.tt.sizeMB() << " MB\n";
+                    emit("info string Hash set to " + std::to_string(engine.tt.sizeMB()) + " MB\n");
                 } else {
-                    std::cout << "info string Hash resize to " << clamped << " MB failed (out of memory)\n";
+                    emit("info string Hash resize to " + std::to_string(clamped)
+                         + " MB failed (out of memory)\n");
                 }
             } else {
-                std::cout << "info string invalid value for Hash\n";
+                emit("info string invalid value for Hash\n");
             }
             return;
         }
@@ -337,21 +338,21 @@ namespace uci {
                 if (normalizedName != normalizedOptionName(option.key)) continue;
                 int parsedValue = 0;
                 if (!parseFirstInt(optionValue, parsedValue)) {
-                    std::cout << "info string invalid value for " << optionName << "\n";
+                    emit("info string invalid value for " + std::string(optionName) + "\n");
                     return;
                 }
                 const auto [minValue, maxValue] = optionRange(option);
                 if (parsedValue < minValue || parsedValue > maxValue) {
-                    std::cout << "info string value out of range for " << optionName
-                              << " (" << minValue << ".." << maxValue << ")\n";
+                    emit("info string value out of range for " + std::string(optionName)
+                         + " (" + std::to_string(minValue) + ".." + std::to_string(maxValue) + ")\n");
                     return;
                 }
                 *option.value = parsedValue;
                 if (option.refreshSearchTables) {
                     engine::rebuildSearchDerivedTables();
                 }
-                std::cout << "info string " << optionDisplayName(option.key)
-                          << " set to " << *option.value << "\n";
+                emit("info string " + optionDisplayName(option.key)
+                     + " set to " + std::to_string(*option.value) + "\n");
                 return;
             }
             return;
@@ -359,15 +360,14 @@ namespace uci {
 
         bool enabled = false;
         if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
-            std::cout << "info string invalid value for " << optionName << ": '" << optionValue
-                      << "' (use true/false)\n";
+            emit("info string invalid value for " + std::string(optionName) + ": '"
+                 + std::string(optionValue) + "' (use true/false)\n");
             return;
         }
 
         engine.setSearchApiMutexEnabled(enabled);
-        std::cout << "info string SearchApiMutexGuard "
-                  << (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled")
-                  << '\n';
+        emit(std::string("info string SearchApiMutexGuard ")
+             + (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled") + "\n");
     }
 
     void UCI::position(std::string_view command) noexcept {
@@ -405,8 +405,7 @@ namespace uci {
     }
 
     void UCI::isready() noexcept {
-        std::cout << "readyok\n";
-        std::cout.flush();
+        emit("readyok\n");
     }
     
     void UCI::go(std::string_view args) noexcept {

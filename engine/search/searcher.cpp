@@ -12,6 +12,7 @@
 #include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
 #include "evalcache.hpp"
+#include "../../uci/output.hpp"
 
 namespace engine {
 
@@ -1259,21 +1260,22 @@ void emitUciInfoLine(int depth, int32_t score, const SearchRuntime& runtime,
         ? static_cast<int64_t>(static_cast<long double>(nodes) * 1000.0L / static_cast<long double>(timeMs))
         : 0;
 
-    std::cout << "info depth " << depth << " score ";
+    std::string line = "info depth " + std::to_string(depth) + " score ";
     const int32_t absScore = (score < 0) ? -score : score;
     if (absScore >= MATE_BOUND) {
         const int32_t plies = Searcher::MATE_VALUE - absScore;
         const int32_t mateMoves = (plies + 1) / 2;
-        std::cout << "mate " << (score > 0 ? mateMoves : -mateMoves);
+        line += "mate " + std::to_string(score > 0 ? mateMoves : -mateMoves);
     } else {
-        std::cout << "cp " << score;
+        line += "cp " + std::to_string(score);
     }
-    std::cout << " nodes " << nodes << " nps " << nps << " time " << timeMs;
+    line += " nodes " + std::to_string(nodes) + " nps " + std::to_string(nps)
+          + " time " + std::to_string(timeMs);
 
     const std::string pv = buildPvFromTT(rootBoard, runtime.transpositionTable, 16);
-    if (!pv.empty()) std::cout << " pv " << pv;
-    std::cout << '\n';
-    std::cout.flush();
+    if (!pv.empty()) line += " pv " + pv;
+    line += '\n';
+    uci::emit(line);
 }
 
 } // namespace
@@ -1364,10 +1366,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                 result.bestScore = tbScore;
                 runtime.eval     = tbScore;
                 if (runtime.emitUciInfo) {
-                    std::cout << "info depth 1 score cp " << tbScore
-                              << " tbrank " << bestRank
-                              << " pv " << tbBest.toUCIString() << "\n";
-                    std::cout.flush();
+                    uci::emit("info depth 1 score cp " + std::to_string(tbScore)
+                              + " tbrank " + std::to_string(bestRank)
+                              + " pv " + tbBest.toUCIString() + "\n");
                 }
                 return result;
             }
