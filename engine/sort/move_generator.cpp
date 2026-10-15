@@ -31,7 +31,7 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(int from, int to) noexcept {
         stepRank = (dr > 0) ? 1 : -1;
     } else if (dr == 0) {
         stepFile = (df > 0) ? 1 : -1;
-    } else if (std::abs(df) == std::abs(dr)) {
+    } else if (df == dr || df == -dr) { // std::abs is not constexpr under clang + libstdc++
         stepFile = (df > 0) ? 1 : -1;
         stepRank = (dr > 0) ? 1 : -1;
     } else {

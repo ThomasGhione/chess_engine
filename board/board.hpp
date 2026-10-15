@@ -109,6 +109,7 @@ public:
         uint8_t enPassantCapturedIndex;
         uint8_t rookFromIndex;
         uint8_t rookToIndex;
+        uint8_t prevPliesFromNull;
         MoveKind moveKind;
     };
 
@@ -319,7 +320,8 @@ private:
     uint8_t  epHashFile          = 0xFF;
     uint8_t  activeColor         = WHITE;
     uint8_t  historySize         = 0;
-    uint8_t  nullPly             = 0;
+    // Plies since the last null move, saturating; 255 = none within reach.
+    uint8_t  pliesFromNull       = 255;
 
     static constexpr const char* STARTING_FEN =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -320,6 +320,7 @@ void Engine::stopThinking() noexcept {
 void Engine::prepareSearchRequest() noexcept {
     this->stopPondering();
     this->clearSearchStopFlags();
+    this->timeManager.clearPonderhit();
 }
 
 chess::Move Engine::searchUCI(const time::Limits& limits, bool prepared) noexcept {
@@ -336,19 +337,19 @@ chess::Move Engine::searchUCI(const time::Limits& limits, bool prepared) noexcep
                            &this->stopSearchRequested);
 
     // Depth-bounded request keeps its cap; a time-managed search deepens
-    // until the budget runs out (the watchdog trips the stop flag).
+    // until the budget runs out (the watchdog trips the stop flag). A timed
+    // `go ponder` is time-managed too: it deepens until ponderhit arms the
+    // budget, or until a ponder-miss `stop`.
     int targetDepth;
     if (limits.maxDepth > 0) {
         targetDepth = static_cast<int>(limits.maxDepth);
-    } else if (this->timeManager.useTimeManagement() || limits.infinite) {
-        // Time-managed / infinite: deepen until the watchdog or an external
-        // stop interrupts the search.
+    } else if (this->timeManager.useTimeManagement() || limits.infinite || limits.maxNodes > 0) {
+        // Time-managed / infinite / node-bounded: deepen until the watchdog,
+        // an external stop or the node budget interrupts the search.
         targetDepth = Searcher::MAX_PLY;
     } else {
-        // Ponder (or a bare `go`): this engine's `ponderhit` does not convert
-        // a running search into a timed one, so a ponder search MUST be
-        // bounded or it never returns a move on ponderhit and the engine
-        // flags. Keep the pre-time-management fixed-depth behaviour.
+        // Bare `go`, or `go ponder` without a clock: ponderhit has no budget
+        // to arm, so the search MUST be bounded or it never returns a move.
         targetDepth = Engine::DEFAULTDEPTH;
     }
 

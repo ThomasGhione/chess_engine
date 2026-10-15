@@ -202,6 +202,9 @@ namespace uci {
             if (command.empty()) continue;
             parseCommand(command);
         }
+        // EOF is an implicit quit, as in Stockfish: exit() destroys the network
+        // a running search still reads, so stop and join the search first.
+        stopSearch(true);
         std::exit(EXIT_SUCCESS);
     }
 
@@ -463,10 +466,13 @@ namespace uci {
             // writes false. Doing this inside the search thread instead loses
             // every `stop` that lands in the startup window.
             engine.prepareSearchRequest();
-            searchThread = std::thread([this, limits, ponder] {
+            searchThread = std::thread([this, limits] {
                 const chess::Move move = engine.searchUCI(limits, /*prepared=*/true);
-                std::string bestMove = move.toUCIString();
-                if (!ponder) bestMove += ponderSuffix(engine, move);
+                // No legal move (mated or stalemated root): UCI's null move. A ponder
+                // search ends in a real move after ponderhit, so it offers a ponder move too.
+                const bool hasMove = chess::isValidSquare(move.from) && chess::isValidSquare(move.to);
+                std::string bestMove = hasMove ? move.toUCIString() : std::string("0000");
+                if (hasMove) bestMove += ponderSuffix(engine, move);
                 std::lock_guard<std::mutex> lock(searchMutex);
                 searchBestMove = bestMove;
                 searchDone = true;
@@ -482,7 +488,12 @@ namespace uci {
     void UCI::ponderhit() noexcept {
         std::lock_guard<std::mutex> lock(searchMutex);
         searchPonder = false;
-        if (searchDone && !searchPrinted) emitBestMove(searchBestMove);
+        if (searchDone) {
+            if (!searchPrinted) emitBestMove(searchBestMove);
+            return;
+        }
+        // Still searching: from now on the clock is ours.
+        engine.timeManager.ponderhit();
     }
 
     void UCI::parseMoves(std::string_view moves) noexcept {

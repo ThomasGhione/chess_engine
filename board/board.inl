@@ -50,6 +50,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     enPassant = other.enPassant;
     epHashFile = other.epHashFile;
     activeColor = other.activeColor;
+    pliesFromNull = other.pliesFromNull;
 }
 
 // ==============================

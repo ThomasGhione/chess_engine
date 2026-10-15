@@ -82,6 +82,7 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevCastle        = castle;
     st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
+    st.prevPliesFromNull = pliesFromNull;
     st.prevHistoryHead   = currentHash;
     // Default that keeps undo a no-op for moves that do not push a history slot
     // (null moves); doMove overwrites this via updateRepetitionAfterMove with the
@@ -125,6 +126,7 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     // historySize back (writeIndex == current historySize - 1).
     repetitionHistory[historySize - 1] = st.prevHistorySlotValue;
     historySize   = st.prevHistorySize;
+    pliesFromNull = st.prevPliesFromNull;
     currentHash   = st.prevHistoryHead;
 }
 

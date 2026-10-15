@@ -43,6 +43,9 @@ public:
         bool    hasLegalMoves     {};
         bool    completedAnyDepth {};
         bool    terminalRoot      {};
+        // The root move came from the Syzygy DTZ ranking, not from a search:
+        // completedDepth stays 0, so the Lazy SMP vote must not compare it.
+        bool    tablebaseRoot     {};
         int     completedDepth    {};
         TT::Entry::Flag rootScoreBound = TT::Entry::EXACT;
         chess::Move bestMove      {};
@@ -150,8 +153,9 @@ private:
     // 50-move, insufficient material). The "2nd repetition scores as 0"
     // pruning rule is an interior-node heuristic only: at the root it would
     // abandon the search and play a random legal move, so it is suppressed.
+    // ply is only read to score a mate delivered on the 100th half-move.
     static bool checkDrawTerminalConditions(
-        const chess::Board& b, int32_t& outScore, bool atRoot = false) noexcept;
+        const chess::Board& b, int ply, int32_t& outScore, bool atRoot = false) noexcept;
 
     // --- Root search helpers ---
     static void updateMinMax(int32_t score, int32_t& alpha, int32_t& bestScore,

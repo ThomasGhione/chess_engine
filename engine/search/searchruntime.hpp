@@ -15,6 +15,8 @@ namespace time { class TimeManager; }
 
 struct SearchRuntime {
     // --- Search state ---
+    // Bumped once per node by the owning thread only; the UCI info line sums
+    // it across threads, so concurrent access goes through relaxed atomic_ref.
     uint64_t nodesSearched = 0;
     int      depth         = DEFAULT_DEPTH;
     int32_t  eval          = 0;
@@ -33,9 +35,9 @@ struct SearchRuntime {
     int      depthSkipSize  = 0;
     int      depthSkipPhase = 0;
     // UCI `go nodes N`: 0 = unlimited. Checked per-node against
-    // (runtime.nodesSearched + *counter), so the total across IDS iterations
-    // is bounded. Each Lazy SMP helper also bounds itself by the same value;
-    // total nodes are at most ~maxNodes * threads in multi-threaded searches.
+    // nodesSearched, so the total across IDS iterations is bounded. Each Lazy
+    // SMP helper also bounds itself by the same value; total nodes are at most
+    // ~maxNodes * threads in multi-threaded searches.
     uint64_t maxNodes      = 0;
 
     // --- Heuristics ---

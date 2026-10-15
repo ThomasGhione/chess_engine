@@ -210,4 +210,27 @@ ut::suite boardSuite = [] {
     )) << "White can answer the knight check with Kd1\n";
   };
 
+  "repetition_inside_null_move_subtree"_test = []{
+    // A cycle played entirely after a null move is a real repetition of the
+    // post-null position and must be counted.
+    chess::Board b{};
+    b.fenToBoard("4k3/8/8/8/8/8/8/1N2K1n1 w - - 10 40");
+    const auto mv = [](const char* uci) {
+      return chess::Move{chess::parseSquare(std::string_view(uci, 2)),
+                         chess::parseSquare(std::string_view(uci + 2, 2)), 0};
+    };
+    const char* cycle[4] = {"g1f3", "b1c3", "f3g1", "c3b1"};
+    chess::Board::MoveState nullState{};
+    chess::Board::MoveState st[8]{};
+    b.doNullMove(nullState);
+    expect(b.countRepetitions() == 1);
+    for (int i = 0; i < 4; ++i) b.doMove(mv(cycle[i]), st[i]);
+    expect(b.countRepetitions() == 2) << "second occurrence of the post-null position\n";
+    for (int i = 0; i < 4; ++i) b.doMove(mv(cycle[i]), st[4 + i]);
+    expect(b.countRepetitions() == 3) << "third occurrence of the post-null position\n";
+    for (int i = 7; i >= 0; --i) b.undoMove(mv(cycle[i % 4]), st[i]);
+    b.undoNullMove(nullState);
+    expect(b.countRepetitions() == 1);
+  };
+
 };

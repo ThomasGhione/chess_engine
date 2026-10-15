@@ -16,7 +16,10 @@ uint8_t Board::safeParseInt(const std::string& section, int min, int max, int de
 void Board::fenToBoard(const std::string& fen) {
     std::istringstream fenStream(fen);
     std::string board, active, castling, ep, half, full;
-    if (!(fenStream >> board >> active >> castling >> ep >> half >> full)) return;
+    if (!(fenStream >> board >> active)) return;
+    // Trailing fields are optional, as in Stockfish: an EPD line stops after the
+    // en passant square, and missing fields read as "- - 0 1".
+    fenStream >> castling >> ep >> half >> full;
 
     std::array<uint32_t, 8> parsedBoard{};
     {
