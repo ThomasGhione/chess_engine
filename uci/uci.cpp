@@ -97,6 +97,7 @@ namespace {
         {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            true,     40,  250, true},
         {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            true,     40,  250, true},
         {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               true,    150,  600, true},
+        {"CORR_HIST_WEIGHT_PCT", &engine::CORR_HIST_WEIGHT_PCT,        true,      0,  400},
     };
 
     static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {

@@ -37,6 +37,9 @@ public:
     struct SearchMoveResult {
         chess::Move move;
         int32_t     score;
+        // A move was skipped by LMP, futility, history or SEE pruning, so a
+        // fail-low score bounds only the searched moves.
+        bool        pruned {};
     };
 
     struct IterativeSearchResult {

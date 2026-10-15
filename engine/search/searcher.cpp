@@ -586,6 +586,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int promotionRank = chess::Board::promotionRank(ctx.activeColor == chess::Board::WHITE);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
+    bool prunedAny = false;
 
     while (movePicker.hasNext()) {
         const int moveIndex = movePicker.currentIndex;
@@ -611,6 +612,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
+            prunedAny = true;
             continue;
         }
 
@@ -621,6 +623,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && (fromPieceType == chess::Board::KING
                 || !Sorter::givesCheckAfterQuietMoveFast(
                        b, m, fromPieceType, oppKingSq, b.getPiecesBitMap()))) {
+            prunedAny = true;
             continue;
         }
 
@@ -629,6 +632,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
             const int32_t histScore = runtime.history[usSide][m.from][m.to];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
+                prunedAny = true;
                 continue;
             }
         }
@@ -638,6 +642,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // scales with depth so deeper nodes tolerate slightly worse trades.
         if (wasCapture && !isPromotionCandidate && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
             && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
+            prunedAny = true;
             continue;
         }
 
@@ -772,10 +777,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     }
 
     if (!searchedAnyMove && runtime.isInterrupted()) {
-        return SearchMoveResult{bestMove, ctx.staticEval};
+        return SearchMoveResult{bestMove, ctx.staticEval, prunedAny};
     }
 
-    return SearchMoveResult{bestMove, best};
+    return SearchMoveResult{bestMove, best, prunedAny};
 }
 
 int32_t Searcher::searchPosition(
@@ -885,11 +890,16 @@ int32_t Searcher::searchPosition(
     // then skips the NNUE forward pass entirely. NO_EVAL while in check, where
     // there is no meaningful static eval to record.
     int32_t rawStaticEval = TT::Entry::NO_EVAL;
+    // raw + correction history, before the TT-bound tightening; the
+    // correction learns against this value, the gates read node.staticEval.
+    int32_t correctedEval = 0;
     if (!node.inCheck) {
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
             : cachedEval(hashKey, b);
-        node.staticEval = rawStaticEval;
+        correctedEval = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
+                                   -MATE_BOUND + 1, MATE_BOUND - 1);
+        node.staticEval = correctedEval;
         if (tte.hit) {
             const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
             // Negamax (STM-relative): a LOWERBOUND tightens upward, an
@@ -1047,6 +1057,32 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
+    // Learn only where the score contradicts the eval in the direction the
+    // bound can prove: a raised alpha proves "at least best", a fail low
+    // "at most best", or only "at most alpha" when pruned moves never raised
+    // best (Stockfish lifts its fail-low best to the futility value instead).
+    // A capture best move says more about the capture than about the eval.
+    if (!node.inCheck && !hasExcludedMove && allowHeuristicUpdates
+        && std::abs(best) < MATE_BOUND) {
+        const bool raisedAlpha = best > alpha;
+        bool bestIsCapture = false;
+        if (raisedAlpha) {
+            const int fromType = b.get(result.move.from) & chess::Board::MASK_PIECE_TYPE;
+            const int toType   = b.get(result.move.to)   & chess::Board::MASK_PIECE_TYPE;
+            bestIsCapture = Sorter::classifyCapture(result.move, fromType, toType, b.getEnPassant()).isCapture;
+        }
+        const int32_t target = (!raisedAlpha && result.pruned) ? alpha : best;
+        if (!bestIsCapture && (target > correctedEval) == raisedAlpha) {
+            const int32_t bonus = std::clamp((target - correctedEval) * depth / (raisedAlpha ? 10 : 8),
+                                             -CORR_BONUS_CAP, CORR_BONUS_CAP);
+            const CorrectionHistory::Cells cells = runtime.corrHist.cellsFor(b);
+            applyHistoryGravity(*cells.pawn, bonus, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.minor, bonus * 156 / 128, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.nonPawnWhite, bonus * 178 / 128, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.nonPawnBlack, bonus * 178 / 128, CORR_HIST_LIMIT);
+        }
+    }
+
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
@@ -1122,7 +1158,8 @@ int32_t Searcher::quiescenceSearch(
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
             : cachedEval(b.getHash(), b);
-        const int32_t standPat = rawStaticEval;
+        const int32_t standPat = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
+                                            -MATE_BOUND + 1, MATE_BOUND - 1);
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling
             // qsearch nodes can then cut on this stand-pat without re-evaluating.

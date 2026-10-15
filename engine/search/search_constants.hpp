@@ -106,6 +106,24 @@ inline constexpr int32_t MAX_HISTORY         = 16384;
 inline constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
 
 // ===================================================
+// CORRECTION HISTORY (see corrhist.hpp)
+// ===================================================
+// Cells live in [-CORR_HIST_LIMIT, CORR_HIST_LIMIT]; the update rule is in
+// searchPosition, after the move loop. A full cell reads as
+// CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units. Weights, scale and
+// gates follow Stockfish 18's search.cpp.
+inline constexpr int     CORR_HIST_BITS       = 14;
+inline constexpr int     CORR_HIST_SIZE       = 1 << CORR_HIST_BITS;
+inline constexpr int32_t CORR_HIST_LIMIT      = 1024;
+inline constexpr int32_t CORR_BONUS_CAP       = CORR_HIST_LIMIT / 4;
+inline constexpr int32_t CORR_HIST_SCALE      = 131072;
+inline constexpr int32_t CORR_WEIGHT_PAWN     = 10347;
+inline constexpr int32_t CORR_WEIGHT_MINOR    = 8821;
+inline constexpr int32_t CORR_WEIGHT_NON_PAWN = 11665;
+// Global strength of the applied correction, in percent (UCI spin).
+inline int32_t CORR_HIST_WEIGHT_PCT = 100;
+
+// ===================================================
 // QUIESCENCE SEARCH
 // ===================================================
 inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
