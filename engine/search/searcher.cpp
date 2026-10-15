@@ -12,6 +12,7 @@
 #include "../evaluator.hpp"
 #include "../sort/move_generator.hpp"
 #include "evalcache.hpp"
+#include "../../uci/output.hpp"
 
 namespace engine {
 
@@ -77,6 +78,46 @@ struct LMRTable {
 };
 static LMRTable LMR_REDUCTION_TABLE;
 
+// Once LMP prunes one quiet at a node it prunes every later quiet too, so the
+// rest of the picker matters only for its tactical moves. If those are all
+// finalised losing captures, each ranks below every quiet (a quiet never scores
+// under -3000 - QUEEN_VALUE), so the selection would extract all the quiets
+// first and then these in score order: jump straight to them. Equal scores keep
+// the normal path, because their order depends on the swaps of the quiet picks.
+// Returns false, leaving the picker untouched, when that cannot be guaranteed.
+bool skipToLosingCaptures(MovePicker& picker, const chess::Board& b,
+                          chess::Square enPassant, int promotionRank) noexcept {
+    chess::Move tailMoves[MAX_MOVES];
+    int32_t tailScores[MAX_MOVES];
+    int n = 0;
+    for (int i = picker.currentIndex; i < picker.moves.size; ++i) {
+        const chess::Move& mv = picker.moves[i];
+        const int fromType = b.get(mv.from) & chess::Board::MASK_PIECE_TYPE;
+        const int toType   = b.get(mv.to)   & chess::Board::MASK_PIECE_TYPE;
+        const bool promotion = (fromType == chess::Board::PAWN) && (chess::rank(mv.to) == promotionRank);
+        if (!promotion && !Sorter::classifyCapture(mv, fromType, toType, enPassant).isCapture) continue;
+        const int32_t score = picker.score(i);
+        if (picker.seePending[i] != SeePending::Final || score >= -CAPTURE_BASE_SCORE) return false;
+        // Insertion by descending score; n stays tiny.
+        int j = n++;
+        for (; j > 0 && tailScores[j - 1] < score; --j) {
+            tailMoves[j] = tailMoves[j - 1];
+            tailScores[j] = tailScores[j - 1];
+        }
+        if (j > 0 && tailScores[j - 1] == score) return false;
+        tailMoves[j] = mv;
+        tailScores[j] = score;
+    }
+    const int start = picker.moves.size - n;
+    for (int k = 0; k < n; ++k) {
+        picker.moves[start + k] = tailMoves[k];
+        picker.setScore(start + k, tailScores[k]);
+        picker.seePending[start + k] = SeePending::Final;
+    }
+    picker.currentIndex = start;
+    return true;
+}
+
 } // namespace
 
 void rebuildSearchDerivedTables() noexcept {
@@ -127,7 +168,8 @@ void Searcher::applyHistoryGravity(int16_t& cell, int32_t delta, int32_t maxValu
 }
 
 
-bool Searcher::checkEarlyTerminalConditions(
+__attribute__((always_inline))
+inline bool Searcher::checkEarlyTerminalConditions(
     const chess::Board& b,
     SearchRuntime& runtime,
     int ply,
@@ -160,14 +202,19 @@ bool Searcher::checkEarlyTerminalConditions(
 // Per-node entry shared by searchPosition and quiescenceSearch: bump the node
 // counter, enforce the UCI `go nodes` hard cap, and run the early-terminal
 // checks (abort / max-ply / king-capture). Returns true with outScore set when
-// the node must return immediately.
-bool Searcher::enterNode(
+// the node must return immediately. Forced inline, with the check above: the
+// atomic counter store otherwise tips GCC into an out-of-line call per node.
+__attribute__((always_inline))
+inline bool Searcher::enterNode(
     chess::Board& b, SearchRuntime& runtime, int ply,
     uint64_t* counter, int32_t& outScore) noexcept {
-    ++(*counter);
-    // runtime.nodesSearched holds prior IDS iterations; *counter is the current
-    // iteration/worker. Their sum is the total node budget consumed.
-    if (runtime.maxNodes > 0 && runtime.nodesSearched + *counter >= runtime.maxNodes) [[unlikely]] {
+    // *counter is this thread's runtime.nodesSearched, the whole search so far.
+    // The main thread reads the helpers' counters for the UCI info line. Only
+    // the owner writes, so a plain read and a relaxed store are race-free and
+    // cost what the old increment did: no locked RMW.
+    const uint64_t searched = *counter + 1;
+    std::atomic_ref<uint64_t>(*counter).store(searched, std::memory_order_relaxed);
+    if (runtime.maxNodes > 0 && searched >= runtime.maxNodes) [[unlikely]] {
         runtime.markInterrupted();
         outScore = Evaluator::evaluate(b);
         return true;
@@ -177,6 +224,7 @@ bool Searcher::enterNode(
 
 bool Searcher::checkDrawTerminalConditions(
     const chess::Board& b,
+    int ply,
     int32_t& outScore,
     bool atRoot) noexcept {
     // A repetition needs at least 4 reversible plies (each side out and back;
@@ -210,7 +258,14 @@ bool Searcher::checkDrawTerminalConditions(
         }
     }
 
-    if (b.isFiftyMoveRule() || b.hasInsufficientMaterialDraw()) [[unlikely]] {
+    if (b.isFiftyMoveRule()) [[unlikely]] {
+        // A checkmate delivered by the 100th half-move stands (FIDE 9.3), so
+        // the side to move here is mated, not drawn. Cold: clock >= 100 only.
+        outScore = b.isCheckmate(b.getActiveColor()) ? (-MATE_VALUE + ply) : 0;
+        return true;
+    }
+
+    if (b.hasInsufficientMaterialDraw()) [[unlikely]] {
         outScore = 0;
         return true;
     }
@@ -256,6 +311,27 @@ struct HelperSlot {
 };
 
 std::vector<std::unique_ptr<HelperSlot>> helperSlots;
+
+// Helpers running in the current search; slots past it may hold stale counts.
+// Written and read only by the thread that runs searchBestMove.
+int activeHelperCount = 0;
+
+// Nodes searched so far by this runtime plus every active helper. Each thread
+// writes only its own counter, so relaxed loads cost one shared read per
+// helper per info line and nothing on the node path.
+uint64_t totalNodesSearched(const ::engine::SearchRuntime& runtime) noexcept {
+    const auto load = [](const uint64_t& word) {
+        return std::atomic_ref<uint64_t>(const_cast<uint64_t&>(word)).load(std::memory_order_relaxed);
+    };
+    uint64_t total = load(runtime.nodesSearched);
+    for (int i = 0; i < activeHelperCount; ++i) {
+        total += load(helperSlots[i]->runtime.nodesSearched);
+    }
+    return total;
+}
+
+void emitUciInfoLine(int depth, int32_t score, const SearchRuntime& runtime,
+                     chess::Board& rootBoard, const chess::Move* firstMove = nullptr) noexcept;
 
 } // namespace
 
@@ -312,11 +388,13 @@ chess::Move Searcher::searchBestMove(
             slot.result = runIterativeDeepening(slot.board, slot.runtime, startDepth, targetDepth);
         });
     }
+    activeHelperCount = helperCount;
 
     IterativeSearchResult result = runIterativeDeepening(board, runtime, 1, targetDepth);
 
     helperStop.store(true, std::memory_order_release);
     for (auto& helper : helpers) helper.join();
+    activeHelperCount = 0;
 
     runtime.depth = targetDepth;
 
@@ -338,7 +416,8 @@ chess::Move Searcher::searchBestMove(
     //
     // Starting from the main thread's own result means it keeps the move on
     // ties.
-    if (helperCount > 0 && result.completedAnyDepth && !result.terminalRoot) {
+    if (helperCount > 0 && result.completedAnyDepth && !result.terminalRoot
+        && !result.tablebaseRoot) {
         const IterativeSearchResult* best = &result;
         for (int i = 0; i < helperCount; ++i) {
             const IterativeSearchResult& hres = helperSlots[i]->result;
@@ -348,6 +427,11 @@ chess::Move Searcher::searchBestMove(
                     && hres.bestScore > best->bestScore)) {
                 best = &hres;
             }
+        }
+        // The last info line was the main thread's: when a helper's move wins,
+        // print its line too, or the GUI shows a PV and score for another move.
+        if (best != &result && runtime.emitUciInfo && !(best->bestMove == result.bestMove)) {
+            emitUciInfoLine(best->completedDepth, best->bestScore, runtime, board, &best->bestMove);
         }
         result.bestMove  = best->bestMove;
         result.bestScore = best->bestScore;
@@ -542,6 +626,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int promotionRank = chess::Board::promotionRank(ctx.activeColor == chess::Board::WHITE);
 
     const uint8_t oppColor = chess::Board::oppositeColor(ctx.activeColor);
+    bool prunedAny = false;
+    bool lmpSkipTried = false;
 
     while (movePicker.hasNext()) {
         const int moveIndex = movePicker.currentIndex;
@@ -567,6 +653,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         const bool isQuietMove = !wasCapture && !isPromotionCandidate;
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
+            prunedAny = true;
+            if (!lmpSkipTried) {
+                lmpSkipTried = true;
+                skipToLosingCaptures(movePicker, b, enPassant, promotionRank);
+            }
             continue;
         }
 
@@ -577,6 +668,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             && (fromPieceType == chess::Board::KING
                 || !Sorter::givesCheckAfterQuietMoveFast(
                        b, m, fromPieceType, oppKingSq, b.getPiecesBitMap()))) {
+            prunedAny = true;
             continue;
         }
 
@@ -585,6 +677,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0) {
             const int32_t histScore = runtime.history[usSide][m.from][m.to];
             if (histScore < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
+                prunedAny = true;
                 continue;
             }
         }
@@ -594,6 +687,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // scales with depth so deeper nodes tolerate slightly worse trades.
         if (wasCapture && !isPromotionCandidate && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
             && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
+            prunedAny = true;
             continue;
         }
 
@@ -728,10 +822,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     }
 
     if (!searchedAnyMove && runtime.isInterrupted()) {
-        return SearchMoveResult{bestMove, ctx.staticEval};
+        return SearchMoveResult{bestMove, ctx.staticEval, prunedAny};
     }
 
-    return SearchMoveResult{bestMove, best};
+    return SearchMoveResult{bestMove, best, prunedAny};
 }
 
 int32_t Searcher::searchPosition(
@@ -765,7 +859,7 @@ int32_t Searcher::searchPosition(
     // horizon node that completes a repetition is scored by the static eval
     // instead of as a draw.
     int32_t drawScore = 0;
-    if (checkDrawTerminalConditions(b, drawScore)) {
+    if (checkDrawTerminalConditions(b, ply, drawScore)) {
         return drawScore;
     }
 
@@ -796,10 +890,13 @@ int32_t Searcher::searchPosition(
     TT::ProbeResult tte{};
     if (canUseTT) tte = runtime.transpositionTable->probeEntry(hashKey);
 
+    // Re-base mate scores to this node's ply BEFORE comparing: the stored value
+    // is ply-shifted, and testing it against this node's window would let a
+    // bound cut with a returned score on the wrong side of that window.
     if (!hasExcludedMove && tte.hit
-        && static_cast<int>(tte.depth) >= std::min(depth, static_cast<int>(TT::Entry::MAX_DEPTH))
-        && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
-        return scoreFromTT(tte.score, ply); // re-base mate scores to this node's ply
+        && static_cast<int>(tte.depth) >= std::min(depth, static_cast<int>(TT::Entry::MAX_DEPTH))) {
+        const int32_t ttScore = scoreFromTT(tte.score, ply);
+        if (ttBoundCutoff(tte.flag, ttScore, alpha, beta)) return ttScore;
     }
 
     // TB probe sits AFTER the TT cutoff: in TB range most nodes cut on the
@@ -838,11 +935,16 @@ int32_t Searcher::searchPosition(
     // then skips the NNUE forward pass entirely. NO_EVAL while in check, where
     // there is no meaningful static eval to record.
     int32_t rawStaticEval = TT::Entry::NO_EVAL;
+    // raw + correction history, before the TT-bound tightening; the
+    // correction learns against this value, the gates read node.staticEval.
+    int32_t correctedEval = 0;
     if (!node.inCheck) {
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
             : cachedEval(hashKey, b);
-        node.staticEval = rawStaticEval;
+        correctedEval = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
+                                   -MATE_BOUND + 1, MATE_BOUND - 1);
+        node.staticEval = correctedEval;
         if (tte.hit) {
             const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
             // Negamax (STM-relative): a LOWERBOUND tightens upward, an
@@ -1000,6 +1102,32 @@ int32_t Searcher::searchPosition(
         return Evaluator::evaluate(b);
     }
 
+    // Learn only where the score contradicts the eval in the direction the
+    // bound can prove: a raised alpha proves "at least best", a fail low
+    // "at most best", or only "at most alpha" when pruned moves never raised
+    // best (Stockfish lifts its fail-low best to the futility value instead).
+    // A capture best move says more about the capture than about the eval.
+    if (!node.inCheck && !hasExcludedMove && allowHeuristicUpdates
+        && std::abs(best) < MATE_BOUND) {
+        const bool raisedAlpha = best > alpha;
+        bool bestIsCapture = false;
+        if (raisedAlpha) {
+            const int fromType = b.get(result.move.from) & chess::Board::MASK_PIECE_TYPE;
+            const int toType   = b.get(result.move.to)   & chess::Board::MASK_PIECE_TYPE;
+            bestIsCapture = Sorter::classifyCapture(result.move, fromType, toType, b.getEnPassant()).isCapture;
+        }
+        const int32_t target = (!raisedAlpha && result.pruned) ? alpha : best;
+        if (!bestIsCapture && (target > correctedEval) == raisedAlpha) {
+            const int32_t bonus = std::clamp((target - correctedEval) * depth / (raisedAlpha ? 10 : 8),
+                                             -CORR_BONUS_CAP, CORR_BONUS_CAP);
+            const CorrectionHistory::Cells cells = runtime.corrHist.cellsFor(b);
+            applyHistoryGravity(*cells.pawn, bonus, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.minor, bonus * 156 / 128, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.nonPawnWhite, bonus * 178 / 128, CORR_HIST_LIMIT);
+            applyHistoryGravity(*cells.nonPawnBlack, bonus * 178 / 128, CORR_HIST_LIMIT);
+        }
+    }
+
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
@@ -1028,7 +1156,7 @@ int32_t Searcher::quiescenceSearch(
         if (enterNode(b, runtime, ply, counter, earlyScore)) return earlyScore;
 
         int32_t drawScore = 0;
-        if (checkDrawTerminalConditions(b, drawScore)) {
+        if (checkDrawTerminalConditions(b, ply, drawScore)) {
             return drawScore;
         }
     }
@@ -1038,8 +1166,9 @@ int32_t Searcher::quiescenceSearch(
     if (canUseTT) {
         tte = runtime.transpositionTable->probeEntry(b.getHash());
         // Any depth qualifies at a quiescence node (stored qsearch depth is 0).
-        if (tte.hit && ttBoundCutoff(tte.flag, tte.score, alpha, beta)) {
-            return scoreFromTT(tte.score, ply);
+        if (tte.hit) {
+            const int32_t ttScore = scoreFromTT(tte.score, ply);
+            if (ttBoundCutoff(tte.flag, ttScore, alpha, beta)) return ttScore;
         }
     }
 
@@ -1074,7 +1203,8 @@ int32_t Searcher::quiescenceSearch(
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL)
             ? tte.staticEval
             : cachedEval(b.getHash(), b);
-        const int32_t standPat = rawStaticEval;
+        const int32_t standPat = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
+                                            -MATE_BOUND + 1, MATE_BOUND - 1);
         if (isBetaCutoff(standPat, beta)) {
             // Bound-only store (bestMove 0 preserves any stored move): sibling
             // qsearch nodes can then cut on this stand-pat without re-evaluating.
@@ -1144,7 +1274,6 @@ chess::Move Searcher::getBestMove(
     int32_t beta) noexcept {
     int32_t bestScore = NEG_INF;
     auto bestMove = moves[0];
-    uint64_t localNodes = 0;
     bool searchedAnyMove = false;
 
     uint16_t rootHashMove = 0;
@@ -1170,7 +1299,7 @@ chess::Move Searcher::getBestMove(
         : Evaluator::evaluate(rootBoard);
 
     const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b) {
-        return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &localNodes);
+        return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &runtime.nodesSearched);
     };
 
     // Plain PVS root loop: full window for the first move, null-window scout
@@ -1202,7 +1331,6 @@ chess::Move Searcher::getBestMove(
         if (!isFirst && isBetaCutoff(bestScore, beta)) break;
     }
 
-    runtime.nodesSearched += localNodes;
     if (searchedAnyMove) runtime.eval = bestScore;
     return bestMove;
 }
@@ -1249,31 +1377,42 @@ std::string buildPvFromTT(chess::Board& board, const TT* tt, int maxLen) noexcep
 }
 
 // Emit one UCI `info` line for a completed iteration: depth, score (cp or
-// mate N), node/time/nps counters and a TT-reconstructed PV.
+// mate N), node/time/nps counters and a TT-reconstructed PV. With firstMove the
+// PV starts with that root move and follows the TT from the position after it.
 void emitUciInfoLine(int depth, int32_t score, const SearchRuntime& runtime,
-                     chess::Board& rootBoard) noexcept {
+                     chess::Board& rootBoard, const chess::Move* firstMove) noexcept {
     const int64_t timeMs = (runtime.timeManager != nullptr)
         ? runtime.timeManager->elapsedMs() : 0;
-    const uint64_t nodes = runtime.nodesSearched;
+    const uint64_t nodes = totalNodesSearched(runtime);
     const int64_t nps = (timeMs > 0)
         ? static_cast<int64_t>(static_cast<long double>(nodes) * 1000.0L / static_cast<long double>(timeMs))
         : 0;
 
-    std::cout << "info depth " << depth << " score ";
+    std::string line = "info depth " + std::to_string(depth) + " score ";
     const int32_t absScore = (score < 0) ? -score : score;
     if (absScore >= MATE_BOUND) {
         const int32_t plies = Searcher::MATE_VALUE - absScore;
         const int32_t mateMoves = (plies + 1) / 2;
-        std::cout << "mate " << (score > 0 ? mateMoves : -mateMoves);
+        line += "mate " + std::to_string(score > 0 ? mateMoves : -mateMoves);
     } else {
-        std::cout << "cp " << score;
+        line += "cp " + std::to_string(score);
     }
-    std::cout << " nodes " << nodes << " nps " << nps << " time " << timeMs;
+    line += " nodes " + std::to_string(nodes) + " nps " + std::to_string(nps)
+          + " time " + std::to_string(timeMs);
 
-    const std::string pv = buildPvFromTT(rootBoard, runtime.transpositionTable, 16);
-    if (!pv.empty()) std::cout << " pv " << pv;
-    std::cout << '\n';
-    std::cout.flush();
+    std::string pv;
+    if (firstMove != nullptr) {
+        chess::Board::MoveState state;
+        rootBoard.doMove(*firstMove, state);
+        const std::string rest = buildPvFromTT(rootBoard, runtime.transpositionTable, 15);
+        rootBoard.undoMove(*firstMove, state);
+        pv = firstMove->toUCIString() + (rest.empty() ? "" : " " + rest);
+    } else {
+        pv = buildPvFromTT(rootBoard, runtime.transpositionTable, 16);
+    }
+    if (!pv.empty()) line += " pv " + pv;
+    line += '\n';
+    uci::emit(line);
 }
 
 } // namespace
@@ -1299,7 +1438,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     }
 
     int32_t rootDrawScore = 0;
-    if (checkDrawTerminalConditions(rootBoard, rootDrawScore, /*atRoot=*/true)) {
+    if (checkDrawTerminalConditions(rootBoard, 0, rootDrawScore, /*atRoot=*/true)) {
         MoveList drawMoves = engine::MoveGenerator::generateLegalMoves(rootBoard);
         result.terminalRoot = true;
         result.completedAnyDepth = true;
@@ -1360,14 +1499,14 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
                     bestRank < 0 ? syzygy::WDL::Loss :
                                    syzygy::WDL::Draw, 0);
                 result.completedAnyDepth = true;
+                result.tablebaseRoot = true;
                 result.bestMove  = tbBest;
                 result.bestScore = tbScore;
                 runtime.eval     = tbScore;
                 if (runtime.emitUciInfo) {
-                    std::cout << "info depth 1 score cp " << tbScore
-                              << " tbrank " << bestRank
-                              << " pv " << tbBest.toUCIString() << "\n";
-                    std::cout.flush();
+                    uci::emit("info depth 1 score cp " + std::to_string(tbScore)
+                              + " tbrank " + std::to_string(bestRank)
+                              + " pv " + tbBest.toUCIString() + "\n");
                 }
                 return result;
             }
@@ -1517,6 +1656,29 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
         if (runtime.emitUciInfo) {
             emitUciInfoLine(currentDepth, runtime.eval, runtime, rootBoard);
+        }
+    }
+
+    // A deadline that lands before depth 1 is done (a few ms left on the
+    // clock, or a search thread descheduled past the watchdog) leaves no
+    // searched move, and the caller falls back to the generator's first legal
+    // move. Depth 1 costs microseconds: finish it with the stop requests
+    // masked so the move played has at least been searched.
+    if (!result.completedAnyDepth && !runtime.isHelper) {
+        auto* const stopRequest   = runtime.stopSearchRequested;
+        auto* const ponderRequest = runtime.ponderingStopRequested;
+        runtime.stopSearchRequested    = nullptr;
+        runtime.ponderingStopRequested = nullptr;
+        runtime.clearInterrupted();
+        runtime.depth = 1;
+        const chess::Move depthOneMove = getBestMove(rootBoard, moves, runtime);
+        runtime.stopSearchRequested    = stopRequest;
+        runtime.ponderingStopRequested = ponderRequest;
+        if (!runtime.isInterrupted()) {
+            result.completedAnyDepth = true;
+            result.completedDepth    = 1;
+            result.bestMove          = depthOneMove;
+            result.bestScore         = runtime.eval;
         }
     }
 

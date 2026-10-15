@@ -83,4 +83,9 @@ int main(){
     testQuiescenceScoresThreefoldAsDrawBeforeStaticEval();
     testRootDrawTerminalDoesNotSearchFallbackMove();
     testBoardMoveRejectsWrongSideToMove();
+
+    // Run the registered ut suites now: left to the runner's destructor they
+    // execute during static destruction, after the network they build Boards
+    // with has been freed.
+    return boost::ut::cfg<>.run({.report_errors = true}) ? 1 : 0;
 }

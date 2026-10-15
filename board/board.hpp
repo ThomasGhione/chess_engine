@@ -14,8 +14,6 @@
 
 namespace chess {
 
-using board = std::array<uint32_t, 8>;
-
 struct Move {
     Square from = NO_SQUARE;
     Square to   = NO_SQUARE;
@@ -101,7 +99,6 @@ public:
         Square  prevEnPassant;
         uint8_t prevEpHashFile;
         uint8_t prevCastle;
-        uint8_t prevHasMoved;
 
         uint8_t capturedPiece;
         uint8_t fromPiece;
@@ -109,6 +106,7 @@ public:
         uint8_t enPassantCapturedIndex;
         uint8_t rookFromIndex;
         uint8_t rookToIndex;
+        uint8_t prevPliesFromNull;
         MoveKind moveKind;
     };
 
@@ -157,8 +155,9 @@ public:
     static constexpr uint8_t  promotionRank(bool isWhite) noexcept { return isWhite ? 0 : 7; };
 
     // --- Board access ---
-    __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return (chessboard[7 - (index >> 3)] >> ((index & 7) << 2)) & MASK_PIECE; }
-    __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return (chessboard[row] >> (col << 2)) & MASK_PIECE; }
+    __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return chessboard[index]; }
+    // row 0 = rank 1, col 0 = file a.
+    __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return chessboard[(7 - row) * 8 + col]; }
     __attribute__((always_inline))      constexpr uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 
@@ -267,7 +266,7 @@ private:
     // --- Private helpers: castling ---
     [[nodiscard]] inline bool canCastleGeneric(bool isWhite, uint8_t fromIndex, bool isKingside) const noexcept;
     [[nodiscard]] static inline uint8_t rookStartSlot(uint8_t index) noexcept;
-    inline void clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept;
+    inline void clearCastlingByRookStart(uint8_t rookStartIndex) noexcept;
     inline void updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept;
     inline void updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint8_t toIndex) noexcept;
 
@@ -306,7 +305,9 @@ private:
     inline void    copyFromBoard(const Board& other) noexcept;
 
     // --- Private data ---
-    board    chessboard;
+    // One byte per square, engine index (a8 = 0, h1 = 63): a read is a single
+    // load, where nibble packing cost a shift and a mask on every access.
+    std::array<uint8_t, 64> chessboard;
     uint64_t currentHash = 0ULL;
     std::array<uint64_t, REPETITION_HISTORY_CAPACITY> repetitionHistory{};
     uint64_t occupancy   = 0ULL;
@@ -314,12 +315,12 @@ private:
     uint8_t  halfMoveClock       = 0;
     uint8_t  fullMoveClock       = 1;
     uint8_t  castle              = CASTLING_RIGHTS_ALL;
-    uint8_t  hasMoved            = 0x00;
     Square   enPassant           = NO_SQUARE;
     uint8_t  epHashFile          = 0xFF;
     uint8_t  activeColor         = WHITE;
     uint8_t  historySize         = 0;
-    uint8_t  nullPly             = 0;
+    // Plies since the last null move, saturating; 255 = none within reach.
+    uint8_t  pliesFromNull       = 255;
 
     static constexpr const char* STARTING_FEN =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

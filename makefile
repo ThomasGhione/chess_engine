@@ -21,7 +21,7 @@ endif
 
 # Compiler variables
 CXX = g++
-TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g
+TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g -no-pie
 
 # -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
 # -march=native: Use all CPU features (SSE4.2, AVX2, BMI2, POPCNT)
@@ -30,10 +30,12 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # -fno-math-errno: Don't set errno on math functions (safe for chess)
 # -fno-trapping-math: Assume floating point ops don't trap (safe, we don't use FP exceptions)
 # -funroll-loops: Unroll hot loops (good for bitboard operations)
+# -fno-pie -no-pie: a global table indexed by a register is one instruction
+#   instead of a RIP-relative lea plus the load (SEE, magics, zobrist)
 # Balanced production flags (safety + speed)
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
-		-ffunction-sections -fdata-sections -O3 
+		-ffunction-sections -fdata-sections -O3 -fno-pie -no-pie
 
 # Uncomment if codebase is exception-free
 

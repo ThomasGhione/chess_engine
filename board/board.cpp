@@ -307,7 +307,7 @@ void Board::recomputeHashAndEp() noexcept {
 void Board::rebuildRepetitionHistory() noexcept {
     recomputeHashAndEp();
     historySize = 0;
-    nullPly = 0;
+    pliesFromNull = 255;
     repetitionHistory[historySize++] = currentHash;
 }
 
@@ -327,10 +327,15 @@ void Board::updateRepetitionAfterMove(bool resetHistory, MoveState& st) noexcept
     repetitionHistory[historySize++] = currentHash;
 }
 
+// Occurrences of the current position, itself included. Only the same side to
+// move can match, and every ply (null moves too) takes one slot, so the scan
+// steps by two. It stops at the last null move: no game can repeat a position
+// across one, the same bound Stockfish applies (pliesFromNull).
 int Board::countRepetitions() const noexcept {
-    int i = static_cast<int>(historySize) - 1 - static_cast<int>(nullPly & 1u);
+    const int last = static_cast<int>(historySize) - 1;
+    const int stop = std::max(0, last - static_cast<int>(pliesFromNull));
     int count = 0;
-    for (; i >= 0; i -= 2) {
+    for (int i = last; i >= stop; i -= 2) {
         count += (repetitionHistory[static_cast<size_t>(i)] == currentHash);
     }
     return count;

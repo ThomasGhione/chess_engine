@@ -81,13 +81,23 @@ struct alignas(64) Accumulator {
     template<int NS, int NA>
     inline void updateFused(const int16_t* const (&sub)[2][2],
                             const int16_t* const (&add)[2][2]) noexcept {
+        fusePair<NS, NA>(v[0], v[1], sub, add);
+    }
+
+    // The accumulator rows never alias the weight rows. Restrict-qualified
+    // parameters say so: without them GCC versions the loop on runtime alias
+    // checks at -O3 and leaves it scalar at -O2.
+    template<int NS, int NA>
+    static inline void fusePair(int16_t* __restrict v0, int16_t* __restrict v1,
+                                const int16_t* const (&sub)[2][2],
+                                const int16_t* const (&add)[2][2]) noexcept {
         for (int i = 0; i < HIDDEN; ++i) {
-            int s0 = v[0][i];
-            int s1 = v[1][i];
+            int s0 = v0[i];
+            int s1 = v1[i];
             for (int k = 0; k < NS; ++k) { s0 -= sub[0][k][i]; s1 -= sub[1][k][i]; }
             for (int k = 0; k < NA; ++k) { s0 += add[0][k][i]; s1 += add[1][k][i]; }
-            v[0][i] = static_cast<int16_t>(s0);
-            v[1][i] = static_cast<int16_t>(s1);
+            v0[i] = static_cast<int16_t>(s0);
+            v1[i] = static_cast<int16_t>(s1);
         }
     }
 

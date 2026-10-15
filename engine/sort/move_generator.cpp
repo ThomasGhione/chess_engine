@@ -31,7 +31,7 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(int from, int to) noexcept {
         stepRank = (dr > 0) ? 1 : -1;
     } else if (dr == 0) {
         stepFile = (df > 0) ? 1 : -1;
-    } else if (std::abs(df) == std::abs(dr)) {
+    } else if (df == dr || df == -dr) { // std::abs is not constexpr under clang + libstdc++
         stepFile = (df > 0) ? 1 : -1;
         stepRank = (dr > 0) ? 1 : -1;
     } else {
@@ -137,6 +137,28 @@ inline void appendPawnTacticalNoChecks(
     }
 }
 
+// Every square the opponent attacks with `occ` as blockers. Built with our king
+// taken off the board, so a slider's ray runs through the king's square exactly
+// as Board::isSquareAttacked(to, them, kingSq) sees it for each king step.
+template<bool IsWhite>
+inline uint64_t enemyAttacks(const chess::Board& b, uint64_t occ) noexcept {
+    constexpr int them = IsWhite ? 1 : 0;
+    constexpr uint64_t FILE_A = 0x0101010101010101ULL;
+    constexpr uint64_t FILE_H = FILE_A << 7;
+    // a8 = 0: a white pawn on sq attacks sq - 9 and sq - 7, a black one sq + 7 and sq + 9.
+    const uint64_t p = b.pawns_bb[them];
+    uint64_t att = IsWhite ? (((p << 7) & ~FILE_H) | ((p << 9) & ~FILE_A))
+                           : (((p >> 9) & ~FILE_H) | ((p >> 7) & ~FILE_A));
+    uint64_t knights = b.knights_bb[them];
+    while (knights) att |= pieces::KNIGHT_ATTACKS[engine::popLSB(knights)];
+    uint64_t diag = b.bishops_bb[them] | b.queens_bb[them];
+    while (diag) att |= pieces::getBishopAttacks(static_cast<uint8_t>(engine::popLSB(diag)), occ);
+    uint64_t line = b.rooks_bb[them] | b.queens_bb[them];
+    while (line) att |= pieces::getRookAttacks(static_cast<uint8_t>(engine::popLSB(line)), occ);
+    if (b.kings_bb[them]) att |= pieces::KING_ATTACKS[std::countr_zero(b.kings_bb[them])];
+    return att;
+}
+
 // Side-to-move view gathered once: the six piece bitboards, own/enemy
 // occupancy and the en-passant square/bit. Shared by the legal and tactical
 // generators, which used to open with the same ~15-line preamble.
@@ -203,11 +225,13 @@ MoveList MoveGenerator::generateLegalMovesFor(const chess::Board& b, CheckContex
         : ~0ULL;
 
     uint64_t mask = pieces::KING_ATTACKS[kingFrom] & ~v.ownOcc;
-    while (mask) {
-        const int to = engine::popLSB(mask);
-        if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) {
-            moves.emplace_back(kingFrom, to);
-        }
+    if (mask & (mask - 1)) {
+        // Two or more king steps: one attack map is cheaper than a scan per step.
+        mask &= ~enemyAttacks<IsWhite>(b, v.occ ^ v.kings);
+        while (mask) moves.emplace_back(kingFrom, engine::popLSB(mask));
+    } else if (mask) {
+        const int to = std::countr_zero(mask);
+        if (b.isLegalPseudoMove(kingFrom, to, kingPiece)) moves.emplace_back(kingFrom, to);
     }
 
     if (!inCheck) { // castling: illegal when in check.
@@ -309,7 +333,7 @@ engine::MovePicker MoveGenerator::generateQSearchEvasions(
     // nextMove() is order-preserving, and no deferred SEE. MovePicker no longer
     // zero-inits, so fill the live prefix explicitly.
     for (int i = 0; i < data.moves.size; ++i) {
-        data.scores[i]     = 0;
+        data.setScore(i, 0);
         data.seePending[i] = engine::SeePending::Final;
     }
     return data;

@@ -104,6 +104,7 @@ void Board::doMove(const Move& m, MoveState& st) noexcept {
     }
     epHashFile = newEpHashFile;
     currentHash = newHash;
+    if (pliesFromNull < 255) ++pliesFromNull;
 
     updateRepetitionAfterMove(resetHistory, st);
 }
@@ -163,14 +164,15 @@ void Board::doNullMove(MoveState& st) noexcept {
     activeColor = oppositeColor(activeColor);
     newHash ^= zobrist::TABLES.sideToMove;
     currentHash = newHash;
-    // Null move is a search artifact and must not enter repetition history.
-    // Otherwise threefold detection in subtree can be polluted.
-    ++nullPly;
+    // The post-null position takes a history slot like any ply, so the same
+    // side to move stays on every second slot; countRepetitions never looks
+    // further back than this entry.
+    updateRepetitionAfterMove(false, st);
+    pliesFromNull = 0;
 }
 
 __attribute__((hot))
 void Board::undoNullMove(const MoveState& st) noexcept {
     restoreState(st);
-    --nullPly;
 }
 } // namespace chess

@@ -80,8 +80,8 @@ inline void Board::snapshotState(MoveState& st) const noexcept {
     st.prevEnPassant     = enPassant;
     st.prevEpHashFile    = epHashFile;
     st.prevCastle        = castle;
-    st.prevHasMoved      = hasMoved;
     st.prevHistorySize   = historySize;
+    st.prevPliesFromNull = pliesFromNull;
     st.prevHistoryHead   = currentHash;
     // Default that keeps undo a no-op for moves that do not push a history slot
     // (null moves); doMove overwrites this via updateRepetitionAfterMove with the
@@ -120,11 +120,11 @@ inline void Board::restoreState(const MoveState& st) noexcept {
     enPassant     = st.prevEnPassant;
     epHashFile    = st.prevEpHashFile;
     castle        = st.prevCastle;
-    hasMoved      = st.prevHasMoved;
     // Restore the one repetitionHistory slot doMove overwrote before shrinking
     // historySize back (writeIndex == current historySize - 1).
     repetitionHistory[historySize - 1] = st.prevHistorySlotValue;
     historySize   = st.prevHistorySize;
+    pliesFromNull = st.prevPliesFromNull;
     currentHash   = st.prevHistoryHead;
 }
 
@@ -139,40 +139,29 @@ inline uint8_t Board::rookStartSlot(uint8_t index) noexcept {
     }
 }
 
-inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex, bool setHasMovedBit) noexcept {
+inline void Board::clearCastlingByRookStart(uint8_t rookStartIndex) noexcept {
     static constexpr std::array<uint8_t, 4> ROOK_CASTLE_CLEAR_MASKS = {
         1u << WHITE_QUEENSIDE,
         1u << WHITE_KINGSIDE,
         1u << BLACK_QUEENSIDE,
         1u << BLACK_KINGSIDE
     };
-    static constexpr std::array<uint8_t, 4> ROOK_HAS_MOVED_BITS = {
-        1u << 1,
-        1u << 2,
-        1u << 4,
-        1u << 5
-    };
 
     const uint8_t slot = rookStartSlot(rookStartIndex);
     if (slot == 0xFF) return;
 
     castle &= static_cast<uint8_t>(~ROOK_CASTLE_CLEAR_MASKS[slot]);
-    if (setHasMovedBit) {
-        hasMoved |= ROOK_HAS_MOVED_BITS[slot];
-    }
 }
 
 inline void Board::updateCastlingRightsOnPieceMove(uint8_t movingType, uint8_t movingColor, uint8_t fromIndex) noexcept {
     if (movingType == KING) {
-        const uint8_t kingBit = (movingColor == WHITE) ? 0x01 : 0x08;
         const uint8_t castleMask = (movingColor == WHITE) ? 0x03 : 0x0C;
         castle &= static_cast<uint8_t>(~castleMask);
-        hasMoved |= kingBit;
         return;
     }
 
     if (movingType == ROOK) {
-        clearCastlingByRookStart(fromIndex, true);
+        clearCastlingByRookStart(fromIndex);
     }
 }
 
@@ -185,7 +174,7 @@ inline void Board::updateCastlingRightsOnRookCapture(uint8_t capturedPiece, uint
     const uint8_t capturedColor = capturedPiece & MASK_COLOR;
     if ((capturedColor == WHITE && slot >= 2) || (capturedColor == BLACK && slot < 2)) return;
 
-    clearCastlingByRookStart(toIndex, false);
+    clearCastlingByRookStart(toIndex);
 }
 
 template<Board::MoveKind Kind>

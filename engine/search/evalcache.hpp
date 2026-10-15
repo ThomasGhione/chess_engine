@@ -33,7 +33,8 @@ public:
     bool resize(size_t slots) noexcept {
         release();
         if (slots == 0 || (slots & (slots - 1)) != 0) return false;
-        void* mem = std::aligned_alloc(64, slots * sizeof(uint64_t));
+        // Aligned operator new, as in tt.hpp: mingw-w64 has no std::aligned_alloc.
+        void* mem = ::operator new(slots * sizeof(uint64_t), std::align_val_t(64), std::nothrow);
         if (mem == nullptr) return false;
         slots_ = slots;
         mask_ = slots - 1;
@@ -81,7 +82,7 @@ private:
     }
 
     void release() noexcept {
-        std::free(table_);
+        if (table_ != nullptr) ::operator delete(table_, std::align_val_t(64));
         table_ = nullptr;
         slots_ = 0;
         mask_ = 0;

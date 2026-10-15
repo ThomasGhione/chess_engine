@@ -85,9 +85,18 @@ public:
               std::atomic<bool>* stopFlag) noexcept;
 
     // Start the clock and (if time-managed) the hard-deadline watchdog.
+    // A `go ponder` search starts paused: no deadline until ponderhit().
     void start() noexcept;
     // Cancel the watchdog and join it. Idempotent.
     void stop() noexcept;
+    // UCI `ponderhit`, called from the command thread: our clock starts now,
+    // so restart the budget from this instant and arm the watchdog. No-op
+    // once the search has ended or when it was not a timed ponder search.
+    // A ponderhit that lands before start() is remembered and applied there.
+    void ponderhit() noexcept;
+    // Forget a ponderhit meant for an earlier search. Called on the command
+    // thread before the next search thread is launched.
+    void clearPonderhit() noexcept;
 
     bool    useTimeManagement() const noexcept { return useTm_; }
     int64_t elapsedMs()         const noexcept;
@@ -116,13 +125,19 @@ private:
     double  stabilityFactor_ = 1.0;
 
     std::atomic<bool>* stopFlag_ = nullptr;
-    Clock::time_point  startTp_{};
+    // Search start, or the ponderhit instant; written by the command thread
+    // on ponderhit while the search thread reads it.
+    std::atomic<Clock::rep> startTicks_{0};
+    std::atomic<bool>       pondering_{false};
 
     std::thread             watchdog_;
     std::mutex              mtx_;
     std::condition_variable cv_;
     bool                    cancel_  = false;
     bool                    running_ = false;
+    bool                    armed_   = false; // a search is live (ponderhit may arm)
+    bool                    ponderhitSeen_ = false;
+    Clock::rep              ponderhitTicks_ = 0;
 };
 
 } // namespace engine::time

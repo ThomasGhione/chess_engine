@@ -7,6 +7,7 @@
 #include "../../board/board.hpp"
 #include "../../tt/tt.hpp"
 #include "../syzygy/syzygy.hpp"
+#include "corrhist.hpp"
 #include "search_constants.hpp"
 
 namespace engine {
@@ -15,6 +16,8 @@ namespace time { class TimeManager; }
 
 struct SearchRuntime {
     // --- Search state ---
+    // Bumped once per node by the owning thread only; the UCI info line sums
+    // it across threads, so concurrent access goes through relaxed atomic_ref.
     uint64_t nodesSearched = 0;
     int      depth         = DEFAULT_DEPTH;
     int32_t  eval          = 0;
@@ -33,9 +36,9 @@ struct SearchRuntime {
     int      depthSkipSize  = 0;
     int      depthSkipPhase = 0;
     // UCI `go nodes N`: 0 = unlimited. Checked per-node against
-    // (runtime.nodesSearched + *counter), so the total across IDS iterations
-    // is bounded. Each Lazy SMP helper also bounds itself by the same value;
-    // total nodes are at most ~maxNodes * threads in multi-threaded searches.
+    // nodesSearched, so the total across IDS iterations is bounded. Each Lazy
+    // SMP helper also bounds itself by the same value; total nodes are at most
+    // ~maxNodes * threads in multi-threaded searches.
     uint64_t maxNodes      = 0;
 
     // --- Heuristics ---
@@ -53,6 +56,8 @@ struct SearchRuntime {
     // Both dimensions are 1..6 biased down to 0..5 (see contHistIndex): 576 KiB
     // per SearchRuntime, and there is one per Lazy-SMP thread.
     int16_t  contHist[2][CONT_HIST_PIECE_TYPES][64][CONT_HIST_PIECE_TYPES][64] {};
+    // Static-eval correction; never decayed between searches, only cleared.
+    CorrectionHistory corrHist {};
     // evalStack is thread_local in searchPosition - NOT here: Lazy-SMP races
     // on a shared array would corrupt the `improving` hard-prune heuristic.
 
@@ -96,6 +101,7 @@ struct SearchRuntime {
         std::memset(counterMoves, 0, sizeof(counterMoves));
         std::memset(captureHistory, 0, sizeof(captureHistory));
         std::memset(contHist, 0, sizeof(contHist));
+        corrHist.clear();
     }
 
     inline void softResetHistory() noexcept {
