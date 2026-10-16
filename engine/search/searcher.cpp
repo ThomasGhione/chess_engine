@@ -1131,11 +1131,14 @@ int32_t Searcher::searchPosition(
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
+        const auto flag = determineFlag(best, alpha, beta);
+        // A fail-low node has no best move, only the least refuted one: store
+        // none, which keeps whatever move the entry already holds.
         runtime.transpositionTable->store(
             hashKey, static_cast<uint8_t>(ctx.depth),
             scoreToTT(best, ctx.ply),
-            static_cast<uint8_t>(determineFlag(best, alpha, beta)),
-            TT::Entry::encodeMove(result.move),
+            static_cast<uint8_t>(flag),
+            flag == TT::Entry::UPPERBOUND ? 0 : TT::Entry::encodeMove(result.move),
             rawStaticEval);
     }
 
