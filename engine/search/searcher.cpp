@@ -533,7 +533,9 @@ bool Searcher::tryReverseFutilityPruning(
         return false;
     }
 
-    outScore = node.staticEval;
+    // Halfway between eval and beta: the margin test proves only beta, and a
+    // full static eval returned fail-soft overstates the bound the parent sees.
+    outScore = (node.staticEval + beta) / 2;
     return true;
 }
 
