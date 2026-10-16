@@ -991,9 +991,7 @@ int32_t Searcher::searchPosition(
                 allowHeuristicUpdates,
                 previousMove, counter, false, seExcluded);
 
-            if (seScore < seBeta - SE_DOUBLE_MARGIN) {
-                singularExtension = 2;
-            } else if (seScore < seBeta) {
+            if (seScore < seBeta) {
                 singularExtension = 1;
             } else if (seScore >= beta) {
                 return seScore; // multi-cut: every move beats beta, prune

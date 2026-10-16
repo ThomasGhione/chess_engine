@@ -89,7 +89,6 @@ namespace {
         {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,          true,     20,  200},
         {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,              true,     30,  250},
         {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,              true,      0,   16},
-        {"SE_DOUBLE_MARGIN",     &engine::SE_DOUBLE_MARGIN,            true,      4,   64},
         {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1],  true, -16384,    0},
         {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  true, -16384,    0},
         {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  true, -16384,    0},
