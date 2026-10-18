@@ -1006,11 +1006,13 @@ int32_t Searcher::searchPosition(
 
     // Negamax NMP gate: allow a null move when the static eval is within
     // ~100cp of beta (giving the opponent a free move likely still fails high).
+    // Zugzwang guard: one non-pawn piece is enough, so rook and minor-piece
+    // endings keep null-move pruning; pawn-only endings still skip it.
     const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove && interiorNonPv
         && depth >= 4 && isBetaCutoff(nmpEvalGate, beta)
-        && std::popcount(b.knights_bb[side] | b.bishops_bb[side] |
-                         b.rooks_bb[side]   | b.queens_bb[side]) >= 2;
+        && (b.knights_bb[side] | b.bishops_bb[side] |
+            b.rooks_bb[side]   | b.queens_bb[side]) != 0ULL;
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
