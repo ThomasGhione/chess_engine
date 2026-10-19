@@ -89,8 +89,9 @@ struct alignas(64) NetworkDeep {
     // (the table is built either way) and removes one vpermq per 32 outputs
     // from the hot loop.
     //
-    // Derived, not read from the file. 128 KiB.
-    alignas(64) int8_t l1wT[OUTPUT_BUCKETS][HIDDEN / 4][L1_SIZE * 4];
+    // Derived, not read from the file. 128 KiB, plus one zero row per bucket
+    // that pads the non-zero list to a multiple of four.
+    alignas(64) int8_t l1wT[OUTPUT_BUCKETS][HIDDEN / 4 + 1][L1_SIZE * 4];
 };
 
 // The order packus_epi16 leaves a block's 32 bytes in, relative to the source:
