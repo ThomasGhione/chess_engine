@@ -85,7 +85,8 @@ public:
         const chess::Move* previousMove = nullptr,
         uint64_t* nodeCounter           = nullptr,
         bool allowNullMove              = true,
-        chess::Move excludedMove        = {}) noexcept;
+        chess::Move excludedMove        = {},
+        bool cutNode                    = false) noexcept;
 
     static int32_t quiescenceSearch(
         chess::Board& b,
@@ -112,6 +113,9 @@ private:
         bool     isPVNode               {};
         bool     iirActive              {};
         bool     improving              {};
+        // Expected cut node: a null-window child whose parent hopes it fails
+        // high. Always false at PV nodes.
+        bool     cutNode                {};
     };
 
     struct SearchNodeState {
@@ -169,7 +173,8 @@ private:
         SearchRuntime& runtime,
         int32_t alpha, int32_t beta,
         bool allowHeuristicUpdates,
-        uint64_t* nodeCounter) noexcept;
+        uint64_t* nodeCounter,
+        bool cutNode) noexcept;
 
     // --- Internal search primitives ---
     static bool tryNullMovePruning(
