@@ -28,7 +28,8 @@
 #               use these two to calibrate an alternate build (e.g. a different
 #               branch/net) without touching the repo's own ./chess.
 #   SF_BIN      path to the Stockfish binary          (default stockfish/stockfish-18)
-#   SF_ELOS     space-separated UCI_Elo anchor levels  (default "2600 2800 3000 3190")
+#   SF_ELOS     space-separated UCI_Elo anchor levels  (default "2800 3000 3190";
+#               2600 was dropped on 2026-10-19: HydraY scored 200/200 there)
 #               must be within the binary's advertised UCI_Elo min/max.
 #   GAMES       games played PER Stockfish level        (default 200)
 #   TC          time control "moves/sec+inc" or "sec+inc" (default 4+0.04)
@@ -59,7 +60,7 @@ export PATH="${HOME}/.local/bin:${PATH}"
 new_bin="${ENGINE_BIN:-${repo_root}/chess}"
 engine_name="${ENGINE_NAME:-HydraY-dev}"
 SF_BIN="${SF_BIN:-${repo_root}/stockfish/stockfish-18}"
-SF_ELOS="${SF_ELOS:-2600 2800 3000 3190}"
+SF_ELOS="${SF_ELOS:-2800 3000 3190}"
 read -ra sf_elo_arr <<< "${SF_ELOS}"
 GAMES="${GAMES:-200}"
 TC="${TC:-4+0.04}"
