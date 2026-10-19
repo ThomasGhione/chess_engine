@@ -36,6 +36,10 @@
 #   THREADS     search threads per engine                (default 1)
 #   HASH        hash size in MB per engine                (default 16)
 #   BOOK        opening book PGN                          (default books/openings.pgn)
+#   RESIGN_TWOSIDED  true: both engines must agree the game is lost (default true).
+#               HydraY's eval scale is 2.3-3.2x Stockfish's, so the one-sided rule
+#               cuts HydraY's losses short and lets its wins run long; use false
+#               only to compare with calibrations made before 2026-10.
 #
 # Examples:
 #   ./tuning/run_sf_calibration.sh                                # default bracket, 200 games/level
@@ -62,6 +66,7 @@ TC="${TC:-4+0.04}"
 THREADS="${THREADS:-1}"
 HASH="${HASH:-16}"
 BOOK="${BOOK:-books/openings.pgn}"
+RESIGN_TWOSIDED="${RESIGN_TWOSIDED:-true}"
 
 export OMP_NUM_THREADS="${THREADS}"
 
@@ -117,7 +122,7 @@ echo " HydraY vs STOCKFISH calibration (absolute Elo via ordo, multi-anchor)"
 echo "   gauntlet engine : ${engine_name} = ${new_bin}"
 echo "   stockfish       : ${SF_BIN}  (UCI_Elo range [${elo_min}, ${elo_max}])"
 echo "   anchor levels   : ${SF_ELOS}"
-echo "   TC=${TC}  games/level=${GAMES}  threads=${THREADS} (OMP) conc=${CONCURRENCY}"
+echo "   TC=${TC}  games/level=${GAMES}  threads=${THREADS} (OMP) conc=${CONCURRENCY}  resign twosided=${RESIGN_TWOSIDED}"
 echo "=============================================================="
 
 # --- assemble cutechess engine args -------------------------------------------
@@ -160,7 +165,7 @@ echo
     -openings file="${BOOK}" format=pgn order=random plies=16 \
     -repeat -games 2 -rounds "${rounds}" \
     -draw movenumber=40 movecount=8 score=8 \
-    -resign movecount=3 score=500 \
+    -resign movecount=3 score=500 twosided="${RESIGN_TWOSIDED}" \
     -concurrency "${CONCURRENCY}" \
     -ratinginterval 20 \
     -recover \
