@@ -206,22 +206,31 @@ inline void Board::flushAccPending() const noexcept {
 
     // A batch is a sum of feature contributions under one basis, so rows that
     // appear on both sides cancel and what is left may be applied in any order
-    // (int16 is modular, the argument updateFused already relies on). Kings are
-    // excluded because a king move can change the basis, and a dirty
-    // perspective is skipped by update<> anyway. Measured over 85.6M flushes:
-    // this covers 65.6% of them and removes 21.8% of the weight-row reads and
-    // 32.9% of the accumulator passes.
+    // (int16 is modular, the argument updateFused already relies on). Kings
+    // are features like any other as long as the basis holds: only the final
+    // square of a side's king decides whether its own perspective keeps its
+    // basis. A perspective whose king ends on another (bucket, flip) is left
+    // dirty for the Finny refresh, which rebuilds it from the board anyway.
+    // A king that is added or removed (not moved) takes the replay below.
     constexpr int CAP = 32;   // contributions per side; longer batches replay
     uint16_t sub[CAP];
     uint16_t add[CAP];
     int ns = 0;
     int na = 0;
-    bool normalized = n > 1 && !nnueAccumulator.dirty[0] && !nnueAccumulator.dirty[1];
+    int kingTo[2] = {-1, -1};   // final square of each side's king, if it moved
+    bool normalized = n > 0 && !nnueAccumulator.dirty[0] && !nnueAccumulator.dirty[1];
     for (int i = 0; i < n && normalized; ++i) {
         const NNUE::AccDelta& d = accPending[i];
-        if ((d.piece & MASK_PIECE_TYPE) == KING || ns == CAP || na == CAP) {
+        if (ns == CAP || na == CAP) {
             normalized = false;
             break;
+        }
+        if ((d.piece & MASK_PIECE_TYPE) == KING) {
+            if (d.kind != NNUE::AccDelta::Move) {
+                normalized = false;
+                break;
+            }
+            kingTo[colorToIndex(d.piece)] = d.to;
         }
         const uint16_t from = static_cast<uint16_t>(d.piece << 8 | d.from);
         if (d.kind == NNUE::AccDelta::Add) {
@@ -241,6 +250,28 @@ inline void Board::flushAccPending() const noexcept {
             if (j == na) { ++i; continue; }
             sub[i] = sub[--ns];   // swap-remove: order is irrelevant
             add[j] = add[--na];
+        }
+        // Perspective p is 0 for white; its own king is seen from its side.
+        bool rebase[2] = {false, false};
+        for (int p = 0; p < 2; ++p) {
+            if (kingTo[p] < 0) continue;
+            const int view = (p == 1) ? kingTo[p] : (kingTo[p] ^ 56);
+            rebase[p] = NNUE::kingFeatureBase(view) != nnueAccumulator.base[p]
+                     || NNUE::kingFlip(view) != nnueAccumulator.flip[p];
+        }
+        if (rebase[0] || rebase[1]) {
+            nnueAccumulator.dirty[0] = rebase[0];
+            nnueAccumulator.dirty[1] = rebase[1];
+            if (rebase[0] && rebase[1]) return;
+            const int q = rebase[0] ? 1 : 0;
+            const int16_t* subRow[CAP];
+            const int16_t* addRow[CAP];
+            for (int k = 0; k < ns; ++k)
+                subRow[k] = nnueAccumulator.featureRow(q, static_cast<uint8_t>(sub[k] >> 8), static_cast<uint8_t>(sub[k]));
+            for (int k = 0; k < na; ++k)
+                addRow[k] = nnueAccumulator.featureRow(q, static_cast<uint8_t>(add[k] >> 8), static_cast<uint8_t>(add[k]));
+            NNUE::Accumulator::applyRows(nnueAccumulator.v[q], subRow, ns, addRow, na);
+            return;
         }
         // At most two subs and two adds per pass: those are the kernels that
         // exist, and one pass already covers four rows.

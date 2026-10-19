@@ -455,14 +455,15 @@ int32_t Searcher::searchRootMoveScore(
     int32_t alpha,
     int32_t beta,
     bool allowHeuristicUpdates,
-    uint64_t* nodeCounter) noexcept {
+    uint64_t* nodeCounter,
+    bool cutNode) noexcept {
     chess::Board::MoveState state;
     b.doMove(m, state);
     // Negamax: child is the opponent to move -> negate and swap/negate bounds.
     const int childDepth = std::max(0, runtime.depth - 1);
     const int32_t score = -searchPosition(
         b, runtime, childDepth, -beta, -alpha, 1,
-        allowHeuristicUpdates, nullptr, nodeCounter);
+        allowHeuristicUpdates, nullptr, nodeCounter, true, chess::Move{}, cutNode);
     b.undoMove(m, state);
     return score;
 }
@@ -533,7 +534,9 @@ bool Searcher::tryReverseFutilityPruning(
         return false;
     }
 
-    outScore = node.staticEval;
+    // Halfway between eval and beta: the margin test proves only beta, and a
+    // full static eval returned fail-soft overstates the bound the parent sees.
+    outScore = (node.staticEval + beta) / 2;
     return true;
 }
 
@@ -737,6 +740,11 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             if (!ctx.improving) {
                 reduction += 1;
             }
+            // Expected cut node: a late move matters only if the earlier ones
+            // failed to cut, which the reduced search still detects.
+            if (ctx.cutNode) {
+                reduction += 1;
+            }
             // History adjustment (quiet moves only - quiet history is meaningless
             // for captures, which the ordering already ranks by SEE/capture history).
             if (!wasCapture) {
@@ -747,15 +755,21 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
             const int reducedDepth = std::max(1, childDepth - reduction);
             score = -searchPosition(b, runtime, reducedDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                    allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                    allowHeuristicUpdates, &m, ctx.nodeCounter,
+                                    true, chess::Move{}, /*cutNode=*/true);
 
             if (shouldResearchPVS(score, scoutAlpha)) {
                 score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                        allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                        allowHeuristicUpdates, &m, ctx.nodeCounter,
+                                        true, chess::Move{}, !ctx.cutNode);
             }
         } else { // can't reduce, regular PVS search
+            // The first move of a PV node is searched with the full window and
+            // is a PV child; every other first search here is a null window.
+            const bool childCut = !(ctx.isPVNode && isFirstMove) && !ctx.cutNode;
             score = -searchPosition(b, runtime, childDepth, -scoutBeta, -scoutAlpha, ctx.ply + 1,
-                                    allowHeuristicUpdates, &m, ctx.nodeCounter);
+                                    allowHeuristicUpdates, &m, ctx.nodeCounter,
+                                    true, chess::Move{}, childCut);
         }
 
         // Wide-window PV re-search, shared by both paths above. It only carries
@@ -839,7 +853,8 @@ int32_t Searcher::searchPosition(
     const chess::Move* previousMove,
     uint64_t* nodeCounter,
     bool allowNullMove,
-    chess::Move excludedMove) noexcept {
+    chess::Move excludedMove,
+    bool cutNode) noexcept {
 
     const bool hasExcludedMove = chess::isValidSquare(excludedMove.from);
 
@@ -989,14 +1004,16 @@ int32_t Searcher::searchPosition(
             const int32_t seScore = searchPosition(
                 b, runtime, depth / 2 - 1, seBeta - 1, seBeta, ply,
                 allowHeuristicUpdates,
-                previousMove, counter, false, seExcluded);
+                previousMove, counter, false, seExcluded, cutNode);
 
-            if (seScore < seBeta - SE_DOUBLE_MARGIN) {
-                singularExtension = 2;
-            } else if (seScore < seBeta) {
+            if (seScore < seBeta) {
                 singularExtension = 1;
             } else if (seScore >= beta) {
                 return seScore; // multi-cut: every move beats beta, prune
+            } else if (ttSeScore >= beta) {
+                // Not singular, and the TT already expects a cutoff from some
+                // other move: search the TT move one ply shallower.
+                singularExtension = -1;
             }
         }
     }
@@ -1006,11 +1023,13 @@ int32_t Searcher::searchPosition(
 
     // Negamax NMP gate: allow a null move when the static eval is within
     // ~100cp of beta (giving the opponent a free move likely still fails high).
+    // Zugzwang guard: one non-pawn piece is enough, so rook and minor-piece
+    // endings keep null-move pruning; pawn-only endings still skip it.
     const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove && interiorNonPv
         && depth >= 4 && isBetaCutoff(nmpEvalGate, beta)
-        && std::popcount(b.knights_bb[side] | b.bishops_bb[side] |
-                         b.rooks_bb[side]   | b.queens_bb[side]) >= 2;
+        && (b.knights_bb[side] | b.bishops_bb[side] |
+            b.rooks_bb[side]   | b.queens_bb[side]) != 0ULL;
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
@@ -1035,17 +1054,26 @@ int32_t Searcher::searchPosition(
         MoveList captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
+            // A singular probe asks whether the OTHER moves reach seBeta; the
+            // excluded move must not answer it through ProbCut.
+            if (hasExcludedMove && mc.sameFromTo(excludedMove)) continue;
             const int32_t see = Sorter::staticExchangeEvaluation(b, mc);
-            // PROBCUT_MARGIN is an eval-scale quantity (it is added to beta
-            // above), so the SEE it gates has to be converted first - comparing
-            // raw material against it makes the filter ~MATERIAL_TO_EVAL_PCT
-            // too strict and discards captures that would clear the bound.
-            if (materialToEval(see) < PROBCUT_MARGIN) continue;
+            // Raw SEE on purpose: PROBCUT_MARGIN was tuned as a material threshold here.
+            if (see < PROBCUT_MARGIN) continue;
             chess::Board::MoveState pcState;
             b.doMove(mc, pcState);
             // Negamax child: negate result and swap/negate the scout window.
-            const int32_t pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
-                ply + 1, false, &mc, counter, false);
+            // Above depth 4 a qsearch must clear the bound first: most captures
+            // that fail it would also fail the reduced search, at a fraction
+            // of its cost. At depth 3-4 the reduced search already is a qsearch.
+            int32_t pcScore = probcutBound;
+            if (depth - 4 > 0) {
+                pcScore = -quiescenceSearch(b, runtime, -pcBeta, -pcAlpha, ply + 1, counter);
+            }
+            if (pcScore >= probcutBound) {
+                pcScore = -searchPosition(b, runtime, depth - 4, -pcBeta, -pcAlpha,
+                    ply + 1, false, &mc, counter, false, chess::Move{}, !cutNode);
+            }
             b.undoMove(mc, pcState);
             if (pcScore >= probcutBound) return beta;
         }
@@ -1065,7 +1093,8 @@ int32_t Searcher::searchPosition(
     SearchContext ctx{
         previousMove, counter, contHistEntry,
         depth, ply, node.staticEval, singularExtension, excludedMove,
-        node.activeColor, node.inCheck, node.isPVNode, false, improving
+        node.activeColor, node.inCheck, node.isPVNode, false, improving,
+        cutNode && !node.isPVNode
     };
 
     MoveList moves = node.inCheck
@@ -1131,11 +1160,14 @@ int32_t Searcher::searchPosition(
     // hasExcludedMove suppresses only THIS node's store (its score reflects a
     // reduced move set under the same key); descendants store normally.
     if (canUseTT && !hasExcludedMove) {
+        const auto flag = determineFlag(best, alpha, beta);
+        // A fail-low node has no best move, only the least refuted one: store
+        // none, which keeps whatever move the entry already holds.
         runtime.transpositionTable->store(
             hashKey, static_cast<uint8_t>(ctx.depth),
             scoreToTT(best, ctx.ply),
-            static_cast<uint8_t>(determineFlag(best, alpha, beta)),
-            TT::Entry::encodeMove(result.move),
+            static_cast<uint8_t>(flag),
+            flag == TT::Entry::UPPERBOUND ? 0 : TT::Entry::encodeMove(result.move),
             rawStaticEval);
     }
 
@@ -1298,8 +1330,8 @@ chess::Move Searcher::getBestMove(
         ? NEG_INF
         : Evaluator::evaluate(rootBoard);
 
-    const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b) {
-        return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &runtime.nodesSearched);
+    const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b, bool cut) {
+        return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &runtime.nodesSearched, cut);
     };
 
     // Plain PVS root loop: full window for the first move, null-window scout
@@ -1316,10 +1348,10 @@ chess::Move Searcher::getBestMove(
 
         int32_t score;
         if (isFirst) {
-            score = scoreMove(m, alpha, beta);
+            score = scoreMove(m, alpha, beta, false);
         } else {
-            score = scoreMove(m, alpha, saturatingAdd32(alpha, 1));
-            if (shouldResearchPVS(score, alpha)) score = scoreMove(m, alpha, beta);
+            score = scoreMove(m, alpha, saturatingAdd32(alpha, 1), true);
+            if (shouldResearchPVS(score, alpha)) score = scoreMove(m, alpha, beta, false);
         }
 
         searchedAnyMove = true;
