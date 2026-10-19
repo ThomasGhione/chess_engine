@@ -1054,6 +1054,9 @@ int32_t Searcher::searchPosition(
         MoveList captures = engine::MoveGenerator::generateTacticalMoves(b);
         for (int i = 0; i < captures.size; ++i) {
             const auto& mc = captures[i];
+            // A singular probe asks whether the OTHER moves reach seBeta; the
+            // excluded move must not answer it through ProbCut.
+            if (hasExcludedMove && mc.sameFromTo(excludedMove)) continue;
             const int32_t see = Sorter::staticExchangeEvaluation(b, mc);
             // Raw SEE on purpose: PROBCUT_MARGIN was tuned as a material threshold here.
             if (see < PROBCUT_MARGIN) continue;
