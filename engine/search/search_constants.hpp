@@ -47,7 +47,6 @@ static_assert(MATE_VALUE + MAX_PLY <= std::numeric_limits<int16_t>::max(),
 // (FUTILITY_MARGINS, LMP_THRESHOLDS, the LMR table in searcher.cpp) are
 // rebuilt by rebuildSearchDerivedTables(); the defaults reproduce the frozen
 // June values exactly.
-inline constexpr int     NULL_MOVE_VERIFICATION_DEPTH = 10;
 // Null-move reduction eval scaling: deeper reduction the further eval beats beta.
 inline int32_t NMP_EVAL_DIV = 265;
 inline int32_t NMP_EVAL_MAX = 4;
@@ -126,12 +125,6 @@ inline int32_t CORR_HIST_WEIGHT_PCT = 100;
 // QUIESCENCE SEARCH
 // ===================================================
 inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
-// Delta pruning: a qsearch node fails low when no capture can lift the stand-pat
-// past alpha even allowing for the heaviest piece plus a cushion. One margin,
-// deliberately: a second position-scaled one (near-promotion pawns, stand-pat
-// thresholds, depth taper) sat behind this and fired 2 times in 4.6M nodes,
-// because each of its widenings pushed the margin above this value.
-inline constexpr int32_t QSEARCH_DELTA_MARGIN = 1010; // == QUEEN_VALUE + 50
 
 // Material and evaluation are denominated in DIFFERENT units. PIECE_VALUES and
 // SEE are handcrafted-era centipawns; the NNUE output runs hotter, so adding a

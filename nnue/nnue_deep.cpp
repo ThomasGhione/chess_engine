@@ -82,8 +82,8 @@ int32_t forwardScalar(const NetworkDeep& net,
 
 namespace {
 
-// 32 accumulatori i16 -> 32 valori pairwise in [0, QA], su corsie i16.
-inline __m256i pairwiseBlock(const int16_t* acc, int j) noexcept {
+// 32 i16 accumulators -> 32 pairwise values in [0, QA], in i16 lanes.
+[[maybe_unused]] inline __m256i pairwiseBlock(const int16_t* acc, int j) noexcept {
     const __m256i zero = _mm256_setzero_si256();
     const __m256i qa   = _mm256_set1_epi16(static_cast<int16_t>(QA));
     const __m256i lo = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(acc + j));

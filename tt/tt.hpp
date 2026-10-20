@@ -466,8 +466,12 @@ inline void TT::store(
             continue;
         }
 
+        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - Entry::ageFromPayload(entryPayload)));
+
         if (entryIdentity == key) {
-            if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT) {
+            // An entry from an earlier search is overwritten even by a shallower
+            // result: otherwise it keeps its old age and is the next one evicted.
+            if (storedDepth >= Entry::depthFromPayload(entryPayload) || flag == Entry::EXACT || ageDiff != 0) {
                 // Preserve the stored move on a bound-only write (bestMove == 0)
                 // and the stored eval when this write carries none.
                 const uint16_t moveToStore = (bestMove != 0) ? bestMove : Entry::bestMoveFromPayload(entryPayload);
@@ -477,12 +481,20 @@ inline void TT::store(
                 const uint64_t newPayload = Entry::encodePayload(score, evalToStore, moveToStore, storedDepth, generation_, flag);
                 atomicWord(entry.payload).store(newPayload, std::memory_order_relaxed);
                 atomicWord(entry.key).store(key ^ newPayload, std::memory_order_relaxed);
+            } else if (bestMove != 0 && flag != Entry::UPPERBOUND
+                       && bestMove != Entry::bestMoveFromPayload(entryPayload)) {
+                // The deeper bound stays, but a newer move that raised alpha is
+                // still the better ordering hint (a fail-low "best" move is not).
+                const uint64_t newPayload = (entryPayload & ~(0xFFFFULL << 16)) | (static_cast<uint64_t>(bestMove) << 16);
+                atomicWord(entry.payload).store(newPayload, std::memory_order_relaxed);
+                atomicWord(entry.key).store(key ^ newPayload, std::memory_order_relaxed);
             }
             return;
         }
 
-        const int ageDiff = static_cast<int>(static_cast<uint8_t>(generation_ - Entry::ageFromPayload(entryPayload)));
-        const int replaceScore = (ageDiff << 8) - (static_cast<int>(Entry::depthFromPayload(entryPayload)) << 2);
+        // Evict the lowest depth - 8 * age: one generation is worth 8 plies, so a
+        // deep entry from the previous search outlives a shallow current one.
+        const int replaceScore = (ageDiff << 3) - static_cast<int>(Entry::depthFromPayload(entryPayload));
         if (replaceScore > bestReplaceScore) {
             bestReplaceScore = replaceScore;
             replaceEntry = &entry;

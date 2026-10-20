@@ -39,7 +39,10 @@ void controlExpect(const chess::Board b, std::array<uint8_t, 64> expectPos){
   }
 }
 
-ut::suite boardSuite = [] {
+// A plain lambda, registered from main: ut's cfg is a variable template, whose
+// dynamic initialization is unordered, and clang builds it after a global
+// ut::suite has registered, which drops the suite.
+const auto boardSuite = [] {
   "Default constructor"_test = []{
     chess::Board b = chess::Board();
   
@@ -234,3 +237,5 @@ ut::suite boardSuite = [] {
   };
 
 };
+
+void registerBoardSuite() { [[maybe_unused]] const ut::suite registered = boardSuite; }
