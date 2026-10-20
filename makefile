@@ -20,7 +20,11 @@ endif
 endif
 
 # Compiler variables
-CXX = g++
+# clang when installed (node-identical to g++ and faster, see PRODFLAGS);
+# CXX=g++ on the command line or in the environment forces GCC.
+ifeq ($(origin CXX),default)
+CXX := $(if $(shell command -v clang++ 2>/dev/null),clang++,g++)
+endif
 TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=native -flto=8 -fext-numeric-literals -g -no-pie
 
 # -O3: Aggressive inlining + vectorization (better than -O2 and safer than -Ofast)
@@ -42,17 +46,23 @@ ARCH ?= -march=native -mtune=native
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp $(ARCH) \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
 		-ffunction-sections -fdata-sections -O3 -fno-pie -no-pie
-# clang (make cls; make prod CXX=clang++-18): node-identical to g++ and faster
-#   (bench6 +3.8% on a P-core, +1.8% on an E-core, datagen +5.2%). Full LTO;
-#   no FMA contraction keeps the eval bit-identical to g++. OpenMP comes from
-#   libgomp through a one-function omp.h, so libomp is not needed.
-PROD_LIBS =
+# clang: node-identical to g++ and faster (bench6 +3.8% on a P-core, +1.8% on
+#   an E-core, datagen +5.2%). Full LTO; no FMA contraction keeps the eval
+#   bit-identical to g++. OpenMP comes from libgomp through a one-function
+#   omp.h, so libomp is not needed.
+GCC_PRODFLAGS := $(PRODFLAGS)
+OMP_LIBS =
 ifneq (,$(findstring clang,$(CXX)))
 PRODFLAGS := $(filter-out -fopenmp -flto=auto,$(PRODFLAGS)) -fopenmp-simd \
 		-isystem $(ROOT_DIR)/script/clang -flto=full -ffp-contract=off \
 		-Wno-unused-command-line-argument
-PROD_LIBS = -Wl,--no-as-needed -lgomp
+TEST_FLAGS := $(filter-out -fopenmp -flto=8 -fext-numeric-literals,$(TEST_FLAGS)) \
+		-flto=full -Wno-unused-command-line-argument
+OMP_LIBS = -Wl,--no-as-needed -lgomp
 endif
+# Objects (LTO bitcode) from one compiler cannot be linked by the other: a
+# switch leaves no stamp for the new compiler, which then rebuilds them all.
+COMPILER_STAMP = $(OUTPUT_DIR)/.cxx-$(notdir $(CXX))
 
 # Uncomment if codebase is exception-free
 
@@ -166,7 +176,7 @@ prod_windows:
 # Sequential production build
 # Note: no slower, but does not generate .o files
 prod_sequential:
-	$(CXX) $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) -o $(NAME_APP)
+	$(CXX) $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) $(OMP_LIBS) -o $(NAME_APP)
 	@printf "\nBuild completed: $(NAME_APP)\n\n"
 
 # Build command for debug executable
@@ -194,13 +204,18 @@ all-tests: test perf
 # Final executable generation: 'chess'
 $(NAME_APP): $(ALL_OBJS)
 	@printf "\nLinking $(NAME_APP)..."
-	$(CXX) $(PRODFLAGS) $(ALL_OBJS) $(PROD_LIBS) -o $(NAME_APP)
+	$(CXX) $(PRODFLAGS) $(ALL_OBJS) $(OMP_LIBS) -o $(NAME_APP)
 
 # .o file generation
-$(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
+$(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp $(COMPILER_STAMP)
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
 	$(CXX) $(PRODFLAGS) -MMD -MP -c $< -o $@
+
+$(COMPILER_STAMP):
+	@mkdir -p $(dir $@)
+	@rm -f $(OUTPUT_DIR)/.cxx-*
+	@touch $@
 
 # embedded.cpp pulls the network blob in via the assembler's .incbin, which
 # -MMD cannot track: declare the data dependency explicitly.
@@ -215,12 +230,12 @@ $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
 # Final executable generation: 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ)
 	@printf "\nLinking test $(TEST_APP)..."
-	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ) -o $(TEST_APP)
+	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ) $(OMP_LIBS) -o $(TEST_APP)
 
 # Final executable generation: 'outputPerformance'
 $(PERF_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ)
 	@printf "\nLinking performance test $(PERF_APP)..."
-	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) -o $(PERF_APP)
+	$(CXX) $(TEST_FLAGS) $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(PERF_OBJS) $(PERF_MAIN_OBJ) $(OMP_LIBS) -o $(PERF_APP)
 
 # Complete static-analysis suite
 analyze: analyze-setup
@@ -305,7 +320,7 @@ analyze-gcc-analyzer:
 	@printf "5. GCC STATIC ANALYZER\n" >> $(ANALYSIS_LOG)
 	@printf "========================================\n\n" >> $(ANALYSIS_LOG)
 	@$(MAKE) -C $(ROOT_DIR) cls-compile-files > /dev/null
-	@$(CXX) -fanalyzer -fsyntax-only $(PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> $(ANALYSIS_LOG) 2>&1 || echo "GCC analyzer exited with error code $$?" >> $(ANALYSIS_LOG)
+	@g++ -fanalyzer -fsyntax-only $(GCC_PRODFLAGS) $(MAIN_SRC) $(ALL_MODULE_SRCS) >> $(ANALYSIS_LOG) 2>&1 || echo "GCC analyzer exited with error code $$?" >> $(ANALYSIS_LOG)
 	@printf "[5/7] Running GCC analyzer terminated\n"
 
 analyze-cppclean:

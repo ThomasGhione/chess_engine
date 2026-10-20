@@ -10,7 +10,10 @@
 
 namespace ut = boost::ut;
 
-ut::suite performanceEngineSuite = [] {
+// A plain lambda, registered from main: ut's cfg is a variable template, whose
+// dynamic initialization is unordered, and clang builds it after a global
+// ut::suite has registered, which drops the suite.
+const auto performanceEngineSuite = [] {
   using namespace ut;
 
   "performance searchPosition depth 11"_test = []{
@@ -125,3 +128,5 @@ ut::suite performanceEngineSuite = [] {
     printf("\nBenchmark completed.\n\n");
   };
 };
+
+void registerPerformanceEngineSuite() { [[maybe_unused]] const ut::suite registered = performanceEngineSuite; }

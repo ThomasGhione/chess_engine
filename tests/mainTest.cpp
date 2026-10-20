@@ -74,6 +74,8 @@ void testPerftStandardPositions() {
 
 } // namespace
 
+void registerBoardSuite();
+
 int main(){
     // Magic bitboards + embedded NNUE net: tests drive Board/Searcher directly
     // (no Engine), so nobody else activates the evaluator for them.
@@ -87,5 +89,6 @@ int main(){
     // Run the registered ut suites now: left to the runner's destructor they
     // execute during static destruction, after the network they build Boards
     // with has been freed.
+    registerBoardSuite();
     return boost::ut::cfg<>.run({.report_errors = true}) ? 1 : 0;
 }
