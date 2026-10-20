@@ -31,7 +31,13 @@
 #   SF_ELOS     space-separated UCI_Elo anchor levels  (default "2800 3000 3190";
 #               2600 was dropped on 2026-10-19: HydraY scored 200/200 there)
 #               must be within the binary's advertised UCI_Elo min/max.
-#   GAMES       games played PER Stockfish level        (default 200)
+#   EXTRA_ENGINES  unanchored full-strength engines added to the gauntlet, as
+#               "Name=path ..." (path relative to the repo root or absolute),
+#               e.g. "SF8=stockfish/stockfish-8 SF11=stockfish/stockfish-11"
+#   EXTRA_PGN   space-separated PGNs fed to ordo together with this run, e.g. the
+#               extra engines' own games against the SF levels; without them an
+#               extra engine is rated only through HydraY
+#   GAMES       games played PER opponent               (default 200)
 #   TC          time control "moves/sec+inc" or "sec+inc" (default 4+0.04)
 #   CONCURRENCY parallel games                           (default: phys_cores-1)
 #   THREADS     search threads per engine                (default 1)
@@ -62,6 +68,8 @@ engine_name="${ENGINE_NAME:-HydraY-dev}"
 SF_BIN="${SF_BIN:-${repo_root}/stockfish/stockfish-18}"
 SF_ELOS="${SF_ELOS:-2800 3000 3190}"
 read -ra sf_elo_arr <<< "${SF_ELOS}"
+read -ra extra_arr <<< "${EXTRA_ENGINES:-}"
+read -ra extra_pgn_arr <<< "${EXTRA_PGN:-}"
 GAMES="${GAMES:-200}"
 TC="${TC:-4+0.04}"
 THREADS="${THREADS:-1}"
@@ -123,6 +131,7 @@ echo " HydraY vs STOCKFISH calibration (absolute Elo via ordo, multi-anchor)"
 echo "   gauntlet engine : ${engine_name} = ${new_bin}"
 echo "   stockfish       : ${SF_BIN}  (UCI_Elo range [${elo_min}, ${elo_max}])"
 echo "   anchor levels   : ${SF_ELOS}"
+[[ ${#extra_arr[@]} -gt 0 ]] && echo "   unanchored      : ${EXTRA_ENGINES}  (extra PGN: ${EXTRA_PGN:-none})"
 echo "   TC=${TC}  games/level=${GAMES}  threads=${THREADS} (OMP) conc=${CONCURRENCY}  resign twosided=${RESIGN_TWOSIDED}"
 echo "=============================================================="
 
@@ -137,6 +146,13 @@ for elo in "${sf_elo_arr[@]}"; do
         option.UCI_LimitStrength=true option.UCI_Elo="${elo}"
         option.Threads="${THREADS}" option.Hash="${HASH}"
     )
+done
+for spec in "${extra_arr[@]}"; do
+    path="${spec#*=}"
+    [[ ${path} = /* ]] || path="${repo_root}/${path}"
+    [[ -x ${path} ]] || { echo "error: extra engine not executable: ${path}" >&2; exit 1; }
+    engine_args+=( -engine name="${spec%%=*}" cmd="${path}"
+                   option.Threads="${THREADS}" option.Hash="${HASH}" )
 done
 
 stamp="$(date +%Y%m%d_%H%M%S)"
@@ -177,6 +193,13 @@ echo "=============================================================="
 echo " Computing absolute ratings with ordo (anchor: ${SF_ELOS})"
 echo "=============================================================="
 
+# The extra engines' own games join the fit; the anchors stay the SF levels.
+ordo_pgn="${pgn_out}"
+if [[ ${#extra_pgn_arr[@]} -gt 0 ]]; then
+    ordo_pgn="sfcal_${stamp}_all.pgn"
+    cat "${pgn_out}" "${extra_pgn_arr[@]}" > "${ordo_pgn}"
+fi
+
 # -W/-D: auto-fit white advantage and draw rate. -s: bootstrap error bars.
 # ordo 1.2.6's -m (multi-anchor) only reliably PINS an anchor when there are
 # 2+ anchors in the file; with exactly one anchor + one floating player it
@@ -188,14 +211,14 @@ if [[ "${#sf_elo_arr[@]}" -eq 1 ]]; then
     ordo -q -W -D \
         -a "${sf_elo_arr[0]}" -A "SF-${sf_elo_arr[0]}" \
         -s 1000 -n "${CONCURRENCY}" \
-        -p "${pgn_out}" \
+        -p "${ordo_pgn}" \
         -o "${ratings_out}" \
         -j "sfcal_${stamp}_h2h.txt"
 else
     ordo -q -W -D \
         -m "${anchors_file}" \
         -s 1000 -n "${CONCURRENCY}" \
-        -p "${pgn_out}" \
+        -p "${ordo_pgn}" \
         -o "${ratings_out}" \
         -j "sfcal_${stamp}_h2h.txt"
 fi
