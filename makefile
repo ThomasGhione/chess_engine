@@ -32,8 +32,14 @@ TEST_FLAGS = -std=c++23 -Wall -Wextra -Wpedantic -O3 -DDEBUG -fopenmp -march=nat
 # -funroll-loops: Unroll hot loops (good for bitboard operations)
 # -fno-pie -no-pie: a global table indexed by a register is one instruction
 #   instead of a RIP-relative lea plus the load (SEE, magics, zobrist)
+# ARCH: target ISA, also used for tbprobe.c. On a hybrid CPU -march=native
+#   passes the cache sizes of the core each compile job lands on, so two builds
+#   of one tree can differ; an explicit ARCH gives the same binary every time.
+#   Here (GCC 13) native resolves to ARCH="-march=sierraforest -mtune=generic";
+#   ARCH=-march=x86-64-v3 runs on any AVX2 + BMI2 CPU (no-VNNI L1 fallback).
+ARCH ?= -march=native -mtune=native
 # Balanced production flags (safety + speed)
-PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp -march=native -mtune=native \
+PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp $(ARCH) \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
 		-ffunction-sections -fdata-sections -O3 -fno-pie -no-pie
 
@@ -193,7 +199,7 @@ $(OUTPUT_DIR)/nnue/embedded.o: $(ROOT_DIR)/nnue/net/hydray.nnue
 $(SYZYGY_C_OBJ): $(SYZYGY_C_SRC)
 	@printf "\nCompiling $<..."
 	@mkdir -p $(dir $@)
-	gcc -O3 -march=native -std=c11 -Wall -MMD -MP -c $< -o $@
+	gcc -O3 $(ARCH) -std=c11 -Wall -MMD -MP -c $< -o $@
 
 # Final executable generation: 'outputTest'
 $(TEST_APP): $(MODULE_OBJS) $(SYZYGY_C_OBJ) $(TEST_OBJS) $(TEST_MAIN_OBJ)
