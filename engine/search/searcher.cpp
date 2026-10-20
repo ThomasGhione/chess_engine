@@ -55,7 +55,7 @@ int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
 // claimed and an SPRT would be measuring nothing.
 constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = materialToEval(PAWN_VALUE / 2);
 
-// Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], capped at depth-3.
+// Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], at least 1.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
 // Built at startup and rebuilt by rebuildSearchDerivedTables() when the UCI
 // layer changes LMR_C_PERCENT (search is stopped first).
@@ -70,7 +70,7 @@ struct LMRTable {
                                  * __builtin_log(static_cast<double>(m))
                                  / lmrC;
                 const int r = static_cast<int>(raw);
-                data[d][m] = static_cast<int8_t>(std::max(1, std::min(r, d - 3)));
+                data[d][m] = static_cast<int8_t>(std::max(1, r));
             }
         }
     }
@@ -499,19 +499,6 @@ bool Searcher::tryNullMovePruning(
         return false;
     }
 
-    bool confirmedCutoff = true;
-    if (depth >= NULL_MOVE_VERIFICATION_DEPTH) {
-        // Verification re-search of THIS node (same side to move): no negation.
-        const int32_t verifyScore = searchPosition(
-            b, runtime, depth - reduction, alpha, beta, ply,
-            allowHeuristicUpdates, nullptr, nodeCounter, false);
-        confirmedCutoff = isBetaCutoff(verifyScore, beta);
-    }
-
-    if (!confirmedCutoff) {
-        return false;
-    }
-
     // Fail-soft: return the null-search score (a heuristic lower bound), but
     // never propagate an unproven mate found behind a null move.
     outScore = (nullScore >= MATE_BOUND) ? beta : nullScore;
@@ -744,12 +731,6 @@ Searcher::SearchMoveResult Searcher::searchMoves(
             // failed to cut, which the reduced search still detects.
             if (ctx.cutNode) {
                 reduction += 1;
-            }
-            // History adjustment (quiet moves only - quiet history is meaningless
-            // for captures, which the ordering already ranks by SEE/capture history).
-            if (!wasCapture) {
-                const int32_t histScore = runtime.history[usSide][m.from][m.to];
-                reduction -= histScore / 8192;
             }
             reduction = std::clamp(reduction, 1, childDepth - 1);
 
@@ -1238,20 +1219,11 @@ int32_t Searcher::quiescenceSearch(
         const int32_t standPat = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
                                             -MATE_BOUND + 1, MATE_BOUND - 1);
         if (isBetaCutoff(standPat, beta)) {
-            // Bound-only store (bestMove 0 preserves any stored move): sibling
-            // qsearch nodes can then cut on this stand-pat without re-evaluating.
-            if (canUseTT) {
-                runtime.transpositionTable->store(
-                    b.getHash(), 0, scoreToTT(standPat, ply), TT::Entry::LOWERBOUND,
-                    /*bestMove=*/0, rawStaticEval);
-            }
+            // No TT store: the entry would only repeat the raw eval, which the
+            // eval cache already returns on the next visit.
             return standPat; // fail-soft: tighter bound than a flat beta
         }
         updateBound(standPat, alpha);
-
-        if (shouldDeltaPrune(standPat, materialToEval(QSEARCH_DELTA_MARGIN), alpha)) {
-            return alpha; // negamax delta-prune fail-low
-        }
 
         movePicker = engine::MoveGenerator::generateQSearchTacticalMoves(
             b, standPat, alpha, ply);
