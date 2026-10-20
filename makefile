@@ -42,6 +42,17 @@ ARCH ?= -march=native -mtune=native
 PRODFLAGS = -std=c++23 -Wall -Wextra -Wpedantic -fopenmp $(ARCH) \
 		-flto=auto -fno-math-errno -fno-trapping-math -funroll-loops \
 		-ffunction-sections -fdata-sections -O3 -fno-pie -no-pie
+# clang (make cls; make prod CXX=clang++-18): node-identical to g++ and faster
+#   (bench6 +3.8% on a P-core, +1.8% on an E-core, datagen +5.2%). Full LTO;
+#   no FMA contraction keeps the eval bit-identical to g++. OpenMP comes from
+#   libgomp through a one-function omp.h, so libomp is not needed.
+PROD_LIBS =
+ifneq (,$(findstring clang,$(CXX)))
+PRODFLAGS := $(filter-out -fopenmp -flto=auto,$(PRODFLAGS)) -fopenmp-simd \
+		-isystem $(ROOT_DIR)/script/clang -flto=full -ffp-contract=off \
+		-Wno-unused-command-line-argument
+PROD_LIBS = -Wl,--no-as-needed -lgomp
+endif
 
 # Uncomment if codebase is exception-free
 
@@ -183,7 +194,7 @@ all-tests: test perf
 # Final executable generation: 'chess'
 $(NAME_APP): $(ALL_OBJS)
 	@printf "\nLinking $(NAME_APP)..."
-	$(CXX) $(PRODFLAGS) $(ALL_OBJS) -o $(NAME_APP)
+	$(CXX) $(PRODFLAGS) $(ALL_OBJS) $(PROD_LIBS) -o $(NAME_APP)
 
 # .o file generation
 $(OUTPUT_DIR)/%.o: $(ROOT_DIR)/%.cpp
