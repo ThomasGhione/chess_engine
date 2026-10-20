@@ -32,6 +32,10 @@ namespace {
 // never runs through searchPosition, so getBestMove seeds it.
 thread_local int32_t evalStack[MAX_PLY] = {};
 
+bool hasCastlingRights(const chess::Board& b) noexcept {
+    return b.getCastle(0) || b.getCastle(1) || b.getCastle(2) || b.getCastle(3);
+}
+
 // Raw static eval for a position not carried by its TT entry.
 int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
     int32_t cached = 0;
@@ -897,10 +901,14 @@ int32_t Searcher::searchPosition(
 
     // TB probe sits AFTER the TT cutoff: in TB range most nodes cut on the
     // (cheap, cached) TT entry - often the TB draw stored below - without
-    // paying the mmap'd table lookup.
-    if (runtime.syzygyProber != nullptr
+    // paying the mmap'd table lookup. The tables know nothing of castling,
+    // and a singular-extension probe (excluded move) asks for the value of a
+    // reduced move set, which the tables do not give.
+    if (!hasExcludedMove
+        && runtime.syzygyProber != nullptr
         && runtime.syzygyProber->isLoaded()
         && depth >= runtime.syzygyProber->probeDepth
+        && !hasCastlingRights(b)
         && runtime.syzygyProber->inTBRange(b)) {
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
@@ -1485,6 +1493,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     // a mangled `bestmove` hung lichess-bot in a tablebase-won endgame).
     if (!runtime.isHelper
         && runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
+        && !hasCastlingRights(rootBoard)
         && runtime.syzygyProber->inTBRange(rootBoard)) {
         const auto tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
