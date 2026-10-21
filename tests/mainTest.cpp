@@ -26,21 +26,19 @@ void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     assert(board.isThreefoldRepetition());
     assert(NNUE::evaluate(board) > 0);
 
-    engine::Searcher::SearchRuntime runtime{};
-    const int32_t qScore = engine::Searcher::quiescenceSearch(
-        board,
-        runtime,
-        engine::Searcher::NEG_INF,
-        engine::Searcher::POS_INF,
-        0,
-        nullptr);
+    TT tt;
+    engine::SearchRuntime runtime{};
+    runtime.transpositionTable = &tt;
+    const int32_t qScore = engine::Searcher::quiescenceSearch(board, runtime, engine::NEG_INF, engine::POS_INF, 0);
 
     assert(qScore < 0);
 }
 
 void testRootDrawTerminalDoesNotSearchFallbackMove() {
     chess::Board board("k7/8/8/8/8/8/8/KB6 w - - 0 1");
-    engine::Searcher::SearchRuntime runtime{};
+    TT tt;
+    engine::SearchRuntime runtime{};
+    runtime.transpositionTable = &tt;
 
     assert(board.hasInsufficientMaterialDraw());
     const chess::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
