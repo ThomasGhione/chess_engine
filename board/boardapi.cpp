@@ -173,7 +173,7 @@ inline void Board::doMoveByKind(MoveState& st, uint8_t moving, uint8_t destBefor
     if constexpr (Kind == MoveKind::DoublePawnPush) enPassant = (fromIndex + toIndex) >> 1;
     if constexpr (isPromotionKind(Kind)) {
         // A missing or invalid promotion piece means a queen.
-        const uint8_t promo = (promotionType >= KNIGHT && promotionType <= QUEEN) ? promotionType : QUEEN;
+        const uint8_t promo = (promotionType >= KNIGHT && promotionType <= QUEEN) ? promotionType : uint8_t{QUEEN};
         const uint8_t promoted = static_cast<uint8_t>(promo | (moving & MASK_COLOR));
         removePieceFromBB(moving, toIndex);
         addPieceToBB(promoted, toIndex);
