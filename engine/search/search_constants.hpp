@@ -144,6 +144,10 @@ inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
 // (roughly level positions, where pruning decisions bite) is ~2.2x.
 inline constexpr int32_t MATERIAL_TO_EVAL_PCT = 260;
 
+// Piece values by Board::piece_id type, for SEE, MVV ordering and the qsearch
+// delta margins: search bookkeeping, not evaluation.
+inline constexpr int32_t PIECE_VALUES[8] = {0, 100, 344, 359, 502, 960, 20'000, 0};
+
 constexpr int32_t materialToEval(int32_t material) noexcept {
     return material * MATERIAL_TO_EVAL_PCT / 100;
 }

@@ -60,7 +60,7 @@ int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
 // 9.3M of them hitting the twofold path -- the threefold path ran ONCE, and the
 // conversion changed the outcome zero times. Correctness only; no Elo is
 // claimed and an SPRT would be measuring nothing.
-constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = materialToEval(PAWN_VALUE / 2);
+constexpr int32_t REPETITION_DRAW_ADVANTAGE_THRESHOLD = materialToEval(PIECE_VALUES[chess::Board::PAWN] / 2);
 
 // Precomputed LMR reductions: LMR_TABLE[depth][moveIndex], at least 1.
 // Avoids two std::log() calls per LMR candidate in the hot search loop.
@@ -88,7 +88,7 @@ static LMRTable LMR_REDUCTION_TABLE;
 // Once LMP prunes one quiet at a node it prunes every later quiet too, so the
 // rest of the picker matters only for its tactical moves. If those are all
 // finalised losing captures, each ranks below every quiet (a quiet never scores
-// under -3000 - QUEEN_VALUE), so the selection would extract all the quiets
+// under -3000 - the queen value), so the selection would extract all the quiets
 // first and then these in score order: jump straight to them. Equal scores keep
 // the normal path, because their order depends on the swaps of the quiet picks.
 // Returns false, leaving the picker untouched, when that cannot be guaranteed.
@@ -99,10 +99,8 @@ bool skipToLosingCaptures(MovePicker& picker, const chess::Board& b,
     int n = 0;
     for (int i = picker.currentIndex; i < picker.moves.size; ++i) {
         const chess::Move& mv = picker.moves[i];
-        const int fromType = b.get(mv.from) & chess::Board::MASK_PIECE_TYPE;
-        const int toType   = b.get(mv.to)   & chess::Board::MASK_PIECE_TYPE;
-        const bool promotion = (fromType == chess::Board::PAWN) && (chess::rank(mv.to) == promotionRank);
-        if (!promotion && !Sorter::classifyCapture(mv, fromType, toType, enPassant).isCapture) continue;
+        const MoveTraits t = moveTraits(b, mv, enPassant, promotionRank);
+        if (!t.isPromotion && !t.isCapture) continue;
         const int32_t score = picker.score(i);
         if (picker.seePending[i] != SeePending::Final || score >= -CAPTURE_BASE_SCORE) return false;
         // Insertion by descending score; n stays tiny.
@@ -643,13 +641,8 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         const bool isFirstMove = (moveIndex == 0);
 
-        const int fromPieceType = b.get(m.from) & chess::Board::MASK_PIECE_TYPE;
-        const int toPieceType = b.get(m.to) & chess::Board::MASK_PIECE_TYPE;
-        const auto cap = Sorter::classifyCapture(m, fromPieceType, toPieceType, enPassant);
-        const bool wasCapture = cap.isCapture;
-        const int victimType = cap.victimType;
-        const bool isPromotionCandidate = (fromPieceType == chess::Board::PAWN) && (chess::rank(m.to) == promotionRank);
-        const bool isQuietMove = !wasCapture && !isPromotionCandidate;
+        const MoveTraits t = moveTraits(b, m, enPassant, promotionRank);
+        const bool isQuietMove = !t.isCapture && !t.isPromotion;
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
             prunedAny = true;
@@ -664,9 +657,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // cheaper term rejects far more often.
         if (canFutilityPrune && isQuietMove && moveIndex > 0
             && shouldDeltaPrune(ctx.staticEval, futilityMargin, alpha)
-            && (fromPieceType == chess::Board::KING
+            && (t.fromType == chess::Board::KING
                 || !Sorter::givesCheckAfterQuietMoveFast(
-                       b, m, fromPieceType, oppKingSq, b.getPiecesBitMap()))) {
+                       b, m, t.fromType, oppKingSq, b.getPiecesBitMap()))) {
             prunedAny = true;
             continue;
         }
@@ -684,7 +677,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // SEE pruning: skip clearly losing captures at shallow non-PV nodes.
         // Move 0 (a winning or hash capture) is always searched; the margin
         // scales with depth so deeper nodes tolerate slightly worse trades.
-        if (wasCapture && !isPromotionCandidate && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
+        if (t.isCapture && !t.isPromotion && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
             && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
             prunedAny = true;
             continue;
@@ -702,9 +695,9 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         // so a capture reaching this index is almost always a bad/losing one.
         const bool lmrStructuralCandidate = (ctx.depth >= 3)
             && (moveIndex >= 4)
-            && !isPromotionCandidate;
+            && !t.isPromotion;
 
-        const bool forcingCandidate = (wasCapture || isPromotionCandidate || moveIndex < 3);
+        const bool forcingCandidate = (t.isCapture || t.isPromotion || moveIndex < 3);
         const bool needsCheckInfo = ctx.depth >= 2 && ctx.depth <= 4 && forcingCandidate;
         const bool givesCheck = needsCheckInfo ? b.inCheck(oppColor) : false;
 
@@ -781,10 +774,10 @@ Searcher::SearchMoveResult Searcher::searchMoves(
 
         if (isQuietMove && numSearchedQuiets < MAX_QUIETS_TRACKED) {
             searchedQuiets[numSearchedQuiets++] =
-                {m.from, m.to, static_cast<uint8_t>(fromPieceType)};
+                {m.from, m.to, static_cast<uint8_t>(t.fromType)};
         }
-        if (wasCapture && numSearchedCaptures < MAX_CAPTURES_TRACKED) {
-            searchedCaptures[numSearchedCaptures++] = {m.to, static_cast<uint8_t>(victimType)};
+        if (t.isCapture && numSearchedCaptures < MAX_CAPTURES_TRACKED) {
+            searchedCaptures[numSearchedCaptures++] = {m.to, static_cast<uint8_t>(t.victimType)};
         }
 
         updateMinMax(score, alpha, best, bestMove, m);
@@ -792,7 +785,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
         if (isBetaCutoff(best, beta)) {
             if (allowHeuristicUpdates) {
                 updateKillerAndHistoryOnBetaCutoff(
-                    m, wasCapture, victimType, ctx.depth, ctx.ply, usSide, runtime, ctx.previousMove, ctx.contHistEntry, fromPieceType);
+                    m, t.isCapture, t.victimType, ctx.depth, ctx.ply, usSide, runtime, ctx.previousMove, ctx.contHistEntry, t.fromType);
 
                 const int depthPlusOne = ctx.depth + 1;
                 const int32_t malus = -(depthPlusOne * depthPlusOne);
@@ -813,7 +806,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
                 }
 
                 // Capture history malus: penalize captures searched before the cutoff move.
-                const int capMalusEnd = wasCapture ? numSearchedCaptures - 1 : numSearchedCaptures;
+                const int capMalusEnd = t.isCapture ? numSearchedCaptures - 1 : numSearchedCaptures;
                 for (int i = 0; i < capMalusEnd; ++i) {
                     applyHistoryGravity(runtime.captureHistory[usSide][searchedCaptures[i].to][searchedCaptures[i].victimType][0],
                                         malus, MAX_CAPTURE_HISTORY);
@@ -1126,12 +1119,8 @@ int32_t Searcher::searchPosition(
     if (!node.inCheck && !hasExcludedMove && allowHeuristicUpdates
         && std::abs(best) < TB_WIN_BOUND) {
         const bool raisedAlpha = best > alpha;
-        bool bestIsCapture = false;
-        if (raisedAlpha) {
-            const int fromType = b.get(result.move.from) & chess::Board::MASK_PIECE_TYPE;
-            const int toType   = b.get(result.move.to)   & chess::Board::MASK_PIECE_TYPE;
-            bestIsCapture = Sorter::classifyCapture(result.move, fromType, toType, b.getEnPassant()).isCapture;
-        }
+        const bool bestIsCapture = raisedAlpha
+            && moveTraits(b, result.move, b.getEnPassant(), chess::Board::promotionRank(node.activeColor == chess::Board::WHITE)).isCapture;
         const int32_t target = (!raisedAlpha && result.pruned) ? alpha : best;
         if (!bestIsCapture && (target > correctedEval) == raisedAlpha) {
             const int32_t bonus = std::clamp((target - correctedEval) * depth / (raisedAlpha ? 10 : 8),
@@ -1543,12 +1532,8 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         runtime.depth = currentDepth;
 
         if (result.completedAnyDepth) {
-            for (int i = 0; i < moves.size; ++i) {
-                if (moves[i] == bestMove) {
-                    moves.rotate(i);
-                    break;
-                }
-            }
+            const auto it = std::find(moves.begin(), moves.end(), bestMove);
+            if (it != moves.end()) std::rotate(moves.begin(), it, it + 1);
         }
 
         runtime.clearInterrupted();
