@@ -29,6 +29,12 @@ inline constexpr int DEFAULT_DEPTH               = 11;
 inline constexpr int32_t MATE_VALUE = 32000;
 inline constexpr int32_t MATE_BOUND = MATE_VALUE - MAX_PLY;
 
+// Tablebase wins sit below every mate and above every eval. They carry a ply
+// distance like mates, so everything at or beyond TB_WIN_BOUND is decisive and
+// rebased on TT store/load too.
+inline constexpr int32_t TB_WIN_SCORE = MATE_BOUND - 500;
+inline constexpr int32_t TB_WIN_BOUND = TB_WIN_SCORE - MAX_PLY;
+
 // Window sentinel: one past the best reachable score, so no real score can ever
 // equal it. Negamax-safe (NEG_INF == -POS_INF, negating it is well defined).
 inline constexpr int32_t POS_INF = MATE_VALUE + 1;

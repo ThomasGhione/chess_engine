@@ -151,14 +151,14 @@ constexpr int32_t Searcher::saturatingSub32(int32_t lhs, int32_t rhs) noexcept {
 // Plain arithmetic: |score| <= MATE_VALUE and ply <= MAX_PLY, so the rebased
 // value stays well inside int32_t (and inside int16_t, see search_constants).
 constexpr int32_t Searcher::scoreToTT(int32_t score, int ply) noexcept {
-    if (score >= MATE_BOUND)  return score + ply;
-    if (score <= -MATE_BOUND) return score - ply;
+    if (score >= TB_WIN_BOUND)  return score + ply;
+    if (score <= -TB_WIN_BOUND) return score - ply;
     return score;
 }
 
 constexpr int32_t Searcher::scoreFromTT(int32_t score, int ply) noexcept {
-    if (score >= MATE_BOUND)  return score - ply;
-    if (score <= -MATE_BOUND) return score + ply;
+    if (score >= TB_WIN_BOUND)  return score - ply;
+    if (score <= -TB_WIN_BOUND) return score + ply;
     return score;
 }
 
@@ -504,8 +504,8 @@ bool Searcher::tryNullMovePruning(
     }
 
     // Fail-soft: return the null-search score (a heuristic lower bound), but
-    // never propagate an unproven mate found behind a null move.
-    outScore = (nullScore >= MATE_BOUND) ? beta : nullScore;
+    // never propagate an unproven mate or TB win found behind a null move.
+    outScore = (nullScore >= TB_WIN_BOUND) ? beta : nullScore;
     return true;
 }
 
@@ -867,19 +867,12 @@ int32_t Searcher::searchPosition(
         return quiescenceSearch(b, runtime, alpha, beta, ply, counter, /*alreadyEntered=*/true);
     }
 
-    // TB WDL probe (in-search): only return Draw as exact. Returning Win or
-    // Loss anywhere - even guarded by alpha/beta - collapses move ordering:
-    // every TB-winning subtree at root produces the same TB_WIN_SCORE-ply
-    // score because aspiration windows around small eval-derived scores trip
-    // the alpha/beta cutoff at every TB-Loss child node, and PVS scout then
-    // never finds a "better" move than moves[0]. The king-wanders-instead-of-
-    // pushing-pawns behaviour in KPPvK comes from exactly this.
-    //
-    // Skipping Win/Loss here costs us TB-based pruning inside the search
-    // (the search will work harder in TB-known subtrees), but the static
-    // evaluator can now differentiate between equally-winning moves, which
-    // is what we need when Pyrrhic ranks every guaranteed win identically.
-    // The root TB probe still handles the decisive Win/Loss choice.
+    // TB WDL probe (in-search). A root inside TB range never gets here: the
+    // root probe plays the best DTZ move, so a won KPPvK cannot wander. Below a
+    // root with more pieces, a draw is exact; a win or loss is decisive only
+    // right after a zeroing move (later the fifty-move counter may turn it
+    // into a draw) and is returned as a bound, ply-anchored like a mate, so a
+    // faster entry into a won ending still ranks above a slower one.
     const uint64_t hashKey = b.getHash();
     int32_t score = 0;
     const bool canUseTT = (runtime.transpositionTable != nullptr);
@@ -912,17 +905,21 @@ int32_t Searcher::searchPosition(
         && runtime.syzygyProber->inTBRange(b)) {
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
-            if (tbScore == 0) {
-                // Draw: exact terminal - prevents picking a drawn move when
-                // a winning one exists (and vice versa).
+            const uint8_t flag = (tbScore == 0) ? TT::Entry::EXACT
+                               : (tbScore > 0)  ? TT::Entry::LOWERBOUND
+                                                : TT::Entry::UPPERBOUND;
+            const bool decisive = (tbScore == 0 || b.getHalfMoveClock() == 0);
+            if (decisive
+                && (flag == TT::Entry::EXACT
+                    || (flag == TT::Entry::LOWERBOUND && tbScore >= beta)
+                    || (flag == TT::Entry::UPPERBOUND && tbScore <= alpha))) {
                 if (canUseTT) {
                     runtime.transpositionTable->store(
                         hashKey, static_cast<uint8_t>(depth),
-                        tbScore, TT::Entry::EXACT);
+                        scoreToTT(tbScore, ply), flag);
                 }
                 return tbScore;
             }
-            // Win/Loss: deliberately fall through (no cutoff, no bound store).
         }
     }
 
@@ -947,7 +944,7 @@ int32_t Searcher::searchPosition(
             ? tte.staticEval
             : cachedEval(hashKey, b);
         correctedEval = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
-                                   -MATE_BOUND + 1, MATE_BOUND - 1);
+                                   -TB_WIN_BOUND + 1, TB_WIN_BOUND - 1);
         node.staticEval = correctedEval;
         if (tte.hit) {
             const int32_t ttStaticScore = scoreFromTT(tte.score, ply); // re-base mate scores
@@ -959,7 +956,7 @@ int32_t Searcher::searchPosition(
                 node.staticEval = ttStaticScore;
             }
         }
-        node.staticEval = std::clamp(node.staticEval, -MATE_BOUND + 1, MATE_BOUND - 1);
+        node.staticEval = std::clamp(node.staticEval, -TB_WIN_BOUND + 1, TB_WIN_BOUND - 1);
     }
 
     // Store staticEval in ply stack and compute improving flag.
@@ -979,7 +976,7 @@ int32_t Searcher::searchPosition(
         if (tte.hit
             && static_cast<int>(tte.depth) >= depth - SE_DEPTH_MARGIN
             && (tte.flag == TT::Entry::LOWERBOUND || tte.flag == TT::Entry::EXACT)
-            && std::abs(tte.score) < MATE_BOUND
+            && std::abs(tte.score) < TB_WIN_BOUND
             && tte.move != 0) {
 
             const auto seExcluded = TT::Entry::decodeMove(tte.move);
@@ -1126,7 +1123,7 @@ int32_t Searcher::searchPosition(
     // best (Stockfish lifts its fail-low best to the futility value instead).
     // A capture best move says more about the capture than about the eval.
     if (!node.inCheck && !hasExcludedMove && allowHeuristicUpdates
-        && std::abs(best) < MATE_BOUND) {
+        && std::abs(best) < TB_WIN_BOUND) {
         const bool raisedAlpha = best > alpha;
         bool bestIsCapture = false;
         if (raisedAlpha) {
@@ -1225,7 +1222,7 @@ int32_t Searcher::quiescenceSearch(
             ? tte.staticEval
             : cachedEval(b.getHash(), b);
         const int32_t standPat = std::clamp(rawStaticEval + runtime.corrHist.correction(b),
-                                            -MATE_BOUND + 1, MATE_BOUND - 1);
+                                            -TB_WIN_BOUND + 1, TB_WIN_BOUND - 1);
         if (isBetaCutoff(standPat, beta)) {
             // No TT store: the entry would only repeat the raw eval, which the
             // eval cache already returns on the next visit.
@@ -1572,7 +1569,7 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
             hasPrevScore
             && result.completedAnyDepth
             && currentDepth >= 5
-            && std::abs(prevScore) < MATE_BOUND;
+            && std::abs(prevScore) < TB_WIN_BOUND;
 
         if (!canUseAspiration) {
             candidateBestMove = getBestMove(rootBoard, moves, runtime);
