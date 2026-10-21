@@ -176,11 +176,9 @@ public:
         return bb[PAWN][side] | bb[KNIGHT][side] | bb[BISHOP][side] | bb[ROOK][side] | bb[QUEEN][side] | bb[KING][side];
     }
 
-    // NNUE dual-perspective accumulator; kept in sync with the bitboards by
-    // the same add/remove piece functions whenever a network is loaded.
-    // Contains garbage until the first refreshNnueAccumulator() after load.
-    // mutable: ensureNnueAccumulatorClean() settles the HalfKA lazy state
-    // from const evaluation paths - it is a cache, not board state.
+    // Maintained by the piece updates while a network is loaded; garbage until
+    // the first refreshNnueAccumulator(). mutable: a cache that the const
+    // evaluation paths settle.
     mutable NNUE::Accumulator nnueAccumulator;
 
     // Deferred accumulator work. The rows are only touched when something

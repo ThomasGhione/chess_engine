@@ -2,28 +2,13 @@
 
 // Dual-perspective NNUE accumulator: v[0] = white's view, v[1] = black's view.
 //
-// HalfKA king buckets: every feature index of perspective X
-// depends on the (bucket, flip) of X's OWN king - the "basis". The basis of
-// each perspective is cached here (base = 768*bucket, flip), and the class
-// keeps this invariant:
-//
-//   clean[p]  =>  every feature in v[p] was accumulated with the stored
-//                 basis, and that basis matches the current own-king square.
-//
-// Piece events (Board's addPieceToBB/removePieceFromBB) update both
-// perspectives incrementally under their stored bases; add/sub are exact
-// integer inverses, so undoMove needs no MoveState snapshot. When a king
-// ADD lands on a square whose basis differs from the stored one, that
-// perspective is marked DIRTY and stops applying updates: its features
-// would need the new basis for the whole board, not a delta. The lazy
-// refresh happens in Board::ensureNnueAccumulatorClean() (called by
-// NNUE::evaluate and the selftest), where the Board is consistent -
-// mid-doMove refreshes would read a half-updated position. Undo needs no
-// special case: while dirty everything is skipped and the next refresh
-// rebuilds from the real board; while clean the inverse deltas are exact.
-//
-// Board rebuilds (FEN load, table refresh) call refreshNnueAccumulator()
-// for a from-scratch recompute of both perspectives.
+// Every feature of perspective p depends on the bucket and flip of p's own
+// king, its basis (base = 768 * bucket, flip). Invariant: a clean perspective
+// holds features accumulated under its stored basis, and that basis matches
+// its king. Piece updates apply under the stored bases (add and sub are exact
+// inverses, so undo needs no snapshot). A king landing on another basis marks
+// its perspective dirty, and a dirty perspective skips updates until
+// Board::ensureNnueAccumulatorClean() rebuilds it at a consistent board.
 
 #include <cstdint>
 #include <cstring>
@@ -197,14 +182,11 @@ struct alignas(64) Accumulator {
     }
 };
 
-// Finny table: one cached accumulator row per (perspective, king bucket,
-// mirror flip) plus the piece bitboards it was computed from. A lazy refresh
-// becomes a DIFF against the cached state (typically a handful of piece
-// updates) instead of a ~30-piece rebuild. Any cached content is a correct
-// starting point as long as the entry's basis matches - even from another
-// game - so the table lives per-thread (Lazy SMP helpers each get their own)
-// and never needs invalidation. The bias-initialised entry with empty
-// bitboards is itself a valid state ("diff from the empty board").
+// Finny table: one cached accumulator row per (perspective, king bucket, flip)
+// with the piece bitboards it was built from, so a refresh is a diff against
+// the cache instead of a rebuild. Any entry of the right basis is a valid
+// start, even from another game: the table is per thread and never needs
+// invalidation (the initial one is the empty board).
 struct FinnyEntry {
     alignas(64) int16_t v[HIDDEN];
     uint64_t bb[2][6]; // [colorIndex][type-1], engine bit convention

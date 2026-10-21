@@ -67,9 +67,6 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (destPiece != EMPTY) ? toBit : 0ULL);
 }
 
-// ============================================
-// HELPER FUNCTIONS FOR isLegalPseudoMove
-// ============================================
 
 [[nodiscard]] uint64_t Board::checkersTo(uint8_t color) const noexcept {
     const uint8_t side = colorToIndex(color);
@@ -115,11 +112,8 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     return (pieces::KING_ATTACKS[fromIndex] & toBit) && !isSquareAttacked(toIndex, oppColor, fromIndex);
 }
 
-// ------------------------------------------------------------
-// CHECK / CHECKMATE / STALEMATE UTILITIES
-// ------------------------------------------------------------
-// Returns true if square 'targetIndex' is attacked by 'byColor'
-// Version that excludes a square from occupancy - useful for king moves
+// Whether byColor attacks targetIndex, with excludeSquare (if < 64) lifted off
+// the board, as a moving king needs.
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
     const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~(1ULL << excludeSquare)) : occupancy;
     return attackedBy(targetIndex, colorToIndex(byColor), occMinus);

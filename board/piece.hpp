@@ -57,9 +57,7 @@ constexpr uint64_t slidingAttacks(int sq, uint64_t occ, const int8_t dirs[4][2])
     return attacks;
 }
 
-// =============================================================================
-// SLIDING PIECES (rook / bishop / queen) - PEXT magic bitboards
-// =============================================================================
+// --- Sliding pieces: PEXT attack tables ---
 
 // Relevant-occupancy masks: rook = its rank+file, bishop = its four diagonals,
 // both minus the board edges (edge squares never block, so they carry no index
@@ -147,9 +145,7 @@ inline uint64_t getBishopAttacks(uint8_t sq, uint64_t occ) noexcept {
     return BISHOP_ATTACK_LOOKUP[p.offset + sliderIndex(occ, p)];
 }
 
-// =============================================================================
-// STEP PIECES (pawn / knight / king) - precomputed attack & push tables
-// =============================================================================
+// --- Step pieces: attack tables ---
 // Square convention: rank 0 = row 8 (top), rank 7 = row 1. White pawns move to
 // a lower rank number, black to a higher one.
 

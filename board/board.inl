@@ -1,6 +1,3 @@
-// ==============================
-// Constructors
-// ==============================
 inline Board::Board() noexcept {
     fenToBoard(STARTING_FEN);
 }

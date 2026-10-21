@@ -25,16 +25,9 @@ struct Limits {
     bool     hasClock  = false; // true once any of wtime/btime is supplied
 };
 
-// Computes a soft/hard time budget for a single move and runs a watchdog
-// thread that trips the engine stop flag when the hard limit is reached.
-//
-// Soft limit  -> checked between iterative-deepening iterations: "do not
-//                start a depth I cannot finish".
-// Hard limit  -> enforced by the watchdog: aborts the search in progress.
-//
-// The clock-comparison / "play for flag" machinery from the original design
-// is intentionally dropped: the opponent clock barely affects our optimal
-// move, and deliberately playing fast trash only raises our own blunder rate.
+// Soft and hard time budget for one move. The soft limit is checked between
+// iterations (do not start a depth that cannot finish); a watchdog thread sets
+// the stop flag at the hard one.
 class TimeManager final {
 public:
     using Clock = std::chrono::steady_clock;

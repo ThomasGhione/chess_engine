@@ -4,39 +4,28 @@
 #include <cstdint>
 #include <limits>
 
-// All tunable search + move-ordering parameters, centralized here. Most are
-// compile-time constants; the plain (non-constexpr) globals are exposed as
-// UCI spins for the tuning campaigns (see kSpinOptions in uci/uci.cpp).
-//
-// Purely structural constants that are tied to a specific local data structure
-// (SEE cache size, history flat-array cell counts, tracked-quiet buffer sizes,
-// int16 clamp bounds) deliberately stay next to their declarations.
+// Search and move-ordering parameters. The plain (non-constexpr) globals are
+// UCI spins for the tuner (kSpinOptions in uci/uci.cpp).
 
 namespace engine {
 
-// ===================================================
-// CORE SEARCH SIZING (array dimensions, depth defaults)
-// ===================================================
+// --- Core sizes ---
 inline constexpr int32_t  MAX_PLY                = 64;
 inline constexpr int32_t  CAPTURE_HISTORY_SLOTS  = 2;
 inline constexpr int DEFAULT_DEPTH               = 11;
 
-// Score scale. A forced mate `n` plies away scores ±(MATE_VALUE - n), so every
-// score the search can produce fits in int16_t - the precondition for packing a
-// static eval next to the score in the TT payload. Scores at or beyond
-// MATE_BOUND carry a ply distance and are rebased on TT store/load (see
-// scoreToTT / scoreFromTT).
+// A mate n plies away scores ±(MATE_VALUE - n): every score fits the TT's
+// int16_t. Scores at or beyond MATE_BOUND carry a ply distance and are rebased
+// on TT store and load.
 inline constexpr int32_t MATE_VALUE = 32000;
 inline constexpr int32_t MATE_BOUND = MATE_VALUE - MAX_PLY;
 
-// Tablebase wins sit below every mate and above every eval. They carry a ply
-// distance like mates, so everything at or beyond TB_WIN_BOUND is decisive and
-// rebased on TT store/load too.
+// Tablebase wins sit between every eval and every mate; like mates they carry a
+// ply distance, so everything at or beyond TB_WIN_BOUND is decisive.
 inline constexpr int32_t TB_WIN_SCORE = MATE_BOUND - 500;
 inline constexpr int32_t TB_WIN_BOUND = TB_WIN_SCORE - MAX_PLY;
 
-// Window sentinel: one past the best reachable score, so no real score can ever
-// equal it. Negamax-safe (NEG_INF == -POS_INF, negating it is well defined).
+// Window sentinels, one past any real score; NEG_INF == -POS_INF.
 inline constexpr int32_t POS_INF = MATE_VALUE + 1;
 inline constexpr int32_t NEG_INF = -POS_INF;
 
@@ -44,9 +33,7 @@ inline constexpr int32_t NEG_INF = -POS_INF;
 static_assert(MATE_VALUE + MAX_PLY <= std::numeric_limits<int16_t>::max(),
               "rebased mate scores must fit the int16_t TT score field");
 
-// ===================================================
-// PRUNING / EXTENSION PARAMETERS
-// ===================================================
+// --- Pruning and extensions ---
 // Plain globals, not constexpr, so the tuner can drive them as UCI spins; the
 // UCI layer stops any search before writing one. The derived tables
 // (FUTILITY_MARGINS, LMP_THRESHOLDS, the LMR table in searcher.cpp) are built
@@ -85,26 +72,17 @@ inline constexpr int32_t PROBCUT_MIN_DEPTH = 3;
 // a live search.
 void rebuildSearchDerivedTables() noexcept;
 
-// ===================================================
-// LMR (late move reductions) table parameters
-// ===================================================
+// --- Late move reductions ---
 // LMR_C == LMR_C_PERCENT / 100.0 (int spin for the tuner).
 inline int32_t LMR_C_PERCENT = 300;
 inline constexpr int LMR_MAX_DEPTH = 20; // deeper nodes use the last row
 
-// ===================================================
-// HISTORY HEURISTIC BOUNDS
-// ===================================================
+// --- History bounds ---
 inline constexpr int32_t MAX_HISTORY         = 16384;
 inline constexpr int32_t MAX_CAPTURE_HISTORY = 10000;
 
-// ===================================================
-// CORRECTION HISTORY (see corrhist.hpp)
-// ===================================================
-// Cells live in [-CORR_HIST_LIMIT, CORR_HIST_LIMIT]; the update rule is in
-// searchPosition, after the move loop. A full cell reads as
-// CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units. Weights, scale and
-// gates follow Stockfish 18's search.cpp.
+// --- Correction history ---
+// Weights, scale and gates follow Stockfish 18's search.cpp (see corrhist.hpp).
 inline constexpr int     CORR_HIST_BITS       = 14;
 inline constexpr int     CORR_HIST_SIZE       = 1 << CORR_HIST_BITS;
 inline constexpr int32_t CORR_HIST_LIMIT      = 1024;
@@ -116,21 +94,11 @@ inline constexpr int32_t CORR_WEIGHT_NON_PAWN = 11665;
 // Global strength of the applied correction, in percent (UCI spin).
 inline int32_t CORR_HIST_WEIGHT_PCT = 100;
 
-// ===================================================
-// QUIESCENCE SEARCH
-// ===================================================
+// --- Quiescence search ---
 inline constexpr uint8_t MAX_QSEARCH_DEPTH = 48;
 
-// Material and evaluation are denominated in DIFFERENT units. PIECE_VALUES and
-// SEE are handcrafted-era centipawns; the NNUE output runs hotter, so adding a
-// raw material amount to a stand-pat and comparing against alpha understates
-// what a capture can recover, and over-prunes.
-//
-// Measured on the shipped net (177 piece-removal pairs, depth 8): deleting a
-// piece moves the score by 1.9x its piece value overall, and the per-piece
-// ratio runs 2.7 (pawn) to 1.4 (queen); the high end is eval saturation in
-// already-won positions, so the honest figure for the regime that matters
-// (roughly level positions, where pruning decisions bite) is ~2.2x.
+// Material (PIECE_VALUES, SEE) and the NNUE eval are different units: the eval
+// runs hotter, so a material amount compared with an eval converts first.
 inline constexpr int32_t MATERIAL_TO_EVAL_PCT = 260;
 
 // Piece values by Board::piece_id type, for SEE, MVV ordering and the qsearch
@@ -141,50 +109,29 @@ constexpr int32_t materialToEval(int32_t material) noexcept {
     return material * MATERIAL_TO_EVAL_PCT / 100;
 }
 
-// ===================================================
-// ASPIRATION WINDOW
-// ===================================================
+// --- Aspiration window ---
 inline constexpr int32_t WINDOW_HARD_CAP    = 1500;
 inline constexpr int     MAX_ASP_RESEARCHES = 6;
 
-// ===================================================
-// DRAW / CONTEMPT SCORING
-// ===================================================
+// --- Draw scoring ---
 inline constexpr int32_t REPETITION_CONTEMPT = 80; // ~0.8 pawn
 
-// ===================================================
-// PARALLELISM (Lazy SMP)
-// ===================================================
-// Hard cap on helper threads (Threads option is already clamped to hwmax).
+// --- Lazy SMP ---
+// Hard cap on helper threads.
 inline constexpr int MAX_HELPER_THREADS = 63;
 
-// ===================================================
-// CONTINUATION HISTORY layout
-// ===================================================
-// contHist is keyed by the previous move's (side, pieceType, toSq); each context
-// holds a [PIECE_TYPES][64] PieceTo block indexed by the CURRENT move's
-// (pieceType, toSq).
-//
-// Both piece-type ends are the piece that MADE a move, so neither can ever be
-// EMPTY: the context piece is read off the square the previous move landed on,
-// and the block index is the current move's mover. Sizing the dimensions 0..6
-// therefore left row 0 of both unreachable -- 1 - (6/7)^2 = 26.5% of the table
-// allocated, decayed by softResetHistory, and never read. Measured before
-// shrinking: 386,349,984 block lookups and 12,723,846 context builds over a
-// 10-position depth-18 sweep, ZERO with a piece type of 0 at either end.
-//
-// So store types 1..6 (PAWN..KING) and subtract the bias. Anything that reaches
-// here with pieceType 0 would index out of bounds, hence the debug assert on
-// the one path that reads a piece off the board.
+// --- Continuation history layout ---
+// contHist[side][pieceType][toSq] of the previous move holds a block indexed by
+// the current move's (pieceType, toSq). Both piece types belong to a piece that
+// moved, never EMPTY, so they are stored as 1..6 minus one; a 0 would index out
+// of bounds (the debug assert in searchPosition guards the one board read).
 inline constexpr int CONT_HIST_PIECE_TYPES   = 6;
 inline constexpr int CONT_HIST_PIECE_STRIDE  = 64;
 inline constexpr int contHistIndex(int pieceType, int toSq) noexcept {
     return (pieceType - 1) * CONT_HIST_PIECE_STRIDE + toSq;
 }
 
-// ===================================================
-// MOVE ORDERING (sorter) - score buckets
-// ===================================================
+// --- Move ordering scores ---
 inline constexpr int32_t HASH_MOVE_SCORE      = 100000;
 inline constexpr int32_t CAPTURE_BASE_SCORE   = 10000;
 inline constexpr int32_t KILLER_1_SCORE       = 9000;

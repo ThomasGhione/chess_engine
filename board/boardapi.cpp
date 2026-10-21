@@ -203,9 +203,7 @@ inline void Board::undoMoveByKind(const MoveState& st, uint8_t pieceOnTo, uint8_
     if constexpr (Kind == MoveKind::Castling) relocate(get(st.rookToIndex), st.rookToIndex, st.rookFromIndex);
 }
 
-// ------------------------------------------------------------
-// INCREMENTAL DO/UNDO MOVE (NO LEGALITY CHECKS)
-// ------------------------------------------------------------
+// --- Incremental do/undo, no legality checks ---
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st) noexcept {
     const uint8_t moving     = get(m.from);

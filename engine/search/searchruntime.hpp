@@ -26,19 +26,13 @@ struct SearchRuntime {
     // Lazy SMP helper thread: skips the Syzygy root probe (tb_probe_root is
     // main-thread-only in Fathom) and never writes to stdout.
     bool     isHelper      = false;
-    // Lazy SMP depth diversification. Without it every helper walks the same
-    // depth sequence over the same tree and the pack mostly re-derives the
-    // main thread's work; the shared TT then makes time-to-depth look good
-    // while adding little real information. A helper skips a depth when
-    // ((depth + phase) / size) is odd, so the threads spread across depths
-    // instead of moving in lockstep.
-    // size 0 = never skip: the main thread's schedule, unchanged.
+    // Lazy SMP depth diversification: a helper skips depth d when
+    // ((d + phase) / size) is odd, so the threads spread over depths instead of
+    // moving in lockstep. Size 0 (the main thread) never skips.
     int      depthSkipSize  = 0;
     int      depthSkipPhase = 0;
-    // UCI `go nodes N`: 0 = unlimited. Checked per-node against
-    // nodesSearched, so the total across IDS iterations is bounded. Each Lazy
-    // SMP helper also bounds itself by the same value; total nodes are at most
-    // ~maxNodes * threads in multi-threaded searches.
+    // UCI `go nodes N` (0 = unlimited), checked at every node; each Lazy SMP
+    // helper bounds itself by it too.
     uint64_t maxNodes      = 0;
 
     // --- Heuristics ---
@@ -47,25 +41,17 @@ struct SearchRuntime {
     int16_t  history[2][64][64] {};
     uint16_t counterMoves[64][64] {};
     int16_t  captureHistory[2][64][7][CAPTURE_HISTORY_SLOTS] {};
-    // Continuation history: reply quality keyed by the previous move's
-    // (side, pieceType, toSq); the trailing [pieceType][toSq] block records the
-    // CURRENT move (see contHistIndex). Piece-type indexing on BOTH ends (a knight
-    // to e5 != a pawn to e5; a reply to Nf3 != a reply to a pawn landing on f3) is
-    // far sharper than a plain prevTo->curTo table. The ~36x cell growth is worth
-    // it: a 24-position fixed-depth bench dropped ~6% nodes vs the old layout.
-    // Both dimensions are 1..6 biased down to 0..5 (see contHistIndex): 576 KiB
-    // per SearchRuntime, and there is one per Lazy-SMP thread.
+    // Continuation history (layout at contHistIndex): 576 KiB per thread.
     int16_t  contHist[2][CONT_HIST_PIECE_TYPES][64][CONT_HIST_PIECE_TYPES][64] {};
     // Static-eval correction; never decayed between searches, only cleared.
     CorrectionHistory corrHist {};
-    // evalStack is thread_local in searchPosition - NOT here: Lazy-SMP races
-    // on a shared array would corrupt the `improving` hard-prune heuristic.
+    // evalStack is thread_local in searcher.cpp.
 
     // --- External coordination ---
     TT*       transpositionTable     = nullptr;
     std::atomic<bool>*        stopSearchRequested    = nullptr;
     std::atomic<bool>*        searchInterrupted      = nullptr;
-    // Null when running fixed-depth / ponder / perft-style searches.
+    // Null for the helpers, datagen and the tests.
     time::TimeManager*        timeManager            = nullptr;
     syzygy::SyzygyProber*     syzygyProber           = nullptr;
 

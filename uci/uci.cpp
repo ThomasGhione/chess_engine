@@ -252,12 +252,9 @@ namespace uci {
         }
         try {
             engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
-            // Clear the stop flags HERE, on the reader thread, while no search
-            // is running. UCI commands are serialized through parseCommand, so
-            // any `stop` is processed strictly after this point and its
-            // stopSearchRequested=true survives -- the search thread never
-            // writes false. Doing this inside the search thread instead loses
-            // every `stop` that lands in the startup window.
+            // Clear the stop flags here, on the reader thread: any `stop` is
+            // parsed after this point, so its flag survives. Cleared inside the
+            // search thread, a stop landing during startup was lost.
             engine.prepareSearch();
             searchThread = std::thread([this, limits] {
                 const chess::Move move = engine.search(limits);

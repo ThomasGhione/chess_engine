@@ -15,14 +15,12 @@ int main(int argc, char *argv[]) {
     std::cin.tie(nullptr);
 
     std::string_view mode = (argc >= 2) ? argv[1] : "uci";
-    // Dispatched before Engine is built: datagen needs no TT, only the magic
-    // tables (initialized inside runDatagen).
+    // These load their own net.
     if (mode == "datagen")       return NNUE::runDatagen(argc, argv);
     if (mode == "datagen-dump")  return NNUE::runDatagenDump(argc, argv);
     if (mode == "nnue-selftest") return NNUE::runSelfTest(argc, argv);
 
-    // Activated before any Board is built, so its constructor fills the
-    // accumulator. An invalid embedded blob means a broken build.
+    // Before any Board is built, so its constructor fills the accumulator.
     if (!NNUE::activateEmbedded()) {
         std::cerr << "fatal: embedded NNUE network failed validation - rebuild with a valid nnue/net/hydray.nnue\n";
         return 1;

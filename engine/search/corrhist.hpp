@@ -1,17 +1,11 @@
 #pragma once
 
 // Correction history: how far the search score has been landing from the
-// static eval, keyed by sub-structures of the position, added back to the eval
-// before the pruning gates read it. Cells are gravity statistics in
-// [-CORR_HIST_LIMIT, CORR_HIST_LIMIT], updated by Searcher with the same
-// applyHistoryGravity as the move histories.
-//
-// The previous version (removed in 68f3d5d) blended the residual straight into
-// the cell with an integer weighted average, so a cell only moved when
-// residual * depth reached the 256 divisor and stopped short of the residual
-// by the same dead zone. Here a cell is a fixed-point quantity: an update adds
-// residual * depth / 8 cell units (/ 10 after a raised alpha), and a full cell
-// is worth CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units when read.
+// static eval, keyed by sub-structures of the position and added back to the
+// eval before the pruning gates read it. A cell is a fixed-point gravity
+// statistic in [-CORR_HIST_LIMIT, CORR_HIST_LIMIT]: an update adds
+// residual * depth / 8 units (/ 10 after a raised alpha), and a full cell reads
+// as CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units.
 
 #include <cstddef>
 #include <cstdint>
