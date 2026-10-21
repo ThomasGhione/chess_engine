@@ -59,7 +59,6 @@ const auto performanceEngineSuite = [] {
 
     double avgDuration = static_cast<double>(totalDuration) / completedRuns;
 
-    // Attesa che la ricerca media venga completata in meno di 500 millisecondi
     printf("Average Depth 10 search time over %d runs: %.2f ms\n\n", runs, avgDuration);
     expect(avgDuration < 700);
   };
