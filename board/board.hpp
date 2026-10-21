@@ -186,11 +186,7 @@ public:
                                                    uint8_t toIndex, uint64_t capturedMask) const noexcept;
 
     // --- Game state queries ---
-    __attribute__((hot)) bool isCheckmate(uint8_t color) const noexcept { return inCheck(color) && !hasAnyLegalMove(color); }
-    bool hasAnyLegalMove(uint8_t color) const noexcept;
-    bool isStalemate(uint8_t color) const noexcept { return !inCheck(color) && !hasAnyLegalMove(color); }
     bool isFiftyMoveRule() const noexcept { return halfMoveClock >= 100; }
-    bool isDraw(uint8_t color) const noexcept { return isStalemate(color) || isFiftyMoveRule() || isThreefoldRepetition() || hasInsufficientMaterialDraw(); }
     bool isThreefoldRepetition() const noexcept { return countRepetitions() >= 3; }
     int  countRepetitions() const noexcept;
     bool hasInsufficientMaterialDraw() const noexcept;
@@ -271,9 +267,6 @@ private:
     // --- Private helpers: legality ---
     [[nodiscard]] inline bool isKingMoveLegal(uint8_t fromIndex, uint8_t toIndex,
                                                uint64_t toBit, uint8_t movingColor) const noexcept;
-    template<uint8_t PieceType>
-    [[nodiscard]] bool hasLegalMovesForPieceType(uint64_t pieceBB, uint64_t ownOcc,
-                                                  uint64_t enemyOcc, uint8_t movingColor) const noexcept;
     template<uint8_t PieceType>
     [[nodiscard]] inline bool pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit,
                                                     uint8_t movingColor, uint8_t destPiece) const noexcept;

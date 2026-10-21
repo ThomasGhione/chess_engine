@@ -43,7 +43,7 @@ void testRootDrawTerminalDoesNotSearchFallbackMove() {
     chess::Board board("k7/8/8/8/8/8/8/KB6 w - - 0 1");
     engine::Searcher::SearchRuntime runtime{};
 
-    assert(board.isDraw(board.getActiveColor()));
+    assert(board.hasInsufficientMaterialDraw());
     const chess::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
 
     // A terminal-draw root returns a legal fallback move without searching.

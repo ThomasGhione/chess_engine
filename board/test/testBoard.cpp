@@ -203,8 +203,6 @@ const auto boardSuite = [] {
     const chess::Square escapeSq = chess::parseSquare("d1");
 
     expect(b.inCheck(chess::Board::WHITE));
-    expect(b.hasAnyLegalMove(chess::Board::WHITE));
-    expect(!b.isCheckmate(chess::Board::WHITE));
 
     expect(b.isLegalPseudoMove(
       kingFrom,

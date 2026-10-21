@@ -265,7 +265,9 @@ bool Searcher::checkDrawTerminalConditions(
     if (b.isFiftyMoveRule()) [[unlikely]] {
         // A checkmate delivered by the 100th half-move stands (FIDE 9.3), so
         // the side to move here is mated, not drawn. Cold: clock >= 100 only.
-        outScore = b.isCheckmate(b.getActiveColor()) ? (-MATE_VALUE + ply) : 0;
+        const uint64_t checkers = b.checkersTo(b.getActiveColor());
+        const bool mated = checkers && MoveGenerator::generateLegalEvasions(b, checkers).is_empty();
+        outScore = mated ? (-MATE_VALUE + ply) : 0;
         return true;
     }
 
@@ -1459,14 +1461,8 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
 
     MoveList moves = engine::MoveGenerator::generateLegalMoves(rootBoard);
     if (moves.is_empty()) {
-        const uint8_t toMove = rootBoard.getActiveColor();
-        if (rootBoard.isCheckmate(toMove)) {
-            result.bestScore = -MATE_VALUE; // side to move is mated (negamax/STM)
-        } else if (rootBoard.isDraw(toMove)) {
-            result.bestScore = 0;
-        } else {
-            result.bestScore = Evaluator::evaluate(rootBoard);
-        }
+        // Checkmated (negamax: side to move) or stalemated.
+        result.bestScore = rootBoard.inCheck(rootBoard.getActiveColor()) ? -MATE_VALUE : 0;
         runtime.eval = result.bestScore;
         return result;
     }
