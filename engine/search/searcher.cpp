@@ -269,7 +269,7 @@ bool Searcher::checkDrawTerminalConditions(
         // A checkmate delivered by the 100th half-move stands (FIDE 9.3), so
         // the side to move here is mated, not drawn. Cold: clock >= 100 only.
         const uint64_t checkers = b.checkersTo(b.getActiveColor());
-        const bool mated = checkers && MoveGenerator::generateLegalEvasions(b, checkers).is_empty();
+        const bool mated = checkers && MoveGenerator::generateLegalMoves(b, checkers).is_empty();
         outScore = mated ? (-MATE_VALUE + ply) : 0;
         return true;
     }
@@ -1086,9 +1086,7 @@ int32_t Searcher::searchPosition(
         cutNode && !node.isPVNode
     };
 
-    MoveList moves = node.inCheck
-        ? engine::MoveGenerator::generateLegalEvasions(b, checkers)
-        : engine::MoveGenerator::generateLegalMoves(b, /*knownNotInCheck=*/true);
+    MoveList moves = engine::MoveGenerator::generateLegalMoves(b, checkers);
     if (moves.is_empty()) {
         return node.inCheck
             ? (-MATE_VALUE + ply)  // side to move is checkmated (negamax)
@@ -1199,7 +1197,7 @@ int32_t Searcher::quiescenceSearch(
 
     if (ply >= MAX_QSEARCH_DEPTH) {
         if (inCheck) {
-            MoveList evasions = engine::MoveGenerator::generateLegalEvasions(b, checkers);
+            MoveList evasions = engine::MoveGenerator::generateLegalMoves(b, checkers);
             if (evasions.is_empty()) {
                 return -MATE_VALUE + ply; // side to move is checkmated (negamax)
             }
