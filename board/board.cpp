@@ -73,21 +73,21 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 
 [[nodiscard]] uint64_t Board::checkersTo(uint8_t color) const noexcept {
     const uint8_t side = colorToIndex(color);
-    const uint64_t kingBB = kings_bb[side];
+    const uint64_t kingBB = bb[KING][side];
     if (!kingBB) [[unlikely]] return 0ULL;
     const uint8_t kingIndex = std::countr_zero(kingBB);
     const uint8_t oppSide = side ^ 1;
 
-    uint64_t checkers = (pieces::PAWN_ATTACKS[side][kingIndex] & pawns_bb[oppSide])
-                      | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide])
-                      | (pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
+    uint64_t checkers = (pieces::PAWN_ATTACKS[side][kingIndex] & bb[PAWN][oppSide])
+                      | (pieces::KNIGHT_ATTACKS[kingIndex] & bb[KNIGHT][oppSide])
+                      | (pieces::KING_ATTACKS[kingIndex] & bb[KING][oppSide]);
 
-    const uint64_t rookLike = rooks_bb[oppSide] | queens_bb[oppSide];
+    const uint64_t rookLike = bb[ROOK][oppSide] | bb[QUEEN][oppSide];
     if (rookLike) {
         checkers |= (pieces::getRookAttacks(kingIndex, occupancy) & rookLike);
     }
 
-    const uint64_t bishopLike = bishops_bb[oppSide] | queens_bb[oppSide];
+    const uint64_t bishopLike = bb[BISHOP][oppSide] | bb[QUEEN][oppSide];
     if (bishopLike) {
         checkers |= (pieces::getBishopAttacks(kingIndex, occupancy) & bishopLike);
     }
@@ -149,7 +149,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
         return false;
     
     // Check rook presence
-    if ((rooks_bb[side] & Board::BIT_MASKS[rookIdx]) == 0ULL)
+    if ((bb[ROOK][side] & Board::BIT_MASKS[rookIdx]) == 0ULL)
         return false;
     
     if (isSquareAttacked(fromIndex, oppColor)) return false;
@@ -166,41 +166,26 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
     const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~Board::BIT_MASKS[excludeSquare]) : occupancy;
-    const uint8_t side = colorToIndex(byColor);
-    return isKingAttackedCustom(targetIndex, side, occMinus,
-                                pawns_bb[side], knights_bb[side], bishops_bb[side],
-                                rooks_bb[side], queens_bb[side], kings_bb[side]);
+    return attackedBy(targetIndex, colorToIndex(byColor), occMinus);
 }
 
-// Helper: check if king at kingSq is attacked using custom bitboards
-// Used internally to avoid code duplication when simulating moves
-bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
-                                 uint64_t pawns, uint64_t knights, uint64_t bishops,
-                                 uint64_t rooks, uint64_t queens, uint64_t kings) noexcept {
-    if (pieces::PAWN_ATTACKS[bySide ^ 1][kingSq] & pawns) return true;
-    if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
-    if (pieces::KING_ATTACKS[kingSq] & kings) return true;
-    
-    const uint64_t rookLike = rooks | queens;
-    if (rookLike && (pieces::getRookAttacks(kingSq, occ) & rookLike)) return true;
+bool Board::attackedBy(uint8_t sq, uint8_t bySide, uint64_t occ, uint64_t keep) const noexcept {
+    if (pieces::PAWN_ATTACKS[bySide ^ 1][sq] & bb[PAWN][bySide] & keep) return true;
+    if (pieces::KNIGHT_ATTACKS[sq] & bb[KNIGHT][bySide] & keep) return true;
+    if (pieces::KING_ATTACKS[sq] & bb[KING][bySide] & keep) return true;
 
-    const uint64_t bishopLike = bishops | queens;
-    if (bishopLike && (pieces::getBishopAttacks(kingSq, occ) & bishopLike)) return true;
-    
-    return false;
+    const uint64_t rookLike = (bb[ROOK][bySide] | bb[QUEEN][bySide]) & keep;
+    if (rookLike && (pieces::getRookAttacks(sq, occ) & rookLike)) return true;
+
+    const uint64_t bishopLike = (bb[BISHOP][bySide] | bb[QUEEN][bySide]) & keep;
+    return bishopLike && (pieces::getBishopAttacks(sq, occ) & bishopLike);
 }
 
 __attribute__((hot))
 bool Board::inCheck(uint8_t color) const noexcept {
     const uint8_t side = colorToIndex(color);
-    const uint64_t kingBB = kings_bb[side];
-
-    if (!kingBB) [[unlikely]] return false;
-    const uint8_t kingSq = std::countr_zero(kingBB);
-    const uint8_t bySide = side ^ 1;
-    return isKingAttackedCustom(kingSq, bySide, occupancy,
-                                pawns_bb[bySide], knights_bb[bySide], bishops_bb[bySide],
-                                rooks_bb[bySide], queens_bb[bySide], kings_bb[bySide]);
+    if (!bb[KING][side]) [[unlikely]] return false;
+    return attackedBy(std::countr_zero(bb[KING][side]), side ^ 1, occupancy);
 }
 
 
@@ -249,9 +234,9 @@ int Board::countRepetitions() const noexcept {
 }
 
 bool Board::hasInsufficientMaterialDraw() const noexcept {
-    if (pawns_bb[0] || pawns_bb[1] || rooks_bb[0] || rooks_bb[1] || queens_bb[0] || queens_bb[1]) return false;
-    const uint64_t wMinors = knights_bb[0] | bishops_bb[0];
-    const uint64_t bMinors = knights_bb[1] | bishops_bb[1];
+    if (bb[PAWN][0] | bb[PAWN][1] | bb[ROOK][0] | bb[ROOK][1] | bb[QUEEN][0] | bb[QUEEN][1]) return false;
+    const uint64_t wMinors = bb[KNIGHT][0] | bb[BISHOP][0];
+    const uint64_t bMinors = bb[KNIGHT][1] | bb[BISHOP][1];
     return (std::popcount(wMinors) <= 1 && bMinors == 0ULL)
         || (std::popcount(bMinors) <= 1 && wMinors == 0ULL);
 }

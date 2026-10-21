@@ -29,27 +29,18 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Mo
     const uint64_t fromBit = chess::Board::BIT_MASKS[m.from];
     const uint64_t toBit   = chess::Board::BIT_MASKS[m.to];
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
+    // Our pieces of a type after the move.
+    const auto mine = [&](int type) {
+        const uint64_t bits = b.bb[type][usSide];
+        return type == fromPieceType ? (bits & ~fromBit) | toBit : bits;
+    };
 
-    uint64_t pawns   = b.pawns_bb[usSide];
-    uint64_t knights = b.knights_bb[usSide];
-    uint64_t bishops = b.bishops_bb[usSide];
-    uint64_t rooks   = b.rooks_bb[usSide];
-    uint64_t queens  = b.queens_bb[usSide];
+    if (pieces::PAWN_ATTACKS[usSide ^ 1][oppKingSq] & mine(chess::Board::PAWN)) return true;
+    if (pieces::KNIGHT_ATTACKS[oppKingSq] & mine(chess::Board::KNIGHT))         return true;
 
-    switch (fromPieceType) {
-        case chess::Board::PAWN:   pawns   = (pawns   & ~fromBit) | toBit; break;
-        case chess::Board::KNIGHT: knights = (knights & ~fromBit) | toBit; break;
-        case chess::Board::BISHOP: bishops = (bishops & ~fromBit) | toBit; break;
-        case chess::Board::ROOK:   rooks   = (rooks   & ~fromBit) | toBit; break;
-        case chess::Board::QUEEN:  queens  = (queens  & ~fromBit) | toBit; break;
-        default: break;
-    }
-
-    if (pieces::PAWN_ATTACKS[usSide ^ 1][oppKingSq] & pawns)    return true;
-    if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights)             return true;
-
-    const uint64_t rookQueens   = rooks   | queens;
-    const uint64_t bishopQueens = bishops | queens;
+    const uint64_t queens       = mine(chess::Board::QUEEN);
+    const uint64_t rookQueens   = mine(chess::Board::ROOK)   | queens;
+    const uint64_t bishopQueens = mine(chess::Board::BISHOP) | queens;
     if (rookQueens   && (pieces::getRookAttacks(oppKingSq, occAfter)   & rookQueens))   return true;
     return bishopQueens && (pieces::getBishopAttacks(oppKingSq, occAfter) & bishopQueens);
 }
@@ -94,26 +85,26 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 
 Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
         const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
-    uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKS[sideLocal ^ 1][sq];
+    uint64_t mask = b.bb[chess::Board::PAWN][sideLocal] & occLocal & pieces::PAWN_ATTACKS[sideLocal ^ 1][sq];
     if (mask) return {std::countr_zero(mask), chess::Board::PAWN};
 
-    mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
+    mask = b.bb[chess::Board::KNIGHT][sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
     if (mask) return {std::countr_zero(mask), chess::Board::KNIGHT};
 
     // Cache sliding attack rays - shared by bishop/queen and rook/queen lookups.
     const uint64_t bishopRays = pieces::getBishopAttacks(sq, occLocal);
     const uint64_t rookRays   = pieces::getRookAttacks(sq, occLocal);
 
-    mask = b.bishops_bb[sideLocal] & occLocal & bishopRays;
+    mask = b.bb[chess::Board::BISHOP][sideLocal] & occLocal & bishopRays;
     if (mask) return {std::countr_zero(mask), chess::Board::BISHOP};
 
-    mask = b.rooks_bb[sideLocal] & occLocal & rookRays;
+    mask = b.bb[chess::Board::ROOK][sideLocal] & occLocal & rookRays;
     if (mask) return {std::countr_zero(mask), chess::Board::ROOK};
 
-    mask = b.queens_bb[sideLocal] & occLocal & (bishopRays | rookRays);
+    mask = b.bb[chess::Board::QUEEN][sideLocal] & occLocal & (bishopRays | rookRays);
     if (mask) return {std::countr_zero(mask), chess::Board::QUEEN};
 
-    mask = b.kings_bb[sideLocal] & occLocal & pieces::KING_ATTACKS[sq];
+    mask = b.bb[chess::Board::KING][sideLocal] & occLocal & pieces::KING_ATTACKS[sq];
     return mask ? LeastValuableAttacker{std::countr_zero(mask), chess::Board::KING}
                 : LeastValuableAttacker{64, 0};
 }

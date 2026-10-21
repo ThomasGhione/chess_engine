@@ -34,13 +34,9 @@ thread_local int32_t evalStack[MAX_PLY] = {};
 
 // A missing king (reachable only from an illegal FEN) is decisive, not an eval.
 int32_t evaluate(const chess::Board& b) noexcept {
-    if (b.kings_bb[0] == 0 || b.kings_bb[1] == 0) [[unlikely]]
-        return ((b.kings_bb[0] == 0) == (b.getActiveColor() == chess::Board::WHITE)) ? -MATE_VALUE : MATE_VALUE;
+    if (b.bb[chess::Board::KING][0] == 0 || b.bb[chess::Board::KING][1] == 0) [[unlikely]]
+        return ((b.bb[chess::Board::KING][0] == 0) == (b.getActiveColor() == chess::Board::WHITE)) ? -MATE_VALUE : MATE_VALUE;
     return NNUE::evaluate(b);
-}
-
-bool hasCastlingRights(const chess::Board& b) noexcept {
-    return b.getCastle(0) || b.getCastle(1) || b.getCastle(2) || b.getCastle(3);
 }
 
 // Raw static eval for a position not carried by its TT entry.
@@ -200,9 +196,9 @@ inline bool Searcher::checkEarlyTerminalConditions(
     // Terminal king-capture states are possible in this codebase's move model.
     // Negamax / side-to-move relative: losing our own king is a mated score
     // (-MATE_VALUE + ply); capturing the opponent's king is a winning score.
-    if (b.kings_bb[0] == 0ULL || b.kings_bb[1] == 0ULL) {
+    if (b.bb[chess::Board::KING][0] == 0ULL || b.bb[chess::Board::KING][1] == 0ULL) {
         const bool whiteToMove = (b.getActiveColor() == chess::Board::WHITE);
-        const bool ourKingGone = (b.kings_bb[0] == 0ULL) ? whiteToMove : !whiteToMove;
+        const bool ourKingGone = (b.bb[chess::Board::KING][0] == 0ULL) ? whiteToMove : !whiteToMove;
         outScore = ourKingGone ? (-MATE_VALUE + ply) : (MATE_VALUE - ply);
         return true;
     }
@@ -624,7 +620,7 @@ Searcher::SearchMoveResult Searcher::searchMoves(
     const int lmpThreshold = canLMP ? LMP_THRESHOLDS[ctx.improving][ctx.depth] : 999;
 
     const int usSide = chess::Board::colorToIndex(ctx.activeColor);
-    const int oppKingSq = std::countr_zero(b.kings_bb[usSide ^ 1]);
+    const int oppKingSq = std::countr_zero(b.bb[chess::Board::KING][usSide ^ 1]);
     const chess::Square enPassant = b.getEnPassant();
     const int promotionRank = chess::Board::promotionRank(ctx.activeColor == chess::Board::WHITE);
 
@@ -908,10 +904,8 @@ int32_t Searcher::searchPosition(
     // reduced move set, which the tables do not give.
     if (!hasExcludedMove
         && runtime.syzygyProber != nullptr
-        && runtime.syzygyProber->isLoaded()
         && depth >= runtime.syzygyProber->probeDepth
-        && !hasCastlingRights(b)
-        && runtime.syzygyProber->inTBRange(b)) {
+        && b.castlingRights() == 0) {
         if (const auto wdl = runtime.syzygyProber->probeWDL(b)) {
             const int32_t tbScore = syzygy::SyzygyProber::wdlToScore(*wdl, ply);
             const uint8_t flag = (tbScore == 0) ? TT::Entry::EXACT
@@ -1023,8 +1017,8 @@ int32_t Searcher::searchPosition(
     const int32_t nmpEvalGate = node.staticEval + 100;
     const bool canNullMove = allowNullMove && interiorNonPv
         && depth >= 4 && isBetaCutoff(nmpEvalGate, beta)
-        && (b.knights_bb[side] | b.bishops_bb[side] |
-            b.rooks_bb[side]   | b.queens_bb[side]) != 0ULL;
+        && (b.bb[chess::Board::KNIGHT][side] | b.bb[chess::Board::BISHOP][side] |
+            b.bb[chess::Board::ROOK][side]   | b.bb[chess::Board::QUEEN][side]) != 0ULL;
 
     if (canNullMove
         && tryNullMovePruning(b, node, runtime, depth, alpha, beta, ply,
@@ -1445,9 +1439,9 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     const int firstDepth = std::max(1, startDepth);
     const int maxDepth = std::max(firstDepth, targetDepth);
 
-    if (rootBoard.kings_bb[0] == 0 || rootBoard.kings_bb[1] == 0) {
+    if (rootBoard.bb[chess::Board::KING][0] == 0 || rootBoard.bb[chess::Board::KING][1] == 0) {
         const bool rootWhite = (rootBoard.getActiveColor() == chess::Board::WHITE);
-        const bool ourKingGone = (rootBoard.kings_bb[0] == 0) ? rootWhite : !rootWhite;
+        const bool ourKingGone = (rootBoard.bb[chess::Board::KING][0] == 0) ? rootWhite : !rootWhite;
         result.terminalRoot = true;
         result.completedAnyDepth = true;
         result.bestScore = ourKingGone ? -MATE_VALUE : MATE_VALUE; // STM-relative
@@ -1490,9 +1484,8 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     // with the main thread's output and corrupt the UCI stream (seen live:
     // a mangled `bestmove` hung lichess-bot in a tablebase-won endgame).
     if (!runtime.isHelper
-        && runtime.syzygyProber != nullptr && runtime.syzygyProber->isLoaded()
-        && !hasCastlingRights(rootBoard)
-        && runtime.syzygyProber->inTBRange(rootBoard)) {
+        && runtime.syzygyProber != nullptr
+        && rootBoard.castlingRights() == 0) {
         const auto tbMoves = runtime.syzygyProber->probeRoot(rootBoard);
         if (!tbMoves.empty()) {
             int32_t bestRank = tbMoves[0].tbRank;

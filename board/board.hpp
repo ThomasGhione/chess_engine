@@ -191,7 +191,7 @@ public:
 
     // --- State accessors ---
     constexpr uint8_t  getActiveColor() const noexcept   { return activeColor; }
-    constexpr bool     getCastle(uint8_t index) const noexcept { return (castle & (1u << index)); }
+    constexpr uint8_t  castlingRights() const noexcept   { return castle; }
     constexpr uint16_t getFullMoveClock() const noexcept { return fullMoveClock; }
     constexpr uint8_t  getHalfMoveClock() const noexcept { return halfMoveClock; }
     Square             getEnPassant() const noexcept     { return enPassant; }
@@ -212,12 +212,11 @@ public:
     std::string boardToFen() const;
 
     // --- Public bitboards (direct access for eval/search hot paths) ---
-    std::array<uint64_t, 2> pawns_bb   = {0ULL, 0ULL};
-    std::array<uint64_t, 2> knights_bb = {0ULL, 0ULL};
-    std::array<uint64_t, 2> bishops_bb = {0ULL, 0ULL};
-    std::array<uint64_t, 2> rooks_bb   = {0ULL, 0ULL};
-    std::array<uint64_t, 2> queens_bb  = {0ULL, 0ULL};
-    std::array<uint64_t, 2> kings_bb   = {0ULL, 0ULL};
+    // bb[type][side]: type PAWN..KING (EMPTY unused), side 0 = white.
+    std::array<std::array<uint64_t, 2>, 7> bb{};
+    uint64_t sideOcc(int side) const noexcept {
+        return bb[PAWN][side] | bb[KNIGHT][side] | bb[BISHOP][side] | bb[ROOK][side] | bb[QUEEN][side] | bb[KING][side];
+    }
 
     // NNUE dual-perspective accumulator; kept in sync with the bitboards by
     // the same add/remove piece functions whenever a network is loaded.
@@ -268,15 +267,9 @@ private:
     template<uint8_t PieceType>
     [[nodiscard]] inline bool pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit,
                                                     uint8_t movingColor, uint8_t destPiece) const noexcept;
-    static bool isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
-                                      uint64_t pawns, uint64_t knights, uint64_t bishops,
-                                      uint64_t rooks, uint64_t queens, uint64_t kings) noexcept;
-
-    // --- Private helpers: bitboards & incremental counters ---
-    template<uint8_t PieceType, bool Add>
-    inline void updatePieceTypeBB(uint8_t color, uint64_t bit) noexcept;
-    template<bool Add>
-    inline void dispatchPieceBBUpdate(uint8_t pieceType, uint8_t color, uint64_t bit) noexcept;
+    // Whether bySide attacks sq with `occ` as blockers, counting only the
+    // attackers in `keep` (a capture takes one off the board).
+    bool attackedBy(uint8_t sq, uint8_t bySide, uint64_t occ, uint64_t keep = ~0ULL) const noexcept;
 
     // --- Private helpers: move classification ---
     [[nodiscard]] static constexpr bool     isCaptureKind(MoveKind kind) noexcept;

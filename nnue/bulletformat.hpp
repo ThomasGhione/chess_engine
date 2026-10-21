@@ -59,16 +59,16 @@ struct PendingRecord {
 
     // from_raw contract: bitboards in order White, Black, P, N, B, R, Q, K.
     uint64_t bbs[8];
-    bbs[0] = toLerf(b.pawns_bb[0] | b.knights_bb[0] | b.bishops_bb[0]
-                  | b.rooks_bb[0] | b.queens_bb[0]  | b.kings_bb[0]);
-    bbs[1] = toLerf(b.pawns_bb[1] | b.knights_bb[1] | b.bishops_bb[1]
-                  | b.rooks_bb[1] | b.queens_bb[1]  | b.kings_bb[1]);
-    bbs[2] = toLerf(b.pawns_bb[0]   | b.pawns_bb[1]);
-    bbs[3] = toLerf(b.knights_bb[0] | b.knights_bb[1]);
-    bbs[4] = toLerf(b.bishops_bb[0] | b.bishops_bb[1]);
-    bbs[5] = toLerf(b.rooks_bb[0]   | b.rooks_bb[1]);
-    bbs[6] = toLerf(b.queens_bb[0]  | b.queens_bb[1]);
-    bbs[7] = toLerf(b.kings_bb[0]   | b.kings_bb[1]);
+    bbs[0] = toLerf(b.bb[chess::Board::PAWN][0] | b.bb[chess::Board::KNIGHT][0] | b.bb[chess::Board::BISHOP][0]
+                  | b.bb[chess::Board::ROOK][0] | b.bb[chess::Board::QUEEN][0]  | b.bb[chess::Board::KING][0]);
+    bbs[1] = toLerf(b.bb[chess::Board::PAWN][1] | b.bb[chess::Board::KNIGHT][1] | b.bb[chess::Board::BISHOP][1]
+                  | b.bb[chess::Board::ROOK][1] | b.bb[chess::Board::QUEEN][1]  | b.bb[chess::Board::KING][1]);
+    bbs[2] = toLerf(b.bb[chess::Board::PAWN][0]   | b.bb[chess::Board::PAWN][1]);
+    bbs[3] = toLerf(b.bb[chess::Board::KNIGHT][0] | b.bb[chess::Board::KNIGHT][1]);
+    bbs[4] = toLerf(b.bb[chess::Board::BISHOP][0] | b.bb[chess::Board::BISHOP][1]);
+    bbs[5] = toLerf(b.bb[chess::Board::ROOK][0]   | b.bb[chess::Board::ROOK][1]);
+    bbs[6] = toLerf(b.bb[chess::Board::QUEEN][0]  | b.bb[chess::Board::QUEEN][1]);
+    bbs[7] = toLerf(b.bb[chess::Board::KING][0]   | b.bb[chess::Board::KING][1]);
 
     int16_t score = whiteScoreCp;
     const bool blackToMove = (b.getActiveColor() == Board::BLACK);

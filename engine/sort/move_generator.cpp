@@ -144,16 +144,16 @@ inline uint64_t enemyAttacks(const chess::Board& b, uint64_t occ) noexcept {
     constexpr uint64_t FILE_A = 0x0101010101010101ULL;
     constexpr uint64_t FILE_H = FILE_A << 7;
     // a8 = 0: a white pawn on sq attacks sq - 9 and sq - 7, a black one sq + 7 and sq + 9.
-    const uint64_t p = b.pawns_bb[them];
+    const uint64_t p = b.bb[chess::Board::PAWN][them];
     uint64_t att = IsWhite ? (((p << 7) & ~FILE_H) | ((p << 9) & ~FILE_A))
                            : (((p >> 9) & ~FILE_H) | ((p >> 7) & ~FILE_A));
-    uint64_t knights = b.knights_bb[them];
+    uint64_t knights = b.bb[chess::Board::KNIGHT][them];
     while (knights) att |= pieces::KNIGHT_ATTACKS[pieces::popLSB(knights)];
-    uint64_t diag = b.bishops_bb[them] | b.queens_bb[them];
+    uint64_t diag = b.bb[chess::Board::BISHOP][them] | b.bb[chess::Board::QUEEN][them];
     while (diag) att |= pieces::getBishopAttacks(static_cast<uint8_t>(pieces::popLSB(diag)), occ);
-    uint64_t line = b.rooks_bb[them] | b.queens_bb[them];
+    uint64_t line = b.bb[chess::Board::ROOK][them] | b.bb[chess::Board::QUEEN][them];
     while (line) att |= pieces::getRookAttacks(static_cast<uint8_t>(pieces::popLSB(line)), occ);
-    if (b.kings_bb[them]) att |= pieces::KING_ATTACKS[std::countr_zero(b.kings_bb[them])];
+    if (b.bb[chess::Board::KING][them]) att |= pieces::KING_ATTACKS[std::countr_zero(b.bb[chess::Board::KING][them])];
     return att;
 }
 
@@ -171,8 +171,8 @@ struct SideView {
 
     explicit SideView(const chess::Board& b) noexcept
         : occ(b.getPiecesBitMap()),
-          pawns(b.pawns_bb[side]), knights(b.knights_bb[side]), bishops(b.bishops_bb[side]),
-          rooks(b.rooks_bb[side]), queens(b.queens_bb[side]), kings(b.kings_bb[side]),
+          pawns(b.bb[chess::Board::PAWN][side]), knights(b.bb[chess::Board::KNIGHT][side]), bishops(b.bb[chess::Board::BISHOP][side]),
+          rooks(b.bb[chess::Board::ROOK][side]), queens(b.bb[chess::Board::QUEEN][side]), kings(b.bb[chess::Board::KING][side]),
           ownOcc(pawns | knights | bishops | rooks | queens | kings),
           oppOcc(occ & ~ownOcc),
           enPassant(b.getEnPassant()),
@@ -403,10 +403,10 @@ uint64_t MoveGenerator::computePinRays(const chess::Board& b, chess::Square king
     constexpr int them = us ^ 1;
     const int kingSq = kingPos;
 
-    const uint64_t ownOcc = b.pawns_bb[us] | b.knights_bb[us] | b.bishops_bb[us] | b.rooks_bb[us] | b.queens_bb[us];
+    const uint64_t ownOcc = b.bb[chess::Board::PAWN][us] | b.bb[chess::Board::KNIGHT][us] | b.bb[chess::Board::BISHOP][us] | b.bb[chess::Board::ROOK][us] | b.bb[chess::Board::QUEEN][us];
 
-    const uint64_t rookLikeEnemy = b.rooks_bb[them] | b.queens_bb[them];
-    const uint64_t bishopLikeEnemy = b.bishops_bb[them] | b.queens_bb[them];
+    const uint64_t rookLikeEnemy = b.bb[chess::Board::ROOK][them] | b.bb[chess::Board::QUEEN][them];
+    const uint64_t bishopLikeEnemy = b.bb[chess::Board::BISHOP][them] | b.bb[chess::Board::QUEEN][them];
     if ((rookLikeEnemy | bishopLikeEnemy) == 0ULL) {
         return 0ULL;
     }

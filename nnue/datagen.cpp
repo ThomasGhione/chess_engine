@@ -297,8 +297,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
         // Skipped for seeded games: adjudicating here would end them before a
         // single <=5-man position had been recorded, which is the whole reason
         // bucket 0 is empty. Their result comes from the win/draw streaks below.
-        if (!endgameSeed && g_syzygy.isLoaded() && g_syzygy.inTBRange(b)
-            && !(b.getCastle(0) || b.getCastle(1) || b.getCastle(2) || b.getCastle(3))) {
+        if (!endgameSeed && b.castlingRights() == 0) {
             if (const auto wdl = g_syzygy.probeWDL(b)) {
                 const bool stmWin  = (*wdl == syzygy::WDL::Win);
                 const bool stmLoss = (*wdl == syzygy::WDL::Loss);

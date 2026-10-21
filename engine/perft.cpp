@@ -62,7 +62,7 @@ std::string joinArgs(int argc, char* argv[], int first) {
 // counting a position the user never asked for. One king per side is the cheap
 // invariant that catches it.
 bool boardLooksValid(const chess::Board& b) noexcept {
-    return std::popcount(b.kings_bb[0]) == 1 && std::popcount(b.kings_bb[1]) == 1;
+    return std::popcount(b.bb[chess::Board::KING][0]) == 1 && std::popcount(b.bb[chess::Board::KING][1]) == 1;
 }
 
 void printUsage() {
