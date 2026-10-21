@@ -69,13 +69,7 @@ public:
     static constexpr double  STABILITY_MIN      = 0.50;
     static constexpr double  STABILITY_MAX      = 2.00;
 
-    TimeManager() noexcept = default;
     ~TimeManager() noexcept;
-
-    TimeManager(const TimeManager&)            = delete;
-    TimeManager& operator=(const TimeManager&) = delete;
-    TimeManager(TimeManager&&)                 = delete;
-    TimeManager& operator=(TimeManager&&)      = delete;
 
     // Compute the budget. `sideIsWhite` selects which clock/increment to use,
     // `movesPlayed` is the number of full moves already played (for the
@@ -134,7 +128,6 @@ private:
     std::mutex              mtx_;
     std::condition_variable cv_;
     bool                    cancel_  = false;
-    bool                    running_ = false;
     bool                    armed_   = false; // a search is live (ponderhit may arm)
     bool                    ponderhitSeen_ = false;
     Clock::rep              ponderhitTicks_ = 0;

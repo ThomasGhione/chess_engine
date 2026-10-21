@@ -47,35 +47,26 @@ static_assert(MATE_VALUE + MAX_PLY <= std::numeric_limits<int16_t>::max(),
 // ===================================================
 // PRUNING / EXTENSION PARAMETERS
 // ===================================================
-// The margins below are plain globals (not constexpr) so the SMAC3 campaign
-// (#9) can drive them as UCI spins, same pattern as eval_constants.hpp. The
-// UCI layer stops any search before writing them. Derived tables
-// (FUTILITY_MARGINS, LMP_THRESHOLDS, the LMR table in searcher.cpp) are
-// rebuilt by rebuildSearchDerivedTables(); the defaults reproduce the frozen
-// June values exactly.
+// Plain globals, not constexpr, so the tuner can drive them as UCI spins; the
+// UCI layer stops any search before writing one. The derived tables
+// (FUTILITY_MARGINS, LMP_THRESHOLDS, the LMR table in searcher.cpp) are built
+// at startup and rebuilt by rebuildSearchDerivedTables() after a write.
 // Null-move reduction eval scaling: deeper reduction the further eval beats beta.
 inline int32_t NMP_EVAL_DIV = 265;
 inline int32_t NMP_EVAL_MAX = 4;
 // Reverse futility pruning margin per remaining ply.
 inline int32_t RFP_MARGIN_PER_DEPTH = 70;
-// Futility margin generator: FUTILITY_MARGINS[depth] = MID_STEP*d, consumed
-// by the move loop (gated to depth 1..6). The HCE-era endgame row (phase split
-// on nonPawnMajors) was removed as a handcrafted-evaluator residue.
-// NOTE: rebuildSearchDerivedTables() only runs on a UCI option change, so this
-// row is what a plain build actually uses - keep it == MID_STEP * d by hand.
+// FUTILITY_MARGINS[depth] = FUTILITY_MID_STEP * depth, depth 1..6.
 inline int32_t FUTILITY_MID_STEP = 176;
-inline int32_t FUTILITY_MARGINS[7] = {0, 176, 352, 528, 704, 880, 1056};
-// LMP_THRESHOLDS[improving][depth]: higher = more permissive.
-// Gated to depth 1..4. Derived: base table scaled by LMP_SCALE_PCT[improving].
+inline int32_t FUTILITY_MARGINS[7] = {};
+// LMP_THRESHOLDS[improving][depth], depth 1..4: the base table scaled by
+// LMP_SCALE_PCT[improving]. Higher = more permissive.
 inline constexpr int LMP_BASE_THRESHOLDS[2][5] = {
     {0, 12, 20, 30, 42},
     {0, 16, 26, 38, 52},
 };
 inline int32_t LMP_SCALE_PCT[2] = {100, 100};
-inline int LMP_THRESHOLDS[2][5] = {
-    {0, 12, 20, 30, 42},
-    {0, 16, 26, 38, 52},
-};
+inline int LMP_THRESHOLDS[2][5] = {};
 // History-based quiet pruning: skip quiet moves with very negative history.
 // Indexed by depth (0..3); depth 0 unused.
 inline int32_t HISTORY_PRUNE_THRESHOLD[4] = {0, -4096, -6144, -8192};
@@ -90,9 +81,8 @@ inline int32_t SE_BETA_MARGIN   = 3;  // seBeta = ttScore - margin*depth
 inline int32_t PROBCUT_MARGIN    = 149;
 inline constexpr int32_t PROBCUT_MIN_DEPTH = 3;
 
-// Rebuilds the derived tables above plus the LMR reduction table
-// (searcher.cpp) from the current generator values. Called by the UCI layer
-// after writing a generator option; never call during a live search.
+// Rebuilds the derived tables from the current generator values. Never during
+// a live search.
 void rebuildSearchDerivedTables() noexcept;
 
 // ===================================================
@@ -100,8 +90,7 @@ void rebuildSearchDerivedTables() noexcept;
 // ===================================================
 // LMR_C == LMR_C_PERCENT / 100.0 (int spin for the tuner).
 inline int32_t LMR_C_PERCENT = 300;
-inline constexpr int    LMR_MAX_DEPTH = 20;  // engine never exceeds depth 14 in practice
-inline constexpr int    LMR_MAX_MOVES = 218; // theoretical maximum legal moves (== MAX_MOVES, movelist.hpp)
+inline constexpr int LMR_MAX_DEPTH = 20; // deeper nodes use the last row
 
 // ===================================================
 // HISTORY HEURISTIC BOUNDS

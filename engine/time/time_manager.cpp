@@ -151,7 +151,6 @@ void TimeManager::start() noexcept {
         startTicks_.store(ponderhitTicks_, std::memory_order_release);
         pondering_.store(false, std::memory_order_release);
     }
-    running_  = true;
     watchdog_ = std::thread([this] { watchdogLoop(); });
 }
 
@@ -169,7 +168,6 @@ void TimeManager::ponderhit() noexcept {
     startTicks_.store(ponderhitTicks_, std::memory_order_release);
     pondering_.store(false, std::memory_order_release);
     if (hardMs_ <= 0) return;
-    running_  = true;
     watchdog_ = std::thread([this] { watchdogLoop(); });
 }
 
@@ -185,8 +183,6 @@ void TimeManager::stop() noexcept {
     }
     cv_.notify_all();
     if (watchdog.joinable()) watchdog.join();
-    const std::lock_guard<std::mutex> lock(mtx_);
-    running_ = false;
 }
 
 void TimeManager::watchdogLoop() noexcept {

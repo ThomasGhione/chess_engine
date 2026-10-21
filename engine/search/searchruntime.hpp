@@ -100,21 +100,16 @@ struct SearchRuntime {
         corrHist.clear();
     }
 
+    // Halves every history cell before a search: old knowledge fades.
     inline void softResetHistory() noexcept {
-        constexpr int HISTORY_CELLS   = 2 * 64 * 64;
-        constexpr int CONT_HIST_CELLS = 2 * CONT_HIST_PIECE_TYPES * 64 * CONT_HIST_PIECE_TYPES * 64;
-        constexpr int CAP_HIST_CELLS  = 2 * 64 * 7 * CAPTURE_HISTORY_SLOTS;
-
-        int16_t* historyFlat  = &history[0][0][0];
-        int16_t* contHistFlat = &contHist[0][0][0][0][0];
-        int16_t* capHistFlat  = &captureHistory[0][0][0][0];
-
-        #pragma omp simd
-        for (int i = 0; i < HISTORY_CELLS; ++i)   historyFlat[i]  >>= 1;
-        #pragma omp simd
-        for (int i = 0; i < CONT_HIST_CELLS; ++i) contHistFlat[i] >>= 1;
-        #pragma omp simd
-        for (int i = 0; i < CAP_HIST_CELLS; ++i)  capHistFlat[i]  >>= 1;
+        const auto halve = [](auto& table) {
+            int16_t* cells = reinterpret_cast<int16_t*>(&table);
+            #pragma omp simd
+            for (size_t i = 0; i < sizeof(table) / sizeof(int16_t); ++i) cells[i] >>= 1;
+        };
+        halve(history);
+        halve(contHist);
+        halve(captureHistory);
     }
 };
 

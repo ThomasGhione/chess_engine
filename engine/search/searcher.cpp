@@ -20,42 +20,34 @@ namespace {
 
 EvalCache evalCache;
 
-// LMR_REDUCTION_TABLE.data[depth][moveIndex], at least 1: two logs per LMR
-// candidate otherwise. Rebuilt by rebuildSearchDerivedTables().
-struct LMRTable {
-    int8_t data[LMR_MAX_DEPTH][LMR_MAX_MOVES]{};
-    void rebuild() noexcept {
-        const double lmrC = static_cast<double>(LMR_C_PERCENT) / 100.0;
-        for (int d = 0; d < LMR_MAX_DEPTH; ++d) {
-            for (int m = 0; m < LMR_MAX_MOVES; ++m) {
-                if (d == 0 || m == 0) { data[d][m] = 1; continue; }
-                const double raw = __builtin_log(static_cast<double>(d))
-                                 * __builtin_log(static_cast<double>(m))
-                                 / lmrC;
-                data[d][m] = static_cast<int8_t>(std::max(1, static_cast<int>(raw)));
-            }
-        }
-    }
-    LMRTable() noexcept { rebuild(); }
-};
-LMRTable LMR_REDUCTION_TABLE;
+// LMR_REDUCTIONS[depth][moveIndex], at least 1: two logs per LMR candidate
+// otherwise.
+int8_t LMR_REDUCTIONS[LMR_MAX_DEPTH][MAX_MOVES];
 
 } // namespace
 
 void clearEvalCache() noexcept { evalCache.clear(); }
 
 void rebuildSearchDerivedTables() noexcept {
-    LMR_REDUCTION_TABLE.rebuild();
+    const double lmrC = static_cast<double>(LMR_C_PERCENT) / 100.0;
+    for (int d = 0; d < LMR_MAX_DEPTH; ++d) {
+        for (size_t m = 0; m < MAX_MOVES; ++m) {
+            const double raw = (d == 0 || m == 0) ? 1.0 : __builtin_log(d) * __builtin_log(static_cast<double>(m)) / lmrC;
+            LMR_REDUCTIONS[d][m] = static_cast<int8_t>(std::max(1, static_cast<int>(raw)));
+        }
+    }
     for (int d = 1; d <= 6; ++d) {
         FUTILITY_MARGINS[d] = FUTILITY_MID_STEP * d;
     }
     for (int improving = 0; improving < 2; ++improving) {
         for (int d = 1; d <= 4; ++d) {
-            LMP_THRESHOLDS[improving][d] =
-                LMP_BASE_THRESHOLDS[improving][d] * LMP_SCALE_PCT[improving] / 100;
+            LMP_THRESHOLDS[improving][d] = LMP_BASE_THRESHOLDS[improving][d] * LMP_SCALE_PCT[improving] / 100;
         }
     }
 }
+
+// Built once at startup; the UCI layer rebuilds after writing a generator spin.
+[[maybe_unused]] static const bool searchTablesBuilt = (rebuildSearchDerivedTables(), true);
 
 namespace Searcher {
 
@@ -436,8 +428,7 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
         int32_t score;
         // Late captures are reduced too: ordering puts the good ones early.
         if (ctx.depth >= 3 && moveIndex >= 4 && !t.isPromotion) {
-            int reduction = LMR_REDUCTION_TABLE.data[std::min(ctx.depth, LMR_MAX_DEPTH - 1)]
-                                                    [std::min(moveIndex, LMR_MAX_MOVES - 1)];
+            int reduction = LMR_REDUCTIONS[std::min(ctx.depth, LMR_MAX_DEPTH - 1)][moveIndex];
             if (ctx.isPVNode) reduction = std::max(1, reduction - 1);
             if (ctx.iirActive) reduction = std::min(reduction + 1, childDepth - 1);
             // More when the eval is falling, and at an expected cut node.
