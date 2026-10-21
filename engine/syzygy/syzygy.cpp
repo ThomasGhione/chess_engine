@@ -13,7 +13,7 @@ namespace syzygy {
 // TB win/loss scores sit just inside MATE_BOUND so they're treated as
 // decisive but ranked below actual checkmates. Blessed/cursed results
 // (50-move rule) are scored as 0 (draw).
-static constexpr int32_t TB_WIN_SCORE  = engine::MATE_BOUND - 500;
+static constexpr int32_t TB_WIN_SCORE  = engine::TB_WIN_SCORE;
 static constexpr int32_t TB_LOSS_SCORE = -TB_WIN_SCORE;
 
 bool SyzygyProber::load(const std::string& path) {
