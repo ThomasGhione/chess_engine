@@ -231,23 +231,13 @@ SyzygyProbeDepth  minimum depth to probe at internal nodes (default 1)
 not tracked in git) into `engine/syzygy/files`. The same files power datagen
 adjudication.
 
-## Transposition Table and Huge Pages
+## Transposition Table
 
 The transposition table stores 4 entries per 64-byte bucket (one cache line).
-Size it with the UCI `Hash` option (1–4096 MB, default 64). On Linux the
-allocation tries explicit huge pages first, then transparent huge pages, then
-normal heap.
-
-Control huge-page behavior with `CHESS_TT_HUGEPAGE`:
-
-```sh
-CHESS_TT_HUGEPAGE=auto ./chess   # default
-CHESS_TT_HUGEPAGE=on   ./chess   # force/try huge pages
-CHESS_TT_HUGEPAGE=off  ./chess   # disable huge pages
-```
-
-Enabled values: `on`, `1`, `true`, `force`. Disabled values: `off`, `0`,
-`false`.
+Size it with the UCI `Hash` option (1–4096 MB, default 64). On Linux the table
+is aligned to 2 MiB and advised for transparent huge pages, which the kernel
+grants when `/sys/kernel/mm/transparent_hugepage/enabled` is `always` or
+`madvise`.
 
 ## UCI Options
 

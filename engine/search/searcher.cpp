@@ -18,11 +18,7 @@ namespace engine {
 
 namespace {
 
-EvalCache& sharedEvalCache() noexcept {
-    static EvalCache cache;
-    [[maybe_unused]] static const bool allocated = cache.resize(EvalCache::DEFAULT_SLOTS);
-    return cache;
-}
+EvalCache evalCache;
 
 // LMR_REDUCTION_TABLE.data[depth][moveIndex], at least 1: two logs per LMR
 // candidate otherwise. Rebuilt by rebuildSearchDerivedTables().
@@ -46,7 +42,7 @@ LMRTable LMR_REDUCTION_TABLE;
 
 } // namespace
 
-void clearEvalCache() noexcept { sharedEvalCache().clear(); }
+void clearEvalCache() noexcept { evalCache.clear(); }
 
 void rebuildSearchDerivedTables() noexcept {
     LMR_REDUCTION_TABLE.rebuild();
@@ -83,10 +79,9 @@ int32_t evaluate(const Board& b) noexcept {
 // Raw static eval for a position not carried by its TT entry.
 int32_t cachedEval(uint64_t hashKey, Board& b) noexcept {
     int32_t cached = 0;
-    EvalCache& cache = sharedEvalCache();
-    if (cache.probe(hashKey, cached)) return cached;
+    if (evalCache.probe(hashKey, cached)) return cached;
     const int32_t value = evaluate(b);
-    cache.store(hashKey, value);
+    evalCache.store(hashKey, value);
     return value;
 }
 

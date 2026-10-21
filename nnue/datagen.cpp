@@ -71,8 +71,7 @@ constexpr int      DECISIVE_TB_ADJ_MAX_HMC  = 60;
 // Seeded games therefore record from ply 0, keep out-of-range scores by
 // clamping instead of discarding, and skip TB adjudication so the position
 // gets observed before the tables end the game.
-// Overridable via CHESS_DATAGEN_EG_EVERY (same convention as
-// CHESS_TT_HUGEPAGE). The default mixes ~12% seeded games into a normal run;
+// Overridable via CHESS_DATAGEN_EG_EVERY. The default mixes ~12% seeded games into a normal run;
 // setting it to 1 seeds every game, which is how a short dedicated batch is
 // produced. Mixed runs are slow at filling bucket 0 - the seven ordinary games
 // around each seeded one contribute ~30 records each and dilute it to ~1.4% -
