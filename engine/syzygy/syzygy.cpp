@@ -8,6 +8,26 @@ extern "C" {
 
 #include "../search/search_constants.hpp"
 
+// Pyrrhic's attacks (tbconfig.h) from the engine's tables. Its squares run from
+// a1 and ours from a8: square s is s ^ 56, and a bitboard is byteswapped.
+extern "C" {
+uint64_t hydray_tb_pawn_attacks(int sq, int white) {
+    return std::byteswap(pieces::PAWN_ATTACKS[white ? 0 : 1][sq ^ 56]);
+}
+uint64_t hydray_tb_knight_attacks(int sq) {
+    return std::byteswap(pieces::KNIGHT_ATTACKS[sq ^ 56]);
+}
+uint64_t hydray_tb_bishop_attacks(int sq, uint64_t occ) {
+    return std::byteswap(pieces::getBishopAttacks(static_cast<uint8_t>(sq ^ 56), std::byteswap(occ)));
+}
+uint64_t hydray_tb_rook_attacks(int sq, uint64_t occ) {
+    return std::byteswap(pieces::getRookAttacks(static_cast<uint8_t>(sq ^ 56), std::byteswap(occ)));
+}
+uint64_t hydray_tb_king_attacks(int sq) {
+    return std::byteswap(pieces::KING_ATTACKS[sq ^ 56]);
+}
+}
+
 namespace syzygy {
 
 namespace {
