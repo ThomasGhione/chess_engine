@@ -1471,8 +1471,6 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
         return result;
     }
 
-    result.hasLegalMoves = true;
-
     // TB root probe: probeRoot returns moves with rank derived from actual
     // DTZ - higher rank is faster win / slower loss / preserved draw. The
     // optimal play in any TB-known endgame is just to follow that ranking,
@@ -1675,15 +1673,12 @@ Searcher::IterativeSearchResult Searcher::runIterativeDeepening(
     // move. Depth 1 costs microseconds: finish it with the stop requests
     // masked so the move played has at least been searched.
     if (!result.completedAnyDepth && !runtime.isHelper) {
-        auto* const stopRequest   = runtime.stopSearchRequested;
-        auto* const ponderRequest = runtime.ponderingStopRequested;
-        runtime.stopSearchRequested    = nullptr;
-        runtime.ponderingStopRequested = nullptr;
+        auto* const stopRequest = runtime.stopSearchRequested;
+        runtime.stopSearchRequested = nullptr;
         runtime.clearInterrupted();
         runtime.depth = 1;
         const chess::Move depthOneMove = getBestMove(rootBoard, moves, runtime);
-        runtime.stopSearchRequested    = stopRequest;
-        runtime.ponderingStopRequested = ponderRequest;
+        runtime.stopSearchRequested = stopRequest;
         if (!runtime.isInterrupted()) {
             result.completedAnyDepth = true;
             result.completedDepth    = 1;

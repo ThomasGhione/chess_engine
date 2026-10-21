@@ -156,8 +156,6 @@ public:
 
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return chessboard[index]; }
-    // row 0 = rank 1, col 0 = file a.
-    __attribute__((always_inline))      constexpr uint8_t get(uint8_t row, uint8_t col) const noexcept { return chessboard[(7 - row) * 8 + col]; }
     __attribute__((always_inline))      constexpr uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 

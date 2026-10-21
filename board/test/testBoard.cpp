@@ -47,7 +47,7 @@ const auto boardSuite = [] {
     chess::Board b = chess::Board();
   
     
-    expect(b.get(0,0) == (wrook) );
+    expect(b.get(chess::parseSquare("a1")) == (wrook) );
   };
 
   "fen_to_board-1"_test = []{

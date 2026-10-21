@@ -1,7 +1,7 @@
 # HydraY Chess Engine
 
-HydraY is a C++23 chess engine with NNUE evaluation. It has a terminal
-interface and full UCI support for GUIs, bots, and automated testing.
+HydraY is a C++23 UCI chess engine with NNUE evaluation, for GUIs, bots, and
+automated testing.
 
 It is built around bitboards with magic sliding-piece attacks, an iterative
 deepening alpha-beta/PVS search with Lazy SMP parallelism, a cache-friendly
@@ -30,8 +30,7 @@ a MinGW target exists for Windows builds.
 
 ```sh
 make prod        # build the optimized engine -> ./chess
-./chess          # interactive terminal menu
-./chess uci      # UCI mode
+./chess          # UCI mode (./chess uci, -uci and --uci also work)
 ```
 
 Example UCI session:
@@ -44,22 +43,7 @@ go depth 10
 quit
 ```
 
-The engine also switches to UCI mode automatically when stdin is piped, which
-is what GUIs and bot runners do.
-
 ## Run Modes
-
-```sh
-./chess              # interactive menu
-./chess uci          # UCI mode (-uci and --uci also work)
-./chess -pvp         # human vs human
-./chess -pvb w       # human (White) vs engine
-./chess -pvb b       # human (Black) vs engine
-./chess -bvb         # engine vs engine
-```
-
-In terminal game mode, enter moves in coordinate notation without a space,
-e.g. `e2e4` (promotions: `e7e8q`).
 
 NNUE-specific modes (see the NNUE section below):
 
@@ -374,7 +358,6 @@ engine/syzygy/ Syzygy tablebase probing (fathom-based)
 nnue/          NNUE net, accumulator, datagen, selftest, trainer
 tt/            Zobrist hashing and transposition table
 uci/           UCI protocol interface
-driver/        terminal UI and game modes
 tests/         functional, performance, and benchmark programs
 tuning/        self-play tuning, SPRT, and gauntlet scripts
 script/        benchmark and analysis helpers

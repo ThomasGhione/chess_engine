@@ -64,18 +64,14 @@ struct SearchRuntime {
     // --- External coordination ---
     TT*       transpositionTable     = nullptr;
     std::atomic<bool>*        stopSearchRequested    = nullptr;
-    std::atomic<bool>*        ponderingStopRequested = nullptr;
     std::atomic<bool>*        searchInterrupted      = nullptr;
     // Null when running fixed-depth / ponder / perft-style searches.
     time::TimeManager*        timeManager            = nullptr;
     syzygy::SyzygyProber*     syzygyProber           = nullptr;
 
     [[nodiscard]] inline bool shouldAbort() const noexcept {
-        const bool stopRequested = stopSearchRequested != nullptr
+        return stopSearchRequested != nullptr
             && stopSearchRequested->load(std::memory_order_acquire);
-        const bool ponderStopRequested = ponderingStopRequested != nullptr
-            && ponderingStopRequested->load(std::memory_order_acquire);
-        return stopRequested || ponderStopRequested;
     }
 
     inline void markInterrupted() noexcept {

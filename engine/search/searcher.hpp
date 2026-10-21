@@ -43,7 +43,6 @@ public:
     };
 
     struct IterativeSearchResult {
-        bool    hasLegalMoves     {};
         bool    completedAnyDepth {};
         bool    terminalRoot      {};
         // The root move came from the Syzygy DTZ ranking, not from a search:

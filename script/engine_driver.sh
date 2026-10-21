@@ -11,7 +11,6 @@
 #   script/engine_driver.sh bench [depth]        # startpos node count (default: 12)
 #   script/engine_driver.sh bench6 [depth]       # canonical 6-position node-count bench
 #   script/engine_driver.sh search "<uci moves>" [depth]
-#   script/engine_driver.sh tui [outfile]        # tmux-driven terminal game smoke
 #
 # Eval is always NNUE (embedded net) - the HCE evaluator was removed (2.0.0).
 set -u
@@ -121,32 +120,10 @@ cmd_search() {
     uci_close
 }
 
-cmd_tui() {
-    local out=${1:-/tmp/hydray-tui-capture.txt} ses="hydray-tui-$$"
-    command -v tmux >/dev/null || DIE "tmux not installed"
-    tmux new-session -d -s "$ses" -x 100 -y 40 "$BIN -pvb w" || DIE "tmux session failed"
-    sleep 2                                  # engine init (magic tables, TT)
-    # NB: move format is 'e2e4' (no space)
-    tmux send-keys -t "$ses" "e2e4" Enter
-    # engine replies on its own clock; poll until the board shows Black moved (max ~30s)
-    for _ in $(seq 30); do
-        sleep 1
-        tmux capture-pane -t "$ses" -p > "$out" 2>/dev/null || break
-        # after Black's reply it's White's prompt again with a non-start board
-        grep -q '4 . . . . P' "$out" && tail -20 "$out" | grep -q 'Enter your move' && break
-    done
-    tmux capture-pane -t "$ses" -p > "$out" 2>/dev/null
-    tmux kill-session -t "$ses" 2>/dev/null
-    [[ -s $out ]] || DIE "empty TUI capture"
-    grep -q 8 "$out" || DIE "no board rank markers in capture"
-    echo "TUI capture written to $out ($(wc -l < "$out") lines)"
-}
-
 case ${1:-} in
     smoke)  cmd_smoke ;;
     bench)  shift; cmd_bench "$@" ;;
     bench6) shift; cmd_bench6 "$@" ;;
     search) shift; [[ $# -ge 1 ]] || DIE "usage: engine_driver.sh search \"<uci moves>\" [depth]"; cmd_search "$@" ;;
-    tui)    shift; cmd_tui "$@" ;;
     *)      grep '^#   ' "$0" | sed 's/^#   //'; exit 2 ;;
 esac

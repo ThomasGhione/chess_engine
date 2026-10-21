@@ -188,7 +188,7 @@ namespace uci {
     }
 
     void UCI::stopSearch(bool printBestMove) noexcept {
-        engine.stopThinking();
+        engine.stop();
         if (searchThread.joinable()) searchThread.join();
 
         std::lock_guard<std::mutex> lock(searchMutex);
@@ -394,12 +394,7 @@ namespace uci {
             return;
         }
 
-        engine.bestMove = chess::Move{};
-        engine.moveHistory.clear();
-        
         if (!moves.empty()) parseMoves(moves);
-        
-        engine.updateGameResult();
     }
 
     void UCI::ucinewgame() noexcept {
@@ -465,9 +460,9 @@ namespace uci {
             // stopSearchRequested=true survives -- the search thread never
             // writes false. Doing this inside the search thread instead loses
             // every `stop` that lands in the startup window.
-            engine.prepareSearchRequest();
+            engine.prepareSearch();
             searchThread = std::thread([this, limits] {
-                const chess::Move move = engine.searchUCI(limits, /*prepared=*/true);
+                const chess::Move move = engine.search(limits);
                 // No legal move (mated or stalemated root): UCI's null move. A ponder
                 // search ends in a real move after ponderhit, so it offers a ponder move too.
                 const bool hasMove = chess::isValidSquare(move.from) && chess::isValidSquare(move.to);
@@ -509,8 +504,8 @@ namespace uci {
             const chess::Square to = chess::parseSquare(move.substr(2, 2));
             if (!chess::isValidSquare(from) || !chess::isValidSquare(to)) continue;
 
-            const char promo = (move.size() > 4) ? ascii::toLower(move[4]) : '\0';
-            engine.movePiece(from, to, promo);
+            const uint8_t promo = (move.size() > 4) ? chess::Move::promotionTypeFromChar(move[4]) : 0;
+            engine.board.move({from, to, promo});
         }
     }
 

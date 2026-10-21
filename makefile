@@ -91,27 +91,25 @@ MAIN_SRC = $(ROOT_DIR)/main.cpp
 ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*.cpp) $(wildcard $(ROOT_DIR)/engine/eval/*/*.cpp) $(wildcard $(ROOT_DIR)/engine/search/*.cpp) $(wildcard $(ROOT_DIR)/engine/sort/*.cpp) $(wildcard $(ROOT_DIR)/engine/time/*.cpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.cpp) $(wildcard $(ROOT_DIR)/engine/opening/*.cpp) $(wildcard $(ROOT_DIR)/engine/syzygy/*.cpp)
 SYZYGY_C_SRC = $(ROOT_DIR)/engine/syzygy/tbprobe.c
 SYZYGY_C_OBJ = $(OUTPUT_DIR)/engine/syzygy/tbprobe.o
-DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/*.cpp)
 BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/*.cpp)
 UCI_SRCS = $(wildcard $(ROOT_DIR)/uci/*.cpp)
 NNUE_SRCS = $(wildcard $(ROOT_DIR)/nnue/*.cpp)
 
 # Module source paths in a single variable
-ALL_MODULE_SRCS = $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) $(UCI_SRCS) $(NNUE_SRCS)
+ALL_MODULE_SRCS = $(ENGINE_SRCS) $(BOARD_SRCS) $(UCI_SRCS) $(NNUE_SRCS)
 
 # Header file paths (excluding stockfish and test utils)
 ENGINE_HDRS = $(wildcard $(ROOT_DIR)/engine/*.hpp) $(wildcard $(ROOT_DIR)/engine/eval/*.hpp) $(wildcard $(ROOT_DIR)/engine/search/*.hpp) $(wildcard $(ROOT_DIR)/engine/sort/*.hpp) $(wildcard $(ROOT_DIR)/engine/time/*.hpp) $(wildcard $(ROOT_DIR)/engine/movegen/*.hpp) $(wildcard $(ROOT_DIR)/engine/opening/*.hpp)
-DRIVER_HDRS = $(wildcard $(ROOT_DIR)/driver/*.hpp)
 BOARD_HDRS = $(wildcard $(ROOT_DIR)/board/*.hpp)
 UCI_HDRS = $(wildcard $(ROOT_DIR)/uci/*.hpp)
 NNUE_HDRS = $(wildcard $(ROOT_DIR)/nnue/*.hpp)
 
 # All header paths
-ALL_MODULE_HDRS = $(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS) $(UCI_HDRS) $(NNUE_HDRS)
+ALL_MODULE_HDRS = $(ENGINE_HDRS) $(BOARD_HDRS) $(UCI_HDRS) $(NNUE_HDRS)
 
 # All files to analyze (.cpp and .hpp)
-ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(DRIVER_SRCS) $(BOARD_SRCS) \
-			$(ENGINE_HDRS) $(DRIVER_HDRS) $(BOARD_HDRS)
+ALL_ANALYSIS_FILES = $(MAIN_SRC) $(ENGINE_SRCS) $(BOARD_SRCS) \
+			$(ENGINE_HDRS) $(BOARD_HDRS)
 
 
 # Helper to generate .o paths inside output/
@@ -122,11 +120,10 @@ ALL_OBJS = $(MAIN_OBJ) $(MODULE_OBJS) $(SYZYGY_C_OBJ)
 # Test file paths
 TEST_MAIN_SRC = $(TESTS_DIR)/mainTest.cpp
 TEST_ENGINE_SRCS = $(wildcard $(ROOT_DIR)/engine/test/*.cpp)
-TEST_DRIVER_SRCS = $(wildcard $(ROOT_DIR)/driver/test/*.cpp)
 TEST_BOARD_SRCS = $(wildcard $(ROOT_DIR)/board/test/*.cpp)
 
 # Test file paths in a single variable
-ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_DRIVER_SRCS) $(TEST_BOARD_SRCS)
+ALL_TEST_MODULE_SRCS = $(TEST_ENGINE_SRCS) $(TEST_BOARD_SRCS)
 
 # Test .o file paths in output/
 TEST_MAIN_OBJ = $(patsubst $(ROOT_DIR)/%.cpp,$(OUTPUT_DIR)/%.o,$(TEST_MAIN_SRC))

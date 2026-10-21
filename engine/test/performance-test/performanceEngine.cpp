@@ -21,7 +21,7 @@ const auto performanceEngineSuite = [] {
     constexpr int depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.searchUCI(engine::time::Limits{.maxDepth = depth});
+    e.search(engine::time::Limits{.maxDepth = depth});
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -37,14 +37,14 @@ const auto performanceEngineSuite = [] {
     constexpr int runs = 20;
     int64_t totalDuration = 0;
 
-    // Plays against itself for "runs" moves. searchUCI() searches a COPY of the
+    // Plays against itself for "runs" moves. search() searches a COPY of the
     // board and does NOT advance it, so we must play the returned move on e.board
     // ourselves - otherwise every run re-searches the identical root position and
     // hits a fully warm TT (~0 ms at any depth), measuring nothing.
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        const chess::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
+        const chess::Move move = e.search(engine::time::Limits{.maxDepth = depth});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
