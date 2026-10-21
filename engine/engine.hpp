@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <mutex>
 
 #include "../board/board.hpp"
 #include "../tt/tt.hpp"
@@ -22,8 +21,6 @@ public:
     void prepareSearch() noexcept;
     chess::Move search(const time::Limits& limits) noexcept;
     void stop() noexcept { stopSearchRequested.store(true, std::memory_order_release); }
-    void setSearchApiMutexEnabled(bool enabled) noexcept;
-    bool isSearchApiMutexEnabled() const noexcept;
 
     chess::Board board;
     SearchRuntime searchRuntime{};
@@ -36,8 +33,6 @@ public:
 private:
     std::atomic<bool> stopSearchRequested {false};
     std::atomic<bool> searchInterrupted {false};
-    std::mutex searchApiMutex;
-    std::atomic<bool> searchApiMutexEnabled {true};
 
     // Shared bitboard init (all Engine instances); only the ctor touches these.
     static inline bool magicTablesInitialized = false;

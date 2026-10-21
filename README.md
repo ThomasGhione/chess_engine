@@ -257,11 +257,7 @@ Hash                 spin,   default 64 (MB, 1–4096)
 EvalFile             string, external .nnue net (default: embedded net)
 SyzygyPath           string, tablebase directory
 SyzygyProbeDepth     spin,   default 1
-SearchApiMutexGuard  check,  default true
 ```
-
-`SearchApiMutexGuard` can also be set at startup with
-`CHESS_ENGINE_SEARCH_MUTEX_GUARD=false ./chess uci`.
 
 The tunable search constants from `engine/search/search_constants.hpp` (RFP,
 NMP, ProbCut, SEE, futility, LMP, LMR margins…) are also exposed as `spin`

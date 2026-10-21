@@ -8,19 +8,6 @@
 
 namespace engine {
 
-namespace {
-
-[[nodiscard]] bool resolveSearchApiMutexGuardDefault() noexcept {
-    const char* envValue = std::getenv("CHESS_ENGINE_SEARCH_MUTEX_GUARD");
-    if (envValue == nullptr) return true;
-
-    // Any value other than an explicit off-switch (incl. empty) enables the guard.
-    const std::string_view value(envValue);
-    return !(ascii::iequals(value, "0") || ascii::iequals(value, "off") || ascii::iequals(value, "false"));
-}
-
-} // namespace
-
 void Engine::bindSearchRuntime() noexcept {
     searchRuntime.transpositionTable = &tt;
     searchRuntime.stopSearchRequested = &stopSearchRequested;
@@ -48,7 +35,6 @@ Engine::Engine() {
         this->board.refreshNnueAccumulator();
     }
 
-    searchApiMutexEnabled.store(resolveSearchApiMutexGuardDefault(), std::memory_order_relaxed);
     searchRuntime.maxThreads = omp_get_max_threads();
 
     bindSearchRuntime();
@@ -65,14 +51,6 @@ void Engine::reset() noexcept {
     tt.clear();
 }
 
-void Engine::setSearchApiMutexEnabled(bool enabled) noexcept {
-    this->searchApiMutexEnabled.store(enabled, std::memory_order_release);
-}
-
-bool Engine::isSearchApiMutexEnabled() const noexcept {
-    return this->searchApiMutexEnabled.load(std::memory_order_acquire);
-}
-
 void Engine::prepareSearch() noexcept {
     stopSearchRequested.store(false, std::memory_order_relaxed);
     searchInterrupted.store(false, std::memory_order_relaxed);
@@ -80,9 +58,6 @@ void Engine::prepareSearch() noexcept {
 }
 
 chess::Move Engine::search(const time::Limits& limits) noexcept {
-    std::unique_lock<std::mutex> guard(searchApiMutex, std::defer_lock);
-    if (searchApiMutexEnabled.load(std::memory_order_acquire)) guard.lock();
-
     timeManager.init(limits, board.getActiveColor() == chess::Board::WHITE,
                      std::max(0, board.getFullMoveClock() - 1), &stopSearchRequested);
 

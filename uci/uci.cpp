@@ -99,19 +99,6 @@ namespace {
         {"CORR_HIST_WEIGHT_PCT", &engine::CORR_HIST_WEIGHT_PCT,        true,      0,  400},
     };
 
-    static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {
-        const string_view value = trimLeft(rawValue);
-        if (ascii::iequals(value, "true") || value == "1" || ascii::iequals(value, "on")) {
-            outValue = true;
-            return true;
-        }
-        if (ascii::iequals(value, "false") || value == "0" || ascii::iequals(value, "off")) {
-            outValue = false;
-            return true;
-        }
-        return false;
-    }
-
     static string_view nextToken(string_view& text) noexcept {
         text = trimLeft(text);
         if (text.empty()) return {};
@@ -231,7 +218,6 @@ namespace uci {
             "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
             "option name SyzygyPath type string default <empty>\n"
             "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            "option name SearchApiMutexGuard type check default true\n"
             "option name EvalFile type string default <empty>\n";
         const std::string hwThreads = std::to_string(omp_get_max_threads());
         out += "option name Threads type spin default " + hwThreads
@@ -336,41 +322,27 @@ namespace uci {
             return;
         }
 
-        if (normalizedName != "searchapimutexguard") {
-            for (auto& option : kSpinOptions) {
-                if (normalizedName != normalizedOptionName(option.key)) continue;
-                int parsedValue = 0;
-                if (!parseFirstInt(optionValue, parsedValue)) {
-                    emit("info string invalid value for " + std::string(optionName) + "\n");
-                    return;
-                }
-                const auto [minValue, maxValue] = optionRange(option);
-                if (parsedValue < minValue || parsedValue > maxValue) {
-                    emit("info string value out of range for " + std::string(optionName)
-                         + " (" + std::to_string(minValue) + ".." + std::to_string(maxValue) + ")\n");
-                    return;
-                }
-                *option.value = parsedValue;
-                if (option.refreshSearchTables) {
-                    engine::rebuildSearchDerivedTables();
-                }
-                emit("info string " + optionDisplayName(option.key)
-                     + " set to " + std::to_string(*option.value) + "\n");
+        for (auto& option : kSpinOptions) {
+            if (normalizedName != normalizedOptionName(option.key)) continue;
+            int parsedValue = 0;
+            if (!parseFirstInt(optionValue, parsedValue)) {
+                emit("info string invalid value for " + std::string(optionName) + "\n");
                 return;
             }
+            const auto [minValue, maxValue] = optionRange(option);
+            if (parsedValue < minValue || parsedValue > maxValue) {
+                emit("info string value out of range for " + std::string(optionName)
+                     + " (" + std::to_string(minValue) + ".." + std::to_string(maxValue) + ")\n");
+                return;
+            }
+            *option.value = parsedValue;
+            if (option.refreshSearchTables) {
+                engine::rebuildSearchDerivedTables();
+            }
+            emit("info string " + optionDisplayName(option.key)
+                 + " set to " + std::to_string(*option.value) + "\n");
             return;
         }
-
-        bool enabled = false;
-        if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
-            emit("info string invalid value for " + std::string(optionName) + ": '"
-                 + std::string(optionValue) + "' (use true/false)\n");
-            return;
-        }
-
-        engine.setSearchApiMutexEnabled(enabled);
-        emit(std::string("info string SearchApiMutexGuard ")
-             + (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled") + "\n");
     }
 
     void UCI::position(std::string_view command) noexcept {
