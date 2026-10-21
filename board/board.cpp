@@ -78,7 +78,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     const uint8_t kingIndex = std::countr_zero(kingBB);
     const uint8_t oppSide = side ^ 1;
 
-    uint64_t checkers = (pieces::PAWN_ATTACKERS_TO[oppSide][kingIndex] & pawns_bb[oppSide])
+    uint64_t checkers = (pieces::PAWN_ATTACKS[side][kingIndex] & pawns_bb[oppSide])
                       | (pieces::KNIGHT_ATTACKS[kingIndex] & knights_bb[oppSide])
                       | (pieces::KING_ATTACKS[kingIndex] & kings_bb[oppSide]);
 
@@ -177,7 +177,7 @@ bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t exclu
 bool Board::isKingAttackedCustom(uint8_t kingSq, uint8_t bySide, uint64_t occ,
                                  uint64_t pawns, uint64_t knights, uint64_t bishops,
                                  uint64_t rooks, uint64_t queens, uint64_t kings) noexcept {
-    if (pieces::PAWN_ATTACKERS_TO[bySide][kingSq] & pawns) return true;
+    if (pieces::PAWN_ATTACKS[bySide ^ 1][kingSq] & pawns) return true;
     if (pieces::KNIGHT_ATTACKS[kingSq] & knights) return true;
     if (pieces::KING_ATTACKS[kingSq] & kings) return true;
     

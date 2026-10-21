@@ -38,5 +38,3 @@ private:
 };
 
 } // namespace engine
-
-#include "inl/bitboard_helpers.inl"

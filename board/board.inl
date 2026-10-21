@@ -411,18 +411,12 @@ inline void Board::ensureNnueAccumulatorClean() const noexcept {
                 const uint8_t piece = static_cast<uint8_t>((c == 0 ? 0x8 : 0) | (t + 1));
                 uint64_t added   = cur[c][t] & ~e.bb[c][t];
                 uint64_t removed = e.bb[c][t] & ~cur[c][t];
-                while (added) {
-                    const int idx = std::countr_zero(added);
-                    added &= added - 1;
+                while (added)
                     add[na++] = NNUE::Accumulator::rowFor(rowBase, rowFlip, p, piece,
-                                                          static_cast<uint8_t>(idx));
-                }
-                while (removed) {
-                    const int idx = std::countr_zero(removed);
-                    removed &= removed - 1;
+                                                          static_cast<uint8_t>(pieces::popLSB(added)));
+                while (removed)
                     sub[ns++] = NNUE::Accumulator::rowFor(rowBase, rowFlip, p, piece,
-                                                          static_cast<uint8_t>(idx));
-                }
+                                                          static_cast<uint8_t>(pieces::popLSB(removed)));
                 e.bb[c][t] = cur[c][t];
             }
         }

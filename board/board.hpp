@@ -23,7 +23,6 @@ struct Move {
 
     constexpr bool operator==(const Move&) const noexcept = default;
     constexpr bool sameFromTo(const Move& other) const noexcept { return from == other.from && to == other.to; };
-    constexpr bool sameFromTo(int f, int t) const noexcept { return from == static_cast<uint8_t>(f) && to == static_cast<uint8_t>(t); };
 
     // Literal values mirror Board::piece_id (declared below Move); the
     // static_asserts after the Board definition pin the coupling.
@@ -156,7 +155,6 @@ public:
 
     // --- Board access ---
     __attribute__((hot, always_inline)) constexpr uint8_t get(uint8_t index) const noexcept { return chessboard[index]; }
-    __attribute__((always_inline))      constexpr uint8_t getColor(uint8_t index) const noexcept { return (get(index) & MASK_COLOR) ? WHITE : BLACK; }
     __attribute__((hot, always_inline)) inline void set(uint8_t index, piece_id value) noexcept;
 
     __attribute__((always_inline)) void fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept;

@@ -45,7 +45,7 @@ bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Mo
         default: break;
     }
 
-    if (pieces::PAWN_ATTACKERS_TO[usSide][oppKingSq] & pawns)   return true;
+    if (pieces::PAWN_ATTACKS[usSide ^ 1][oppKingSq] & pawns)    return true;
     if (pieces::KNIGHT_ATTACKS[oppKingSq] & knights)             return true;
 
     const uint64_t rookQueens   = rooks   | queens;
@@ -94,7 +94,7 @@ int32_t Sorter::scoreMoveOrderingPriorityInline(const MoveOrderingContext& ctx, 
 
 Sorter::LeastValuableAttacker Sorter::getLeastValuableAttackerTo(
         const chess::Board& b, int sq, uint64_t occLocal, int sideLocal) noexcept {
-    uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKERS_TO[sideLocal][sq];
+    uint64_t mask = b.pawns_bb[sideLocal] & occLocal & pieces::PAWN_ATTACKS[sideLocal ^ 1][sq];
     if (mask) return {std::countr_zero(mask), chess::Board::PAWN};
 
     mask = b.knights_bb[sideLocal] & occLocal & pieces::KNIGHT_ATTACKS[sq];
@@ -330,7 +330,7 @@ bool Sorter::isForcingEvasion(const chess::Board& b, const chess::Move& m, const
         return true;
     if ((b.get(m.from) & chess::Board::MASK_PIECE_TYPE) != chess::Board::PAWN)
         return false;
-    if (chess::rank(m.to) == chess::Board::promotionRank(b.getColor(m.from) == chess::Board::WHITE))
+    if (chess::rank(m.to) == chess::Board::promotionRank(b.getActiveColor() == chess::Board::WHITE))
         return true;
 
     return m.to == enPassant; // NO_SQUARE is 255 and m.to is a real square, so this alone is the ep test

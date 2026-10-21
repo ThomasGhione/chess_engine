@@ -78,7 +78,7 @@ namespace zobrist {
     inline bool hasPseudoLegalEnPassantCapture(const chess::Board& board, chess::Square epSquare) noexcept {
         if (!chess::isValidSquare(epSquare)) return false;
         const int sideToMove = chess::Board::colorToIndex(board.getActiveColor());
-        const uint64_t candidatePawns = pieces::PAWN_ATTACKERS_TO[sideToMove][epSquare] & board.pawns_bb[sideToMove];
+        const uint64_t candidatePawns = pieces::PAWN_ATTACKS[sideToMove ^ 1][epSquare] & board.pawns_bb[sideToMove];
         return candidatePawns != 0ULL;
     }
 
