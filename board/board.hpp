@@ -46,6 +46,8 @@ struct Move {
 
 class Board {
 public:
+    static constexpr const char* STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     // --- Enums ---
 
     enum piece_id : uint8_t {
@@ -251,9 +253,6 @@ private:
     uint8_t  historySize         = 0;
     // Plies since the last null move, saturating; 255 = none within reach.
     uint8_t  pliesFromNull       = 255;
-
-    static constexpr const char* STARTING_FEN =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 };
 
 static_assert(Move::promotionTypeFromChar('q') == Board::QUEEN
@@ -263,6 +262,9 @@ static_assert(Move::promotionTypeFromChar('q') == Board::QUEEN
            && Move{0, 0, Board::QUEEN}.promotionChar() == 'q'
            && Move{0, 0, Board::KNIGHT}.promotionChar() == 'n',
     "Move promotion helpers must mirror Board::piece_id");
+
+// FEN piece placement of 64 squares (0 = a8), each a piece letter or '.'.
+std::string placementFen(const std::array<char, 64>& squares);
 
 #include "board.inl"
 

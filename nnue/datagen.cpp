@@ -30,9 +30,8 @@ namespace NNUE {
 
 namespace {
 
-// Datagen defaults and quality filters. The bestmove-is-tactical
-// skip is the one addition: a position whose search score hinges on an
-// unresolved capture/promotion is a noisy static-eval target.
+// Defaults and quality filters. A position whose best move captures or
+// promotes is skipped: its score hinges on unresolved tactics.
 constexpr int      DEFAULT_THREADS          = 3;
 constexpr uint64_t DEFAULT_NODES_PER_MOVE   = 8000;
 constexpr int      TARGET_DEPTH_CAP         = 32;
@@ -46,52 +45,28 @@ constexpr int32_t  DRAW_ADJ_CP              = 10;
 constexpr int      DRAW_ADJ_PLIES           = 8;
 constexpr int      DRAW_ADJ_MIN_PLY         = 80;
 constexpr int      MAX_GAME_PLIES           = 400;
-// Only the ETA line reads this. Overridable via CHESS_DATAGEN_TARGET, because a
-// dedicated batch (endgame seeding, an A/B arm) wants a horizon of tens of
-// millions, not the 5B of a full generation cycle -- an ETA quoting the wrong
-// target is worse than none, since it reads as "weeks left" on a one-day job.
+// Only the ETA line reads this; CHESS_DATAGEN_TARGET sets it for a short batch.
 constexpr uint64_t TARGET_POSITIONS_DEFAULT = 5'000'000'000;
 uint64_t           g_targetPositions        = TARGET_POSITIONS_DEFAULT;
-// WDL probes ignore the 50-move counter: with a high clock a "won" table
-// position can still be drawn by the rule before conversion. Draw results
-// are always safe; decisive ones are trusted only below this clock.
+// WDL ignores the fifty-move counter: a decisive result counts only below this clock.
 constexpr int      DECISIVE_TB_ADJ_MAX_HMC  = 60;
 
-// Endgame seeding. Output bucket 0 covers 2..5
-// men and was left at its initial weights by every dataset so far: the v3 net
-// scored KQvK at -13 cp, and the 768 net trained on the 2B v4 data still
-// scores it at 0. Three filters had to be lifted together, which is why
-// seeding alone would not have fixed it:
-//   1. Syzygy adjudication ends a game the moment it enters TB range, so a
-//      <=5-man position is never reached in normal play;
-//   2. a won endgame produces a mate score, which MAX_RECORD_SCORE_CP then
-//      discards - KQvK could not be recorded even with the tables unloaded;
-//   3. MIN_RECORD_PLY skips the first 16 plies, and a seeded endgame is
-//      usually decided before that.
-// Seeded games therefore record from ply 0, keep out-of-range scores by
-// clamping instead of discarding, and skip TB adjudication so the position
-// gets observed before the tables end the game.
-// Overridable via CHESS_DATAGEN_EG_EVERY. The default mixes ~12% seeded games into a normal run;
-// setting it to 1 seeds every game, which is how a short dedicated batch is
-// produced. Mixed runs are slow at filling bucket 0 - the seven ordinary games
-// around each seeded one contribute ~30 records each and dilute it to ~1.4% -
-// so a dedicated pass is worth far more per hour than a longer mixed one.
+// Endgame seeding fills output bucket 0 (2-5 men), which self-play never
+// reaches: Syzygy adjudication ends the game first, a won ending scores past
+// MAX_RECORD_SCORE_CP, and seeded endings are decided before MIN_RECORD_PLY.
+// Seeded games record from ply 0, clamp their scores and skip adjudication.
+// One game in CHESS_DATAGEN_EG_EVERY is seeded; 1 makes a dedicated batch,
+// which fills the bucket far faster than a mixed run.
 constexpr int      ENDGAME_SEED_EVERY_DEFAULT = 8;
 int                g_endgameSeedEvery = ENDGAME_SEED_EVERY_DEFAULT;
 constexpr int      ENDGAME_SEED_MIN_MEN = 3; // K+K plus one man
 constexpr int      ENDGAME_SEED_MAX_MEN = 6; // kept inside bucket 0 (2-5 men) plus one
 constexpr int      ENDGAME_SEED_TRIES = 64;
-// Giving each man an independent colour yields balanced material, and balanced
-// low-piece positions are almost all draws: a first run came out 70% draws with
-// 96% of bucket-0 records under 100 cp, which teaches "everything is equal" -
-// barely better than the zero the bucket learns today. Most seeds therefore
-// hand every extra man to one side, producing the KQvK / KRvK cases that are
-// the whole point.
+// Most seeds give every extra man to one side: with independent colours the
+// material is balanced, and balanced endings are almost all draws.
 constexpr int      ENDGAME_SEED_LOPSIDED_PCT = 65;
-// A decided endgame is adjudicated after WIN_ADJ_PLIES and contributes a
-// handful of records, while a drawn one runs to the fifty-move rule and
-// contributes dozens. Without a cap the drawn positions drown out the decisive
-// ones no matter how the material is seeded.
+// A drawn ending runs to the fifty-move rule while a decided one ends after
+// WIN_ADJ_PLIES: the cap keeps the draws from drowning the rest.
 constexpr size_t   ENDGAME_SEED_MAX_RECORDS = 8;
 
 std::atomic<bool>     g_stop{false};
@@ -100,11 +75,9 @@ std::atomic<uint64_t> g_totalGames{0};
 std::atomic<uint64_t> g_totalTbAdjudications{0};
 std::atomic<uint64_t> g_totalEndgameSeeded{0};
 
-// Benchmark harness (CHESS_DATAGEN_SEED, CHESS_DATAGEN_GAMES). With a seed set,
-// games are numbered globally and each one starts from its own RNG stream, an
-// empty TT and empty history, so the same workload replays identically at any
-// thread count -- the fixed baseline an A/B of two builds needs. It costs a few
-// percent against a production run, which carries that state between games.
+// Benchmark mode (CHESS_DATAGEN_SEED, CHESS_DATAGEN_GAMES): each game starts
+// from its own RNG stream, an empty TT and empty histories, so a run replays
+// identically at any thread count.
 uint64_t              g_benchSeed = 0;   // 0 = off
 uint64_t              g_gameLimit = 0;   // 0 = unlimited
 std::atomic<uint64_t> g_nextGameId{0};
@@ -118,13 +91,12 @@ uint64_t mixSeed(uint64_t x) noexcept {
     return x ^ (x >> 31);
 }
 
-// Shared, read-only after load; pyrrhic WDL probes are thread-safe post-init
-// (the search already probes from concurrent Lazy SMP threads).
+// Shared and read-only after load: WDL probes are thread-safe.
 syzygy::SyzygyProber g_syzygy;
 
 void onStopSignal(int) { g_stop.store(true, std::memory_order_release); }
 
-// Everything one worker owns; heap-allocated (SearchRuntime alone is ~1.7 MB).
+// Everything one worker owns.
 struct WorkerContext {
     engine::SearchRuntime runtime;
     TT tt;
@@ -135,19 +107,14 @@ struct WorkerContext {
     WorkerContext(uint64_t seed, const std::string& outPath)
         : rng(seed), out(outPath, std::ios::binary | std::ios::app) {
         runtime.transpositionTable = &tt;
-        // Without this binding the node-cap abort in enterNode() is invisible
-        // to runIterativeDeepening and truncated iterations would be trusted.
+        // The node cap reports a truncated iteration through this flag.
         runtime.searchInterrupted = &interrupted;
         runtime.stopSearchRequested = &g_stop;
     }
 };
 
-// Builds a random legal position with 3..8 men for the endgame seeding above,
-// or an empty string if ENDGAME_SEED_TRIES attempts all produced an illegal or
-// dead-drawn one. The positions are deliberately unnatural: bucket 0 needs
-// coverage of material configurations that self-play never reaches, not
-// realistic play. Squares are 0 = a8 .. 63 = h1, so writing them in order
-// already yields FEN rank order.
+// A random legal position of ENDGAME_SEED_MIN_MEN..MAX_MEN men, or "" when
+// every try came out illegal or a dead draw. Squares run 0 = a8 .. 63 = h1.
 std::string randomEndgameFen(std::mt19937_64& rng) {
     using chess::Board;
     // Weighted towards the pieces that actually decide endgames, while still
@@ -186,22 +153,9 @@ std::string randomEndgameFen(std::mt19937_64& rng) {
             }
         }
 
-        std::string fen;
-        fen.reserve(80);
-        for (int r = 0; r < 8; ++r) {
-            int empty = 0;
-            for (int f = 0; f < 8; ++f) {
-                const char c = sq[static_cast<size_t>(r * 8 + f)];
-                if (c == '.') { ++empty; continue; }
-                if (empty != 0) { fen += static_cast<char>('0' + empty); empty = 0; }
-                fen += c;
-            }
-            if (empty != 0) fen += static_cast<char>('0' + empty);
-            if (r != 7) fen += '/';
-        }
         // No castling rights and no en passant: both would be unsound on a
         // position assembled at random, and TB probes assume the former.
-        fen += ((rng() & 1) != 0) ? " w - - 0 1" : " b - - 0 1";
+        const std::string fen = chess::placementFen(sq) + (((rng() & 1) != 0) ? " w - - 0 1" : " b - - 0 1");
 
         const Board b{fen};
         // A position where the side that just moved is left in check is illegal.
@@ -250,9 +204,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
     }
     Board b = seedFen.empty() ? Board{} : Board{seedFen};
 
-    // A seeded game starts from its position: there is no random opening walk
-    // to skip, so it records from ply 0 (MIN_RECORD_PLY exists only to drop
-    // the noise of that walk).
+    // A seeded game has no random opening walk to skip.
     const int openingPlies = endgameSeed
         ? 0 : OPENING_PLIES_MIN + static_cast<int>(w.rng() & 1);
     for (int i = 0; i < openingPlies; ++i) {
@@ -288,14 +240,9 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
             break;
         }
 
-        // Syzygy adjudication: as soon as the position enters TB range, close
-        // the game with the exact tablebase result - every record collected so
-        // far gets a perfect outcome label and the game ends sooner. Tables
-        // assume no castling rights (guard below); cursed wins / blessed
-        // losses are draws under the 50-move rule and map to draw here.
-        // Skipped for seeded games: adjudicating here would end them before a
-        // single <=5-man position had been recorded, which is the whole reason
-        // bucket 0 is empty. Their result comes from the win/draw streaks below.
+        // Syzygy adjudication: a game in TB range ends with the exact result
+        // (cursed wins and blessed losses are draws). Not for seeded games,
+        // which would end before recording anything.
         if (!endgameSeed && b.castlingRights() == 0) {
             if (const auto wdl = g_syzygy.probeWDL(b)) {
                 const bool stmWin  = (*wdl == syzygy::WDL::Win);
@@ -311,8 +258,6 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
                     g_totalTbAdjudications.fetch_add(1, std::memory_order_relaxed);
                     break;
                 }
-                // High 50-move clock on a decisive WDL: play on instead of
-                // risking a mislabel.
             }
         }
 
@@ -323,29 +268,23 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
         const auto res =
             engine::Searcher::runIterativeDeepening(b, w.runtime, 1, TARGET_DEPTH_CAP);
 
-        // Depth 1 not finishing within the node budget is pathological but
-        // possible; play the first legal move and record nothing.
+        // Depth 1 unfinished within the node budget: play the first move, record nothing.
         const bool searchOk = res.completedAnyDepth && !(res.bestMove == chess::Move{});
         const chess::Move best = searchOk ? res.bestMove : legal[0];
         const int32_t stmScore = res.bestScore;
         const int32_t whiteScore = (active == Board::WHITE) ? stmScore : -stmScore;
 
-        // Seeded endgames are lopsided by construction, so the balance filter
-        // would throw away nearly all of them.
+        // Seeded endgames are lopsided by construction.
         if (!endgameSeed && ply == openingPlies
             && std::abs(whiteScore) > OPENING_MAX_IMBALANCE_CP) {
             return 0;
         }
 
-        const bool isCapture = (b.get(best.to) != Board::EMPTY)
-            || ((b.get(best.from) & Board::MASK_PIECE_TYPE) == Board::PAWN
-                && best.to == b.getEnPassant());
-        const bool isTactical = isCapture || best.promotionType != 0;
-        // A won endgame is scored as a mate, so the range filter that keeps
-        // normal games clean is exactly what kept KQvK out of every dataset so
-        // far. Seeded games clamp instead of discarding: "completely winning"
-        // is the correct target for these positions, and a bucket trained on
-        // nothing scores them at zero.
+        const engine::MoveTraits traits =
+            engine::moveTraits(b, best, b.getEnPassant(), Board::promotionRank(active == Board::WHITE));
+        const bool isTactical = traits.isCapture || traits.isPromotion;
+        // Seeded games clamp a mate score instead of dropping it: "completely
+        // winning" is the right target for a won ending.
         const bool inScoreRange = std::abs(whiteScore) <= MAX_RECORD_SCORE_CP;
         const bool seedQuotaLeft =
             !endgameSeed || pending.size() < ENDGAME_SEED_MAX_RECORDS;
@@ -372,7 +311,7 @@ uint64_t playOneGame(WorkerContext& w, uint64_t nodesPerMove, bool endgameSeed) 
     std::vector<BulletRecord> flat;
     flat.reserve(pending.size());
     for (PendingRecord& p : pending) {
-        finalizeResult(p, whiteResultX2);
+        p.record.result = static_cast<uint8_t>(p.blackToMove ? 2 - whiteResultX2 : whiteResultX2);
         flat.push_back(p.record);
     }
     if (!flat.empty()) {
@@ -405,8 +344,7 @@ void workerLoop(int threadId, const std::string& outPath, uint64_t nodesPerMove)
         return;
     }
     while (!g_stop.load(std::memory_order_acquire)) {
-        // Ids come from one global counter, so the seeded cadence is exact over
-        // the run and a given game is the same game at any thread count.
+        // One global counter: game N is the same game at any thread count.
         const uint64_t gameId = g_nextGameId.fetch_add(1, std::memory_order_relaxed);
         if (g_gameLimit != 0 && gameId >= g_gameLimit) break;
         if (g_benchSeed != 0) {
@@ -483,8 +421,7 @@ int runDatagen(int argc, char* argv[]) {
         : DEFAULT_NODES_PER_MOVE;
 
     if (const char* egEvery = std::getenv("CHESS_DATAGEN_EG_EVERY")) {
-        // Clamped rather than rejected: a typo that silently disabled seeding
-        // would only surface days later as an empty bucket 0 again.
+        // Clamped, not rejected: a typo must not silently disable seeding.
         g_endgameSeedEvery = std::clamp(std::atoi(egEvery), 1, 1000);
     }
 
@@ -511,9 +448,8 @@ int runDatagen(int argc, char* argv[]) {
         if (parsed > 0) g_targetPositions = parsed;
     }
 
-    // Labeler network: an explicit path when given, the embedded net
-    // otherwise. Fail hard on a bad path: silently falling back to a
-    // different net would poison days of generation with unintended labels.
+    // Labeler network: the given path, else the embedded net. A bad path fails
+    // hard: falling back to another net would mislabel days of data.
     const char* netPath = (argc >= 6) ? argv[5] : nullptr;
     if (netPath != nullptr) {
         if (!loadNetwork(netPath)) {
@@ -540,8 +476,7 @@ int runDatagen(int argc, char* argv[]) {
     std::signal(SIGINT, onStopSignal);
     std::signal(SIGTERM, onStopSignal);
 
-    // Optional tablebase adjudication: exact result labels + shorter endgames.
-    // Missing tables are not an error - endgames are simply played out.
+    // Without tables the endgames are simply played out.
     const char* tbPath = (argc >= 7) ? argv[6] : "engine/syzygy/files";
     const bool tbOn = g_syzygy.load(tbPath) && g_syzygy.maxPieces() >= 3;
 
@@ -603,8 +538,7 @@ int runDatagen(int argc, char* argv[]) {
         const uint64_t generated = g_totalPositions.load(std::memory_order_relaxed);
         const uint64_t total = resumedPositions + generated;
         const double elapsed = std::chrono::duration<double>(now - start).count();
-        // Rate (and thus the ETA) reflects THIS run only; the total includes
-        // everything already on disk for the prefix.
+        // The rate is this run's; the total includes what was already on disk.
         const double rate = (elapsed > 0.0) ? static_cast<double>(generated) / elapsed : 0.0;
         const double etaDays = (rate > 0.0)
             ? static_cast<double>(g_targetPositions - std::min(total, g_targetPositions))

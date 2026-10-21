@@ -56,19 +56,24 @@ void Board::fenToBoard(const std::string& fen) {
     rebuildRepetitionHistory();
 }
 
-std::string Board::boardToFen() const {
+std::string placementFen(const std::array<char, 64>& squares) {
     std::string fen;
-    for (int rank = 7; rank >= 0; --rank) {
-        int emptySq = 0;
-        for (int file = 0; file < 8; ++file) {
-            const uint8_t p = chessboard[(7 - rank) * 8 + file];
-            if (p == EMPTY) { ++emptySq; continue; }
-            if (emptySq) { fen += char('0' + emptySq); emptySq = 0; }
-            fen += PIECE_CHARS[(p & MASK_PIECE_TYPE) - 1 + ((p & MASK_COLOR) == BLACK ? 6 : 0)];
-        }
-        if (emptySq) fen += char('0' + emptySq);
-        if (rank > 0) fen += '/';
+    for (int sq = 0; sq < 64; ++sq) {
+        if (sq > 0 && sq % 8 == 0) fen += '/';
+        if (squares[sq] != '.') fen += squares[sq];
+        else if (!fen.empty() && ascii::isDigit(fen.back())) ++fen.back();
+        else fen += '1';
     }
+    return fen;
+}
+
+std::string Board::boardToFen() const {
+    std::array<char, 64> squares;
+    for (int sq = 0; sq < 64; ++sq) {
+        const uint8_t p = chessboard[sq];
+        squares[sq] = (p == EMPTY) ? '.' : PIECE_CHARS[(p & MASK_PIECE_TYPE) - 1 + ((p & MASK_COLOR) == BLACK ? 6 : 0)];
+    }
+    std::string fen = placementFen(squares);
     fen += activeColor == WHITE ? " w " : " b ";
     const size_t castleStart = fen.size();
     for (int i = 0; i < 4; ++i)
