@@ -27,7 +27,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
     if (destPiece != EMPTY && (destPiece & MASK_COLOR) == movingColor) [[unlikely]]
         return false;
 
-    const uint64_t toBit = Board::BIT_MASKS[toIndex];
+    const uint64_t toBit = (1ULL << toIndex);
     switch (fromType) {
         case PAWN: {
             const bool isWhite = (movingColor == WHITE);
@@ -39,7 +39,7 @@ bool Board::isLegalPseudoMove(uint8_t fromIndex, uint8_t toIndex, uint8_t fromPi
                     if (isValidSquare(enPassant) && toIndex == enPassant) {
                         const int8_t epDir = isWhite ? 8 : -8;
                         const uint8_t capturedPawnIdx = toIndex + epDir;
-                        return isKingSafeAfterMove(movingColor, fromIndex, toIndex, BIT_MASKS[capturedPawnIdx]);
+                        return isKingSafeAfterMove(movingColor, fromIndex, toIndex, (1ULL << capturedPawnIdx));
                     }
                     return false; // diagonal to empty square but not en-passant
                 }
@@ -95,68 +95,24 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
     return checkers;
 }
 
-[[nodiscard]] bool Board::isKingMoveLegal(
-    uint8_t fromIndex,
-    uint8_t toIndex,
-    uint64_t toBit,
-    uint8_t movingColor
-) const noexcept {
+[[nodiscard]] bool Board::isKingMoveLegal(uint8_t fromIndex, uint8_t toIndex, uint64_t toBit,
+                                          uint8_t movingColor) const noexcept {
     const uint8_t oppColor = oppositeColor(movingColor);
     const int diff = static_cast<int>(toIndex) - fromIndex;
-
-    // Castling moves are uniquely identified by a destination offset of +2 or -2.
-    // Normal king moves have offsets of +/-1, +/-7, +/-8, +/-9, so they cannot clash.
+    // Only castling moves the king two files: a one-step offset is 1, 7, 8 or 9.
     if (diff == 2 || diff == -2) [[unlikely]] {
-        if (chess::file(fromIndex) != 4) return false;
-        const bool isWhite = (movingColor == WHITE);
-        const uint8_t expectedRank = isWhite ? 7 : 0;
-        if (chess::rank(fromIndex) != expectedRank) return false;
-        return canCastleGeneric(isWhite, fromIndex, diff == 2);
+        const bool isWhite = (movingColor == WHITE), kingside = (diff == 2);
+        const int dir = kingside ? 1 : -1;
+        const uint8_t sq1 = fromIndex + dir, sq2 = fromIndex + 2 * dir;
+        const uint8_t rookIdx = kingside ? fromIndex + 3 : fromIndex - 4;
+        return fromIndex == (isWhite ? 60 : 4)
+            && ((castle >> ((!isWhite << 1) | !kingside)) & 1)
+            && get(sq1) == EMPTY && get(sq2) == EMPTY && (kingside || get(fromIndex - 3) == EMPTY)
+            && (bb[ROOK][!isWhite] & (1ULL << rookIdx))
+            && !isSquareAttacked(fromIndex, oppColor) && !isSquareAttacked(sq1, oppColor)
+            && !isSquareAttacked(sq2, oppColor);
     }
-
-    // Normal king move: one-step king attack and destination not attacked
-    const uint64_t attacks = pieces::KING_ATTACKS[fromIndex];
-    if ((attacks & toBit) == 0ULL) return false;
-    if (isSquareAttacked(toIndex, oppColor, fromIndex)) return false;
-
-    return true;
-}
-
-[[nodiscard]] bool Board::canCastleGeneric(
-    bool isWhite,
-    uint8_t fromIndex,
-    bool isKingside
-) const noexcept {
-    const uint8_t side = isWhite ^ 1; // 0 for White, 1 for Black
-    const uint8_t oppColor = isWhite ? BLACK : WHITE;
-    
-    // Check castling rights
-    const uint8_t rightBit = (!isWhite << 1) | !isKingside;
-    
-    if ((castle & (1u << rightBit)) == 0u) return false;
-    
-    // Setup indices based on direction
-    const int8_t direction = isKingside ? 1 : -1;
-    const uint8_t sq1 = fromIndex + direction;
-    const uint8_t sq2 = fromIndex + 2 * direction;
-    const uint8_t rookIdx = isKingside ? (fromIndex + 3) : (fromIndex - 4);
-    
-    // Check empty squares (always check 2, for queenside check 3rd)
-    if (get(sq1) != EMPTY || get(sq2) != EMPTY)
-        return false;
-    
-    if (!isKingside && get(fromIndex - 3) != EMPTY)
-        return false;
-    
-    // Check rook presence
-    if ((bb[ROOK][side] & Board::BIT_MASKS[rookIdx]) == 0ULL)
-        return false;
-    
-    if (isSquareAttacked(fromIndex, oppColor)) return false;
-    if (isSquareAttacked(sq1, oppColor)) return false;
-    if (isSquareAttacked(sq2, oppColor)) return false;
-
-    return true;
+    return (pieces::KING_ATTACKS[fromIndex] & toBit) && !isSquareAttacked(toIndex, oppColor, fromIndex);
 }
 
 // ------------------------------------------------------------
@@ -165,7 +121,7 @@ inline bool Board::pseudoMoveLegalByType(uint8_t fromIndex, uint8_t toIndex, uin
 // Returns true if square 'targetIndex' is attacked by 'byColor'
 // Version that excludes a square from occupancy - useful for king moves
 bool Board::isSquareAttacked(uint8_t targetIndex, uint8_t byColor, uint8_t excludeSquare) const noexcept {
-    const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~Board::BIT_MASKS[excludeSquare]) : occupancy;
+    const uint64_t occMinus = excludeSquare < 64 ? (occupancy & ~(1ULL << excludeSquare)) : occupancy;
     return attackedBy(targetIndex, colorToIndex(byColor), occMinus);
 }
 

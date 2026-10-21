@@ -47,35 +47,16 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     pliesFromNull = other.pliesFromNull;
 }
 
-// ==============================
-// Public Board API
-// ==============================
-__attribute__((hot, always_inline))
-inline void Board::set(uint8_t index, piece_id value) noexcept {
-    chessboard[index] = static_cast<uint8_t>(value & MASK_PIECE);
-}
-
-
-// ==============================
-// Board Internals
-// ==============================
-
 inline void Board::rebuildBitboardsFromSquares() noexcept {
     occupancy = 0ULL;
     bb = {};
     for (uint8_t index = 0; index < 64; ++index) {
         const uint8_t piece = get(index);
         if (piece == EMPTY) continue;
-        occupancy |= BIT_MASKS[index];
-        bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] |= BIT_MASKS[index];
+        occupancy |= 1ULL << index;
+        bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] |= 1ULL << index;
     }
     refreshNnueAccumulator();
-}
-
-__attribute__((always_inline))
-inline void Board::fastUpdateOccupancyBB(uint8_t fromIndex, uint8_t toIndex) noexcept {
-    occupancy |= BIT_MASKS[toIndex];  // Set the bit at 'to' position    
-    occupancy &= ~BIT_MASKS[fromIndex]; // Clear the bit at 'from' position
 }
 
 inline bool Board::isKingSafeAfterMove(
@@ -87,48 +68,8 @@ inline bool Board::isKingSafeAfterMove(
     const uint8_t side = colorToIndex(movingColor);
     if (!bb[KING][side]) [[unlikely]] return false;
     const uint64_t occNew =
-        (occupancy & ~BIT_MASKS[fromIndex] & ~capturedMask) | BIT_MASKS[toIndex];
+        (occupancy & ~(1ULL << fromIndex) & ~capturedMask) | (1ULL << toIndex);
     return !attackedBy(std::countr_zero(bb[KING][side]), side ^ 1, occNew, ~capturedMask);
-}
-
-// The queue cancels a delta against the pending one it inverts. undoMove emits
-// exactly the inverse operations in reverse order, so a do/undo pair that never
-// reached an evaluate annihilates here and never touches a row.
-inline void Board::queueAccAdd(uint8_t piece, uint8_t index) const noexcept {
-    if (accPendingCount > 0) {
-        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
-        if (d.kind == NNUE::AccDelta::Remove && d.piece == piece && d.from == index) {
-            --accPendingCount;
-            return;
-        }
-    }
-    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
-    accPending[accPendingCount++] = {NNUE::AccDelta::Add, piece, index, 0};
-}
-
-inline void Board::queueAccRemove(uint8_t piece, uint8_t index) const noexcept {
-    if (accPendingCount > 0) {
-        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
-        if (d.kind == NNUE::AccDelta::Add && d.piece == piece && d.from == index) {
-            --accPendingCount;
-            return;
-        }
-    }
-    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
-    accPending[accPendingCount++] = {NNUE::AccDelta::Remove, piece, index, 0};
-}
-
-inline void Board::queueAccMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) const noexcept {
-    if (accPendingCount > 0) {
-        const NNUE::AccDelta& d = accPending[accPendingCount - 1];
-        if (d.kind == NNUE::AccDelta::Move && d.piece == piece
-            && d.from == toIndex && d.to == fromIndex) {
-            --accPendingCount;
-            return;
-        }
-    }
-    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
-    accPending[accPendingCount++] = {NNUE::AccDelta::Move, piece, fromIndex, toIndex};
 }
 
 inline void Board::flushAccPending() const noexcept {
@@ -244,32 +185,6 @@ inline void Board::flushAccPending() const noexcept {
             case NNUE::AccDelta::Remove: nnueAccumulator.update<false>(d.piece, d.from); break;
             default:                     nnueAccumulator.updateMove(d.piece, d.from, d.to); break;
         }
-    }
-}
-
-__attribute__((always_inline))
-inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
-    bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] |= BIT_MASKS[index];
-    if (NNUE::activeNetwork != nullptr) [[likely]] {
-        queueAccAdd(piece, index);
-    }
-}
-
-__attribute__((always_inline))
-inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
-    bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] &= ~BIT_MASKS[index];
-    if (NNUE::activeNetwork != nullptr) [[likely]] {
-        queueAccRemove(piece, index);
-    }
-}
-
-__attribute__((always_inline))
-inline void Board::movePieceOnBB(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept {
-    // The mover's own bitboard never holds the destination, so one XOR clears
-    // the source and sets the destination.
-    bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] ^= BIT_MASKS[fromIndex] | BIT_MASKS[toIndex];
-    if (NNUE::activeNetwork != nullptr) [[likely]] {
-        queueAccMove(piece, fromIndex, toIndex);
     }
 }
 

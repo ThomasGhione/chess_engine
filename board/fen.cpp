@@ -6,6 +6,10 @@
 
 namespace chess {
 
+namespace {
+constexpr std::string_view PIECE_CHARS = "PNBRQKpnbrqk";
+}
+
 uint8_t Board::safeParseInt(const std::string& section, int min, int max, int defaultValue) {
     if (section.empty()) return defaultValue;
     int v = 0;
@@ -28,10 +32,9 @@ void Board::fenToBoard(const std::string& fen) {
             if (c == '/') { --rank; file = 0; }
             else if (ascii::isDigit(c)) file += c - '0';
             else {
-                if (rank < 0 || file > 7) return;
-                const uint8_t p = CHAR_TO_PIECE_TYPE[static_cast<uint8_t>(c)];
-                if (p == EMPTY) return;
-                parsedBoard[(7 - rank) * 8 + file++] = p;
+                const size_t i = PIECE_CHARS.find(c);
+                if (rank < 0 || file > 7 || i == std::string_view::npos) return;
+                parsedBoard[(7 - rank) * 8 + file++] = static_cast<uint8_t>((i % 6 + 1) | (i < 6 ? WHITE : BLACK));
             }
         }
         if (rank != 0 || file != 8) return;
@@ -54,7 +57,6 @@ void Board::fenToBoard(const std::string& fen) {
 }
 
 std::string Board::boardToFen() const {
-    constexpr std::array<char, 8> pieceChar = {'.', 'P', 'N', 'B', 'R', 'Q', 'K', '?'};
     std::string fen;
     for (int rank = 7; rank >= 0; --rank) {
         int emptySq = 0;
@@ -62,8 +64,7 @@ std::string Board::boardToFen() const {
             const uint8_t p = chessboard[(7 - rank) * 8 + file];
             if (p == EMPTY) { ++emptySq; continue; }
             if (emptySq) { fen += char('0' + emptySq); emptySq = 0; }
-            const char sym = pieceChar[p & MASK_PIECE_TYPE];
-            fen += (p & MASK_COLOR) == BLACK ? char(sym | 0x20) : sym;
+            fen += PIECE_CHARS[(p & MASK_PIECE_TYPE) - 1 + ((p & MASK_COLOR) == BLACK ? 6 : 0)];
         }
         if (emptySq) fen += char('0' + emptySq);
         if (rank > 0) fen += '/';

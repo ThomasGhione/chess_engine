@@ -26,8 +26,8 @@ Sorter::CaptureInfo Sorter::classifyCapture(
 bool Sorter::givesCheckAfterQuietMoveFast(const chess::Board& b, const chess::Move& m,
         int fromPieceType, int oppKingSq, uint64_t occ) noexcept {
     const int usSide = chess::Board::colorToIndex(b.getActiveColor());
-    const uint64_t fromBit = chess::Board::BIT_MASKS[m.from];
-    const uint64_t toBit   = chess::Board::BIT_MASKS[m.to];
+    const uint64_t fromBit = (1ULL << m.from);
+    const uint64_t toBit   = (1ULL << m.to);
     const uint64_t occAfter = (occ & ~fromBit) | toBit;
     // Our pieces of a type after the move.
     const auto mine = [&](int type) {
@@ -135,10 +135,10 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
     gain[0] = initialGain;
 
     uint64_t occ = b.getPiecesBitMap();
-    occ ^= chess::Board::BIT_MASKS[fromSq];
+    occ ^= (1ULL << fromSq);
     if (isEp) {
         const uint8_t epCapturedSq = (chess::rank(fromSq) * 8) + chess::file(toSq);
-        occ ^= chess::Board::BIT_MASKS[epCapturedSq];
+        occ ^= (1ULL << epCapturedSq);
     }
 
     int depth = 1;
@@ -149,7 +149,7 @@ int32_t Sorter::staticExchangeEvaluation(const chess::Board& b, const chess::Mov
         if (square == 64) break;
 
         gain[depth] = PIECE_VALUES[capturedOnTargetType] - gain[depth - 1];
-        occ ^= chess::Board::BIT_MASKS[square];
+        occ ^= (1ULL << square);
         capturedOnTargetType = type;
         side ^= 1;
         ++depth;

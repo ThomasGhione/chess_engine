@@ -43,6 +43,7 @@ struct AccDelta {
     uint8_t piece;
     uint8_t from;   // Add/Remove: the square
     uint8_t to;     // Move only
+    bool operator==(const AccDelta&) const = default;
 };
 
 // Deepest chain of moves that can be made without an evaluate is bounded by

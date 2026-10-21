@@ -41,12 +41,12 @@ constexpr uint64_t computeBetweenExclusiveConstexpr(int from, int to) noexcept {
     int r = fromRank + stepRank;
     while (f != toFile || r != toRank) {
         const int sq = (r << 3) | f;
-        mask |= chess::Board::BIT_MASKS[sq];
+        mask |= (1ULL << sq);
         f += stepFile;
         r += stepRank;
     }
 
-    return mask & ~chess::Board::BIT_MASKS[to];
+    return mask & ~(1ULL << to);
 }
 
 inline constexpr std::array<std::array<uint64_t, 64>, 64> BETWEEN_EXCLUSIVE_LUT = [] {
@@ -74,7 +74,7 @@ inline void appendNonPawnTacticalNoChecks(
 
         uint64_t attacks = pieces::generateMovesByType<PieceType>(from, occ) & oppOcc;
         if constexpr (HasPins) {
-            const uint64_t fromBit = chess::Board::BIT_MASKS[from];
+            const uint64_t fromBit = (1ULL << from);
             if (pinnedMask & fromBit) {
                 attacks &= pinRayBySquare[from];
             }
@@ -111,12 +111,12 @@ inline void appendPawnTacticalNoChecks(
         // Add forward push moves for promotion
         if (chess::rank(from) == prePromotionRank) {
             const int frontSq = from + pawnPushDelta;
-            if ((chess::Board::BIT_MASKS[frontSq] & occ) == 0) {
-                attacks |= chess::Board::BIT_MASKS[frontSq];
+            if (((1ULL << frontSq) & occ) == 0) {
+                attacks |= (1ULL << frontSq);
             }
         }
 
-        if (pinnedMask & chess::Board::BIT_MASKS[from]) {
+        if (pinnedMask & (1ULL << from)) {
             attacks &= pinRayBySquare[from];
         }
 
@@ -177,7 +177,7 @@ struct SideView {
           oppOcc(occ & ~ownOcc),
           enPassant(b.getEnPassant()),
           hasEnPassant(chess::isValidSquare(enPassant)),
-          enPassantBit(hasEnPassant ? chess::Board::BIT_MASKS[enPassant] : 0ULL) {}
+          enPassantBit(hasEnPassant ? (1ULL << enPassant) : 0ULL) {}
 };
 
 } // namespace
@@ -361,7 +361,7 @@ inline void MoveGenerator::appendPawnPseudoLegalMoves(
         const uint64_t epCandidate = (pieces::PAWN_ATTACKS[side][from] & enPassantBit) ? enPassantBit : 0ULL;
         mask |= (pieces::PAWN_ATTACKS[side][from] & oppOcc) | epCandidate;
         mask &= evasionMask; // ~0ULL outside single check, so a no-op there
-        if (pinnedMask & chess::Board::BIT_MASKS[from]) mask &= pinRayBySquare[from];
+        if (pinnedMask & (1ULL << from)) mask &= pinRayBySquare[from];
         // Keep EP candidate for legality check because EP changes occupancy on two squares.
         mask |= epCandidate;
         addPawnMovesFromMask<IsWhite>(b, moves, from, mask, enPassant);
@@ -431,7 +431,7 @@ uint64_t MoveGenerator::computePinRays(const chess::Board& b, chess::Square king
             if (blockers && ((blockers & (blockers - 1)) == 0ULL)) {
                 const int pinnedSq = std::countr_zero(blockers);
                 pinnedMask |= blockers;
-                pinRays[pinnedSq] = between | chess::Board::BIT_MASKS[pinnerSq];
+                pinRays[pinnedSq] = between | (1ULL << pinnerSq);
             }
         }
     };
@@ -457,7 +457,7 @@ void MoveGenerator::generateNonPawnLegalMoves(
             mask &= evasionMask;
         }
         if constexpr (HasPins) {
-            if (pinnedMask & chess::Board::BIT_MASKS[from]) mask &= pinRayBySquare[from];
+            if (pinnedMask & (1ULL << from)) mask &= pinRayBySquare[from];
         }
 
         while (mask) {
