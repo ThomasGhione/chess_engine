@@ -21,10 +21,8 @@ namespace NNUE {
 // nnue/embedded.cpp); false if the blob fails validation.
 [[nodiscard]] bool activateEmbedded() noexcept;
 
-[[nodiscard]] bool networkLoaded() noexcept;
-
 // stm-relative centipawns from the board's incrementally-maintained
-// accumulator. Requires networkLoaded().
+// accumulator. Requires an active network.
 [[nodiscard]] int32_t evaluate(const chess::Board& board) noexcept;
 
 } // namespace NNUE

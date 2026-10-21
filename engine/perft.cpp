@@ -156,8 +156,6 @@ bool runPerftSuite(int maxDepth, bool verbose) {
 }
 
 int runPerftCommand(int argc, char* argv[]) {
-    pieces::initMagicBitboards();
-
     // argv is [0]=./chess [1]=perft [2]=<depth>|divide|suite ...
     if (argc < 3) {
         printUsage();

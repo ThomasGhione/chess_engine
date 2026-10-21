@@ -14,7 +14,7 @@ namespace engine {
 // eval and return without storing anything, and none of them have a TT entry to
 // merge into, so that work is thrown away. This table keeps it.
 //
-// A hit returns exactly what Evaluator::evaluate would have returned for the
+// A hit returns exactly what the NNUE forward would have returned for the
 // same position, so the search tree is unchanged and only the time differs.
 //
 // One 64-bit word per slot, direct-mapped: the upper 48 bits hold the key, the

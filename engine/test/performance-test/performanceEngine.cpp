@@ -2,7 +2,6 @@
 
 #include <bit>
 #include "../../engine.hpp"
-#include "../../evaluator.hpp"
 #include "../../../nnue/nnue.hpp"
 #include "../../sort/move_generator.hpp"
 #include "../../movelist.hpp"
@@ -88,7 +87,7 @@ const auto performanceEngineSuite = [] {
     };
 
     // Boards must be built AFTER the network is active so their accumulators
-    // are filled during FEN load (Evaluator::evaluate is NNUE-only).
+    // are filled during FEN load.
     expect(NNUE::activateEmbedded());
     std::array<chess::Board, 16> boards;
     for (int i = 0; i < 16; ++i) {
@@ -100,7 +99,7 @@ const auto performanceEngineSuite = [] {
     auto evalStart = std::chrono::high_resolution_clock::now();
     for (int iter = 0; iter < EVAL_ITERATIONS; ++iter) {
       for (int i = 0; i < 16; ++i) {
-        evalSink += engine::Evaluator::evaluate(boards[i]);
+        evalSink += NNUE::evaluate(boards[i]);
       }
     }
     auto evalEnd = std::chrono::high_resolution_clock::now();

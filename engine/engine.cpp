@@ -4,8 +4,6 @@
 
 #include <omp.h>
 
-#include "../nnue/nnue.hpp"
-
 namespace engine {
 
 void Engine::bindSearchRuntime() noexcept {
@@ -15,30 +13,11 @@ void Engine::bindSearchRuntime() noexcept {
     searchRuntime.syzygyProber = &syzygyProber;
 }
 
-void Engine::ensureMagicTablesInitialized() noexcept {
-    if (!magicTablesInitialized) {
-        pieces::initMagicBitboards();
-        magicTablesInitialized = true;
-    }
-}
-
+// The network must be active before construction: the board fills its
+// accumulator when it is built.
 Engine::Engine() {
-
-    ensureMagicTablesInitialized();
-
-    // NNUE is the only evaluator: guarantee an active network before any
-    // search from this Engine. Test harnesses construct Engine directly and
-    // bypass main()'s activation; searching with no network would crash.
-    // The board member is built before this body runs, so refresh its
-    // accumulator after activating.
-    if (!NNUE::networkLoaded() && NNUE::activateEmbedded()) {
-        this->board.refreshNnueAccumulator();
-    }
-
     searchRuntime.maxThreads = omp_get_max_threads();
-
     bindSearchRuntime();
-    this->tt.clear();
 }
 
 void Engine::reset() noexcept {

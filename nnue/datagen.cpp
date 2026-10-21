@@ -477,8 +477,6 @@ void saveMeta(const std::string& metaPath, const MetaCounters& m) {
 } // namespace
 
 int runDatagen(int argc, char* argv[]) {
-    pieces::initMagicBitboards();
-
     const std::string outPrefix = (argc >= 3) ? argv[2] : "nnue/data/hydray";
     const int threads = (argc >= 4)
         ? std::clamp(std::atoi(argv[3]), 1, 32) : DEFAULT_THREADS;

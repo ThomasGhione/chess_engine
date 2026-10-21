@@ -9,7 +9,7 @@
 
 #include "../../debug.hpp"
 #include "../engine.hpp"
-#include "../evaluator.hpp"
+#include "../../nnue/nnue.hpp"
 #include "../sort/move_generator.hpp"
 #include "evalcache.hpp"
 #include "../../uci/output.hpp"
@@ -32,6 +32,13 @@ namespace {
 // never runs through searchPosition, so getBestMove seeds it.
 thread_local int32_t evalStack[MAX_PLY] = {};
 
+// A missing king (reachable only from an illegal FEN) is decisive, not an eval.
+int32_t evaluate(const chess::Board& b) noexcept {
+    if (b.kings_bb[0] == 0 || b.kings_bb[1] == 0) [[unlikely]]
+        return ((b.kings_bb[0] == 0) == (b.getActiveColor() == chess::Board::WHITE)) ? -MATE_VALUE : MATE_VALUE;
+    return NNUE::evaluate(b);
+}
+
 bool hasCastlingRights(const chess::Board& b) noexcept {
     return b.getCastle(0) || b.getCastle(1) || b.getCastle(2) || b.getCastle(3);
 }
@@ -41,7 +48,7 @@ int32_t cachedEval(uint64_t hashKey, chess::Board& b) noexcept {
     int32_t cached = 0;
     EvalCache& cache = sharedEvalCache();
     if (cache.probe(hashKey, cached)) return cached;
-    const int32_t value = Evaluator::evaluate(b);
+    const int32_t value = evaluate(b);
     cache.store(hashKey, value);
     return value;
 }
@@ -181,12 +188,12 @@ inline bool Searcher::checkEarlyTerminalConditions(
     
     if (runtime.shouldAbort()) {
         runtime.markInterrupted();
-        outScore = Evaluator::evaluate(b);
+        outScore = evaluate(b);
         return true;
     }
 
     if (ply >= MAX_PLY - 1) {
-        outScore = Evaluator::evaluate(b);
+        outScore = evaluate(b);
         return true;
     }
 
@@ -220,7 +227,7 @@ inline bool Searcher::enterNode(
     std::atomic_ref<uint64_t>(*counter).store(searched, std::memory_order_relaxed);
     if (runtime.maxNodes > 0 && searched >= runtime.maxNodes) [[unlikely]] {
         runtime.markInterrupted();
-        outScore = Evaluator::evaluate(b);
+        outScore = evaluate(b);
         return true;
     }
     return checkEarlyTerminalConditions(b, runtime, ply, outScore);
@@ -241,7 +248,7 @@ bool Searcher::checkDrawTerminalConditions(
             // Modest fixed contempt below: enough that the engine prefers to
             // keep playing when winning, but smaller than any meaningful
             // material amount so it won't trade a piece to avoid the draw.
-            const int32_t staticEval = Evaluator::evaluate(b);
+            const int32_t staticEval = evaluate(b);
             outScore = (std::abs(staticEval) <= REPETITION_DRAW_ADVANTAGE_THRESHOLD)
                 ? 0
                 : (staticEval > 0 ? -REPETITION_CONTEMPT : REPETITION_CONTEMPT);
@@ -450,7 +457,7 @@ chess::Move Searcher::searchBestMove(
     }
 
     MoveList fallbackMoves = engine::MoveGenerator::generateLegalMoves(board);
-    runtime.eval = Evaluator::evaluate(board);
+    runtime.eval = evaluate(board);
     return fallbackMoves.is_empty() ? chess::Move{} : fallbackMoves[0];
 }
 
@@ -1116,7 +1123,7 @@ int32_t Searcher::searchPosition(
     const int32_t best = result.score;
 
     if (runtime.isInterrupted()) {
-        return Evaluator::evaluate(b);
+        return evaluate(b);
     }
 
     // Learn only where the score contradicts the eval in the direction the
@@ -1203,7 +1210,7 @@ int32_t Searcher::quiescenceSearch(
                 return -MATE_VALUE + ply; // side to move is checkmated (negamax)
             }
         }
-        return Evaluator::evaluate(b);
+        return evaluate(b);
     }
 
     MovePicker movePicker;
@@ -1245,7 +1252,7 @@ int32_t Searcher::quiescenceSearch(
 
         if (runtime.shouldAbort()) {
             runtime.markInterrupted();
-            return Evaluator::evaluate(b);
+            return evaluate(b);
         }
 
         chess::Board::MoveState state;
@@ -1307,7 +1314,7 @@ chess::Move Searcher::getBestMove(
     // writes slot 0 itself. Left unseeded, `improving` there means eval > 0.
     evalStack[0] = (rootBoard.checkersTo(rootBoard.getActiveColor()) != 0ULL)
         ? NEG_INF
-        : Evaluator::evaluate(rootBoard);
+        : evaluate(rootBoard);
 
     const auto scoreMove = [&](const chess::Move& mv, int32_t a, int32_t b, bool cut) {
         return searchRootMoveScore(rootBoard, mv, runtime, a, b, true, &runtime.nodesSearched, cut);

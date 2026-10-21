@@ -1,7 +1,6 @@
 #include "ut.hpp"
 #include "../board/board.hpp"
 #include "../board/piece.hpp"
-#include "../engine/evaluator.hpp"
 #include "../engine/perft.hpp"
 #include "../engine/search/searcher.hpp"
 #include "../nnue/nnue.hpp"
@@ -25,7 +24,7 @@ void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     assert(board.move({chess::parseSquare("b8"), chess::parseSquare("a8")}));
 
     assert(board.isThreefoldRepetition());
-    assert(engine::Evaluator::evaluate(board) > 0);
+    assert(NNUE::evaluate(board) > 0);
 
     engine::Searcher::SearchRuntime runtime{};
     const int32_t qScore = engine::Searcher::quiescenceSearch(
@@ -77,9 +76,7 @@ void testPerftStandardPositions() {
 void registerBoardSuite();
 
 int main(){
-    // Magic bitboards + embedded NNUE net: tests drive Board/Searcher directly
-    // (no Engine), so nobody else activates the evaluator for them.
-    pieces::initMagicBitboards();
+    // Tests drive Board/Searcher directly, so nobody else activates the net.
     if (!NNUE::activateEmbedded()) return 1;
     testPerftStandardPositions();
     testQuiescenceScoresThreefoldAsDrawBeforeStaticEval();

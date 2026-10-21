@@ -70,10 +70,6 @@ bool activateEmbedded() noexcept {
     return true;
 }
 
-bool networkLoaded() noexcept {
-    return activeNetwork != nullptr;
-}
-
 int32_t evaluate(const chess::Board& b) noexcept {
     // HalfKA laziness: settle any perspective dirtied by a king bucket/flip
     // crossing before reading the accumulator (board is consistent here).

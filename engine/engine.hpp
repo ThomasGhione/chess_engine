@@ -34,10 +34,6 @@ private:
     std::atomic<bool> stopSearchRequested {false};
     std::atomic<bool> searchInterrupted {false};
 
-    // Shared bitboard init (all Engine instances); only the ctor touches these.
-    static inline bool magicTablesInitialized = false;
-    static void ensureMagicTablesInitialized() noexcept;
-
     void bindSearchRuntime() noexcept;
 };
 

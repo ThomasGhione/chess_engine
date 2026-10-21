@@ -4,6 +4,8 @@
 
 namespace chess {
 
+// Slider attack tables, filled once before main.
+[[maybe_unused]] static const bool sliderTablesReady = (pieces::initMagicBitboards(), true);
 
 bool Board::move(Move move) noexcept {
     const uint8_t moving = get(move.from);
