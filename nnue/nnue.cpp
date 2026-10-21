@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
+#include <vector>
 
 #include "../board/board.hpp"
 #include "accumulator.hpp"
@@ -24,50 +26,34 @@ namespace {
 
 std::unique_ptr<Deep::NetworkDeep> ownedDeep;
 
-// File size of a deep net, bullet's padding included.
-constexpr size_t DEEP_FILE_BYTES = (Deep::PAYLOAD_BYTES + 63) / 64 * 64;
+// Copies a net blob into an owned NetworkDeep (l1w16 and l1wT are derived, so
+// the blob cannot be used in place) and makes it active. bullet's format has
+// no header: the exact size, padding included, is the first sanity check.
+bool activate(const unsigned char* data, size_t size) {
+    if (size != (Deep::PAYLOAD_BYTES + 63) / 64 * 64) return false;
+    auto deep = std::make_unique<Deep::NetworkDeep>();
+    if (!Deep::loadFromMemory(data, size, *deep)) return false;
+    ownedDeep = std::move(deep);
+    activeNetwork = ownedDeep.get();
+    return true;
+}
 
 } // namespace
 
 bool loadNetwork(const std::string& path) {
-    std::ifstream in(path, std::ios::binary | std::ios::ate);
-    if (!in) {
-        std::cout << "info string EvalFile error: cannot open '" << path << "'\n";
+    std::ifstream in(path, std::ios::binary);
+    const std::vector<unsigned char> blob((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if (!activate(blob.data(), blob.size())) {
+        std::cout << "info string EvalFile error: cannot load '" << path << "'\n";
         return false;
     }
-    // bullet's format carries no header, so size is the only sanity check
-    // available before the loader validates the padding signature.
-    if (static_cast<size_t>(in.tellg()) != DEEP_FILE_BYTES) {
-        std::cout << "info string EvalFile error: unexpected size (expected "
-                  << DEEP_FILE_BYTES << " bytes)\n";
-        return false;
-    }
-
-    auto deep = std::make_unique<Deep::NetworkDeep>();
-    if (!Deep::loadFromFile(path.c_str(), *deep)) {
-        std::cout << "info string EvalFile error: failed validation\n";
-        return false;
-    }
-    ownedDeep = std::move(deep);
-    activeNetwork = ownedDeep.get();
     std::cout << "info string EvalFile: network (1024 -> " << Deep::L1_SIZE << " -> 1)"
               << (Deep::hasVnniPath() ? ", VNNI" : ", no VNNI") << "\n";
     return true;
 }
 
-size_t embeddedSize() noexcept {
-    return static_cast<size_t>(g_hydrayEmbeddedNetEnd - g_hydrayEmbeddedNetStart);
-}
-
 bool activateEmbedded() noexcept {
-    // The net cannot be a plain overlay on the blob -- l1w16 and l1wT are
-    // derived, not stored -- so it is copied into an owned NetworkDeep.
-    if (embeddedSize() != DEEP_FILE_BYTES) return false;
-    auto deep = std::make_unique<Deep::NetworkDeep>();
-    if (!Deep::loadFromMemory(g_hydrayEmbeddedNetStart, embeddedSize(), *deep)) return false;
-    ownedDeep = std::move(deep);
-    activeNetwork = ownedDeep.get();
-    return true;
+    return activate(g_hydrayEmbeddedNetStart, static_cast<size_t>(g_hydrayEmbeddedNetEnd - g_hydrayEmbeddedNetStart));
 }
 
 int32_t evaluate(const chess::Board& b) noexcept {
