@@ -320,8 +320,9 @@ transposition table, each with private heuristics).
 Evaluation is NNUE-only: the dual-perspective accumulator is maintained
 incrementally on every make/unmake, and the AVX2 forward pass produces the
 score at leaves and for pruning decisions. All that remains of the old
-handcrafted evaluator's constants (`engine/eval_constants.hpp`) are the piece
-values used by SEE, capture ordering, and stalemate scoring.
+handcrafted evaluator's constants are the piece values (`PIECE_VALUES` in
+`engine/search/search_constants.hpp`) used by SEE, capture ordering and the
+qsearch delta margins.
 
 ## Static Analysis
 
