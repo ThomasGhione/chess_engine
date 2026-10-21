@@ -73,12 +73,8 @@ struct alignas(64) Accumulator {
     // A pair of queued deltas folded into one traversal of the rows. The queue
     // at a flush is almost always the previous sibling's move undone followed by
     // this move done, so replaying entry by entry reads and writes both rows
-    // twice. The weight rows must be read either way; the accumulator rows need
-    // not be. int16 is modular, so the order the contributions are summed in
-    // does not change the result, the same argument updateMove relies on.
-    //
-    // The counts are template parameters so the inner loops unroll: a version
-    // with runtime bounds measured 50% SLOWER than replaying one at a time.
+    // twice. int16 is modular, so the order the contributions are summed in
+    // does not change the result.
     template<int NS, int NA>
     inline void updateFused(const int16_t* const (&sub)[2][2],
                             const int16_t* const (&add)[2][2]) noexcept {
@@ -119,20 +115,7 @@ struct alignas(64) Accumulator {
         return rowFor(base[p], flip[p], p, piece, index);
     }
 
-    // Adds/removes one piece feature on an arbitrary accumulator row under a
-    // fixed basis - shared by the live perspectives and the Finny cache rows.
-    template<bool Add>
-    static inline void updateRow(int16_t* __restrict row, int rowBase, int rowFlip,
-                                 int p, uint8_t piece, uint8_t index) noexcept {
-        const int16_t* __restrict w = rowFor(rowBase, rowFlip, p, piece, index);
-        for (int i = 0; i < HIDDEN; ++i) {
-            if constexpr (Add) row[i] = static_cast<int16_t>(row[i] + w[i]);
-            else               row[i] = static_cast<int16_t>(row[i] - w[i]);
-        }
-    }
-
-    // Single-row counterpart of updateFused, for the Finny refresh: several
-    // feature rows summed in one traversal instead of one traversal each.
+    // Single-row counterpart of updateFused, for the Finny refresh.
     template<int NS, int NA>
     static inline void fuseRows(int16_t* __restrict row, const int16_t* const* sub,
                                 const int16_t* const* add) noexcept {
@@ -144,124 +127,73 @@ struct alignas(64) Accumulator {
         }
     }
 
-    // Applies a whole feature diff, two subs and two adds per traversal. A
-    // refresh changes 5.8 features on average, so this reads and writes the row
-    // about twice instead of six times, and the weight rows of one chunk miss
-    // in parallel rather than one after the other.
-    static inline void applyRows(int16_t* __restrict row,
-                                 const int16_t* const* sub, int ns,
-                                 const int16_t* const* add, int na) noexcept {
+    // Walks a diff of ns subs and na adds in passes of at most two of each,
+    // calling f.template operator()<S, A>(si, ai) on each pass. The counts are
+    // template parameters so the kernels unroll: runtime bounds measured 50%
+    // slower than replaying the deltas one at a time.
+    template<class F>
+    static inline void forEachPass(int ns, int na, F&& f) noexcept {
         for (int si = 0, ai = 0; si < ns || ai < na; ) {
             const int s = (ns - si > 2) ? 2 : ns - si;
             const int a = (na - ai > 2) ? 2 : na - ai;
             switch (s * 4 + a) {
-                case 2 * 4 + 2: fuseRows<2, 2>(row, sub + si, add + ai); break;
-                case 2 * 4 + 1: fuseRows<2, 1>(row, sub + si, add + ai); break;
-                case 1 * 4 + 2: fuseRows<1, 2>(row, sub + si, add + ai); break;
-                case 1 * 4 + 1: fuseRows<1, 1>(row, sub + si, add + ai); break;
-                case 2 * 4 + 0: fuseRows<2, 0>(row, sub + si, add + ai); break;
-                case 0 * 4 + 2: fuseRows<0, 2>(row, sub + si, add + ai); break;
-                case 1 * 4 + 0: fuseRows<1, 0>(row, sub + si, add + ai); break;
-                default:        fuseRows<0, 1>(row, sub + si, add + ai); break;
+                case 2 * 4 + 2: f.template operator()<2, 2>(si, ai); break;
+                case 2 * 4 + 1: f.template operator()<2, 1>(si, ai); break;
+                case 1 * 4 + 2: f.template operator()<1, 2>(si, ai); break;
+                case 1 * 4 + 1: f.template operator()<1, 1>(si, ai); break;
+                case 2 * 4 + 0: f.template operator()<2, 0>(si, ai); break;
+                case 0 * 4 + 2: f.template operator()<0, 2>(si, ai); break;
+                case 1 * 4 + 0: f.template operator()<1, 0>(si, ai); break;
+                default:        f.template operator()<0, 1>(si, ai); break;
             }
             si += s;
             ai += a;
         }
     }
 
-    template<bool Add>
-    inline void updatePerspective(int p, uint8_t piece, uint8_t index) noexcept {
-        updateRow<Add>(v[p], base[p], flip[p], p, piece, index);
+    // Applies a whole feature diff to one row. A refresh changes 5.8 features on
+    // average, so this reads and writes the row about twice instead of six times.
+    static inline void applyRows(int16_t* __restrict row,
+                                 const int16_t* const* sub, int ns,
+                                 const int16_t* const* add, int na) noexcept {
+        forEachPass(ns, na, [&]<int S, int A>(int si, int ai) { fuseRows<S, A>(row, sub + si, add + ai); });
     }
 
     // piece = Board nibble (WHITE=0x8 color bit | type 1..6), index = engine
-    // square (0 = a8, 63 = h1); LERF square = index ^ 56.
+    // square (0 = a8, 63 = h1).
     template<bool Add>
     inline void update(uint8_t piece, uint8_t index) noexcept {
-        const int type = (piece & 0x7) - 1;
-        const bool black = (piece & 0x8) == 0;
-        const int lerf = index ^ 56;
-
-        // A king ADD landing on a square with a different basis invalidates
-        // every feature of its own perspective: mark dirty, the next
-        // ensureClean rebuilds. (The matching REMOVE is always applied under
-        // the stored basis, which by the invariant is the basis the king was
-        // added with.)
-        if constexpr (Add) {
-            if (type == 5) [[unlikely]] {
-                const int p = black ? 1 : 0;
-                if (!dirty[p]) {
-                    const int kView = (p == 1) ? (lerf ^ 56) : lerf;
-                    if (kingFeatureBase(kView) != base[p]
-                        || kingFlip(kView) != flip[p]) {
-                        dirty[p] = true;
-                    }
-                }
-            }
+        // A king landing on a square with another basis invalidates every
+        // feature of its own perspective: mark it dirty for the next refresh.
+        // The matching remove is applied under the stored basis, the one the
+        // king was added with.
+        if (Add && (piece & 0x7) == 6) [[unlikely]] {
+            const int p = (piece & 0x8) ? 0 : 1;
+            const int kView = (p == 1) ? index : (index ^ 56);
+            dirty[p] |= kingFeatureBase(kView) != base[p] || kingFlip(kView) != flip[p];
         }
-
-        // Fast path (the overwhelming majority): both perspectives clean -
-        // one fused loop updates both rows, same ILP as the pre-HalfKA code.
+        const int16_t* rows[2][2] = {{featureRow(0, piece, index)}, {featureRow(1, piece, index)}};
         if (!dirty[0] && !dirty[1]) [[likely]] {
-            const Deep::NetworkDeep& net = *activeNetwork;
-            const int featW = (black ? 384 : 0) + type * 64 + lerf;
-            const int featB = (black ? 0 : 384) + type * 64 + (lerf ^ 56);
-            const int16_t* __restrict w0 = net.l0w[base[0] + (featW ^ flip[0])];
-            const int16_t* __restrict w1 = net.l0w[base[1] + (featB ^ flip[1])];
-            for (int i = 0; i < HIDDEN; ++i) {
-                if constexpr (Add) {
-                    v[0][i] = static_cast<int16_t>(v[0][i] + w0[i]);
-                    v[1][i] = static_cast<int16_t>(v[1][i] + w1[i]);
-                } else {
-                    v[0][i] = static_cast<int16_t>(v[0][i] - w0[i]);
-                    v[1][i] = static_cast<int16_t>(v[1][i] - w1[i]);
-                }
-            }
+            updateFused<!Add, Add>(rows, rows);
             return;
         }
-        if (!dirty[0]) updatePerspective<Add>(0, piece, index);
-        if (!dirty[1]) updatePerspective<Add>(1, piece, index);
+        for (int p = 0; p < 2; ++p) {
+            if (!dirty[p]) fuseRows<!Add, Add>(v[p], rows[p], rows[p]);
+        }
     }
 
-    // Sposta un pezzo da `from` a `to` con UNA passata sull'accumulatore invece
-    // delle due che costano un remove e un add separati. E' la forma piu'
-    // comune di gran lunga: una mossa quieta e' esattamente questo, e undoMove
-    // ne fa un'altra al contrario.
-    //
-    // Il guadagno sta negli accessi in memoria, non nelle somme: due passate
-    // leggono l'accumulatore due volte e lo riscrivono due volte, questa lo
-    // legge e lo riscrive una volta sola. Misurato in isolamento, 145 ns contro
-    // 98 per le due separate.
-    //
-    // L'aritmetica e' IDENTICA, non approssimata: in int16 la somma e'
-    // associativa modulo 2^16, quindi (v - s) + a == v - s + a anche quando
-    // trabocca. Il collaudo e' nnue-selftest, che confronta accumulatore
-    // incrementale e ricostruito da zero.
+    // A quiet move in one pass over the rows instead of a remove and an add. A
+    // king may change bucket, and a dirty perspective skips updates: both take
+    // the two-step path.
     inline void updateMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept {
-        const int type = (piece & 0x7) - 1;
-        // Un re che atterra puo' cambiare king bucket, e allora la sua
-        // prospettiva va rifatta da zero: quella logica vive in update<true> e
-        // non si fonde. Con una prospettiva gia' sporca, idem.
-        if (type == 5 || dirty[0] || dirty[1]) [[unlikely]] {
+        if ((piece & 0x7) == 6 || dirty[0] || dirty[1]) [[unlikely]] {
             update<false>(piece, fromIndex);
             update<true>(piece, toIndex);
             return;
         }
-
-        const Deep::NetworkDeep& net = *activeNetwork;
-        const bool black = (piece & 0x8) == 0;
-        const int lerfFrom = fromIndex ^ 56;
-        const int lerfTo   = toIndex ^ 56;
-        const int featW = (black ? 384 : 0) + type * 64;
-        const int featB = (black ? 0 : 384) + type * 64;
-        const int16_t* __restrict s0 = net.l0w[base[0] + ((featW + lerfFrom) ^ flip[0])];
-        const int16_t* __restrict a0 = net.l0w[base[0] + ((featW + lerfTo)   ^ flip[0])];
-        const int16_t* __restrict s1 = net.l0w[base[1] + ((featB + fromIndex) ^ flip[1])];
-        const int16_t* __restrict a1 = net.l0w[base[1] + ((featB + toIndex)   ^ flip[1])];
-        for (int i = 0; i < HIDDEN; ++i) {
-            v[0][i] = static_cast<int16_t>(v[0][i] - s0[i] + a0[i]);
-            v[1][i] = static_cast<int16_t>(v[1][i] - s1[i] + a1[i]);
-        }
+        const int16_t* sub[2][2] = {{featureRow(0, piece, fromIndex)}, {featureRow(1, piece, fromIndex)}};
+        const int16_t* add[2][2] = {{featureRow(0, piece, toIndex)}, {featureRow(1, piece, toIndex)}};
+        updateFused<1, 1>(sub, add);
     }
 };
 

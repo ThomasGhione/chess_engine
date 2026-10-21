@@ -116,6 +116,10 @@ inline void Board::flushAccPending() const noexcept {
     }
 
     if (normalized) {
+        // A contribution packs (piece << 8 | square).
+        const auto row = [this](int p, uint16_t c) {
+            return nnueAccumulator.featureRow(p, static_cast<uint8_t>(c >> 8), static_cast<uint8_t>(c));
+        };
         for (int i = 0; i < ns; ) {
             int j = 0;
             while (j < na && add[j] != sub[i]) ++j;
@@ -138,43 +142,20 @@ inline void Board::flushAccPending() const noexcept {
             const int q = rebase[0] ? 1 : 0;
             const int16_t* subRow[CAP];
             const int16_t* addRow[CAP];
-            for (int k = 0; k < ns; ++k)
-                subRow[k] = nnueAccumulator.featureRow(q, static_cast<uint8_t>(sub[k] >> 8), static_cast<uint8_t>(sub[k]));
-            for (int k = 0; k < na; ++k)
-                addRow[k] = nnueAccumulator.featureRow(q, static_cast<uint8_t>(add[k] >> 8), static_cast<uint8_t>(add[k]));
+            for (int k = 0; k < ns; ++k) subRow[k] = row(q, sub[k]);
+            for (int k = 0; k < na; ++k) addRow[k] = row(q, add[k]);
             NNUE::Accumulator::applyRows(nnueAccumulator.v[q], subRow, ns, addRow, na);
             return;
         }
-        // At most two subs and two adds per pass: those are the kernels that
-        // exist, and one pass already covers four rows.
-        for (int si = 0, ai = 0; si < ns || ai < na; ) {
-            const int s = (ns - si > 2) ? 2 : ns - si;
-            const int a = (na - ai > 2) ? 2 : na - ai;
+        NNUE::Accumulator::forEachPass(ns, na, [&]<int S, int A>(int si, int ai) {
             const int16_t* subRow[2][2];
             const int16_t* addRow[2][2];
-            for (int k = 0; k < s; ++k) {
-                const uint16_t c = sub[si + k];
-                subRow[0][k] = nnueAccumulator.featureRow(0, static_cast<uint8_t>(c >> 8), static_cast<uint8_t>(c));
-                subRow[1][k] = nnueAccumulator.featureRow(1, static_cast<uint8_t>(c >> 8), static_cast<uint8_t>(c));
+            for (int p = 0; p < 2; ++p) {
+                for (int k = 0; k < S; ++k) subRow[p][k] = row(p, sub[si + k]);
+                for (int k = 0; k < A; ++k) addRow[p][k] = row(p, add[ai + k]);
             }
-            for (int k = 0; k < a; ++k) {
-                const uint16_t c = add[ai + k];
-                addRow[0][k] = nnueAccumulator.featureRow(0, static_cast<uint8_t>(c >> 8), static_cast<uint8_t>(c));
-                addRow[1][k] = nnueAccumulator.featureRow(1, static_cast<uint8_t>(c >> 8), static_cast<uint8_t>(c));
-            }
-            si += s;
-            ai += a;
-            switch (s * 4 + a) {
-                case 2 * 4 + 2: nnueAccumulator.updateFused<2, 2>(subRow, addRow); break;
-                case 2 * 4 + 1: nnueAccumulator.updateFused<2, 1>(subRow, addRow); break;
-                case 1 * 4 + 2: nnueAccumulator.updateFused<1, 2>(subRow, addRow); break;
-                case 1 * 4 + 1: nnueAccumulator.updateFused<1, 1>(subRow, addRow); break;
-                case 2 * 4 + 0: nnueAccumulator.updateFused<2, 0>(subRow, addRow); break;
-                case 0 * 4 + 2: nnueAccumulator.updateFused<0, 2>(subRow, addRow); break;
-                case 1 * 4 + 0: nnueAccumulator.updateFused<1, 0>(subRow, addRow); break;
-                default:        nnueAccumulator.updateFused<0, 1>(subRow, addRow); break;
-            }
-        }
+            nnueAccumulator.updateFused<S, A>(subRow, addRow);
+        });
         return;
     }
 
