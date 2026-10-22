@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <bit>
 #include <string>
 #include <array>
@@ -7,6 +8,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstring>
+#include <memory>
 
 #include "../nnue/accumulator.hpp"
 #include "./coords.hpp"
@@ -110,6 +112,7 @@ public:
     // --- Constructors ---
     Board() noexcept;
     explicit Board(const std::string& fen);
+    // A copy takes the current position's accumulator only, computed first.
     Board(const Board& other) noexcept;
     Board& operator=(const Board& other) noexcept;
     Board(Board&& other) noexcept = default;
@@ -159,11 +162,13 @@ public:
     // From-scratch NNUE accumulator recompute (no-op when no net is loaded).
     // Incremental maintenance happens in addPieceToBB/removePieceFromBB.
     inline void        refreshNnueAccumulator() noexcept;
-    // HalfKA lazy refresh: rebuilds any perspective marked dirty by an
-    // own-king bucket/flip crossing. Must be called with the Board in a
-    // consistent state (NNUE::evaluate and the selftest do); const because
-    // the accumulator is a cache of board-derived state.
+    // Computes the current position's accumulator if it is not yet, from the
+    // nearest computed ancestor or the Finny table. Must be called with the
+    // Board in a consistent state (NNUE::evaluate and the selftest do); const
+    // because the accumulator is a cache of board-derived state.
     inline void        ensureNnueAccumulatorClean() const noexcept;
+    // The current position's accumulator, valid after ensureNnueAccumulatorClean.
+    const NNUE::Accumulator& accumulator() const noexcept { return frame(accTop); }
 
     // --- FEN ---
     void        fenToBoard(const std::string& fen);
@@ -176,29 +181,17 @@ public:
         return bb[PAWN][side] | bb[KNIGHT][side] | bb[BISHOP][side] | bb[ROOK][side] | bb[QUEEN][side] | bb[KING][side];
     }
 
-    // Maintained by the piece updates while a network is loaded; garbage until
-    // the first refreshNnueAccumulator(). mutable: a cache that the const
-    // evaluation paths settle.
-    mutable NNUE::Accumulator nnueAccumulator;
-
-    // Deferred accumulator work. The rows are only touched when something
-    // actually reads them, so a node cut before it evaluates pays nothing:
-    // its delta and the matching undo cancel here. Kept outside Accumulator so
-    // the selftest's whole-struct memcmp keeps comparing only real state.
-    mutable NNUE::AccDelta accPending[NNUE::MAX_ACC_PENDING];
-    mutable int            accPendingCount = 0;
-
 private:
-    // Replays every queued delta in order, leaving the rows consistent with
-    // the current position. Called before anything reads the accumulator.
-    inline void flushAccPending() const noexcept;
-    inline void queueAcc(NNUE::AccDelta delta) const noexcept;
+    NNUE::Accumulator& frame(int i) const noexcept { return accFrames[static_cast<size_t>(i & (NNUE::ACC_FRAMES - 1))]; }
+    inline void pushAccFrame() noexcept;
+    inline void recordAcc(NNUE::AccDelta delta) noexcept;
 
     // --- Private helpers: move execution ---
+    // Record: doMove logs the change in the new frame; undoMove only pops it.
     inline void set(uint8_t index, piece_id value) noexcept;
-    inline void addPieceToBB(uint8_t piece, uint8_t index) noexcept;
-    inline void removePieceFromBB(uint8_t piece, uint8_t index) noexcept;
-    inline void relocate(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept;
+    template<bool Record> inline void addPieceToBB(uint8_t piece, uint8_t index) noexcept;
+    template<bool Record> inline void removePieceFromBB(uint8_t piece, uint8_t index) noexcept;
+    template<bool Record> inline void relocate(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept;
     inline void prepareMoveState(MoveState& st, uint8_t destBefore) const noexcept;
     inline void restoreState(const MoveState& st) noexcept;
     inline void passTurn(bool resetHalfMoves) noexcept;
@@ -251,6 +244,17 @@ private:
     uint8_t  historySize         = 0;
     // Plies since the last null move, saturating; 255 = none within reach.
     uint8_t  pliesFromNull       = 255;
+
+    // Accumulator stack, a ring of frames: frame(accTop) is the current
+    // position, each frame one move after the previous one. doMove pushes the
+    // move's feature changes and undoMove pops, so a sibling starts again from
+    // its parent's values instead of undoing the previous sibling's move. The
+    // values are computed only when read: a node cut before it evaluates
+    // pays nothing. Garbage until the first refreshNnueAccumulator(); a cache
+    // that the const evaluation paths settle. On the heap: half a MiB.
+    int accTop   = 0;   // grows with every move, frame() wraps it
+    int accFloor = 0;   // oldest frame of this line: a load, a copy or a refresh
+    std::unique_ptr<NNUE::Accumulator[]> accFrames{new NNUE::Accumulator[NNUE::ACC_FRAMES]};
 };
 
 static_assert(Move::promotionTypeFromChar('q') == Board::QUEEN

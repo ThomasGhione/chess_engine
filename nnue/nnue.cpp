@@ -57,10 +57,9 @@ bool activateEmbedded() noexcept {
 }
 
 int32_t evaluate(const chess::Board& b) noexcept {
-    // HalfKA laziness: settle any perspective dirtied by a king bucket/flip
-    // crossing before reading the accumulator (board is consistent here).
+    // The current frame is computed on demand (board is consistent here).
     b.ensureNnueAccumulatorClean();
-    const NNUE::Accumulator& acc = b.nnueAccumulator;
+    const NNUE::Accumulator& acc = b.accumulator();
     const int stm = chess::Board::colorToIndex(b.getActiveColor()); // 0 = white
 
     // Material-count output bucket; must match bullet's MaterialCount<8>

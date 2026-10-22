@@ -3,12 +3,11 @@
 // Dual-perspective NNUE accumulator: v[0] = white's view, v[1] = black's view.
 //
 // Every feature of perspective p depends on the bucket and flip of p's own
-// king, its basis (base = 768 * bucket, flip). Invariant: a clean perspective
-// holds features accumulated under its stored basis, and that basis matches
-// its king. Piece updates apply under the stored bases (add and sub are exact
-// inverses, so undo needs no snapshot). A king landing on another basis marks
-// its perspective dirty, and a dirty perspective skips updates until
-// Board::ensureNnueAccumulatorClean() rebuilds it at a consistent board.
+// king, its basis (base = 768 * bucket, flip). Board keeps one accumulator per
+// position along the current line, a frame: doMove pushes a frame holding the
+// move's feature changes, undoMove pops it, and the values are computed only
+// when something reads them, from the nearest computed ancestor under the
+// same basis or from the Finny table (Board::ensureNnueAccumulatorClean).
 
 #include <cstdint>
 #include <cstring>
@@ -18,29 +17,31 @@
 
 namespace NNUE {
 
-// One deferred accumulator mutation. doMove records these instead of touching
-// the 1024-wide rows; evaluate replays them in order, which reproduces the
-// eager sequence exactly (the dirty/basis transitions depend on that order).
-// A do/undo pair that never reaches an evaluate cancels here and costs nothing.
+// One feature change of a move: a piece added, removed or moved.
 struct AccDelta {
     enum Kind : uint8_t { Add, Remove, Move };
     uint8_t kind;
     uint8_t piece;
     uint8_t from;   // Add/Remove: the square
     uint8_t to;     // Move only
-    bool operator==(const AccDelta&) const = default;
 };
 
-// Deepest chain of moves that can be made without an evaluate is bounded by
-// MAX_PLY + the qsearch cap, at most three deltas each. The queue overflowing
-// only forces an early replay, so correctness never rests on this number.
-inline constexpr int MAX_ACC_PENDING = 512;
+// A move changes at most four features: a promotion capture.
+inline constexpr int ACC_MAX_DELTAS = 4;
+// Frames in Board's ring: a power of two, far deeper than any search line.
+inline constexpr int ACC_FRAMES = 128;
+// A frame is computed from an ancestor at most this many moves back; past
+// that the Finny refresh is the cheaper start.
+inline constexpr int ACC_MAX_WALK = 8;
 
 struct alignas(64) Accumulator {
     int16_t v[2][HIDDEN];
     int32_t base[2];   // 768 * king bucket, per perspective
     uint8_t flip[2];   // 0 or 7 (file mirror), per perspective
-    bool    dirty[2];  // true = v[p] stale, skip updates until refresh
+    bool    dirty[2];  // true = v[p] not computed for this position yet
+    // The move from the previous frame, in the same cache line as the flags.
+    uint8_t  ndelta;
+    AccDelta delta[ACC_MAX_DELTAS];
 
     // Wipes both perspectives to the bias and installs the given own-king
     // squares (LERF, already from each perspective's view) as bases.
@@ -55,20 +56,27 @@ struct alignas(64) Accumulator {
         dirty[0] = dirty[1] = false;
     }
 
-    // A pair of queued deltas folded into one traversal of the rows. The queue
-    // at a flush is almost always the previous sibling's move undone followed by
-    // this move done, so replaying entry by entry reads and writes both rows
-    // twice. int16 is modular, so the order the contributions are summed in
-    // does not change the result.
+    // Both perspectives in one traversal of the rows, reading s0/s1 and
+    // writing d0/d1 (another frame). int16 is modular, so the order the
+    // contributions are summed in does not change the result. The accumulator
+    // rows never alias the weight rows: restrict-qualified parameters say so,
+    // or GCC versions the loop on runtime alias checks.
     template<int NS, int NA>
-    inline void updateFused(const int16_t* const (&sub)[2][2],
-                            const int16_t* const (&add)[2][2]) noexcept {
-        fusePair<NS, NA>(v[0], v[1], sub, add);
+    static inline void fusePairFrom(const int16_t* __restrict s0, const int16_t* __restrict s1,
+                                    int16_t* __restrict d0, int16_t* __restrict d1,
+                                    const int16_t* const (&sub)[2][2],
+                                    const int16_t* const (&add)[2][2]) noexcept {
+        for (int i = 0; i < HIDDEN; ++i) {
+            int x0 = s0[i];
+            int x1 = s1[i];
+            for (int k = 0; k < NS; ++k) { x0 -= sub[0][k][i]; x1 -= sub[1][k][i]; }
+            for (int k = 0; k < NA; ++k) { x0 += add[0][k][i]; x1 += add[1][k][i]; }
+            d0[i] = static_cast<int16_t>(x0);
+            d1[i] = static_cast<int16_t>(x1);
+        }
     }
 
-    // The accumulator rows never alias the weight rows. Restrict-qualified
-    // parameters say so: without them GCC versions the loop on runtime alias
-    // checks at -O3 and leaves it scalar at -O2.
+    // The same in place, for the passes after the first.
     template<int NS, int NA>
     static inline void fusePair(int16_t* __restrict v0, int16_t* __restrict v1,
                                 const int16_t* const (&sub)[2][2],
@@ -100,7 +108,18 @@ struct alignas(64) Accumulator {
         return rowFor(base[p], flip[p], p, piece, index);
     }
 
-    // Single-row counterpart of updateFused, for the Finny refresh.
+    // Single-row counterparts of fusePairFrom and fusePair.
+    template<int NS, int NA>
+    static inline void fuseRowsFrom(const int16_t* __restrict src, int16_t* __restrict row,
+                                    const int16_t* const* sub, const int16_t* const* add) noexcept {
+        for (int i = 0; i < HIDDEN; ++i) {
+            int x = src[i];
+            for (int k = 0; k < NS; ++k) x -= sub[k][i];
+            for (int k = 0; k < NA; ++k) x += add[k][i];
+            row[i] = static_cast<int16_t>(x);
+        }
+    }
+
     template<int NS, int NA>
     static inline void fuseRows(int16_t* __restrict row, const int16_t* const* sub,
                                 const int16_t* const* add) noexcept {
@@ -136,49 +155,25 @@ struct alignas(64) Accumulator {
         }
     }
 
-    // Applies a whole feature diff to one row. A refresh changes 5.8 features on
+    // Applies a whole feature diff to one row, the first pass reading src (a
+    // different row) when it is given. A refresh changes 5.8 features on
     // average, so this reads and writes the row about twice instead of six times.
     static inline void applyRows(int16_t* __restrict row,
                                  const int16_t* const* sub, int ns,
-                                 const int16_t* const* add, int na) noexcept {
-        forEachPass(ns, na, [&]<int S, int A>(int si, int ai) { fuseRows<S, A>(row, sub + si, add + ai); });
-    }
-
-    // piece = Board nibble (WHITE=0x8 color bit | type 1..6), index = engine
-    // square (0 = a8, 63 = h1).
-    template<bool Add>
-    inline void update(uint8_t piece, uint8_t index) noexcept {
-        // A king landing on a square with another basis invalidates every
-        // feature of its own perspective: mark it dirty for the next refresh.
-        // The matching remove is applied under the stored basis, the one the
-        // king was added with.
-        if (Add && (piece & 0x7) == 6) [[unlikely]] {
-            const int p = (piece & 0x8) ? 0 : 1;
-            const int kView = (p == 1) ? index : (index ^ 56);
-            dirty[p] |= kingFeatureBase(kView) != base[p] || kingFlip(kView) != flip[p];
-        }
-        const int16_t* rows[2][2] = {{featureRow(0, piece, index)}, {featureRow(1, piece, index)}};
-        if (!dirty[0] && !dirty[1]) [[likely]] {
-            updateFused<!Add, Add>(rows, rows);
+                                 const int16_t* const* add, int na,
+                                 const int16_t* src = nullptr) noexcept {
+        if (src != nullptr && ns == 0 && na == 0) {
+            std::memcpy(row, src, HIDDEN * sizeof(int16_t));
             return;
         }
-        for (int p = 0; p < 2; ++p) {
-            if (!dirty[p]) fuseRows<!Add, Add>(v[p], rows[p], rows[p]);
-        }
-    }
-
-    // A quiet move in one pass over the rows instead of a remove and an add. A
-    // king may change bucket, and a dirty perspective skips updates: both take
-    // the two-step path.
-    inline void updateMove(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept {
-        if ((piece & 0x7) == 6 || dirty[0] || dirty[1]) [[unlikely]] {
-            update<false>(piece, fromIndex);
-            update<true>(piece, toIndex);
-            return;
-        }
-        const int16_t* sub[2][2] = {{featureRow(0, piece, fromIndex)}, {featureRow(1, piece, fromIndex)}};
-        const int16_t* add[2][2] = {{featureRow(0, piece, toIndex)}, {featureRow(1, piece, toIndex)}};
-        updateFused<1, 1>(sub, add);
+        forEachPass(ns, na, [&]<int S, int A>(int si, int ai) {
+            if (src != nullptr) {
+                fuseRowsFrom<S, A>(src, row, sub + si, add + ai);
+                src = nullptr;
+            } else {
+                fuseRows<S, A>(row, sub + si, add + ai);
+            }
+        });
     }
 };
 

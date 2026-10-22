@@ -23,44 +23,47 @@ inline void Board::set(uint8_t index, piece_id value) noexcept {
     chessboard[index] = static_cast<uint8_t>(value & MASK_PIECE);
 }
 
-// The queue cancels a delta against the pending one it inverts. undoMove emits
-// exactly the inverse operations in reverse order, so a do/undo pair that never
-// reached an evaluate annihilates here and never touches a row.
+// A new frame for the position doMove is about to make: computed later, from
+// the changes the hooks log into it. A long game wraps the ring; only frames
+// still inside it stay valid starts.
 __attribute__((always_inline))
-inline void Board::queueAcc(NNUE::AccDelta delta) const noexcept {
-    const NNUE::AccDelta inverse = (delta.kind == NNUE::AccDelta::Move)
-        ? NNUE::AccDelta{delta.kind, delta.piece, delta.to, delta.from}
-        : NNUE::AccDelta{static_cast<uint8_t>(delta.kind ^ 1), delta.piece, delta.from, 0}; // Add <-> Remove
-    if (accPendingCount > 0 && accPending[accPendingCount - 1] == inverse) {
-        --accPendingCount;
-        return;
-    }
-    if (accPendingCount == NNUE::MAX_ACC_PENDING) [[unlikely]] flushAccPending();
-    accPending[accPendingCount++] = delta;
+inline void Board::pushAccFrame() noexcept {
+    NNUE::Accumulator& f = frame(++accTop);
+    f.ndelta = 0;
+    f.dirty[0] = f.dirty[1] = true;
+    if (accTop - accFloor >= NNUE::ACC_FRAMES) accFloor = accTop - NNUE::ACC_FRAMES + 1;
 }
 
+__attribute__((always_inline))
+inline void Board::recordAcc(NNUE::AccDelta delta) noexcept {
+    NNUE::Accumulator& f = frame(accTop);
+    f.delta[f.ndelta++] = delta;
+}
+
+template<bool Record>
 __attribute__((always_inline))
 inline void Board::addPieceToBB(uint8_t piece, uint8_t index) noexcept {
     bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] |= 1ULL << index;
-    if (NNUE::activeNetwork != nullptr) [[likely]] queueAcc({NNUE::AccDelta::Add, piece, index, 0});
+    if constexpr (Record) recordAcc({NNUE::AccDelta::Add, piece, index, 0});
 }
 
+template<bool Record>
 __attribute__((always_inline))
 inline void Board::removePieceFromBB(uint8_t piece, uint8_t index) noexcept {
     bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] &= ~(1ULL << index);
-    if (NNUE::activeNetwork != nullptr) [[likely]] queueAcc({NNUE::AccDelta::Remove, piece, index, 0});
+    if constexpr (Record) recordAcc({NNUE::AccDelta::Remove, piece, index, 0});
 }
 
 // Moves a piece between squares: mailbox, occupancy, its bitboard (which never
-// holds the destination, so one XOR does both ends) and the accumulator, which
-// gets one pass for the pair instead of a remove and an add.
+// holds the destination, so one XOR does both ends) and, in doMove, the frame.
+template<bool Record>
 __attribute__((always_inline))
 inline void Board::relocate(uint8_t piece, uint8_t fromIndex, uint8_t toIndex) noexcept {
     set(toIndex, static_cast<piece_id>(piece));
     set(fromIndex, EMPTY);
     occupancy = (occupancy | (1ULL << toIndex)) & ~(1ULL << fromIndex);
     bb[piece & MASK_PIECE_TYPE][colorToIndex(piece)] ^= (1ULL << fromIndex) | (1ULL << toIndex);
-    if (NNUE::activeNetwork != nullptr) [[likely]] queueAcc({NNUE::AccDelta::Move, piece, fromIndex, toIndex});
+    if constexpr (Record) recordAcc({NNUE::AccDelta::Move, piece, fromIndex, toIndex});
 }
 
 __attribute__((always_inline))
@@ -153,20 +156,20 @@ inline void Board::doMoveByKind(MoveState& st, uint8_t moving, uint8_t destBefor
         st.enPassantCapturedIndex = capIndex;
         set(capIndex, EMPTY);
         occupancy &= ~(1ULL << capIndex);
-        removePieceFromBB(st.capturedPiece, capIndex);
+        removePieceFromBB<true>(st.capturedPiece, capIndex);
         key ^= zobrist::TABLES.pieces[st.capturedPiece][capIndex];
     }
     if constexpr (isCaptureKind(Kind)) {
-        removePieceFromBB(destBefore, toIndex);
+        removePieceFromBB<true>(destBefore, toIndex);
         key ^= zobrist::TABLES.pieces[destBefore][toIndex];
     }
-    relocate(moving, fromIndex, toIndex);
+    relocate<true>(moving, fromIndex, toIndex);
     if constexpr (Kind == MoveKind::Castling) {
         const bool kingside = toIndex > fromIndex;
         st.rookFromIndex = (toIndex & ~7) | (kingside ? 7 : 0);
         st.rookToIndex   = (toIndex & ~7) | (kingside ? 5 : 3);
         const uint8_t rook = get(st.rookFromIndex);
-        relocate(rook, st.rookFromIndex, st.rookToIndex);
+        relocate<true>(rook, st.rookFromIndex, st.rookToIndex);
         key ^= zobrist::TABLES.pieces[rook][st.rookFromIndex] ^ zobrist::TABLES.pieces[rook][st.rookToIndex];
     }
     castle &= CASTLING_KEEP[fromIndex] & CASTLING_KEEP[toIndex];
@@ -175,8 +178,8 @@ inline void Board::doMoveByKind(MoveState& st, uint8_t moving, uint8_t destBefor
         // A missing or invalid promotion piece means a queen.
         const uint8_t promo = (promotionType >= KNIGHT && promotionType <= QUEEN) ? promotionType : uint8_t{QUEEN};
         const uint8_t promoted = static_cast<uint8_t>(promo | (moving & MASK_COLOR));
-        removePieceFromBB(moving, toIndex);
-        addPieceToBB(promoted, toIndex);
+        removePieceFromBB<true>(moving, toIndex);
+        addPieceToBB<true>(promoted, toIndex);
         set(toIndex, static_cast<piece_id>(promoted));
         key ^= zobrist::TABLES.pieces[promoted][toIndex];
     } else {
@@ -188,24 +191,25 @@ template<Board::MoveKind Kind>
 inline void Board::undoMoveByKind(const MoveState& st, uint8_t pieceOnTo, uint8_t fromIndex, uint8_t toIndex) noexcept {
     if constexpr (isPromotionKind(Kind)) {
         const uint8_t pawn = PAWN | (pieceOnTo & MASK_COLOR);
-        removePieceFromBB(pieceOnTo, toIndex);
-        addPieceToBB(pawn, toIndex);
+        removePieceFromBB<false>(pieceOnTo, toIndex);
+        addPieceToBB<false>(pawn, toIndex);
         set(toIndex, static_cast<piece_id>(pawn));
         pieceOnTo = pawn;
     }
-    relocate(pieceOnTo, toIndex, fromIndex);
+    relocate<false>(pieceOnTo, toIndex, fromIndex);
     if constexpr (Kind == MoveKind::EnPassant || isCaptureKind(Kind)) {
         const uint8_t sq = (Kind == MoveKind::EnPassant) ? st.enPassantCapturedIndex : toIndex;
         set(sq, static_cast<piece_id>(st.capturedPiece));
         occupancy |= 1ULL << sq;
-        addPieceToBB(st.capturedPiece, sq);
+        addPieceToBB<false>(st.capturedPiece, sq);
     }
-    if constexpr (Kind == MoveKind::Castling) relocate(get(st.rookToIndex), st.rookToIndex, st.rookFromIndex);
+    if constexpr (Kind == MoveKind::Castling) relocate<false>(get(st.rookToIndex), st.rookToIndex, st.rookFromIndex);
 }
 
 // --- Incremental do/undo, no legality checks ---
 __attribute__((hot))
 void Board::doMove(const Move& m, MoveState& st) noexcept {
+    pushAccFrame();
     const uint8_t moving     = get(m.from);
     const uint8_t destBefore = get(m.to);
     prepareMoveState(st, destBefore);
@@ -237,6 +241,7 @@ void Board::undoMove(const Move& m, const MoveState& st) noexcept {
     const uint8_t pieceOnTo = get(m.to);
     visitKind(st.moveKind, [&]<MoveKind K>() { undoMoveByKind<K>(st, pieceOnTo, m.from, m.to); });
     restoreState(st);
+    --accTop;
 }
 
 __attribute__((hot))
