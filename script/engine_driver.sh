@@ -83,9 +83,8 @@ cmd_bench() {
 }
 
 # Canonical 6-position set. The total is a behaviour fingerprint: a pure refactor
-# must leave it identical, a pruning/ordering change moves it.
-# Baseline @ depth 12 depends on the embedded net:
-# 4,595,112 (v3, current) · 3,943,540 (v2) · 4,735,578 (v1, release 2.0.0).
+# must leave it identical, a pruning/ordering change moves it, and so does every
+# new net. Re-measure the baseline on the current tree.
 # NB: the usage banner is built from lines matching '^#   ' - keep other
 # comments off that exact indentation.
 BENCH6_NAMES=(startpos kiwipete kp-endgame midgame tactical open)
