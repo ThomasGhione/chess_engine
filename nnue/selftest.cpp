@@ -39,7 +39,6 @@ int runSelfTest(int argc, char* argv[]) {
         std::cerr << "usage: ./chess nnue-selftest <net.bin> [games]\n";
         return 1;
     }
-    pieces::initMagicBitboards();
     if (!loadNetwork(argv[2])) return 1;
     const int games = (argc >= 4) ? std::max(1, std::atoi(argv[3])) : 200;
 

@@ -1,17 +1,11 @@
 #pragma once
 
 // Correction history: how far the search score has been landing from the
-// static eval, keyed by sub-structures of the position, added back to the eval
-// before the pruning gates read it. Cells are gravity statistics in
-// [-CORR_HIST_LIMIT, CORR_HIST_LIMIT], updated by Searcher with the same
-// applyHistoryGravity as the move histories.
-//
-// The previous version (removed in 68f3d5d) blended the residual straight into
-// the cell with an integer weighted average, so a cell only moved when
-// residual * depth reached the 256 divisor and stopped short of the residual
-// by the same dead zone. Here a cell is a fixed-point quantity: an update adds
-// residual * depth / 8 cell units (/ 10 after a raised alpha), and a full cell
-// is worth CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units when read.
+// static eval, keyed by sub-structures of the position and added back to the
+// eval before the pruning gates read it. A cell is a fixed-point gravity
+// statistic in [-CORR_HIST_LIMIT, CORR_HIST_LIMIT]: an update adds
+// residual * depth / 8 units (/ 10 after a raised alpha), and a full cell reads
+// as CORR_HIST_LIMIT * weight / CORR_HIST_SCALE eval units.
 
 #include <cstddef>
 #include <cstdint>
@@ -62,21 +56,21 @@ private:
     static constexpr int SHIFT = 64 - CORR_HIST_BITS;
 
     static size_t pawnIndex(const chess::Board& b) noexcept {
-        return static_cast<size_t>((b.pawns_bb[0] * 0x9E3779B97F4A7C15ULL
-                                  + b.pawns_bb[1] * 0xD6E8FEB86659FD93ULL) >> SHIFT);
+        return static_cast<size_t>((b.bb[chess::Board::PAWN][0] * 0x9E3779B97F4A7C15ULL
+                                  + b.bb[chess::Board::PAWN][1] * 0xD6E8FEB86659FD93ULL) >> SHIFT);
     }
     static size_t minorIndex(const chess::Board& b) noexcept {
-        return static_cast<size_t>((b.knights_bb[0] * 0xA0761D6478BD642FULL
-                                  + b.knights_bb[1] * 0xE7037ED1A0B428DBULL
-                                  + b.bishops_bb[0] * 0x8EBC6AF09C88C6E3ULL
-                                  + b.bishops_bb[1] * 0x589965CC75374CC3ULL) >> SHIFT);
+        return static_cast<size_t>((b.bb[chess::Board::KNIGHT][0] * 0xA0761D6478BD642FULL
+                                  + b.bb[chess::Board::KNIGHT][1] * 0xE7037ED1A0B428DBULL
+                                  + b.bb[chess::Board::BISHOP][0] * 0x8EBC6AF09C88C6E3ULL
+                                  + b.bb[chess::Board::BISHOP][1] * 0x589965CC75374CC3ULL) >> SHIFT);
     }
     static size_t nonPawnIndex(const chess::Board& b, int c) noexcept {
-        return static_cast<size_t>((b.knights_bb[c] * 0x1D8E4E27C47D124FULL
-                                  + b.bishops_bb[c] * 0xBF58476D1CE4E5B9ULL
-                                  + b.rooks_bb[c]   * 0x94D049BB133111EBULL
-                                  + b.queens_bb[c]  * 0xC2B2AE3D27D4EB4FULL
-                                  + b.kings_bb[c]   * 0x165667B19E3779F9ULL) >> SHIFT);
+        return static_cast<size_t>((b.bb[chess::Board::KNIGHT][c] * 0x1D8E4E27C47D124FULL
+                                  + b.bb[chess::Board::BISHOP][c] * 0xBF58476D1CE4E5B9ULL
+                                  + b.bb[chess::Board::ROOK][c]   * 0x94D049BB133111EBULL
+                                  + b.bb[chess::Board::QUEEN][c]  * 0xC2B2AE3D27D4EB4FULL
+                                  + b.bb[chess::Board::KING][c]   * 0x165667B19E3779F9ULL) >> SHIFT);
     }
 };
 

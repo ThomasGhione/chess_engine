@@ -1,7 +1,7 @@
 # HydraY Chess Engine
 
-HydraY is a C++23 chess engine with NNUE evaluation. It has a terminal
-interface and full UCI support for GUIs, bots, and automated testing.
+HydraY is a C++23 UCI chess engine with NNUE evaluation, for GUIs, bots, and
+automated testing.
 
 It is built around bitboards with magic sliding-piece attacks, an iterative
 deepening alpha-beta/PVS search with Lazy SMP parallelism, a cache-friendly
@@ -30,8 +30,7 @@ a MinGW target exists for Windows builds.
 
 ```sh
 make prod        # build the optimized engine -> ./chess
-./chess          # interactive terminal menu
-./chess uci      # UCI mode
+./chess          # UCI mode (./chess uci, -uci and --uci also work)
 ```
 
 Example UCI session:
@@ -44,22 +43,7 @@ go depth 10
 quit
 ```
 
-The engine also switches to UCI mode automatically when stdin is piped, which
-is what GUIs and bot runners do.
-
 ## Run Modes
-
-```sh
-./chess              # interactive menu
-./chess uci          # UCI mode (-uci and --uci also work)
-./chess -pvp         # human vs human
-./chess -pvb w       # human (White) vs engine
-./chess -pvb b       # human (Black) vs engine
-./chess -bvb         # engine vs engine
-```
-
-In terminal game mode, enter moves in coordinate notation without a space,
-e.g. `e2e4` (promotions: `e7e8q`).
 
 NNUE-specific modes (see the NNUE section below):
 
@@ -247,23 +231,13 @@ SyzygyProbeDepth  minimum depth to probe at internal nodes (default 1)
 not tracked in git) into `engine/syzygy/files`. The same files power datagen
 adjudication.
 
-## Transposition Table and Huge Pages
+## Transposition Table
 
 The transposition table stores 4 entries per 64-byte bucket (one cache line).
-Size it with the UCI `Hash` option (1–4096 MB, default 64). On Linux the
-allocation tries explicit huge pages first, then transparent huge pages, then
-normal heap.
-
-Control huge-page behavior with `CHESS_TT_HUGEPAGE`:
-
-```sh
-CHESS_TT_HUGEPAGE=auto ./chess   # default
-CHESS_TT_HUGEPAGE=on   ./chess   # force/try huge pages
-CHESS_TT_HUGEPAGE=off  ./chess   # disable huge pages
-```
-
-Enabled values: `on`, `1`, `true`, `force`. Disabled values: `off`, `0`,
-`false`.
+Size it with the UCI `Hash` option (1–4096 MB, default 64). On Linux the table
+is aligned to 2 MiB and advised for transparent huge pages, which the kernel
+grants when `/sys/kernel/mm/transparent_hugepage/enabled` is `always` or
+`madvise`.
 
 ## UCI Options
 
@@ -273,11 +247,7 @@ Hash                 spin,   default 64 (MB, 1–4096)
 EvalFile             string, external .nnue net (default: embedded net)
 SyzygyPath           string, tablebase directory
 SyzygyProbeDepth     spin,   default 1
-SearchApiMutexGuard  check,  default true
 ```
-
-`SearchApiMutexGuard` can also be set at startup with
-`CHESS_ENGINE_SEARCH_MUTEX_GUARD=false ./chess uci`.
 
 The tunable search constants from `engine/search/search_constants.hpp` (RFP,
 NMP, ProbCut, SEE, futility, LMP, LMR margins…) are also exposed as `spin`
@@ -350,8 +320,9 @@ transposition table, each with private heuristics).
 Evaluation is NNUE-only: the dual-perspective accumulator is maintained
 incrementally on every make/unmake, and the AVX2 forward pass produces the
 score at leaves and for pruning decisions. All that remains of the old
-handcrafted evaluator's constants (`engine/eval_constants.hpp`) are the piece
-values used by SEE, capture ordering, and stalemate scoring.
+handcrafted evaluator's constants are the piece values (`PIECE_VALUES` in
+`engine/search/search_constants.hpp`) used by SEE, capture ordering and the
+qsearch delta margins.
 
 ## Static Analysis
 
@@ -374,7 +345,6 @@ engine/syzygy/ Syzygy tablebase probing (fathom-based)
 nnue/          NNUE net, accumulator, datagen, selftest, trainer
 tt/            Zobrist hashing and transposition table
 uci/           UCI protocol interface
-driver/        terminal UI and game modes
 tests/         functional, performance, and benchmark programs
 tuning/        self-play tuning, SPRT, and gauntlet scripts
 script/        benchmark and analysis helpers

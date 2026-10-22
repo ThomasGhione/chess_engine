@@ -1,7 +1,6 @@
 #include "ut.hpp"
 #include "../board/board.hpp"
 #include "../board/piece.hpp"
-#include "../engine/evaluator.hpp"
 #include "../engine/perft.hpp"
 #include "../engine/search/searcher.hpp"
 #include "../nnue/nnue.hpp"
@@ -25,25 +24,23 @@ void testQuiescenceScoresThreefoldAsDrawBeforeStaticEval() {
     assert(board.move({chess::parseSquare("b8"), chess::parseSquare("a8")}));
 
     assert(board.isThreefoldRepetition());
-    assert(engine::Evaluator::evaluate(board) > 0);
+    assert(NNUE::evaluate(board) > 0);
 
-    engine::Searcher::SearchRuntime runtime{};
-    const int32_t qScore = engine::Searcher::quiescenceSearch(
-        board,
-        runtime,
-        engine::Searcher::NEG_INF,
-        engine::Searcher::POS_INF,
-        0,
-        nullptr);
+    TT tt;
+    engine::SearchRuntime runtime{};
+    runtime.transpositionTable = &tt;
+    const int32_t qScore = engine::Searcher::quiescenceSearch(board, runtime, engine::NEG_INF, engine::POS_INF, 0);
 
     assert(qScore < 0);
 }
 
 void testRootDrawTerminalDoesNotSearchFallbackMove() {
     chess::Board board("k7/8/8/8/8/8/8/KB6 w - - 0 1");
-    engine::Searcher::SearchRuntime runtime{};
+    TT tt;
+    engine::SearchRuntime runtime{};
+    runtime.transpositionTable = &tt;
 
-    assert(board.isDraw(board.getActiveColor()));
+    assert(board.hasInsufficientMaterialDraw());
     const chess::Move bestMove = engine::Searcher::searchBestMove(board, runtime, 4);
 
     // A terminal-draw root returns a legal fallback move without searching.
@@ -77,9 +74,7 @@ void testPerftStandardPositions() {
 void registerBoardSuite();
 
 int main(){
-    // Magic bitboards + embedded NNUE net: tests drive Board/Searcher directly
-    // (no Engine), so nobody else activates the evaluator for them.
-    pieces::initMagicBitboards();
+    // Tests drive Board/Searcher directly, so nobody else activates the net.
     if (!NNUE::activateEmbedded()) return 1;
     testPerftStandardPositions();
     testQuiescenceScoresThreefoldAsDrawBeforeStaticEval();

@@ -2,7 +2,6 @@
 
 #include <bit>
 #include "../../engine.hpp"
-#include "../../evaluator.hpp"
 #include "../../../nnue/nnue.hpp"
 #include "../../sort/move_generator.hpp"
 #include "../../movelist.hpp"
@@ -21,7 +20,7 @@ const auto performanceEngineSuite = [] {
     constexpr int depth = 11;
 
     auto start = std::chrono::high_resolution_clock::now();
-    e.searchUCI(engine::time::Limits{.maxDepth = depth});
+    e.search(engine::time::Limits{.maxDepth = depth});
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -37,14 +36,14 @@ const auto performanceEngineSuite = [] {
     constexpr int runs = 20;
     int64_t totalDuration = 0;
 
-    // Plays against itself for "runs" moves. searchUCI() searches a COPY of the
+    // Plays against itself for "runs" moves. search() searches a COPY of the
     // board and does NOT advance it, so we must play the returned move on e.board
     // ourselves - otherwise every run re-searches the identical root position and
     // hits a fully warm TT (~0 ms at any depth), measuring nothing.
     int completedRuns = 0;
     for (int i = 0; i < runs; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        const chess::Move move = e.searchUCI(engine::time::Limits{.maxDepth = depth});
+        const chess::Move move = e.search(engine::time::Limits{.maxDepth = depth});
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         printf("Run %d completed in %lu ms\n", i + 1, duration);
@@ -60,7 +59,6 @@ const auto performanceEngineSuite = [] {
 
     double avgDuration = static_cast<double>(totalDuration) / completedRuns;
 
-    // Attesa che la ricerca media venga completata in meno di 500 millisecondi
     printf("Average Depth 10 search time over %d runs: %.2f ms\n\n", runs, avgDuration);
     expect(avgDuration < 700);
   };
@@ -88,7 +86,7 @@ const auto performanceEngineSuite = [] {
     };
 
     // Boards must be built AFTER the network is active so their accumulators
-    // are filled during FEN load (Evaluator::evaluate is NNUE-only).
+    // are filled during FEN load.
     expect(NNUE::activateEmbedded());
     std::array<chess::Board, 16> boards;
     for (int i = 0; i < 16; ++i) {
@@ -100,7 +98,7 @@ const auto performanceEngineSuite = [] {
     auto evalStart = std::chrono::high_resolution_clock::now();
     for (int iter = 0; iter < EVAL_ITERATIONS; ++iter) {
       for (int i = 0; i < 16; ++i) {
-        evalSink += engine::Evaluator::evaluate(boards[i]);
+        evalSink += NNUE::evaluate(boards[i]);
       }
     }
     auto evalEnd = std::chrono::high_resolution_clock::now();

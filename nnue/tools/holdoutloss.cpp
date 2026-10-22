@@ -71,8 +71,7 @@ constexpr int OUT_BUCKET_DIVISOR = (32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
 
 // Single-layer quantised.bin: (768x4kb_hm -> 1024)x2 -> 8, SCReLU. Same l0 as
 // the deep format, so the accumulator is shared; only the output layer differs.
-// Layout and arithmetic copied from nnue/tools/evalfens.cpp, itself a
-// transcription of sanity.rs, which is the oracle for this format.
+// Layout and arithmetic transcribed from sanity.rs, the oracle for this format.
 //
 // The bucket count is spelled out rather than taken from network_deep.hpp: no
 // single-layer net will ever be trained again, so every file in this format has

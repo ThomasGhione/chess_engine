@@ -304,7 +304,7 @@ int32_t forwardSimd(const NetworkDeep& net,
     // is the useful maximum: at sixteen, the accumulators plus `h` no longer fit
     // in the sixteen ymm registers.
     constexpr int GROUP = 8;
-    static_assert(L1_SIZE % GROUP == 0, "il ciclo elabora GROUP uscite per volta");
+    static_assert(L1_SIZE % GROUP == 0, "the loop handles GROUP outputs at a time");
     alignas(32) int16_t h16[HIDDEN];
     for (int j = 0; j < PAIRWISE_OUT; j += 16) {
         _mm256_store_si256(reinterpret_cast<__m256i*>(h16 + j), pairwiseBlock(accStm, j));

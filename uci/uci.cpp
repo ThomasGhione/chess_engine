@@ -7,44 +7,29 @@
 
 #include <omp.h>
 
-#include <charconv>
 #include <iostream>
 
 namespace {
-    using std::string_view;
-
-    static string_view trimLeft(string_view s) noexcept {
-        size_t i = 0;
-        while (i < s.size() && ascii::isSpace(s[i])) ++i;
-        return s.substr(i);
-    }
-
-    static string_view trimRight(string_view s) noexcept {
-        while (!s.empty() && ascii::isSpace(s.back())) s.remove_suffix(1);
-        return s;
-    }
-
-    static std::string normalizedOptionName(string_view optionName) {
+    // "RfpMarginPerDepth", "RFP_MARGIN_PER_DEPTH" and "rfp margin per depth"
+    // all name the same option.
+    std::string normalizedOptionName(std::string_view optionName) {
         std::string normalized;
-        normalized.reserve(optionName.size());
         for (const char c : optionName) {
-            if (c == ' ' || c == '_' || c == '-') continue;
-            normalized.push_back(ascii::toLower(c));
+            if (c != ' ' && c != '_' && c != '-') normalized += ascii::toLower(c);
         }
         return normalized;
     }
 
-    static std::string optionDisplayName(std::string_view rawName) {
+    // RFP_MARGIN_PER_DEPTH -> RfpMarginPerDepth
+    std::string optionDisplayName(std::string_view key) {
         std::string display;
-        display.reserve(rawName.size());
         bool upperNext = true;
-        for (const char c : rawName) {
-            if (c == '_' || c == '-' || c == ' ') {
+        for (const char c : key) {
+            if (c == '_') {
                 upperNext = true;
                 continue;
             }
-            display.push_back(upperNext ? ascii::toUpper(c)
-                                        : ascii::toLower(c));
+            display += upperNext ? ascii::toUpper(c) : ascii::toLower(c);
             upperNext = false;
         }
         return display;
@@ -53,115 +38,30 @@ namespace {
     struct SpinOption final {
         const char* key;
         int32_t* value;
-        bool hasRange;
         int32_t minValue;
         int32_t maxValue;
         // Rebuild the search-derived tables (LMR/futility/LMP) after writing.
         bool refreshSearchTables = false;
     };
 
-    // Wide auto-range so the tuner's sampled values land inside the engine's
-    // accepted bounds without each option needing an explicit hasRange entry.
-    // ±200% of magnitude with a floor of 10 covers the typical
-    // chess-tuning-tools parameter ranges used by the JSON groups.
-    static std::pair<int32_t, int32_t> defaultRangeFor(int32_t value) noexcept {
-        const int64_t absValue = std::llabs(static_cast<int64_t>(value));
-        const int64_t delta = std::max<int64_t>(10, absValue * 2);
-        const auto toI32 = [](int64_t x) {
-            return static_cast<int32_t>(std::clamp<int64_t>(x, INT32_MIN, INT32_MAX));
-        };
-        return {toI32(value - delta), toI32(value + delta)};
-    }
-
-    // Resolved [min, max] range advertised and accepted for a spin option:
-    // its explicit bounds when given, otherwise the auto-range.
-    static std::pair<int32_t, int32_t> optionRange(const SpinOption& option) noexcept {
-        return option.hasRange ? std::pair{option.minValue, option.maxValue}
-                               : defaultRangeFor(*option.value);
-    }
-
-    static SpinOption kSpinOptions[] = {
-        // --- Search constants (SMAC3 campaign, HOTPATH #9). Generators of the
-        // derived tables set refreshSearchTables so LMR/futility/LMP rebuild.
-        {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,        true,     30,  250},
-        {"NMP_EVAL_DIV",         &engine::NMP_EVAL_DIV,                true,     50,  400},
-        {"NMP_EVAL_MAX",         &engine::NMP_EVAL_MAX,                true,      0,   10},
-        {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,          true,     20,  200},
-        {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,              true,     30,  250},
-        {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,              true,      0,   16},
-        {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1],  true, -16384,    0},
-        {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2],  true, -16384,    0},
-        {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3],  true, -16384,    0},
-        {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,           true,     80,  600, true},
-        {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],            true,     40,  250, true},
-        {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],            true,     40,  250, true},
-        {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,               true,    150,  600, true},
-        {"CORR_HIST_WEIGHT_PCT", &engine::CORR_HIST_WEIGHT_PCT,        true,      0,  400},
+    SpinOption kSpinOptions[] = {
+        {"RFP_MARGIN_PER_DEPTH", &engine::RFP_MARGIN_PER_DEPTH,           30,  250},
+        {"NMP_EVAL_DIV",         &engine::NMP_EVAL_DIV,                   50,  400},
+        {"NMP_EVAL_MAX",         &engine::NMP_EVAL_MAX,                    0,   10},
+        {"SEE_CAPTURE_MARGIN",   &engine::SEE_CAPTURE_MARGIN,             20,  200},
+        {"PROBCUT_MARGIN",       &engine::PROBCUT_MARGIN,                 30,  250},
+        {"SE_BETA_MARGIN",       &engine::SE_BETA_MARGIN,                  0,   16},
+        {"HISTORY_PRUNE_D1",     &engine::HISTORY_PRUNE_THRESHOLD[1], -16384,    0},
+        {"HISTORY_PRUNE_D2",     &engine::HISTORY_PRUNE_THRESHOLD[2], -16384,    0},
+        {"HISTORY_PRUNE_D3",     &engine::HISTORY_PRUNE_THRESHOLD[3], -16384,    0},
+        {"FUTILITY_MID_STEP",    &engine::FUTILITY_MID_STEP,              80,  600, true},
+        {"LMP_SCALE_STD_PCT",    &engine::LMP_SCALE_PCT[0],               40,  250, true},
+        {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],               40,  250, true},
+        {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,                 150,  600, true},
+        {"CORR_HIST_WEIGHT_PCT", &engine::CORR_HIST_WEIGHT_PCT,            0,  400},
     };
 
-    static bool parseCheckValue(string_view rawValue, bool& outValue) noexcept {
-        const string_view value = trimLeft(rawValue);
-        if (ascii::iequals(value, "true") || value == "1" || ascii::iequals(value, "on")) {
-            outValue = true;
-            return true;
-        }
-        if (ascii::iequals(value, "false") || value == "0" || ascii::iequals(value, "off")) {
-            outValue = false;
-            return true;
-        }
-        return false;
-    }
-
-    static string_view nextToken(string_view& text) noexcept {
-        text = trimLeft(text);
-        if (text.empty()) return {};
-        size_t end = 0;
-        while (end < text.size() && !ascii::isSpace(text[end])) ++end;
-        const string_view token = text.substr(0, end);
-        text.remove_prefix(end);
-        return token;
-    }
-
-    // Parses a whole signed-integer token (optional leading '+'); the entire
-    // token must be consumed. Works for any integer type via std::from_chars.
-    template<typename T>
-    static bool parseInt(string_view token, T& out) noexcept {
-        if (token.starts_with('+')) token.remove_prefix(1);
-        if (token.empty()) return false;
-        const auto [ptr, err] = std::from_chars(token.data(), token.data() + token.size(), out);
-        return err == std::errc{} && ptr == token.data() + token.size();
-    }
-
-    // Parses the first whitespace-delimited token of `text` as an integer.
-    template<typename T>
-    static bool parseFirstInt(string_view text, T& out) noexcept {
-        return parseInt(nextToken(text), out);
-    }
-
-    static bool splitCommand(string_view command, string_view name, string_view& args) noexcept {
-        if (!command.starts_with(name)) return false;
-        if (command.size() == name.size()) {
-            args = {};
-            return true;
-        }
-        if (!ascii::isSpace(command[name.size()])) return false;
-        args = trimLeft(command.substr(name.size()));
-        return true;
-    }
-
-    static size_t findWord(string_view text, string_view word) noexcept {
-        size_t pos = text.find(word);
-        while (pos != string_view::npos) {
-            const size_t end = pos + word.size();
-            const bool leftOk = (pos == 0) || ascii::isSpace(text[pos - 1]);
-            const bool rightOk = (end == text.size()) || ascii::isSpace(text[end]);
-            if (leftOk && rightOk) return pos;
-            pos = text.find(word, pos + 1);
-        }
-        return string_view::npos;
-    }
-
-    static std::string ponderSuffix(const engine::Engine& engine, const chess::Move& bestMove) noexcept {
+    std::string ponderSuffix(const engine::Engine& engine, const chess::Move& bestMove) noexcept {
         chess::Board board = engine.board;
         if (!board.move(bestMove)) return {};
 
@@ -188,7 +88,7 @@ namespace uci {
     }
 
     void UCI::stopSearch(bool printBestMove) noexcept {
-        engine.stopThinking();
+        engine.stop();
         if (searchThread.joinable()) searchThread.join();
 
         std::lock_guard<std::mutex> lock(searchMutex);
@@ -197,256 +97,149 @@ namespace uci {
 
     [[noreturn]] void UCI::mainLoop() noexcept {
         std::string command;
-        while (std::getline(std::cin, command)) {
-            if (!command.empty() && command.back() == '\r') command.pop_back();
-            if (command.empty()) continue;
-            parseCommand(command);
-        }
+        while (std::getline(std::cin, command)) parseCommand(command);
         // EOF is an implicit quit, as in Stockfish: exit() destroys the network
         // a running search still reads, so stop and join the search first.
         stopSearch(true);
         std::exit(EXIT_SUCCESS);
     }
 
-    void UCI::parseCommand(std::string_view command) noexcept {
-        string_view args;
-        if (command == "quit") {
+    void UCI::parseCommand(const std::string& command) noexcept {
+        std::istringstream is(command);
+        std::string token;
+        is >> token;
+        if (token == "quit") {
             stopSearch(true);
             std::exit(EXIT_SUCCESS);
         }
-        if (command == "uci") return uci();
-        if (command == "ucinewgame") return ucinewgame();
-        if (command == "isready") return isready();
-        if (command == "stop") return stopSearch(true);
-        if (command == "ponderhit") return ponderhit();
-        if (splitCommand(command, "setoption", args)) return setOption(args);
-        if (splitCommand(command, "position", args)) return position(args);
-        if (splitCommand(command, "go", args)) return go(args);
+        if (token == "uci") uci();
+        else if (token == "isready") emit("readyok\n");
+        else if (token == "stop") stopSearch(true);
+        else if (token == "ponderhit") ponderhit();
+        else if (token == "ucinewgame") {
+            stopSearch(false);
+            engine.reset();
+        }
+        else if (token == "setoption") setOption(is);
+        else if (token == "position") position(is);
+        else if (token == "go") go(is);
     }
 
-
     void UCI::uci() noexcept {
+        const std::string threads = std::to_string(omp_get_max_threads());
         std::string out =
             "id name HydraY 4.0.0\n"
             "id author Thomas Ghione, Andrea Vaccari, Daniele Ferretti, Simone Tomasella\n"
             "option name SyzygyPath type string default <empty>\n"
             "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
-            "option name SearchApiMutexGuard type check default true\n"
-            "option name EvalFile type string default <empty>\n";
-        const std::string hwThreads = std::to_string(omp_get_max_threads());
-        out += "option name Threads type spin default " + hwThreads
-             + " min 1 max " + hwThreads + "\n";
-        out += "option name Hash type spin default " + std::to_string(TT::DEFAULT_HASH_MB)
-             + " min " + std::to_string(TT::MIN_HASH_MB)
-             + " max " + std::to_string(TT::MAX_HASH_MB) + "\n";
+            "option name EvalFile type string default <empty>\n"
+            "option name Threads type spin default " + threads + " min 1 max " + threads + "\n"
+            "option name Hash type spin default " + std::to_string(TT::DEFAULT_HASH_MB)
+            + " min " + std::to_string(TT::MIN_HASH_MB) + " max " + std::to_string(TT::MAX_HASH_MB) + "\n";
         for (const auto& option : kSpinOptions) {
-            const auto [minValue, maxValue] = optionRange(option);
             out += "option name " + optionDisplayName(option.key)
                  + " type spin default " + std::to_string(*option.value)
-                 + " min " + std::to_string(minValue)
-                 + " max " + std::to_string(maxValue) + "\n";
+                 + " min " + std::to_string(option.minValue)
+                 + " max " + std::to_string(option.maxValue) + "\n";
         }
-        out += "uciok\n";
-        emit(out);
+        emit(out + "uciok\n");
     }
 
-    void UCI::setOption(std::string_view args) noexcept {
-        if (args.empty()) return;
-
-        // Stop any in-flight search before mutating shared engine state: the
-        // option backing storage is plain `int32_t` (engine::* globals) and
-        // writing it while a worker reads is a data race.
+    void UCI::setOption(std::istringstream& is) noexcept {
+        // The options are plain globals the search reads: stop it first.
         stopSearch(false);
+        std::string token, name, value;
+        if (!(is >> token) || token != "name") return;
+        while (is >> token && token != "value") name += (name.empty() ? "" : " ") + token;
+        while (is >> token) value += (value.empty() ? "" : " ") + token;
+        if (name.empty()) return;
 
-        string_view rest = args;
-        if (nextToken(rest) != "name") return;
-        rest = trimLeft(rest); // nextToken leaves the leading gap before the name
+        const std::string key = normalizedOptionName(name);
+        int v = 0;
+        const bool isInt = static_cast<bool>(std::istringstream(value) >> v);
+        const auto invalid = [](const std::string& option) { emit("info string invalid value for " + option + "\n"); };
 
-        const size_t valuePos = findWord(rest, "value");
-        const string_view optionName =
-            (valuePos == string_view::npos) ? trimRight(rest) : trimRight(rest.substr(0, valuePos));
-        const string_view optionValue =
-            (valuePos == string_view::npos) ? string_view{} : trimLeft(rest.substr(valuePos + 5));
+        for (auto& option : kSpinOptions) {
+            if (key != normalizedOptionName(option.key)) continue;
+            if (!isInt) return invalid(name);
+            if (v < option.minValue || v > option.maxValue) {
+                return emit("info string value out of range for " + name + " ("
+                            + std::to_string(option.minValue) + ".." + std::to_string(option.maxValue) + ")\n");
+            }
+            *option.value = v;
+            if (option.refreshSearchTables) engine::rebuildSearchDerivedTables();
+            return emit("info string " + optionDisplayName(option.key) + " set to " + std::to_string(v) + "\n");
+        }
 
-        if (optionName.empty()) return;
-        const std::string normalizedName = normalizedOptionName(optionName);
-        if (normalizedName == "evalfile") {
-            const std::string path(optionValue);
-            if (NNUE::loadNetwork(path)) {
+        if (key == "evalfile") {
+            if (NNUE::loadNetwork(value)) {
                 engine::clearEvalCache();
                 // The board may already hold a position: bring the accumulator
                 // in sync now; later `position` commands refresh via FEN load.
                 engine.board.refreshNnueAccumulator();
-                emit("info string EvalFile loaded: " + path + "\n");
+                emit("info string EvalFile loaded: " + value + "\n");
             }
-            return;
+        } else if (key == "syzygypath") {
+            emit(engine.syzygyProber.load(value)
+                 ? "info string SyzygyPath loaded: " + value + " (max pieces: "
+                   + std::to_string(engine.syzygyProber.maxPieces()) + ")\n"
+                 : "info string SyzygyPath error: could not load '" + value + "'\n");
+        } else if (key == "syzygyprobedepth") {
+            if (!isInt || v < 1 || v > 100) return invalid("SyzygyProbeDepth");
+            engine.syzygyProber.probeDepth = v;
+            emit("info string SyzygyProbeDepth set to " + std::to_string(v) + "\n");
+        } else if (key == "threads") {
+            if (!isInt || v < 1) return invalid("Threads");
+            engine.requestedThreads = engine.searchRuntime.maxThreads = std::min(v, omp_get_max_threads());
+            emit("info string Threads set to " + std::to_string(engine.requestedThreads) + "\n");
+        } else if (key == "hash") {
+            if (!isInt || v < 1) return invalid("Hash");
+            const int mb = std::min(v, static_cast<int>(TT::MAX_HASH_MB));
+            emit(engine.tt.resize(static_cast<size_t>(mb))
+                 ? "info string Hash set to " + std::to_string(engine.tt.sizeMB()) + " MB\n"
+                 : "info string Hash resize to " + std::to_string(mb) + " MB failed (out of memory)\n");
         }
-
-        if (normalizedName == "syzygypath") {
-            const std::string path(optionValue);
-            if (engine.syzygyProber.load(path)) {
-                emit("info string SyzygyPath loaded: " + path + " (max pieces: "
-                     + std::to_string(engine.syzygyProber.maxPieces()) + ")\n");
-            } else {
-                emit("info string SyzygyPath error: could not load '" + path + "'\n");
-            }
-            return;
-        }
-
-        if (normalizedName == "syzygyprobedepth") {
-            int v = 0;
-            if (parseFirstInt(optionValue, v) && v >= 1 && v <= 100) {
-                engine.syzygyProber.probeDepth = v;
-                emit("info string SyzygyProbeDepth set to " + std::to_string(v) + "\n");
-            } else {
-                emit("info string invalid value for SyzygyProbeDepth\n");
-            }
-            return;
-        }
-
-        if (normalizedName == "threads") {
-            int v = 0;
-            const int maxT = omp_get_max_threads();
-            if (parseFirstInt(optionValue, v) && v >= 1) {
-                const int clamped = std::clamp(v, 1, maxT);
-                engine.requestedThreads = clamped;
-                engine.searchRuntime.maxThreads = clamped;
-                emit("info string Threads set to " + std::to_string(clamped) + "\n");
-            } else {
-                emit("info string invalid value for Threads\n");
-            }
-            return;
-        }
-
-        if (normalizedName == "hash") {
-            int v = 0;
-            if (parseFirstInt(optionValue, v) && v >= 1) {
-                const int clamped = std::clamp(v,
-                    static_cast<int>(TT::MIN_HASH_MB),
-                    static_cast<int>(TT::MAX_HASH_MB));
-                if (engine.tt.resize(static_cast<size_t>(clamped))) {
-                    emit("info string Hash set to " + std::to_string(engine.tt.sizeMB()) + " MB\n");
-                } else {
-                    emit("info string Hash resize to " + std::to_string(clamped)
-                         + " MB failed (out of memory)\n");
-                }
-            } else {
-                emit("info string invalid value for Hash\n");
-            }
-            return;
-        }
-
-        if (normalizedName != "searchapimutexguard") {
-            for (auto& option : kSpinOptions) {
-                if (normalizedName != normalizedOptionName(option.key)) continue;
-                int parsedValue = 0;
-                if (!parseFirstInt(optionValue, parsedValue)) {
-                    emit("info string invalid value for " + std::string(optionName) + "\n");
-                    return;
-                }
-                const auto [minValue, maxValue] = optionRange(option);
-                if (parsedValue < minValue || parsedValue > maxValue) {
-                    emit("info string value out of range for " + std::string(optionName)
-                         + " (" + std::to_string(minValue) + ".." + std::to_string(maxValue) + ")\n");
-                    return;
-                }
-                *option.value = parsedValue;
-                if (option.refreshSearchTables) {
-                    engine::rebuildSearchDerivedTables();
-                }
-                emit("info string " + optionDisplayName(option.key)
-                     + " set to " + std::to_string(*option.value) + "\n");
-                return;
-            }
-            return;
-        }
-
-        bool enabled = false;
-        if (optionValue.empty() || !parseCheckValue(optionValue, enabled)) {
-            emit("info string invalid value for " + std::string(optionName) + ": '"
-                 + std::string(optionValue) + "' (use true/false)\n");
-            return;
-        }
-
-        engine.setSearchApiMutexEnabled(enabled);
-        emit(std::string("info string SearchApiMutexGuard ")
-             + (engine.isSearchApiMutexEnabled() ? "enabled" : "disabled") + "\n");
     }
 
-    void UCI::position(std::string_view command) noexcept {
+    void UCI::position(std::istringstream& is) noexcept {
         stopSearch(false);
-        string_view moves;
-
-        if (command.starts_with("startpos") && (command.size() == 8 || ascii::isSpace(command[8]))) {
-            engine.board = chess::Board{};
-            const size_t movesPos = findWord(command, "moves");
-            if (movesPos != string_view::npos) moves = command.substr(movesPos);
-        } else if (command.starts_with("fen") && (command.size() == 3 || ascii::isSpace(command[3]))) {
-            string_view fenPayload = trimLeft(command.substr(3));
-            const size_t movesPos = findWord(fenPayload, "moves");
-            if (movesPos == string_view::npos) {
-                parseFEN(fenPayload);
-            } else {
-                parseFEN(trimRight(fenPayload.substr(0, movesPos)));
-                moves = fenPayload.substr(movesPos);
-            }
+        std::string token, fen;
+        is >> token;
+        if (token == "startpos") {
+            fen = chess::Board::STARTING_FEN;
+            is >> token; // "moves"
+        } else if (token == "fen") {
+            while (is >> token && token != "moves") fen += token + ' ';
         } else {
             return;
         }
-
-        engine.bestMove = chess::Move{};
-        engine.moveHistory.clear();
-        
-        if (!moves.empty()) parseMoves(moves);
-        
-        engine.updateGameResult();
+        engine.board = chess::Board(fen);
+        // Coordinate notation; an illegal move is skipped.
+        while (is >> token) {
+            if (token.size() < 4) continue;
+            const chess::Square from = chess::parseSquare(token.substr(0, 2));
+            const chess::Square to = chess::parseSquare(token.substr(2, 2));
+            if (!chess::isValidSquare(from) || !chess::isValidSquare(to)) continue;
+            const uint8_t promo = (token.size() > 4) ? chess::Move::promotionTypeFromChar(token[4]) : 0;
+            engine.board.move({from, to, promo});
+        }
     }
 
-    void UCI::ucinewgame() noexcept {
-        stopSearch(false);
-        engine.reset();
-    }
-
-    void UCI::isready() noexcept {
-        emit("readyok\n");
-    }
-    
-    void UCI::go(std::string_view args) noexcept {
+    void UCI::go(std::istringstream& is) noexcept {
         stopSearch(false);
         engine::time::Limits limits;
-
-        while (!args.empty()) {
-            const string_view token = nextToken(args);
-            if (token.empty()) break;
-
-            if (token == "ponder")   { limits.ponder = true;   continue; }
-            if (token == "infinite") { limits.infinite = true; continue; }
-
-            if (token == "depth") {
-                int v = 0;
-                if (parseInt(nextToken(args), v) && v > 0) limits.maxDepth = v;
-                continue;
-            }
-            if (token == "nodes") {
-                int64_t v = 0;
-                if (parseInt(nextToken(args), v) && v > 0) {
-                    limits.maxNodes = static_cast<uint64_t>(v);
-                }
-                continue;
-            }
-            if (token == "movestogo") {
-                int v = 0;
-                if (parseInt(nextToken(args), v) && v > 0) limits.movestogo = v;
-                continue;
-            }
-
-            int64_t v = 0;
-            if (token == "wtime"    && parseInt(nextToken(args), v)) { limits.wtime = v; limits.hasClock = true; continue; }
-            if (token == "btime"    && parseInt(nextToken(args), v)) { limits.btime = v; limits.hasClock = true; continue; }
-            if (token == "winc"     && parseInt(nextToken(args), v)) { limits.winc = v;  continue; }
-            if (token == "binc"     && parseInt(nextToken(args), v)) { limits.binc = v;  continue; }
-            if (token == "movetime" && parseInt(nextToken(args), v)) { limits.movetime = v; continue; }
-            if (token == "mate")    { (void)nextToken(args); continue; }
+        std::string token;
+        while (is >> token) {
+            if (token == "ponder") limits.ponder = true;
+            else if (token == "infinite") limits.infinite = true;
+            else if (token == "depth") is >> limits.maxDepth;
+            else if (token == "nodes") is >> limits.maxNodes;
+            else if (token == "movestogo") is >> limits.movestogo;
+            else if (token == "wtime") limits.hasClock = static_cast<bool>(is >> limits.wtime);
+            else if (token == "btime") limits.hasClock = static_cast<bool>(is >> limits.btime);
+            else if (token == "winc") is >> limits.winc;
+            else if (token == "binc") is >> limits.binc;
+            else if (token == "movetime") is >> limits.movetime;
         }
 
         const bool ponder = limits.ponder;
@@ -459,15 +252,12 @@ namespace uci {
         }
         try {
             engine.searchRuntime.emitUciInfo = true; // UCI mode streams "info" lines
-            // Clear the stop flags HERE, on the reader thread, while no search
-            // is running. UCI commands are serialized through parseCommand, so
-            // any `stop` is processed strictly after this point and its
-            // stopSearchRequested=true survives -- the search thread never
-            // writes false. Doing this inside the search thread instead loses
-            // every `stop` that lands in the startup window.
-            engine.prepareSearchRequest();
+            // Clear the stop flags here, on the reader thread: any `stop` is
+            // parsed after this point, so its flag survives. Cleared inside the
+            // search thread, a stop landing during startup was lost.
+            engine.prepareSearch();
             searchThread = std::thread([this, limits] {
-                const chess::Move move = engine.searchUCI(limits, /*prepared=*/true);
+                const chess::Move move = engine.search(limits);
                 // No legal move (mated or stalemated root): UCI's null move. A ponder
                 // search ends in a real move after ponderhit, so it offers a ponder move too.
                 const bool hasMove = chess::isValidSquare(move.from) && chess::isValidSquare(move.to);
@@ -494,27 +284,5 @@ namespace uci {
         }
         // Still searching: from now on the clock is ours.
         engine.timeManager.ponderhit();
-    }
-
-    void UCI::parseMoves(std::string_view moves) noexcept {
-        // Precondition: caller passes the substring beginning at the "moves"
-        // keyword (position() locates it via findWord), so just drop it.
-        moves = trimLeft(moves);
-        moves.remove_prefix(5);
-
-        for (string_view move = nextToken(moves); !move.empty(); move = nextToken(moves)) {
-            if (move.size() < 4) continue;
-
-            const chess::Square from = chess::parseSquare(move.substr(0, 2));
-            const chess::Square to = chess::parseSquare(move.substr(2, 2));
-            if (!chess::isValidSquare(from) || !chess::isValidSquare(to)) continue;
-
-            const char promo = (move.size() > 4) ? ascii::toLower(move[4]) : '\0';
-            engine.movePiece(from, to, promo);
-        }
-    }
-
-    void UCI::parseFEN(std::string_view fen) noexcept {
-        engine.board = chess::Board(std::string(trimRight(trimLeft(fen))));
     }
 }

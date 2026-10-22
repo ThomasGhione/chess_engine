@@ -27,11 +27,9 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
     softMs_          = 0;
     hardMs_          = 0;
 
-    // Modes that bypass time management entirely: the search runs until an
-    // external stop, a node cap, or a depth cap. No clock and no movetime =>
-    // no budget. This also covers pure depth/node-bound `go` commands, since
-    // those carry neither a clock nor a movetime. A `go ponder` with a clock
-    // gets its budget now and spends it from ponderhit.
+    // No clock and no movetime (depth, nodes, infinite): no budget, the search
+    // runs until it is stopped or capped. A `go ponder` with a clock gets its
+    // budget now and spends it from ponderhit.
     if (limits.infinite || (!limits.hasClock && limits.movetime <= 0)) {
         useTm_ = false;
         return;
@@ -66,10 +64,8 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
     double base = static_cast<double>(timeLeft) / static_cast<double>(mtg)
                 + static_cast<double>(myInc) * INC_FRACTION;
 
-    // Opening ramp: spend less on the first moves. Only applied WITHOUT an
-    // increment: with an increment the clock is replenished every move, so
-    // there is no reason to under-think the opening. No increment => the
-    // clock only ever shrinks, so the early-game discount still protects it.
+    // Opening ramp, only without an increment: with one the clock refills
+    // every move, so there is no reason to under-think the opening.
     if (myInc <= 0 && movesPlayed < OPENING_MOVES) {
         const double r = OPENING_MIN_SCALE +
             (1.0 - OPENING_MIN_SCALE) * (static_cast<double>(movesPlayed) /
@@ -151,7 +147,6 @@ void TimeManager::start() noexcept {
         startTicks_.store(ponderhitTicks_, std::memory_order_release);
         pondering_.store(false, std::memory_order_release);
     }
-    running_  = true;
     watchdog_ = std::thread([this] { watchdogLoop(); });
 }
 
@@ -169,7 +164,6 @@ void TimeManager::ponderhit() noexcept {
     startTicks_.store(ponderhitTicks_, std::memory_order_release);
     pondering_.store(false, std::memory_order_release);
     if (hardMs_ <= 0) return;
-    running_  = true;
     watchdog_ = std::thread([this] { watchdogLoop(); });
 }
 
@@ -185,8 +179,6 @@ void TimeManager::stop() noexcept {
     }
     cv_.notify_all();
     if (watchdog.joinable()) watchdog.join();
-    const std::lock_guard<std::mutex> lock(mtx_);
-    running_ = false;
 }
 
 void TimeManager::watchdogLoop() noexcept {
