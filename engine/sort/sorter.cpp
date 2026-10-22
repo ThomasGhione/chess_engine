@@ -1,6 +1,7 @@
 #include "sorter.hpp"
 
 #include <algorithm>
+#include <bit>
 
 #include "../engine.hpp"
 
@@ -176,6 +177,13 @@ MovePicker sortTacticalMoves(const MoveList& tacticalMoves, const Board& b,
     const int32_t seeThreshold = (ply < 10) ? SEE_THRESHOLD_SHALLOW
                                : (ply < 20) ? SEE_THRESHOLD_MID
                                             : SEE_THRESHOLD_DEEP;
+    int32_t npm = 0;
+    for (int type = Board::KNIGHT; type <= Board::QUEEN; ++type) {
+        npm += std::popcount(b.bb[type][0] | b.bb[type][1]) * PIECE_VALUES[type];
+    }
+    const int32_t evalPct = (npm > 5000) ? MATERIAL_TO_EVAL_PCT
+                          : (npm > 3000) ? MATERIAL_TO_EVAL_PCT_LATE_MG
+                                         : MATERIAL_TO_EVAL_PCT_ENDGAME;
     int n = 0;
     for (const chess::Move& m : tacticalMoves) {
         const MoveTraits t = moveTraits(b, m, enPassant, promotionRank);
@@ -183,9 +191,9 @@ MovePicker sortTacticalMoves(const MoveList& tacticalMoves, const Board& b,
         if (t.isCapture) {
             const int32_t captured = PIECE_VALUES[t.victimType] + (t.isPromotion ? promotionGain(m.promotionType) : 0);
             // Delta pruning: not even the capture lifts the stand pat to alpha.
-            if (standPat + materialToEval(captured) + FUTILITY_MARGIN <= alpha) continue;
+            if (standPat + materialToEval(captured, evalPct) + FUTILITY_MARGIN <= alpha) continue;
             const int32_t see = staticExchangeEvaluation(b, m);
-            if (see < seeThreshold || standPat + materialToEval(see) + MOVE_DELTA_MARGIN <= alpha) continue;
+            if (see < seeThreshold || standPat + materialToEval(see, evalPct) + MOVE_DELTA_MARGIN <= alpha) continue;
             score = CAPTURE_BASE_SCORE + see + PIECE_VALUES[t.victimType] * 10;
         } else if (!t.isPromotion) {
             continue;

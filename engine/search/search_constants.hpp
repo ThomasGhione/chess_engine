@@ -105,9 +105,14 @@ inline constexpr int32_t MATERIAL_TO_EVAL_PCT = 260;
 // delta margins: search bookkeeping, not evaluation.
 inline constexpr int32_t PIECE_VALUES[8] = {0, 100, 344, 359, 502, 960, 20'000, 0};
 
-constexpr int32_t materialToEval(int32_t material) noexcept {
-    return material * MATERIAL_TO_EVAL_PCT / 100;
+constexpr int32_t materialToEval(int32_t material, int32_t pct = MATERIAL_TO_EVAL_PCT) noexcept {
+    return material * pct / 100;
 }
+
+// The ratio grows as material comes off (a rook measures 2.2x in the middlegame,
+// 3.4x in the endgame). The qsearch delta margins pick it by non-pawn material.
+inline constexpr int32_t MATERIAL_TO_EVAL_PCT_LATE_MG = 300;  // 3000 < npm <= 5000
+inline constexpr int32_t MATERIAL_TO_EVAL_PCT_ENDGAME = 320;  // npm <= 3000
 
 // --- Aspiration window ---
 inline constexpr int32_t WINDOW_HARD_CAP    = 1500;
