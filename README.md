@@ -146,31 +146,54 @@ just shows Elo and error bars from the PGN):
 watch -n 5 'ordo -q -s 1000 -J -p "$(ls -t tuning/sprt_*.pgn | head -1)"'
 ```
 
-### Gauntlet (absolute Elo on a fixed scale)
+### Gauntlet and calibration (absolute Elo)
 
-`tuning/run_gauntlet.sh` answers "how strong are we overall?" instead of "better
-than the last baseline?". The current build plays frozen release tags, then
-[ordo](https://github.com/michiguel/Ordo) turns the PGN into ratings with one
-old release pinned at a constant Elo, so runs stay comparable over time.
+`tuning/runfastchess.sh` answers "how strong are we overall?" instead of
+"better than the last baseline?". The current build plays fixed opponents with
+[fastchess](https://github.com/Disservin/fastchess), then
+[ordo](https://github.com/michiguel/Ordo) turns the PGN into ratings with the
+opponents pinned at known Elo values. Both must be on your PATH (the scripts
+also look in `~/.local/bin`). It does not rebuild `./chess`: run `make prod`
+first. Relative paths given to it are relative to `tuning/`.
 
 ```sh
-make prod && ./tuning/run_gauntlet.sh
-REF_TAGS="3.1.0" GAMES=1000 ./tuning/run_gauntlet.sh
+make prod && ./tuning/runfastchess.sh            # Stockfish calibration, default levels
+./tuning/runfastchess.sh --tag 2.0.0 --tag 2.1.0 --tag 3.0.0 --tag 3.1.0 \
+                         --anchor HydraY_2.0.0=3000   # old releases
+./tuning/runfastchess.sh --sf-levels ../stockfish/stockfish-18:3000,3190 \
+                         --opponent ../stockfish/stockfish-11 --anchor stockfish-11=-
+./tuning/elo_watch.sh --loop                     # live dashboard, another terminal
 ```
 
-Reference binaries are built on demand in a throwaway `git worktree` (your
-checkout is never touched) and cached as `tuning/chess_ref_<tag>`. `ordo` must
-be on your PATH (the script also checks `~/.local/bin`).
+- **Stockfish calibration** (`--sf-levels PATH:ELO,...`): one opponent per
+  level, Stockfish limited with `UCI_LimitStrength`/`UCI_Elo` and pinned at
+  that level, so the result is on the Stockfish UCI_Elo scale (not CCRL). The
+  binary needs `UCI_Elo` (Stockfish 11+). With no opponents at all it runs
+  `../stockfish/stockfish-18:2800,3000,3190` when that binary exists, otherwise
+  every UCI engine in `tuning/`.
+- **Old releases** (`--tag TAG`): built once from `git archive` (the checkout
+  is never touched) and cached in `tuning/.refs/`. Pre-2.0.0 tags are
+  saturated (the current engine scores near 100% against them) and tag 1.1.0
+  and older ignore the clock; every engine gets a clock check before the games.
+- **Any engine** (`--opponent PATH`), with `--name` and per-engine UCI options
+  (`--opt NAME=VALUE`, e.g. two nets on one binary with `EvalFile`).
+- **Anchors**: `--anchor NAME=ELO` pins an opponent, `--anchor NAME=-` leaves
+  it free (rated through the games). ordo pins all anchors together, so their
+  differences enter the estimate. `--extra-pgn` adds games from other runs,
+  e.g. the opponents playing each other.
 
-Env knobs (defaults): `REF_TAGS="2.0.0 2.1.0 3.0.0 3.1.0"` (the NNUE release
-ladder; the intermediate rungs keep ordo from saturating on one far anchor),
-`ANCHOR_TAG` / `ANCHOR_ELO=3000` (the fixed yardstick, an internal value, not a
-CCRL rating), `GAMES=400` per opponent, `TC=4+0.04`, `CONCURRENCY`, `THREADS`.
+Cores and hash are picked automatically: one thread per physical core and, on
+a hybrid CPU, the largest group below the fastest one (the fastest stays free
+for the system, fastchess and ordo); `--show-cpus` shows the choice. Resign is
+two-sided by default: HydraY's eval scale is 2.3-3.2x Stockfish's, so the
+one-sided rule cuts its losses short and lets its wins run long.
 
-> Since the NNUE switch, pre-2.0.0 tags are saturated (the current engine
-> scores near 100% against them, which makes ratings meaningless) - anchor on
-> `2.0.0` or newer. Also, tag 1.1.0 and older have broken time management and
-> forfeit at any real TC.
+At the end, Ctrl+C included, `elo_watch.sh --save` writes the ratings, head to
+head and anchors next to the PGN (`*_ratings.txt`, `*_h2h.txt`,
+`*_anchors.txt`) and checks that every anchor came out exactly at its value.
+The dashboard also shows, per opponent, the implied Elo (anchor plus our Elo
+against that opponent alone): if it differs a lot between opponents, the
+anchors are not consistent. `--help` on either script lists every option.
 
 ## NNUE Evaluation
 
