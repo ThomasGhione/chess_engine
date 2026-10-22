@@ -1022,7 +1022,6 @@ Move searchBestMove(Board& board, SearchRuntime& runtime, int requestedDepth) no
 
     helperStop.store(true, std::memory_order_release);
     for (auto& helper : helpers) helper.join();
-    activeHelperCount = 0;
     runtime.depth = targetDepth;
 
     // Thread vote: among the threads that completed the deepest iteration, the
@@ -1046,6 +1045,8 @@ Move searchBestMove(Board& board, SearchRuntime& runtime, int requestedDepth) no
         result.bestMove  = best->bestMove;
         result.bestScore = best->bestScore;
     }
+    // Only now: the vote's info line above still counts the helpers' nodes.
+    activeHelperCount = 0;
 
     if (result.terminalRoot || result.completedAnyDepth) {
         runtime.eval = result.bestScore;
