@@ -17,6 +17,7 @@ struct SearchStats {
     uint64_t lmrSearches, lmrResearches, lmrReductionSum;
     uint64_t prunedLmp, prunedFutility, prunedHistory, prunedSee;
     uint64_t nmpTries, nmpCuts, rfpCuts, probcutCuts;
+    uint64_t evals, smallEvals, smallRejected;
 };
 
 // One set per search thread; the report covers the main thread only.

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
+#include <cstdlib>
 #include <memory>
 #include <thread>
 #include <utility>
@@ -62,10 +64,35 @@ namespace {
 // through searchPosition, so getBestMove seeds it.
 thread_local int32_t evalStack[MAX_PLY] = {};
 
+// Material of the side to move minus the opponent's, in PIECE_VALUES.
+int32_t materialBalance(const Board& b) noexcept {
+    const int us = Board::colorToIndex(b.getActiveColor());
+    int32_t balance = 0;
+    for (int t = Board::PAWN; t <= Board::QUEEN; ++t)
+        balance += PIECE_VALUES[t] * (std::popcount(b.bb[t][us]) - std::popcount(b.bb[t][us ^ 1]));
+    return balance;
+}
+
 // A missing king (reachable only from an illegal FEN) is decisive, not an eval.
+// The small net takes the positions the material already decides, when its
+// own eval agrees (search_constants.hpp). The choice depends on the position
+// alone, because the eval cache and the TT's staticEval keep one eval per
+// position whichever net produced it.
 int32_t evaluate(const Board& b) noexcept {
     if (b.bb[Board::KING][0] == 0 || b.bb[Board::KING][1] == 0) [[unlikely]]
         return ((b.bb[Board::KING][0] == 0) == (b.getActiveColor() == Board::WHITE)) ? -MATE_VALUE : MATE_VALUE;
+    if constexpr (kSearchStats) ++gSearchStats.evals;
+    if (NNUE::Small::loaded() && SMALL_NET_THRESHOLD > 0) {
+        const int32_t balance = materialBalance(b);
+        if (std::abs(balance) >= SMALL_NET_THRESHOLD) {
+            const int32_t small = NNUE::Small::evaluate(b);
+            if ((balance > 0 ? small : -small) >= SMALL_NET_CONFIRM) {
+                if constexpr (kSearchStats) ++gSearchStats.smallEvals;
+                return small;
+            }
+            if constexpr (kSearchStats) ++gSearchStats.smallRejected;
+        }
+    }
     return NNUE::evaluate(b);
 }
 
@@ -1032,7 +1059,9 @@ IterativeSearchResult runIterativeDeepening(Board& rootBoard, SearchRuntime& run
                   + "info string stats early nmp " + std::to_string(st.nmpCuts) + "/" + std::to_string(st.nmpTries) + " ("
                   + pct(st.nmpCuts, st.nmpTries) + "%) rfp " + std::to_string(st.rfpCuts) + " probcut "
                   + std::to_string(st.probcutCuts) + " of main " + pct(st.nmpCuts + st.rfpCuts + st.probcutCuts, st.mainNodes)
-                  + "%\n");
+                  + "%\n"
+                  + "info string stats evals " + std::to_string(st.evals) + " small " + pct(st.smallEvals, st.evals)
+                  + "% rejected " + pct(st.smallRejected, st.evals) + "%\n");
     }
     return result;
 }

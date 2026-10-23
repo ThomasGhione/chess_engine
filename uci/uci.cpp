@@ -42,6 +42,8 @@ namespace {
         int32_t maxValue;
         // Rebuild the search-derived tables (LMR/futility/LMP) after writing.
         bool refreshSearchTables = false;
+        // Changes which net evaluates a position: cached evals are stale.
+        bool clearsEvalCache = false;
     };
 
     SpinOption kSpinOptions[] = {
@@ -59,6 +61,8 @@ namespace {
         {"LMP_SCALE_IMP_PCT",    &engine::LMP_SCALE_PCT[1],               40,  250, true},
         {"LMR_C_PERCENT",        &engine::LMR_C_PERCENT,                 150,  600, true},
         {"CORR_HIST_WEIGHT_PCT", &engine::CORR_HIST_WEIGHT_PCT,            0,  400},
+        {"SMALL_NET_THRESHOLD",  &engine::SMALL_NET_THRESHOLD,             0, 4000, false, true},
+        {"SMALL_NET_CONFIRM",    &engine::SMALL_NET_CONFIRM,           -4000, 4000, false, true},
     };
 
     std::string ponderSuffix(const engine::Engine& engine, const chess::Move& bestMove) noexcept {
@@ -169,6 +173,7 @@ namespace uci {
             }
             *option.value = v;
             if (option.refreshSearchTables) engine::rebuildSearchDerivedTables();
+            if (option.clearsEvalCache) engine::clearEvalCache();
             return emit("info string " + optionDisplayName(option.key) + " set to " + std::to_string(v) + "\n");
         }
 

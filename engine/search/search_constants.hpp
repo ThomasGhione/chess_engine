@@ -109,6 +109,14 @@ constexpr int32_t materialToEval(int32_t material, int32_t pct = MATERIAL_TO_EVA
     return material * pct / 100;
 }
 
+// --- Small net selection (UCI spins, active only with SmallEvalFile) ---
+// The small net evaluates a position whose material imbalance (PIECE_VALUES)
+// is at least SMALL_NET_THRESHOLD, if its eval confirms the side ahead by at
+// least SMALL_NET_CONFIRM eval units; otherwise the big net does. Threshold 0
+// turns the small net off. Train it on imbalances >= the threshold.
+inline int32_t SMALL_NET_THRESHOLD = 500;
+inline int32_t SMALL_NET_CONFIRM   = 400;
+
 // The ratio grows as material comes off (a rook measures 2.2x in the middlegame,
 // 3.4x in the endgame). The qsearch delta margins pick it by non-pawn material.
 inline constexpr int32_t MATERIAL_TO_EVAL_PCT_LATE_MG = 300;  // 3000 < npm <= 5000
