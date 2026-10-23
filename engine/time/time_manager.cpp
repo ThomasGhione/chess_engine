@@ -22,6 +22,7 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
     stopFlag_        = stopFlag;
     pondering_.store(false, std::memory_order_relaxed);
     stabilityFactor_ = 1.0;
+    fixedTime_       = false;
     baseMs_          = 0;
     softCapMs_       = 0;
     softMs_          = 0;
@@ -41,6 +42,7 @@ void TimeManager::init(const Limits& limits, bool sideIsWhite, int movesPlayed,
         const int64_t t = std::max<int64_t>(
             MIN_THINK_MS, limits.movetime - MOVE_OVERHEAD_MS);
         useTm_     = true;
+        fixedTime_ = true;
         baseMs_    = t;
         softCapMs_ = t;
         softMs_    = t;
@@ -104,7 +106,7 @@ void TimeManager::recomputeSoft() noexcept {
 void TimeManager::updateStability(bool bestMoveChanged, int32_t score,
                                    int32_t prevScore,
                                    bool hasPrevScore) noexcept {
-    if (!useTm_) return;
+    if (!useTm_ || fixedTime_) return;
 
     double f = stabilityFactor_;
 

@@ -109,6 +109,7 @@ private:
     int64_t softMs_   = 0;   // current soft budget (base * stability, clamped)
     int64_t hardMs_   = 0;   // hard ceiling (fixed at init)
     bool    useTm_    = false;
+    bool    fixedTime_ = false;  // go movetime: the budget is the user's, not ours to rescale
     double  stabilityFactor_ = 1.0;
 
     std::atomic<bool>* stopFlag_ = nullptr;
