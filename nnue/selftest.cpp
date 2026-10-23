@@ -1,5 +1,6 @@
 #include "selftest.hpp"
 
+#include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -34,15 +35,55 @@ bool accumulatorMatchesScratch(const chess::Board& b, const char* context, int g
     return true;
 }
 
+// The small accumulator against one summed from the weights, and the
+// vectorised forward against the scalar one in every output bucket.
+bool smallMatchesScratch(const chess::Board& b, const char* context, int game, int ply) {
+    b.ensureSmallAccumulatorClean();
+    const SmallAccumulator& inc = b.smallAccumulator();
+    const Small::NetworkSmall& net = *activeSmallNetwork;
+    bool same = !b.accumulator().smallDirty;
+    for (int p = 0; p < 2; ++p) {
+        const int engineKing = std::countr_zero(b.bb[chess::Board::KING][p]);
+        const int kingView = (p == 1) ? engineKing : (engineKing ^ 56);
+        const int base = kingFeatureBase(kingView);
+        const int flip = kingFlip(kingView);
+        int32_t ref[Small::HIDDEN];
+        for (int i = 0; i < Small::HIDDEN; ++i) ref[i] = net.l0b[i];
+        for (uint8_t sq = 0; sq < 64; ++sq) {
+            const uint8_t piece = b.get(sq);
+            if (piece == chess::Board::EMPTY) continue;
+            const int16_t* row = net.l0w[featureIndex(base, flip, p, piece, sq)];
+            for (int i = 0; i < Small::HIDDEN; ++i) ref[i] += row[i];
+        }
+        for (int i = 0; i < Small::HIDDEN; ++i) same &= inc.v[p][i] == static_cast<int16_t>(ref[i]);
+        same &= inc.base[p] == base && inc.flip[p] == flip;
+    }
+    for (int bucket = 0; same && bucket < Small::OUTPUT_BUCKETS; ++bucket) {
+        same = Small::forwardSimd(net, inc.v[0], inc.v[1], bucket) == Small::forwardScalar(net, inc.v[0], inc.v[1], bucket)
+            && Small::forwardSimd(net, inc.v[1], inc.v[0], bucket) == Small::forwardScalar(net, inc.v[1], inc.v[0], bucket);
+    }
+    if (!same) {
+        std::cout << "SMALL MISMATCH (" << context << ") game " << game << " ply " << ply
+                  << "\n  fen: " << b.boardToFen() << "\n";
+    }
+    return same;
+}
+
 } // namespace
 
 int runSelfTest(int argc, char* argv[]) {
     if (argc < 3) {
-        std::cerr << "usage: ./chess nnue-selftest <net.bin> [games]\n";
+        std::cerr << "usage: ./chess nnue-selftest <net.bin> [games] [small.bin]\n";
         return 1;
     }
     if (!loadNetwork(argv[2])) return 1;
     const int games = (argc >= 4) ? std::max(1, std::atoi(argv[3])) : 200;
+    const bool small = argc >= 5;
+    if (small && !Small::loadNetwork(argv[4])) return 1;
+    const auto check = [small](const chess::Board& b, const char* context, int game, int ply) {
+        return accumulatorMatchesScratch(b, context, game, ply)
+            && (!small || smallMatchesScratch(b, context, game, ply));
+    };
 
     // Reference evals: must match nnue/trainer/src/bin/sanity.rs on the same
     // net. The mirrored pair must be exactly equal (perspective encoding).
@@ -66,17 +107,25 @@ int runSelfTest(int argc, char* argv[]) {
         {"kings on 2nd rank (w)", "8/1k3ppp/1p6/p1p5/P1P5/1P4P1/1K3P1P/8 w - - 0 1"},
         {"active kings endgame (w)", "8/8/3k4/8/2p5/2P1K3/8/8 w - - 0 1"},
     };
-    int32_t mirrorPair[2] = {0, 0};
+    int32_t mirrorPair[2][2] = {};
     for (size_t i = 0; i < std::size(refs); ++i) {
         chess::Board b(refs[i].fen);
         const int32_t cp = evaluate(b);
-        if (i == 2 || i == 3) mirrorPair[i - 2] = cp;
-        std::cout << refs[i].label << ": " << cp << " cp (stm)\n";
+        const int32_t smallCp = small ? Small::evaluate(b) : 0;
+        if (i == 2 || i == 3) {
+            mirrorPair[0][i - 2] = cp;
+            mirrorPair[1][i - 2] = smallCp;
+        }
+        std::cout << refs[i].label << ": " << cp << " cp (stm)";
+        if (small) std::cout << ", small " << smallCp << " cp";
+        std::cout << "\n";
     }
-    if (mirrorPair[0] != mirrorPair[1]) {
-        std::cout << "FAIL: mirrored pair differs (" << mirrorPair[0] << " vs "
-                  << mirrorPair[1] << ")\n";
-        return 1;
+    for (int n = 0; n < 2; ++n) {
+        if (mirrorPair[n][0] != mirrorPair[n][1]) {
+            std::cout << "FAIL: mirrored pair differs for the " << (n ? "small" : "big") << " net ("
+                      << mirrorPair[n][0] << " vs " << mirrorPair[n][1] << ")\n";
+            return 1;
+        }
     }
 
     // Random walks. At every ply a probe move is played and evaluated one ply
@@ -100,22 +149,36 @@ int runSelfTest(int argc, char* argv[]) {
                 chess::Board::MoveState replyState{};
                 const chess::Move& reply = replies[static_cast<size_t>(ply) % static_cast<size_t>(replies.size)];
                 b.doMove(reply, replyState);
-                if (!accumulatorMatchesScratch(b, "probe reply", game, ply)) return 1;
+                if (!check(b, "probe reply", game, ply)) return 1;
                 b.undoMove(reply, replyState);
             }
-            if (ply % 2 == 0 && !accumulatorMatchesScratch(b, "probe", game, ply)) return 1;
+            if (ply % 2 == 0 && !check(b, "probe", game, ply)) return 1;
             b.undoMove(probe, st);
-            if (ply % 3 == 0 && !accumulatorMatchesScratch(b, "do+undo", game, ply)) return 1;
+            if (ply % 3 == 0 && !check(b, "do+undo", game, ply)) return 1;
 
             const chess::Move& m = legal[rng() % static_cast<uint64_t>(legal.size)];
             b.doMove(m, st);
-            if (ply % 4 == 3 && !accumulatorMatchesScratch(b, "doMove", game, ply)) return 1;
+            if (ply % 4 == 3 && !check(b, "doMove", game, ply)) return 1;
             ++positions;
         }
     }
 
     std::cout << "nnue-selftest OK: " << positions << " positions across "
-              << games << " games, incremental == scratch everywhere\n";
+              << games << " games, incremental == scratch everywhere"
+              << (small ? " (big and small net)" : "") << "\n";
+    return 0;
+}
+
+int runSmallEval(int argc, char* argv[]) {
+    if (argc < 3 || !Small::loadNetwork(argv[2])) {
+        std::cerr << "usage: ./chess small-eval <small.bin> < fens.txt\n";
+        return 1;
+    }
+    for (std::string fen; std::getline(std::cin, fen); ) {
+        if (fen.empty()) continue;
+        const chess::Board b(fen);
+        std::cout << Small::evaluate(b) << '\t' << evaluate(b) << '\t' << fen << '\n';
+    }
     return 0;
 }
 

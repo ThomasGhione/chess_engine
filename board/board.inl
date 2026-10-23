@@ -33,6 +33,7 @@ inline void Board::copyFromBoard(const Board& other) noexcept {
     other.ensureNnueAccumulatorClean();
     accTop = accFloor = other.accTop;
     frame(accTop) = other.frame(other.accTop);
+    if (!frame(accTop).smallDirty) smallFrame(accTop) = other.smallFrame(other.accTop);
     halfMoveClock = other.halfMoveClock;
     fullMoveClock = other.fullMoveClock;
     castle = other.castle;
@@ -77,7 +78,7 @@ inline void Board::refreshNnueAccumulator() noexcept {
     acc.ndelta = 0;
     // No kings (unit-test fragments, mid-load states): no values; evaluation
     // is guarded upstream by the kings-missing check.
-    acc.dirty[0] = acc.dirty[1] = true;
+    acc.dirty[0] = acc.dirty[1] = acc.smallDirty = true;
     if (bb[KING][0] == 0 || bb[KING][1] == 0) return;
     const int wKingLerf      = std::countr_zero(bb[KING][0]) ^ 56;
     const int bKingLerfView  = std::countr_zero(bb[KING][1]); // lerf ^ 56
@@ -264,4 +265,132 @@ inline void Board::ensureNnueAccumulatorClean() const noexcept {
         NNUE::Accumulator::applyRows(e.v, sub, ns, add, na);
         std::memcpy(top.v[p], e.v, sizeof(e.v));
     }
+}
+
+inline void Board::collectAccDiff(int start, int target, uint16_t* sub, int& ns, uint16_t* add, int& na) const noexcept {
+    ns = na = 0;
+    for (int i = start + 1; i <= target; ++i) {
+        const NNUE::Accumulator& f = frame(i);
+        for (int k = 0; k < f.ndelta; ++k) {
+            const NNUE::AccDelta& d = f.delta[k];
+            const uint16_t at = static_cast<uint16_t>(d.piece << 8 | d.from);
+            if (d.kind == NNUE::AccDelta::Add) {
+                add[na++] = at;
+            } else {
+                sub[ns++] = at;
+                if (d.kind == NNUE::AccDelta::Move) add[na++] = static_cast<uint16_t>(d.piece << 8 | d.to);
+            }
+        }
+    }
+    for (int i = 0; i < ns; ) {
+        int j = 0;
+        while (j < na && add[j] != sub[i]) ++j;
+        if (j == na) { ++i; continue; }
+        sub[i] = sub[--ns];
+        add[j] = add[--na];
+    }
+}
+
+// ensureNnueAccumulatorClean for the small net, on its own ring and fed by the
+// same move log: the nearest computed ancestor under the same basis, every
+// frame on the way back to the last king move computed too, the Finny table
+// otherwise. The rows are narrow, so each perspective is updated on its own.
+inline void Board::ensureSmallAccumulatorClean() const noexcept {
+    if (NNUE::activeSmallNetwork == nullptr) return;
+    if (!frame(accTop).smallDirty) [[likely]] return;
+    if (bb[KING][0] == 0 || bb[KING][1] == 0) return;
+    constexpr int W = NNUE::Small::HIDDEN;
+
+    int kingView[2];
+    int rowBase[2];
+    int rowFlip[2];
+    for (int p = 0; p < 2; ++p) {
+        const int engineKing = std::countr_zero(bb[KING][p]);
+        kingView[p] = (p == 1) ? engineKing : (engineKing ^ 56);
+        rowBase[p] = NNUE::kingFeatureBase(kingView[p]);
+        rowFlip[p] = NNUE::kingFlip(kingView[p]);
+    }
+    int from = -1;
+    for (int i = accTop - 1; i >= std::max(accFloor, accTop - NNUE::ACC_MAX_WALK); --i) {
+        if (!frame(i).smallDirty) {
+            from = i;
+            break;
+        }
+    }
+    bool usable[2] = {false, false};
+    if (from >= 0) {
+        const NNUE::SmallAccumulator& src = smallFrame(from);
+        for (int p = 0; p < 2; ++p) usable[p] = src.base[p] == rowBase[p] && src.flip[p] == rowFlip[p];
+    }
+
+    if (usable[0] || usable[1]) {
+        int first = accTop;
+        if (usable[0] && usable[1]) {
+            while (first - 1 > from) {
+                bool kingMoved = false;
+                const NNUE::Accumulator& f = frame(first);
+                for (int k = 0; k < f.ndelta; ++k) kingMoved |= (f.delta[k].piece & MASK_PIECE_TYPE) == KING;
+                if (kingMoved) break;
+                --first;
+            }
+        }
+        for (int i = first; i <= accTop; ++i) {
+            constexpr int CAP = NNUE::ACC_MAX_WALK * NNUE::ACC_MAX_DELTAS;
+            uint16_t sub[CAP];
+            uint16_t add[CAP];
+            int ns = 0;
+            int na = 0;
+            collectAccDiff(from, i, sub, ns, add, na);
+            const NNUE::SmallAccumulator& src = smallFrame(from);
+            NNUE::SmallAccumulator& dst = smallFrame(i);
+            for (int p = 0; p < 2; ++p) {
+                if (!usable[p]) continue;
+                const int16_t* subRow[CAP];
+                const int16_t* addRow[CAP];
+                for (int k = 0; k < ns; ++k)
+                    subRow[k] = NNUE::SmallAccumulator::rowFor(rowBase[p], rowFlip[p], p,
+                                                               static_cast<uint8_t>(sub[k] >> 8), static_cast<uint8_t>(sub[k]));
+                for (int k = 0; k < na; ++k)
+                    addRow[k] = NNUE::SmallAccumulator::rowFor(rowBase[p], rowFlip[p], p,
+                                                               static_cast<uint8_t>(add[k] >> 8), static_cast<uint8_t>(add[k]));
+                NNUE::Accumulator::applyRows<W>(dst.v[p], subRow, ns, addRow, na, src.v[p]);
+                dst.base[p] = rowBase[p];
+                dst.flip[p] = static_cast<uint8_t>(rowFlip[p]);
+            }
+            // An intermediate frame is reached only with both perspectives usable.
+            frame(i).smallDirty = false;
+            from = i;
+        }
+    }
+
+    static thread_local NNUE::SmallFinnyTable finny;
+    NNUE::SmallAccumulator& top = smallFrame(accTop);
+    for (int p = 0; p < 2; ++p) {
+        top.base[p] = rowBase[p];
+        top.flip[p] = static_cast<uint8_t>(rowFlip[p]);
+        if (usable[p]) continue;
+        finny.ensureInitialised();
+        NNUE::SmallFinnyEntry& e = finny.entry[p][NNUE::KING_BUCKET_MAP[kingView[p]]][rowFlip[p] ? 1 : 0];
+        const int16_t* sub[64];
+        const int16_t* add[64];
+        int ns = 0;
+        int na = 0;
+        for (int c = 0; c < 2; ++c) {
+            for (int t = 0; t < 6; ++t) {
+                const uint8_t piece = static_cast<uint8_t>((c == 0 ? 0x8 : 0) | (t + 1));
+                uint64_t added   = bb[t + 1][c] & ~e.bb[c][t];
+                uint64_t removed = e.bb[c][t] & ~bb[t + 1][c];
+                while (added)
+                    add[na++] = NNUE::SmallAccumulator::rowFor(rowBase[p], rowFlip[p], p, piece,
+                                                               static_cast<uint8_t>(pieces::popLSB(added)));
+                while (removed)
+                    sub[ns++] = NNUE::SmallAccumulator::rowFor(rowBase[p], rowFlip[p], p, piece,
+                                                               static_cast<uint8_t>(pieces::popLSB(removed)));
+                e.bb[c][t] = bb[t + 1][c];
+            }
+        }
+        NNUE::Accumulator::applyRows<W>(e.v, sub, ns, add, na);
+        std::memcpy(top.v[p], e.v, sizeof(e.v));
+    }
+    frame(accTop).smallDirty = false;
 }

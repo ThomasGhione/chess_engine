@@ -1,52 +1,63 @@
-// Lettore di riferimento (pure-std, niente GPU) per il quantised.bin prodotto
-// da trainer_deep.rs - la rete con layer intermedi.
+// Reference reader (pure std, no GPU) for the quantised.bin files written by
+// trainer_deep.rs (the big net) and trainer_small.rs (the small net).
 //
-// Come sanity.rs sta alla rete a un layer, questo sta alla rete profonda: e'
-// l'ORACOLO. Il C++ deve concordare con questo file, non viceversa, e va
-// scritto dopo averlo letto.
+// It is the ORACLE: the C++ must agree with this file, not the other way
+// round, and is written after reading it.
 //
-// Rete: (768x4kb_hm -> 1024)x2 -> pairwise -> 1024 -> 16 -> 1,
-// 8 output bucket applicati sia a l1 sia a l2. QA=255 QB=64 SCALE=400.
+// Both nets are (768x4kb_hm -> H)x2 -> pairwise -> H -> L1 -> 1, with 8
+// output buckets applied to l1 and l2, QA=255 QB=64 SCALE=400, and differ only
+// in (H, L1):
 //
-// Input identici alla rete a un layer (4 king bucket specchiati, 8 output
-// bucket su popcount): quella parte e' copiata da sanity.rs apposta, cosi' un
-// eventuale disaccordo fra i due lettori isola la sola parte nuova.
+//   big   (trainer_deep.rs)   H = 1024, L1 = 16   file 6,425,664 B
+//   small (trainer_small.rs)  H = 128,  L1 = 8    file   795,456 B
+//                             (L1 = 4,             file   791,104 B, also read)
 //
-// LAYOUT (little-endian, nell'ordine di save_format, pad a 64 B con "bullet"):
+// The layout is recognised from the file size. The inputs are those of the
+// one-layer net (4 mirrored king buckets, 8 output buckets on popcount): that
+// part is copied from sanity.rs on purpose, so a disagreement between the two
+// readers isolates the new part.
 //
-//   offset          campo                      tipo   scala
-//   0               l0w [4*768][1024]          i16    QA
-//   6.291.456       l0b [1024]                 i16    QA
-//   6.293.504       l1w [8][16][1024]          i8     QB
-//   6.424.576       l1b [8][16]                f32    reale
-//   6.425.088       l2w [8][1][16]             f32    reale
-//   6.425.600       l2b [8]                    f32    reale
-//   6.425.632       fine payload (pad a 6.425.664)
+// LAYOUT (little-endian, in save_format order, padded to 64 B with "bullet"):
 //
-// ARITMETICA, che e' il punto delicato:
+//   l0w [4*768][H]     i16    QA
+//   l0b [H]            i16    QA
+//   l1w [8][L1][H]     i8     QB    (transposed: each bucket contiguous)
+//   l1b [8][L1]        f32    real
+//   l2w [8][1][L1]     f32    real
+//   l2b [8]            f32    real
 //
-//   acc[i]              i16, scala QA
-//   c[i]  = clamp(acc[i], 0, QA)                    scala QA, sta in u8
-//   p[j]  = c[j] * c[j + 512] / QA                  scala QA, sta in u8
-//                       ^ e' il pairwise: da 1024 valori per prospettiva a 512,
-//                         e la divisione per QA e' cio' che lo rimette in u8.
-//   hl1   = [p_stm (512), p_ntm (512)]              1024 valori, scala QA
-//   z[o]  = (SUM hl1[i]*l1w[o][i]) / (QA*QB) + l1b[o]     reale
+// ARITHMETIC, which is the delicate part:
+//
+//   acc[i]              i16, QA scale
+//   c[i]  = clamp(acc[i], 0, QA)                    QA scale, fits in u8
+//   p[j]  = c[j] * c[j + H/2] / QA                  QA scale, fits in u8
+//                       ^ the pairwise product: H values per perspective
+//                         become H/2, and the division by QA brings them back
+//                         to u8.
+//   hl1   = [p_stm (H/2), p_ntm (H/2)]              H values, QA scale
+//   z[o]  = (SUM hl1[i]*l1w[o][i]) / (QA*QB) + l1b[o]     real
 //   a[o]  = clamp(z[o], 0, 1)^2                     SCReLU in float
-//   y     = SUM a[o]*l2w[o] + l2b        lineare
+//   y     = SUM a[o]*l2w[o] + l2b                   linear
 //   cp    = y * SCALE
 //
-// Uso: cargo run -r --bin sanity_deep -- <quantised.bin> [fen]...
+// Usage: cargo run -r --bin sanity_deep -- <quantised.bin> [fen]...
+//        cargo run -r --bin sanity_deep -- <quantised.bin> - < fens.txt
+//          (one FEN per line, prints "cp<TAB>fen": diff it against
+//           ./chess small-eval or the engine's evaluations)
 
-const HIDDEN: usize = 1024;
-const L1_SIZE: usize = 16;
+use std::io::BufRead;
+
 const INPUT_BUCKETS: usize = 4;
 const OUTPUT_BUCKETS: usize = 8;
 const QA: i32 = 255;
 const QB: i32 = 64;
 const SCALE: f32 = 400.0;
 
-// Keep in sync with trainer_deep.rs BUCKET_LAYOUT e nnue/network.hpp.
+// (H, L1) of the layouts this reader knows.
+const LAYOUTS: [(usize, usize); 3] = [(1024, 16), (128, 4), (128, 8)];
+
+// Keep in sync with trainer_deep.rs / trainer_small.rs BUCKET_LAYOUT and
+// nnue/network.hpp.
 #[rustfmt::skip]
 const BUCKET_LAYOUT: [usize; 32] = [
     0, 0, 1, 1,
@@ -65,34 +76,35 @@ fn king_bucket(ksq: usize) -> usize {
 }
 
 pub struct Network {
-    pub l0w: Vec<i16>,  // [4*768 * HIDDEN]
-    pub l0b: Vec<i16>,  // [HIDDEN]
-    pub l1w: Vec<i8>,   // [OB * L1 * HIDDEN]
+    pub hidden: usize,
+    pub l1_size: usize,
+    pub l0w: Vec<i16>,  // [4*768 * H]
+    pub l0b: Vec<i16>,  // [H]
+    pub l1w: Vec<i8>,   // [OB * L1 * H]
     pub l1b: Vec<f32>,  // [OB * L1]
     pub l2w: Vec<f32>,  // [OB * L1]
     pub l2b: Vec<f32>,  // [OB]
 }
 
-pub const L0W: usize = INPUT_BUCKETS * 768 * HIDDEN;
-pub const L1W: usize = OUTPUT_BUCKETS * L1_SIZE * HIDDEN;
-pub const PAYLOAD: usize = L0W * 2
-    + HIDDEN * 2
-    + L1W
-    + OUTPUT_BUCKETS * L1_SIZE * 4
-    + OUTPUT_BUCKETS * L1_SIZE * 4
-    + OUTPUT_BUCKETS * 4;
+fn payload(hidden: usize, l1_size: usize) -> usize {
+    INPUT_BUCKETS * 768 * hidden * 2
+        + hidden * 2
+        + OUTPUT_BUCKETS * l1_size * hidden
+        + OUTPUT_BUCKETS * l1_size * 4 * 2
+        + OUTPUT_BUCKETS * 4
+}
 
 pub fn load(path: &str) -> Network {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"));
+    let (hidden, l1_size) = *LAYOUTS
+        .iter()
+        .find(|&&(h, l1)| payload(h, l1).div_ceil(64) * 64 == bytes.len())
+        .unwrap_or_else(|| panic!("{} bytes: not a known layout {LAYOUTS:?}", bytes.len()));
+    let total = payload(hidden, l1_size);
+    // bullet fills the tail with "bullet" repeated: anything else means the
+    // layout has drifted.
     assert!(
-        bytes.len() >= PAYLOAD && bytes.len() % 64 == 0,
-        "size mismatch: got {} bytes, expected {PAYLOAD} (+pad to 64)",
-        bytes.len()
-    );
-    // bullet riempie la coda con "bullet" ripetuto: qualsiasi altra cosa
-    // significa che il layout e' andato alla deriva.
-    assert!(
-        bytes[PAYLOAD..].iter().zip(b"bullet".iter().cycle()).all(|(a, b)| a == b),
+        bytes[total..].iter().zip(b"bullet".iter().cycle()).all(|(a, b)| a == b),
         "unexpected padding tail - layout drift?"
     );
 
@@ -105,11 +117,12 @@ pub fn load(path: &str) -> Network {
         *off += n * 2;
         v
     };
-    let l0w = i16s(L0W, &mut off);
-    let l0b = i16s(HIDDEN, &mut off);
+    let l0w = i16s(INPUT_BUCKETS * 768 * hidden, &mut off);
+    let l0b = i16s(hidden, &mut off);
 
-    let l1w: Vec<i8> = bytes[off..off + L1W].iter().map(|&b| b as i8).collect();
-    off += L1W;
+    let l1w_len = OUTPUT_BUCKETS * l1_size * hidden;
+    let l1w: Vec<i8> = bytes[off..off + l1w_len].iter().map(|&b| b as i8).collect();
+    off += l1w_len;
 
     let f32s = |n: usize, off: &mut usize| -> Vec<f32> {
         let v = bytes[*off..*off + n * 4]
@@ -119,12 +132,12 @@ pub fn load(path: &str) -> Network {
         *off += n * 4;
         v
     };
-    let l1b = f32s(OUTPUT_BUCKETS * L1_SIZE, &mut off);
-    let l2w = f32s(OUTPUT_BUCKETS * L1_SIZE, &mut off);
+    let l1b = f32s(OUTPUT_BUCKETS * l1_size, &mut off);
+    let l2w = f32s(OUTPUT_BUCKETS * l1_size, &mut off);
     let l2b = f32s(OUTPUT_BUCKETS, &mut off);
-    assert_eq!(off, PAYLOAD, "il parsing non ha consumato esattamente il payload");
+    assert_eq!(off, total, "parsing did not consume exactly the payload");
 
-    Network { l0w, l0b, l1w, l1b, l2w, l2b }
+    Network { hidden, l1_size, l0w, l0b, l1w, l1b, l2w, l2b }
 }
 
 fn screlu_f32(x: f32) -> f32 {
@@ -132,9 +145,10 @@ fn screlu_f32(x: f32) -> f32 {
     y * y
 }
 
-/// Accumulatori delle due prospettive + bucket di uscita, dalla FEN.
-/// Identico a sanity.rs: e' la parte che le due architetture condividono.
-pub fn accumulate(net_l0w: &[i16], net_l0b: &[i16], fen: &str) -> (Vec<i16>, Vec<i16>, usize) {
+/// Both perspectives' accumulators and the output bucket, from the FEN.
+/// As in sanity.rs: the part the architectures share.
+pub fn accumulate(net: &Network, fen: &str) -> (Vec<i16>, Vec<i16>, usize) {
+    let hidden = net.hidden;
     let mut fields = fen.split_whitespace();
     let board = fields.next().expect("empty FEN");
     let black_to_move = fields.next() == Some("b");
@@ -172,8 +186,8 @@ pub fn accumulate(net_l0w: &[i16], net_l0b: &[i16], fen: &str) -> (Vec<i16>, Vec
     let (us_base, us_flip) = params(black_to_move);
     let (them_base, them_flip) = params(!black_to_move);
 
-    let mut acc_us = net_l0b.to_vec();
-    let mut acc_them = net_l0b.to_vec();
+    let mut acc_us = net.l0b.clone();
+    let mut acc_them = net.l0b.clone();
     for &(piece_type, is_black_piece, sq) in &pieces {
         for (acc, from_black_view, base, flip) in [
             (&mut acc_us, black_to_move, us_base, us_flip),
@@ -183,8 +197,8 @@ pub fn accumulate(net_l0w: &[i16], net_l0b: &[i16], fen: &str) -> (Vec<i16>, Vec
             let sq_view = if from_black_view { sq ^ 56 } else { sq };
             let feat768 = usize::from(is_opp) * 384 + piece_type * 64 + sq_view;
             let feature = base + (feat768 ^ flip);
-            for (a, w) in acc.iter_mut().zip(&net_l0w[feature * HIDDEN..(feature + 1) * HIDDEN]) {
-                *a += *w;
+            for (a, w) in acc.iter_mut().zip(&net.l0w[feature * hidden..(feature + 1) * hidden]) {
+                *a = a.wrapping_add(*w);
             }
         }
     }
@@ -193,9 +207,9 @@ pub fn accumulate(net_l0w: &[i16], net_l0b: &[i16], fen: &str) -> (Vec<i16>, Vec
     (acc_us, acc_them, out_bucket)
 }
 
-/// CReLU + prodotto a coppie: 1024 valori i16 -> 512 valori in [0, QA].
+/// CReLU + pairwise product: H i16 values -> H/2 values in [0, QA].
 fn pairwise(acc: &[i16], out: &mut [i32]) {
-    let half = HIDDEN / 2;
+    let half = acc.len() / 2;
     for j in 0..half {
         let a = i32::from(acc[j]).clamp(0, QA);
         let b = i32::from(acc[j + half]).clamp(0, QA);
@@ -204,19 +218,20 @@ fn pairwise(acc: &[i16], out: &mut [i32]) {
 }
 
 pub fn evaluate(net: &Network, fen: &str) -> i32 {
-    let (acc_us, acc_them, ob) = accumulate(&net.l0w, &net.l0b, fen);
+    let (hidden, l1_size) = (net.hidden, net.l1_size);
+    let (acc_us, acc_them, ob) = accumulate(net, fen);
 
-    let half = HIDDEN / 2;
-    let mut hl1 = vec![0i32; HIDDEN];
+    let half = hidden / 2;
+    let mut hl1 = vec![0i32; hidden];
     pairwise(&acc_us, &mut hl1[..half]);
     pairwise(&acc_them, &mut hl1[half..]);
 
-    // l1: [L1_SIZE][HIDDEN] per bucket, gia' trasposto al salvataggio.
-    let w1 = &net.l1w[ob * L1_SIZE * HIDDEN..(ob + 1) * L1_SIZE * HIDDEN];
-    let b1 = &net.l1b[ob * L1_SIZE..(ob + 1) * L1_SIZE];
-    let mut a1 = [0f32; L1_SIZE];
-    for o in 0..L1_SIZE {
-        let row = &w1[o * HIDDEN..(o + 1) * HIDDEN];
+    // l1: [L1][H] per bucket, transposed at save time.
+    let w1 = &net.l1w[ob * l1_size * hidden..(ob + 1) * l1_size * hidden];
+    let b1 = &net.l1b[ob * l1_size..(ob + 1) * l1_size];
+    let mut a1 = vec![0f32; l1_size];
+    for o in 0..l1_size {
+        let row = &w1[o * hidden..(o + 1) * hidden];
         let mut sum = 0i32;
         for (h, w) in hl1.iter().zip(row) {
             sum += h * i32::from(*w);
@@ -224,7 +239,7 @@ pub fn evaluate(net: &Network, fen: &str) -> i32 {
         a1[o] = screlu_f32(sum as f32 / (QA * QB) as f32 + b1[o]);
     }
 
-    let w2 = &net.l2w[ob * L1_SIZE..(ob + 1) * L1_SIZE];
+    let w2 = &net.l2w[ob * l1_size..(ob + 1) * l1_size];
     let mut y = net.l2b[ob];
     for (a, w) in a1.iter().zip(w2) {
         y += a * w;
@@ -236,7 +251,19 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let path = args.get(1).map(String::as_str).unwrap_or("quantised.bin");
     let net = load(path);
-    println!("{path}: layout OK ({PAYLOAD} B payload)");
+
+    if args.get(2).map(String::as_str) == Some("-") {
+        for line in std::io::stdin().lock().lines() {
+            let fen = line.expect("stdin");
+            if !fen.trim().is_empty() {
+                println!("{}\t{fen}", evaluate(&net, &fen));
+            }
+        }
+        return;
+    }
+
+    println!("{path}: layout OK ({} -> {} -> 1, {} B payload)",
+             net.hidden, net.l1_size, payload(net.hidden, net.l1_size));
 
     let default_fens = [
         ("startpos (w)", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"),

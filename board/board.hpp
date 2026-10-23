@@ -169,6 +169,9 @@ public:
     inline void        ensureNnueAccumulatorClean() const noexcept;
     // The current position's accumulator, valid after ensureNnueAccumulatorClean.
     const NNUE::Accumulator& accumulator() const noexcept { return frame(accTop); }
+    // The small net's counterparts (no-op when no small net is loaded).
+    inline void        ensureSmallAccumulatorClean() const noexcept;
+    const NNUE::SmallAccumulator& smallAccumulator() const noexcept { return smallFrame(accTop); }
 
     // --- FEN ---
     void        fenToBoard(const std::string& fen);
@@ -183,6 +186,10 @@ public:
 
 private:
     NNUE::Accumulator& frame(int i) const noexcept { return accFrames[static_cast<size_t>(i & (NNUE::ACC_FRAMES - 1))]; }
+    NNUE::SmallAccumulator& smallFrame(int i) const noexcept { return smallFrames[static_cast<size_t>(i & (NNUE::ACC_FRAMES - 1))]; }
+    // The feature changes logged in frames (start, target], with the pairs
+    // that cancel removed; each entry is piece << 8 | square.
+    inline void collectAccDiff(int start, int target, uint16_t* sub, int& ns, uint16_t* add, int& na) const noexcept;
     inline void pushAccFrame() noexcept;
     inline void recordAcc(NNUE::AccDelta delta) noexcept;
 
@@ -255,6 +262,9 @@ private:
     int accTop   = 0;   // grows with every move, frame() wraps it
     int accFloor = 0;   // oldest frame of this line: a load, a copy or a refresh
     std::unique_ptr<NNUE::Accumulator[]> accFrames{new NNUE::Accumulator[NNUE::ACC_FRAMES]};
+    // The small net's ring, frame for frame the same positions; its dirty
+    // flag lives in the big frame (smallDirty), which doMove writes anyway.
+    std::unique_ptr<NNUE::SmallAccumulator[]> smallFrames{new NNUE::SmallAccumulator[NNUE::ACC_FRAMES]};
 };
 
 static_assert(Move::promotionTypeFromChar('q') == Board::QUEEN

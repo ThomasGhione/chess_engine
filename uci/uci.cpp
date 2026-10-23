@@ -133,6 +133,7 @@ namespace uci {
             "option name SyzygyPath type string default <empty>\n"
             "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n"
             "option name EvalFile type string default <empty>\n"
+            "option name SmallEvalFile type string default <empty>\n"
             "option name Threads type spin default " + threads + " min 1 max " + threads + "\n"
             "option name Hash type spin default " + std::to_string(TT::DEFAULT_HASH_MB)
             + " min " + std::to_string(TT::MIN_HASH_MB) + " max " + std::to_string(TT::MAX_HASH_MB) + "\n";
@@ -178,6 +179,12 @@ namespace uci {
                 // in sync now; later `position` commands refresh via FEN load.
                 engine.board.refreshNnueAccumulator();
                 emit("info string EvalFile loaded: " + value + "\n");
+            }
+        } else if (key == "smallevalfile") {
+            if (NNUE::Small::loadNetwork(value)) {
+                engine::clearEvalCache();
+                engine.board.refreshNnueAccumulator();   // marks the small frame dirty
+                emit("info string SmallEvalFile loaded: " + value + "\n");
             }
         } else if (key == "syzygypath") {
             emit(engine.syzygyProber.load(value)

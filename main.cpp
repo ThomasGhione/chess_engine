@@ -27,10 +27,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (mode == "perft") return engine::runPerftCommand(argc, argv);
+    if (mode == "small-eval") return NNUE::runSmallEval(argc, argv);
 
     while (mode.starts_with('-')) mode.remove_prefix(1);
     if (!ascii::iequals(mode, "uci")) {
-        std::cerr << "usage: chess [uci | perft | datagen | datagen-dump | nnue-selftest] ...\n";
+        std::cerr << "usage: chess [uci | perft | datagen | datagen-dump | nnue-selftest | small-eval] ...\n";
         return 1;
     }
 

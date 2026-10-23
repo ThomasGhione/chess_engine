@@ -30,7 +30,7 @@ __attribute__((always_inline))
 inline void Board::pushAccFrame() noexcept {
     NNUE::Accumulator& f = frame(++accTop);
     f.ndelta = 0;
-    f.dirty[0] = f.dirty[1] = true;
+    f.dirty[0] = f.dirty[1] = f.smallDirty = true;
     if (accTop - accFloor >= NNUE::ACC_FRAMES) accFloor = accTop - NNUE::ACC_FRAMES + 1;
 }
 

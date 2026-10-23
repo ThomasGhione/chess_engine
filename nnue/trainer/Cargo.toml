@@ -26,6 +26,11 @@ path = "src/bin/trainer_deep.rs"
 required-features = ["train"]
 
 [[bin]]
+name = "trainer_small"
+path = "src/bin/trainer_small.rs"
+required-features = ["train"]
+
+[[bin]]
 name = "sanity"
 path = "src/bin/sanity.rs"
 
@@ -44,3 +49,7 @@ path = "src/bin/datashuffle.rs"
 [[bin]]
 name = "datamix"
 path = "src/bin/datamix.rs"
+
+[[bin]]
+name = "datafilter"
+path = "src/bin/datafilter.rs"

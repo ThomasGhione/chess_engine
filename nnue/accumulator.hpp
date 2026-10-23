@@ -14,8 +14,22 @@
 
 #include "network.hpp"
 #include "network_deep.hpp"
+#include "network_small.hpp"
 
 namespace NNUE {
+
+// Row index of one piece feature for perspective p under an explicit basis.
+// Shared by both nets: they read the same feature space.
+[[nodiscard]] inline constexpr int featureIndex(int rowBase, int rowFlip, int p,
+                                                uint8_t piece, uint8_t index) noexcept {
+    const int type = (piece & 0x7) - 1;      // P..K -> 0..5
+    const bool black = (piece & 0x8) == 0;   // Board::WHITE = 0x8
+    const int lerf = index ^ 56;
+    const int sqView = (p == 1) ? (lerf ^ 56) : lerf;
+    const bool isOpp = (p == 1) ? !black : black;
+    const int feat768 = (isOpp ? 384 : 0) + type * 64 + sqView;
+    return rowBase + (feat768 ^ rowFlip);
+}
 
 // One feature change of a move: a piece added, removed or moved.
 struct AccDelta {
@@ -39,6 +53,7 @@ struct alignas(64) Accumulator {
     int32_t base[2];   // 768 * king bucket, per perspective
     uint8_t flip[2];   // 0 or 7 (file mirror), per perspective
     bool    dirty[2];  // true = v[p] not computed for this position yet
+    bool    smallDirty; // the small net's frame (Board's second ring) is not computed
     // The move from the previous frame, in the same cache line as the flags.
     uint8_t  ndelta;
     AccDelta delta[ACC_MAX_DELTAS];
@@ -95,24 +110,19 @@ struct alignas(64) Accumulator {
     // perspectives use their own, the Finny cache rows hold a different one.
     [[nodiscard]] static inline const int16_t* rowFor(int rowBase, int rowFlip, int p,
                                                       uint8_t piece, uint8_t index) noexcept {
-        const int type = (piece & 0x7) - 1;      // P..K -> 0..5
-        const bool black = (piece & 0x8) == 0;   // Board::WHITE = 0x8
-        const int lerf = index ^ 56;
-        const int sqView = (p == 1) ? (lerf ^ 56) : lerf;
-        const bool isOpp = (p == 1) ? !black : black;
-        const int feat768 = (isOpp ? 384 : 0) + type * 64 + sqView;
-        return activeNetwork->l0w[rowBase + (feat768 ^ rowFlip)];
+        return activeNetwork->l0w[featureIndex(rowBase, rowFlip, p, piece, index)];
     }
 
     [[nodiscard]] inline const int16_t* featureRow(int p, uint8_t piece, uint8_t index) const noexcept {
         return rowFor(base[p], flip[p], p, piece, index);
     }
 
-    // Single-row counterparts of fusePairFrom and fusePair.
-    template<int NS, int NA>
+    // Single-row counterparts of fusePairFrom and fusePair. W is the row
+    // width: HIDDEN here, Small::HIDDEN for the small net's rows.
+    template<int NS, int NA, int W = HIDDEN>
     static inline void fuseRowsFrom(const int16_t* __restrict src, int16_t* __restrict row,
                                     const int16_t* const* sub, const int16_t* const* add) noexcept {
-        for (int i = 0; i < HIDDEN; ++i) {
+        for (int i = 0; i < W; ++i) {
             int x = src[i];
             for (int k = 0; k < NS; ++k) x -= sub[k][i];
             for (int k = 0; k < NA; ++k) x += add[k][i];
@@ -120,10 +130,10 @@ struct alignas(64) Accumulator {
         }
     }
 
-    template<int NS, int NA>
+    template<int NS, int NA, int W = HIDDEN>
     static inline void fuseRows(int16_t* __restrict row, const int16_t* const* sub,
                                 const int16_t* const* add) noexcept {
-        for (int i = 0; i < HIDDEN; ++i) {
+        for (int i = 0; i < W; ++i) {
             int x = row[i];
             for (int k = 0; k < NS; ++k) x -= sub[k][i];
             for (int k = 0; k < NA; ++k) x += add[k][i];
@@ -158,20 +168,21 @@ struct alignas(64) Accumulator {
     // Applies a whole feature diff to one row, the first pass reading src (a
     // different row) when it is given. A refresh changes 5.8 features on
     // average, so this reads and writes the row about twice instead of six times.
+    template<int W = HIDDEN>
     static inline void applyRows(int16_t* __restrict row,
                                  const int16_t* const* sub, int ns,
                                  const int16_t* const* add, int na,
                                  const int16_t* src = nullptr) noexcept {
         if (src != nullptr && ns == 0 && na == 0) {
-            std::memcpy(row, src, HIDDEN * sizeof(int16_t));
+            std::memcpy(row, src, W * sizeof(int16_t));
             return;
         }
         forEachPass(ns, na, [&]<int S, int A>(int si, int ai) {
             if (src != nullptr) {
-                fuseRowsFrom<S, A>(src, row, sub + si, add + ai);
+                fuseRowsFrom<S, A, W>(src, row, sub + si, add + ai);
                 src = nullptr;
             } else {
-                fuseRows<S, A>(row, sub + si, add + ai);
+                fuseRows<S, A, W>(row, sub + si, add + ai);
             }
         });
     }
@@ -204,6 +215,43 @@ struct FinnyTable {
                     std::memset(e.bb, 0, sizeof(e.bb));
                 }
         builtFor = activeNetwork;
+    }
+};
+
+// The small net's frame, in a ring of its own that runs parallel to the big
+// net's: frame i of both rings is the same position, and the big frame holds
+// the move log and the smallDirty flag. Computed only when the small net
+// evaluates (Board::ensureSmallAccumulatorClean).
+struct alignas(64) SmallAccumulator {
+    int16_t v[2][Small::HIDDEN];
+    int32_t base[2];
+    uint8_t flip[2];
+
+    [[nodiscard]] static inline const int16_t* rowFor(int rowBase, int rowFlip, int p,
+                                                      uint8_t piece, uint8_t index) noexcept {
+        return activeSmallNetwork->l0w[featureIndex(rowBase, rowFlip, p, piece, index)];
+    }
+};
+
+// The small net's Finny table, the same scheme as FinnyTable.
+struct SmallFinnyEntry {
+    alignas(64) int16_t v[Small::HIDDEN];
+    uint64_t bb[2][6]; // [colorIndex][type-1], engine bit convention
+};
+
+struct SmallFinnyTable {
+    SmallFinnyEntry entry[2][INPUT_BUCKETS][2]; // [perspective][bucket][flip?1:0]
+    uint32_t builtFor = 0;   // smallNetworkGeneration the rows belong to
+
+    inline void ensureInitialised() noexcept {
+        if (builtFor == smallNetworkGeneration) [[likely]] return;
+        for (auto& perPersp : entry)
+            for (auto& perBucket : perPersp)
+                for (auto& e : perBucket) {
+                    std::memcpy(e.v, activeSmallNetwork->l0b, sizeof(e.v));
+                    std::memset(e.bb, 0, sizeof(e.bb));
+                }
+        builtFor = smallNetworkGeneration;
     }
 };
 
