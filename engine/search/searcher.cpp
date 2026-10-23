@@ -13,6 +13,7 @@
 #include "../engine.hpp"
 #include "../sort/move_generator.hpp"
 #include "evalcache.hpp"
+#include "search_stats.hpp"
 
 namespace engine {
 
@@ -382,6 +383,7 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
         const bool isQuietMove = !t.isCapture && !t.isPromotion;
 
         if (canLMP && isQuietMove && moveIndex >= lmpThreshold) {
+            if constexpr (kSearchStats) ++gSearchStats.prunedLmp;
             prunedAny = true;
             if (!lmpSkipTried) {
                 lmpSkipTried = true;
@@ -394,18 +396,21 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
         if (canFutilityPrune && isQuietMove && moveIndex > 0 && ctx.staticEval + futilityMargin <= alpha
             && (t.fromType == Board::KING
                 || !Sorter::givesCheckAfterQuietMoveFast(b, m, t.fromType, oppKingSq, b.getPiecesBitMap()))) {
+            if constexpr (kSearchStats) ++gSearchStats.prunedFutility;
             prunedAny = true;
             continue;
         }
         // Late quiets with a very negative history rarely raise alpha at low depth.
         if (isQuietMove && interiorNonPv && ctx.depth >= 1 && ctx.depth <= 3 && moveIndex > 0
             && runtime.history[usSide][m.from][m.to] < HISTORY_PRUNE_THRESHOLD[ctx.depth]) {
+            if constexpr (kSearchStats) ++gSearchStats.prunedHistory;
             prunedAny = true;
             continue;
         }
         // Clearly losing captures at shallow non-PV nodes; move 0 is always searched.
         if (t.isCapture && !t.isPromotion && moveIndex > 0 && interiorNonPv && ctx.depth <= 3
             && Sorter::staticExchangeEvaluation(b, m) < -SEE_CAPTURE_MARGIN * ctx.depth) {
+            if constexpr (kSearchStats) ++gSearchStats.prunedSee;
             prunedAny = true;
             continue;
         }
@@ -434,8 +439,16 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
             // More when the eval is falling, and at an expected cut node.
             reduction += !ctx.improving + ctx.cutNode;
             reduction = std::clamp(reduction, 1, childDepth - 1);
-            score = search(std::max(1, childDepth - reduction), alpha, scoutBeta, true);
-            if (score > alpha) score = search(childDepth, alpha, scoutBeta, !ctx.cutNode);
+            const int reducedDepth = std::max(1, childDepth - reduction);
+            if constexpr (kSearchStats) {
+                ++gSearchStats.lmrSearches;
+                gSearchStats.lmrReductionSum += static_cast<uint64_t>(childDepth - reducedDepth);
+            }
+            score = search(reducedDepth, alpha, scoutBeta, true);
+            if (score > alpha) {
+                if constexpr (kSearchStats) ++gSearchStats.lmrResearches;
+                score = search(childDepth, alpha, scoutBeta, !ctx.cutNode);
+            }
         } else {
             // The first move of a PV node is a PV child; every other first search is a null window.
             score = search(childDepth, alpha, scoutBeta, !(ctx.isPVNode && isFirstMove) && !ctx.cutNode);
@@ -460,6 +473,11 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
         }
         alpha = std::max(alpha, score);
         if (best < beta) continue;
+        if constexpr (kSearchStats) {
+            ++gSearchStats.cutNodes;
+            if (moveIndex == 0) ++gSearchStats.cutFirst;
+            gSearchStats.cutIndexSum += static_cast<uint64_t>(moveIndex);
+        }
 
         if (allowHeuristicUpdates) {
             const int32_t bonus = (ctx.depth + 1) * (ctx.depth + 1);
@@ -501,6 +519,9 @@ SearchMoveResult searchMoves(Board& b, MovePicker& movePicker, const SearchConte
         break;
     }
 
+    if constexpr (kSearchStats) {
+        if (searchedAnyMove && best < beta) ++gSearchStats.noCutNodes;
+    }
     // An abort before any move was searched leaves only the static eval.
     return {bestMove, (!searchedAnyMove && runtime.isInterrupted()) ? ctx.staticEval : best, prunedAny};
 }
@@ -523,6 +544,7 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
     // scored by its eval.
     if (checkDrawTerminalConditions(b, ply, early)) return early;
     if (depth <= 0) return quiescenceSearch(b, runtime, alpha, beta, ply, /*alreadyEntered=*/true);
+    if constexpr (kSearchStats) ++gSearchStats.mainNodes;
 
     TT& tt = *runtime.transpositionTable;
     const uint64_t hashKey = b.getHash();
@@ -530,9 +552,16 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
     // singular-extension gate and the hash move. The stored score is rebased to
     // this ply before the window test.
     const TT::ProbeResult tte = tt.probeEntry(hashKey);
+    if constexpr (kSearchStats) {
+        ++gSearchStats.ttProbes;
+        if (tte.hit) ++gSearchStats.ttHits;
+    }
     if (!hasExcludedMove && tte.hit && tte.depth >= std::min(depth, static_cast<int>(TT::Entry::MAX_DEPTH))) {
         const int32_t ttScore = scoreFromTT(tte.score, ply);
-        if (ttBoundCutoff(tte.flag, ttScore, alpha, beta)) return ttScore;
+        if (ttBoundCutoff(tte.flag, ttScore, alpha, beta)) {
+            if constexpr (kSearchStats) ++gSearchStats.ttCuts;
+            return ttScore;
+        }
     }
 
     // TB WDL probe, after the TT cutoff: most TB-range nodes cut on the cached
@@ -615,6 +644,7 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
         && (b.bb[Board::KNIGHT][side] | b.bb[Board::BISHOP][side]
             | b.bb[Board::ROOK][side] | b.bb[Board::QUEEN][side]) != 0ULL) {
         // The further the eval sits above beta, the deeper the reduction.
+        if constexpr (kSearchStats) ++gSearchStats.nmpTries;
         const int reduction = 3 + depth / 3 + std::clamp((staticEval - beta) / NMP_EVAL_DIV, 0, NMP_EVAL_MAX);
         Board::MoveState nullState;
         b.doNullMove(nullState);
@@ -622,12 +652,16 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
                                                   allowHeuristicUpdates, nullptr, false);
         b.undoNullMove(nullState);
         // Fail-soft, but a mate or TB win found behind a null move is unproven.
-        if (nullScore >= beta) return (nullScore >= TB_WIN_BOUND) ? beta : nullScore;
+        if (nullScore >= beta) {
+            if constexpr (kSearchStats) ++gSearchStats.nmpCuts;
+            return (nullScore >= TB_WIN_BOUND) ? beta : nullScore;
+        }
     }
 
     // Reverse futility: the eval beats beta by a margin per ply. Halfway between
     // eval and beta, since the margin test proves only beta.
     if (interiorNonPv && depth <= 3 && staticEval - RFP_MARGIN_PER_DEPTH * depth >= beta) {
+        if constexpr (kSearchStats) ++gSearchStats.rfpCuts;
         return (staticEval + beta) / 2;
     }
 
@@ -649,7 +683,10 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
                                           false, &mc, false, Move{}, !cutNode);
             }
             b.undoMove(mc, pcState);
-            if (pcScore >= probcutBound) return beta;
+            if (pcScore >= probcutBound) {
+                if constexpr (kSearchStats) ++gSearchStats.probcutCuts;
+                return beta;
+            }
         }
     }
 
@@ -715,6 +752,7 @@ int32_t searchPosition(Board& b, SearchRuntime& runtime, int depth, int32_t alph
 
 int32_t quiescenceSearch(Board& b, SearchRuntime& runtime, int32_t alpha, int32_t beta,
                          int ply, bool alreadyEntered) noexcept {
+    if constexpr (kSearchStats) ++gSearchStats.qNodes;
     int32_t early = 0;
     if (!alreadyEntered && (enterNode(b, runtime, ply, early) || checkDrawTerminalConditions(b, ply, early))) {
         return early;
@@ -827,6 +865,7 @@ Move getBestMove(Board& rootBoard, const MoveList& moves, SearchRuntime& runtime
 IterativeSearchResult runIterativeDeepening(Board& rootBoard, SearchRuntime& runtime,
                                             int startDepth, int targetDepth) noexcept {
     IterativeSearchResult result;
+    if constexpr (kSearchStats) gSearchStats = SearchStats{};
     const int firstDepth = std::max(1, startDepth);
     const int maxDepth = std::max(firstDepth, targetDepth);
 
@@ -969,6 +1008,31 @@ IterativeSearchResult runIterativeDeepening(Board& rootBoard, SearchRuntime& run
             result.bestMove          = depthOneMove;
             result.bestScore         = runtime.eval;
         }
+    }
+    // Counters are per thread: only the main thread reports its own.
+    if constexpr (kSearchStats) if (!runtime.isHelper) {
+        const SearchStats& st = gSearchStats;
+        const auto pct = [](uint64_t x, uint64_t y) {
+            return y ? std::to_string(static_cast<double>(x) * 100.0 / static_cast<double>(y)).substr(0, 5) : std::string("-");
+        };
+        const auto avg = [](uint64_t x, uint64_t y) {
+            return y ? std::to_string(static_cast<double>(x) / static_cast<double>(y)).substr(0, 5) : std::string("-");
+        };
+        const uint64_t all = st.mainNodes + st.qNodes;
+        uci::emit("info string stats nodes main " + std::to_string(st.mainNodes) + " q " + std::to_string(st.qNodes)
+                  + " qshare " + pct(st.qNodes, all) + "%\n"
+                  + "info string stats tt probes " + std::to_string(st.ttProbes) + " hit " + pct(st.ttHits, st.ttProbes)
+                  + "% cut " + pct(st.ttCuts, st.ttProbes) + "%\n"
+                  + "info string stats cut nodes " + std::to_string(st.cutNodes) + " nocut " + std::to_string(st.noCutNodes)
+                  + " firstmove " + pct(st.cutFirst, st.cutNodes) + "% avgindex " + avg(st.cutIndexSum, st.cutNodes) + "\n"
+                  + "info string stats lmr searches " + std::to_string(st.lmrSearches) + " avgred "
+                  + avg(st.lmrReductionSum, st.lmrSearches) + " research " + pct(st.lmrResearches, st.lmrSearches) + "%\n"
+                  + "info string stats pruned lmp " + std::to_string(st.prunedLmp) + " fut " + std::to_string(st.prunedFutility)
+                  + " hist " + std::to_string(st.prunedHistory) + " see " + std::to_string(st.prunedSee) + "\n"
+                  + "info string stats early nmp " + std::to_string(st.nmpCuts) + "/" + std::to_string(st.nmpTries) + " ("
+                  + pct(st.nmpCuts, st.nmpTries) + "%) rfp " + std::to_string(st.rfpCuts) + " probcut "
+                  + std::to_string(st.probcutCuts) + " of main " + pct(st.nmpCuts + st.rfpCuts + st.probcutCuts, st.mainNodes)
+                  + "%\n");
     }
     return result;
 }
