@@ -809,6 +809,10 @@ int32_t quiescenceSearch(Board& b, SearchRuntime& runtime, int32_t alpha, int32_
         rawStaticEval = (tte.hit && tte.staticEval != TT::Entry::NO_EVAL) ? tte.staticEval
                                                                           : cachedEval(b.getHash(), b);
         best = std::clamp(rawStaticEval + runtime.corrHist.correction(b), -TB_WIN_BOUND + 1, TB_WIN_BOUND - 1);
+        // As in the main search, a TT bound that proves the eval wrong replaces it.
+        if (tte.hit && ttBoundCutoff(tte.flag, scoreFromTT(tte.score, ply), best, best)) {
+            best = std::clamp(scoreFromTT(tte.score, ply), -TB_WIN_BOUND + 1, TB_WIN_BOUND - 1);
+        }
         // Fail-soft stand pat. No store: the eval cache already returns the eval.
         if (best >= beta) return best;
         alpha = std::max(alpha, best);
